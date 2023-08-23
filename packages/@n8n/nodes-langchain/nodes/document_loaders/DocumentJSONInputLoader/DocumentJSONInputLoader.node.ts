@@ -32,7 +32,7 @@ export class DocumentJSONInputLoader implements INodeType {
 		let textSplitter: CharacterTextSplitter | undefined;
 		console.log('Supply Data for JSON Input Loader');
 		const items = await this.getInputData();
-		const textSplitterNode = await this.getInputConnectionData(0, 0, 'textSplitter', this.getNode().name);
+		const textSplitterNode = await this.getInputConnectionData('textSplitter', 0);
 		if (textSplitterNode?.[0]?.response) {
 			textSplitter = textSplitterNode?.[0]?.response as CharacterTextSplitter;
 		}

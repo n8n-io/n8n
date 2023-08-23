@@ -238,7 +238,7 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'output', i);
-				if (nodeTypeData.outputNames) {
+				if (nodeTypeData.outputNames?.[i]) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
 						nodeTypeData.outputNames[i],

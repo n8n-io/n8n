@@ -35,9 +35,9 @@ export class InMemoryVectorStore implements INodeType {
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		const itemIndex = 0;
 		const topK = this.getNodeParameter('topK', itemIndex) as number;
-		const documentsNodes = await this.getInputConnectionData(0, 0, 'document', this.getNode().name) || [];
+		const documentsNodes = await this.getInputConnectionData('document', 0) || [];
 		const documents = documentsNodes.flatMap((node) => node.response as Document);
-		const embeddingNodes = await this.getInputConnectionData(0, 0, 'embedding', this.getNode().name);
+		const embeddingNodes = await this.getInputConnectionData('embedding', 0);
 		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);

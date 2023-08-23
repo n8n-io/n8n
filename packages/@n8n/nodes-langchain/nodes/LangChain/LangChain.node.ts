@@ -42,7 +42,7 @@ export class LangChain implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let memory: BaseChatMemory | undefined;
 
-		const languageModelNodes = await this.getInputConnectionData(0, 0, 'languageModel');
+		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
 		if (languageModelNodes.length === 0) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -68,14 +68,14 @@ export class LangChain implements INodeType {
 			);
 		}
 
-		const memoryNodes = await this.getInputConnectionData(0, 0, 'memory');
+		const memoryNodes = await this.getInputConnectionData('memory', 0);
 		if (memoryNodes.length === 1) {
 			memory = memoryNodes[0].response as BaseChatMemory;
 		} else if (languageModelNodes.length > 1) {
 			throw new NodeOperationError(this.getNode(), 'Only one Memory is allowed to be connected!');
 		}
 
-		const toolNodes = await this.getInputConnectionData(0, 0, 'tool');
+		const toolNodes = await this.getInputConnectionData('tool', 0);
 		const tools = toolNodes.map((connectedNode) => {
 			return connectedNode.response as Tool;
 		});

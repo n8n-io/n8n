@@ -20,11 +20,6 @@ export class DocumentGithubLoader implements INodeType {
 			{
 				name: 'githubApi',
 				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['accessToken'],
-					},
-				},
 			}
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -54,7 +49,7 @@ export class DocumentGithubLoader implements INodeType {
 		const branch = this.getNodeParameter('branch', 0) as string;
 		const credentials = await this.getCredentials('githubApi');
 
-		const textSplitterNode = await this.getInputConnectionData(0, 0, 'textSplitter', this.getNode().name);
+		const textSplitterNode = await this.getInputConnectionData('textSplitter', 0);
 		if (textSplitterNode?.[0]?.response) {
 			textSplitter = textSplitterNode?.[0]?.response as CharacterTextSplitter;
 		}

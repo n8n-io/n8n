@@ -424,6 +424,10 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		nodeStyle(): object {
+			const returnStyles: {
+				[key: string]: string;
+			} = {};
+
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
 
 			if (this.data.disabled) {
@@ -431,6 +435,8 @@ export default defineComponent({
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
+					returnStyles['border-width'] = '2px';
+					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
 				} else if (this.nodeExecutionStatus === 'unknown') {
@@ -440,11 +446,7 @@ export default defineComponent({
 				}
 			}
 
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				'border-color': borderColor,
-			};
+			returnStyles['border-color'] = borderColor;
 
 			return returnStyles;
 		},

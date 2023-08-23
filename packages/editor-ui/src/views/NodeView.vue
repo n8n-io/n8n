@@ -127,7 +127,7 @@
 					:loading="workflowRunning"
 					label="Chat"
 					size="large"
-					icon="play-circle"
+					icon="comment"
 					type="primary"
 					data-test-id="workflow-chat-button"
 				/>
