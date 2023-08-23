@@ -14,7 +14,9 @@ import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
 import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
-import type { SettingsRepository, UserRepository } from '@db/repositories';
+import type { SettingsRepository } from '@db/repositories';
+import { UserService } from '@/services/user.service';
+import Container from 'typedi';
 import type { PostHogClient } from '@/posthog';
 
 @Authorized(['global', 'owner'])
@@ -26,7 +28,7 @@ export class OwnerController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: UserRepository;
+	private readonly userService: UserService;
 
 	private readonly settingsRepository: SettingsRepository;
 
@@ -42,13 +44,13 @@ export class OwnerController {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
+		repositories: Pick<IDatabaseCollections, 'Settings'>;
 		postHog?: PostHogClient;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
+		this.userService = Container.get(UserService);
 		this.settingsRepository = repositories.Settings;
 		this.postHog = postHog;
 	}
@@ -112,7 +114,7 @@ export class OwnerController {
 
 		await validateEntity(owner);
 
-		owner = await this.userRepository.save(owner);
+		owner = await this.userService.save(owner);
 
 		this.logger.info('Owner was set up successfully', { userId });
 

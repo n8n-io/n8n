@@ -22,8 +22,8 @@
     "build:storybook": "storybook build",
     "storybook": "storybook dev -p 6006",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint src --ext .js,.ts,.vue --quiet --report-unused-disable-directives",
-    "lintfix": "eslint src --ext .js,.ts,.vue --fix --report-unused-disable-directives"
+    "lint": "eslint src --ext .js,.ts,.vue --quiet",
+    "lintfix": "eslint src --ext .js,.ts,.vue --fix"
   },
   "peerDependencies": {
     "@fortawesome/fontawesome-svg-core": "1.x",
