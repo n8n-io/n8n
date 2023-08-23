@@ -65,9 +65,9 @@
 					@click.stop="sendChatMessage(currentMessage)"
 					class="send-button"
 					:loading="isLoading"
-					label="Chat"
+					label="Send"
 					size="large"
-					icon="play-circle"
+					icon="comment"
 					type="primary"
 					data-test-id="workflow-chat-button"
 				/>
