@@ -22,6 +22,7 @@ import {
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import type { PackageDirectoryLoader } from 'n8n-core';
 import type { CommunityPackages } from '@/Interfaces';
+import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -247,5 +248,59 @@ export class CommunityService {
 		} catch {
 			// do nothing
 		}
+	}
+
+	async setMissingPackages(
+		loadNodesAndCredentials: LoadNodesAndCredentials,
+		{ reinstallMissingPackages }: { reinstallMissingPackages: boolean },
+	) {
+		const installedPackages = await this.getAllInstalledPackages();
+		const missingPackages = new Set<{ packageName: string; version: string }>();
+
+		installedPackages.forEach((installedPackage) => {
+			installedPackage.installedNodes.forEach((installedNode) => {
+				if (!loadNodesAndCredentials.known.nodes[installedNode.type]) {
+					// Leave the list ready for installing in case we need.
+					missingPackages.add({
+						packageName: installedPackage.packageName,
+						version: installedPackage.installedVersion,
+					});
+				}
+			});
+		});
+
+		config.set('nodes.packagesMissing', '');
+
+		if (missingPackages.size === 0) return;
+
+		Logger.error(
+			'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
+		);
+
+		if (reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+			Logger.info('Attempting to reinstall missing packages', { missingPackages });
+			try {
+				// Optimistic approach - stop if any installation fails
+
+				for (const missingPackage of missingPackages) {
+					await loadNodesAndCredentials.installNpmModule(
+						missingPackage.packageName,
+						missingPackage.version,
+					);
+
+					missingPackages.delete(missingPackage);
+				}
+				Logger.info('Packages reinstalled successfully. Resuming regular initialization.');
+			} catch (error) {
+				Logger.error('n8n was unable to install the missing packages.');
+			}
+		}
+
+		config.set(
+			'nodes.packagesMissing',
+			Array.from(missingPackages)
+				.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
+				.join(' '),
+		);
 	}
 }

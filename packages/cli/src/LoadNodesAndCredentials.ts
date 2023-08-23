@@ -211,7 +211,6 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				// @TODO: Restore dynamic import
 				if (isUpdate) {
 					await communityService.removePackageFromDatabase(options.installedPackage);
 				}
@@ -246,7 +245,6 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		await communityService.executeNpmCommand(`npm remove ${packageName}`);
 
-		// @TODO: Restore dynamic import
 		await communityService.removePackageFromDatabase(installedPackage);
 
 		if (packageName in this.loaders) {
