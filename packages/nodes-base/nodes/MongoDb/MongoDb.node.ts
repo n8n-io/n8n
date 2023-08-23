@@ -18,7 +18,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
-import { nodeDescription } from './MongoDbDescription';
+import { nodeProperties } from './MongoDbProperties';
 
 import {
 	buildParameterizedConnString,
@@ -31,7 +31,27 @@ import {
 import type { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
-	description: INodeTypeDescription = nodeDescription;
+	description: INodeTypeDescription = {
+		displayName: 'MongoDB',
+		name: 'mongoDb',
+		icon: 'file:mongodb.svg',
+		group: ['input'],
+		version: 1,
+		description: 'Find, insert and update documents in MongoDB',
+		defaults: {
+			name: 'MongoDB',
+		},
+		inputs: ['main'],
+		outputs: ['main'],
+		credentials: [
+			{
+				name: 'mongoDb',
+				required: true,
+				testedBy: 'mongoDbCredentialTest',
+			},
+		],
+		properties: nodeProperties,
+	};
 
 	methods = {
 		credentialTest: {
