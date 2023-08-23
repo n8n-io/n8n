@@ -358,7 +358,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
-		await additionalData.secretsHelpers.update();
+		await additionalData?.secretsHelpers?.waitForInit();
 
 		const canUseSecrets = await this.credentialOwnedByOwner(nodeCredentials);
 
@@ -778,13 +778,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (!nodeCredential.id) {
 			return false;
 		}
-
-		// const credential = userId
-		// 	? await Db.collections.SharedCredentials.findOneOrFail({
-		// 			relations: ['credentials'],
-		// 			where: { credentials: { id: nodeCredential.id, type }, userId },
-		// 	  }).then((shared) => shared.credentials)
-		// 	: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
 
 		const credential = await Db.collections.SharedCredentials.findOne({
 			where: {

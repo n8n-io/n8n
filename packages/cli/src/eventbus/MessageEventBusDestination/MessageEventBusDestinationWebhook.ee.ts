@@ -25,6 +25,7 @@ import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper'
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -109,7 +110,7 @@ export class MessageEventBusDestinationWebhook
 		if (foundCredential) {
 			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
-				{} as IWorkflowExecuteAdditionalData,
+				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',

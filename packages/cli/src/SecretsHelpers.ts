@@ -13,6 +13,12 @@ export class SecretsHelper implements SecretsHelpersBase {
 		await this.service.updateSecrets();
 	}
 
+	async waitForInit() {
+		if (!this.service.initialized) {
+			await this.service.init();
+		}
+	}
+
 	getSecret(provider: string, name: string): IDataObject | undefined {
 		return this.service.getSecret(provider, name);
 	}
