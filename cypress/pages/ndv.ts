@@ -1,5 +1,5 @@
 import { BasePage } from './base';
-import { getVisibleSelect } from '../utils';
+import { getVisiblePopper, getVisibleSelect } from '../utils';
 
 export class NDV extends BasePage {
 	getters = {
@@ -64,6 +64,8 @@ export class NDV extends BasePage {
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
+		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
+		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
 	};
 
 	actions = {
@@ -170,6 +172,13 @@ export class NDV extends BasePage {
 				.parameterExpressionPreview(paramName)
 				.find('span')
 				.should('include.html', asEncodedHTML(value));
+		},
+
+		refreshResourceMapperColumns: () => {
+			this.getters.resourceMapperSelectColumn().realHover();
+			this.getters.resourceMapperSelectColumn().findChildByTestId('action-toggle').should('have.length', 1).click();
+
+			getVisiblePopper().find('li').last().click();
 		},
 	};
 }
