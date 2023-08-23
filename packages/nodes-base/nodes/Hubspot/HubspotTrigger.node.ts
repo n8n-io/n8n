@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
+import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
 
 import { createHash } from 'crypto';
 

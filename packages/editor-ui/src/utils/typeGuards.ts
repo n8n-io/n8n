@@ -35,3 +35,7 @@ export function isNumber(value: unknown): value is number {
 export const isCredentialModalState = (value: unknown): value is NewCredentialsModal => {
 	return typeof value === 'object' && value !== null && 'showAuthSelector' in value;
 };
+
+export const isResourceMapperValue = (value: unknown): value is string | number | boolean => {
+	return ['string', 'number', 'boolean'].includes(typeof value);
+};

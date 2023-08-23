@@ -35,7 +35,7 @@ import type {
 	NewCustomer,
 	NewProduct,
 	Search,
-} from './Types';
+} from './types';
 
 import { capitalCase } from 'change-case';
 

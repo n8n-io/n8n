@@ -12,6 +12,9 @@ export class GotifyApi implements ICredentialType {
 			displayName: 'App API Token',
 			name: 'appApiToken',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 			description: '(Optional) Needed for message creation',
 		},
@@ -19,6 +22,9 @@ export class GotifyApi implements ICredentialType {
 			displayName: 'Client API Token',
 			name: 'clientApiToken',
 			type: 'string',
+			typeOptions: {
+				password: true,
+			},
 			default: '',
 			description: '(Optional) Needed for everything (delete, getAll) but message creation',
 		},
@@ -28,6 +34,13 @@ export class GotifyApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			description: 'The URL of the Gotify host',
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to connect even if SSL certificate validation is not possible',
 		},
 	];
 }

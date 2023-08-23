@@ -5,7 +5,6 @@ import type {
 	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -44,12 +43,7 @@ const apiVersion: { [key: number]: string } = {
 };
 
 export async function notionApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 
@@ -880,7 +874,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 				},
@@ -903,7 +897,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -920,7 +914,7 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -943,7 +937,7 @@ export function getSearchFilters(resource: string) {
 			type: 'notice',
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],
@@ -957,7 +951,7 @@ export function getSearchFilters(resource: string) {
 			type: 'string',
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],

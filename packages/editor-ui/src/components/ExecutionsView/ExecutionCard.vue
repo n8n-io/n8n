@@ -13,7 +13,7 @@
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { workflowId: currentWorkflow, executionId: execution.id },
+				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
@@ -30,6 +30,7 @@
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
 					}}</n8n-text>
+					{{ ' ' }}
 					<n8n-text
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"
@@ -81,16 +82,16 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { IExecutionsSummary } from '@/Interface';
-import mixins from 'vue-typed-mixins';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
-export default mixins(executionHelpers, showMessage).extend({
+export default defineComponent({
 	name: 'execution-card',
+	mixins: [executionHelpers],
 	components: {
 		ExecutionTime,
 	},
@@ -237,7 +238,7 @@ export default mixins(executionHelpers, showMessage).extend({
 
 .icons {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 }
 
 .icon {

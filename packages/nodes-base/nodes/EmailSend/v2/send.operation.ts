@@ -3,12 +3,14 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
-import { updateDisplayOptions } from '../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	// TODO: Add choice for text as text or html  (maybe also from name)
@@ -54,6 +56,10 @@ const properties: INodeProperties[] = [
 				name: 'HTML',
 				value: 'html',
 			},
+			{
+				name: 'Both',
+				value: 'both',
+			},
 		],
 		default: 'text',
 	},
@@ -68,7 +74,7 @@ const properties: INodeProperties[] = [
 		description: 'Plain text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['text'],
+				emailFormat: ['text', 'both'],
 			},
 		},
 	},
@@ -83,7 +89,7 @@ const properties: INodeProperties[] = [
 		description: 'HTML text message of email',
 		displayOptions: {
 			show: {
-				emailFormat: ['html'],
+				emailFormat: ['html', 'both'],
 			},
 		},
 	},
@@ -100,7 +106,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated.',
+					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src="cid:image_1"&gt;',
 			},
 			{
 				displayName: 'CC Email',
@@ -206,11 +212,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				replyTo: options.replyTo,
 			};
 
-			if (emailFormat === 'text') {
+			if (emailFormat === 'text' || emailFormat === 'both') {
 				mailOptions.text = this.getNodeParameter('text', itemIndex, '');
 			}
 
-			if (emailFormat === 'html') {
+			if (emailFormat === 'html' || emailFormat === 'both') {
 				mailOptions.html = this.getNodeParameter('html', itemIndex, '');
 			}
 
@@ -227,6 +233,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					attachments.push({
 						filename: binaryData.fileName || 'unknown',
 						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
+						cid: propertyName,
 					});
 				}
 
@@ -255,7 +262,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				});
 				continue;
 			}
-			throw error;
+			delete error.cert;
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 

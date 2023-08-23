@@ -229,7 +229,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Email address for the lead',
 			},
 			{
-				displayName: 'Fist Name',
+				displayName: 'First Name',
 				name: 'firstname',
 				type: 'string',
 				default: '',
@@ -498,7 +498,7 @@ export const leadFields: INodeProperties[] = [
 				description: 'Email address for the lead',
 			},
 			{
-				displayName: 'Fist Name',
+				displayName: 'First Name',
 				name: 'firstname',
 				type: 'string',
 				default: '',

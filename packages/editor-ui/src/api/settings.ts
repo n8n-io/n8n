@@ -4,16 +4,16 @@ import type {
 	IN8nValueSurveyData,
 	IN8nPromptResponse,
 } from '../Interface';
-import { makeRestApiRequest, get, post } from '@/utils';
+import { makeRestApiRequest, get, post } from '@/utils/apiUtils';
 import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@/constants';
 import type { IN8nUISettings } from 'n8n-workflow';
 
-export function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
+export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
 	return makeRestApiRequest(context, 'GET', '/settings');
 }
 
 export async function getPromptsData(instanceId: string, userId: string): Promise<IN8nPrompts> {
-	return await get(
+	return get(
 		N8N_IO_BASE_URL,
 		'/prompts',
 		{},
@@ -26,7 +26,7 @@ export async function submitContactInfo(
 	userId: string,
 	email: string,
 ): Promise<IN8nPromptResponse> {
-	return await post(
+	return post(
 		N8N_IO_BASE_URL,
 		'/prompt',
 		{ email },
@@ -39,7 +39,7 @@ export async function submitValueSurvey(
 	userId: string,
 	params: IN8nValueSurveyData,
 ): Promise<IN8nPromptResponse> {
-	return await post(N8N_IO_BASE_URL, '/value-survey', params, {
+	return post(N8N_IO_BASE_URL, '/value-survey', params, {
 		'n8n-instance-id': instanceId,
 		'n8n-user-id': userId,
 	});

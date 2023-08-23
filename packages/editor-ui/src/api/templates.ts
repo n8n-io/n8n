@@ -8,17 +8,17 @@ import type {
 	IWorkflowTemplate,
 } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { get } from '@/utils';
+import { get } from '@/utils/apiUtils';
 
 function stringifyArray(arr: number[]) {
 	return arr.join(',');
 }
 
-export function testHealthEndpoint(apiEndpoint: string) {
+export async function testHealthEndpoint(apiEndpoint: string) {
 	return get(apiEndpoint, '/health');
 }
 
-export function getCategories(
+export async function getCategories(
 	apiEndpoint: string,
 	headers?: IDataObject,
 ): Promise<{ categories: ITemplatesCategory[] }> {
@@ -30,7 +30,7 @@ export async function getCollections(
 	query: ITemplatesQuery,
 	headers?: IDataObject,
 ): Promise<{ collections: ITemplatesCollection[] }> {
-	return await get(
+	return get(
 		apiEndpoint,
 		'/templates/collections',
 		{ category: stringifyArray(query.categories || []), search: query.search },
@@ -61,7 +61,7 @@ export async function getCollectionById(
 	collectionId: string,
 	headers?: IDataObject,
 ): Promise<{ collection: ITemplatesCollectionResponse }> {
-	return await get(apiEndpoint, `/templates/collections/${collectionId}`, undefined, headers);
+	return get(apiEndpoint, `/templates/collections/${collectionId}`, undefined, headers);
 }
 
 export async function getTemplateById(
@@ -69,7 +69,7 @@ export async function getTemplateById(
 	templateId: string,
 	headers?: IDataObject,
 ): Promise<{ workflow: ITemplatesWorkflowResponse }> {
-	return await get(apiEndpoint, `/templates/workflows/${templateId}`, undefined, headers);
+	return get(apiEndpoint, `/templates/workflows/${templateId}`, undefined, headers);
 }
 
 export async function getWorkflowTemplate(
@@ -77,5 +77,5 @@ export async function getWorkflowTemplate(
 	templateId: string,
 	headers?: IDataObject,
 ): Promise<IWorkflowTemplate> {
-	return await get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
+	return get(apiEndpoint, `/workflows/templates/${templateId}`, undefined, headers);
 }

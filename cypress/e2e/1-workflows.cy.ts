@@ -8,11 +8,6 @@ const WorkflowPage = new WorkflowPageClass();
 const multipleWorkflowsCount = 5;
 
 describe('Workflows', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		cy.visit(WorkflowsPage.url);
 	});

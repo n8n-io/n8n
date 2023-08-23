@@ -1,22 +1,21 @@
 <template>
 	<n8n-popover
 		placement="bottom"
+		:teleported="false"
 		:width="width"
 		:popper-class="$style.popover"
-		:value="show"
+		:visible="show"
 		trigger="manual"
 		data-test-id="resource-locator-dropdown"
-		v-click-outside="onClickOutside"
 	>
 		<div :class="$style.messageContainer" v-if="errorView">
 			<slot name="error"></slot>
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input
-				size="medium"
-				:value="filter"
+				:modelValue="filter"
 				:clearable="true"
-				@input="onFilterInput"
+				@update:modelValue="onFilterInput"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
 			>
@@ -45,10 +44,9 @@
 				:key="result.value"
 				:class="{
 					[$style.resourceItem]: true,
-					[$style.selected]: result.value === value,
+					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
-				class="ph-no-capture"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"
@@ -82,6 +80,8 @@
 import type { IResourceLocatorResultExpanded } from '@/Interface';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
@@ -89,7 +89,7 @@ const SCROLL_MARGIN_PX = 10;
 export default defineComponent({
 	name: 'resource-locator-dropdown',
 	props: {
-		value: {
+		modelValue: {
 			type: [String, Number],
 		},
 		show: {
@@ -120,6 +120,10 @@ export default defineComponent({
 		width: {
 			type: Number,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	data() {
 		return {
@@ -128,7 +132,10 @@ export default defineComponent({
 		};
 	},
 	mounted() {
-		this.$on('keyDown', this.onKeyDown);
+		this.eventBus.on('keyDown', this.onKeyDown);
+	},
+	beforeUnmount() {
+		this.eventBus.off('keyDown', this.onKeyDown);
 	},
 	computed: {
 		sortedResources(): IResourceLocatorResultExpanded[] {
@@ -140,7 +147,7 @@ export default defineComponent({
 					}
 					seen.add(item.value);
 
-					if (this.value && item.value === this.value) {
+					if (this.modelValue && item.value === this.modelValue) {
 						acc.selected = item;
 					} else {
 						acc.notSelected.push(item);
@@ -201,17 +208,14 @@ export default defineComponent({
 					}
 				}
 			} else if (e.key === 'Enter') {
-				this.$emit('input', this.sortedResources[this.hoverIndex].value);
+				this.$emit('update:modelValue', this.sortedResources[this.hoverIndex].value);
 			}
 		},
 		onFilterInput(value: string) {
 			this.$emit('filter', value);
 		},
-		onClickOutside() {
-			this.$emit('hide');
-		},
 		onItemClick(selected: string) {
-			this.$emit('input', selected);
+			this.$emit('update:modelValue', selected);
 		},
 		onItemHover(index: number) {
 			this.hoverIndex = index;
@@ -241,19 +245,20 @@ export default defineComponent({
 		},
 	},
 	watch: {
-		show(toShow) {
-			if (toShow) {
+		show(value) {
+			if (value) {
 				this.hoverIndex = 0;
 				this.showHoverUrl = false;
+
+				setTimeout(() => {
+					if (value && this.filterable && this.$refs.search) {
+						(this.$refs.search as HTMLElement).focus();
+					}
+				}, 0);
 			}
-			setTimeout(() => {
-				if (toShow && this.filterable && this.$refs.search) {
-					(this.$refs.search as HTMLElement).focus();
-				}
-			}, 0);
 		},
 		loading() {
-			setTimeout(this.onResultsEnd, 0); // in case of filtering
+			setTimeout(() => this.onResultsEnd(), 0); // in case of filtering
 		},
 	},
 });
@@ -262,7 +267,7 @@ export default defineComponent({
 <style lang="scss" module>
 :root .popover {
 	--content-height: 236px;
-	padding: 0;
+	padding: 0 !important;
 	border: var(--border-base);
 	display: flex;
 	max-height: calc(var(--content-height) + var(--spacing-xl));

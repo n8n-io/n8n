@@ -1,4 +1,4 @@
-import { fuzzyCompare, keysToLowercase, wrapData } from '../../utils/utilities';
+import { fuzzyCompare, getResolvables, keysToLowercase, wrapData } from '@utils/utilities';
 
 //most test cases for fuzzyCompare are done in Compare Datasets node tests
 describe('Test fuzzyCompare', () => {
@@ -99,5 +99,41 @@ describe('Test keysToLowercase', () => {
 		expect(test4).toEqual(true);
 		expect(test5).toEqual(null);
 		expect(test6).toEqual(undefined);
+	});
+});
+
+describe('Test getResolvables', () => {
+	it('should return empty array when there are no resolvables', () => {
+		expect(getResolvables('Plain String, no resolvables here.')).toEqual([]);
+	});
+	it('should properly handle resovables in SQL query', () => {
+		expect(getResolvables('SELECT * FROM {{ $json.db }}.{{ $json.table }};')).toEqual([
+			'{{ $json.db }}',
+			'{{ $json.table }}',
+		]);
+	});
+	it('should properly handle resovables in HTML string', () => {
+		expect(
+			getResolvables(
+				`
+				<!DOCTYPE html>
+				<html>
+					<head><title>{{ $json.pageTitle }}</title></head>
+					<body><h1>{{ $json.heading }}</h1></body>
+				<html>
+				<style>
+					body { height: {{ $json.pageHeight }}; }
+				</style>
+				<script>
+					console.log('{{ $json.welcomeMessage }}');
+				</script>
+				`,
+			),
+		).toEqual([
+			'{{ $json.pageTitle }}',
+			'{{ $json.heading }}',
+			'{{ $json.pageHeight }}',
+			'{{ $json.welcomeMessage }}',
+		]);
 	});
 });

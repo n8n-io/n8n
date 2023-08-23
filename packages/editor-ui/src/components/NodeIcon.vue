@@ -15,7 +15,7 @@
 
 <script lang="ts">
 import type { IVersionNode } from '@/Interface';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';

@@ -1,0 +1,211 @@
+{
+	"name": "My workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "4013708d-2460-44b7-923d-e3cd36eb9287",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-6660, 8040]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      number: 0\n    }\n  },\n  {\n    json: {\n      number: 1\n    }\n  },\n  {\n    json: {\n      number: 2\n    }\n  }\n];"
+			},
+			"id": "be417cbe-7a4f-40eb-8a26-fca253a01882",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-6240, 8040]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "number",
+							"field2": "number"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "97d65223-16c9-4d26-b31e-d818e1adbc8a",
+			"name": "Compare Datasets 2.2 - Old",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.2,
+			"position": [-5800, 8140]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    json: {\n      number: 0\n    }\n  },\n  {\n    json: {\n      number: 1,\n      k: 2,\n    }\n  },\n  {\n    json: {\n      number: 10\n    }\n  },\n  {\n    json: {\n      number: 11\n    }\n  },\n  {\n    json: {\n      number: 12\n    }\n  }\n];"
+			},
+			"id": "94580b8b-b698-4c49-98b6-12973b6f4220",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [-6240, 8260]
+		},
+		{
+			"parameters": {},
+			"id": "78ec40a4-775d-467b-bacb-805658190b29",
+			"name": "Old - A only",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-5540, 7920]
+		},
+		{
+			"parameters": {},
+			"id": "eaa4cc93-53c6-4d00-9407-bd5da23e868e",
+			"name": "Old - Same",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-5540, 8060]
+		},
+		{
+			"parameters": {},
+			"id": "d073db39-1902-411d-80dd-6ea8f42ac33b",
+			"name": "Old - Different",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-5540, 8200]
+		},
+		{
+			"parameters": {},
+			"id": "29f92258-4869-43c1-9cef-9c281397ccc8",
+			"name": "Old - B only",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [-5540, 8340]
+		}
+	],
+	"pinData": {
+		"Old - A only": [
+			{
+				"json": {
+					"number": 2
+				}
+			}
+		],
+		"Old - Same": [
+			{
+				"json": {
+					"number": 0
+				}
+			}
+		],
+		"Old - Different": [
+			{
+				"json": {
+					"keys": {
+						"number": 1
+					},
+					"same": {
+						"number": 1
+					},
+					"different": {
+						"k": {
+							"inputA": null,
+							"inputB": 2
+						}
+					}
+				}
+			}
+		],
+		"Old - B only": [
+			{
+				"json": {
+					"number": 10
+				}
+			},
+			{
+				"json": {
+					"number": 11
+				}
+			},
+			{
+				"json": {
+					"number": 12
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets 2.2 - Old",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets 2.2 - Old",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Compare Datasets 2.2 - Old": {
+			"main": [
+				[
+					{
+						"node": "Old - A only",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Old - Same",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Old - Different",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Old - B only",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v0"
+	},
+	"versionId": "49a52ed2-ec4b-44b1-9dbd-c13fac4144f2",
+	"id": "ZpXvXjaKKZihfA2x",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

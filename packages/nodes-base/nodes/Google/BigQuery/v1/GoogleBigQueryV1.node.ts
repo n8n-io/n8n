@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -20,7 +19,7 @@ import { recordFields, recordOperations } from './RecordDescription';
 
 import { v4 as uuid } from 'uuid';
 
-import { oldVersionNotice } from '../../../../utils/descriptions';
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',

@@ -10,7 +10,7 @@ import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/utils';
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export default defineComponent({
 	name: 'TimeAgo',

@@ -5,7 +5,7 @@ export class WorkflowsPage extends BasePage {
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
-		searchBar: () => cy.getByTestId('resources-list-search').find('input'),
+		searchBar: () => cy.getByTestId('resources-list-search'),
 		createWorkflowButton: () => cy.getByTestId('resources-list-add'),
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>
@@ -36,8 +36,10 @@ export class WorkflowsPage extends BasePage {
 			cy.visit(this.url);
 			this.getters.workflowCardActions(name).click();
 			this.getters.workflowDeleteButton().click();
+			cy.intercept('DELETE', '/rest/workflows/*').as('deleteWorkflow');
 
 			cy.get('button').contains('delete').click();
+			cy.wait('@deleteWorkflow');
 		},
 	};
 }

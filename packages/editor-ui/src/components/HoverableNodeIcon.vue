@@ -7,7 +7,7 @@
 		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" manual :value="showTooltip">
+			<n8n-tooltip placement="top" :visible="showTooltip">
 				<template #content>
 					<div v-text="nodeType.displayName"></div>
 				</template>
@@ -45,7 +45,7 @@ import { defineComponent } from 'vue';
 import type { ITemplatesNode } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 interface NodeIconData {
 	type: string;

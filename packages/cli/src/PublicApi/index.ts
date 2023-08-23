@@ -16,6 +16,7 @@ import * as Db from '@/Db';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { License } from '@/License';
 
 async function createApiRouter(
 	version: string,
@@ -151,3 +152,12 @@ export const loadPublicApiVersions = async (
 		apiLatestVersion: Number(versions.pop()?.charAt(1)) ?? 1,
 	};
 };
+
+function isApiEnabledByLicense(): boolean {
+	const license = Container.get(License);
+	return !license.isAPIDisabled();
+}
+
+export function isApiEnabled(): boolean {
+	return !config.get('publicApi.disabled') && isApiEnabledByLicense();
+}

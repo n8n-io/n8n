@@ -1,5 +1,5 @@
 import type { Readable } from 'stream';
-import mergeWith from 'lodash.mergewith';
+import mergeWith from 'lodash/mergeWith';
 
 import type {
 	IBinaryKeyData,
@@ -793,7 +793,6 @@ export class Jira implements INodeType {
 							);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(simplifyIssueOutput(responseData)),
 							{ itemData: { item: i } },
 						);

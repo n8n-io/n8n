@@ -27,7 +27,8 @@ export function getMappedExpression({
 	distanceFromActive: number;
 	path: Array<string | number> | string;
 }) {
-	const root = distanceFromActive === 1 ? '$json' : generatePath('$node', [nodeName, 'json']);
+	const root =
+		distanceFromActive === 1 ? '$json' : generatePath(`$('${nodeName}')`, ['item', 'json']);
 
 	if (typeof path === 'string') {
 		return `{{ ${root}${path} }}`;

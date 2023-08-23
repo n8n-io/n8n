@@ -3,11 +3,14 @@
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
-			class="ph-no-capture"
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 			:data-test-id="`user-list-item-${user.email}`"
 		>
-			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
+			<n8n-user-info
+				v-bind="user"
+				:isCurrentUser="currentUserId === user.id"
+				:isSamlLoginEnabled="isSamlLoginEnabled"
+			/>
 			<div :class="$style.badgeContainer">
 				<n8n-badge v-if="user.isOwner" theme="tertiary" bold>
 					{{ t('nds.auth.roles.owner') }}
@@ -66,6 +69,10 @@ export default defineComponent({
 		actions: {
 			type: Array as PropType<UserAction[]>,
 			default: () => [],
+		},
+		isSamlLoginEnabled: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	computed: {

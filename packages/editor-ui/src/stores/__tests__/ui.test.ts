@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 
@@ -15,16 +15,8 @@ describe('UI store', () => {
 	});
 
 	test.each([
-		[
-			'default',
-			'production',
-			'https://subscription.n8n.io?instanceid=123abc&version=0.223.0&source=test_source',
-		],
-		[
-			'default',
-			'development',
-			'https://staging-subscription.n8n.io?instanceid=123abc&version=0.223.0&source=test_source',
-		],
+		['default', 'production', 'https://n8n.io/pricing/?ref=test_source'],
+		['default', 'development', 'https://n8n.io/pricing/?ref=test_source'],
 		[
 			'desktop_win',
 			'production',

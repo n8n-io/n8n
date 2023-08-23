@@ -24,7 +24,12 @@ import { fileFields, fileOperations } from './FileDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { userFields, userOperations } from './UserDescription';
-import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
+import {
+	slackApiRequest,
+	slackApiRequestAllItems,
+	validateJSON,
+	getMessageContent,
+} from './GenericFunctions';
 
 import moment from 'moment';
 
@@ -34,7 +39,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: 2,
+			version: [2, 2.1],
 			defaults: {
 				name: 'Slack',
 			},
@@ -747,7 +752,6 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/chat.postMessage
 					if (operation === 'post') {
 						const select = this.getNodeParameter('select', i) as string;
-						const messageType = this.getNodeParameter('messageType', i) as string;
 						let target =
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
@@ -764,27 +768,8 @@ export class SlackV2 implements INodeType {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-						let content: IDataObject = {};
-						const text = this.getNodeParameter('text', i, '') as string;
-						switch (messageType) {
-							case 'text':
-								content = { text };
-								break;
-							case 'block':
-								content = JSON.parse(this.getNodeParameter('blocksUi', i) as string);
-								if (text) {
-									content.text = text;
-								}
-								break;
-							case 'attachment':
-								content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
-								break;
-							default:
-								throw new NodeOperationError(
-									this.getNode(),
-									`The message type "${messageType}" is not known!`,
-								);
-						}
+						const content = getMessageContent.call(this, i);
+
 						const body: IDataObject = {
 							channel: target,
 							...content,

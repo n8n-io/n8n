@@ -1,8 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import { updateDisplayOptions } from '@utils/utilities';
 import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';

@@ -17,7 +17,7 @@ import {
 	getBinaryDataBuffer,
 	proxyRequestToAxios,
 } from '@/NodeExecuteFunctions';
-import { initLogger } from './utils';
+import { initLogger } from './helpers/utils';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 

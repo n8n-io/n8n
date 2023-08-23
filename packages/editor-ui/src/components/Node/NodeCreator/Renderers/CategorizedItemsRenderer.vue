@@ -2,7 +2,7 @@
 import { computed, watch, ref, getCurrentInstance } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useViewStacks } from '../composables/useViewStacks';
@@ -117,8 +117,8 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
 		<ItemsRenderer
 			v-if="expanded"
+			v-bind="$attrs"
 			:elements="elements"
-			v-on="$listeners"
 			:isTrigger="isTriggerCategory"
 		>
 			<template #default> </template>

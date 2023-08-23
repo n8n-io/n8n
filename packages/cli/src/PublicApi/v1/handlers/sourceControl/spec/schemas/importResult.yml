@@ -1,0 +1,55 @@
+type: object
+additionalProperties: true
+properties:
+  variables:
+    type: object
+    properties:
+      added:
+        type: array
+        items:
+          type: string
+      changed:
+        type: array
+        items:
+          type: string
+  credentials:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+  workflows:
+    type: array
+    items:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+  tags:
+    type: object
+    properties:
+      tags:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+      mappings:
+        type: array
+        items:
+          type: object
+          properties:
+            workflowId:
+              type: string
+            tagId:
+              type: string

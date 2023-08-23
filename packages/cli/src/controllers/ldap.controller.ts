@@ -1,4 +1,4 @@
-import pick from 'lodash.pick';
+import pick from 'lodash/pick';
 import { Authorized, Get, Post, Put, RestController } from '@/decorators';
 import { getLdapConfig, getLdapSynchronizations, updateLdapConfig } from '@/Ldap/helpers';
 import { LdapService } from '@/Ldap/LdapService.ee';

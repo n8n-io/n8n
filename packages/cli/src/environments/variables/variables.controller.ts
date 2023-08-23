@@ -6,6 +6,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
 import { VariablesService } from './variables.service';
 import { EEVariablesController } from './variables.controller.ee';
+import Container from 'typedi';
 
 export const variablesController = express.Router();
 
@@ -28,7 +29,7 @@ variablesController.use(EEVariablesController);
 variablesController.get(
 	'/',
 	ResponseHelper.send(async () => {
-		return VariablesService.getAll();
+		return Container.get(VariablesService).getAllCached();
 	}),
 );
 
@@ -40,13 +41,10 @@ variablesController.post(
 );
 
 variablesController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: VariablesRequest.Get) => {
-		const id = parseInt(req.params.id);
-		if (isNaN(id)) {
-			throw new ResponseHelper.BadRequestError('Invalid variable id ' + req.params.id);
-		}
-		const variable = await VariablesService.get(id);
+		const id = req.params.id;
+		const variable = await Container.get(VariablesService).getCached(id);
 		if (variable === null) {
 			throw new ResponseHelper.NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
@@ -55,19 +53,16 @@ variablesController.get(
 );
 
 variablesController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async () => {
 		throw new ResponseHelper.BadRequestError('No variables license found');
 	}),
 );
 
 variablesController.delete(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: VariablesRequest.Delete) => {
-		const id = parseInt(req.params.id);
-		if (isNaN(id)) {
-			throw new ResponseHelper.BadRequestError('Invalid variable id ' + req.params.id);
-		}
+		const id = req.params.id;
 		if (req.user.globalRole.name !== 'owner') {
 			LoggerProxy.info('Attempt to delete a variable blocked due to lack of permissions', {
 				id,
@@ -75,7 +70,7 @@ variablesController.delete(
 			});
 			throw new ResponseHelper.AuthError('Unauthorized');
 		}
-		await VariablesService.delete(id);
+		await Container.get(VariablesService).delete(id);
 
 		return true;
 	}),

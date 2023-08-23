@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -25,7 +24,7 @@ import { worksheetFields, worksheetOperations } from './WorksheetDescription';
 
 import { tableFields, tableOperations } from './TableDescription';
 
-import { oldVersionNotice } from '../../../../utils/descriptions';
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Excel',

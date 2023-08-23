@@ -26,7 +26,6 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
-export const ASK_AI_MODAL_KEY = 'askAi';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -40,14 +39,15 @@ export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
-export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const USER_ACTIVATION_SURVEY_MODAL = 'userActivationSurvey';
+
+export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
+export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -178,7 +178,6 @@ export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
-export const ASK_AI_WAITLIST_URL = 'https://n8n-community.typeform.com/to/odKU4oDR';
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -303,7 +302,7 @@ export const ROLE_OTHER = 'other';
 
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CLOSE = 'close';
-export const MODAL_CONFIRMED = 'confirmed';
+export const MODAL_CONFIRM = 'confirm';
 
 export const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -374,7 +373,8 @@ export const enum VIEWS {
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
-	VERSION_CONTROL = 'VersionControl',
+	SOURCE_CONTROL = 'SourceControl',
+	AUDIT_LOGS = 'AuditLogs',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -427,6 +427,7 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	DOWNLOAD = 'download',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
+	PUSH = 'push',
 	SETTINGS = 'settings',
 	DELETE = 'delete',
 }
@@ -441,7 +442,8 @@ export const enum EnterpriseEditionFeature {
 	LogStreaming = 'logStreaming',
 	Variables = 'variables',
 	Saml = 'saml',
-	VersionControl = 'versionControl',
+	SourceControl = 'sourceControl',
+	AuditLogs = 'auditLogs',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -513,23 +515,22 @@ export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
 
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
-export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+export const KEEP_AUTH_IN_NDV_FOR_NODES = [
+	HTTP_REQUEST_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	WAIT_NODE_TYPE,
+];
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const AUTO_INSERT_ACTION_EXPERIMENT = {
-	name: '003_auto_insert_action',
+export const ASK_AI_EXPERIMENT = {
+	name: '011_ask_AI',
 	control: 'control',
-	variant: 'variant',
+	gpt3: 'gpt3',
+	gpt4: 'gpt4',
 };
 
-export const TEMPLATE_EXPERIMENT = {
-	name: '002_remove_templates',
-	control: 'control',
-	variant: 'variant',
-};
-
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, AUTO_INSERT_ACTION_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name];
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
@@ -548,3 +549,21 @@ export const ALLOWED_HTML_TAGS = [
 	'details',
 	'summary',
 ];
+
+export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')
+	? 'https://stage-app.n8n.cloud/account/change-plan'
+	: 'https://app.n8n.cloud/account/change-plan';
+
+export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
+
+export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
+
+export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
+
+// A path that does not exist so that nothing is selected by default
+export const nonExistingJsonPath = '_!^&*';
+
+// Ask AI
+export const ASK_AI_MAX_PROMPT_LENGTH = 600;
+export const ASK_AI_MIN_PROMPT_LENGTH = 15;
+export const ASK_AI_LOADING_DURATION_MS = 12000;

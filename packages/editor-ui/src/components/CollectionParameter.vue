@@ -5,15 +5,17 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list
-				:parameters="getProperties"
-				:nodeValues="nodeValues"
-				:path="path"
-				:hideDelete="hideDelete"
-				:indent="true"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-			/>
+			<Suspense>
+				<parameter-input-list
+					:parameters="getProperties"
+					:nodeValues="nodeValues"
+					:path="path"
+					:hideDelete="hideDelete"
+					:indent="true"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+			</Suspense>
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -28,7 +30,7 @@
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
-						@change="optionSelected"
+						@update:modelValue="optionSelected"
 						filterable
 					>
 						<n8n-option
@@ -46,6 +48,8 @@
 </template>
 
 <script lang="ts">
+import { defineAsyncComponent, defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
@@ -55,13 +59,13 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
-import type { Component } from 'vue';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default mixins(nodeHelpers).extend({
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+
+export default defineComponent({
 	name: 'CollectionParameter',
+	mixins: [nodeHelpers],
 	props: [
 		'hideDelete', // boolean
 		'nodeValues', // NodeParameters
@@ -71,7 +75,7 @@ export default mixins(nodeHelpers).extend({
 		'isReadOnly', // boolean
 	],
 	components: {
-		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {

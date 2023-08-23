@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddWaitColumnId1626183952959 implements MigrationInterface {
-	name = 'AddWaitColumnId1626183952959';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class AddWaitColumnId1626183952959 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' + tablePrefix + 'execution_entity` ADD `waitTill` DATETIME NULL',
 		);
@@ -19,9 +14,7 @@ export class AddWaitColumnId1626183952959 implements MigrationInterface {
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'DROP INDEX `IDX_' +
 				tablePrefix +

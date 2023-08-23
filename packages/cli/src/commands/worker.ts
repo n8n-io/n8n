@@ -18,10 +18,15 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import config from '@/config';
 import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
+import { ExecutionRepository } from '@db/repositories';
+import { OwnershipService } from '@/services/ownership.service';
+import { generateHostInstanceId } from '@/databases/utils/generators';
+import type { ICredentialsOverwrite } from '@/Interfaces';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { rawBodyReader, bodyParser } from '@/middlewares';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -42,6 +47,8 @@ export class Worker extends BaseCommand {
 
 	static jobQueue: JobQueue;
 
+	readonly uniqueInstanceId = generateHostInstanceId('worker');
+
 	/**
 	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
@@ -51,8 +58,7 @@ export class Worker extends BaseCommand {
 		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		Worker.jobQueue.pause(true);
+		await Worker.jobQueue.pause(true);
 
 		try {
 			await this.externalHooks.run('n8n.stop', []);
@@ -78,7 +84,7 @@ export class Worker extends BaseCommand {
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 			}
 		} catch (error) {
@@ -90,9 +96,15 @@ export class Worker extends BaseCommand {
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const executionDb = await Db.collections.Execution.findOneBy({ id: executionId });
+		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
+			executionId,
+			{
+				includeData: true,
+				unflattenData: true,
+			},
+		);
 
-		if (!executionDb) {
+		if (!fullExecutionData) {
 			LoggerProxy.error(
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
@@ -101,15 +113,14 @@ export class Worker extends BaseCommand {
 				`Unable to find data of execution "${executionId}" in database. Aborting execution.`,
 			);
 		}
-		const currentExecutionDb = ResponseHelper.unflattenExecutionData(executionDb);
-		const workflowId = currentExecutionDb.workflowData.id!;
+		const workflowId = fullExecutionData.workflowData.id!;
 		LoggerProxy.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
-		const workflowOwner = await getWorkflowOwner(workflowId);
+		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
-		let { staticData } = currentExecutionDb.workflowData;
+		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
 			const workflowData = await Db.collections.Workflow.findOne({
 				select: ['id', 'staticData'],
@@ -127,7 +138,7 @@ export class Worker extends BaseCommand {
 			staticData = workflowData.staticData;
 		}
 
-		const workflowSettings = currentExecutionDb.workflowData.settings ?? {};
+		const workflowSettings = fullExecutionData.workflowData.settings ?? {};
 
 		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 
@@ -139,13 +150,13 @@ export class Worker extends BaseCommand {
 
 		const workflow = new Workflow({
 			id: workflowId,
-			name: currentExecutionDb.workflowData.name,
-			nodes: currentExecutionDb.workflowData.nodes,
-			connections: currentExecutionDb.workflowData.connections,
-			active: currentExecutionDb.workflowData.active,
+			name: fullExecutionData.workflowData.name,
+			nodes: fullExecutionData.workflowData.nodes,
+			connections: fullExecutionData.workflowData.connections,
+			active: fullExecutionData.workflowData.active,
 			nodeTypes,
 			staticData,
-			settings: currentExecutionDb.workflowData.settings,
+			settings: fullExecutionData.workflowData.settings,
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
@@ -154,10 +165,10 @@ export class Worker extends BaseCommand {
 			executionTimeoutTimestamp,
 		);
 		additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
-			currentExecutionDb.mode,
+			fullExecutionData.mode,
 			job.data.executionId,
-			currentExecutionDb.workflowData,
-			{ retryOf: currentExecutionDb.retryOf as string },
+			fullExecutionData.workflowData,
+			{ retryOf: fullExecutionData.retryOf as string },
 		);
 
 		try {
@@ -165,7 +176,7 @@ export class Worker extends BaseCommand {
 		} catch (error) {
 			if (error instanceof NodeOperationError) {
 				const failedExecution = generateFailedExecutionFromError(
-					currentExecutionDb.mode,
+					fullExecutionData.mode,
 					error,
 					error.node,
 				);
@@ -193,17 +204,17 @@ export class Worker extends BaseCommand {
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
-		if (currentExecutionDb.data !== undefined) {
+		if (fullExecutionData.data !== undefined) {
 			workflowExecute = new WorkflowExecute(
 				additionalData,
-				currentExecutionDb.mode,
-				currentExecutionDb.data,
+				fullExecutionData.mode,
+				fullExecutionData.data,
 			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			// Execute all nodes
 			// Can execute without webhook so go on
-			workflowExecute = new WorkflowExecute(additionalData, currentExecutionDb.mode);
+			workflowExecute = new WorkflowExecute(additionalData, fullExecutionData.mode);
 			workflowRun = workflowExecute.run(workflow);
 		}
 
@@ -222,8 +233,10 @@ export class Worker extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
+		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
 		this.logger.debug('Starting n8n worker...');
 
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 	}
@@ -232,14 +245,14 @@ export class Worker extends BaseCommand {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Worker);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
 		const queue = Container.get(Queue);
 		await queue.init();
 		Worker.jobQueue = queue.getBullObjectInstance();
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, this.nodeTypes));
+		void Worker.jobQueue.process(flags.concurrency, async (job) =>
+			this.runJob(job, this.nodeTypes),
+		);
 
 		this.logger.info('\nn8n worker is now ready');
 		this.logger.info(` * Version: ${N8N_VERSION}`);
@@ -302,7 +315,7 @@ export class Worker extends BaseCommand {
 
 			app.get(
 				'/healthz',
-				// eslint-disable-next-line consistent-return
+
 				async (req: express.Request, res: express.Response) => {
 					LoggerProxy.debug('Health check started!');
 
@@ -343,9 +356,40 @@ export class Worker extends BaseCommand {
 				},
 			);
 
-			server.listen(port, () => {
-				this.logger.info(`\nn8n worker health check via, port ${port}`);
-			});
+			let presetCredentialsLoaded = false;
+			const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+			if (endpointPresetCredentials !== '') {
+				// POST endpoint to set preset credentials
+				app.post(
+					`/${endpointPresetCredentials}`,
+					rawBodyReader,
+					bodyParser,
+					async (req: express.Request, res: express.Response) => {
+						if (!presetCredentialsLoaded) {
+							const body = req.body as ICredentialsOverwrite;
+
+							if (req.contentType !== 'application/json') {
+								ResponseHelper.sendErrorResponse(
+									res,
+									new Error(
+										'Body must be a valid JSON, make sure the content-type is application/json',
+									),
+								);
+								return;
+							}
+
+							CredentialsOverwrites().setData(body);
+							presetCredentialsLoaded = true;
+							ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+						} else {
+							ResponseHelper.sendErrorResponse(
+								res,
+								new Error('Preset credentials can be set once'),
+							);
+						}
+					},
+				);
+			}
 
 			server.on('error', (error: Error & { code: string }) => {
 				if (error.code === 'EADDRINUSE') {
@@ -355,6 +399,10 @@ export class Worker extends BaseCommand {
 					process.exit(1);
 				}
 			});
+
+			await new Promise<void>((resolve) => server.listen(port, () => resolve()));
+			await this.externalHooks.run('worker.ready');
+			this.logger.info(`\nn8n worker health check via, port ${port}`);
 		}
 
 		// Make sure that the process does not close

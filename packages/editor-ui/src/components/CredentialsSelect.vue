@@ -4,14 +4,14 @@
 			<n8n-select
 				:size="inputSize"
 				filterable
-				:value="displayValue"
+				:modelValue="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
 				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				ref="innerSelect"
-				@change="(value) => $emit('valueChanged', value)"
+				@update:modelValue="(value) => $emit('update:modelValue', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
@@ -60,7 +60,7 @@ import { defineComponent } from 'vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { mapStores } from 'pinia';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import type { N8nSelect } from 'n8n-design-system';
 
 type N8nSelectRef = InstanceType<typeof N8nSelect>;
@@ -109,6 +109,7 @@ export default defineComponent({
 			const supported = this.getSupportedSets(this.parameter.credentialTypes);
 
 			const checkedCredType = this.credentialsStore.getCredentialTypeByName(name);
+			if (!checkedCredType) return false;
 
 			for (const property of supported.has) {
 				if (checkedCredType[property as keyof ICredentialType] !== undefined) {

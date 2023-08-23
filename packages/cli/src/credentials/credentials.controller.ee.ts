@@ -36,7 +36,6 @@ EECredentialsController.get(
 				relations: ['shared', 'shared.role', 'shared.user'],
 			});
 
-			// eslint-disable-next-line @typescript-eslint/unbound-method
 			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) =>
 				EECredentials.addOwnerAndSharings(credential),
 			);
@@ -51,7 +50,7 @@ EECredentialsController.get(
  * GET /credentials/:id
  */
 EECredentialsController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;

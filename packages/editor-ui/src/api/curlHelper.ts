@@ -1,7 +1,7 @@
 import type { CurlToJSONResponse, IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from '@/utils';
+import { makeRestApiRequest } from '@/utils/apiUtils';
 
-export function getCurlToJson(
+export async function getCurlToJson(
 	context: IRestApiContext,
 	curlCommand: string,
 ): Promise<CurlToJSONResponse> {

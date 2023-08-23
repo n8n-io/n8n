@@ -116,6 +116,4 @@ export const DB_QUERY_PARAMS_DOCS_URL =
 
 export const COMMUNITY_NODES_RISKS_URL = 'https://docs.n8n.io/integrations/community-nodes/risks';
 
-export const SELF_HOSTED_AUTH_DOCS_URL = 'https://docs.n8n.io/hosting/authentication';
-
 export const NPM_PACKAGE_URL = 'https://www.npmjs.com/package';

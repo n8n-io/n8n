@@ -1,7 +1,7 @@
-import { useWorkflowsStore } from '@/stores/workflows';
-import { i18n as locale } from '@/plugins/i18n';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { i18n as locale } from '@/plugins/i18n';
 import { genericHelpers } from './genericHelpers';
 import type { IExecutionsSummary } from 'n8n-workflow';
 
@@ -12,7 +12,8 @@ export interface IExecutionUIData {
 	runningTime: string;
 }
 
-export const executionHelpers = mixins(genericHelpers).extend({
+export const executionHelpers = defineComponent({
+	mixins: [genericHelpers],
 	computed: {
 		...mapStores(useWorkflowsStore),
 		executionId(): string {
@@ -40,24 +41,20 @@ export const executionHelpers = mixins(genericHelpers).extend({
 				runningTime: '',
 			};
 
-			if (execution.status === 'waiting' || execution.waitTill) {
+			if (execution.status === 'waiting') {
 				status.name = 'waiting';
 				status.label = this.$locale.baseText('executionsList.waiting');
-			} else if (
-				execution.status === 'running' ||
-				execution.status === 'new' ||
-				execution.stoppedAt === undefined
-			) {
+			} else if (execution.status === 'canceled') {
+				status.label = this.$locale.baseText('executionsList.canceled');
+			} else if (execution.status === 'running' || execution.status === 'new') {
 				status.name = 'running';
 				status.label = this.$locale.baseText('executionsList.running');
-			} else if (execution.status === 'success' || execution.finished) {
+			} else if (execution.status === 'success') {
 				status.name = 'success';
 				status.label = this.$locale.baseText('executionsList.succeeded');
 			} else if (execution.status === 'failed' || execution.status === 'crashed') {
 				status.name = 'error';
 				status.label = this.$locale.baseText('executionsList.error');
-			} else if (execution.status === 'canceled') {
-				status.label = this.$locale.baseText('executionsList.canceled');
 			}
 
 			if (!execution.status) execution.status = 'unknown';

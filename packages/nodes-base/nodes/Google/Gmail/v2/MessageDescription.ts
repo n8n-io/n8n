@@ -226,6 +226,19 @@ export const messageFields: INodeProperties[] = [
 				description: "The name that will be shown in recipients' inboxes",
 			},
 			{
+				displayName: 'Send Replies To',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
+				displayOptions: {
+					hide: {
+						'/operation': ['reply'],
+					},
+				},
+			},
+			{
 				displayName: 'Reply to Sender Only',
 				name: 'replyToSenderOnly',
 				type: 'boolean',

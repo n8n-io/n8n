@@ -1,13 +1,7 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateExecutionMetadataTable1679416281777 implements MigrationInterface {
-	name = 'CreateExecutionMetadataTable1679416281777';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class CreateExecutionMetadataTable1679416281777 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}execution_metadata" (
 				id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -41,13 +35,9 @@ export class CreateExecutionMetadataTable1679416281777 implements MigrationInter
 		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2'`);
 		// Remove index for stoppedAt since it's not used anymore
 		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}cefb067df2402f6aed0638a6c1'`);
-
-		logMigrationEnd(this.name);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_metadata"`);
 		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}b94b45ce2c73ce46c54f20b5f9'`);
 		await queryRunner.query(`DROP INDEX IF EXISTS 'IDX_${tablePrefix}81fc04c8a17de15835713505e4'`);

@@ -654,7 +654,7 @@ export class Wekan implements INodeType {
 				}
 				let responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-				if (returnAll === false) {
+				if (returnAll === false && Array.isArray(responseData)) {
 					limit = this.getNodeParameter('limit', i);
 					responseData = responseData.splice(0, limit);
 				}

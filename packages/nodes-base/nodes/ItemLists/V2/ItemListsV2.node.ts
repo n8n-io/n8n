@@ -10,18 +10,18 @@ import type {
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
-import get from 'lodash.get';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import lt from 'lodash.lt';
-import merge from 'lodash.merge';
-import pick from 'lodash.pick';
-import reduce from 'lodash.reduce';
-import set from 'lodash.set';
-import unset from 'lodash.unset';
+import get from 'lodash/get';
+import isEmpty from 'lodash/isEmpty';
+import isEqual from 'lodash/isEqual';
+import isObject from 'lodash/isObject';
+import lt from 'lodash/lt';
+import merge from 'lodash/merge';
+import pick from 'lodash/pick';
+import reduce from 'lodash/reduce';
+import set from 'lodash/set';
+import unset from 'lodash/unset';
 
 const compareItems = (
 	obj: INodeExecutionData,
@@ -68,7 +68,7 @@ export class ItemListsV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1],
+			version: [2, 2.1, 2.2],
 			defaults: {
 				name: 'Item Lists',
 			},
@@ -136,7 +136,7 @@ export class ItemListsV2 implements INodeType {
 				},
 				// Split out items - Fields
 				{
-					displayName: 'Field To Split Out',
+					displayName: 'Fields To Split Out',
 					name: 'fieldToSplitOut',
 					type: 'string',
 					default: '',
@@ -147,8 +147,8 @@ export class ItemListsV2 implements INodeType {
 							operation: ['splitOutItems'],
 						},
 					},
-					description: 'The name of the input field to break out into separate items',
-					requiresDataPath: 'single',
+					description: 'The name of the input fields to break out into separate items',
+					requiresDataPath: 'multiple',
 				},
 				{
 					displayName: 'Include',
@@ -755,6 +755,7 @@ return 0;`,
 							displayName: 'Destination Field Name',
 							name: 'destinationFieldName',
 							type: 'string',
+							requiresDataPath: 'multiple',
 							displayOptions: {
 								show: {
 									'/operation': ['splitOutItems'],
@@ -808,63 +809,124 @@ return 0;`,
 		if (resource === 'itemList') {
 			if (operation === 'splitOutItems') {
 				for (let i = 0; i < length; i++) {
-					const fieldToSplitOut = this.getNodeParameter('fieldToSplitOut', i) as string;
+					const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
+						.split(',')
+						.map((field) => field.trim());
 					const disableDotNotation = this.getNodeParameter(
 						'options.disableDotNotation',
 						0,
 						false,
 					) as boolean;
-					const destinationFieldName = this.getNodeParameter(
-						'options.destinationFieldName',
-						i,
-						'',
-					) as string;
-					const include = this.getNodeParameter('include', i) as string;
 
-					let arrayToSplit;
-					if (!disableDotNotation) {
-						arrayToSplit = get(items[i].json, fieldToSplitOut);
-					} else {
-						arrayToSplit = items[i].json[fieldToSplitOut];
-					}
+					const destinationFields = (
+						this.getNodeParameter('options.destinationFieldName', i, '') as string
+					)
+						.split(',')
+						.filter((field) => field.trim() !== '')
+						.map((field) => field.trim());
 
-					if (arrayToSplit === undefined) {
-						if (nodeVersion < 2.1) {
-							if (fieldToSplitOut.includes('.') && disableDotNotation) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-									{
-										description:
-											"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
-									},
-								);
-							} else {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Couldn't find the field '${fieldToSplitOut}' in the input data`,
-									{ itemIndex: i },
-								);
-							}
-						} else {
-							arrayToSplit = [];
-						}
-					}
-
-					if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
+					if (destinationFields.length && destinationFields.length !== fieldsToSplitOut.length) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The provided field '${fieldToSplitOut}' is not an array or object`,
-							{ itemIndex: i },
+							'If multiple fields to split out are given, the same number of destination fields must be given',
 						);
 					}
 
-					if (!Array.isArray(arrayToSplit)) {
-						arrayToSplit = Object.values(arrayToSplit);
+					const include = this.getNodeParameter('include', i) as
+						| 'selectedOtherFields'
+						| 'allOtherFields'
+						| 'noOtherFields';
+
+					const multiSplit = fieldsToSplitOut.length > 1;
+
+					const item = { ...items[i].json };
+					const splited: IDataObject[] = [];
+					for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
+						const destinationFieldName = destinationFields[entryIndex] || '';
+
+						let arrayToSplit;
+						if (!disableDotNotation) {
+							arrayToSplit = get(item, fieldToSplitOut);
+						} else {
+							arrayToSplit = item[fieldToSplitOut];
+						}
+
+						if (arrayToSplit === undefined) {
+							if (nodeVersion < 2.1) {
+								if (fieldToSplitOut.includes('.') && disableDotNotation) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+										{
+											description:
+												"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
+										},
+									);
+								} else {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Couldn't find the field '${fieldToSplitOut}' in the input data`,
+										{ itemIndex: i },
+									);
+								}
+							} else {
+								arrayToSplit = [];
+							}
+						}
+
+						if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
+							if (nodeVersion < 2.2) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`The provided field '${fieldToSplitOut}' is not an array or object`,
+									{ itemIndex: i },
+								);
+							} else {
+								arrayToSplit = [arrayToSplit];
+							}
+						}
+
+						if (!Array.isArray(arrayToSplit)) {
+							arrayToSplit = Object.values(arrayToSplit);
+						}
+
+						for (const [elementIndex, element] of arrayToSplit.entries()) {
+							if (splited[elementIndex] === undefined) {
+								splited[elementIndex] = {};
+							}
+
+							const fieldName = destinationFieldName || fieldToSplitOut;
+
+							if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
+								if (destinationFieldName === '' && !multiSplit) {
+									splited[elementIndex] = { ...splited[elementIndex], ...element };
+								} else {
+									splited[elementIndex][fieldName] = element;
+								}
+							} else {
+								splited[elementIndex][fieldName] = element;
+							}
+						}
 					}
 
-					for (const element of arrayToSplit) {
-						let newItem = {};
+					for (const splitEntry of splited) {
+						let newItem: IDataObject = {};
+
+						if (include === 'noOtherFields') {
+							newItem = splitEntry;
+						}
+
+						if (include === 'allOtherFields') {
+							const itemCopy = deepCopy(item);
+							for (const fieldToSplitOut of fieldsToSplitOut) {
+								if (!disableDotNotation) {
+									unset(itemCopy, fieldToSplitOut);
+								} else {
+									delete itemCopy[fieldToSplitOut];
+								}
+							}
+							newItem = { ...itemCopy, ...splitEntry };
+						}
 
 						if (include === 'selectedOtherFields') {
 							const fieldsToInclude = (
@@ -877,51 +939,15 @@ return 0;`,
 								});
 							}
 
-							newItem = {
-								...fieldsToInclude.reduce((prev, field) => {
-									if (field === fieldToSplitOut) {
-										return prev;
-									}
-									let value;
-									if (!disableDotNotation) {
-										value = get(items[i].json, field);
-									} else {
-										value = items[i].json[field];
-									}
-									prev = { ...prev, [field]: value };
-									return prev;
-								}, {}),
-							};
-						} else if (include === 'allOtherFields') {
-							const keys = Object.keys(items[i].json);
+							for (const field of fieldsToInclude) {
+								if (!disableDotNotation) {
+									splitEntry[field] = get(item, field);
+								} else {
+									splitEntry[field] = item[field];
+								}
+							}
 
-							newItem = {
-								...keys.reduce((prev, field) => {
-									let value;
-									if (!disableDotNotation) {
-										value = get(items[i].json, field);
-									} else {
-										value = items[i].json[field];
-									}
-									prev = { ...prev, [field]: value };
-									return prev;
-								}, {}),
-							};
-
-							unset(newItem, fieldToSplitOut);
-						}
-
-						if (
-							typeof element === 'object' &&
-							include === 'noOtherFields' &&
-							destinationFieldName === ''
-						) {
-							newItem = { ...newItem, ...element };
-						} else {
-							newItem = {
-								...newItem,
-								[destinationFieldName || fieldToSplitOut]: element,
-							};
+							newItem = splitEntry;
 						}
 
 						returnData.push({
@@ -1181,7 +1207,7 @@ return 0;`,
 						({
 							json: { ...item.json, __INDEX: index },
 							pairedItem: { item: index },
-						} as INodeExecutionData),
+						}) as INodeExecutionData,
 				);
 				//sort items using the compare keys
 				newItems.sort((a, b) => {

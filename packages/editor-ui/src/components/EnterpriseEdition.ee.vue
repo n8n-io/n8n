@@ -9,7 +9,7 @@
 import { defineComponent } from 'vue';
 import type { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
+import { useSettingsStore } from '@/stores/settings.store';
 
 export default defineComponent({
 	name: 'EnterpriseEdition',

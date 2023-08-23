@@ -1,6 +1,5 @@
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	INodePropertyOptions,
@@ -30,9 +29,7 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
+export async function getToken(this: ILoadOptionsFunctions | IExecuteFunctions): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
 	const host = credentials.host as string;
@@ -70,13 +67,21 @@ export async function getToken(
 		if (typeof response === 'string') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
+				'DataAPI response body is not valid JSON. Is the DataAPI enabled?',
 			);
 		}
 
 		return response.response.token;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		let message;
+		if (error.statusCode === 502) {
+			message = 'The server is not responding. Is the DataAPI enabled?';
+		} else if (error.error) {
+			message = error.error.messages[0].code + ' - ' + error.error.messages[0].message;
+		} else {
+			message = error.message;
+		}
+		throw new Error(message);
 	}
 }
 
@@ -100,7 +105,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  *
  */
 export async function layoutsApiRequest(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
@@ -238,7 +243,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 }
 
 export async function logout(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+	this: ILoadOptionsFunctions | IExecuteFunctions,
 	token: string,
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
@@ -257,25 +262,8 @@ export async function logout(
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 
-	try {
-		const response = await this.helpers.request(requestOptions);
-
-		if (typeof response === 'string') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
-			);
-		}
-
-		return response;
-	} catch (error) {
-		const errorMessage = `${error.response.body.messages[0].message}'(' + ${error.response.body.messages[0].message}')'`;
-
-		if (errorMessage !== undefined) {
-			throw new Error(errorMessage);
-		}
-		throw error.response.body;
-	}
+	const response = await this.helpers.request(requestOptions);
+	return response;
 }
 
 export function parseSort(this: IExecuteFunctions, i: number): object | null {

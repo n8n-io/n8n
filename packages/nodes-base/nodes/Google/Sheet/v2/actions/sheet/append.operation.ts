@@ -30,6 +30,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -48,6 +49,7 @@ export const description: SheetProperties = [
 			show: {
 				operation: ['append'],
 				dataMode: ['autoMapInputData'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -68,6 +70,7 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['append'],
 				dataMode: ['defineBelow'],
+				'@version': [3],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -100,6 +103,40 @@ export const description: SheetProperties = [
 				],
 			},
 		],
+	},
+	{
+		displayName: 'Columns',
+		name: 'columns',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		required: true,
+		typeOptions: {
+			loadOptionsDependsOn: ['sheetName.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getMappingColumns',
+				mode: 'add',
+				fieldWords: {
+					singular: 'column',
+					plural: 'columns',
+				},
+				addAllFields: true,
+				multiKeyMatch: false,
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['sheet'],
+				operation: ['append'],
+				'@version': [4],
+			},
+			hide: {
+				...untilSheetSelected,
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -156,7 +193,11 @@ export async function execute(
 	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const dataMode = this.getNodeParameter('dataMode', 0) as string;
+	const nodeVersion = this.getNode().typeVersion;
+	const dataMode =
+		nodeVersion < 4
+			? (this.getNodeParameter('dataMode', 0) as string)
+			: (this.getNodeParameter('columns.mappingMode', 0) as string);
 
 	if (!items.length || dataMode === 'nothing') return [];
 
@@ -190,5 +231,9 @@ export async function execute(
 		false,
 	);
 
-	return items;
+	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
+		return items;
+	} else {
+		return this.helpers.returnJsonArray(setData);
+	}
 }

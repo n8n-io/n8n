@@ -1,6 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../../utils/utilities';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+import { updateDisplayOptions } from '@utils/utilities';
 import { microsoftApiRequest, microsoftApiRequestAllItemsSkip } from '../../transport';
 import { tableRLC, workbookRLC, worksheetRLC } from '../common.descriptions';
 
@@ -71,7 +75,6 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Column Names or IDs',
 				name: 'column',
 				type: 'multiOptions',

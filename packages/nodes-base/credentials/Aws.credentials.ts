@@ -134,7 +134,7 @@ export class Aws implements ICredentialType {
 
 	documentationUrl = 'aws';
 
-	icon = 'file:AWS.svg';
+	icon = 'file:icons/AWS.svg';
 
 	properties: INodeProperties[] = [
 		{
@@ -165,7 +165,6 @@ export class Aws implements ICredentialType {
 		{
 			displayName: 'Temporary Security Credentials',
 			name: 'temporaryCredentials',
-			// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 			description: 'Support for temporary credentials from AWS STS',
 			type: 'boolean',
 			default: false,
@@ -287,7 +286,6 @@ export class Aws implements ICredentialType {
 		let body = requestOptions.body;
 		let region = credentials.region;
 		let query = requestOptions.qs?.query as IDataObject;
-
 		// ! Workaround as we still use the OptionsWithUri interface which uses uri instead of url
 		// ! To change when we replace the interface with IHttpRequestOptions
 		const requestWithUri = requestOptions as unknown as OptionsWithUri;

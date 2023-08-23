@@ -58,21 +58,26 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
-
-export default mixins(copyPaste, showMessage, workflowHelpers).extend({
+export default defineComponent({
 	name: 'NodeWebhooks',
+	mixins: [copyPaste, workflowHelpers],
 	props: [
 		'node', // NodeUi
 		'nodeType', // INodeTypeDescription
 	],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
@@ -95,7 +100,7 @@ export default mixins(copyPaste, showMessage, workflowHelpers).extend({
 			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
 			this.copyToClipboard(webhookUrl);
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
 				type: 'success',
 			});

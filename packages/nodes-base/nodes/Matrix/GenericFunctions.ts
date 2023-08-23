@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
@@ -12,7 +11,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 export async function matrixApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 	body: string | object = {},
@@ -189,6 +188,7 @@ export async function handleMatrixCall(
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
+			const additionalFields = this.getNodeParameter('additionalFields', index);
 
 			let body;
 			const qs: IDataObject = {};
@@ -197,7 +197,12 @@ export async function handleMatrixCall(
 			const { fileName, mimeType } = this.helpers.assertBinaryData(index, binaryPropertyName);
 			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
-			qs.filename = fileName;
+			if (additionalFields.fileName) {
+				qs.filename = additionalFields.fileName as string;
+			} else {
+				qs.filename = fileName;
+			}
+
 			headers['Content-Type'] = mimeType;
 			headers.accept = 'application/json,text/*;q=0.99';
 
@@ -216,7 +221,7 @@ export async function handleMatrixCall(
 
 			body = {
 				msgtype: `m.${mediaType}`,
-				body: fileName,
+				body: qs.filename,
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();

@@ -38,6 +38,10 @@ const generate = async (kind) => {
 				else obj[name] = { className, sourcePath };
 			}
 
+			if (kind === 'credentials' && Array.isArray(instance.extends)) {
+				obj[name].extends = instance.extends;
+			}
+
 			if (kind === 'nodes') {
 				const { credentials } = instance.description;
 				if (credentials && credentials.length) {
@@ -53,6 +57,7 @@ const generate = async (kind) => {
 			}
 			return obj;
 		}, {});
+
 	LoggerProxy.info(`Detected ${Object.keys(data).length} ${kind}`);
 	await writeJSON(`known/${kind}.json`, data);
 	return data;

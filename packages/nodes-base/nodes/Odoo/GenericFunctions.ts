@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
@@ -105,7 +104,7 @@ export function processNameValueFields(value: IDataObject) {
 // }
 
 export async function odooJSONRPCRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	body: IDataObject,
 	url: string,
 ): Promise<IDataObject | IDataObject[]> {
@@ -136,7 +135,7 @@ export async function odooJSONRPCRequest(
 }
 
 export async function odooGetModelFields(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	userID: number,
 	password: string,
@@ -171,7 +170,7 @@ export async function odooGetModelFields(
 }
 
 export async function odooCreate(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	userID: number,
 	password: string,
@@ -207,7 +206,7 @@ export async function odooCreate(
 }
 
 export async function odooGet(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	userID: number,
 	password: string,
@@ -251,7 +250,7 @@ export async function odooGet(
 }
 
 export async function odooGetAll(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	userID: number,
 	password: string,
@@ -292,7 +291,7 @@ export async function odooGetAll(
 }
 
 export async function odooUpdate(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	userID: number,
 	password: string,
@@ -342,7 +341,7 @@ export async function odooUpdate(
 }
 
 export async function odooDelete(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	userID: number,
 	password: string,
@@ -384,7 +383,7 @@ export async function odooDelete(
 }
 
 export async function odooGetUserID(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	db: string,
 	username: string,
 	password: string,
@@ -409,7 +408,7 @@ export async function odooGetUserID(
 }
 
 export async function odooGetServerVersion(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	url: string,
 ) {
 	try {

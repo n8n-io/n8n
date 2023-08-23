@@ -1,7 +1,11 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { processJsonInput, updateDisplayOptions } from '../../../../../../utils/utilities';
+import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
 import type { ExcelResponse, UpdateSummary } from '../../helpers/interfaces';
 import { prepareOutput, updateByAutoMaping, updateByDefinedValues } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
@@ -295,7 +299,7 @@ export async function execute(
 			);
 
 			returnData.push(
-				...prepareOutput(this.getNode(), responseData as ExcelResponse, {
+				...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 					rawData,
 					dataProperty,
 				}),
@@ -353,7 +357,7 @@ export async function execute(
 			const { updatedRows } = updateSummary;
 
 			returnData.push(
-				...prepareOutput(this.getNode(), responseData as ExcelResponse, {
+				...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 					updatedRows,
 					rawData,
 					dataProperty,

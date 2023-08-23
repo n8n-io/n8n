@@ -217,12 +217,9 @@ export class Git implements INodeType {
 		};
 
 		const operation = this.getNodeParameter('operation', 0);
-		let _item: INodeExecutionData;
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				_item = items[itemIndex];
-
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 				const options = this.getNodeParameter('options', itemIndex, {});
 

@@ -8,7 +8,7 @@ import type {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 /**
  * Make an API request to Asana

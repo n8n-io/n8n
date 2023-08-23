@@ -5,10 +5,10 @@
 </template>
 
 <script lang="ts">
-import { useNDVStore } from '@/stores/ndv';
-import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv.store';
 
 export default defineComponent({
 	props: {
@@ -35,7 +35,7 @@ export default defineComponent({
 		window.addEventListener('mousemove', this.onMouseMove);
 		window.addEventListener('mouseup', this.onMouseUp);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('mousemove', this.onMouseMove);
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},

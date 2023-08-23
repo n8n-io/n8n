@@ -9,20 +9,26 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore, useUIStore } from '@/stores';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'SigninView',
 	components: {
 		AuthView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -31,7 +37,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
+		...mapStores(useUsersStore, useSettingsStore, useUIStore, useCloudPlanStore),
 	},
 	mounted() {
 		let emailLabel = this.$locale.baseText('auth.email');
@@ -73,7 +79,7 @@ export default mixins(showMessage).extend({
 			],
 		};
 
-		if (!this.settingsStore.isDesktopDeployment || this.settingsStore.isUserManagementEnabled) {
+		if (!this.settingsStore.isDesktopDeployment) {
 			this.FORM_CONFIG.redirectLink = '/forgot-password';
 		}
 	},
@@ -82,6 +88,8 @@ export default mixins(showMessage).extend({
 			try {
 				this.loading = true;
 				await this.usersStore.loginWithCreds(values as { email: string; password: string });
+				await this.cloudPlanStore.checkForCloudPlanData();
+				await this.uiStore.initBanners();
 				this.clearAllStickyNotifications();
 				this.loading = false;
 
@@ -89,15 +97,15 @@ export default mixins(showMessage).extend({
 					const redirect = decodeURIComponent(this.$route.query.redirect);
 					if (redirect.startsWith('/')) {
 						// protect against phishing
-						this.$router.push(redirect);
+						void this.$router.push(redirect);
 
 						return;
 					}
 				}
 
-				this.$router.push({ name: VIEWS.HOMEPAGE });
+				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.signin.error'));
+				this.showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;
 			}
 		},

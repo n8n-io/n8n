@@ -12,8 +12,8 @@ import { Converter } from 'showdown';
 
 import { NodeHtmlMarkdown } from 'node-html-markdown';
 
-import isEmpty from 'lodash.isempty';
-import set from 'lodash.set';
+import isEmpty from 'lodash/isEmpty';
+import set from 'lodash/set';
 
 export class Markdown implements INodeType {
 	description: INodeTypeDescription = {

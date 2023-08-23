@@ -15,9 +15,7 @@
 				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
 			>
 				<n8n-info-tip theme="info" type="note" :bold="false">
-					<template>
-						<span v-text="getModalContent.description"></span>
-					</template>
+					<span v-text="getModalContent.description"></span>
 				</n8n-info-tip>
 			</div>
 		</template>
@@ -35,18 +33,15 @@
 </template>
 
 <script>
-import mixins from 'vue-typed-mixins';
-import Modal from './Modal.vue';
-import {
-	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from '../constants';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import Modal from '@/components/Modal.vue';
+import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '@/constants';
+import { useToast } from '@/composables';
 import { mapStores } from 'pinia';
-import { useCommunityNodesStore } from '@/stores/communityNodes';
-import { createEventBus } from '@/event-bus';
+import { useCommunityNodesStore } from '@/stores/communityNodes.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+export default defineComponent({
 	name: 'CommunityPackageManageConfirmModal',
 	components: {
 		Modal,
@@ -63,6 +58,11 @@ export default mixins(showMessage).extend({
 		mode: {
 			type: String,
 		},
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -140,12 +140,12 @@ export default mixins(showMessage).extend({
 				});
 				this.loading = true;
 				await this.communityNodesStore.uninstallPackage(this.activePackageName);
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('settings.communityNodes.messages.uninstall.error'),
 				);
@@ -167,7 +167,7 @@ export default mixins(showMessage).extend({
 				this.loading = true;
 				const updatedVersion = this.activePackage.updateAvailable;
 				await this.communityNodesStore.updatePackage(this.activePackageName);
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
 					message: this.$locale.baseText(
 						'settings.communityNodes.messages.update.success.message',
@@ -181,7 +181,7 @@ export default mixins(showMessage).extend({
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(
+				this.showError(
 					error,
 					this.$locale.baseText('settings.communityNodes.messages.update.error.title'),
 				);

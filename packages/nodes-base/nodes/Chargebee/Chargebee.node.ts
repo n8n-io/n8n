@@ -448,7 +448,6 @@ export class Chargebee implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		let _item: INodeExecutionData;
 
 		const credentials = await this.getCredentials('chargebeeApi');
 
@@ -461,7 +460,6 @@ export class Chargebee implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				_item = items[i];
 				const resource = this.getNodeParameter('resource', i);
 				const operation = this.getNodeParameter('operation', i);
 

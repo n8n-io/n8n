@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 export const BINARY_ENCODING = 'base64';
 export const WAIT_TIME_UNLIMITED = '3000-01-01T00:00:00.000Z';
 
@@ -14,3 +13,7 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 	'n8n-nodes-base.function',
 	'n8n-nodes-base.functionItem',
 ]);
+
+// Arbitrary value to represent an empty credential value
+export const CREDENTIAL_EMPTY_VALUE =
+	'__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da' as const;

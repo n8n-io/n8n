@@ -3,7 +3,6 @@
 		<div
 			v-if="!loading"
 			ref="editor"
-			class="ph-no-capture"
 			:class="$style[theme]"
 			v-html="htmlContent"
 			@click="onClick"

@@ -1,5 +1,5 @@
 <template>
-	<div class="ph-no-capture" :class="classes">
+	<div :class="classes">
 		<div :class="$style.avatarContainer">
 			<n8n-avatar :firstName="firstName" :lastName="lastName" />
 		</div>
@@ -20,11 +20,6 @@
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
-			</div>
-			<div v-if="!isOwner">
-				<n8n-text v-if="signInType" size="small" color="text-light">
-					Sign-in type: {{ signInType }}
-				</n8n-text>
 			</div>
 		</div>
 	</div>
@@ -67,8 +62,12 @@ export default defineComponent({
 		disabled: {
 			type: Boolean,
 		},
-		signInType: {
-			type: String,
+		settings: {
+			type: Object,
+			required: false,
+		},
+		isSamlLoginEnabled: {
+			type: Boolean,
 			required: false,
 		},
 	},

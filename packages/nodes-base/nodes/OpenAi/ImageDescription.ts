@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { sendErrorPostReceive } from './GenericFunctions';
 
 export const imageOperations: INodeProperties[] = [
 	{
@@ -22,6 +23,7 @@ export const imageOperations: INodeProperties[] = [
 						method: 'POST',
 						url: '/v1/images/generations',
 					},
+					output: { postReceive: [sendErrorPostReceive] },
 				},
 			},
 		],

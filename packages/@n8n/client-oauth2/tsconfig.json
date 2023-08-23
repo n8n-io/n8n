@@ -1,0 +1,15 @@
+{
+	"extends": "../../../tsconfig.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"types": ["node", "jest"],
+		"composite": true,
+		"noEmit": true,
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}

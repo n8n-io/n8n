@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy, LoggerProxy } from 'n8n-workflow';
@@ -65,7 +63,7 @@ credentialsController.get(
  * GET /credentials/:id
  */
 credentialsController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
@@ -147,7 +145,7 @@ credentialsController.post(
  * PATCH /credentials/:id
  */
 credentialsController.patch(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsDb> => {
 		const { id: credentialId } = req.params;
 
@@ -198,7 +196,7 @@ credentialsController.patch(
  * DELETE /credentials/:id
  */
 credentialsController.delete(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 

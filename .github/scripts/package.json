@@ -1,6 +1,9 @@
 {
   "dependencies": {
-    "semver": "^7.3.8",
-    "conventional-changelog-cli": "^2.2.2"
+    "conventional-changelog": "^4.0.0",
+    "glob": "^10.3.0",
+    "semver": "^7.5.4",
+    "tempfile": "^5.0.0",
+    "typescript": "*"
   }
 }

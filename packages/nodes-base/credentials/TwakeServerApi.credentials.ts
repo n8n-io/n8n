@@ -24,6 +24,7 @@ export class TwakeServerApi implements ICredentialType {
 			displayName: 'Private API Key',
 			name: 'privateApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -1,6 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import { constructExecutionMetaData } from 'n8n-core';
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { SchemaField, TableRawData, TableSchema } from './interfaces';
 
@@ -56,6 +54,7 @@ export function simplify(data: TableRawData[], schema: SchemaField[], includeSch
 }
 
 export function prepareOutput(
+	this: IExecuteFunctions,
 	response: IDataObject,
 	itemIndex: number,
 	rawOutput: boolean,
@@ -82,9 +81,12 @@ export function prepareOutput(
 		}
 	}
 
-	const executionData = constructExecutionMetaData(wrapData(responseData as IDataObject[]), {
-		itemData: { item: itemIndex },
-	});
+	const executionData = this.helpers.constructExecutionMetaData(
+		wrapData(responseData as IDataObject[]),
+		{
+			itemData: { item: itemIndex },
+		},
+	);
 
 	return executionData;
 }

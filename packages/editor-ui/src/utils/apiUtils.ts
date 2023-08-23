@@ -62,7 +62,11 @@ async function request(config: {
 		baseURL,
 		headers,
 	};
-	if (import.meta.env.NODE_ENV !== 'production' && !baseURL.includes('api.n8n.io')) {
+	if (
+		import.meta.env.NODE_ENV !== 'production' &&
+		!baseURL.includes('api.n8n.io') &&
+		!baseURL.includes('n8n.cloud')
+	) {
 		options.withCredentials = true;
 	}
 	if (['POST', 'PATCH', 'PUT'].includes(method)) {
@@ -76,7 +80,7 @@ async function request(config: {
 		return response.data;
 	} catch (error) {
 		if (error.message === 'Network Error') {
-			throw new ResponseError('API-Server can not be reached. It is probably down.', {
+			throw new ResponseError("Can't connect to n8n.", {
 				errorCode: NO_NETWORK_ERROR_CODE,
 			});
 		}
@@ -123,7 +127,7 @@ export async function get(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return await request({ method: 'GET', baseURL, endpoint, headers, data: params });
+	return request({ method: 'GET', baseURL, endpoint, headers, data: params });
 }
 
 export async function post(
@@ -132,7 +136,7 @@ export async function post(
 	params?: IDataObject,
 	headers?: IDataObject,
 ) {
-	return await request({ method: 'POST', baseURL, endpoint, headers, data: params });
+	return request({ method: 'POST', baseURL, endpoint, headers, data: params });
 }
 
 /**

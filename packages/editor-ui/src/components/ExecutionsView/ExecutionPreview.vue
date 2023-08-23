@@ -6,13 +6,13 @@
 		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
+			:class="$style.executionDetails"
 			v-if="activeExecution"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
@@ -33,6 +33,7 @@
 				>
 					{{ executionUIDetails.label }}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
@@ -126,20 +127,20 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+
+import { useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { Dropdown as ElDropdown } from 'element-ui';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import { ElDropdown } from 'element-plus';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
-export default mixins(showMessage, executionHelpers).extend({
+export default defineComponent({
 	name: 'execution-preview',
+	mixins: [executionHelpers],
 	components: {
 		ElDropdown,
 		WorkflowPreview,
@@ -149,13 +150,14 @@ export default mixins(showMessage, executionHelpers).extend({
 			VIEWS,
 		};
 	},
+	setup() {
+		return {
+			...useMessage(),
+		};
+	},
 	computed: {
-		...mapStores(useUIStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
-		},
-		sidebarCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
 		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
@@ -163,14 +165,18 @@ export default mixins(showMessage, executionHelpers).extend({
 	},
 	methods: {
 		async onDeleteExecution(): Promise<void> {
-			const deleteConfirmed = await this.confirmMessage(
+			const deleteConfirmed = await this.confirm(
 				this.$locale.baseText('executionDetails.confirmMessage.message'),
 				this.$locale.baseText('executionDetails.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
-				'',
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'executionDetails.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: '',
+				},
 			);
-			if (!deleteConfirmed) {
+			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			}
 			this.$emit('deleteCurrentExecution');
@@ -185,7 +191,7 @@ export default mixins(showMessage, executionHelpers).extend({
 			// Hide dropdown when clicking outside of current document
 			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
 			if (retryDropdownRef && event.relatedTarget === null) {
-				retryDropdownRef.hide();
+				retryDropdownRef.handleClose();
 			}
 		},
 	},
@@ -194,7 +200,8 @@ export default mixins(showMessage, executionHelpers).extend({
 
 <style module lang="scss">
 .previewContainer {
-	height: calc(100% - $header-height);
+	position: relative;
+	height: 100%;
 	overflow: hidden;
 }
 
@@ -202,7 +209,7 @@ export default mixins(showMessage, executionHelpers).extend({
 	position: absolute;
 	padding: var(--spacing-m);
 	padding-right: var(--spacing-xl);
-	width: calc(100% - 510px);
+	width: 100%;
 	display: flex;
 	justify-content: space-between;
 	transition: all 150ms ease-in-out;
@@ -210,10 +217,6 @@ export default mixins(showMessage, executionHelpers).extend({
 
 	& * {
 		pointer-events: all;
-	}
-
-	&.sidebarCollapsed {
-		width: calc(100% - 375px);
 	}
 }
 

@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -16,7 +16,7 @@ import pgPromise from 'pg-promise';
 
 import { pgInsertV2, pgQueryV2, pgUpdate, wrapData } from './genericFunctions';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Postgres',
@@ -74,9 +74,10 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Query',
 			name: 'query',
 			type: 'string',
+			noDataExpression: true,
 			typeOptions: {
 				editor: 'sqlEditor',
-				sqlDialect: 'postgres',
+				sqlDialect: 'PostgreSQL',
 			},
 			displayOptions: {
 				show: {

@@ -1,5 +1,5 @@
 <template>
-	<n8n-button square v-bind="$props" v-on="$listeners" />
+	<n8n-button square v-bind="{ ...$attrs, ...$props }" />
 </template>
 
 <script lang="ts">

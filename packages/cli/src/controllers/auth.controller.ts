@@ -1,14 +1,20 @@
 import validator from 'validator';
+import { In } from 'typeorm';
+import { Container } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
+import {
+	AuthError,
+	BadRequestError,
+	InternalServerError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type {
 	PublicUser,
@@ -23,9 +29,9 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import type { UserRepository } from '@db/repositories';
 import { InternalHooks } from '../InternalHooks';
-import Container from 'typedi';
+import { License } from '@/License';
+import { UserService } from '@/services/user.service';
 
 @RestController()
 export class AuthController {
@@ -35,7 +41,7 @@ export class AuthController {
 
 	private readonly internalHooks: IInternalHooksClass;
 
-	private readonly userRepository: UserRepository;
+	private readonly userService: UserService;
 
 	private readonly postHog?: PostHogClient;
 
@@ -43,7 +49,6 @@ export class AuthController {
 		config,
 		logger,
 		internalHooks,
-		repositories,
 		postHog,
 	}: {
 		config: Config;
@@ -55,8 +60,8 @@ export class AuthController {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
 		this.postHog = postHog;
+		this.userService = Container.get(UserService);
 	}
 
 	/**
@@ -71,16 +76,18 @@ export class AuthController {
 		let user: User | undefined;
 
 		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
-
 		if (isSamlCurrentAuthenticationMethod()) {
 			// attempt to fetch user data with the credentials, but don't log in yet
 			const preliminaryUser = await handleEmailLogin(email, password);
 			// if the user is an owner, continue with the login
-			if (preliminaryUser?.globalRole?.name === 'owner') {
+			if (
+				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				throw new AuthError('SAML is enabled, please log in with SAML');
+				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
 			user = await handleLdapLogin(email, password);
@@ -117,6 +124,7 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
+
 				return await withFeatureFlags(this.postHog, sanitizeUser(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
@@ -128,10 +136,7 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userRepository.findOneOrFail({
-				relations: ['globalRole'],
-				where: {},
-			});
+			user = await this.userService.findOneOrFail({ where: {} });
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',
@@ -152,6 +157,15 @@ export class AuthController {
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
+				inviterId,
+				inviteeId,
+			});
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!inviterId || !inviteeId) {
 			this.logger.debug(
@@ -171,7 +185,7 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userRepository.find({ where: { id: In([inviterId, inviteeId]) } });
+		const users = await this.userService.findMany({ where: { id: In([inviterId, inviteeId]) } });
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',

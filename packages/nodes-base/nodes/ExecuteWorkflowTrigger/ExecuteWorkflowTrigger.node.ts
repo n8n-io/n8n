@@ -20,7 +20,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 			name: 'Execute Workflow Trigger',
 			color: '#ff6d5a',
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
 		outputs: ['main'],
 		properties: [

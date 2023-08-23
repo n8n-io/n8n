@@ -13,8 +13,8 @@ import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.int
 
 import { capitalCase } from 'change-case';
 
-import omit from 'lodash.omit';
-import pickBy from 'lodash.pickby';
+import omit from 'lodash/omit';
+import pickBy from 'lodash/pickBy';
 
 import type { OptionsWithUri } from 'request';
 
@@ -270,7 +270,6 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 
 	if (resource === 'preferences') {
 		const {
-			// eslint-disable-next-line @typescript-eslint/no-shadow
 			SalesFormsPrefs: { CustomField },
 		} = resourceItems[0];
 		const customFields = CustomField[1].CustomField;

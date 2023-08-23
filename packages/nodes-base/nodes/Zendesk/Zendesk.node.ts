@@ -319,7 +319,7 @@ export class Zendesk implements INodeType {
 								body.recipient = additionalFields.recipient as string;
 							}
 							if (additionalFields.group) {
-								body.group = additionalFields.group as string;
+								body.group_id = additionalFields.group as number;
 							}
 							if (additionalFields.tags) {
 								body.tags = additionalFields.tags as string[];
@@ -371,7 +371,7 @@ export class Zendesk implements INodeType {
 								body.recipient = updateFields.recipient as string;
 							}
 							if (updateFields.group) {
-								body.group = updateFields.group as string;
+								body.group_id = updateFields.group as number;
 							}
 							if (updateFields.tags) {
 								body.tags = updateFields.tags as string[];

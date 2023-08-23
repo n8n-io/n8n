@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
@@ -11,7 +10,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function harvestApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	qs: IDataObject,
 	path: string,
@@ -59,7 +58,7 @@ export async function harvestApiRequest(
  * and return all results
  */
 export async function harvestApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	qs: IDataObject,
 	uri: string,

@@ -1319,22 +1319,22 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		let _credentials;
+		// let _credentials;
 
-		const authenticationMethod = this.getNodeParameter('authentication', 0);
+		// const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		try {
-			if (authenticationMethod === 'accessToken') {
-				_credentials = await this.getCredentials('gitlabApi');
-			} else {
-				_credentials = await this.getCredentials('gitlabOAuth2Api');
-			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray([{ error: error.message }])];
-			}
-			throw new NodeOperationError(this.getNode(), error as Error);
-		}
+		// try {
+		// 	if (authenticationMethod === 'accessToken') {
+		// 		_credentials = await this.getCredentials('gitlabApi');
+		// 	} else {
+		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
+		// 	}
+		// } catch (error) {
+		// 	if (this.continueOnFail()) {
+		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
+		// 	}
+		// 	throw new NodeOperationError(this.getNode(), error as Error);
+		// }
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
