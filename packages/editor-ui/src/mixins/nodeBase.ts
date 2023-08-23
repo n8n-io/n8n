@@ -15,7 +15,14 @@ import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { getAddInputEndpointStyle } from '@/utils/nodeViewUtils';
+import { EndpointSpec } from '@jsplumb/common';
+
+const addInputEndpointSpec: EndpointSpec = {
+	type: 'N8nAddInput',
+	options: {
+		size: 24,
+	},
+};
 
 export const nodeBase = defineComponent({
 	mixins: [deviceSupportHelpers],
@@ -99,18 +106,13 @@ export const nodeBase = defineComponent({
 					inputsOfSameType.length,
 				)[typeIndex];
 
-				console.log(node);
+				const scope = NodeViewUtils.getEndpointScope(inputName);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, i),
 					anchor: anchorPosition,
 					maxConnections: -1,
-					endpoint: {
-						type: 'N8nAddInput',
-						options: {
-							size: 24,
-						},
-					},
+					endpoint: 'Rectangle',
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
 						'--color-foreground-xdark',
@@ -121,6 +123,7 @@ export const nodeBase = defineComponent({
 						'--color-primary',
 						inputName,
 					),
+					scope,
 					source: false,
 					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
@@ -140,7 +143,7 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'input', i);
-				if (nodeTypeData.inputNames) {
+				if (nodeTypeData.inputNames?.[i]) {
 					// Apply input names if they got set
 					endpoint.addOverlay(
 						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i], inputName),
@@ -202,6 +205,8 @@ export const nodeBase = defineComponent({
 					outputsOfSameType.length,
 				)[typeIndex];
 
+				const scope = NodeViewUtils.getEndpointScope(outputName);
+
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
 					anchor: anchorPosition,
@@ -213,6 +218,7 @@ export const nodeBase = defineComponent({
 						},
 					},
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
+					scope,
 					source: true,
 					target: false,
 					enabled: !this.isReadOnly,
@@ -234,7 +240,10 @@ export const nodeBase = defineComponent({
 				this.__addEndpointTestingData(endpoint, 'output', i);
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
-					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[i]);
+					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
+						nodeTypeData.outputNames[i],
+						outputName,
+					);
 					endpoint.addOverlay(overlaySpec);
 				}
 
@@ -313,12 +322,7 @@ export const nodeBase = defineComponent({
 				[key: string]: EndpointOptions;
 			} = {
 				languageModel: {
-					paintStyle: NodeViewUtils.getAddInputEndpointStyle(
-						nodeTypeData,
-						'--color-primary',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				main: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
@@ -329,20 +333,10 @@ export const nodeBase = defineComponent({
 					cssClass: `dot-${type}-endpoint`,
 				},
 				memory: {
-					paintStyle: NodeViewUtils.getAddInputEndpointStyle(
-						nodeTypeData,
-						'--color-secondary',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				tool: {
-					paintStyle: NodeViewUtils.getAddInputEndpointStyle(
-						nodeTypeData,
-						'--color-danger',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				vectorRetriever: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
@@ -398,7 +392,6 @@ export const nodeBase = defineComponent({
 						'--color-primary',
 						connectionType,
 					),
-					cssClass: `dot-${type}-endpoint`,
 				},
 				main: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
@@ -411,18 +404,16 @@ export const nodeBase = defineComponent({
 				memory: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						'--color-secondary',
+						'--color-primary',
 						connectionType,
 					),
-					cssClass: `dot-${type}-endpoint`,
 				},
 				tool: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						'--color-danger',
+						'--color-primary',
 						connectionType,
 					),
-					cssClass: `dot-${type}-endpoint`,
 				},
 				vectorRetriever: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(

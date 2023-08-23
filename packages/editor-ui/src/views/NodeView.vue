@@ -329,6 +329,7 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/jsplumb/N8nPlusEndpointType';
+import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { CONNECTOR_PAINT_STYLE_DATA } from '@/utils/nodeViewUtils';
 
@@ -2545,6 +2546,15 @@ export default defineComponent({
 				});
 			}
 		},
+		onAddInputEndpointClick(endpoint: Endpoint) {
+			if (endpoint && endpoint.__meta) {
+				this.insertNodeAfterSelected({
+					sourceId: endpoint.__meta.nodeId,
+					index: endpoint.__meta.index,
+					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+				});
+			}
+		},
 		bindCanvasEvents() {
 			this.instance.bind(EVENT_CONNECTION_ABORT, this.onEventConnectionAbort);
 
@@ -2566,6 +2576,7 @@ export default defineComponent({
 				this.onConnectionDragAbortDetached,
 			);
 			this.instance.bind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
+			this.instance.bind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
 		},
 		unbindCanvasEvents() {
 			this.instance.unbind(EVENT_CONNECTION_ABORT, this.onEventConnectionAbort);
@@ -2588,6 +2599,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_ABORT, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
+			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
 
 			// Get all the endpoints and unbind the events
 			const elements = this.instance.getManagedElements();

@@ -205,16 +205,14 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getAddInputEndpointStyle = (
-	nodeTypeData: INodeTypeDescription,
-	color: string,
-	connectionType: ConnectionTypes = 'main',
-): EndpointStyle => {
-	return {
-		// fill: getStyleTokenValue('--color-foreground-xlight'),
-		// stroke: getStyleTokenValue(color),
-		// lineWidth: 1,
-	};
+export const getEndpointScope = (endpointType: string): string | undefined => {
+	const scopedEndpointTypes = ['tool', 'memory', 'languageModel'];
+
+	if (scopedEndpointTypes.includes(endpointType)) {
+		return endpointType;
+	}
+
+	return undefined;
 };
 
 export const getInputEndpointStyle = (
@@ -266,7 +264,7 @@ export const getOutputEndpointStyle = (
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (labelText: string): OverlaySpec => ({
+export const getOutputNameOverlay = (labelText: string, outputName: string): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
@@ -275,6 +273,7 @@ export const getOutputNameOverlay = (labelText: string): OverlaySpec => ({
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
+			label.classList.add(`node-output-endpoint-label--${outputName}`);
 			return label;
 		},
 	},
