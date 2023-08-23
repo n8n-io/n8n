@@ -3,6 +3,7 @@ import InfisicalClient from 'infisical-node';
 import { populateClientWorkspaceConfigsHelper } from 'infisical-node/lib/helpers/key';
 import { getServiceTokenData } from 'infisical-node/lib/api/serviceTokenData';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
 
 export interface InfisicalSettings {
 	token: string;
@@ -143,7 +144,7 @@ export class InfisicalProvider implements SecretsProvider {
 	}
 
 	getSecretNames(): string[] {
-		return Object.keys(this.cachedSecrets);
+		return Object.keys(this.cachedSecrets).filter((k) => EXTERNAL_SECRETS_NAME_REGEX.test(k));
 	}
 
 	hasSecret(name: string): boolean {
