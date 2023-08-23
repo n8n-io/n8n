@@ -14,7 +14,7 @@ export class WorkflowOperationError extends ExecutionBaseError {
 	description: string | undefined;
 
 	constructor(message: string, node?: INode) {
-		super(message, {});
+		super(message, { cause: undefined });
 		this.name = this.constructor.name;
 		this.node = node;
 		this.timestamp = Date.now();
