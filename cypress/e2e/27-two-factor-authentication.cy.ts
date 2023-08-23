@@ -30,7 +30,6 @@ describe('Two-factor authentication', () => {
 			owner: user,
 			members: [],
 		});
-		cy.wait(2000);
 		cy.on('uncaught:exception', (err, runnable) => {
 			expect(err.message).to.include('Not logged in');
 			return false;
@@ -41,7 +40,6 @@ describe('Two-factor authentication', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
-		cy.wait(2000);
 		mainSidebar.actions.signout();
 		cy.generateToken(user.mfaSecret).then((token) => {
 			mfaLoginPage.actions.loginWithMfaToken(email, password, token);
