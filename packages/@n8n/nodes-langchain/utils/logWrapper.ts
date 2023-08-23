@@ -8,14 +8,14 @@ import { BaseChatMemory } from 'langchain/memory';
 
 import { Embeddings } from 'langchain/embeddings';
 import { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
 import { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
-import { CallbackManagerForRetrieverRun } from 'langchain/dist/callbacks/manager';
+import { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
 
 export function logWrapper(
-	originalInstance: Tool | BaseChatMemory | BaseChatModel | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter,
+	originalInstance: Tool | BaseChatMemory | BaseChatModel | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter | VectorStore,
 	executeFunctions: IExecuteFunctions,
 ) {
 	return new Proxy(originalInstance, {
@@ -98,6 +98,15 @@ export function logWrapper(
 					// @ts-ignore
 					const response = (await target[prop](messages, options, runManager)) as ChatResult;
 					executeFunctions.addOutputData('languageModel', [[{ json: { response } }]]);
+					return response;
+				};
+			} else if (prop === 'similaritySearch') {
+				return async (query: string, k?: number, filter?: BiquadFilterType | undefined, _callbacks?: Callbacks | undefined): Promise<Document[]> => {
+					executeFunctions.addInputData('vectorStore', [[{ json: { query, k, filter } }]]);
+					// @ts-ignore
+					const response = (await target[prop](query, k, filter, _callbacks)) as Document[];
+					executeFunctions.addOutputData('vectorStore', [[{ json: { response } }]]);
+
 					return response;
 				};
 			}

@@ -447,6 +447,22 @@ export const nodeBase = defineComponent({
 					),
 					cssClass: `dot-${type}-endpoint`,
 				},
+				chain: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-string',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				vectorStore: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-null',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
 			};
 
 			if (!connectionTypes.hasOwnProperty(connectionType)) {

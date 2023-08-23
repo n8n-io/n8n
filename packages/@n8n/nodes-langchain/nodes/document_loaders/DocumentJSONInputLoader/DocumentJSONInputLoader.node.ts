@@ -61,7 +61,30 @@ export class DocumentJSONInputLoader implements INodeType {
 	}
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData(0);
+		let textSplitter: CharacterTextSplitter | undefined;
+		const textSplitterNode = await this.getInputConnectionData('textSplitter', 0);
+		if (textSplitterNode?.[0]?.response) {
+			textSplitter = textSplitterNode?.[0]?.response as CharacterTextSplitter;
+		}
+		const docs: Document[] = [];
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const itemData = items[itemIndex].json;
 
+			const itemString = JSON.stringify(itemData);
+
+			const itemBlob = new Blob([itemString], { type: 'application/json' })
+			const jsonDoc = new JSONLoader(itemBlob);
+			const loadedDoc = textSplitter
+				? await jsonDoc.loadAndSplit(textSplitter)
+				: await jsonDoc.load();
+
+
+			docs.push(...loadedDoc)
+		}
+
+		console.log('Loaded Document:', docs.length);
+		// this.addOutputData('document', [[{ json: { document: docs } }]]);
+		console.log('Output Data:', docs);
 		// Only pass it through?
 		return this.prepareOutputData(items);
 	}
