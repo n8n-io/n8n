@@ -61,6 +61,7 @@
 					:class="[$style.checkbox, checkboxWarning ? $style.error : '', 'mt-l']"
 					:disabled="loading"
 					@update:modelValue="onCheckboxChecked"
+					data-test-id="user-agreement-checkbox"
 				>
 					<n8n-text>
 						{{ $locale.baseText('settings.communityNodes.installModal.checkbox.label') }} </n8n-text
@@ -74,7 +75,7 @@
 		<template #footer>
 			<n8n-button
 				:loading="loading"
-				:disabled="packageName === '' || loading"
+				:disabled="!userAgreed || packageName === '' || loading"
 				:label="
 					loading
 						? $locale.baseText('settings.communityNodes.installModal.installButton.label.loading')
@@ -83,6 +84,7 @@
 				size="large"
 				float="right"
 				@click="onInstallClick"
+				data-test-id="install-community-package-button"
 			/>
 		</template>
 	</Modal>

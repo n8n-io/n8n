@@ -2216,4 +2216,4 @@ export interface SecretsHelpersBase {
 	listSecrets(provider: string): string[];
 }
 
-export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';
+export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';

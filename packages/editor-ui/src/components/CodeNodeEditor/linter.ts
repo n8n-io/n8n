@@ -66,6 +66,8 @@ export const linterExtension = defineComponent({
 				}
 			}
 
+			if (ast === null) return [];
+
 			const lintings: Diagnostic[] = [];
 
 			/**
