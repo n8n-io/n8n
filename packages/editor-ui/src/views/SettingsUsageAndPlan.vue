@@ -319,13 +319,6 @@ div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
 }
-
-.buttonTertiary {
-	&,
-	&:hover {
-		background: transparent;
-	}
-}
 </style>
 
 <style lang="scss" scoped>
