@@ -143,6 +143,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 							`Deactivating workflow "${workflow.name}" during import, remember to activate it later.`,
 						);
 						workflow.active = false;
+						// Also remove it as triggers might still be registered
+						const workflowRunner = Container.get(ActiveWorkflowRunner);
+						await workflowRunner.remove(workflow.id);
 					}
 
 					await this.storeWorkflow(workflow, user);
@@ -192,6 +195,9 @@ export class ImportWorkflowsCommand extends BaseCommand {
 						`Deactivating workflow "${workflow.name}" during import, remember to activate it later.`,
 					);
 					workflow.active = false;
+					// Also remove it as triggers might still be registered
+					const workflowRunner = Container.get(ActiveWorkflowRunner);
+					await workflowRunner.remove(workflow.id);
 				}
 
 				await this.storeWorkflow(workflow, user);
