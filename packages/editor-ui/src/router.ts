@@ -596,9 +596,6 @@ export const routes = [
 						allow: {
 							role: [ROLE.Owner],
 						},
-						deny: {
-							shouldDeny: () => !window.localStorage.getItem('external-secrets'),
-						},
 					},
 				},
 			},
