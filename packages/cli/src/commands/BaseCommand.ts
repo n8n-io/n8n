@@ -21,9 +21,6 @@ import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 
-export const UM_FIX_INSTRUCTION =
-	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
-
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
 
