@@ -18,6 +18,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc && gulp build:icons",
+    "clean": "rimraf dist .turbo",
     "dev": "tsc --watch",
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials package.json",
@@ -43,6 +44,7 @@
       "dist/nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.js",
       "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAI.node.js",
+      "dist/nodes/llms/LMChatOpenAi/LMChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LMOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LMCohere.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
@@ -69,11 +71,11 @@
     "typescript": "~4.8.4"
   },
   "dependencies": {
-    "@huggingface/inference": "1",
+    "@huggingface/inference": "2.6.1",
     "@xata.io/cli": "^0.13.4",
     "cohere-ai": "^6.2.2",
     "ignore": "^5.2.4",
-    "langchain": "^0.0.126",
+    "langchain": "^0.0.133",
     "lodash": "^4.17.21",
     "n8n-nodes-base": "workspace:*"
   }

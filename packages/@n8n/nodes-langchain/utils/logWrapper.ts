@@ -1,9 +1,9 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
-import { BaseMessage, ChatResult, InputValues } from 'langchain/dist/schema';
-import { BaseChatModel } from 'langchain/dist/chat_models/base';
-import { CallbackManagerForLLMRun } from 'langchain/dist/callbacks';
+import { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
+import { BaseChatModel } from 'langchain/chat_models/base';
+import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { BaseChatMemory } from 'langchain/memory';
 
 import { Embeddings } from 'langchain/embeddings';
@@ -11,11 +11,12 @@ import { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
 import { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
-import { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
+import { BaseDocumentLoader } from 'langchain/document_loaders/base';
 import { CallbackManagerForRetrieverRun } from 'langchain/dist/callbacks/manager';
+import { BaseLLM } from 'langchain/llms/base';
 
 export function logWrapper(
-	originalInstance: Tool | BaseChatMemory | BaseChatModel | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter,
+	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter,
 	executeFunctions: IExecuteFunctions,
 ) {
 	return new Proxy(originalInstance, {
