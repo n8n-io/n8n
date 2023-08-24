@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import { AI_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView } from '../viewsData';
+import { TriggerView, RegularView, AIView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
@@ -59,7 +59,17 @@ onUnmounted(() => {
 watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
-		const view = selectedView === TRIGGER_NODE_CREATOR_VIEW ? TriggerView() : RegularView();
+		let view;
+		switch (selectedView) {
+			case AI_NODE_CREATOR_VIEW:
+				view = AIView();
+				break;
+			case TRIGGER_NODE_CREATOR_VIEW:
+				view = TriggerView();
+				break;
+			default:
+				view = RegularView();
+		}
 
 		pushViewStack({
 			title: view.title,

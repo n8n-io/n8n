@@ -1121,6 +1121,7 @@ export type NodeCreatorOpenSource =
 	| ''
 	| 'no_trigger_execution_tooltip'
 	| 'plus_endpoint'
+	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
 	| 'node_connection_action'

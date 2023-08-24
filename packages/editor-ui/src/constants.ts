@@ -177,6 +177,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 > = {
 	NO_TRIGGER_EXECUTION_TOOLTIP: 'no_trigger_execution_tooltip',
 	PLUS_ENDPOINT: 'plus_endpoint',
+	ADD_INPUT_ENDPOINT: 'add_input_endpoint',
 	TRIGGER_PLACEHOLDER_BUTTON: 'trigger_placeholder_button',
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
@@ -185,8 +186,10 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const AI_NODES_CATEGORY = 'AI Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
+export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
@@ -194,6 +197,7 @@ export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
+export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
