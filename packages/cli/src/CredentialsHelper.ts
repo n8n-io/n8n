@@ -587,10 +587,24 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (credentialsDecrypted.data) {
-			credentialsDecrypted.data = CredentialsOverwrites().applyOverwrite(
-				credentialType,
-				credentialsDecrypted.data,
-			);
+			try {
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+				credentialsDecrypted.data = this.applyDefaultsAndOverwrites(
+					additionalData,
+					credentialsDecrypted.data,
+					credentialType,
+					'internal' as WorkflowExecuteMode,
+					additionalData.timezone,
+					undefined,
+					user.isOwner,
+				);
+			} catch (error) {
+				Logger.debug('Credential test failed', error);
+				return {
+					status: 'Error',
+					message: error.message.toString(),
+				};
+			}
 		}
 
 		if (typeof credentialTestFunction === 'function') {
