@@ -666,7 +666,8 @@ export default defineComponent({
 		text-align: center;
 		cursor: default;
 		padding: 8px;
-		width: 200px;
+		width: 100%;
+		min-width: 200px;
 		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p {
@@ -693,6 +694,11 @@ export default defineComponent({
 
 	&--configurable {
 		width: 250px;
+
+		.node-description {
+			top: 105px;
+			left: unset;
+		}
 	}
 
 	.node-default {
