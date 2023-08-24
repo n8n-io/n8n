@@ -374,17 +374,19 @@ export class UsersController {
 		if (!listQueryOptions) {
 			findManyOptions.relations = ['globalRole', 'authIdentities'];
 		} else {
-			if (listQueryOptions.filter) findManyOptions.where = listQueryOptions.filter;
-			if (listQueryOptions.select) findManyOptions.select = listQueryOptions.select;
-			if (listQueryOptions.take) findManyOptions.take = listQueryOptions.take;
-			if (listQueryOptions.skip) findManyOptions.skip = listQueryOptions.skip;
+			const { filter, select, take, skip } = listQueryOptions;
 
-			if (listQueryOptions?.filter?.isOwner !== undefined) {
+			if (filter) findManyOptions.where = filter;
+			if (select) findManyOptions.select = select;
+			if (take) findManyOptions.take = take;
+			if (skip) findManyOptions.skip = skip;
+
+			if (filter?.isOwner !== undefined) {
 				findManyOptions.relations = ['globalRole'];
 
-				const { isOwner } = listQueryOptions.filter;
+				const { isOwner } = filter;
 
-				delete listQueryOptions.filter.isOwner; // remove computed field
+				delete filter.isOwner; // remove computed field
 
 				const ownerRole = await this.roleService.findGlobalOwnerRole();
 
