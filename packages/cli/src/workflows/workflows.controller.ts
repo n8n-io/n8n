@@ -19,7 +19,7 @@ import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';

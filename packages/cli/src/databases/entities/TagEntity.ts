@@ -1,4 +1,4 @@
-import { Column, Entity, Index, ManyToMany, OneToMany } from 'typeorm';
+import { Column, Entity, Index, ManyToMany, OneToMany } from '@n8n/typeorm';
 import { IsString, Length } from 'class-validator';
 import type { WorkflowEntity } from './WorkflowEntity';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';

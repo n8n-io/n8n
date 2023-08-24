@@ -1,5 +1,5 @@
 import validator from 'validator';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import {

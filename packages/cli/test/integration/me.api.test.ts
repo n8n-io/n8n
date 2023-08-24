@@ -1,5 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
-import { IsNull } from 'typeorm';
+import { IsNull } from '@n8n/typeorm';
 import validator from 'validator';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';

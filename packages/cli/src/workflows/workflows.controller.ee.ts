@@ -15,7 +15,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { CredentialsService } from '../credentials/credentials.service';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';

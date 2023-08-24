@@ -63,7 +63,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { WorkflowsService } from './workflows/workflows.services';
 import { webhookNotFoundErrorMessage } from './utils';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { WebhookService } from './services/webhook.service';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =

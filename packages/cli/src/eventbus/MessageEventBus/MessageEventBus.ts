@@ -1,6 +1,6 @@
 import { LoggerProxy } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
-import type { DeleteResult } from 'typeorm';
+import type { DeleteResult } from '@n8n/typeorm';
 import type {
 	EventMessageTypes,
 	EventNamesTypes,

@@ -1,5 +1,5 @@
-import type { FindManyOptions, UpdateResult } from 'typeorm';
-import { In } from 'typeorm';
+import type { FindManyOptions, UpdateResult } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import intersection from 'lodash/intersection';
 
 import * as Db from '@/Db';

@@ -8,7 +8,7 @@ import {
 import * as Db from '@/Db';
 import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import type { EventMessageTypes } from '../EventMessageClasses';
-import type { DeleteResult, InsertResult } from 'typeorm';
+import type { DeleteResult, InsertResult } from '@n8n/typeorm';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';

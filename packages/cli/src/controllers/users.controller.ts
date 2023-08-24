@@ -1,6 +1,6 @@
 import validator from 'validator';
-import type { FindManyOptions } from 'typeorm';
-import { In, Not } from 'typeorm';
+import type { FindManyOptions } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';

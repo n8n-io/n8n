@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import { idStringifier } from '../utils/transformers';
 import { ExecutionEntity } from './ExecutionEntity';
 import { jsonColumnType } from './AbstractEntity';

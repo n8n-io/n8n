@@ -1,8 +1,8 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
 import { LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
-import type { FindOperator } from 'typeorm';
-import { In } from 'typeorm';
+import type { FindOperator } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';

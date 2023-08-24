@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryColumn, Unique } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn, Unique } from '@n8n/typeorm';
 import { IsString, Length } from 'class-validator';
 
 import type { User } from './User';

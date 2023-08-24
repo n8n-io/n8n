@@ -6,8 +6,13 @@ import {
 	LoggerProxy,
 	Workflow,
 } from 'n8n-workflow';
-import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
-import { In, Like } from 'typeorm';
+import type {
+	FindManyOptions,
+	FindOptionsSelect,
+	FindOptionsWhere,
+	UpdateResult,
+} from '@n8n/typeorm';
+import { In, Like } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';

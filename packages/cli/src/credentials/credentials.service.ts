@@ -8,8 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
-import { In, Like } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import { In, Like } from '@n8n/typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';

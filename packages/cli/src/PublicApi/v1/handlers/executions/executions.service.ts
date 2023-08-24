@@ -1,5 +1,5 @@
-import type { DeleteResult, FindOptionsWhere } from 'typeorm';
-import { In, Not, Raw, LessThan } from 'typeorm';
+import type { DeleteResult, FindOptionsWhere } from '@n8n/typeorm';
+import { In, Not, Raw, LessThan } from '@n8n/typeorm';
 import { Container } from 'typedi';
 import type { ExecutionStatus } from 'n8n-workflow';
 

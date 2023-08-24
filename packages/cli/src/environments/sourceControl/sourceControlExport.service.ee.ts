@@ -23,7 +23,7 @@ import {
 	stringContainsExpression,
 } from './sourceControlHelper.ee';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service';
 import { TagRepository } from '@/databases/repositories';

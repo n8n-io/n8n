@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
 import { Container } from 'typedi';
-import { Like } from 'typeorm';
+import { Like } from '@n8n/typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { ICredentialsDb, IExecutionDb, IWorkflowDb } from '@/Interfaces';

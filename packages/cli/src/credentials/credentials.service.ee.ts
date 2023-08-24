@@ -1,5 +1,5 @@
-import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
-import { In, Not } from 'typeorm';
+import type { DeleteResult, EntityManager, FindOptionsWhere } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';

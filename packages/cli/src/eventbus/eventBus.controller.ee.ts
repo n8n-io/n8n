@@ -18,7 +18,7 @@ import type {
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { RestController, Get, Post, Delete, Authorized } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
-import type { DeleteResult } from 'typeorm';
+import type { DeleteResult } from '@n8n/typeorm';
 import { AuthenticatedRequest } from '@/requests';
 import { logStreamingLicensedMiddleware } from './middleware/logStreamingEnabled.middleware.ee';
 

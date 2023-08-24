@@ -3,18 +3,15 @@ import { Service } from 'typedi';
 import { validateEntity } from '@/GenericHelpers';
 import type { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfaces';
 import type { TagEntity } from '@/databases/entities/TagEntity';
-import type { EntityManager, FindManyOptions, FindOneOptions } from 'typeorm';
-import type { UpsertOptions } from 'typeorm/repository/UpsertOptions';
+import type { EntityManager, FindManyOptions, FindOneOptions } from '@n8n/typeorm';
+import type { UpsertOptions } from '@n8n/typeorm/repository/UpsertOptions';
 import { ExternalHooks } from '@/ExternalHooks';
 
 type GetAllResult<T> = T extends { withUsageCount: true } ? ITagWithCountDb[] : TagEntity[];
 
 @Service()
 export class TagService {
-	constructor(
-		private externalHooks: ExternalHooks,
-		private tagRepository: TagRepository,
-	) {}
+	constructor(private externalHooks: ExternalHooks, private tagRepository: TagRepository) {}
 
 	toEntity(attrs: { name: string; id?: string }) {
 		attrs.name = attrs.name.trim();

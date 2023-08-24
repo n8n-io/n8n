@@ -31,7 +31,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { WorkflowExecute } from 'n8n-core';
 
 import type PCancelable from 'p-cancelable';
-import type { FindOperator, Repository } from 'typeorm';
+import type { FindOperator, Repository } from '@n8n/typeorm';
 
 import type { ChildProcess } from 'child_process';
 
