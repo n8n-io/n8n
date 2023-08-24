@@ -1148,12 +1148,12 @@ export default defineComponent({
 	}
 
 	&.rect-input-endpoint-hover {
-		rect {
-			stroke: var(--color-primary);
+		.add-input-endpoint-plus-rectangle {
+			stroke: var(--svg-color, var(--color-primary));
 		}
 
-		path {
-			fill: var(--color-primary);
+		.add-input-endpoint-plus-icon {
+			fill: var(--svg-color, var(--color-primary));
 		}
 	}
 
@@ -1172,7 +1172,8 @@ export default defineComponent({
 
 		&.rect-input-endpoint-hover {
 			.add-input-endpoint-connected-rectangle {
-				fill: var(--color-primary);
+				fill: var(--svg-color, var(--color-primary));
+				stroke: var(--svg-color, var(--color-primary));
 			}
 		}
 	}
