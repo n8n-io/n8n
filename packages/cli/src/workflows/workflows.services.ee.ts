@@ -103,10 +103,10 @@ export class EEWorkflowsService extends WorkflowsService {
 
 	static async addCredentialsToWorkflow(
 		workflow: WorkflowWithSharingsAndCredentials,
-		currentUser: User,
+		user: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await EECredentials.getAll(currentUser, { disableGlobalRole: true });
+		const userCredentials = await EECredentials.getAll(user, { disableGlobalRole: true });
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -137,8 +137,8 @@ export class EEWorkflowsService extends WorkflowsService {
 				sharedWith: [],
 				ownedBy: null,
 			};
-			credential.shared?.forEach(({ user, role }) => {
-				const { id, email, firstName, lastName } = user;
+			credential.shared?.forEach(({ user: u, role }) => {
+				const { id, email, firstName, lastName } = u;
 				if (role.name === 'owner') {
 					workflowCredential.ownedBy = { id, email, firstName, lastName };
 				} else {

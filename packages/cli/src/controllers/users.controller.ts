@@ -13,7 +13,6 @@ import {
 	hashPassword,
 	isEmailSetUp,
 	validatePassword,
-	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import {
@@ -361,7 +360,7 @@ export class UsersController {
 		]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return withFeatureFlags(this.postHog, this.userService.toPublic(updatedUser));
+		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
 	}
 
 	@Authorized('any')
@@ -399,9 +398,11 @@ export class UsersController {
 
 		const users = await this.userService.findMany(findManyOptions);
 
-		const publicUsers = users.map((user) => {
-			return this.userService.toPublic(user, { withInviteUrl: true });
-		});
+		const publicUsers = await Promise.all(
+			users.map(async (user) => {
+				return this.userService.toPublic(user, { withInviteUrl: true });
+			}),
+		);
 
 		if (listQueryOptions?.select !== undefined) {
 			return publicUsers.map(({ isOwner, isPending, signInType, ...rest }) => {

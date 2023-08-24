@@ -764,9 +764,6 @@ export interface PublicUser {
 	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
 	isOwner?: boolean;
-}
-
-export interface CurrentUser extends PublicUser {
 	featureFlags?: FeatureFlags;
 }
 

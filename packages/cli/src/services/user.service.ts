@@ -6,6 +6,7 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
+import type { PostHogClient } from '@/posthog';
 
 @Service()
 export class UserService {
@@ -61,14 +62,18 @@ export class UserService {
 		return url.toString();
 	}
 
-	toPublic(user: User, { withInviteUrl } = { withInviteUrl: false }) {
+	async toPublic(user: User, options?: { withInviteUrl?: boolean; posthog?: PostHogClient }) {
 		const { password, updatedAt, apiKey, authIdentities, personalizationAnswers, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
-		const publicUser: PublicUser = { ...rest, signInType: ldapIdentity ? 'ldap' : 'email' };
+		let publicUser: PublicUser = { ...rest, signInType: ldapIdentity ? 'ldap' : 'email' };
 
-		return withInviteUrl ? this.addInviteUrl(publicUser, user.id) : publicUser;
+		if (options?.withInviteUrl) publicUser = this.addInviteUrl(publicUser, user.id);
+
+		if (options?.posthog) publicUser = await this.addFeatureFlags(publicUser, options.posthog);
+
+		return publicUser;
 	}
 
 	private addInviteUrl(user: PublicUser, inviterId: string) {
@@ -82,5 +87,22 @@ export class UserService {
 		user.inviteAcceptUrl = url.toString();
 
 		return user;
+	}
+
+	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
+		// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
+		// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
+		const timeoutPromise = new Promise<PublicUser>((resolve) => {
+			setTimeout(() => {
+				resolve(publicUser);
+			}, 1500);
+		});
+
+		const fetchPromise = new Promise<PublicUser>(async (resolve) => {
+			publicUser.featureFlags = await posthog.getFeatureFlags(publicUser);
+			resolve(publicUser);
+		});
+
+		return Promise.race([fetchPromise, timeoutPromise]);
 	}
 }
