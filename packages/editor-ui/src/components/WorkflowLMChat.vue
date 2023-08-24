@@ -230,8 +230,7 @@ export default defineComponent({
 					clearInterval(waitInterval)
 
 					const lastNodeExecuted = this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
-					// TODO: Gross hack to get the response message
-					let responseMessage = (get(this.workflowsStore.getWorkflowExecution?.data?.resultData.runData, `[${lastNodeExecuted}][0].data.main[0][0].json.output`) ?? get(this.workflowsStore.getWorkflowExecution?.data?.resultData.runData, `[${lastNodeExecuted}][0].data.main[0][0].json.response`)) as string | undefined;
+					let responseMessage = get(this.workflowsStore.getWorkflowExecution?.data?.resultData.runData, `[${lastNodeExecuted}][0].data.main[0][0].json.output`) as string | undefined;
 
 					if (!responseMessage) {
 						responseMessage = '<NO RESPONSE FOUND>';

@@ -82,9 +82,6 @@ export class DocumentJSONInputLoader implements INodeType {
 			docs.push(...loadedDoc)
 		}
 
-		console.log('Loaded Document:', docs.length);
-		// this.addOutputData('document', [[{ json: { document: docs } }]]);
-		console.log('Output Data:', docs);
 		// Only pass it through?
 		return this.prepareOutputData(items);
 	}
