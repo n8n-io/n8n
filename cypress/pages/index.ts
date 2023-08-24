@@ -8,3 +8,4 @@ export * from './settings-log-streaming';
 export * from './sidebar';
 export * from './ndv';
 export * from './bannerStack';
+export * from './signin';

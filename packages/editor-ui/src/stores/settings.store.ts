@@ -60,6 +60,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			loginLabel: '',
 			loginEnabled: false,
 		},
+		mfa: {
+			enabled: false,
+		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
@@ -132,6 +135,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		isTelemetryEnabled(): boolean {
 			return this.settings.telemetry && this.settings.telemetry.enabled;
+		},
+		isMfaFeatureEnabled(): boolean {
+			return this.settings?.mfa?.enabled;
 		},
 		areTagsEnabled(): boolean {
 			return this.settings.workflowTagsDisabled !== undefined
@@ -354,3 +360,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 	},
 });
+
+export { useUsersStore };

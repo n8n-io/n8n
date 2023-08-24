@@ -88,6 +88,7 @@ import {
 	AuthController,
 	LdapController,
 	MeController,
+	MFAController,
 	NodesController,
 	NodeTypesController,
 	OwnerController,
@@ -167,6 +168,9 @@ import { SourceControlService } from '@/environments/sourceControl/sourceControl
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { TOTPService } from './Mfa/totp.service';
+import { MfaService } from './Mfa/mfa.service';
+import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 
 const exec = promisify(callbackExec);
 
@@ -312,6 +316,9 @@ export class Server extends AbstractServer {
 				auditLogs: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
+			},
+			mfa: {
+				enabled: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -471,6 +478,9 @@ export class Server extends AbstractServer {
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
 		}
+
+		this.frontendSettings.mfa.enabled = isMfaFeatureEnabled();
+
 		return this.frontendSettings;
 	}
 
@@ -479,31 +489,19 @@ export class Server extends AbstractServer {
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
+		const encryptionKey = await UserSettings.getEncryptionKey();
+
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const postHog = this.postHog;
+		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 		const controllers: object[] = [
 			new EventBusController(),
-			new AuthController({
-				config,
-				internalHooks,
-				repositories,
-				logger,
-				postHog,
-			}),
-			new OwnerController({
-				config,
-				internalHooks,
-				repositories,
-				logger,
-			}),
-			new MeController({
-				externalHooks,
-				internalHooks,
-				logger,
-			}),
+			new AuthController({ config, internalHooks, logger, postHog, mfaService }),
+			new OwnerController({ config, internalHooks, repositories, logger, postHog }),
+			new MeController({ externalHooks, internalHooks, logger }),
 			new NodeTypesController({ config, nodeTypes }),
 			new PasswordResetController({
 				config,
@@ -511,6 +509,7 @@ export class Server extends AbstractServer {
 				internalHooks,
 				mailer,
 				logger,
+				mfaService,
 			}),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
@@ -544,6 +543,10 @@ export class Server extends AbstractServer {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { E2EController } = await import('./controllers/e2e.controller');
 			controllers.push(Container.get(E2EController));
+		}
+
+		if (isMfaFeatureEnabled()) {
+			controllers.push(new MFAController(mfaService));
 		}
 
 		controllers.forEach((controller) => registerController(app, config, controller));
@@ -622,6 +625,8 @@ export class Server extends AbstractServer {
 		}
 
 		await handleLdapInit();
+
+		await handleMfaDisable();
 
 		await this.registerControllers(ignoredEndpoints);
 
