@@ -30,14 +30,14 @@ export const description: INodeProperties[] = [
 				action: 'Create a task log',
 			},
 			{
+				name: 'Delete',
+				value: 'deleteLog',
+				action: 'Delete task log',
+			},
+			{
 				name: 'Delete Attachment',
 				value: 'deleteAttachment',
 				action: 'Delete attachment from a task log',
-			},
-			{
-				name: 'Delete Task Log',
-				value: 'deleteLog',
-				action: 'Delete task log',
 			},
 			{
 				name: 'Execute Responder',

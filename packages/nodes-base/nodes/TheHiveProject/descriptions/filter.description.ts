@@ -185,12 +185,12 @@ export const genericFiltersCollection: INodeProperties = {
 						{
 							name: 'Greater Than',
 							value: '_gt',
-							description: 'Field greater than value',
+							description: 'Field is greater than value',
 						},
 						{
 							name: 'Greater Than Or Equal',
 							value: '_gte',
-							description: 'Field greater than or equal to value',
+							description: 'Field is greater than or equal to value',
 						},
 						{
 							name: 'In',
@@ -200,12 +200,12 @@ export const genericFiltersCollection: INodeProperties = {
 						{
 							name: 'Less Than',
 							value: '_lt',
-							description: 'Field less than value',
+							description: 'Field is less than value',
 						},
 						{
 							name: 'Less Than Or Equal',
 							value: '_lte',
-							description: 'Field less than or equal to value',
+							description: 'Field is less than or equal to value',
 						},
 						{
 							name: 'Like',
@@ -213,7 +213,7 @@ export const genericFiltersCollection: INodeProperties = {
 							description: 'Field contains the substring from value',
 						},
 						{
-							name: 'Match',
+							name: 'Match Word',
 							value: '_match',
 							description: 'Field contains the value as a word',
 						},
@@ -246,6 +246,7 @@ export const genericFiltersCollection: INodeProperties = {
 					name: 'values',
 					type: 'string',
 					default: '',
+					description: 'Comma-separated list of values',
 					placeholder: 'e.g. value1,value2',
 					displayOptions: {
 						show: {
