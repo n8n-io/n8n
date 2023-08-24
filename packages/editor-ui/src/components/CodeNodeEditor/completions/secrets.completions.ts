@@ -45,8 +45,6 @@ export const secretsCompletions = (Vue as CodeNodeEditorMixin).extend({
 				}));
 			}
 
-			console.log({ options });
-
 			return {
 				from: preCursor.from,
 				options: options.map(addVarType),
