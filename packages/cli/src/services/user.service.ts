@@ -51,10 +51,11 @@ export class UserService {
 		return this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
 	}
 
-	generatePasswordResetUrl(instanceBaseUrl: string, token: string) {
+	generatePasswordResetUrl(instanceBaseUrl: string, token: string, mfaEnabled: boolean) {
 		const url = new URL(`${instanceBaseUrl}/change-password`);
 
 		url.searchParams.append('token', token);
+		url.searchParams.append('mfaEnabled', mfaEnabled.toString());
 
 		return url.toString();
 	}
