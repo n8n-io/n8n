@@ -37,6 +37,7 @@ declare global {
 				options?: { abs?: boolean; index?: number; realMouse?: boolean },
 			): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
+			generateToken(mfaSecret: string): Chainable<string>;
 		}
 	}
 }

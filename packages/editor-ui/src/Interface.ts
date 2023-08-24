@@ -30,10 +30,10 @@ import type {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
+	IN8nUISettings,
 	BannerName,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
@@ -583,9 +583,12 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
+	hasRecoveryCodesLeft: boolean;
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
+	createdAt?: string;
+	mfaEnabled: boolean;
 }
 
 export interface IVersionNotificationSettings {
@@ -1141,6 +1144,9 @@ export interface ISettingsState {
 	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
+	};
+	mfa: {
+		enabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
