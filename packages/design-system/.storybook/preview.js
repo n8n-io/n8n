@@ -62,7 +62,7 @@ export const parameters = {
 	},
 	options: {
 		storySort: {
-			order: ['Docs', 'Styleguide', 'Atoms', 'Modules'],
+			order: ['Docs', 'Styleguide', ['Colors Primitives', 'Colors Tokens', 'Font', 'Spacing', 'Border'], 'Atoms', 'Modules'],
 		},
 	},
 };
