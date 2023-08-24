@@ -68,7 +68,11 @@ export class UserService {
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 
-		let publicUser: PublicUser = { ...rest, signInType: ldapIdentity ? 'ldap' : 'email' };
+		let publicUser: PublicUser = {
+			...rest,
+			signInType: ldapIdentity ? 'ldap' : 'email',
+			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
+		};
 
 		if (options?.withInviteUrl && publicUser.isPending) {
 			publicUser = this.addInviteUrl(publicUser, user.id);
