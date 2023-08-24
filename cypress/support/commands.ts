@@ -1,6 +1,7 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
 import { BACKEND_BASE_URL, N8N_AUTH_COOKIE } from '../constants';
+import generateOTPToken from 'cypress-otp';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -41,14 +42,13 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	Cypress.session.clearAllSavedSessions();
-	cy.session(
-		[email, password],
-		() => cy.request('POST', `${BACKEND_BASE_URL}/rest/login`, { email, password }),
-		{
-			validate() {
-				cy.getCookie(N8N_AUTH_COOKIE).should('exist');
-			},
-		},
+	cy.session([email, password], () =>
+		cy.request({
+			method: 'POST',
+			url: `${BACKEND_BASE_URL}/rest/login`,
+			body: { email, password },
+			failOnStatusCode: false,
+		}),
 	);
 });
 
@@ -161,4 +161,8 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).realMouseUp();
 			}
 		});
+});
+
+Cypress.Commands.add('generateToken', (secret: string) => {
+	return generateOTPToken(secret);
 });
