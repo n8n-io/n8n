@@ -5,11 +5,13 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import * as externalSecretsApi from '@/api/externalSecrets.ee';
 import { connectProvider } from '@/api/externalSecrets.ee';
+import { useUsersStore } from '@/stores/users.store';
 import type { ExternalSecretsProvider } from '@/Interface';
 
 export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
 
 	const state = reactive({
 		providers: [] as ExternalSecretsProvider[],
@@ -62,7 +64,13 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	});
 
 	async function fetchAllSecrets() {
-		state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
+		if (usersStore.isInstanceOwner) {
+			try {
+				state.secrets = await externalSecretsApi.getExternalSecrets(rootStore.getRestApiContext);
+			} catch (error) {
+				state.secrets = {};
+			}
+		}
 	}
 
 	async function reloadProvider(id: string) {
@@ -137,6 +145,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 	}
 
 	return {
+		state,
 		providers,
 		secrets,
 		connectionState,
