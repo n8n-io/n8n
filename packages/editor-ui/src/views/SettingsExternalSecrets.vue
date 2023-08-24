@@ -19,8 +19,12 @@ const sortedProviders = computed(() => {
 });
 
 onMounted(() => {
-	void externalSecretsStore.fetchAllSecrets();
-	void externalSecretsStore.getProviders();
+	try {
+		void externalSecretsStore.fetchAllSecrets();
+		void externalSecretsStore.getProviders();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('error'));
+	}
 });
 
 function goToUpgrade() {
