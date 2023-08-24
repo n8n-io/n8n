@@ -16,6 +16,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
+import { EndpointType } from '@/Interface';
 
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 	type: 'N8nAddInput',
@@ -206,7 +207,7 @@ export const nodeBase = defineComponent({
 					outputsOfSameType.length,
 				)[typeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(outputName);
+				const scope = NodeViewUtils.getEndpointScope(outputName as EndpointType);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),

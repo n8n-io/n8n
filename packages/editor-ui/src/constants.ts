@@ -1,4 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
+import { EndpointType } from './Interface';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -85,6 +86,17 @@ export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
 export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger';
 
+// Node endpoint types
+export const SCOPED_ENDPOINT_TYPES = [
+	EndpointType.Tool,
+	EndpointType.Memory,
+	EndpointType.LanguageModel,
+	EndpointType.VectorRetriever,
+	EndpointType.Embedding,
+	EndpointType.Document,
+	EndpointType.TextSplitter,
+];
+
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
@@ -154,10 +166,7 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	NODE_TRIGGER_CHAT_BUTTON,
 ];
 
-export const NODES_USING_CODE_NODE_EDITOR = [
-	CODE_NODE_TYPE,
-	'@n8n/nodes-langchain.dynamicTool',
-];
+export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, '@n8n/nodes-langchain.dynamicTool'];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
