@@ -4,7 +4,7 @@ import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
 import config from '@/config';
 import type { PublicUser } from '@/Interfaces';
 import * as Db from '@/Db';
-import { createIncidentLog } from '@/lib/incidentLogger';
+import { createIncidentLog, generateCreateCustomTicketSubjectFn } from '@/lib/incidentLogger';
 
 const logWorkflowFailureScheduleOrNocoDBAuthWebhook = async ({
 	properties,
@@ -23,27 +23,13 @@ const logWorkflowFailureScheduleOrNocoDBAuthWebhook = async ({
 	});
 	if (!workflow) return;
 
-	const isScheduleTriggerOrNocoDBAuthWebhook = workflow.nodes.some((node) => {
-		if (node.name === 'Schedule Trigger') {
-			return true;
-		}
-		if (node.name === 'Webhook' && node.parameters.authentication === 'nocoDBWebhookAuth') {
-			return true;
-		}
-		return false;
-	});
-
 	await createIncidentLog(
 		{
 			errorMessage: properties.error_message as string,
 			incidentTime: new Date(),
 		},
 		{ ...properties },
-		(defaultTitle) => {
-			return isScheduleTriggerOrNocoDBAuthWebhook
-				? `System triggered - ${defaultTitle}`
-				: defaultTitle;
-		},
+		generateCreateCustomTicketSubjectFn(workflow.nodes),
 	);
 };
 
