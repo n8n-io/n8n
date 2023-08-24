@@ -3,6 +3,7 @@ import { INSTANCE_OWNER, BACKEND_BASE_URL } from '../constants';
 import { SigninPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 import { MfaLoginPage } from '../pages/mfa-login';
+import generateOTPToken from 'cypress-otp';
 
 const MFA_SECRET = 'KVKFKRCPNZQUYMLXOVYDSQKJKZDTSRLD';
 
@@ -41,10 +42,9 @@ describe('Two-factor authentication', () => {
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		cy.generateToken(user.mfaSecret).then((token) => {
-			mfaLoginPage.actions.loginWithMfaToken(email, password, token);
-			mainSidebar.actions.signout();
-		});
+		const token = generateOTPToken(user.mfaSecret)
+		mfaLoginPage.actions.loginWithMfaToken(email, password, token);
+		mainSidebar.actions.signout();
 	});
 
 	it('Should be able to login with recovery code', () => {
@@ -61,10 +61,9 @@ describe('Two-factor authentication', () => {
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		cy.generateToken(user.mfaSecret).then((token) => {
-			mfaLoginPage.actions.loginWithMfaToken(email, password, token);
-			personalSettingsPage.actions.disableMfa();
-			mainSidebar.actions.signout();
-		});
+		const token = generateOTPToken(user.mfaSecret)
+		mfaLoginPage.actions.loginWithMfaToken(email, password, token);
+		personalSettingsPage.actions.disableMfa();
+		mainSidebar.actions.signout();
 	});
 });

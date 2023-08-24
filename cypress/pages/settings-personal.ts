@@ -1,6 +1,7 @@
 import { ChangePasswordModal } from './modals/change-password-modal';
 import { MfaSetupModal } from './modals/mfa-setup-modal';
 import { BasePage } from './base';
+import generateOTPToken from 'cypress-otp';
 
 const changePasswordModal = new ChangePasswordModal();
 const mfaSetupModal = new MfaSetupModal();
@@ -61,11 +62,11 @@ export class PersonalSettingsPage extends BasePage {
 			this.getters.enableMfaButton().click();
 			mfaSetupModal.getters.copySecretToClipboardButton().realClick();
 			cy.readClipboard().then((secret) => {
-				cy.generateToken(secret).then((token) => {
-					mfaSetupModal.getters.tokenInput().type(token);
-					mfaSetupModal.getters.downloadRecoveryCodesButton().click();
-					mfaSetupModal.getters.saveButton().click();
-				});
+				const token = generateOTPToken(secret)
+
+				mfaSetupModal.getters.tokenInput().type(token);
+				mfaSetupModal.getters.downloadRecoveryCodesButton().click();
+				mfaSetupModal.getters.saveButton().click();
 			});
 		},
 		disableMfa: () => {
