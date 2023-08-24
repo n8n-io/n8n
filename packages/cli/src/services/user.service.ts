@@ -69,16 +69,18 @@ export class UserService {
 
 		let publicUser: PublicUser = { ...rest, signInType: ldapIdentity ? 'ldap' : 'email' };
 
-		if (options?.withInviteUrl) publicUser = this.addInviteUrl(publicUser, user.id);
+		if (options?.withInviteUrl && publicUser.isPending) {
+			publicUser = this.addInviteUrl(publicUser, user.id);
+		}
 
-		if (options?.posthog) publicUser = await this.addFeatureFlags(publicUser, options.posthog);
+		if (options?.posthog) {
+			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
+		}
 
 		return publicUser;
 	}
 
 	private addInviteUrl(user: PublicUser, inviterId: string) {
-		if (!user.isPending) return user;
-
 		const url = new URL(getInstanceBaseUrl());
 		url.pathname = '/signup';
 		url.searchParams.set('inviterId', inviterId);
