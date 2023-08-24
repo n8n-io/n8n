@@ -38,6 +38,7 @@ import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
+import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -67,6 +68,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		isInstanceOwner(): boolean {
 			return isInstanceOwner(this.currentUser);
+		},
+		mfaEnabled(): boolean {
+			return this.currentUser?.mfaEnabled ?? false;
 		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
@@ -167,7 +171,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 
 			usePostHog().init(user.featureFlags);
 		},
-		async loginWithCreds(params: { email: string; password: string }): Promise<void> {
+		async loginWithCreds(params: {
+			email: string;
+			password: string;
+			mfaToken?: string;
+			mfaRecoveryCode?: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await login(rootStore.getRestApiContext, params);
 			if (!user) {
@@ -233,7 +242,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await validatePasswordToken(rootStore.getRestApiContext, params);
 		},
-		async changePassword(params: { token: string; password: string }): Promise<void> {
+		async changePassword(params: {
+			token: string;
+			password: string;
+			mfaToken?: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
 		},
@@ -324,6 +337,32 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				const uiStore = useUIStore();
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
+			}
+		},
+		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
+			const rootStore = useRootStore();
+			return getMfaQR(rootStore.getRestApiContext);
+		},
+		async verifyMfaToken(data: { token: string }): Promise<void> {
+			const rootStore = useRootStore();
+			return verifyMfaToken(rootStore.getRestApiContext, data);
+		},
+		async enableMfa(data: { token: string }) {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await enableMfa(rootStore.getRestApiContext, data);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = true;
+			}
+		},
+		async disabledMfa() {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await disableMfa(rootStore.getRestApiContext);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = false;
 			}
 		},
 	},
