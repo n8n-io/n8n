@@ -720,7 +720,7 @@ export async function proxyRequestToAxios(
 					error: responseData,
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
-			} else if (error instanceof Error && error.message.includes('SSL routines')) {
+			} else if ('rejectUnauthorized' in configObject && error.code?.includes('CERT')) {
 				throw new NodeSSLError(error);
 			}
 		}

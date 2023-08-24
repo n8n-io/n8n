@@ -1,6 +1,8 @@
 import { BasePage } from '../base';
 import { WorkflowsPage } from '../workflows';
 
+const workflowsPage = new WorkflowsPage();
+
 export class MainSidebar extends BasePage {
 	getters = {
 		menuItem: (menuLabel: string) =>
@@ -25,7 +27,7 @@ export class MainSidebar extends BasePage {
 			this.getters.credentials().click();
 		},
 		openUserMenu: () => {
-			this.getters.userMenu().find('[role="button"]').last().click();
+			this.getters.userMenu().click();
 		},
 		openUserMenu: () => {
 			this.getters.userMenu().click();

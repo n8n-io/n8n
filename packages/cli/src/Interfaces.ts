@@ -758,6 +758,7 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	hasRecoveryCodesLeft: boolean;
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;

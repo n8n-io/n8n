@@ -133,6 +133,7 @@ import {
 	faStickyNote as faSolidStickyNote,
 	faUserLock,
 	faGem,
+	faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable, faXmark } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -278,6 +279,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faUserLock);
 		addIcon(faGem);
 		addIcon(faXmark);
+		addIcon(faDownload);
 
 		app.component('font-awesome-icon', FontAwesomeIcon);
 	},
