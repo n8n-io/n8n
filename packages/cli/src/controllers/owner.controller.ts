@@ -4,7 +4,6 @@ import { Authorized, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
 import {
 	hashPassword,
-	sanitizeUser,
 	validatePassword,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
@@ -131,7 +130,7 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return withFeatureFlags(this.postHog, sanitizeUser(owner));
+		return withFeatureFlags(this.postHog, this.userService.toPublic(owner));
 	}
 
 	@Post('/dismiss-banner')

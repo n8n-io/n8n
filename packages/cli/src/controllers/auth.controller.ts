@@ -8,7 +8,7 @@ import {
 	InternalServerError,
 	UnauthorizedError,
 } from '@/ResponseHelper';
-import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
+import { withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
@@ -100,7 +100,8 @@ export class AuthController {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
-			return withFeatureFlags(this.postHog, sanitizeUser(user));
+
+			return withFeatureFlags(this.postHog, this.userService.toPublic(user));
 		}
 		void Container.get(InternalHooks).onUserLoginFailed({
 			user: email,
@@ -125,7 +126,7 @@ export class AuthController {
 			try {
 				user = await resolveJwt(cookieContents);
 
-				return await withFeatureFlags(this.postHog, sanitizeUser(user));
+				return await withFeatureFlags(this.postHog, this.userService.toPublic(user));
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -148,7 +149,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return withFeatureFlags(this.postHog, sanitizeUser(user));
+		return withFeatureFlags(this.postHog, this.userService.toPublic(user));
 	}
 
 	/**

@@ -4,6 +4,8 @@ import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import type { PublicUser } from '@/Interfaces';
 
 @Service()
 export class UserService {
@@ -57,5 +59,28 @@ export class UserService {
 		url.searchParams.append('token', token);
 
 		return url.toString();
+	}
+
+	toPublic(user: User, { withInviteUrl } = { withInviteUrl: false }) {
+		const { password, updatedAt, apiKey, authIdentities, personalizationAnswers, ...rest } = user;
+
+		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+
+		const publicUser: PublicUser = { ...rest, signInType: ldapIdentity ? 'ldap' : 'email' };
+
+		return withInviteUrl ? this.addInviteUrl(publicUser, user.id) : publicUser;
+	}
+
+	private addInviteUrl(user: PublicUser, inviterId: string) {
+		if (!user.isPending) return user;
+
+		const url = new URL(getInstanceBaseUrl());
+		url.pathname = '/signup';
+		url.searchParams.set('inviterId', inviterId);
+		url.searchParams.set('inviteeId', user.id);
+
+		user.inviteAcceptUrl = url.toString();
+
+		return user;
 	}
 }

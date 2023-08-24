@@ -5,16 +5,7 @@ export class UserSelect {
 	fields: string[];
 
 	static get selectableFields() {
-		return new Set([
-			'id', // always included downstream
-			'email',
-			'isOwner',
-			'firstName',
-			'lastName',
-			'settings',
-			'disabled',
-			'globalRole', // non-entity field
-		]);
+		return new Set(['id', 'email', 'firstName', 'lastName']);
 	}
 
 	static fromString(rawFilter: string) {

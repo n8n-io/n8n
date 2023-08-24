@@ -4,7 +4,7 @@ import { Container } from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
+import type { CurrentUser, WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import config from '@/config';
@@ -84,28 +84,6 @@ export function validatePassword(password?: string): string {
 	return password;
 }
 
-/**
- * Remove sensitive properties from the user to return to the client.
- */
-export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
-	if (withoutKeys) {
-		withoutKeys.forEach((key) => {
-			// @ts-ignore
-			delete rest[key];
-		});
-	}
-	const sanitizedUser: PublicUser = {
-		...rest,
-		signInType: 'email',
-	};
-	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
-	if (ldapIdentity) {
-		sanitizedUser.signInType = 'ldap';
-	}
-	return sanitizedUser;
-}
-
 export async function withFeatureFlags(
 	postHog: PostHogClient | undefined,
 	user: CurrentUser,
@@ -128,13 +106,6 @@ export async function withFeatureFlags(
 	});
 
 	return Promise.race([fetchPromise, timeoutPromise]);
-}
-
-export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
-	if (user.isPending) {
-		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
-	}
-	return user;
 }
 
 export async function getUserById(userId: string): Promise<User> {

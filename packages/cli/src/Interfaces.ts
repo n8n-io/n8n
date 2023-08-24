@@ -763,6 +763,7 @@ export interface PublicUser {
 	disabled: boolean;
 	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
+	isOwner?: boolean;
 }
 
 export interface CurrentUser extends PublicUser {

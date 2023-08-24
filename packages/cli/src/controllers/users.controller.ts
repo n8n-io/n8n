@@ -1,6 +1,6 @@
 import validator from 'validator';
 import type { FindManyOptions } from 'typeorm';
-import { In } from 'typeorm';
+import { In, Not } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
@@ -8,12 +8,10 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
-	addInviteLinkToUser,
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	sanitizeUser,
 	validatePassword,
 	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
@@ -29,11 +27,11 @@ import type { Config } from '@/config';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type {
-	PublicUser,
 	IDatabaseCollections,
 	IExternalHooksClass,
 	IInternalHooksClass,
 	ITelemetryUserDeletionData,
+	PublicUser,
 } from '@/Interfaces';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
@@ -357,10 +355,13 @@ export class UsersController {
 			was_disabled_ldap_user: false,
 		});
 
-		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
+		await this.externalHooks.run('user.profile.update', [
+			invitee.email,
+			this.userService.toPublic(invitee),
+		]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
+		return withFeatureFlags(this.postHog, this.userService.toPublic(updatedUser));
 	}
 
 	@Authorized('any')
@@ -368,30 +369,45 @@ export class UsersController {
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
-		let findManyOptions: FindManyOptions<User> = {};
+		const findManyOptions: FindManyOptions<User> = {};
 
 		if (!listQueryOptions) {
 			findManyOptions.relations = ['globalRole', 'authIdentities'];
 		} else {
-			findManyOptions = listQueryOptions;
+			if (listQueryOptions.filter) findManyOptions.where = listQueryOptions.filter;
+			if (listQueryOptions.select) findManyOptions.select = listQueryOptions.select;
+			if (listQueryOptions.take) findManyOptions.take = listQueryOptions.take;
+			if (listQueryOptions.skip) findManyOptions.skip = listQueryOptions.skip;
 
-			if (listQueryOptions?.select?.globalRole) {
-				delete listQueryOptions?.select?.globalRole; // non-entity field
-				findManyOptions.relations = ['globalRole', 'authIdentities'];
+			if (listQueryOptions?.filter?.isOwner !== undefined) {
+				findManyOptions.relations = ['globalRole'];
+
+				const { isOwner } = listQueryOptions.filter;
+
+				delete listQueryOptions.filter.isOwner; // remove computed field
+
+				const ownerRole = await this.roleService.findGlobalOwnerRole();
+
+				findManyOptions.where = {
+					...findManyOptions.where,
+					globalRole: { id: isOwner ? ownerRole.id : Not(ownerRole.id) },
+				};
 			}
 		}
 
 		const users = await this.userService.findMany(findManyOptions);
 
-		// @TODO: Handle filter for computed properties, e.g. isOwner, isPending
-		// @TODO: Refactor generation of public user into service
-		// @TODO: Add and handle signInType added during public user generation
-		// @TODO: Tests
+		const publicUsers = users.map((user) => {
+			return this.userService.toPublic(user, { withInviteUrl: true });
+		});
 
-		return users.map(
-			(user): PublicUser =>
-				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
-		);
+		if (listQueryOptions?.select !== undefined) {
+			return publicUsers.map(({ isOwner, isPending, signInType, ...rest }) => {
+				return rest as PublicUser; // remove unselectable non-entity fields
+			});
+		}
+
+		return publicUsers;
 	}
 
 	@Authorized(['global', 'owner'])
@@ -552,7 +568,7 @@ export class UsersController {
 				telemetryData,
 				publicApi: false,
 			});
-			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+			await this.externalHooks.run('user.deleted', [this.userService.toPublic(userToDelete)]);
 			return { success: true };
 		}
 
@@ -590,7 +606,7 @@ export class UsersController {
 			publicApi: false,
 		});
 
-		await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+		await this.externalHooks.run('user.deleted', [this.userService.toPublic(userToDelete)]);
 		return { success: true };
 	}
 
