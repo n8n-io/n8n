@@ -1,20 +1,20 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
+import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { logWrapper } from '../../../utils/logWrapper';
-import { OpenAI } from 'langchain';
 
-export class LMOpenAi implements INodeType {
+export class LMChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - OpenAI',
+		displayName: 'LangChain - ChatOpenAI',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'lmOpenAi',
+		name: 'lmChatOpenAi',
 		icon: 'file:openAi.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Language Model OpenAI',
+		description: 'Language Model Chat OpenAI',
 		defaults: {
-			name: 'LangChain - OpenAI',
+			name: 'LangChain - Chat OpenAI',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
@@ -32,59 +32,26 @@ export class LMOpenAi implements INodeType {
 			baseURL: 'https://api.openai.com',
 		},
 		properties: [
+			// TODO: Check if I can get that one automatically
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/v1/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'data',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{ !$responseItem.id.startsWith('audio-') && !$responseItem.id.startsWith('gpt-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.id}}',
-											value: '={{$responseItem.id}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
+				noDataExpression: true,
+				// TODO: Load that list dynamically
+				options: [
+					{
+						name: 'GTP 3.5 Turbo',
+						value: 'gpt-3.5-turbo',
 					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
+					{
+						name: 'DaVinci-003',
+						value: 'text-davinci-003',
 					},
-				},
-				default: 'text-davinci-003',
+				],
+				default: 'gpt-3.5-turbo',
 			},
+
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -161,7 +128,7 @@ export class LMOpenAi implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 
-		const model = new OpenAI({
+		const model = new ChatOpenAI({
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
