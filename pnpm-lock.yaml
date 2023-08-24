@@ -141,8 +141,8 @@ importers:
   packages/@n8n/nodes-langchain:
     dependencies:
       '@huggingface/inference':
-        specifier: '1'
-        version: 1.8.0
+        specifier: 2.6.1
+        version: 2.6.1
       '@pinecone-database/pinecone':
         specifier: ^0.1.6
         version: 0.1.6
@@ -156,8 +156,8 @@ importers:
         specifier: ^5.2.4
         version: 5.2.4
       langchain:
-        specifier: ^0.0.126
-        version: 0.0.126(@huggingface/inference@1.8.0)(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(ignore@5.2.4)
+        specifier: ^0.0.133
+        version: 0.0.133(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(ignore@5.2.4)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -3712,8 +3712,8 @@ packages:
       '@hapi/hoek': 9.3.0
     dev: true
 
-  /@huggingface/inference@1.8.0:
-    resolution: {integrity: sha512-Dkh7PiyMf6TINRocQsdceiR5LcqJiUHgWjaBMRpCUOCbs+GZA122VH9q+wodoSptj6rIQf7wIwtDsof+/gd0WA==}
+  /@huggingface/inference@2.6.1:
+    resolution: {integrity: sha512-qFYchgOCPeEkZJKiSr7Kz62QwukJtgkeQCT7Q0SSKUcvHpTQVNJp6i/JrJMR4dBdzQysJ1SZDC0pLBBnnskTag==}
     engines: {node: '>=18'}
     dev: false
 
@@ -15581,30 +15581,36 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.126(@huggingface/inference@1.8.0)(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(ignore@5.2.4):
-    resolution: {integrity: sha512-Z57WjAwLN+ZbJ9D4h2oTN7iDt1Aa67mcXhKYVCQFRu4w8PIPH5k0VBvmrzKyRj2iFIWdUaqVsHch/jz5+1mGnA==}
+  /langchain@0.0.133(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(ignore@5.2.4):
+    resolution: {integrity: sha512-AVieepmeOso+32+bdGPX02qpHRh3Eff7r+gVe6GkR8KyMsl+FW7JFvXLhBTpO5pdzFQoNL/UtCBQkvHxEdmW3Q==}
     engines: {node: '>=18'}
     peerDependencies:
+      '@aws-crypto/sha256-js': ^5.0.0
       '@aws-sdk/client-dynamodb': ^3.310.0
       '@aws-sdk/client-kendra': ^3.352.0
       '@aws-sdk/client-lambda': ^3.310.0
       '@aws-sdk/client-s3': ^3.310.0
       '@aws-sdk/client-sagemaker-runtime': ^3.310.0
       '@aws-sdk/client-sfn': ^3.310.0
+      '@aws-sdk/credential-provider-node': ^3.388.0
+      '@aws-sdk/protocol-http': ^3.374.0
+      '@aws-sdk/signature-v4': ^3.374.0
       '@azure/storage-blob': ^12.15.0
       '@clickhouse/client': ^0.0.14
       '@elastic/elasticsearch': ^8.4.0
       '@getmetal/metal-sdk': '*'
-      '@getzep/zep-js': ^0.4.1
+      '@getzep/zep-js': ^0.6.3
       '@gomomento/sdk': ^1.23.0
       '@google-ai/generativelanguage': ^0.2.1
       '@google-cloud/storage': ^6.10.1
       '@huggingface/inference': ^1.5.1
+      '@mozilla/readability': '*'
       '@notionhq/client': ^2.2.5
       '@opensearch-project/opensearch': '*'
       '@pinecone-database/pinecone': '*'
       '@planetscale/database': ^1.8.0
       '@qdrant/js-client-rest': ^1.2.0
+      '@raycast/api': ^1.55.2
       '@supabase/postgrest-js': ^1.1.1
       '@supabase/supabase-js': ^2.10.0
       '@tensorflow-models/universal-sentence-encoder': '*'
@@ -15621,13 +15627,14 @@ packages:
       cohere-ai: ^5.0.2
       d3-dsv: ^2.0.0
       epub2: ^3.0.1
-      faiss-node: ^0.2.1
+      faiss-node: ^0.3.0
       firebase-admin: ^11.9.0
       google-auth-library: ^8.9.0
       hnswlib-node: ^1.4.2
       html-to-text: ^9.0.5
       ignore: ^5.2.0
       ioredis: ^5.3.2
+      jsdom: '*'
       mammoth: '*'
       mongodb: ^5.2.0
       mysql2: ^3.3.3
@@ -15648,7 +15655,11 @@ packages:
       usearch: ^1.1.1
       vectordb: ^0.1.4
       weaviate-ts-client: ^1.4.0
+      youtube-transcript: ^1.0.6
+      youtubei.js: ^5.8.0
     peerDependenciesMeta:
+      '@aws-crypto/sha256-js':
+        optional: true
       '@aws-sdk/client-dynamodb':
         optional: true
       '@aws-sdk/client-kendra':
@@ -15660,6 +15671,12 @@ packages:
       '@aws-sdk/client-sagemaker-runtime':
         optional: true
       '@aws-sdk/client-sfn':
+        optional: true
+      '@aws-sdk/credential-provider-node':
+        optional: true
+      '@aws-sdk/protocol-http':
+        optional: true
+      '@aws-sdk/signature-v4':
         optional: true
       '@azure/storage-blob':
         optional: true
@@ -15679,6 +15696,8 @@ packages:
         optional: true
       '@huggingface/inference':
         optional: true
+      '@mozilla/readability':
+        optional: true
       '@notionhq/client':
         optional: true
       '@opensearch-project/opensearch':
@@ -15688,6 +15707,8 @@ packages:
       '@planetscale/database':
         optional: true
       '@qdrant/js-client-rest':
+        optional: true
+      '@raycast/api':
         optional: true
       '@supabase/postgrest-js':
         optional: true
@@ -15735,6 +15756,8 @@ packages:
         optional: true
       ioredis:
         optional: true
+      jsdom:
+        optional: true
       mammoth:
         optional: true
       mongodb:
@@ -15775,9 +15798,13 @@ packages:
         optional: true
       weaviate-ts-client:
         optional: true
+      youtube-transcript:
+        optional: true
+      youtubei.js:
+        optional: true
     dependencies:
       '@anthropic-ai/sdk': 0.5.10
-      '@huggingface/inference': 1.8.0
+      '@huggingface/inference': 2.6.1
       '@pinecone-database/pinecone': 0.1.6
       ansi-styles: 5.2.0
       binary-extensions: 2.2.0
@@ -15790,7 +15817,7 @@ packages:
       js-tiktoken: 1.0.7
       js-yaml: 4.1.0
       jsonpointer: 5.0.1
-      langsmith: 0.0.20
+      langsmith: 0.0.26
       ml-distance: 4.0.1
       object-hash: 3.0.0
       openai: 3.3.0
@@ -15807,8 +15834,8 @@ packages:
       - supports-color
     dev: false
 
-  /langsmith@0.0.20:
-    resolution: {integrity: sha512-5VCBELL3YECxm0UA8TlX0K9B7Ecme9L1jd1Lly2TSPVCgABEcNDGAXrXKJ+o72hwWlf6XL5sQejzQCXspXRdVw==}
+  /langsmith@0.0.26:
+    resolution: {integrity: sha512-TecBjdgYGMxNaWp2L2X0OVgu8lge2WeQ5UpDXluwF3x+kH/WHFVSuR1RCuP+k2628GSVFvXxVIyXvzrHYxrZSw==}
     hasBin: true
     dependencies:
       '@types/uuid': 9.0.2
