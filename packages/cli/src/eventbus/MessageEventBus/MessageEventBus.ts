@@ -29,6 +29,8 @@ import {
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
+import Container from 'typedi';
+import { ExecutionRepository } from '@/databases/repositories';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -108,12 +110,13 @@ export class MessageEventBus extends EventEmitter {
 		await this.send(unsentAndUnfinished.unsentMessages);
 
 		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
+			LoggerProxy.warn('Executing simplified recover process.');
 			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
-				await recoverExecutionDataFromEventLogMessages(
-					executionId,
-					unsentAndUnfinished.unfinishedExecutions[executionId],
-					true,
-				);
+				LoggerProxy.info(`Setting status of execution ${executionId} to crashed`);
+				await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
+					status: 'crashed',
+					stoppedAt: new Date(),
+				});
 			}
 		}
 
