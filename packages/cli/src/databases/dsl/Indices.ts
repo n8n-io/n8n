@@ -1,4 +1,4 @@
-import { QueryRunner, TableIndex } from 'typeorm';
+import { QueryRunner, TableIndex } from '@n8n/typeorm';
 import LazyPromise from 'p-lazy';
 
 abstract class IndexOperation extends LazyPromise<void> {

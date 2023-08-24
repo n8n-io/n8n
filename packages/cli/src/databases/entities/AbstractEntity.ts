@@ -4,7 +4,7 @@ import {
 	CreateDateColumn,
 	PrimaryColumn,
 	UpdateDateColumn,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { IsDate, IsOptional } from 'class-validator';
 import config from '@/config';
 import { generateNanoId } from '../utils/generators';

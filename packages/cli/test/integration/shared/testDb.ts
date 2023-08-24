@@ -1,6 +1,6 @@
 import { UserSettings } from 'n8n-core';
-import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
 import { Container } from 'typedi';
 
 import config from '@/config';

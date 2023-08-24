@@ -1,4 +1,4 @@
-import { IsNull, Not } from 'typeorm';
+import { IsNull, Not } from '@n8n/typeorm';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import {

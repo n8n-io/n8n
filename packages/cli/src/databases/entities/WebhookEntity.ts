@@ -1,5 +1,5 @@
 import { IHttpRequestMethods } from 'n8n-workflow';
-import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity()
 @Index(['webhookId', 'method', 'pathLength'])

@@ -1,5 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { UserSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 

@@ -1,16 +1,12 @@
-import type { TableForeignKeyOptions, TableIndexOptions } from 'typeorm';
-import { Table, QueryRunner } from 'typeorm';
+import type { TableForeignKeyOptions, TableIndexOptions } from '@n8n/typeorm';
+import { Table, QueryRunner } from '@n8n/typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
 
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
 
-	constructor(
-		protected tableName: string,
-		protected prefix: string,
-		queryRunner: QueryRunner,
-	) {
+	constructor(protected tableName: string, protected prefix: string, queryRunner: QueryRunner) {
 		super((resolve) => {
 			void this.execute(queryRunner).then(resolve);
 		});

@@ -1,5 +1,5 @@
-import type { FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import { Container } from 'typedi';
 
 import type {

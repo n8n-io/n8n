@@ -1,6 +1,6 @@
-import type { FindOperator } from 'typeorm';
-import { MoreThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
+import type { FindOperator } from '@n8n/typeorm';
+import { MoreThanOrEqual } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { Container } from 'typedi';
 import * as Db from '@/Db';
 import config from '@/config';

@@ -4,7 +4,7 @@ import { jsonParse } from 'n8n-workflow';
 import fs from 'fs';
 import glob from 'fast-glob';
 import { Container } from 'typedi';
-import type { EntityManager } from 'typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';

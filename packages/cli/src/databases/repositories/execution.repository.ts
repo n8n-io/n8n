@@ -1,11 +1,11 @@
 import { Service } from 'typedi';
-import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from '@n8n/typeorm';
 import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOptionsWhere,
 	SelectQueryBuilder,
-} from 'typeorm';
+} from '@n8n/typeorm';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
 import type {
@@ -21,7 +21,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
-import { DateUtils } from 'typeorm/util/DateUtils';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { BinaryDataManager } from 'n8n-core';
 import config from '@/config';
 

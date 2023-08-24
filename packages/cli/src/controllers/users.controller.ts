@@ -1,5 +1,5 @@
 import validator from 'validator';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import type { ILogger } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';

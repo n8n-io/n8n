@@ -1,4 +1,4 @@
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 

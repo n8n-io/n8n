@@ -1,4 +1,4 @@
-import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 import type { TagEntity } from './TagEntity';
 import type { WorkflowEntity } from './WorkflowEntity';
 

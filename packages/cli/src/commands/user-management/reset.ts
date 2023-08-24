@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { Not } from 'typeorm';
+import { Not } from '@n8n/typeorm';
 import * as Db from '@/Db';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';

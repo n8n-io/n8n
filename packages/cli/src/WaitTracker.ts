@@ -4,9 +4,9 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
-import type { FindManyOptions, ObjectLiteral } from 'typeorm';
-import { Not, LessThanOrEqual } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
+import type { FindManyOptions, ObjectLiteral } from '@n8n/typeorm';
+import { Not, LessThanOrEqual } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';

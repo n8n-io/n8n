@@ -1,5 +1,5 @@
 import { flags } from '@oclif/command';
-import type { FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from '@n8n/typeorm';
 import * as Db from '@/Db';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { BaseCommand } from '../BaseCommand';

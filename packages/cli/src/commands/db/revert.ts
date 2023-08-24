@@ -1,6 +1,6 @@
 import { Command, flags } from '@oclif/command';
-import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
-import { DataSource as Connection } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions } from '@n8n/typeorm';
+import { DataSource as Connection } from '@n8n/typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { getConnectionOptions } from '@/Db';

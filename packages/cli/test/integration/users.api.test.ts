@@ -1,5 +1,5 @@
 import validator from 'validator';
-import { Not } from 'typeorm';
+import { Not } from '@n8n/typeorm';
 import type { SuperAgentTest } from 'supertest';
 
 import config from '@/config';

@@ -1,6 +1,6 @@
 import * as Db from '@/Db';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { In } from 'typeorm';
+import { In } from '@n8n/typeorm';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {

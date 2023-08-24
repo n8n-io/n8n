@@ -102,6 +102,7 @@
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
+    "@n8n/typeorm": "^0.3.17-1",
     "@n8n_io/license-sdk": "~2.4.0",
     "@oclif/command": "^1.8.16",
     "@oclif/core": "^1.16.4",
@@ -185,7 +186,6 @@
     "swagger-ui-express": "^4.3.0",
     "syslog-client": "^1.1.1",
     "typedi": "^0.10.0",
-    "typeorm": "^0.3.12",
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",

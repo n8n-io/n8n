@@ -31,7 +31,7 @@ import { EventMessageNode } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 import { RestController, Get, Post, Delete, Authorized } from '@/decorators';
 import type { MessageEventBusDestination } from './MessageEventBusDestination/MessageEventBusDestination.ee';
-import type { DeleteResult } from 'typeorm';
+import type { DeleteResult } from '@n8n/typeorm';
 import { AuthenticatedRequest } from '@/requests';
 
 // ----------------------------------------

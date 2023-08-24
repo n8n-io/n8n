@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { AuthProviderType } from './AuthIdentity';
 

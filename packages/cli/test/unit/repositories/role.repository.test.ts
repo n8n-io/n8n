@@ -1,5 +1,5 @@
 import { Container } from 'typedi';
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';

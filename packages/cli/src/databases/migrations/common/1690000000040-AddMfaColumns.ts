@@ -1,5 +1,5 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { TableColumn } from 'typeorm';
+import { TableColumn } from '@n8n/typeorm';
 
 export class AddMfaColumns1690000000030 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix }: MigrationContext) {

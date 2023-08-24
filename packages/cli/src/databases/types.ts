@@ -1,5 +1,5 @@
 import type { INodeTypes } from 'n8n-workflow';
-import type { QueryRunner, ObjectLiteral } from 'typeorm';
+import type { QueryRunner, ObjectLiteral } from '@n8n/typeorm';
 import type { Logger } from '@/Logger';
 import type { createSchemaBuilder } from './dsl';
 

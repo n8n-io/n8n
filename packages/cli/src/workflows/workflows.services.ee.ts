@@ -1,5 +1,5 @@
-import type { DeleteResult, EntityManager } from 'typeorm';
-import { In, Not } from 'typeorm';
+import type { DeleteResult, EntityManager } from '@n8n/typeorm';
+import { In, Not } from '@n8n/typeorm';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';

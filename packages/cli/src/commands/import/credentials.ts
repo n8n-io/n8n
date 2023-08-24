@@ -3,7 +3,7 @@ import { Credentials } from 'n8n-core';
 import fs from 'fs';
 import glob from 'fast-glob';
 import { Container } from 'typedi';
-import type { EntityManager } from 'typeorm';
+import type { EntityManager } from '@n8n/typeorm';
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';

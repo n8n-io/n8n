@@ -38,9 +38,9 @@ import {
 
 import pick from 'lodash/pick';
 import { Container } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
-import { LessThanOrEqual, In } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
+import type { FindOptionsWhere } from '@n8n/typeorm';
+import { LessThanOrEqual, In } from '@n8n/typeorm';
+import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
 import { ActiveExecutions } from '@/ActiveExecutions';

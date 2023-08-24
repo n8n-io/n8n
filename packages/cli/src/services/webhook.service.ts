@@ -3,16 +3,13 @@ import { Service } from 'typedi';
 import { CacheService } from './cache.service';
 import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import type { DeepPartial } from 'typeorm';
+import type { DeepPartial } from '@n8n/typeorm';
 
 type Method = NonNullable<IHttpRequestMethods>;
 
 @Service()
 export class WebhookService {
-	constructor(
-		private webhookRepository: WebhookRepository,
-		private cacheService: CacheService,
-	) {}
+	constructor(private webhookRepository: WebhookRepository, private cacheService: CacheService) {}
 
 	async populateCache() {
 		const allWebhooks = await this.webhookRepository.find();
