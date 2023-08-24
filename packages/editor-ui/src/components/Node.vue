@@ -1200,7 +1200,11 @@ export default defineComponent({
 
 	&--tool,
 	&--memory,
-	&--languageModel {
+	&--languageModel,
+	&--vectorRetriever,
+	&--embedding,
+	&--document,
+	&--textSplitter {
 		text-align: center;
 		margin-top: calc(var(--spacing-m) * -1);
 		margin-left: 0;
@@ -1217,7 +1221,11 @@ export default defineComponent({
 
 	&--tool,
 	&--memory,
-	&--languageModel {
+	&--languageModel,
+	&--vectorRetriever,
+	&--embedding,
+	&--document,
+	&--textSplitter {
 		text-align: center;
 		margin-top: calc(var(--spacing-m) * -1);
 		margin-left: 0;

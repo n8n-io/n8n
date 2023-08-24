@@ -339,36 +339,16 @@ export const nodeBase = defineComponent({
 					endpoint: addInputEndpointSpec,
 				},
 				vectorRetriever: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-avatar-accent-2',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				embedding: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-json-default',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				document: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-success-light',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 				textSplitter: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-secondary-tint-2',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: addInputEndpointSpec,
 				},
 			};
 
