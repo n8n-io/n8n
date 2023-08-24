@@ -88,21 +88,26 @@ export function validatePassword(password?: string): string {
  * Remove sensitive properties from the user to return to the client.
  */
 export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
+	const { password, updatedAt, apiKey, authIdentities, mfaSecret, mfaRecoveryCodes, ...rest } =
+		user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore
 			delete rest[key];
 		});
 	}
+
 	const sanitizedUser: PublicUser = {
 		...rest,
 		signInType: 'email',
+		hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 	};
+
 	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 	if (ldapIdentity) {
 		sanitizedUser.signInType = 'ldap';
 	}
+
 	return sanitizedUser;
 }
 

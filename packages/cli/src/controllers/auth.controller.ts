@@ -16,12 +16,7 @@ import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
 import type { Config } from '@/config';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IInternalHooksClass,
-	CurrentUser,
-} from '@/Interfaces';
+import type { PublicUser, IInternalHooksClass, CurrentUser } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
 import type { PostHogClient } from '@/posthog';
 import {
@@ -32,6 +27,7 @@ import {
 import { InternalHooks } from '../InternalHooks';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
+import type { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class AuthController {
@@ -45,23 +41,27 @@ export class AuthController {
 
 	private readonly postHog?: PostHogClient;
 
+	private readonly mfaService: MfaService;
+
 	constructor({
 		config,
 		logger,
 		internalHooks,
 		postHog,
+		mfaService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User'>;
 		postHog?: PostHogClient;
+		mfaService: MfaService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.internalHooks = internalHooks;
 		this.postHog = postHog;
 		this.userService = Container.get(UserService);
+		this.mfaService = mfaService;
 	}
 
 	/**
@@ -69,7 +69,7 @@ export class AuthController {
 	 */
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
-		const { email, password } = req.body;
+		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
@@ -94,7 +94,28 @@ export class AuthController {
 		} else {
 			user = await handleEmailLogin(email, password);
 		}
+
 		if (user) {
+			if (user.mfaEnabled) {
+				if (!mfaToken && !mfaRecoveryCode) {
+					throw new AuthError('MFA Error', 998);
+				}
+
+				const { decryptedRecoveryCodes, decryptedSecret } =
+					await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+				user.mfaSecret = decryptedSecret;
+				user.mfaRecoveryCodes = decryptedRecoveryCodes;
+
+				const isMFATokenValid =
+					(await this.validateMfaToken(user, mfaToken)) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
+
+				if (!isMFATokenValid) {
+					throw new AuthError('Invalid mfa token or recovery code');
+				}
+			}
+
 			await issueCookie(res, user);
 			void Container.get(InternalHooks).onUserLoginSuccess({
 				user,
@@ -228,5 +249,28 @@ export class AuthController {
 	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 		return { loggedOut: true };
+	}
+
+	private async validateMfaToken(user: User, token?: string) {
+		if (!!!token) return false;
+		return this.mfaService.totp.verifySecret({
+			secret: user.mfaSecret ?? '',
+			token,
+		});
+	}
+
+	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
+		if (!!!mfaRecoveryCode) return false;
+		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
+		if (index === -1) return false;
+
+		// remove used recovery code
+		user.mfaRecoveryCodes.splice(index, 1);
+
+		await this.userService.update(user.id, {
+			mfaRecoveryCodes: this.mfaService.encryptRecoveryCodes(user.mfaRecoveryCodes),
+		});
+
+		return true;
 	}
 }
