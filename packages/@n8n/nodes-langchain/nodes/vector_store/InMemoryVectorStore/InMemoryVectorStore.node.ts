@@ -22,29 +22,19 @@ export class InMemoryVectorStore implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['vectorRetriever'],
 		outputNames: ['Vector Retriever'],
-		properties: [
-			{
-					displayName: 'Top K',
-					name: 'topK',
-					type: 'number',
-					default: 6,
-			},
-		],
+		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const itemIndex = 0;
-		const topK = this.getNodeParameter('topK', itemIndex) as number;
 		const documentsNodes = await this.getInputConnectionData('document', 0) || [];
 		const documents = documentsNodes.flatMap((node) => node.response as Document);
 		const embeddingNodes = await this.getInputConnectionData('embedding', 0);
 		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
-		const retriever = documentsStore.asRetriever(topK);
 
 		return {
-			response: logWrapper(retriever, this)
+			response: logWrapper(documentsStore, this)
 		};
 	}
 }

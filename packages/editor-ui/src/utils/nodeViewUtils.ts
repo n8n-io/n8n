@@ -206,7 +206,7 @@ export const getAnchorPosition = (
 };
 
 export const getEndpointScope = (endpointType: string): string | undefined => {
-	const scopedEndpointTypes = ['tool', 'memory', 'languageModel'];
+	const scopedEndpointTypes = ['tool', 'memory', 'languageModel', 'embedding', 'vectorStore', 'textSplitter', 'document', 'vectorRetriever'];
 
 	if (scopedEndpointTypes.includes(endpointType)) {
 		return endpointType;

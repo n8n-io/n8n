@@ -322,7 +322,12 @@ export const nodeBase = defineComponent({
 				[key: string]: EndpointOptions;
 			} = {
 				languageModel: {
-					endpoint: addInputEndpointSpec,
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-primary',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
 				},
 				main: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
@@ -333,15 +338,33 @@ export const nodeBase = defineComponent({
 					cssClass: `dot-${type}-endpoint`,
 				},
 				memory: {
-					endpoint: addInputEndpointSpec,
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-primary-tint-1',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
 				},
 				tool: {
-					endpoint: addInputEndpointSpec,
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-sticky-default-border',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
 				},
 				vectorRetriever: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
 						'--color-avatar-accent-2',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				vectorStore: {
+					paintStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-json-null',
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,
@@ -404,14 +427,14 @@ export const nodeBase = defineComponent({
 				memory: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						'--color-primary',
+						'--color-primary-tint-1',
 						connectionType,
 					),
 				},
 				tool: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						'--color-primary',
+						'--color-sticky-default-border',
 						connectionType,
 					),
 				},
@@ -419,6 +442,14 @@ export const nodeBase = defineComponent({
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						'--color-avatar-accent-2',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				vectorStore: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-null',
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,
@@ -451,14 +482,6 @@ export const nodeBase = defineComponent({
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						'--color-json-string',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
-				},
-				vectorStore: {
-					paintStyle: NodeViewUtils.getOutputEndpointStyle(
-						nodeTypeData,
-						'--color-json-null',
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,

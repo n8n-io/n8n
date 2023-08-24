@@ -54,11 +54,18 @@ export class ChainVectorStoreQA implements INodeType {
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Top K',
+				name: 'topK',
+				type: 'number',
+				default: 4,
+				description: 'Number of top results to fetch from vector store.',
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('Execute Vector QA Chain');
+		this.logger.verbose('Executing Vector Store QA Chain')
 		let vectorStore: VectorStore;
 		const runMode = this.getNodeParameter('mode', 0) as string;
 		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
@@ -76,35 +83,24 @@ export class ChainVectorStoreQA implements INodeType {
 		}
 		const model = languageModelNodes[0].response as BaseLanguageModel;
 
-		if (languageModelNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Language Model has to be connected!',
-			);
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only one Language Model is allowed to be connected!',
-			);
+		const vectorStoreNodes = await this.getInputConnectionData('vectorStore', 0);
+		if (vectorStoreNodes.length > 1) {
+			throw new NodeOperationError(this.getNode(), 'Only one Vector Store is allowed to be connected!');
 		}
 
-		const vectorStoreNodes = await this.getInputConnectionData('vectorStore', 0);
-		if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(this.getNode(), 'Only one Vector Retriever is allowed to be connected!');
-		}
 		vectorStore = vectorStoreNodes[0].response as VectorStore;
 
-		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { verbose: true, k: 4});
-		console.log("Model to use: ", model)
+		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4});
+
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
 
+		chain.k = this.getNodeParameter('topK', 0, 4) as number;
+
 		if (runMode === 'runOnceForAllItems') {
 			const query = this.getNodeParameter('query', 0) as string;
-			console.log('Running once for all items, with query: ', query)
 			const response = await chain.call({ query })
-			console.log('Received response: ', response)
 			return this.prepareOutputData([{ json: { response } }]);
 		}
 
@@ -112,7 +108,7 @@ export class ChainVectorStoreQA implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
 
-			const response = await chain.call({ query })
+			const response = await chain.call({ query,  })
 			returnData.push({ json: { response } });
 		}
 

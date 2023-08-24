@@ -55,8 +55,10 @@
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
       "dist/nodes/tools/ToolWikipedia/ToolWikipedia.node.js",
       "dist/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node.js",
+      "dist/nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.js",
       "dist/nodes/vector_store/InMemoryVectorStore/InMemoryVectorStore.node.js",
-      "dist/nodes/vector_store/VectorStorePinecone/VectorStorePinecone.node.js"
+      "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
+      "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js"
     ]
   },
   "devDependencies": {

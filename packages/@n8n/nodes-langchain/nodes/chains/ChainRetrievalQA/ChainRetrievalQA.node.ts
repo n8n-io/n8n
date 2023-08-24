@@ -53,13 +53,14 @@ export class ChainRetrievalQA implements INodeType {
 				name: 'query',
 				type: 'string',
 				default: '',
-			},
+			}
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		console.log('Execute Retrieval QA Chain');
-		let vectorRetriever1: BaseRetriever;
+		this.logger.verbose('Executing Retrieval QA Chain');
+
+		let vectorRetriever: BaseRetriever;
 		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
 
 		if (languageModelNodes.length === 0) {
@@ -89,13 +90,13 @@ export class ChainRetrievalQA implements INodeType {
 
 		const vectorRetrieverNodes = await this.getInputConnectionData('vectorRetriever', 0);
 		if (vectorRetrieverNodes.length === 1) {
-			vectorRetriever1 = vectorRetrieverNodes[0].response as BaseRetriever;
+			vectorRetriever = vectorRetrieverNodes[0].response as BaseRetriever;
 		} else if (languageModelNodes.length > 1) {
 			throw new NodeOperationError(this.getNode(), 'Only one Vector Retriever is allowed to be connected!');
 		}
 
-		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever1!);
 		const items = this.getInputData();
+		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever!);
 
 		const returnData: INodeExecutionData[] = [];
 		const runMode = this.getNodeParameter('mode', 0) as string;

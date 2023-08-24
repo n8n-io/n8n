@@ -41,7 +41,18 @@ export function logWrapper(
 				};
 
 			}
-			// For BaseRetriever
+			// Query -> Embeddings
+			if (prop === 'embedQuery') {
+				return async (query: string): Promise<number[][]> => {
+					executeFunctions.addInputData('embedding', [[{ json: { query: query } }]]);
+					// @ts-ignore
+					const response = await target[prop](query);
+					executeFunctions.addOutputData('embedding', [[{ json: { response } }]]);
+					return response;
+				};
+
+			}
+			// BaseRetriever
 			if (prop === '_getRelevantDocuments') {
 				return async (
 					query: string,
@@ -100,6 +111,7 @@ export function logWrapper(
 					executeFunctions.addOutputData('languageModel', [[{ json: { response } }]]);
 					return response;
 				};
+				// Vector Store
 			} else if (prop === 'similaritySearch') {
 				return async (query: string, k?: number, filter?: BiquadFilterType | undefined, _callbacks?: Callbacks | undefined): Promise<Document[]> => {
 					executeFunctions.addInputData('vectorStore', [[{ json: { query, k, filter } }]]);
