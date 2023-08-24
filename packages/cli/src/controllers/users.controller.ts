@@ -405,9 +405,11 @@ export class UsersController {
 		);
 
 		if (listQueryOptions?.select !== undefined) {
-			return publicUsers.map(({ isOwner, isPending, signInType, ...rest }) => {
-				return rest as PublicUser; // remove unselectable non-entity fields
-			});
+			return publicUsers.map(
+				({ isOwner, isPending, signInType, hasRecoveryCodesLeft, ...rest }) => {
+					return rest as PublicUser; // remove unselectable non-entity fields
+				},
+			);
 		}
 
 		return publicUsers;
