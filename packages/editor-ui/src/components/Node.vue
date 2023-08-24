@@ -855,6 +855,8 @@ export default defineComponent({
 }
 
 .select-background {
+	--node--selected--box-shadow-radius: 8px;
+
 	display: block;
 	background-color: hsla(
 		var(--color-foreground-base-h),
@@ -865,24 +867,19 @@ export default defineComponent({
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
-	left: -8px !important;
-	top: -8px !important;
-	height: 116px;
-	width: 116px !important;
+	left: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	top: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	height: calc(100% + 2 * var(--node--selected--box-shadow-radius));
+	width: calc(100% + 2 * var(--node--selected--box-shadow-radius)) !important;
 
 	.node-wrapper--trigger & {
 		border-radius: 36px 8px 8px 36px;
 	}
+
 	.node-wrapper--config & {
+		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
 		background-color: var(--color-foreground-dark);
-		left: -4px !important;
-		top: -4px !important;
-		height: 108px;
-		width: 108px !important;
-	}
-	.node-wrapper--configurable & {
-		width: 266px !important;
 	}
 }
 
