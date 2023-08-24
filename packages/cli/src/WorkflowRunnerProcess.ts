@@ -11,6 +11,7 @@ import 'reflect-metadata';
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import express from 'express';
 
 import type {
 	ExecutionError,
@@ -57,6 +58,19 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { createIncidentLog, generateCreateCustomTicketSubjectFn } from './lib/incidentLogger';
+import { setupReusablesAndRoutes } from './reusables';
+
+const getIncidentHandlingFN = (() => {
+	let createIncidentLogFN: typeof createIncidentLog;
+	return async () => {
+		if (createIncidentLogFN) return { createLog: createIncidentLogFN };
+		const app = express();
+		await setupReusablesAndRoutes(app);
+		createIncidentLogFN = createIncidentLog;
+		return { createLog: createIncidentLogFN };
+	};
+})();
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -286,7 +300,39 @@ class WorkflowRunnerProcess {
 				this.data.executionMode,
 				this.data.executionData,
 			);
-			return this.workflowExecute.processRunExecutionData(this.workflow);
+
+			const data = await this.workflowExecute.processRunExecutionData(this.workflow);
+
+			if (data.data.resultData.error) {
+				const { runData, error } = data.data.resultData;
+				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+				const nodeStack = data.data.executionData?.nodeExecutionStack || [];
+				const errorNodeName = Object.keys(runData).find((nodeName) => {
+					return runData[nodeName].some((data) => {
+						return data.executionStatus === 'error' && data.error;
+					});
+				});
+				const errorNode = nodeStack.find(({ node }) => {
+					return node.name === errorNodeName;
+				});
+
+				const { createLog } = await getIncidentHandlingFN();
+				await createLog(
+					{
+						errorMessage: error.message,
+						incidentTime: new Date(),
+					},
+					{
+						workflow_id: this.workflow.id,
+						error_node_id: errorNode?.node.id,
+						error_node_type: errorNode?.node.type,
+						error_message: error.message,
+					},
+					generateCreateCustomTicketSubjectFn(Object.values(this.workflow.nodes)),
+				);
+			}
+
+			return data;
 		}
 		if (
 			this.data.runData === undefined ||
