@@ -354,10 +354,9 @@ export class UsersController {
 			was_disabled_ldap_user: false,
 		});
 
-		await this.externalHooks.run('user.profile.update', [
-			invitee.email,
-			this.userService.toPublic(invitee),
-		]);
+		const publicInvitee = await this.userService.toPublic(invitee);
+
+		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
 		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
@@ -577,7 +576,7 @@ export class UsersController {
 				telemetryData,
 				publicApi: false,
 			});
-			await this.externalHooks.run('user.deleted', [this.userService.toPublic(userToDelete)]);
+			await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 			return { success: true };
 		}
 
@@ -615,7 +614,7 @@ export class UsersController {
 			publicApi: false,
 		});
 
-		await this.externalHooks.run('user.deleted', [this.userService.toPublic(userToDelete)]);
+		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 		return { success: true };
 	}
 

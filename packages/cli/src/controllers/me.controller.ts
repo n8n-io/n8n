@@ -100,7 +100,7 @@ export class MeController {
 			fields_changed: updatedKeys,
 		});
 
-		const publicUser = this.userService.toPublic(user);
+		const publicUser = await this.userService.toPublic(user);
 
 		await this.externalHooks.run('user.profile.update', [currentEmail, publicUser]);
 

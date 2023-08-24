@@ -64,7 +64,7 @@ export class UserService {
 	}
 
 	async toPublic(user: User, options?: { withInviteUrl?: boolean; posthog?: PostHogClient }) {
-		const { password, updatedAt, apiKey, authIdentities, personalizationAnswers, ...rest } = user;
+		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
 

@@ -31,7 +31,7 @@ describe('GET /users', () => {
 			expect(user.isPending).toBe(false);
 			expect(user.signInType).toBe('email');
 			expect(user.settings).toBe(null);
-			expect(user.personalizationAnswers).toBeUndefined();
+			expect(user.personalizationAnswers).toBeNull();
 			expect(user.password).toBeUndefined();
 			expect(user.globalRole).toBeDefined();
 		};
