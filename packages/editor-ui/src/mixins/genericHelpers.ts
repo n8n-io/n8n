@@ -80,5 +80,16 @@ export const genericHelpers = defineComponent({
 				this.loadingService = null;
 			}
 		},
+		isRedirectSafe() {
+			const redirect = this.getRedirectQueryParameter();
+			return redirect.startsWith('/');
+		},
+		getRedirectQueryParameter() {
+			let redirect = '';
+			if (typeof this.$route.query.redirect === 'string') {
+				redirect = decodeURIComponent(this.$route.query.redirect);
+			}
+			return redirect;
+		},
 	},
 });

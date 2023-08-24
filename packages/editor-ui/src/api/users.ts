@@ -16,7 +16,7 @@ export async function loginCurrentUser(
 
 export async function login(
 	context: IRestApiContext,
-	params: { email: string; password: string },
+	params: { email: string; password: string; mfaToken?: string; mfaRecoveryToken?: string },
 ): Promise<CurrentUserResponse> {
 	return makeRestApiRequest(context, 'POST', '/login', params);
 }
@@ -74,7 +74,7 @@ export async function validatePasswordToken(
 
 export async function changePassword(
 	context: IRestApiContext,
-	params: { token: string; password: string },
+	params: { token: string; password: string; mfaToken?: string },
 ): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/change-password', params);
 }

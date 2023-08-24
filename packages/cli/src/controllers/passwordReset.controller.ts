@@ -30,6 +30,7 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { JwtPayload } from '@/services/jwt.service';
 import { JwtService } from '@/services/jwt.service';
+import type { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class PasswordResetController {
@@ -47,18 +48,22 @@ export class PasswordResetController {
 
 	private readonly userService: UserService;
 
+	private readonly mfaService: MfaService;
+
 	constructor({
 		config,
 		logger,
 		externalHooks,
 		internalHooks,
 		mailer,
+		mfaService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
+		mfaService: MfaService;
 	}) {
 		this.config = config;
 		this.logger = logger;
@@ -67,6 +72,7 @@ export class PasswordResetController {
 		this.mailer = mailer;
 		this.jwtService = Container.get(JwtService);
 		this.userService = Container.get(UserService);
+		this.mfaService = mfaService;
 	}
 
 	/**
@@ -150,7 +156,11 @@ export class PasswordResetController {
 			},
 		);
 
-		const url = this.userService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const url = this.userService.generatePasswordResetUrl(
+			baseUrl,
+			resetPasswordToken,
+			user.mfaEnabled,
+		);
 
 		try {
 			await this.mailer.passwordReset({
@@ -233,7 +243,7 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, password } = req.body;
+		const { token: resetPasswordToken, password, mfaToken } = req.body;
 
 		if (!resetPasswordToken || !password) {
 			this.logger.debug(
@@ -262,6 +272,16 @@ export class PasswordResetController {
 				},
 			);
 			throw new NotFoundError('');
+		}
+
+		if (user.mfaEnabled) {
+			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
+
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
 		const passwordHash = await hashPassword(validPassword);

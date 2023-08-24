@@ -124,7 +124,6 @@
 				<n8n-button
 					v-if="containsChatNodes"
 					@click.stop="onOpenChat"
-					:loading="workflowRunning"
 					label="Chat"
 					size="large"
 					icon="comment"

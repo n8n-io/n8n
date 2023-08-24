@@ -21,7 +21,6 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import type {
@@ -37,6 +36,10 @@ import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
 import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
 import { separate } from '@/utils';
+
+import { randomPassword } from '@/Ldap/helpers';
+import { TOTPService } from '@/Mfa/totp.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -202,6 +205,41 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 	const user = await createUser(attributes);
 	await Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId, 'ldap'));
 	return user;
+}
+
+export async function createUserWithMfaEnabled(
+	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
+) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	const email = randomEmail();
+	const password = randomPassword();
+
+	const toptService = new TOTPService();
+
+	const secret = toptService.generateSecret();
+
+	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
+
+	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
+
+	const { encryptedSecret, encryptedRecoveryCodes } = mfaService.encryptSecretAndRecoveryCodes(
+		secret,
+		recoveryCodes,
+	);
+
+	return {
+		user: await createUser({
+			mfaEnabled: true,
+			password,
+			email,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
+		}),
+		rawPassword: password,
+		rawSecret: secret,
+		rawRecoveryCodes: recoveryCodes,
+	};
 }
 
 export async function createOwner() {
@@ -592,13 +630,12 @@ const baseOptions = (type: TestDBType) => ({
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapDBOptions = (type: TestDBType) =>
-	({
-		type,
-		name: type,
-		database: type,
-		...baseOptions(type),
-	}) as const;
+export const getBootstrapDBOptions = (type: TestDBType) => ({
+	type,
+	name: type,
+	database: type,
+	...baseOptions(type),
+});
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,

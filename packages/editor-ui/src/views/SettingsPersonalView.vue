@@ -43,6 +43,42 @@
 					}}</n8n-link>
 				</n8n-input-label>
 			</div>
+			<div v-if="isMfaFeatureEnabled">
+				<div :class="$style.mfaSection">
+					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')">
+					</n8n-input-label>
+					<n8n-text :bold="false" :class="$style.infoText">
+						{{
+							mfaDisabled
+								? $locale.baseText('settings.personal.mfa.button.disabled.infobox')
+								: $locale.baseText('settings.personal.mfa.button.enabled.infobox')
+						}}
+						<n8n-link :to="mfaDocsUrl" size="small" :bold="true">
+							{{ $locale.baseText('generic.learnMore') }}
+						</n8n-link>
+					</n8n-text>
+				</div>
+				<div :class="$style.mfaButtonContainer" v-if="mfaDisabled">
+					<n8n-button
+						:class="$style.button"
+						float="left"
+						type="tertiary"
+						:label="$locale.baseText('settings.personal.mfa.button.enabled')"
+						data-test-id="enable-mfa-button"
+						@click="onMfaEnableClick"
+					/>
+				</div>
+				<div v-else>
+					<n8n-button
+						:class="$style.disableMfaButton"
+						float="left"
+						type="tertiary"
+						:label="$locale.baseText('settings.personal.mfa.button.disabled')"
+						data-test-id="disable-mfa-button"
+						@click="onMfaDisableClick"
+					/>
+				</div>
+			</div>
 		</div>
 		<div>
 			<n8n-button
@@ -59,8 +95,8 @@
 
 <script lang="ts">
 import { useI18n, useToast } from '@/composables';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import type { IFormInputs, IUser } from '@/Interface';
+import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -84,6 +120,7 @@ export default defineComponent({
 			formInputs: null as null | IFormInputs,
 			formBus: createEventBus(),
 			readyToSubmit: false,
+			mfaDocsUrl: MFA_DOCS_URL,
 		};
 	},
 	mounted() {
@@ -143,6 +180,12 @@ export default defineComponent({
 				this.settingsStore.isSamlLoginEnabled && this.settingsStore.isDefaultAuthenticationSaml
 			);
 		},
+		mfaDisabled(): boolean {
+			return !this.usersStore.mfaEnabled;
+		},
+		isMfaFeatureEnabled(): boolean {
+			return this.settingsStore.isMfaFeatureEnabled;
+		},
 	},
 	methods: {
 		onInput() {
@@ -178,6 +221,25 @@ export default defineComponent({
 		openPasswordModal() {
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 		},
+		onMfaEnableClick() {
+			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
+		},
+		async onMfaDisableClick() {
+			try {
+				await this.usersStore.disabledMfa();
+				this.showToast({
+					title: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+					message: this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.message'),
+					type: 'success',
+					duration: 0,
+				});
+			} catch (e) {
+				this.showError(
+					e,
+					this.$locale.baseText('settings.personal.mfa.toast.disabledMfa.error.message'),
+				);
+			}
+		},
 	},
 });
 </script>
@@ -194,7 +256,6 @@ export default defineComponent({
 	display: flex;
 	align-items: center;
 	white-space: nowrap;
-
 	*:first-child {
 		flex-grow: 1;
 	}
@@ -220,7 +281,36 @@ export default defineComponent({
 	}
 }
 
+.disableMfaButton {
+	--button-color: var(--color-danger);
+	margin-top: var(--spacing-2xs);
+	> span {
+		font-weight: var(--font-weight-bold);
+	}
+}
+
+.button {
+	font-size: var(--spacing-xs);
+	> span {
+		font-weight: var(--font-weight-bold);
+	}
+}
+
+.mfaSection {
+	margin-top: var(--spacing-l);
+}
+
+.infoText {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-light);
+}
+
 .sectionHeader {
+	margin-top: var(--spacing-2xl);
 	margin-bottom: var(--spacing-s);
+}
+
+.mfaButtonContainer {
+	margin-top: var(--spacing-2xs);
 }
 </style>

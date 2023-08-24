@@ -2215,6 +2215,9 @@ export interface IN8nUISettings {
 	variables: {
 		limit: number;
 	};
+	mfa: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
