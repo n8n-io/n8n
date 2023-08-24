@@ -12,6 +12,7 @@ import { usePostHog } from '@/stores/posthog.store';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
+
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -110,16 +111,15 @@ export class Telemetry {
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
 			if (
-				route.meta &&
-				route.meta.telemetry &&
+				route.meta?.telemetry &&
 				typeof route.meta.telemetry.getProperties === 'function'
 			) {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
 			const category =
-				(route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName!, properties);
+				(route.meta?.telemetry?.pageCategory) || 'Editor';
+			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -228,7 +228,14 @@ export class Telemetry {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
 					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
-						this.track('User toggled n8n reference option');
+						this.track(
+							'User toggled n8n reference option',
+							{
+								node: nodeType,
+								toValue: change.value,
+							},
+							{ withPostHog: true },
+						);
 					}
 					break;
 
