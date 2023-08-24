@@ -151,7 +151,7 @@ async function onSubmit() {
 	startLoading();
 
 	try {
-		const version = useRootStore().versionCli;
+		const { versionCli, sessionId, instanceId } = useRootStore();
 		const model =
 			usePostHog().getVariant(ASK_AI_EXPERIMENT.name) === ASK_AI_EXPERIMENT.gpt4
 				? 'gpt-4'
@@ -161,7 +161,9 @@ async function onSubmit() {
 			question: prompt.value,
 			context: { schema: schemas.parentNodesSchemas, inputSchema: schemas.inputSchema! },
 			model,
-			n8nVersion: version,
+			n8nVersion: versionCli,
+			sessionId,
+			instanceId,
 		});
 
 		stopLoading();

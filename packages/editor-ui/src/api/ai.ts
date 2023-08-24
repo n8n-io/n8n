@@ -15,6 +15,8 @@ export async function generateCodeForPrompt(
 		context,
 		model,
 		n8nVersion,
+		sessionId,
+		instanceId,
 	}: {
 		question: string;
 		context: {
@@ -23,6 +25,8 @@ export async function generateCodeForPrompt(
 		};
 		model: string;
 		n8nVersion: string;
+		sessionId: string;
+		instanceId: string;
 	},
 ): Promise<{ code: string; usage: Usage }> {
 	return makeRestApiRequest(ctx, 'POST', '/ask-ai', {
@@ -30,5 +34,7 @@ export async function generateCodeForPrompt(
 		context,
 		model,
 		n8nVersion,
+		sessionId,
+		instanceId,
 	} as IDataObject);
 }
