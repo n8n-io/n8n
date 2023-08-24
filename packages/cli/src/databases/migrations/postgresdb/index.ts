@@ -42,6 +42,7 @@ import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwn
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { AddMissingPrimaryKeyOnExecutionData1690787606731 } from './1690787606731-AddMissingPrimaryKeyOnExecutionData';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
+import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -87,4 +88,5 @@ export const postgresMigrations: Migration[] = [
 	RemoveResetPasswordColumns1690000000030,
 	AddMissingPrimaryKeyOnExecutionData1690787606731,
 	CreateWorkflowNameIndex1691088862123,
+	AddMfaColumns1690000000030,
 ];

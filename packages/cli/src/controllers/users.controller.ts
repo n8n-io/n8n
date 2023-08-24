@@ -389,7 +389,11 @@ export class UsersController {
 
 		const baseUrl = getInstanceBaseUrl();
 
-		const link = this.userService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const link = this.userService.generatePasswordResetUrl(
+			baseUrl,
+			resetPasswordToken,
+			user.mfaEnabled,
+		);
 		return {
 			link,
 		};
