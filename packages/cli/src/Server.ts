@@ -168,11 +168,14 @@ import { isExternalSecretsEnabled } from './ExternalSecrets/externalSecretsHelpe
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
-import { ExecutionRepository } from '@db/repositories';
+import { ExecutionRepository, SettingsRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import { JwtService } from './services/jwt.service';
+import { RoleService } from './services/role.service';
+import { UserService } from './services/user.service';
 
 const exec = promisify(callbackExec);
 
@@ -498,35 +501,50 @@ export class Server extends AbstractServer {
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
+		const userService = Container.get(UserService);
+		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
 		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 		const controllers: object[] = [
 			new EventBusController(),
-			new AuthController({ config, internalHooks, logger, postHog, mfaService }),
-			new OwnerController({ config, internalHooks, repositories, logger, postHog }),
-			new MeController({ externalHooks, internalHooks, logger }),
-			new NodeTypesController({ config, nodeTypes }),
-			new PasswordResetController({
+			new AuthController(config, logger, internalHooks, mfaService, userService, postHog),
+			new OwnerController(
 				config,
+				logger,
+				internalHooks,
+				Container.get(SettingsRepository),
+				userService,
+				postHog,
+			),
+			new MeController(logger, externalHooks, internalHooks, userService),
+			new NodeTypesController(config, nodeTypes),
+			new PasswordResetController(
+				config,
+				logger,
 				externalHooks,
 				internalHooks,
 				mailer,
-				logger,
+				userService,
+				jwtService,
 				mfaService,
-			}),
+			),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
-			new UsersController({
+			new UsersController(
 				config,
-				mailer,
+				logger,
 				externalHooks,
 				internalHooks,
-				repositories,
+				repositories.SharedCredentials,
+				repositories.SharedWorkflow,
 				activeWorkflowRunner,
-				logger,
+				mailer,
+				jwtService,
+				Container.get(RoleService),
+				userService,
 				postHog,
-			}),
+			),
 			Container.get(SamlController),
 			Container.get(SourceControlController),
 			Container.get(WorkflowStatisticsController),
