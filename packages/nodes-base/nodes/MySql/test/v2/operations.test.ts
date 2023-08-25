@@ -305,7 +305,7 @@ describe('Test MySql V2, operations', () => {
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,
-			nodeOptions,
+			{ ...nodeOptions, nodeVersion: 2 },
 			pool,
 		);
 
