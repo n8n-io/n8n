@@ -1,6 +1,6 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber } from '@/utils';
-import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
+import { NODE_OUTPUT_DEFAULT_KEY, SCOPED_ENDPOINT_TYPES, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import type { Endpoint, Connection } from '@jsplumb/core';
@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores';
+import type { EndpointType } from '@/Interface';
 
 /*
 	Canvas constants and functions.
@@ -205,10 +206,8 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getEndpointScope = (endpointType: string): string | undefined => {
-	const scopedEndpointTypes = ['tool', 'memory', 'languageModel', 'embedding', 'vectorStore', 'textSplitter', 'document', 'vectorRetriever'];
-
-	if (scopedEndpointTypes.includes(endpointType)) {
+export const getEndpointScope = (endpointType: EndpointType): string | undefined => {
+	if (SCOPED_ENDPOINT_TYPES.includes(endpointType)) {
 		return endpointType;
 	}
 

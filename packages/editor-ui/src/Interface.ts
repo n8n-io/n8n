@@ -109,6 +109,17 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
+export const enum EndpointType {
+	Main = 'main',
+	Tool = 'tool',
+	Memory = 'memory',
+	LanguageModel = 'languageModel',
+	VectorRetriever = 'vectorRetriever',
+	Embedding = 'embedding',
+	Document = 'document',
+	TextSplitter = 'textSplitter',
+}
+
 export interface IUpdateInformation {
 	name: string;
 	key?: string;
@@ -1110,6 +1121,7 @@ export type NodeCreatorOpenSource =
 	| ''
 	| 'no_trigger_execution_tooltip'
 	| 'plus_endpoint'
+	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
 	| 'node_connection_action'

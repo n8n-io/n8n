@@ -7,6 +7,7 @@ export type ComputedN8nAddInputEndpoint = [number, number, number, number, numbe
 interface N8nAddInputEndpointParams extends EndpointRepresentationParams {
 	endpoint: Endpoint;
 	size: number;
+	color: string;
 }
 export const N8nAddInputEndpointType = 'N8nAddInput';
 export const EVENT_ADD_INPUT_ENDPOINT_CLICK = 'eventAddInputEndpointClick';
@@ -18,6 +19,7 @@ export class N8nAddInputEndpoint extends EndpointRepresentation<ComputedN8nAddIn
 
 		this.params = params;
 		this.params.size = params.size || 24;
+		this.params.color = params.color || '--color-foreground-xdark';
 
 		this.unbindEvents();
 		this.bindEvents();
