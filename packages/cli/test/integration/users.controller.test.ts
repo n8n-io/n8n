@@ -232,7 +232,10 @@ describe('GET /users', () => {
 	});
 
 	describe('combinations', () => {
-		test('should combine options requiring auxiliary fields', async () => {
+		test('should support options that require auxiliary fields', async () => {
+			// isOwner requires globalRole
+			// id-less select with take requires id
+
 			const response = await testServer
 				.authAgentFor(owner)
 				.get('/users')

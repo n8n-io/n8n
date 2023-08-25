@@ -352,6 +352,36 @@ export class UsersController {
 		return findManyOptions;
 	}
 
+	removeSupplementaryFields(
+		publicUsers: Array<Partial<PublicUser>>,
+		listQueryOptions: ListQuery.Options,
+	) {
+		const { take, select, filter } = listQueryOptions;
+
+		// remove fields added to satisfy query
+
+		if (take && select && !select?.id) {
+			for (const user of publicUsers) delete user.id;
+		}
+
+		if (filter?.isOwner) {
+			for (const user of publicUsers) delete user.globalRole;
+		}
+
+		// remove computed fields
+
+		if (select) {
+			for (const user of publicUsers) {
+				delete user.isOwner;
+				delete user.isPending;
+				delete user.signInType;
+				delete user.hasRecoveryCodesLeft;
+			}
+		}
+
+		return publicUsers;
+	}
+
 	@Authorized('any')
 	@Get('/', { middlewares: listQueryMiddleware })
 	async listUsers(req: ListQuery.Request) {
@@ -361,32 +391,13 @@ export class UsersController {
 
 		const users = await this.userService.findMany(findManyOptions);
 
-		let publicUsers: Array<Partial<PublicUser>> = await Promise.all(
+		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
 			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
 		);
 
-		const isSelectRequested = listQueryOptions?.select !== undefined;
-		const isTakeRequested = listQueryOptions?.take !== undefined;
-		const isOwnerFilterRequested = listQueryOptions?.filter?.isOwner === true;
-
-		if (isSelectRequested && isTakeRequested) {
-			// remove auxiliary field for select with take
-			publicUsers = publicUsers.map(({ id, ...rest }) => rest);
-		}
-
-		if (isOwnerFilterRequested) {
-			// remove auxiliary field for isOwner
-			publicUsers = publicUsers.map(({ globalRole, ...rest }) => rest);
-		}
-
-		if (isSelectRequested) {
-			// remove unselectable non-entity fields
-			return publicUsers.map(
-				({ isOwner, isPending, signInType, hasRecoveryCodesLeft, ...rest }) => rest,
-			);
-		}
-
-		return publicUsers;
+		return listQueryOptions
+			? this.removeSupplementaryFields(publicUsers, listQueryOptions)
+			: publicUsers;
 	}
 
 	@Authorized(['global', 'owner'])
