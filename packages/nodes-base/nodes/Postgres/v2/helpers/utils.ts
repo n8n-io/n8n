@@ -230,11 +230,11 @@ export function configureQueryRunner(
 					})
 					.flat();
 
-				const emptyReturnData = queries.every((query) => isSelectQuery(query.query))
-					? []
-					: [{ json: { success: true } }];
-
-				returnData = returnData.length ? returnData : emptyReturnData;
+				if (!returnData.length) {
+					returnData = queries.every((query) => isSelectQuery(query.query))
+						? []
+						: [{ json: { success: true } }];
+				}
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
 				if (!continueOnFail) throw error;
@@ -258,12 +258,14 @@ export function configureQueryRunner(
 						const query = queries[i].query;
 						const values = queries[i].values;
 
-						const transactionResults = (await transaction.multi(query, values)).flat();
+						let transactionResults = (await transaction.multi(query, values)).flat();
 
-						const emptyReturnData = isSelectQuery(query) ? [] : { success: true };
+						if (!transactionResults.length) {
+							transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResults.length ? transactionResults : emptyReturnData),
+							wrapData(transactionResults),
 							{ itemData: { item: i } },
 						);
 
@@ -287,12 +289,14 @@ export function configureQueryRunner(
 						const query = queries[i].query;
 						const values = queries[i].values;
 
-						const transactionResults = (await task.multi(query, values)).flat();
+						let transactionResults = (await task.multi(query, values)).flat();
 
-						const emptyReturnData = isSelectQuery(query) ? [] : { success: true };
+						if (!transactionResults.length) {
+							transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResults.length ? transactionResults : emptyReturnData),
+							wrapData(transactionResults),
 							{ itemData: { item: i } },
 						);
 
