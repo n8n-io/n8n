@@ -833,6 +833,15 @@ export default defineComponent({
 		}
 	}
 
+	&--config {
+		.node-default {
+			.node-options {
+				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
+				height: 20px;
+			}
+		}
+	}
+
 	&--configurable {
 		width: 250px;
 
