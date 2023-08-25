@@ -30,7 +30,7 @@ export class EmbeddingsOpenAI implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		console.log('Supply data for embeddings')
+		this.logger.verbose('Supply data for embeddings')
 		const credentials = await this.getCredentials('openAiApi');
 
 		const embeddings = new OpenAIEmbeddings({
