@@ -368,7 +368,7 @@ export class UsersController {
 			for (const user of publicUsers) delete user.globalRole;
 		}
 
-		// remove computed fields
+		// remove computed fields (unselectable)
 
 		if (select) {
 			for (const user of publicUsers) {
