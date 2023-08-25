@@ -47,6 +47,7 @@ export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
+export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 
 export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
@@ -348,6 +349,7 @@ export const enum VIEWS {
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
+	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
@@ -450,6 +452,7 @@ export const enum EnterpriseEditionFeature {
 	SourceControl = 'sourceControl',
 	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
+	DebugInEditor = 'debugInEditor',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
