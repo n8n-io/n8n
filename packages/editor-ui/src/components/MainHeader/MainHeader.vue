@@ -109,7 +109,11 @@ export default defineComponent({
 				route.name === VIEWS.EXECUTION_PREVIEW
 			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-			} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
+			} else if (
+				route.name === VIEWS.WORKFLOW ||
+				route.name === VIEWS.NEW_WORKFLOW ||
+				route.name === VIEWS.EXECUTION_DEBUG
+			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 			}
 			const workflowName = route.params.name;

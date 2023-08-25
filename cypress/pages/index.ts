@@ -8,4 +8,5 @@ export * from './settings-log-streaming';
 export * from './sidebar';
 export * from './ndv';
 export * from './bannerStack';
+export * from './workflow-executions-tab';
 export * from './signin';
