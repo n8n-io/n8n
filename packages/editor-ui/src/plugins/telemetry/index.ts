@@ -110,15 +110,11 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
-			if (
-				route.meta?.telemetry &&
-				typeof route.meta.telemetry.getProperties === 'function'
-			) {
+			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
-			const category =
-				(route.meta?.telemetry?.pageCategory) || 'Editor';
+			const category = route.meta?.telemetry?.pageCategory || 'Editor';
 			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
