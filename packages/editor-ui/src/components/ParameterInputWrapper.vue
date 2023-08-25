@@ -16,6 +16,7 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
+			:additionalExpressionData="resolvedAdditionalExpressionData"
 			:label="label"
 			:data-test-id="`parameter-input-${parameter.name}`"
 			:event-bus="eventBus"
@@ -50,6 +51,7 @@ import { mapStores } from 'pinia';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from '@/components/ParameterInputHint.vue';
 import type {
+	IDataObject,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
@@ -61,6 +63,8 @@ import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { isValueExpression } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
+
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
 
@@ -72,6 +76,10 @@ export default defineComponent({
 		InputHint,
 	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},
@@ -127,7 +135,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
 			return isValueExpression(this.parameter, this.modelValue);
 		},
@@ -183,6 +191,7 @@ export default defineComponent({
 						inputNodeName: this.ndvStore.ndvInputNodeName,
 						inputRunIndex: this.ndvStore.ndvInputRunIndex,
 						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						additionalKeys: this.resolvedAdditionalExpressionData,
 					};
 				}
 
@@ -207,6 +216,15 @@ export default defineComponent({
 			}
 
 			return null;
+		},
+		resolvedAdditionalExpressionData() {
+			return {
+				$vars: this.environmentsStore.variablesAsObject,
+				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled && this.isForCredential
+					? { $secrets: this.externalSecretsStore.secretsAsObject }
+					: {}),
+				...this.additionalExpressionData,
+			};
 		},
 	},
 	methods: {

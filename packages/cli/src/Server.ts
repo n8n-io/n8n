@@ -99,6 +99,7 @@ import {
 	WorkflowStatisticsController,
 } from '@/controllers';
 
+import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
 import {
@@ -163,6 +164,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
+import { isExternalSecretsEnabled } from './ExternalSecrets/externalSecretsHelper.ee';
 import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
@@ -314,6 +316,7 @@ export class Server extends AbstractServer {
 				variables: false,
 				sourceControl: false,
 				auditLogs: false,
+				externalSecrets: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
 			},
@@ -451,6 +454,7 @@ export class Server extends AbstractServer {
 			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
+			externalSecrets: isExternalSecretsEnabled(),
 			showNonProdBanner: Container.get(License).isFeatureEnabled(
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
@@ -526,6 +530,7 @@ export class Server extends AbstractServer {
 			Container.get(SamlController),
 			Container.get(SourceControlController),
 			Container.get(WorkflowStatisticsController),
+			Container.get(ExternalSecretsController),
 		];
 
 		if (isLdapEnabled()) {
@@ -929,10 +934,13 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.InternalServerError(error.message);
 				}
 
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+
 				const mode: WorkflowExecuteMode = 'internal';
 				const timezone = config.getEnv('generic.timezone');
 				const credentialsHelper = new CredentialsHelper(encryptionKey);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+					additionalData,
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
@@ -941,6 +949,7 @@ export class Server extends AbstractServer {
 				);
 
 				const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+					additionalData,
 					decryptedDataOriginal,
 					credential.type,
 					mode,
@@ -1075,10 +1084,13 @@ export class Server extends AbstractServer {
 						throw new ResponseHelper.InternalServerError(error.message);
 					}
 
+					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+
 					const mode: WorkflowExecuteMode = 'internal';
 					const timezone = config.getEnv('generic.timezone');
 					const credentialsHelper = new CredentialsHelper(encryptionKey);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+						additionalData,
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
@@ -1086,6 +1098,7 @@ export class Server extends AbstractServer {
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+						additionalData,
 						decryptedDataOriginal,
 						credential.type,
 						mode,

@@ -65,6 +65,7 @@ import { InternalHooks } from '@/InternalHooks';
 import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
 import { EventsService } from '@/services/events.service';
+import { SecretsHelper } from './SecretsHelpers';
 import { OwnershipService } from './services/ownership.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -1167,6 +1168,7 @@ export async function getBase(
 		userId,
 		setExecutionStatus,
 		variables,
+		secretsHelpers: Container.get(SecretsHelper),
 	};
 }
 

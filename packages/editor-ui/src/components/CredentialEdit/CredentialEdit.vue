@@ -157,6 +157,8 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 	isCredentialModalState,
+	isExpression,
+	isTestableExpression,
 } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 
@@ -370,12 +372,13 @@ export default defineComponent({
 			}
 
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
-			const hasExpressions = Object.values(credentialData).reduce(
+			const hasUntestableExpressions = Object.values(credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
-					accu || (typeof value === 'string' && value.startsWith('=')),
+					accu ||
+					(typeof value === 'string' && isExpression(value) && !isTestableExpression(value)),
 				false,
 			);
-			if (hasExpressions) {
+			if (hasUntestableExpressions) {
 				return false;
 			}
 
@@ -445,8 +448,14 @@ export default defineComponent({
 					return false;
 				}
 
-				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
-					return false;
+				if (property.type === 'number') {
+					const isExpression =
+						typeof this.credentialData[property.name] === 'string' &&
+						this.credentialData[property.name].startsWith('=');
+
+					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+						return false;
+					}
 				}
 			}
 			return true;
@@ -835,12 +844,17 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
+					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				);
+
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
 					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
+					uses_external_secrets: usesExternalSecrets,
 				};
 
 				if (this.isOAuthType) {
