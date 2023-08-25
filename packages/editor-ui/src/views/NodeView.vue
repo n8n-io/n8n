@@ -288,6 +288,7 @@ import {
 	useSettingsStore,
 	useUIStore,
 	useHistoryStore,
+	useExternalSecretsStore,
 } from '@/stores';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
@@ -496,6 +497,7 @@ export default defineComponent({
 			useEnvironmentsStore,
 			useWorkflowsEEStore,
 			useHistoryStore,
+			useExternalSecretsStore,
 		),
 		nativelyNumberSuffixedDefaults(): string[] {
 			return this.nodeTypesStore.nativelyNumberSuffixedDefaults;
@@ -3603,6 +3605,9 @@ export default defineComponent({
 		async loadVariables(): Promise<void> {
 			await this.environmentsStore.fetchAllVariables();
 		},
+		async loadSecrets(): Promise<void> {
+			await this.externalSecretsStore.fetchAllSecrets();
+		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
@@ -3909,6 +3914,7 @@ export default defineComponent({
 			this.loadCredentials(),
 			this.loadCredentialTypes(),
 			this.loadVariables(),
+			this.loadSecrets(),
 		];
 
 		if (this.nodeTypesStore.allNodeTypes.length === 0) {
