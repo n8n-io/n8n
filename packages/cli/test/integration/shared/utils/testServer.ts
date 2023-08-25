@@ -50,6 +50,7 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
+import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { MfaService } from '@/Mfa/mfa.service';
 import { TOTPService } from '@/Mfa/totp.service';
 import { UserSettings } from 'n8n-core';
@@ -284,6 +285,9 @@ export const setupTestServer = ({
 						break;
 					case 'tags':
 						registerController(app, config, Container.get(TagsController));
+						break;
+					case 'externalSecrets':
+						registerController(app, config, Container.get(ExternalSecretsController));
 						break;
 				}
 			}

@@ -21,6 +21,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
+	INodeProperties,
 	IUserSettings,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
@@ -460,6 +461,13 @@ export interface IInternalHooksClass {
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onVariableCreated(createData: { variable_type: string }): Promise<void>;
+	onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string;
+	}): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
@@ -778,5 +786,36 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export interface SecretsProviderSettings<T = IDataObject> {
+	connected: boolean;
+	connectedAt: Date | null;
+	settings: T;
+}
+
+export interface ExternalSecretsSettings {
+	[key: string]: SecretsProviderSettings;
+}
+
+export type SecretsProviderState = 'initializing' | 'connected' | 'error';
+
+export abstract class SecretsProvider {
+	displayName: string;
+
+	name: string;
+
+	properties: INodeProperties[];
+
+	state: SecretsProviderState;
+
+	abstract init(settings: SecretsProviderSettings): Promise<void>;
+	abstract connect(): Promise<void>;
+	abstract disconnect(): Promise<void>;
+	abstract update(): Promise<void>;
+	abstract test(): Promise<[boolean] | [boolean, string]>;
+	abstract getSecret(name: string): IDataObject | undefined;
+	abstract hasSecret(name: string): boolean;
+	abstract getSecretNames(): string[];
+}
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';

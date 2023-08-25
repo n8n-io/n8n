@@ -38,6 +38,7 @@ import SettingsSso from './views/SettingsSso.vue';
 import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
+import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
@@ -587,6 +588,28 @@ export const routes = [
 						getProperties(route: RouteLocation) {
 							return {
 								feature: 'environments',
+							};
+						},
+					},
+					permissions: {
+						allow: {
+							role: [ROLE.Owner],
+						},
+					},
+				},
+			},
+			{
+				path: 'external-secrets',
+				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
+				components: {
+					settingsView: SettingsExternalSecrets,
+				},
+				meta: {
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties(route: Route) {
+							return {
+								feature: 'external-secrets',
 							};
 						},
 					},
