@@ -19,9 +19,12 @@ export const genericHelpers = defineComponent({
 	computed: {
 		...mapStores(useSourceControlStore),
 		isReadOnlyRoute(): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOG_STREAMING_SETTINGS].includes(
-				this.$route.name as VIEWS,
-			);
+			return ![
+				VIEWS.WORKFLOW,
+				VIEWS.NEW_WORKFLOW,
+				VIEWS.LOG_STREAMING_SETTINGS,
+				VIEWS.EXECUTION_DEBUG,
+			].includes(this.$route.name as VIEWS);
 		},
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;

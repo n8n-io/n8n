@@ -39,7 +39,7 @@ import SignoutView from '@/views/SignoutView.vue';
 import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
-import { VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 interface IRouteConfig {
 	meta: {
@@ -208,10 +208,6 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workflow',
-		redirect: '/workflow/new',
-	},
-	{
 		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
@@ -227,8 +223,8 @@ export const routes = [
 		},
 	},
 	{
-		path: '/workflow/new',
-		name: VIEWS.NEW_WORKFLOW,
+		path: '/workflow/:name/debug/:executionId',
+		name: VIEWS.EXECUTION_DEBUG,
 		components: {
 			default: NodeView,
 			header: MainHeader,
@@ -240,22 +236,9 @@ export const routes = [
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
 				},
-			},
-		},
-	},
-	{
-		path: '/workflow/:name',
-		name: VIEWS.WORKFLOW,
-		components: {
-			default: NodeView,
-			header: MainHeader,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			nodeView: true,
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
+				deny: {
+					shouldDeny: () =>
+						!useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.DebugInEditor),
 				},
 			},
 		},
@@ -310,20 +293,6 @@ export const routes = [
 		],
 	},
 	{
-		path: '/workflows/demo',
-		name: VIEWS.DEMO,
-		components: {
-			default: NodeView,
-		},
-		meta: {
-			permissions: {
-				allow: {
-					loginStatus: [LOGIN_STATUS.LoggedIn],
-				},
-			},
-		},
-	},
-	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
@@ -340,6 +309,58 @@ export const routes = [
 				},
 			},
 		},
+	},
+	{
+		path: '/workflow/new',
+		name: VIEWS.NEW_WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/demo',
+		name: VIEWS.DEMO,
+		components: {
+			default: NodeView,
+		},
+		meta: {
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow/:name',
+		name: VIEWS.WORKFLOW,
+		components: {
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			nodeView: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflow',
+		redirect: '/workflow/new',
 	},
 	{
 		path: '/signin',
