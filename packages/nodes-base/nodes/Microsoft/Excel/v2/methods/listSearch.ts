@@ -11,7 +11,7 @@ export async function searchWorkbooks(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const fileExtensions = ['.xlsx', '.xlsm', '.xlst', '.xls'];
+	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
 	const extensionFilter = fileExtensions.join(' OR ');
 
 	const q = filter || extensionFilter;
