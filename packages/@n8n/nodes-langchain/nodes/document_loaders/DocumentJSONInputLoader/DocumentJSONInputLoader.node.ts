@@ -1,10 +1,38 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import {  INodeExecutionData, type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData, INodeExecutionData } from 'n8n-workflow';
 
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 import { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
+
+export class N8nLoaderTransformer {
+  private pointersArray: string[];
+  private textSplitter?: CharacterTextSplitter;
+
+  constructor(pointersArray: string[], textSplitter?: CharacterTextSplitter) {
+    this.pointersArray = pointersArray;
+    this.textSplitter = textSplitter;
+  }
+
+  async process(items: INodeExecutionData[]): Promise<Document[]> {
+    const docs: Document[] = [];
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+      const itemData = items[itemIndex].json;
+      const itemString = JSON.stringify(itemData);
+
+      const itemBlob = new Blob([itemString], { type: 'application/json' })
+      const jsonDoc = new JSONLoader(itemBlob, this.pointersArray);
+      const loadedDoc = this.textSplitter
+        ? await jsonDoc.loadAndSplit(this.textSplitter)
+        : await jsonDoc.load();
+
+      docs.push(...loadedDoc)
+    }
+    return docs;
+  }
+}
 
 export class DocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -20,47 +48,32 @@ export class DocumentJSONInputLoader implements INodeType {
 			color: '#500080',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'textSplitter'],
-		inputNames: ['', 'Text Splitter'],
+		inputs: ['textSplitter'],
+		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['main', 'document'],
-		outputNames: ['', 'Document'],
-		properties: [],
+		outputs: ['document'],
+		outputNames: ['Document'],
+		properties: [
+			{
+				displayName: 'Pointers',
+				name: 'pointers',
+				type: 'string',
+				default: '',
+				description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
+			}
+		],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		let textSplitter: CharacterTextSplitter | undefined;
-		console.log('Supply Data for JSON Input Loader');
-		const items = await this.getInputData();
-		const textSplitterNode = await this.getInputConnectionData('textSplitter', 0);
-		if (textSplitterNode?.[0]?.response) {
-			textSplitter = textSplitterNode?.[0]?.response as CharacterTextSplitter;
-		}
+		this.logger.verbose('Supply Data for JSON Input Loader');
+		const pointers = this.getNodeParameter('pointers', 0) as string;
+		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
+		const textSplitter = await getAndValidateSupplyInput(this, 'textSplitter') as CharacterTextSplitter;
 
-		const docs: Document[] = [];
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const itemData = items[itemIndex].json;
-			const itemString = JSON.stringify(itemData);
-
-			const itemBlob = new Blob([itemString], { type: 'application/json' })
-			// TODO: Implement pointers to extract only parts of JSON
-			const jsonDoc = new JSONLoader(itemBlob);
-			const loadedDoc = textSplitter
-				? await jsonDoc.loadAndSplit(textSplitter)
-				: await jsonDoc.load();
-
-
-			docs.push(...loadedDoc)
-		}
+		const processor = new N8nLoaderTransformer(pointersArray, textSplitter);
 
 		return {
-			response: logWrapper(docs, this),
+			response: logWrapper(processor, this),
 		};
-	}
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData(0);
-
-		// Only pass it through?
-		return this.prepareOutputData(items);
 	}
 }

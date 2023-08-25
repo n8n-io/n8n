@@ -1,5 +1,4 @@
 import {
-	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -9,6 +8,7 @@ import {
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import { BaseRetriever } from 'langchain/schema/retriever';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class ChainRetrievalQA implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,40 +60,8 @@ export class ChainRetrievalQA implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Retrieval QA Chain');
 
-		let vectorRetriever: BaseRetriever;
-		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
-
-		if (languageModelNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Language Model has to be connected!',
-			);
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only one Language Model is allowed to be connected!',
-			);
-		}
-		const model = languageModelNodes[0].response as BaseLanguageModel;
-
-		if (languageModelNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Language Model has to be connected!',
-			);
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only one Language Model is allowed to be connected!',
-			);
-		}
-
-		const vectorRetrieverNodes = await this.getInputConnectionData('vectorRetriever', 0);
-		if (vectorRetrieverNodes.length === 1) {
-			vectorRetriever = vectorRetrieverNodes[0].response as BaseRetriever;
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(this.getNode(), 'Only one Vector Retriever is allowed to be connected!');
-		}
+		const model = await getAndValidateSupplyInput(this, 'languageModel', true) as BaseLanguageModel;
+		const vectorRetriever = await getAndValidateSupplyInput(this, 'vectorRetriever', true) as BaseRetriever;
 
 		const items = this.getInputData();
 		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever!);

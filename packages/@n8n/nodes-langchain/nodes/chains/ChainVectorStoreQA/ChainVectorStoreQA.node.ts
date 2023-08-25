@@ -1,5 +1,4 @@
 import {
-	NodeOperationError,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -9,6 +8,7 @@ import {
 import { VectorDBQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import { VectorStore } from 'langchain/vectorstores/base';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class ChainVectorStoreQA implements INodeType {
 	description: INodeTypeDescription = {
@@ -66,38 +66,17 @@ export class ChainVectorStoreQA implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Vector Store QA Chain')
-		let vectorStore: VectorStore;
 		const runMode = this.getNodeParameter('mode', 0) as string;
-		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
 
-		if (languageModelNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Language Model has to be connected!',
-			);
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only one Language Model is allowed to be connected!',
-			);
-		}
-		const model = languageModelNodes[0].response as BaseLanguageModel;
+		const model = await getAndValidateSupplyInput(this, 'languageModel', true) as BaseLanguageModel;
+		const vectorStore = await getAndValidateSupplyInput(this, 'vectorStore', true) as VectorStore;
 
-		const vectorStoreNodes = await this.getInputConnectionData('vectorStore', 0);
-		if (vectorStoreNodes.length > 1) {
-			throw new NodeOperationError(this.getNode(), 'Only one Vector Store is allowed to be connected!');
-		}
-
-		vectorStore = vectorStoreNodes[0].response as VectorStore;
-
-		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4});
-
+		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
 
 		chain.k = this.getNodeParameter('topK', 0, 4) as number;
-
 		if (runMode === 'runOnceForAllItems') {
 			const query = this.getNodeParameter('query', 0) as string;
 			const response = await chain.call({ query })

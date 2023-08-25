@@ -1,7 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeOperationError, type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { logWrapper } from '../../../utils/logWrapper';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class RetrieverVectorStore implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,14 +47,10 @@ export class RetrieverVectorStore implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for Vector Store Retriever');
+
 		const topK = this.getNodeParameter('topK', 0, 4) as number;
-		const vectorStoreNodes = await this.getInputConnectionData('vectorStore', 0);
+		const vectorStore = await getAndValidateSupplyInput(this, 'vectorStore', true) as PineconeStore;
 
-		if (vectorStoreNodes.length > 1) {
-			throw new NodeOperationError(this.getNode(), 'Only one Vector Retriever is allowed to be connected!');
-		}
-
-		const vectorStore = (vectorStoreNodes || [])[0]?.response as PineconeStore;
 		const retriever = vectorStore.asRetriever(topK);
 
 		return {

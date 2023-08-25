@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
 import { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
@@ -14,9 +14,10 @@ import { TextSplitter } from 'langchain/text_splitter';
 import { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
+import { N8nLoaderTransformer } from '../nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
 
 export function logWrapper(
-	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter |  VectorStore,
+	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter |  VectorStore | N8nLoaderTransformer,
 	executeFunctions: IExecuteFunctions,
 ) {
 	return new Proxy(originalInstance, {
@@ -49,6 +50,17 @@ export function logWrapper(
 					// @ts-ignore
 					const response = await target[prop](query);
 					executeFunctions.addOutputData('embedding', [[{ json: { response } }]]);
+					return response;
+				};
+
+			}
+			// JSON Input -> Documents
+			if (prop === 'process') {
+				return async (items: INodeExecutionData[]): Promise<number[][]> => {
+					executeFunctions.addInputData('document', [items]);
+					// @ts-ignore
+					const response = await target[prop](items);
+					executeFunctions.addOutputData('document', [[{ json: { response } }]]);
 					return response;
 				};
 

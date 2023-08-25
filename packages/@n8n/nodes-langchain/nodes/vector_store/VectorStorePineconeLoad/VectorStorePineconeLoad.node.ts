@@ -1,8 +1,9 @@
-import { IExecuteFunctions, INodeType, INodeTypeDescription, NodeOperationError, SupplyData } from 'n8n-workflow';
+import { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone'
 import { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,19 +49,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		const index = this.getNodeParameter('pineconeIndex', 0) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
-
-		const embeddingNodes = await this.getInputConnectionData('embedding', 0);
-		if (embeddingNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Embedding model has to be connected!',
-			);
-		} else if (embeddingNodes.length > 1) {
-			throw new NodeOperationError(this.getNode(), 'Only one Embedding model is allowed to be connected!');
-		}
-
-
-		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
+		const embeddings = await getAndValidateSupplyInput(this, 'embedding', true) as Embeddings;
 
 		const client = new PineconeClient()
 		await client.init({
@@ -68,23 +57,14 @@ export class VectorStorePineconeLoad implements INodeType {
 				environment: credentials.environment as string,
 		})
 
-		try {
-			const pineconeIndex = client.Index(index);
+		const pineconeIndex = client.Index(index);
+		const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
+			namespace: namespace || undefined,
+			pineconeIndex,
+		})
 
-			const vectorStore = await PineconeStore.fromExistingIndex(embeddings, {
-				namespace: namespace || undefined,
-				pineconeIndex,
-			})
-
-
-			return {
-				response: logWrapper(vectorStore, this)
-			}
-		} catch (error) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Failed to load vector store from Pinecone index',
-			);
+		return {
+			response: logWrapper(vectorStore, this)
 		}
 	}
 }
