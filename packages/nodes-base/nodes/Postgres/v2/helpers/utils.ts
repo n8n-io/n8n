@@ -217,6 +217,7 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
+		const emptyReturnData = options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
@@ -231,9 +232,13 @@ export function configureQueryRunner(
 					.flat();
 
 				if (!returnData.length) {
-					returnData = queries.every((query) => isSelectQuery(query.query))
-						? []
-						: [{ json: { success: true } }];
+					if ((options?.nodeVersion as number) < 2.3) {
+						returnData = emptyReturnData;
+					} else {
+						returnData = queries.every((query) => isSelectQuery(query.query))
+							? []
+							: [{ json: { success: true } }];
+					}
 				}
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
@@ -258,10 +263,19 @@ export function configureQueryRunner(
 						const query = queries[i].query;
 						const values = queries[i].values;
 
-						let transactionResults = (await transaction.multi(query, values)).flat();
+						let transactionResults;
+						if ((options?.nodeVersion as number) < 2.3) {
+							transactionResults = await transaction.any(query, values);
+						} else {
+							transactionResults = (await transaction.multi(query, values)).flat();
+						}
 
 						if (!transactionResults.length) {
-							transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							if ((options?.nodeVersion as number) < 2.3) {
+								transactionResults = emptyReturnData;
+							} else {
+								transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							}
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -289,10 +303,19 @@ export function configureQueryRunner(
 						const query = queries[i].query;
 						const values = queries[i].values;
 
-						let transactionResults = (await task.multi(query, values)).flat();
+						let transactionResults;
+						if ((options?.nodeVersion as number) < 2.3) {
+							transactionResults = await task.any(query, values);
+						} else {
+							transactionResults = (await task.multi(query, values)).flat();
+						}
 
 						if (!transactionResults.length) {
-							transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							if ((options?.nodeVersion as number) < 2.3) {
+								transactionResults = emptyReturnData;
+							} else {
+								transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							}
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
