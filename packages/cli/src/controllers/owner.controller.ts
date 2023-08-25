@@ -10,50 +10,25 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { Config } from '@/config';
+import { ILogger } from 'n8n-workflow';
+import { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
-import type { SettingsRepository } from '@db/repositories';
+import { IInternalHooksClass } from '@/Interfaces';
+import { SettingsRepository } from '@db/repositories';
+import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
-import Container from 'typedi';
-import type { PostHogClient } from '@/posthog';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userService: UserService;
-
-	private readonly settingsRepository: SettingsRepository;
-
-	private readonly postHog?: PostHogClient;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		repositories,
-		postHog,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'Settings'>;
-		postHog?: PostHogClient;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.userService = Container.get(UserService);
-		this.settingsRepository = repositories.Settings;
-		this.postHog = postHog;
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Promote a shell into the owner of the n8n instance,
