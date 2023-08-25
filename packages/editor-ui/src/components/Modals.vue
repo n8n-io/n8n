@@ -119,6 +119,12 @@
 				<SourceControlPullModal :modalName="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="DEBUG_PAYWALL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DebugPaywallModal data-test-id="debug-paywall-modal" :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -147,6 +153,7 @@ import {
 	LOG_STREAM_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 } from '@/constants';
 
@@ -174,6 +181,7 @@ import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
+import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -201,6 +209,7 @@ export default defineComponent({
 		EventDestinationSettingsModal,
 		SourceControlPushModal,
 		SourceControlPullModal,
+		DebugPaywallModal,
 		MfaSetupModal,
 	},
 	data: () => ({
@@ -226,6 +235,7 @@ export default defineComponent({
 		LOG_STREAM_MODAL_KEY,
 		SOURCE_CONTROL_PUSH_MODAL_KEY,
 		SOURCE_CONTROL_PULL_MODAL_KEY,
+		DEBUG_PAYWALL_MODAL_KEY,
 		MFA_SETUP_MODAL_KEY,
 	}),
 });

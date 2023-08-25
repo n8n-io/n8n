@@ -10,7 +10,7 @@ export function useMessage() {
 	};
 
 	async function alert(
-		message: string,
+		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	) {
@@ -27,7 +27,7 @@ export function useMessage() {
 	}
 
 	async function confirm(
-		message: string,
+		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	): Promise<MessageBoxConfirmResult> {
@@ -51,7 +51,7 @@ export function useMessage() {
 	}
 
 	async function prompt(
-		message: string,
+		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
 		config?: ElMessageBoxOptions,
 	) {
