@@ -9,20 +9,14 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
-import { UserService } from '@/services/user.service';
-import Container from 'typedi';
+import type { UserService } from '@/services/user.service';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
 	const externalHooks = mock<IExternalHooksClass>();
 	const internalHooks = mock<IInternalHooksClass>();
 	const userService = mock<UserService>();
-	Container.set(UserService, userService);
-	const controller = new MeController({
-		logger,
-		externalHooks,
-		internalHooks,
-	});
+	const controller = new MeController(logger, externalHooks, internalHooks, userService);
 
 	describe('updateCurrentUser', () => {
 		it('should throw BadRequestError if email is missing in the payload', async () => {

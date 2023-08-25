@@ -170,27 +170,11 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
-
-		useTelemetry().trackAskAI('askAi.generationFinished', {
-			prompt: prompt.value,
-			code,
-			tokensCount: usage?.total_tokens,
-			hasErrors: false,
-			error: '',
-		});
 	} catch (error) {
 		showMessage({
 			type: 'error',
 			title: i18n.baseText('codeNodeEditor.askAi.generationFailed'),
 			message: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
-		});
-
-		useTelemetry().trackAskAI('askAi.generationFinished', {
-			prompt: prompt.value,
-			code: '',
-			tokensCount: 0,
-			hasErrors: true,
-			error: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
 		});
 		stopLoading();
 	}
