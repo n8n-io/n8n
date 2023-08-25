@@ -355,6 +355,9 @@ export const nodeBase = defineComponent({
 				textSplitter: {
 					endpoint: createAddInputEndpointSpec('--color-secondary-tint-2'),
 				},
+				chain: {
+					endpoint: createAddInputEndpointSpec('--color-json-string'),
+				},
 			};
 
 			if (!connectionTypes.hasOwnProperty(connectionType)) {

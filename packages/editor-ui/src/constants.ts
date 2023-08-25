@@ -88,10 +88,12 @@ export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger'
 
 // Node endpoint types
 export const SCOPED_ENDPOINT_TYPES = [
+	EndpointType.Chain,
 	EndpointType.Tool,
 	EndpointType.Memory,
 	EndpointType.LanguageModel,
 	EndpointType.VectorRetriever,
+	EndpointType.VectorStore,
 	EndpointType.Embedding,
 	EndpointType.Document,
 	EndpointType.TextSplitter,
