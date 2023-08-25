@@ -210,6 +210,7 @@ export class TheHiveProjectTrigger implements INodeType {
 				options: [
 					{
 						displayName: 'Output Only Data',
+						description: 'Whether to output data with additional details and omitting headers',
 						name: 'outputOnlyData',
 						type: 'boolean',
 						default: false,
