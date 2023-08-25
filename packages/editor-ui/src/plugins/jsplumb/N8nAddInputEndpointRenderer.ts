@@ -4,7 +4,9 @@ import { N8nAddInputEndpoint } from './N8nAddInputEndpointType';
 export const register = () => {
 	registerEndpointRenderer<N8nAddInputEndpoint>(N8nAddInputEndpoint.type, {
 		makeNode: (endpointInstance: N8nAddInputEndpoint) => {
-			const group = svg.node('g');
+			const group = svg.node('g', {
+				style: `--svg-color: var(${endpointInstance.params.color})`,
+			});
 			const containerBorder = svg.node('rect', {
 				rx: 3,
 				'stroke-width': 2,

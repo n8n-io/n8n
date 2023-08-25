@@ -666,7 +666,8 @@ export default defineComponent({
 		text-align: center;
 		cursor: default;
 		padding: 8px;
-		width: 200px;
+		width: 100%;
+		min-width: 200px;
 		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p {
@@ -693,6 +694,11 @@ export default defineComponent({
 
 	&--configurable {
 		width: 250px;
+
+		.node-description {
+			top: 105px;
+			left: unset;
+		}
 	}
 
 	.node-default {
@@ -855,6 +861,8 @@ export default defineComponent({
 }
 
 .select-background {
+	--node--selected--box-shadow-radius: 8px;
+
 	display: block;
 	background-color: hsla(
 		var(--color-foreground-base-h),
@@ -865,24 +873,19 @@ export default defineComponent({
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
-	left: -8px !important;
-	top: -8px !important;
-	height: 116px;
-	width: 116px !important;
+	left: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	top: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	height: calc(100% + 2 * var(--node--selected--box-shadow-radius));
+	width: calc(100% + 2 * var(--node--selected--box-shadow-radius)) !important;
 
 	.node-wrapper--trigger & {
 		border-radius: 36px 8px 8px 36px;
 	}
+
 	.node-wrapper--config & {
+		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
 		background-color: var(--color-foreground-dark);
-		left: -4px !important;
-		top: -4px !important;
-		height: 108px;
-		width: 108px !important;
-	}
-	.node-wrapper--configurable & {
-		width: 266px !important;
 	}
 }
 
@@ -1151,12 +1154,12 @@ export default defineComponent({
 	}
 
 	&.rect-input-endpoint-hover {
-		rect {
-			stroke: var(--color-primary);
+		.add-input-endpoint-plus-rectangle {
+			stroke: var(--svg-color, var(--color-primary));
 		}
 
-		path {
-			fill: var(--color-primary);
+		.add-input-endpoint-plus-icon {
+			fill: var(--svg-color, var(--color-primary));
 		}
 	}
 
@@ -1175,7 +1178,8 @@ export default defineComponent({
 
 		&.rect-input-endpoint-hover {
 			.add-input-endpoint-connected-rectangle {
-				fill: var(--color-primary);
+				fill: var(--svg-color, var(--color-primary));
+				stroke: var(--svg-color, var(--color-primary));
 			}
 		}
 	}
@@ -1200,7 +1204,11 @@ export default defineComponent({
 
 	&--tool,
 	&--memory,
-	&--languageModel {
+	&--languageModel,
+	&--vectorRetriever,
+	&--embedding,
+	&--document,
+	&--textSplitter {
 		text-align: center;
 		margin-top: calc(var(--spacing-m) * -1);
 		margin-left: 0;
@@ -1217,7 +1225,11 @@ export default defineComponent({
 
 	&--tool,
 	&--memory,
-	&--languageModel {
+	&--languageModel,
+	&--vectorRetriever,
+	&--embedding,
+	&--document,
+	&--textSplitter {
 		text-align: center;
 		margin-top: calc(var(--spacing-m) * -1);
 		margin-left: 0;

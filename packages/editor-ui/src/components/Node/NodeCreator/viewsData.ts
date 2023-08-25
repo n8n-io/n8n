@@ -13,8 +13,69 @@ import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
 	DEFAULT_SUBCATEGORY,
+	AI_SUBCATEGORY,
+	AI_NODES_CATEGORY,
+	AI_NODE_CREATOR_VIEW,
 } from '@/constants';
 import { useI18n } from '@/composables';
+
+export function AIView() {
+	const i18n = useI18n();
+
+	return {
+		value: AI_NODE_CREATOR_VIEW,
+		title: i18n.baseText('nodeCreator.aiPanel.selectATrigger'),
+		subtitle: i18n.baseText('nodeCreator.aiPanel.selectATriggerDescription'),
+		items: [
+			{
+				key: DEFAULT_SUBCATEGORY,
+				type: 'subcategory',
+				properties: {
+					forceIncludeNodes: [WEBHOOK_NODE_TYPE, EMAIL_IMAP_NODE_TYPE],
+					title: 'App Trigger Nodes',
+					icon: 'satellite-dish',
+				},
+			},
+			{
+				key: SCHEDULE_TRIGGER_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: SCHEDULE_TRIGGER_NODE_TYPE,
+					displayName: i18n.baseText('nodeCreator.aiPanel.scheduleTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.aiPanel.scheduleTriggerDescription'),
+					icon: 'fa:clock',
+				},
+			},
+			{
+				key: WEBHOOK_NODE_TYPE,
+				type: 'node',
+				category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: WEBHOOK_NODE_TYPE,
+					displayName: i18n.baseText('nodeCreator.aiPanel.webhookTriggerDisplayName'),
+					description: i18n.baseText('nodeCreator.aiPanel.webhookTriggerDescription'),
+					iconData: {
+						type: 'file',
+						icon: 'webhook',
+						fileBuffer: '/static/webhook-icon.svg',
+					},
+				},
+			},
+			{
+				type: 'subcategory',
+				key: AI_SUBCATEGORY,
+				category: AI_NODES_CATEGORY,
+				properties: {
+					title: AI_SUBCATEGORY,
+					icon: 'brain',
+				},
+			},
+		],
+	};
+}
 
 export function TriggerView() {
 	const i18n = useI18n();

@@ -219,6 +219,7 @@ import {
 	NODE_CREATOR_OPEN_SOURCES,
 	NODE_TRIGGER_CHAT_BUTTON,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
+	AI_NODE_CREATOR_VIEW,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -2142,6 +2143,7 @@ export default defineComponent({
 			index: number;
 			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
+			nodeCreatorView?: string;
 		}) {
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
@@ -2159,9 +2161,12 @@ export default defineComponent({
 				this.canvasStore.lastSelectedConnection = info.connection;
 			}
 
+			console.log('here', info.eventSource, info.nodeCreatorView);
+
 			this.onToggleNodeCreator({
 				source: info.eventSource,
 				createNodeActive: true,
+				nodeCreatorView: info.nodeCreatorView,
 			});
 		},
 		onEventConnectionAbort(connection: Connection) {
@@ -2550,7 +2555,8 @@ export default defineComponent({
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
-					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+					eventSource: NODE_CREATOR_OPEN_SOURCES.ADD_INPUT_ENDPOINT,
+					nodeCreatorView: AI_NODE_CREATOR_VIEW,
 				});
 			}
 		},
@@ -3803,21 +3809,38 @@ export default defineComponent({
 		onToggleNodeCreator({
 			source,
 			createNodeActive,
+			nodeCreatorView,
 		}: {
 			source?: NodeCreatorOpenSource;
 			createNodeActive: boolean;
+			nodeCreatorView?: string;
 		}) {
 			if (createNodeActive === this.createNodeActive) return;
 
+			console.log(nodeCreatorView);
+
+			if (!nodeCreatorView) {
+				nodeCreatorView = this.containsTrigger
+					? REGULAR_NODE_CREATOR_VIEW
+					: TRIGGER_NODE_CREATOR_VIEW;
+			}
+
 			// Default to the trigger tab in node creator if there's no trigger node yet
-			this.nodeCreatorStore.setSelectedView(
-				this.containsTrigger ? REGULAR_NODE_CREATOR_VIEW : TRIGGER_NODE_CREATOR_VIEW,
-			);
+			this.nodeCreatorStore.setSelectedView(nodeCreatorView);
 
 			this.createNodeActive = createNodeActive;
 
-			const mode =
-				this.nodeCreatorStore.selectedView === TRIGGER_NODE_CREATOR_VIEW ? 'trigger' : 'regular';
+			let mode;
+			switch (this.nodeCreatorStore.selectedView) {
+				case AI_NODE_CREATOR_VIEW:
+					mode = 'ai';
+					break;
+				case REGULAR_NODE_CREATOR_VIEW:
+					mode = 'regular';
+					break;
+				default:
+					mode = 'regular';
+			}
 
 			if (createNodeActive === true) this.nodeCreatorStore.setOpenSource(source);
 			void this.$externalHooks().run('nodeView.createNodeActiveChanged', {

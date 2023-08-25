@@ -15,14 +15,16 @@ import type { Endpoint, EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
-import { EndpointSpec } from '@jsplumb/common';
+import type { EndpointSpec } from '@jsplumb/common';
+import { EndpointType } from '@/Interface';
 
-const addInputEndpointSpec: EndpointSpec = {
+const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 	type: 'N8nAddInput',
 	options: {
 		size: 24,
+		color,
 	},
-};
+});
 
 export const nodeBase = defineComponent({
 	mixins: [deviceSupportHelpers],
@@ -205,7 +207,7 @@ export const nodeBase = defineComponent({
 					outputsOfSameType.length,
 				)[typeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(outputName);
+				const scope = NodeViewUtils.getEndpointScope(outputName as EndpointType);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
@@ -322,7 +324,7 @@ export const nodeBase = defineComponent({
 				[key: string]: EndpointOptions;
 			} = {
 				languageModel: {
-					endpoint: addInputEndpointSpec,
+					endpoint: createAddInputEndpointSpec('--color-primary'),
 				},
 				main: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
@@ -333,42 +335,22 @@ export const nodeBase = defineComponent({
 					cssClass: `dot-${type}-endpoint`,
 				},
 				memory: {
-					endpoint: addInputEndpointSpec,
+					endpoint: createAddInputEndpointSpec('--color-secondary'),
 				},
 				tool: {
-					endpoint: addInputEndpointSpec,
+					endpoint: createAddInputEndpointSpec('--color-danger'),
 				},
 				vectorRetriever: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-avatar-accent-2',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: createAddInputEndpointSpec('--color-avatar-accent-2'),
 				},
 				embedding: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-json-default',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: createAddInputEndpointSpec('--color-json-default'),
 				},
 				document: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-success-light',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: createAddInputEndpointSpec('--color-success-light'),
 				},
 				textSplitter: {
-					paintStyle: NodeViewUtils.getInputEndpointStyle(
-						nodeTypeData,
-						'--color-secondary-tint-2',
-						connectionType,
-					),
-					cssClass: `dot-${type}-endpoint`,
+					endpoint: createAddInputEndpointSpec('--color-secondary-tint-2'),
 				},
 			};
 
@@ -392,6 +374,11 @@ export const nodeBase = defineComponent({
 						'--color-primary',
 						connectionType,
 					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-primary',
+						connectionType,
+					),
 				},
 				main: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
@@ -404,19 +391,34 @@ export const nodeBase = defineComponent({
 				memory: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						'--color-primary',
+						'--color-secondary',
+						connectionType,
+					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-secondary',
 						connectionType,
 					),
 				},
 				tool: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						'--color-primary',
+						'--color-danger',
+						connectionType,
+					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-danger',
 						connectionType,
 					),
 				},
 				vectorRetriever: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-avatar-accent-2',
+						connectionType,
+					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						'--color-avatar-accent-2',
 						connectionType,
@@ -429,6 +431,11 @@ export const nodeBase = defineComponent({
 						'--color-json-default',
 						connectionType,
 					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-default',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				document: {
@@ -437,10 +444,20 @@ export const nodeBase = defineComponent({
 						'--color-success-light',
 						connectionType,
 					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-success-light',
+						connectionType,
+					),
 					cssClass: `dot-${type}-endpoint`,
 				},
 				textSplitter: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-secondary-tint-2',
+						connectionType,
+					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						'--color-secondary-tint-2',
 						connectionType,
