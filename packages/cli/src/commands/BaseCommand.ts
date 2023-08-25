@@ -20,6 +20,7 @@ import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -132,6 +133,11 @@ export abstract class BaseCommand extends Command {
 				LoggerProxy.error('Could not activate license', e as Error);
 			}
 		}
+	}
+
+	async initExternalSecrets() {
+		const secretsManager = Container.get(ExternalSecretsManager);
+		await secretsManager.init();
 	}
 
 	async finally(error: Error | undefined) {
