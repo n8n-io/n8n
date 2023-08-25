@@ -314,67 +314,76 @@ export class UsersController {
 		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
 	}
 
+	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+		const findManyOptions: FindManyOptions<User> = {};
+
+		if (!listQueryOptions) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+			return findManyOptions;
+		}
+
+		const { filter, select, take, skip } = listQueryOptions;
+
+		if (select) findManyOptions.select = select;
+		if (take) findManyOptions.take = take;
+		if (skip) findManyOptions.skip = skip;
+
+		if (take && !select) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+			return findManyOptions;
+		}
+
+		if (take && select && !select?.id) {
+			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+		}
+
+		if (filter) {
+			const { isOwner, ...otherFilters } = filter;
+
+			findManyOptions.where = otherFilters;
+
+			if (isOwner !== undefined) {
+				const ownerRole = await this.roleService.findGlobalOwnerRole();
+
+				findManyOptions.relations = ['globalRole'];
+				findManyOptions.where.globalRole = { id: isOwner ? ownerRole.id : Not(ownerRole.id) };
+			}
+		}
+
+		return findManyOptions;
+	}
+
 	@Authorized('any')
 	@Get('/', { middlewares: listQueryMiddleware })
 	async listUsers(req: ListQuery.Request) {
 		const { listQueryOptions } = req;
 
-		const findManyOptions: FindManyOptions<User> = {};
-
-		const isOwnerFilterIncluded = listQueryOptions?.filter?.isOwner !== undefined;
-		const isOwnerFilterRequested = listQueryOptions?.filter?.isOwner === true;
-		const isSubsetRequested = listQueryOptions?.take !== undefined;
-
-		if (!listQueryOptions) {
-			findManyOptions.relations = ['globalRole', 'authIdentities'];
-		} else {
-			const { filter, select, take, skip } = listQueryOptions;
-
-			if (filter) findManyOptions.where = filter;
-			if (select) findManyOptions.select = select;
-			if (take) findManyOptions.take = take;
-			if (skip) findManyOptions.skip = skip;
-
-			if (take) {
-				findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
-			}
-
-			if (isOwnerFilterIncluded) {
-				findManyOptions.relations = ['globalRole'];
-
-				delete listQueryOptions?.filter?.isOwner; // computed field should not be passed to typeorm
-
-				const ownerRole = await this.roleService.findGlobalOwnerRole();
-
-				findManyOptions.where = {
-					...findManyOptions.where,
-					globalRole: { id: isOwnerFilterRequested ? ownerRole.id : Not(ownerRole.id) },
-				};
-			}
-		}
+		const findManyOptions = await this.toFindManyOptions(listQueryOptions);
 
 		const users = await this.userService.findMany(findManyOptions);
 
-		let publicUsers = await Promise.all(
-			users.map(async (user) => {
-				return this.userService.toPublic(user, { withInviteUrl: true });
-			}),
+		let publicUsers: Partial<PublicUser>[] = await Promise.all(
+			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
 		);
 
-		if (isSubsetRequested) {
-			// remove auxiliary field for take
-			publicUsers = publicUsers.map(({ id, ...rest }) => rest as PublicUser);
+		const isSelectRequested = listQueryOptions?.select !== undefined;
+		const isTakeRequested = listQueryOptions?.take !== undefined;
+		const isOwnerFilterRequested = listQueryOptions?.filter?.isOwner === true;
+
+		if (isSelectRequested && isTakeRequested) {
+			// remove auxiliary field for select with take
+			publicUsers = publicUsers.map(({ id, ...rest }) => rest);
 		}
 
 		if (isOwnerFilterRequested) {
 			// remove auxiliary field for isOwner
-			publicUsers = publicUsers.map(({ globalRole, ...rest }) => rest as PublicUser);
+			publicUsers = publicUsers.map(({ globalRole, ...rest }) => rest);
 		}
 
-		if (listQueryOptions?.select !== undefined) {
+		if (isSelectRequested) {
 			// remove unselectable non-entity fields
 			return publicUsers.map(
-				({ isOwner, isPending, signInType, hasRecoveryCodesLeft, ...rest }) => rest as PublicUser,
+				({ isOwner, isPending, signInType, hasRecoveryCodesLeft, ...rest }) => rest,
 			);
 		}
 
