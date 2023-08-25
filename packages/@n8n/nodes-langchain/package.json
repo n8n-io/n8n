@@ -43,6 +43,7 @@
       "dist/nodes/LangChain/LangChain.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQA.node.js",
       "dist/nodes/chains/ChainVectorStoreQA/ChainVectorStoreQA.node.js",
+      "dist/nodes/document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node.js",
       "dist/nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.js",
       "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAI.node.js",
@@ -52,6 +53,7 @@
       "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
+      "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
       "dist/nodes/tools/ToolDynamicTool/ToolDynamicTool.node.js",
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
@@ -65,6 +67,7 @@
   },
   "devDependencies": {
     "@types/express": "^4.17.6",
+    "@types/html-to-text": "^9.0.1",
     "@types/request-promise-native": "~1.0.15",
     "@typescript-eslint/parser": "~5.45",
     "eslint-plugin-n8n-nodes-base": "^1.11.0",
@@ -75,13 +78,17 @@
     "typescript": "~4.8.4"
   },
   "dependencies": {
+    "@gxl/epub-parser": "^2.0.4",
     "@huggingface/inference": "2.6.1",
     "@pinecone-database/pinecone": "^0.1.6",
     "@xata.io/cli": "^0.13.4",
     "cohere-ai": "^6.2.2",
+    "html-to-text": "^9.0.5",
     "ignore": "^5.2.4",
-    "langchain": "^0.0.133",
+    "langchain": "^0.0.134",
     "lodash": "^4.17.21",
-    "n8n-nodes-base": "workspace:*"
+    "mammoth": "^1.6.0",
+    "n8n-nodes-base": "workspace:*",
+    "pdf-parse": "^1.1.1"
   }
 }

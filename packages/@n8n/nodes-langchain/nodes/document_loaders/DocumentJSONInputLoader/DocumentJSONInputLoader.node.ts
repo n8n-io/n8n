@@ -16,8 +16,10 @@ export class N8nLoaderTransformer {
     this.textSplitter = textSplitter;
   }
 
-  async process(items: INodeExecutionData[]): Promise<Document[]> {
+  async process(items?: INodeExecutionData[]): Promise<Document[]> {
     const docs: Document[] = [];
+		if(!items) return docs;
+
     for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
       const itemData = items[itemIndex].json;
       const itemString = JSON.stringify(itemData);

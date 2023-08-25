@@ -4,6 +4,8 @@ import { PineconeClient } from '@pinecone-database/pinecone'
 import { Embeddings } from 'langchain/embeddings/base';
 import { N8nLoaderTransformer } from '../../document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
+import { Document } from 'langchain/document';
+import { N8nBinaryLoader } from '../../document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node';
 
 export class VectorStorePineconeInsert implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,7 +63,7 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const credentials = await this.getCredentials('pineconeApi');
 
-		const documentsProcessor = await getAndValidateSupplyInput(this, 'document', true) as N8nLoaderTransformer;
+		const documentInput = await getAndValidateSupplyInput(this, 'document', true) as N8nLoaderTransformer | Document<Record<string, any>>[];
 		const embeddings = await getAndValidateSupplyInput(this, 'embedding', true) as Embeddings;
 
 		const client = new PineconeClient()
@@ -76,7 +78,7 @@ export class VectorStorePineconeInsert implements INodeType {
 			await pineconeIndex.delete1({ deleteAll: true, namespace: namespace });
 		}
 
-		const processedDocuments = await documentsProcessor.process(items);
+		const processedDocuments = documentInput instanceof N8nLoaderTransformer  || documentInput instanceof N8nBinaryLoader ? await documentInput.process(items) : documentInput;
 
 		await PineconeStore.fromDocuments(processedDocuments, embeddings, {
 			namespace: namespace || undefined,
