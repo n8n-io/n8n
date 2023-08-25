@@ -45,7 +45,7 @@ const asyncExec = promisify(exec);
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
-export class CommunityService {
+export class CommunityPackageService {
 	constructor(private readonly installedPackageRepository: InstalledPackagesRepository) {}
 
 	async findInstalledPackage(packageName: string) {

@@ -8,14 +8,14 @@ import { toReportTitle } from '@/audit/utils';
 import { mockInstance } from '../shared/utils/';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
-import { CommunityService } from '@/services/community.service';
+import { CommunityPackageService } from '@/services/communityPackage.service';
 import Container from 'typedi';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
 mockInstance(NodeTypes);
-const communityService = mockInstance(CommunityService);
-Container.set(CommunityService, communityService);
+const communityPackageService = mockInstance(CommunityPackageService);
+Container.set(CommunityPackageService, communityPackageService);
 
 beforeAll(async () => {
 	await testDb.init();
@@ -31,7 +31,7 @@ afterAll(async () => {
 });
 
 test('should report risky official nodes', async () => {
-	communityService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
+	communityPackageService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 	const map = [...OFFICIAL_RISKY_NODE_TYPES].reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
@@ -76,7 +76,7 @@ test('should report risky official nodes', async () => {
 });
 
 test('should not report non-risky official nodes', async () => {
-	communityService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
+	communityPackageService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await audit(['nodes']);
@@ -91,7 +91,7 @@ test('should not report non-risky official nodes', async () => {
 });
 
 test('should report community nodes', async () => {
-	communityService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
+	communityPackageService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 
 	const testAudit = await audit(['nodes']);
 

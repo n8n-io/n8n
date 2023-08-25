@@ -23,7 +23,7 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
-import { CommunityService } from '@/services/community.service';
+import { CommunityPackageService } from '@/services/communityPackage.service';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
@@ -232,9 +232,12 @@ export class Start extends BaseCommand {
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			await Container.get(CommunityService).setMissingPackages(this.loadNodesAndCredentials, {
-				reinstallMissingPackages: flags.reinstallMissingPackages,
-			});
+			await Container.get(CommunityPackageService).setMissingPackages(
+				this.loadNodesAndCredentials,
+				{
+					reinstallMissingPackages: flags.reinstallMissingPackages,
+				},
+			);
 		}
 
 		const dbType = config.getEnv('database.type');
