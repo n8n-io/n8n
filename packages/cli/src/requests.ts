@@ -234,7 +234,7 @@ export declare namespace MeRequest {
 	export type Password = AuthenticatedRequest<
 		{},
 		{},
-		{ currentPassword: string; newPassword: string }
+		{ currentPassword: string; newPassword: string; token?: string }
 	>;
 	export type SurveyAnswers = AuthenticatedRequest<{}, {}, Record<string, string> | {}>;
 }
@@ -244,6 +244,9 @@ export interface UserSetupPayload {
 	password: string;
 	firstName: string;
 	lastName: string;
+	mfaEnabled?: boolean;
+	mfaSecret?: string;
+	mfaRecoveryCodes?: string[];
 }
 
 // ----------------------------------
@@ -268,7 +271,7 @@ export declare namespace PasswordResetRequest {
 	export type NewPassword = AuthlessRequest<
 		{},
 		{},
-		Pick<PublicUser, 'password'> & { token?: string; userId?: string }
+		Pick<PublicUser, 'password'> & { token?: string; userId?: string; mfaToken?: string }
 	>;
 }
 
@@ -339,8 +342,26 @@ export type LoginRequest = AuthlessRequest<
 	{
 		email: string;
 		password: string;
+		mfaToken?: string;
+		mfaRecoveryCode?: string;
 	}
 >;
+
+// ----------------------------------
+//          MFA endpoints
+// ----------------------------------
+
+export declare namespace MFA {
+	type Verify = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { token: string }, {}>;
+	type Config = AuthenticatedRequest<{}, {}, { login: { enabled: boolean } }, {}>;
+	type ValidateRecoveryCode = AuthenticatedRequest<
+		{},
+		{},
+		{ recoveryCode: { enabled: boolean } },
+		{}
+	>;
+}
 
 // ----------------------------------
 //          oauth endpoints

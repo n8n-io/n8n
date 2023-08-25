@@ -27,6 +27,7 @@ export type EndpointGroup =
 	| 'variables'
 	| 'tags'
 	| 'externalSecrets'
+	| 'mfa'
 	| 'metrics';
 
 export interface SetupProps {
