@@ -35,7 +35,7 @@ const createMockDb = (returnData: IDataObject | IDataObject[]) => {
 };
 
 describe('Test PostgresV2, runQueries', () => {
-	it('should execute, should return success true', async () => {
+	it('should execute, should return empty array', async () => {
 		const pgp = pgPromise();
 		const db = createMockDb([]);
 
@@ -47,8 +47,25 @@ describe('Test PostgresV2, runQueries', () => {
 		const result = await runQueries([{ query: 'SELECT * FROM table', values: [] }], [], {});
 
 		expect(result).toBeDefined();
+		expect(result).toHaveLength(0);
+		expect(result).toEqual([]);
+		expect(dbMultiSpy).toHaveBeenCalledWith('SELECT * FROM table');
+	});
+
+	it('should execute, should return {success: true}', async () => {
+		const pgp = pgPromise();
+		const db = createMockDb([]);
+
+		const dbMultiSpy = jest.spyOn(db, 'multi');
+
+		const thisArg = mock<IExecuteFunctions>();
+		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
+
+		const result = await runQueries([{ query: 'DELETE table', values: [] }], [], {});
+
+		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
 		expect(result).toEqual([{ json: { success: true } }]);
-		expect(dbMultiSpy).toHaveBeenCalledWith('SELECT * FROM table');
+		expect(dbMultiSpy).toHaveBeenCalledWith('DELETE table');
 	});
 });

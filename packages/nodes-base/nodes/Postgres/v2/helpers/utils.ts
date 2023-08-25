@@ -199,6 +199,14 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
+const isSelectQuery = (query: string) => {
+	return query
+		.replace(/\n/g, '')
+		.split(';')
+		.filter((statement) => statement && !statement.startsWith('--')) // remove comments and empty statements
+		.every((statement) => statement.trim().toLowerCase().startsWith('select'));
+};
+
 export function configureQueryRunner(
 	this: IExecuteFunctions,
 	node: INode,
@@ -208,7 +216,6 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
-		const emptyReturnData = options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
@@ -221,6 +228,11 @@ export function configureQueryRunner(
 						});
 					})
 					.flat();
+
+				const emptyReturnData = queries.every((query) => isSelectQuery(query.query))
+					? []
+					: [{ json: { success: true } }];
+
 				returnData = returnData.length ? returnData : emptyReturnData;
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
@@ -242,13 +254,15 @@ export function configureQueryRunner(
 				const result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const transactionResult: IDataObject[] = await transaction.any(
-							queries[i].query,
-							queries[i].values,
-						);
+						const query = queries[i].query;
+						const values = queries[i].values;
+
+						const transactionResults = (await transaction.multi(query, values)).flat();
+
+						const emptyReturnData = isSelectQuery(query) ? [] : { success: true };
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
+							wrapData(transactionResults.length ? transactionResults : emptyReturnData),
 							{ itemData: { item: i } },
 						);
 
@@ -265,17 +279,19 @@ export function configureQueryRunner(
 		}
 
 		if (queryBatching === 'independently') {
-			returnData = await db.task(async (t) => {
+			returnData = await db.task(async (task) => {
 				const result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const transactionResult: IDataObject[] = await t.any(
-							queries[i].query,
-							queries[i].values,
-						);
+						const query = queries[i].query;
+						const values = queries[i].values;
+
+						const transactionResults = (await task.multi(query, values)).flat();
+
+						const emptyReturnData = isSelectQuery(query) ? [] : { success: true };
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
+							wrapData(transactionResults.length ? transactionResults : emptyReturnData),
 							{ itemData: { item: i } },
 						);
 
