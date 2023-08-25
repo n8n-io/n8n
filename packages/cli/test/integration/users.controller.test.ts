@@ -70,6 +70,54 @@ describe('GET /users', () => {
 			expect(_response.body.data).toHaveLength(0);
 		});
 
+		test('should filter users by field: firstName', async () => {
+			const secondMember = await testDb.createMember();
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query(`filter={ "firstName": "${secondMember.firstName}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [user] = response.body.data;
+
+			expect(user.email).toBe(secondMember.email);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query('filter={ "firstName": "Non-Existing" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter users by field: lastName', async () => {
+			const secondMember = await testDb.createMember();
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query(`filter={ "lastName": "${secondMember.lastName}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [user] = response.body.data;
+
+			expect(user.email).toBe(secondMember.email);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query('filter={ "lastName": "Non-Existing" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
 		test('should filter users by computed field: isOwner', async () => {
 			const response = await testServer
 				.authAgentFor(owner)

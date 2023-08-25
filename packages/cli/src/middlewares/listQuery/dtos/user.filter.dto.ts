@@ -8,6 +8,16 @@ export class UserFilter extends BaseFilter {
 	@Expose()
 	email?: string;
 
+	@IsString()
+	@IsOptional()
+	@Expose()
+	firstName?: string;
+
+	@IsString()
+	@IsOptional()
+	@Expose()
+	lastName?: string;
+
 	@IsBoolean()
 	@IsOptional()
 	@Expose()
