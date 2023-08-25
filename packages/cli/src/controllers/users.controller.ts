@@ -369,6 +369,10 @@ export class UsersController {
 
 		const findManyOptions: FindManyOptions<User> = {};
 
+		const isOwnerFilterIncluded = listQueryOptions?.filter?.isOwner !== undefined;
+		const isOwnerFilterRequested = listQueryOptions?.filter?.isOwner === true;
+		const isSubsetRequested = listQueryOptions?.take !== undefined;
+
 		if (!listQueryOptions) {
 			findManyOptions.relations = ['globalRole', 'authIdentities'];
 		} else {
@@ -379,35 +383,46 @@ export class UsersController {
 			if (take) findManyOptions.take = take;
 			if (skip) findManyOptions.skip = skip;
 
-			if (filter?.isOwner !== undefined) {
+			if (take) {
+				findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+			}
+
+			if (isOwnerFilterIncluded) {
 				findManyOptions.relations = ['globalRole'];
 
-				const { isOwner } = filter;
-
-				delete filter.isOwner; // remove computed field
+				delete listQueryOptions?.filter?.isOwner; // computed field should not be passed to typeorm
 
 				const ownerRole = await this.roleService.findGlobalOwnerRole();
 
 				findManyOptions.where = {
 					...findManyOptions.where,
-					globalRole: { id: isOwner ? ownerRole.id : Not(ownerRole.id) },
+					globalRole: { id: isOwnerFilterRequested ? ownerRole.id : Not(ownerRole.id) },
 				};
 			}
 		}
 
 		const users = await this.userService.findMany(findManyOptions);
 
-		const publicUsers = await Promise.all(
+		let publicUsers = await Promise.all(
 			users.map(async (user) => {
 				return this.userService.toPublic(user, { withInviteUrl: true });
 			}),
 		);
 
+		if (isSubsetRequested) {
+			// remove auxiliary field for take
+			publicUsers = publicUsers.map(({ id, ...rest }) => rest as PublicUser);
+		}
+
+		if (isOwnerFilterRequested) {
+			// remove auxiliary field for isOwner
+			publicUsers = publicUsers.map(({ globalRole, ...rest }) => rest as PublicUser);
+		}
+
 		if (listQueryOptions?.select !== undefined) {
+			// remove unselectable non-entity fields
 			return publicUsers.map(
-				({ isOwner, isPending, signInType, hasRecoveryCodesLeft, ...rest }) => {
-					return rest as PublicUser; // remove unselectable non-entity fields
-				},
+				({ isOwner, isPending, signInType, hasRecoveryCodesLeft, ...rest }) => rest as PublicUser,
 			);
 		}
 

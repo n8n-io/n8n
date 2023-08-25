@@ -193,5 +193,17 @@ describe('GET /users', () => {
 				data: [{ lastName: any(String) }, { lastName: any(String) }],
 			});
 		});
+
+		describe('combinations', () => {
+			test('should combine options requiring auxiliary fields', async () => {
+				const response = await testServer
+					.authAgentFor(owner)
+					.get('/users')
+					.query('filter={ "isOwner": true }&select=["firstName"]&take=10')
+					.expect(200);
+
+				expect(response.body).toEqual({ data: [{ firstName: any(String) }] });
+			});
+		});
 	});
 });
