@@ -12,13 +12,14 @@ import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementH
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
+import { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Config } from '@/config';
-import type { PublicUser, IInternalHooksClass, CurrentUser } from '@/Interfaces';
+import { Config } from '@/config';
+import { IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser, CurrentUser } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
@@ -27,42 +28,18 @@ import {
 import { InternalHooks } from '../InternalHooks';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
-import type { MfaService } from '@/Mfa/mfa.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class AuthController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userService: UserService;
-
-	private readonly postHog?: PostHogClient;
-
-	private readonly mfaService: MfaService;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		postHog,
-		mfaService,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		postHog?: PostHogClient;
-		mfaService: MfaService;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.postHog = postHog;
-		this.userService = Container.get(UserService);
-		this.mfaService = mfaService;
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly mfaService: MfaService,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Log in a user.
