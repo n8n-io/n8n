@@ -290,7 +290,7 @@ describe('Resolution-based completions', () => {
 		});
 	});
 
-	describe.only('secrets', () => {
+	describe('secrets', () => {
 		const resolveParameterSpy = vi.spyOn(workflowHelpers, 'resolveParameter');
 		const { $input, $ } = mockProxy;
 
