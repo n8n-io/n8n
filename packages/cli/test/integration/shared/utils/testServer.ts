@@ -23,6 +23,7 @@ import { registerController } from '@/decorators';
 import {
 	AuthController,
 	LdapController,
+	MFAController,
 	MeController,
 	NodesController,
 	OwnerController,
@@ -49,8 +50,9 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
-import { JwtService } from '@/services/jwt.service';
-import { RoleService } from '@/services/role.service';
+import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/Mfa/totp.service';
+import { UserSettings } from 'n8n-core';
 import { MetricsService } from '@/services/metrics.service';
 
 /**
@@ -180,11 +182,12 @@ export const setupTestServer = ({
 		}
 
 		if (functionEndpoints.length) {
+			const encryptionKey = await UserSettings.getEncryptionKey();
+			const repositories = Db.collections;
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
-			const jwtService = Container.get(JwtService);
-			const repositories = Db.collections;
+			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
 
 			for (const group of functionEndpoints) {
 				switch (group) {
@@ -198,9 +201,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new AuthController({ config, logger, internalHooks, repositories }),
+							new AuthController({ config, logger, internalHooks, repositories, mfaService }),
 						);
 						break;
+					case 'mfa':
+						registerController(app, config, new MFAController(mfaService));
 					case 'ldap':
 						Container.get(License).isLdapEnabled = () => true;
 						await handleLdapInit();
@@ -229,7 +234,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({ logger, externalHooks, internalHooks, repositories }),
+							new MeController({
+								logger,
+								externalHooks,
+								internalHooks,
+							}),
 						);
 						break;
 					case 'passwordReset':
@@ -242,8 +251,7 @@ export const setupTestServer = ({
 								externalHooks,
 								internalHooks,
 								mailer,
-								repositories,
-								jwtService,
+								mfaService,
 							}),
 						);
 						break;
@@ -251,7 +259,12 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new OwnerController({ config, logger, internalHooks, repositories }),
+							new OwnerController({
+								config,
+								logger,
+								internalHooks,
+								repositories,
+							}),
 						);
 						break;
 					case 'users':
@@ -266,8 +279,6 @@ export const setupTestServer = ({
 								repositories,
 								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
 								logger,
-								jwtService,
-								roleService: Container.get(RoleService),
 							}),
 						);
 						break;

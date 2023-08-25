@@ -18,18 +18,19 @@ import type { UserManagementMailer } from '@/UserManagement/email';
 import { Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
-import type { UserRepository } from '@db/repositories';
 import { PasswordResetRequest } from '@/requests';
-import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { TokenExpiredError } from 'jsonwebtoken';
-import type { JwtService, JwtPayload } from '@/services/jwt.service';
+import type { JwtPayload } from '@/services/jwt.service';
+import { JwtService } from '@/services/jwt.service';
+import type { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class PasswordResetController {
@@ -43,9 +44,11 @@ export class PasswordResetController {
 
 	private readonly mailer: UserManagementMailer;
 
-	private readonly userRepository: UserRepository;
-
 	private readonly jwtService: JwtService;
+
+	private readonly userService: UserService;
+
+	private readonly mfaService: MfaService;
 
 	constructor({
 		config,
@@ -53,24 +56,23 @@ export class PasswordResetController {
 		externalHooks,
 		internalHooks,
 		mailer,
-		repositories,
-		jwtService,
+		mfaService,
 	}: {
 		config: Config;
 		logger: ILogger;
 		externalHooks: IExternalHooksClass;
 		internalHooks: IInternalHooksClass;
 		mailer: UserManagementMailer;
-		repositories: Pick<IDatabaseCollections, 'User'>;
-		jwtService: JwtService;
+		mfaService: MfaService;
 	}) {
 		this.config = config;
 		this.logger = logger;
 		this.externalHooks = externalHooks;
 		this.internalHooks = internalHooks;
 		this.mailer = mailer;
-		this.userRepository = repositories.User;
-		this.jwtService = jwtService;
+		this.jwtService = Container.get(JwtService);
+		this.userService = Container.get(UserService);
+		this.mfaService = mfaService;
 	}
 
 	/**
@@ -105,7 +107,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findOne({
+		const user = await this.userService.findOne({
 			where: {
 				email,
 				password: Not(IsNull()),
@@ -154,7 +156,11 @@ export class PasswordResetController {
 			},
 		);
 
-		const url = await UserService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const url = this.userService.generatePasswordResetUrl(
+			baseUrl,
+			resetPasswordToken,
+			user.mfaEnabled,
+		);
 
 		try {
 			await this.mailer.passwordReset({
@@ -204,10 +210,8 @@ export class PasswordResetController {
 
 		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
-		const user = await this.userRepository.findOne({
-			where: {
-				id: decodedToken.sub,
-			},
+		const user = await this.userService.findOne({
+			where: { id: decodedToken.sub },
 			relations: ['globalRole'],
 		});
 
@@ -239,7 +243,7 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, password } = req.body;
+		const { token: resetPasswordToken, password, mfaToken } = req.body;
 
 		if (!resetPasswordToken || !password) {
 			this.logger.debug(
@@ -255,7 +259,7 @@ export class PasswordResetController {
 
 		const decodedToken = this.verifyResetPasswordToken(resetPasswordToken);
 
-		const user = await this.userRepository.findOne({
+		const user = await this.userService.findOne({
 			where: { id: decodedToken.sub },
 			relations: ['authIdentities'],
 		});
@@ -270,11 +274,19 @@ export class PasswordResetController {
 			throw new NotFoundError('');
 		}
 
+		if (user.mfaEnabled) {
+			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
+
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
+		}
+
 		const passwordHash = await hashPassword(validPassword);
 
-		await this.userRepository.update(user.id, {
-			password: passwordHash,
-		});
+		await this.userService.update(user.id, { password: passwordHash });
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
