@@ -692,15 +692,6 @@ export default defineComponent({
 		}
 	}
 
-	&--configurable {
-		width: 250px;
-
-		.node-description {
-			top: 105px;
-			left: unset;
-		}
-	}
-
 	.node-default {
 		position: absolute;
 		width: 100%;
@@ -841,6 +832,24 @@ export default defineComponent({
 			}
 		}
 	}
+
+	&--configurable {
+		width: 250px;
+
+		.node-description {
+			top: 105px;
+			left: unset;
+		}
+
+		.node-default {
+			.node-options {
+				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
+				height: 20px;
+				left: 65px;
+			}
+		}
+	}
+
 	&--trigger .node-default .node-box {
 		border-radius: 32px 8px 8px 32px;
 	}
