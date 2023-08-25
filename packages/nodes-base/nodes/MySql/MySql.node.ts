@@ -19,6 +19,7 @@ export class MySql extends VersionedNodeType {
 			1: new MySqlV1(baseDescription),
 			2: new MySqlV2(baseDescription),
 			2.1: new MySqlV2(baseDescription),
+			2.2: new MySqlV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

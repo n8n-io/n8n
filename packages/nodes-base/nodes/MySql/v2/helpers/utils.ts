@@ -167,7 +167,22 @@ export function prepareOutput(
 	}
 
 	if (!returnData.length) {
-		returnData.push({ json: { success: true } });
+		if ((options?.nodeVersion as number) < 2.2) {
+			returnData.push({ json: { success: true } });
+		}
+		const isSelectQuery = statements
+			.filter((statement) => !statement.startsWith('--'))
+			.every((statement) =>
+				statement
+					.replace(/\/\*.*?\*\//g, '') // remove multiline comments
+					.replace(/\n/g, '')
+					.toLowerCase()
+					.startsWith('select'),
+			);
+
+		if (!isSelectQuery) {
+			returnData.push({ json: { success: true } });
+		}
 	}
 
 	return returnData;

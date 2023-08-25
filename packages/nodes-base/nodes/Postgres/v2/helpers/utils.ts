@@ -201,6 +201,7 @@ export function addReturning(
 
 const isSelectQuery = (query: string) => {
 	return query
+		.replace(/\/\*.*?\*\//g, '') // remove multiline comments
 		.replace(/\n/g, '')
 		.split(';')
 		.filter((statement) => statement && !statement.startsWith('--')) // remove comments and empty statements
