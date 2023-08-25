@@ -739,7 +739,7 @@
 	"ndv.title.rename": "Rename",
 	"ndv.title.renameNode": "Rename node",
 	"ndv.pinData.pin.title": "Pin data",
-	"ndv.pinData.pin.description": "Node will always output this data instead of executing.",
+	"ndv.pinData.pin.description": "Node will always output this data instead of executing. Output will be limited to 10 items.",
 	"ndv.pinData.pin.link": "More info",
 	"ndv.pinData.pin.multipleRuns.title": "Run #{index} was pinned",
 	"ndv.pinData.pin.multipleRuns.description": "This run will be outputted each time the node is run.",
