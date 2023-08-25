@@ -1,7 +1,6 @@
 import validator from 'validator';
 import { In } from 'typeorm';
-import type { ILogger } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -24,21 +23,16 @@ import {
 	UnauthorizedError,
 } from '@/ResponseHelper';
 import { Response } from 'express';
-import type { Config } from '@/config';
+import { Config } from '@/config';
 import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
-import type { UserManagementMailer } from '@/UserManagement/email';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IExternalHooksClass,
-	IInternalHooksClass,
-	ITelemetryUserDeletionData,
-} from '@/Interfaces';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { UserManagementMailer } from '@/UserManagement/email';
+import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import type { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
+import { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
 import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
@@ -50,62 +44,20 @@ import { UserService } from '@/services/user.service';
 @Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
-	private config: Config;
-
-	private logger: ILogger;
-
-	private externalHooks: IExternalHooksClass;
-
-	private internalHooks: IInternalHooksClass;
-
-	private sharedCredentialsRepository: SharedCredentialsRepository;
-
-	private sharedWorkflowRepository: SharedWorkflowRepository;
-
-	private activeWorkflowRunner: ActiveWorkflowRunner;
-
-	private mailer: UserManagementMailer;
-
-	private jwtService: JwtService;
-
-	private postHog?: PostHogClient;
-
-	private roleService: RoleService;
-
-	private userService: UserService;
-
-	constructor({
-		config,
-		logger,
-		externalHooks,
-		internalHooks,
-		repositories,
-		activeWorkflowRunner,
-		mailer,
-		postHog,
-	}: {
-		config: Config;
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'SharedCredentials' | 'SharedWorkflow'>;
-		activeWorkflowRunner: ActiveWorkflowRunner;
-		mailer: UserManagementMailer;
-		postHog?: PostHogClient;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.sharedCredentialsRepository = repositories.SharedCredentials;
-		this.sharedWorkflowRepository = repositories.SharedWorkflow;
-		this.activeWorkflowRunner = activeWorkflowRunner;
-		this.mailer = mailer;
-		this.jwtService = Container.get(JwtService);
-		this.postHog = postHog;
-		this.roleService = Container.get(RoleService);
-		this.userService = Container.get(UserService);
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly externalHooks: IExternalHooksClass,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly mailer: UserManagementMailer,
+		private readonly jwtService: JwtService,
+		private readonly roleService: RoleService,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).

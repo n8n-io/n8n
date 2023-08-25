@@ -12,44 +12,28 @@ import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
+import { ILogger } from 'n8n-workflow';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import type { PublicUser, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import { UserService } from '@/services/user.service';
-import Container from 'typedi';
 
 @Authorized()
 @RestController('/me')
 export class MeController {
-	private readonly logger: ILogger;
-
-	private readonly externalHooks: IExternalHooksClass;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userService: UserService;
-
-	constructor({
-		logger,
-		externalHooks,
-		internalHooks,
-	}: {
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-	}) {
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.userService = Container.get(UserService);
-	}
+	constructor(
+		private readonly logger: ILogger,
+		private readonly externalHooks: IExternalHooksClass,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly userService: UserService,
+	) {}
 
 	/**
 	 * Update the logged-in user's properties, except password.
