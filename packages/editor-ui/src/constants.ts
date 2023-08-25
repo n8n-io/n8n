@@ -50,6 +50,8 @@ export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
 export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
 
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
+
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
 	UPDATE: 'update',
@@ -375,6 +377,7 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
@@ -447,6 +450,7 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	SourceControl = 'sourceControl',
+	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
 }

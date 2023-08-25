@@ -1086,4 +1086,14 @@ export class InternalHooks implements IInternalHooksClass {
 	}): Promise<void> {
 		return this.telemetry.track('User finished push via UI', data);
 	}
+
+	async onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string | undefined;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string | undefined;
+	}): Promise<void> {
+		return this.telemetry.track('User updated external secrets settings', saveData);
+	}
 }

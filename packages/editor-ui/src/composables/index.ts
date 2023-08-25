@@ -3,6 +3,7 @@ export * from './useCopyToClipboard';
 export * from './useDebounce';
 export { default as useDeviceSupport } from './useDeviceSupport';
 export * from './useExternalHooks';
+export * from './useExternalSecretsProvider';
 export { default as useGlobalLinkActions } from './useGlobalLinkActions';
 export * from './useHistoryHelper';
 export * from './useI18n';

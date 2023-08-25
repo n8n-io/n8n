@@ -19,6 +19,7 @@
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
 				:isSingleLine="isForRecordLocator"
+				:additionalData="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
 				@blur="onBlur"
@@ -34,7 +35,6 @@
 				data-test-id="expander"
 			/>
 		</div>
-
 		<InlineExpressionEditorOutput
 			:segments="segments"
 			:isReadOnly="isReadOnly"
@@ -46,6 +46,7 @@
 
 <script lang="ts">
 import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 
 import { useNDVStore } from '@/stores/ndv.store';
@@ -57,6 +58,7 @@ import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 
 type InlineExpressionEditorInputRef = InstanceType<typeof InlineExpressionEditorInput>;
 
@@ -87,6 +89,10 @@ export default defineComponent({
 		isForRecordLocator: {
 			type: Boolean,
 			default: false,
+		},
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
 		},
 	},
 	computed: {
