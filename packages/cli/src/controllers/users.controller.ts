@@ -330,7 +330,6 @@ export class UsersController {
 
 		if (take && !select) {
 			findManyOptions.relations = ['globalRole', 'authIdentities'];
-			return findManyOptions;
 		}
 
 		if (take && select && !select?.id) {
