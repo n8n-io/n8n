@@ -1480,7 +1480,18 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
-export type ConnectionTypes = 'languageModel' | 'main' | 'memory' | 'tool' | 'textSplitter' | 'document' | 'vectorRetriever' | 'vectorStore' | 'embedding' | 'chain'
+export type ConnectionTypes =
+	| 'chain'
+	| 'document'
+	| 'embedding'
+	| 'languageModel'
+	| 'main'
+	| 'memory'
+	| 'tool'
+	| 'textSplitter'
+	| 'vectorRetriever'
+	| 'vectorStore';
+
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
@@ -1671,6 +1682,10 @@ export interface IRunExecutionData {
 	executionData?: {
 		contextData: IExecuteContextData;
 		nodeExecutionStack: IExecuteData[];
+		metadata: {
+			// node-name: metadata by runIndex
+			[key: string]: ITaskMetadata[];
+		};
 		waitingExecution: IWaitingForExecution;
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
@@ -1682,6 +1697,15 @@ export interface IRunData {
 	[key: string]: ITaskData[];
 }
 
+export interface ITaskAIRunMetadata {
+	node: string;
+	runIndex: number;
+}
+
+export interface ITaskMetadata {
+	aiRun?: ITaskAIRunMetadata[];
+}
+
 // The data that gets returned when a node runs
 export interface ITaskData {
 	startTime: number;
@@ -1691,6 +1715,7 @@ export interface ITaskData {
 	inputOverride?: ITaskDataConnections;
 	error?: ExecutionError;
 	source: Array<ISourceData | null>; // Is an array as nodes have multiple inputs
+	metadata?: ITaskMetadata;
 }
 
 export interface ISourceData {

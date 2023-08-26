@@ -24,6 +24,7 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	ITaskDataConnectionsSource,
+	ITaskMetadata,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
@@ -62,6 +63,7 @@ export class WorkflowExecute {
 			executionData: {
 				contextData: {},
 				nodeExecutionStack: [],
+				metadata: {},
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
@@ -130,6 +132,7 @@ export class WorkflowExecute {
 			executionData: {
 				contextData: {},
 				nodeExecutionStack,
+				metadata: {},
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
@@ -286,6 +289,7 @@ export class WorkflowExecute {
 			executionData: {
 				contextData: {},
 				nodeExecutionStack,
+				metadata: {},
 				waitingExecution,
 				waitingExecutionSource,
 			},
@@ -305,6 +309,22 @@ export class WorkflowExecute {
 		}
 
 		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
+	}
+
+	moveNodeMetadata(): void {
+		const metadata = get(this.runExecutionData, `executionData.metadata`);
+
+		if (metadata) {
+			const runData = get(this.runExecutionData, `resultData.runData`);
+
+			let index: number;
+			let metaRunData: ITaskMetadata;
+			for (const nodeName of Object.keys(metadata)) {
+				for ([index, metaRunData] of metadata[nodeName].entries()) {
+					runData[nodeName][index].metadata = metaRunData;
+				}
+			}
+		}
 	}
 
 	/**
@@ -1531,6 +1551,9 @@ export class WorkflowExecute {
 						// Static data of workflow changed
 						newStaticData = workflow.staticData;
 					}
+
+					await this.moveNodeMetadata();
+
 					await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
 						// eslint-disable-next-line @typescript-eslint/no-shadow
 						(error) => {
@@ -1598,6 +1621,9 @@ export class WorkflowExecute {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
 		}
+
+		await this.moveNodeMetadata();
+
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 		if (closeFunction) {

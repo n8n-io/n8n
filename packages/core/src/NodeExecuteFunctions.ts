@@ -2170,6 +2170,7 @@ export function getWebhookDescription(
 	return undefined;
 }
 
+// TODO: Change options to an object
 const addExecutionDataFunctions = (
 	type: 'input' | 'output',
 	nodeName: string,
@@ -2177,6 +2178,8 @@ const addExecutionDataFunctions = (
 	runExecutionData: IRunExecutionData,
 	connectionType: ConnectionTypes,
 	additionalData: IWorkflowExecuteAdditionalData,
+	sourceNodeName: string,
+	sourceNodeRunIndex: number,
 ) => {
 	if (connectionType === 'main') {
 		throw new Error(`Setting the ${type} is not supported for the main connection!`);
@@ -2212,7 +2215,6 @@ const addExecutionDataFunctions = (
 		} as ITaskDataConnections;
 	}
 
-
 	if (type === 'input') {
 		if (!(data instanceof Error)) {
 			taskData.inputOverride = {
@@ -2242,6 +2244,24 @@ const addExecutionDataFunctions = (
 				data: taskData,
 			});
 		}
+
+		let sourceTaskData = get(runExecutionData, `executionData.metadata[${sourceNodeName}]`);
+
+		if (!sourceTaskData) {
+			runExecutionData.executionData!.metadata[sourceNodeName] = [];
+			sourceTaskData = runExecutionData.executionData!.metadata[sourceNodeName];
+		}
+
+		if (!sourceTaskData[sourceNodeRunIndex]) {
+			sourceTaskData[sourceNodeRunIndex] = {
+				aiRun: [],
+			};
+		}
+
+		sourceTaskData[sourceNodeRunIndex]!.aiRun!.push({
+			node: nodeName,
+			runIndex: runExecutionData.resultData.runData[nodeName].length - 1,
+		});
 	}
 };
 
@@ -2727,19 +2747,24 @@ export function getExecuteFunctions(
 									runExecutionData,
 									inputName!,
 									additionalData,
+									node.name,
+									runIndex,
 								);
 
 								// Display on the calling node which node has the error
-								throw new NodeOperationError(connectedNode, `Error on node "${connectedNode.name}" connected via input "${inputName}"`, {
-									itemIndex,
-								});
+								throw new NodeOperationError(
+									connectedNode,
+									`Error on node "${connectedNode.name}" connected via input "${inputName}"`,
+									{
+										itemIndex,
+									},
+								);
 							}
 						};
 
 						try {
 							return await nodeType.supplyData.call(context);
 						} catch (error) {
-
 							if (!(error instanceof ExecutionBaseError)) {
 								error = new NodeOperationError(connectedNode, error, {
 									itemIndex,
@@ -2754,12 +2779,18 @@ export function getExecuteFunctions(
 								runExecutionData,
 								inputName!,
 								additionalData,
+								node.name,
+								runIndex,
 							);
 
 							// Display on the calling node which node has the error
-							throw new NodeOperationError(connectedNode, `Error on node "${connectedNode.name}" connected via input "${inputName}"`, {
-								itemIndex,
-							});
+							throw new NodeOperationError(
+								connectedNode,
+								`Error on node "${connectedNode.name}" connected via input "${inputName}"`,
+								{
+									itemIndex,
+								},
+							);
 						}
 					});
 
@@ -2877,6 +2908,8 @@ export function getExecuteFunctions(
 					runExecutionData,
 					connectionType,
 					additionalData,
+					node.name,
+					runIndex,
 				);
 			},
 			async addOutputData(
@@ -2890,6 +2923,8 @@ export function getExecuteFunctions(
 					runExecutionData,
 					connectionType,
 					additionalData,
+					node.name,
+					runIndex,
 				);
 			},
 			helpers: {
