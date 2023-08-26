@@ -1,4 +1,4 @@
-lockfileVersion: '6.1'
+lockfileVersion: '6.0'
 
 settings:
   autoInstallPeers: true
@@ -143,6 +143,9 @@ importers:
       '@huggingface/inference':
         specifier: 2.6.1
         version: 2.6.1
+      '@pinecone-database/pinecone':
+        specifier: ^0.1.6
+        version: 0.1.6
       '@xata.io/cli':
         specifier: ^0.13.4
         version: 0.13.4(@types/node@18.16.16)(esbuild@0.18.17)(typescript@5.1.6)
@@ -154,7 +157,7 @@ importers:
         version: 5.2.4
       langchain:
         specifier: ^0.0.133
-        version: 0.0.133(@huggingface/inference@2.6.1)(cohere-ai@6.2.2)(ignore@5.2.4)
+        version: 0.0.133(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(ignore@5.2.4)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -1442,7 +1445,7 @@ packages:
       digest-fetch: 1.3.0
       form-data-encoder: 1.7.2
       formdata-node: 4.4.1
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -1566,7 +1569,7 @@ packages:
       '@types/node-fetch': 2.6.4
       '@types/tunnel': 0.0.3
       form-data: 4.0.0
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
       process: 0.11.10
       tough-cookie: 4.1.3
       tslib: 2.6.1
@@ -4234,7 +4237,7 @@ packages:
       detect-libc: 2.0.1
       https-proxy-agent: 5.0.1
       make-dir: 3.1.0
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
       nopt: 5.0.0
       npmlog: 5.0.1
       rimraf: 3.0.2
@@ -4907,6 +4910,15 @@ packages:
       '@otplib/plugin-thirty-two': 12.0.1
     dev: true
 
+  /@pinecone-database/pinecone@0.1.6:
+    resolution: {integrity: sha512-tCnVc28udecthhgSBTdcMhYEW+xsR++AdZasp+ZE/AvUD1hOR2IR3edjk9m0sDxZyvXbno2KeqUbLIOZr7sCTw==}
+    engines: {node: '>=14.0.0'}
+    dependencies:
+      cross-fetch: 3.1.8
+    transitivePeerDependencies:
+      - encoding
+    dev: false
+
   /@pinia/testing@0.1.3(pinia@2.1.6)(vue@3.3.4):
     resolution: {integrity: sha512-D2Ds2s69kKFaRf2KCcP1NhNZEg5+we59aRyQalwRm7ygWfLM25nDH66267U3hNvRUOTx8ofL24GzodZkOmB5xw==}
     peerDependencies:
@@ -5082,7 +5094,7 @@ packages:
     hasBin: true
     dependencies:
       https-proxy-agent: 5.0.1
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
       progress: 2.0.3
       proxy-from-env: 1.1.0
       which: 2.0.2
@@ -5960,7 +5972,7 @@ packages:
       glob: 10.3.3
       handlebars: 4.7.7
       lazy-universal-dotenv: 4.0.0
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
       picomatch: 2.3.1
       pkg-dir: 5.0.0
       pretty-hrtime: 1.0.3
@@ -8871,7 +8883,7 @@ packages:
       core-js: 3.31.0
       handlebars: 4.7.7
       lodash.uniqby: 4.7.0
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
       parse-github-url: 1.0.2
       regenerator-runtime: 0.13.9
       semver: 7.5.4
@@ -10380,6 +10392,14 @@ packages:
     dependencies:
       cross-spawn: 7.0.3
     dev: true
+
+  /cross-fetch@3.1.8:
+    resolution: {integrity: sha512-cvA+JwZoU0Xq+h6WkMvAUqPEYy92Obet6UdKLfW60qn99ftItKjB5T+BkyWOFWe2pUyfQ+IJHmpOTznqk1M6Kg==}
+    dependencies:
+      node-fetch: 2.6.13
+    transitivePeerDependencies:
+      - encoding
+    dev: false
 
   /cross-spawn@4.0.2:
     resolution: {integrity: sha512-yAXz/pA1tD8Gtg2S98Ekf/sewp3Lcp3YoFKJ4Hkp5h5yLWnKVTDU0kwjKJ8NDCYcfTLfyGkzTikst+jWypT1iA==}
@@ -13000,7 +13020,7 @@ packages:
       extend: 3.0.2
       https-proxy-agent: 5.0.1
       is-stream: 2.0.1
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -15573,7 +15593,7 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.133(@huggingface/inference@2.6.1)(cohere-ai@6.2.2)(ignore@5.2.4):
+  /langchain@0.0.133(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(cohere-ai@6.2.2)(ignore@5.2.4):
     resolution: {integrity: sha512-AVieepmeOso+32+bdGPX02qpHRh3Eff7r+gVe6GkR8KyMsl+FW7JFvXLhBTpO5pdzFQoNL/UtCBQkvHxEdmW3Q==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -15797,6 +15817,7 @@ packages:
     dependencies:
       '@anthropic-ai/sdk': 0.5.10
       '@huggingface/inference': 2.6.1
+      '@pinecone-database/pinecone': 0.1.6
       ansi-styles: 5.2.0
       binary-extensions: 2.2.0
       camelcase: 6.3.0
@@ -17279,6 +17300,17 @@ packages:
     resolution: {integrity: sha512-VzW+TAk2wE4X9maiKMlT+GsPU4OMmR1U9CrHSmd3DFLn2IcZ9VJ6M6BBugGfYUnPCLSYxXdZy17M0BEJyhUTwg==}
     dev: true
 
+  /node-fetch@2.6.13:
+    resolution: {integrity: sha512-StxNAxh15zr77QvvkmveSQ8uCQ4+v5FkvNTj0OESmiHu+VRi/gXArXtkWMElOsOUNLtUEvI4yS+rdtOHZTwlQA==}
+    engines: {node: 4.x || >=6.0.0}
+    peerDependencies:
+      encoding: ^0.1.0
+    peerDependenciesMeta:
+      encoding:
+        optional: true
+    dependencies:
+      whatwg-url: 5.0.0
+
   /node-fetch@2.6.8:
     resolution: {integrity: sha512-RZ6dBYuj8dRSfxpUSu+NsdF1dpPpluJxwOp+6IoDp/sH2QNDSvurYsAa+F1WxY2RjA1iP93xhcsUoYbF2XBqVg==}
     engines: {node: 4.x || >=6.0.0}
@@ -17289,6 +17321,7 @@ packages:
         optional: true
     dependencies:
       whatwg-url: 5.0.0
+    dev: false
 
   /node-fetch@3.3.2:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
@@ -21245,7 +21278,7 @@ packages:
     dependencies:
       http-proxy-agent: 5.0.0
       https-proxy-agent: 5.0.1
-      node-fetch: 2.6.8
+      node-fetch: 2.6.13
       stream-events: 1.0.5
       uuid: 9.0.0
     transitivePeerDependencies:

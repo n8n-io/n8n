@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-workflow';
+import { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
 import { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
@@ -8,15 +8,16 @@ import { BaseChatMemory } from 'langchain/memory';
 
 import { Embeddings } from 'langchain/embeddings';
 import { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
-import { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
-import { BaseDocumentLoader } from 'langchain/document_loaders/base';
-import { CallbackManagerForRetrieverRun } from 'langchain/dist/callbacks/manager';
+import { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
+import { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
+import { N8nLoaderTransformer } from '../nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
 
 export function logWrapper(
-	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter,
+	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter |  VectorStore | N8nLoaderTransformer,
 	executeFunctions: IExecuteFunctions,
 ) {
 	return new Proxy(originalInstance, {
@@ -42,7 +43,29 @@ export function logWrapper(
 				};
 
 			}
-			// For BaseRetriever
+			// Query -> Embeddings
+			if (prop === 'embedQuery') {
+				return async (query: string): Promise<number[][]> => {
+					executeFunctions.addInputData('embedding', [[{ json: { query: query } }]]);
+					// @ts-ignore
+					const response = await target[prop](query);
+					executeFunctions.addOutputData('embedding', [[{ json: { response } }]]);
+					return response;
+				};
+
+			}
+			// JSON Input -> Documents
+			if (prop === 'process') {
+				return async (items: INodeExecutionData[]): Promise<number[][]> => {
+					executeFunctions.addInputData('document', [items]);
+					// @ts-ignore
+					const response = await target[prop](items);
+					executeFunctions.addOutputData('document', [[{ json: { response } }]]);
+					return response;
+				};
+
+			}
+			// BaseRetriever
 			if (prop === '_getRelevantDocuments') {
 				return async (
 					query: string,
@@ -99,6 +122,16 @@ export function logWrapper(
 					// @ts-ignore
 					const response = (await target[prop](messages, options, runManager)) as ChatResult;
 					executeFunctions.addOutputData('languageModel', [[{ json: { response } }]]);
+					return response;
+				};
+				// Vector Store
+			} else if (prop === 'similaritySearch') {
+				return async (query: string, k?: number, filter?: BiquadFilterType | undefined, _callbacks?: Callbacks | undefined): Promise<Document[]> => {
+					executeFunctions.addInputData('vectorStore', [[{ json: { query, k, filter } }]]);
+					// @ts-ignore
+					const response = (await target[prop](query, k, filter, _callbacks)) as Document[];
+					executeFunctions.addOutputData('vectorStore', [[{ json: { response } }]]);
+
 					return response;
 				};
 			}

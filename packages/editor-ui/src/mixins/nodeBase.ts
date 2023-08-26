@@ -336,13 +336,16 @@ export const nodeBase = defineComponent({
 					cssClass: `dot-${type}-endpoint`,
 				},
 				memory: {
-					endpoint: createAddInputEndpointSpec('--color-secondary'),
+					endpoint: createAddInputEndpointSpec('--color-primary-tint-1'),
 				},
 				tool: {
 					endpoint: createAddInputEndpointSpec('--color-danger'),
 				},
 				vectorRetriever: {
 					endpoint: createAddInputEndpointSpec('--color-avatar-accent-2'),
+				},
+				vectorStore: {
+					endpoint: createAddInputEndpointSpec('--color-json-null'),
 				},
 				embedding: {
 					endpoint: createAddInputEndpointSpec('--color-json-default'),
@@ -352,6 +355,9 @@ export const nodeBase = defineComponent({
 				},
 				textSplitter: {
 					endpoint: createAddInputEndpointSpec('--color-secondary-tint-2'),
+				},
+				chain: {
+					endpoint: createAddInputEndpointSpec('--color-json-string'),
 				},
 			};
 
@@ -426,6 +432,14 @@ export const nodeBase = defineComponent({
 					),
 					cssClass: `dot-${type}-endpoint`,
 				},
+				vectorStore: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-null',
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
 				embedding: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
@@ -461,6 +475,14 @@ export const nodeBase = defineComponent({
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						CONNECTOR_COLOR['textSplitter'],
+						connectionType,
+					),
+					cssClass: `dot-${type}-endpoint`,
+				},
+				chain: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-json-string',
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,

@@ -111,11 +111,13 @@ export type EndpointStyle = {
 };
 
 export const enum EndpointType {
+	Chain = 'chain',
 	Main = 'main',
 	Tool = 'tool',
 	Memory = 'memory',
 	LanguageModel = 'languageModel',
 	VectorRetriever = 'vectorRetriever',
+	VectorStore = 'vectorStore',
 	Embedding = 'embedding',
 	Document = 'document',
 	TextSplitter = 'textSplitter',
