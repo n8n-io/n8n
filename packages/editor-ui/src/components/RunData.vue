@@ -181,7 +181,11 @@
 
 		<div
 			v-else-if="
-				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+				hasNodeRun &&
+				dataCount > 0 &&
+				maxRunIndex === 0 &&
+				!isArtificialRecoveredEventItem &&
+				!isAiView
 			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
@@ -455,7 +459,8 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView
+				!isSchemaView &&
+				!isAiView
 			"
 			v-show="!editMode.enabled"
 		>
@@ -682,6 +687,9 @@ export default defineComponent({
 				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
+		},
+		isAiView(): boolean {
+			return this.displayMode === 'ai';
 		},
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';

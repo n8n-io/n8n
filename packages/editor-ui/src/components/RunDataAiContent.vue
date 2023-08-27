@@ -1,12 +1,26 @@
 <template>
 	<div class="aiContent" v-if="inputData">
 		<div class="node-name-wrapper">
-			<span class="node-name">{{ inputData.node }}</span
+			{{ (contentIndex || 0) + 1 }}. <span class="node-name">{{ inputData.node }}</span
 			>&nbsp;(Run-Index: {{ inputData.runIndex }})
 		</div>
-		<div v-for="fullData of inputData.data">
+		<div v-for="(fullData, index) of inputData.data">
 			<div :class="['content', fullData.inOut]">
 				<div class="in-out">
+					<span class="toggle">
+						<font-awesome-icon
+							v-if="!hideDataToggle[index]"
+							icon="angle-down"
+							class="clickable"
+							@click="hideDataToggle[index] = true"
+						/>
+						<font-awesome-icon
+							v-if="hideDataToggle[index]"
+							icon="angle-right"
+							class="clickable"
+							@click="hideDataToggle[index] = false"
+						/>
+					</span>
 					{{ fullData.inOut === 'input' ? 'Input' : 'Output' }}
 					<span
 						class="type"
@@ -15,7 +29,7 @@
 					>
 				</div>
 
-				<div v-for="typeData in fullData.data">
+				<div v-for="typeData in fullData.data" v-if="!hideDataToggle[index]">
 					{{ void (contentData = getContent(typeData.json)) }}
 					<div v-if="contentData.type === 'text'" class="content-text">
 						{{ contentData.data }}
@@ -63,11 +77,28 @@ export default defineComponent({
 		inputData: {
 			type: Object as PropType<IAiData>,
 		},
+		contentIndex: {
+			type: Number,
+		},
 	},
 	data() {
 		return {
 			CONNECTOR_COLOR,
+			hideDataToggle: [] as boolean[],
 		};
+	},
+	mounted() {
+		this.inputData.data.forEach((fullData, index) => {
+			if (['document', 'textSplitter'].includes(fullData.type) && fullData.inOut === 'input') {
+				this.hideDataToggle[index] = true;
+			}
+			if (
+				['document', 'embedding', 'textSplitter', 'vectorStore'].includes(fullData.type) &&
+				fullData.inOut === 'output'
+			) {
+				this.hideDataToggle[index] = true;
+			}
+		});
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
@@ -84,7 +115,7 @@ export default defineComponent({
 			return undefined;
 		},
 		jsonToMarkdown(data: string | object): string {
-			if (Array.isArray(data)) {
+			if (Array.isArray(data) && data.length && isNaN(data[0])) {
 				return data
 					.map((item) => this.jsonToMarkdown(item))
 					.join('\n\n')
@@ -104,11 +135,35 @@ export default defineComponent({
 						type: 'json',
 						data: data.response.generations.map((content) => content.text),
 					};
+				} else if (
+					Array.isArray(data.response) &&
+					data.response.length === 1 &&
+					typeof data.response[0] === 'string'
+				) {
+					return {
+						type: 'text',
+						data: data.response[0],
+					};
+				} else if (Array.isArray(data.response) && data.response.length) {
+					return {
+						type: 'json',
+						data: data.response,
+					};
 				}
+			} else if (data.textSplitter) {
+				return {
+					type: 'text',
+					data: data.textSplitter,
+				};
 			} else if (data.messages) {
 				return {
 					type: 'markdown',
 					data: data.messages.map((content) => content.kwargs.content).join('\n\n'),
+				};
+			} else if (data.documents) {
+				return {
+					type: 'json',
+					data: data.documents,
 				};
 			}
 
@@ -159,11 +214,13 @@ export default defineComponent({
 		}
 
 		.content-text {
+			line-height: 1.5;
+			padding-top: 0.5em;
 			white-space: pre-line;
 		}
 
 		.in-out {
-			font-size: 1.5em;
+			font-size: 1.2em;
 			font-weight: bold;
 		}
 
@@ -183,8 +240,13 @@ export default defineComponent({
 		}
 	}
 
+	.toggle {
+		display: inline-block;
+		width: 15px;
+	}
+
 	.node-name-wrapper {
-		font-size: 1.5em;
+		font-size: 1.2em;
 		margin-bottom: 0.5em;
 
 		.node-name {

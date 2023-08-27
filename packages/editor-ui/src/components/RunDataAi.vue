@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.aiDisplay">
-		<div v-for="data in aiData.aiRun" v-if="aiData">
-			<RunDataAiContent :inputData="getReferencedData(data)" />
+		<div v-for="(data, index) in aiData.aiRun" v-if="aiData">
+			<RunDataAiContent :inputData="getReferencedData(data)" :contentIndex="index" />
 		</div>
 	</div>
 </template>
