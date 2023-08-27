@@ -1,8 +1,8 @@
 <template>
-	<div class="aiContent" v-if="inputData">
+	<div class="ai-content" v-if="inputData">
 		<div class="node-name-wrapper">
 			{{ (contentIndex || 0) + 1 }}. <span class="node-name">{{ inputData.node }}</span
-			>&nbsp;(Run-Index: {{ inputData.runIndex }})
+			>&nbsp;(Run: {{ inputData.runIndex + 1 }})
 		</div>
 		<div v-for="(fullData, index) of inputData.data">
 			<div :class="['content', fullData.inOut]">
@@ -29,7 +29,15 @@
 					>
 				</div>
 
-				<div v-for="typeData in fullData.data" v-if="!hideDataToggle[index]">
+				<div class="full-data" v-for="typeData in fullData.data" v-if="!hideDataToggle[index]">
+					{{ void (tokenData = getTokens(typeData.json)) }}
+					<div class="tokens" v-if="tokenData">
+						<strong>Tokens:</strong> {{ tokenData.totalTokens }} ({{
+							tokenData.completionTokens
+						}}
+						Completion + {{ tokenData.promptTokens }} Prompt)
+					</div>
+
 					{{ void (contentData = getContent(typeData.json)) }}
 					<div v-if="contentData.type === 'text'" class="content-text">
 						{{ contentData.data }}
@@ -42,13 +50,6 @@
 							:source="jsonToMarkdown(contentData.data)"
 							class="markdown"
 						></vue-markdown>
-					</div>
-					{{ void (tokenData = getTokens(typeData.json)) }}
-					<div class="tokens" v-if="tokenData">
-						<strong>Tokens:</strong> {{ tokenData.totalTokens }} ({{
-							tokenData.completionTokens
-						}}
-						Completion + {{ tokenData.promptTokens }} Prompt)
 					</div>
 				</div>
 			</div>
@@ -179,9 +180,14 @@ export default defineComponent({
 <style lang="scss" module></style>
 
 <style lang="scss">
-.aiContent {
+.ai-content {
 	padding: 0 1em 1em 1em;
 	margin-top: 0.5em;
+
+	.full-data {
+		border-top: 1px solid #ccc;
+		margin-top: 1em;
+	}
 
 	.content {
 		border: 1px solid #ccc;
@@ -194,19 +200,23 @@ export default defineComponent({
 			.markdown {
 				h1 {
 					font-size: 1.4em;
+					line-height: 1.6em;
 				}
 
 				h2 {
 					font-size: 1.2em;
+					line-height: 1.4em;
 				}
 
 				h3 {
 					font-size: 1em;
+					line-height: 1.2em;
 				}
 
 				pre {
 					background-color: #0000000d;
 					border-radius: 4px;
+					line-height: 1.5em;
 					padding: 1em;
 					white-space: pre-wrap;
 				}
@@ -220,12 +230,14 @@ export default defineComponent({
 		}
 
 		.in-out {
-			font-size: 1.2em;
+			font-size: 1em;
 			font-weight: bold;
 		}
 
 		.tokens {
 			font-size: 0.8em;
+			margin-top: 1em;
+			padding-left: 0.5em;
 		}
 
 		&.input {
@@ -246,7 +258,6 @@ export default defineComponent({
 	}
 
 	.node-name-wrapper {
-		font-size: 1.2em;
 		margin-bottom: 0.5em;
 
 		.node-name {
@@ -258,10 +269,10 @@ export default defineComponent({
 	.type {
 		border-radius: 4px;
 		color: white;
-		font-size: 0.45em;
+		font-size: 0.6em;
 		padding: 0.25em 0.5em;
 		position: relative;
-		top: -4px;
+		top: -2px;
 	}
 }
 </style>
