@@ -721,7 +721,7 @@ export default defineComponent({
 				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
-			if (this.activeNode) {
+			if (this.isPaneTypeOutput && this.activeNode) {
 				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(
 					this.activeNode.name,
 				);
