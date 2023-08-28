@@ -37,6 +37,8 @@ import { folderFields, folderOperations } from './FolderDescription';
 
 import { folderMessageFields, folderMessageOperations } from './FolderMessageDecription';
 
+import { oldVersionNotice } from '@utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
 	name: 'microsoftOutlook',
@@ -57,12 +59,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
-		{
-			displayName: 'Version 1',
-			name: 'version1',
-			type: 'notice',
-			default: '',
-		},
+		oldVersionNotice,
 		{
 			displayName: 'Resource',
 			name: 'resource',

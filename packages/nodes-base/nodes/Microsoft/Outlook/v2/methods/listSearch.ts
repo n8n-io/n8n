@@ -1,19 +1,13 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { microsoftApiRequest } from '../transport';
 
-export async function searchCalendars(
+async function search(
 	this: ILoadOptionsFunctions,
+	resource: string,
+	nameProperty: string,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const q = filter ? encodeURI(`${filter}`) : '';
-
-	let resource = '/calendars';
-
-	if (q) {
-		resource = `/calendars/search(q='${q}')`;
-	}
-
 	let response: IDataObject = {};
 
 	if (paginationToken) {
@@ -26,20 +20,43 @@ export async function searchCalendars(
 			paginationToken, // paginationToken contains the full URL
 		);
 	} else {
-		response = await microsoftApiRequest.call(this, 'GET', resource, undefined, {
-			// select: 'id,name,webUrl',
+		const qs: IDataObject = {
+			$select: `id,${nameProperty}`,
 			$top: 100,
-		});
+		};
+
+		if (filter) {
+			const filterValue = encodeURI(filter);
+			// qs.$filter = `startsWith(${nameProperty}, '${filterValue}')`;
+			qs.$search = `"${filterValue}"`;
+		}
+
+		response = await microsoftApiRequest.call(this, 'GET', resource, undefined, qs);
 	}
 
 	return {
-		results: (response.value as IDataObject[]).map((calendar: IDataObject) => {
+		results: (response.value as IDataObject[]).map((entry: IDataObject) => {
 			return {
-				name: calendar.name as string,
-				value: calendar.id as string,
-				url: calendar.webUrl as string,
+				name: entry[nameProperty] as string,
+				value: entry.id as string,
 			};
 		}),
 		paginationToken: response['@odata.nextLink'],
 	};
+}
+
+export async function searchContacts(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return search.call(this, '/contacts', 'displayName', filter, paginationToken);
+}
+
+export async function searchCalendars(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return search.call(this, '/calendars', 'name', filter, paginationToken);
 }

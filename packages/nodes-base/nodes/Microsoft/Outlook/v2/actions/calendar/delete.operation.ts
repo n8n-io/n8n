@@ -1,7 +1,18 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { calendarRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [];
+export const properties: INodeProperties[] = [calendarRLC];
+
+const displayOptions = {
+	show: {
+		resource: ['calendar'],
+		operation: ['delete'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

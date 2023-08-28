@@ -6,9 +6,10 @@ import type {
 } from 'n8n-workflow';
 import { prepareContactFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { contactFields } from './descriptions';
+import { contactFields } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'givenName',
@@ -34,9 +35,18 @@ export const description: INodeProperties[] = [
 				operation: ['create'],
 			},
 		},
-		options: [...contactFields],
+		options: contactFields,
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['contact'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

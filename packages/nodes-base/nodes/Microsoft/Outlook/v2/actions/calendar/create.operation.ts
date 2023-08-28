@@ -5,8 +5,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -15,12 +16,6 @@ export const description: INodeProperties[] = [
 		required: true,
 		description: 'The name of the calendar to create',
 		placeholder: 'e.g. My Calendar',
-		displayOptions: {
-			show: {
-				resource: ['calendar'],
-				operation: ['create'],
-			},
-		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -28,12 +23,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['calendar'],
-				operation: ['create'],
-			},
-		},
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
@@ -95,6 +84,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['calendar'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

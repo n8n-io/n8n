@@ -5,52 +5,17 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { returnAllOrLimit } from '../../descriptions';
 
-export const description: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['calendar'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['calendar'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
-	},
+export const properties: INodeProperties[] = [
+	...returnAllOrLimit,
 	{
 		displayName: 'Filters',
 		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['calendar'],
-				operation: ['getAll'],
-				// returnAll: [true],
-			},
-		},
 		options: [
 			{
 				displayName: 'Filter Query',
@@ -63,6 +28,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['calendar'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

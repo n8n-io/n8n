@@ -52,21 +52,6 @@ export const description: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-
-	{
-		displayName: 'Contact ID',
-		name: 'contactId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['delete', 'get', 'update'],
-			},
-		},
-	},
-
 	...create.description,
 	...del.description,
 	...get.description,
