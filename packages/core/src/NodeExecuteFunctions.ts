@@ -78,10 +78,11 @@ import {
 	validateFieldType,
 	NodeSSLError,
 } from 'n8n-workflow';
-
+import { parse as parseContentDisposition } from 'content-disposition';
+import { parse as parseContentType } from 'content-type';
 import pick from 'lodash/pick';
 import { Agent } from 'https';
-import { IncomingMessage } from 'http';
+import { IncomingMessage, type IncomingHttpHeaders } from 'http';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -100,7 +101,6 @@ import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
-import type { IncomingHttpHeaders } from 'http';
 import type {
 	AxiosError,
 	AxiosPromise,
@@ -600,6 +600,29 @@ type ConfigObject = {
 	simple?: boolean;
 };
 
+export function parseIncomingMessage(message: IncomingMessage) {
+	if ('content-type' in message.headers) {
+		const { type: contentType, parameters } = (() => {
+			try {
+				return parseContentType(message);
+			} catch {
+				return { type: undefined, parameters: undefined };
+			}
+		})();
+		message.contentType = contentType;
+		message.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
+
+		const contentDispositionHeader = message.headers['content-disposition'];
+		if (contentDispositionHeader?.length) {
+			const {
+				type,
+				parameters: { filename },
+			} = parseContentDisposition(contentDispositionHeader);
+			message.contentDisposition = { type, filename };
+		}
+	}
+}
+
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
@@ -654,35 +677,22 @@ export async function proxyRequestToAxios(
 
 	try {
 		const response = await requestFn();
-		if (configObject.resolveWithFullResponse === true) {
-			let body = response.data;
-			if (response.data === '') {
-				if (axiosConfig.responseType === 'arraybuffer') {
-					body = Buffer.alloc(0);
-				} else {
-					body = undefined;
-				}
-			}
-			await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
-			return {
-				body,
-				headers: response.headers,
-				statusCode: response.status,
-				statusMessage: response.statusText,
-				request: response.request,
-			};
-		} else {
-			let body = response.data;
-			if (response.data === '') {
-				if (axiosConfig.responseType === 'arraybuffer') {
-					body = Buffer.alloc(0);
-				} else {
-					body = undefined;
-				}
-			}
-			await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
-			return body;
+		let body = response.data;
+		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
+			parseIncomingMessage(body);
+		} else if (body === '') {
+			body = axiosConfig.responseType === 'arraybuffer' ? Buffer.alloc(0) : undefined;
 		}
+		await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
+		return configObject.resolveWithFullResponse
+			? {
+					body,
+					headers: response.headers,
+					statusCode: response.status,
+					statusMessage: response.statusText,
+					request: response.request,
+			  }
+			: body;
 	} catch (error) {
 		const { config, response } = error;
 
@@ -998,6 +1008,19 @@ async function prepareBinaryData(
 	mimeType?: string,
 ): Promise<IBinaryData> {
 	let fileExtension: string | undefined;
+	if (binaryData instanceof IncomingMessage) {
+		if (!filePath) {
+			try {
+				filePath =
+					binaryData.contentDisposition?.filename ??
+					new URL(binaryData.responseUrl).pathname.slice(1);
+			} catch {}
+		}
+		if (!mimeType) {
+			mimeType = binaryData.contentType;
+		}
+	}
+
 	if (!mimeType) {
 		// If no mime type is given figure it out
 

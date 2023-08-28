@@ -1,3 +1,5 @@
+import type { Readable } from 'stream';
+
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -991,7 +993,6 @@ export class HttpRequestV1 implements INodeType {
 			response = response.value;
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			const fullResponse = !!options.fullResponse;
 
@@ -1014,8 +1015,7 @@ export class HttpRequestV1 implements INodeType {
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
-				const fileName = url.split('/').pop();
-
+				let binaryData: Buffer | Readable;
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullResponseProperties) {
@@ -1026,20 +1026,13 @@ export class HttpRequestV1 implements INodeType {
 					}
 
 					newItem.json = returnItem;
-
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body as Buffer,
-						fileName,
-					);
+					binaryData = response!.body;
 				} else {
 					newItem.json = items[itemIndex].json;
-
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response! as Buffer,
-						fileName,
-					);
+					binaryData = response;
 				}
 
+				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(binaryData);
 				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
