@@ -37,20 +37,8 @@ export class CredentialsService {
 		});
 	}
 
-	// @TODO: Used?
-	static async getAll(user: User) {
-		if (user.globalRole.name !== 'owner') return [];
-
-		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
-			'id',
-			'name',
-			'type',
-			'nodesAccess',
-			'createdAt',
-			'updatedAt',
-		];
-
-		return Db.collections.Credentials.find({ select: SELECT_FIELDS });
+	static async getManyByIds(ids: string[]) {
+		return Db.collections.Credentials.find({ where: { id: In(ids) } });
 	}
 
 	static async getMany(user: User, options?: { skipOwnerCheck?: boolean }) {

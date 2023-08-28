@@ -3,7 +3,6 @@ import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import type { ICredentialsDb } from '@/Interfaces';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -17,6 +16,7 @@ import { EECredentialsService as EECredentials } from '@/credentials/credentials
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
+import type { ListQuery } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -123,12 +123,9 @@ export class EEWorkflowsService extends WorkflowsService {
 			});
 		});
 
-		// @TODO
-		const workflowCredentials = await EECredentials.getMany({
-			where: {
-				id: In(Array.from(credentialIdsUsedByWorkflow)),
-			},
-		});
+		const workflowCredentials = await EECredentials.getManyByIds(
+			Array.from(credentialIdsUsedByWorkflow),
+		);
 
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
@@ -155,7 +152,7 @@ export class EEWorkflowsService extends WorkflowsService {
 
 	static validateCredentialPermissionsToUser(
 		workflow: WorkflowEntity,
-		allowedCredentials: ICredentialsDb[], // @TODO
+		allowedCredentials: ListQuery.Credentials.WithOwnedByAndSharedWith[],
 	) {
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
