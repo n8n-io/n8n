@@ -41,14 +41,14 @@ export class CredentialsService {
 		return Db.collections.Credentials.find({ where: { id: In(ids) } });
 	}
 
-	static async getMany(user: User, options = { all: false }) {
+	static async getMany(user: User, options?: { disableGlobalRole: boolean }) {
 		type Select = Array<keyof ICredentialsDb>;
 
 		const select: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 		const relations = ['shared', 'shared.role', 'shared.user'];
 
-		const returnAll = user.globalRole.name === 'owner' || options.all;
+		const returnAll = user.globalRole.name === 'owner' && options?.disableGlobalRole !== true;
 
 		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
 			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
