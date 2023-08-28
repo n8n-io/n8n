@@ -114,6 +114,21 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	dashstyle: '2 2',
 };
 
+export const CONNECTOR_COLOR: {
+	[K in ConnectionTypes]: string;
+} = {
+	chain: '--color-json-string',
+	document: '--color-success-light',
+	embedding: '--color-json-default',
+	languageModel: '--color-primary',
+	main: '--color-foreground-xdark',
+	memory: '--color-primary-tint-1',
+	textSplitter: '--color-secondary-tint-2',
+	tool: '--color-danger',
+	vectorRetriever: '--color-avatar-accent-2',
+	vectorStore: '--color-json-null',
+};
+
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	{
 		type: 'Arrow',

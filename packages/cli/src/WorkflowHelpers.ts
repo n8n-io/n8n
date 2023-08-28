@@ -75,6 +75,7 @@ export function generateFailedExecutionFromError(
 			},
 			executionData: {
 				contextData: {},
+				metadata: {},
 				nodeExecutionStack: [
 					{
 						node,
@@ -253,6 +254,7 @@ export async function executeErrorWorkflow(
 			},
 			executionData: {
 				contextData: {},
+				metadata: {},
 				nodeExecutionStack,
 				waitingExecution: {},
 				waitingExecutionSource: {},

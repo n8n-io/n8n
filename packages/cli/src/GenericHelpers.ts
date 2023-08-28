@@ -141,6 +141,7 @@ export async function createErrorExecution(
 		},
 		executionData: {
 			contextData: {},
+			metadata: {},
 			nodeExecutionStack: [
 				{
 					node,

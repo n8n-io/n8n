@@ -181,7 +181,11 @@
 
 		<div
 			v-else-if="
-				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+				hasNodeRun &&
+				dataCount > 0 &&
+				maxRunIndex === 0 &&
+				!isArtificialRecoveredEventItem &&
+				!isAiView
 			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
@@ -340,6 +344,10 @@
 				/>
 			</Suspense>
 
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'ai'">
+				<run-data-ai :inputData="inputData" :runIndex="runIndex" />
+			</Suspense>
+
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
 				<run-data-html :inputData="inputData" />
 			</Suspense>
@@ -451,7 +459,8 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView
+				!isSchemaView &&
+				!isAiView
 			"
 			v-show="!editMode.enabled"
 		>
@@ -489,6 +498,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import { get } from 'lodash-es';
 import { saveAs } from 'file-saver';
 import type {
 	ConnectionTypes,
@@ -537,6 +547,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
 
+const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
 const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
@@ -553,6 +564,7 @@ export default defineComponent({
 		BinaryDataDisplay,
 		NodeErrorView,
 		CodeNodeEditor,
+		RunDataAi,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
@@ -676,6 +688,9 @@ export default defineComponent({
 			}
 			return null;
 		},
+		isAiView(): boolean {
+			return this.displayMode === 'ai';
+		},
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
@@ -712,6 +727,15 @@ export default defineComponent({
 				this.activeNode.parameters.operation === 'generateHtmlTemplate'
 			) {
 				defaults.unshift({ label: 'HTML', value: 'html' });
+			}
+
+			if (this.isPaneTypeOutput && this.activeNode) {
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(
+					this.activeNode.name,
+				);
+				if (get(resultData, [this.runIndex, 'metadata'])) {
+					defaults.unshift({ label: 'AI', value: 'ai' });
+				}
 			}
 
 			return defaults;

@@ -35,6 +35,7 @@ import type {
 	IUserSettings,
 	IN8nUISettings,
 	BannerName,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
 import type {
@@ -173,6 +174,18 @@ export interface INodeTranslationHeaders {
 			description: string;
 		};
 	};
+}
+
+export interface IAiDataContent {
+	data: INodeExecutionData[] | null;
+	inOut: 'input' | 'output';
+	type: EndpointType;
+}
+
+export interface IAiData {
+	data: IAiDataContent[];
+	node: string;
+	runIndex: number;
 }
 
 export interface IStartRunData {
