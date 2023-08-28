@@ -52,7 +52,7 @@ export class OwnershipService {
 	}
 
 	addOwnedByAndSharedWith(
-		credentialWithShared: ListQuery.Credentials.WithSharings,
+		credentialWithShared: ListQuery.Credentials.WithShared,
 	): ListQuery.Credentials.WithOwnedByAndSharedWith {
 		const { shared, ...rest } = credentialWithShared;
 

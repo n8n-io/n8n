@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 
 import * as Db from '@/Db';
@@ -37,8 +37,14 @@ export class CredentialsService {
 		});
 	}
 
-	static async getManyByIds(ids: string[]) {
-		return Db.collections.Credentials.find({ where: { id: In(ids) } });
+	static async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
+		const options: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
+
+		if (withSharings) {
+			options.relations = ['shared', 'shared.user', 'shared.role'];
+		}
+
+		return Db.collections.Credentials.find(options);
 	}
 
 	static async getMany(user: User, options?: { disableGlobalRole: boolean }) {

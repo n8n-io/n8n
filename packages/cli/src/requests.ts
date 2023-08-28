@@ -166,7 +166,7 @@ export namespace ListQuery {
 		type BaseFields = Pick<ICredentialsDb, 'id'> &
 			Partial<Pick<ICredentialsDb, 'name' | 'type' | 'nodesAccess' | 'createdAt' | 'updatedAt'>>;
 
-		type SharingsField = Pick<ICredentialsDb, 'shared'>;
+		type SharedField = Pick<ICredentialsDb, 'shared'>;
 
 		type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
 
@@ -176,7 +176,7 @@ export namespace ListQuery {
 
 		export type Plain = BaseFields;
 
-		export type WithSharings = BaseFields & SharingsField;
+		export type WithShared = BaseFields & SharedField;
 
 		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
 	}

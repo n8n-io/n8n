@@ -106,7 +106,6 @@ export class EEWorkflowsService extends WorkflowsService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-
 		const userCredentials = await EECredentials.getMany(currentUser, { disableGlobalRole: true });
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
@@ -121,11 +120,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-
 		const workflowCredentials = await EECredentials.getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
 		);
-
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
