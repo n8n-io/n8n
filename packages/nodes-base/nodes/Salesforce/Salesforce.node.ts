@@ -1126,11 +1126,11 @@ export class Salesforce implements INodeType {
 						if (additionalFields.industry !== undefined) {
 							body.Industry = additionalFields.industry as string;
 						}
-						if (additionalFields.firstname !== undefined) {
-							body.FirstName = additionalFields.firstname as string;
-						}
 						if (additionalFields.fax !== undefined) {
 							body.Fax = additionalFields.fax as number;
+						}
+						if (additionalFields.firstname !== undefined) {
+							body.FirstName = additionalFields.firstname as string;
 						}
 						if (additionalFields.leadSource !== undefined) {
 							body.LeadSource = additionalFields.leadSource as string;
