@@ -2,7 +2,7 @@ import type { CookieOptions, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject, captor } from 'jest-mock-extended';
 import type { ILogger } from 'n8n-workflow';
-import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, IInternalHooksClass, PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
@@ -45,6 +45,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userService.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res);
 

@@ -134,12 +134,12 @@ describe('List query middleware', () => {
 			expect(nextFn).toBeCalledTimes(1);
 		});
 
-		test('should ignore skip without take', () => {
+		test('should throw on skip without take', () => {
 			mockReq.query = { skip: '1' };
 			paginationListQueryMiddleware(...args);
 
 			expect(mockReq.listQueryOptions).toBeUndefined();
-			expect(nextFn).toBeCalledTimes(1);
+			expect(sendErrorResponse).toHaveBeenCalledTimes(1);
 		});
 
 		test('should default skip to 0', () => {
