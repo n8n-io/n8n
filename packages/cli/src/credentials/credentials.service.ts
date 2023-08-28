@@ -37,16 +37,6 @@ export class CredentialsService {
 		});
 	}
 
-	static async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
-		const options: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
-
-		if (withSharings) {
-			options.relations = ['shared', 'shared.user', 'shared.role'];
-		}
-
-		return Db.collections.Credentials.find(options);
-	}
-
 	static async getMany(user: User, options?: { disableGlobalRole: boolean }) {
 		type Select = Array<keyof ICredentialsDb>;
 
@@ -89,6 +79,16 @@ export class CredentialsService {
 		});
 
 		return sharings.map((s) => s.credentialsId);
+	}
+
+	static async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
+		const options: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
+
+		if (withSharings) {
+			options.relations = ['shared', 'shared.user', 'shared.role'];
+		}
+
+		return Db.collections.Credentials.find(options);
 	}
 
 	/**
