@@ -12,7 +12,7 @@ import type {
 	CredentialUsedByWorkflow,
 	WorkflowWithSharingsAndCredentials,
 } from './workflows.types';
-import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
@@ -106,7 +106,9 @@ export class EEWorkflowsService extends WorkflowsService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await EECredentials.getMany(currentUser, { disableGlobalRole: true });
+		const userCredentials = await CredentialsService.getMany(currentUser, {
+			disableGlobalRole: true,
+		});
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -120,7 +122,7 @@ export class EEWorkflowsService extends WorkflowsService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
-		const workflowCredentials = await EECredentials.getManyByIds(
+		const workflowCredentials = await CredentialsService.getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
 			{ withSharings: true },
 		);
@@ -173,7 +175,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			throw new ResponseHelper.NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await EECredentials.getMany(user);
+		const allCredentials = await CredentialsService.getMany(user);
 
 		try {
 			return WorkflowHelpers.validateWorkflowCredentialUsage(
