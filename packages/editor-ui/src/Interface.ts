@@ -30,10 +30,10 @@ import type {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
+	IN8nUISettings,
 	BannerName,
 } from 'n8n-workflow';
 import type { SignInType } from './constants';
@@ -44,6 +44,7 @@ import type {
 } from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy } from '@/utils/typeHelpers';
+import type { INodeProperties } from 'n8n-workflow';
 
 export * from 'n8n-design-system/types';
 
@@ -583,9 +584,12 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
+	hasRecoveryCodesLeft: boolean;
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
+	createdAt?: string;
+	mfaEnabled: boolean;
 }
 
 export interface IVersionNotificationSettings {
@@ -722,7 +726,7 @@ export interface ITimeoutHMS {
 	seconds: number;
 }
 
-export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR' | 'DEBUG';
 
 export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 
@@ -894,6 +898,7 @@ export interface WorkflowsState {
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
+	isInDebugMode?: boolean;
 }
 
 export interface RootState {
@@ -1141,6 +1146,9 @@ export interface ISettingsState {
 	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
+	};
+	mfa: {
+		enabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1534,6 +1542,26 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export interface ExternalSecretsProviderSecret {
+	key: string;
+}
+
+export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
+
+export interface ExternalSecretsProvider {
+	icon: string;
+	name: string;
+	displayName: string;
+	connected: boolean;
+	connectedAt: string | false;
+	state: 'connected' | 'tested' | 'initializing' | 'error';
+	data?: ExternalSecretsProviderData;
+}
+
+export interface ExternalSecretsProviderWithProperties extends ExternalSecretsProvider {
+	properties: INodeProperties[];
+}
 
 export type CloudUpdateLinkSourceType =
 	| 'canvas-nav'

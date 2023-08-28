@@ -42,6 +42,7 @@
     "@types/supertest": "^2.0.12",
     "@vitest/coverage-v8": "^0.33.0",
     "cross-env": "^7.0.3",
+    "cypress-otp": "^1.0.3",
     "cypress": "^12.17.2",
     "cypress-real-events": "^1.9.1",
     "jest": "^29.6.2",
