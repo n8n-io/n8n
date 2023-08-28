@@ -772,9 +772,7 @@ export interface PublicUser {
 	disabled: boolean;
 	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
-}
-
-export interface CurrentUser extends PublicUser {
+	isOwner?: boolean;
 	featureFlags?: FeatureFlags;
 }
 

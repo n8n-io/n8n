@@ -2,12 +2,7 @@ import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
-import {
-	hashPassword,
-	sanitizeUser,
-	validatePassword,
-	withFeatureFlags,
-} from '@/UserManagement/UserManagementHelper';
+import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
 import { ILogger } from 'n8n-workflow';
@@ -106,7 +101,7 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return withFeatureFlags(this.postHog, sanitizeUser(owner));
+		return this.userService.toPublic(owner, { posthog: this.postHog });
 	}
 
 	@Post('/dismiss-banner')
