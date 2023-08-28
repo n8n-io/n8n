@@ -91,14 +91,14 @@ const versionDescription: INodeTypeDescription = {
 		...raw.description,
 		...manual.description,
 		{
-			displayName: 'Include',
+			displayName: 'Include in Output',
 			name: 'include',
 			type: 'options',
-			description: 'How to select the fields you want to include in your items',
+			description: 'How to select the fields you want to include in your output items',
 			default: 'all',
 			options: [
 				{
-					name: 'Other Input Fields Too',
+					name: 'All Input Fields',
 					value: INCLUDE.ALL,
 					description: 'Also include all the fields available in the input',
 				},
@@ -124,6 +124,7 @@ const versionDescription: INodeTypeDescription = {
 			name: 'includeFields',
 			type: 'string',
 			default: '',
+			placeholder: 'e.g. fieldToInclude1,fieldToInclude2',
 			description:
 				'Comma-separated list of the field names you want to include in the output. You can drag the selected fields from the input panel.',
 			requiresDataPath: 'multiple',
@@ -138,6 +139,7 @@ const versionDescription: INodeTypeDescription = {
 			name: 'excludeFields',
 			type: 'string',
 			default: '',
+			placeholder: 'e.g. fieldToExclude1,fieldToExclude2',
 			description:
 				'Comma-separated list of the field names you want to exclude from the output. You can drag the selected fields from the input panel.',
 			requiresDataPath: 'multiple',
@@ -158,7 +160,7 @@ const versionDescription: INodeTypeDescription = {
 					displayName: 'Include Binary Data',
 					name: 'includeBinary',
 					type: 'boolean',
-					default: false,
+					default: true,
 					description: 'Whether binary data should be included if present in the input item',
 				},
 				{
@@ -166,7 +168,8 @@ const versionDescription: INodeTypeDescription = {
 					name: 'ignoreConversionErrors',
 					type: 'boolean',
 					default: false,
-					description: 'Whether to ignore field type errors and apply a less strict type conversion',
+					description:
+						'Whether to ignore field type errors and apply a less strict type conversion',
 					displayOptions: {
 						show: {
 							'/mode': ['manual'],
