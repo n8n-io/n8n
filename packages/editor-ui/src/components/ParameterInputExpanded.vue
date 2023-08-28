@@ -66,8 +66,6 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
-type ParamRef = InstanceType<typeof ParameterInputWrapper>;
-
 export default defineComponent({
 	name: 'parameter-input-expanded',
 	components: {
@@ -116,6 +114,10 @@ export default defineComponent({
 				}
 
 				if (this.parameter.type === 'number') {
+					if (typeof this.value === 'string' && this.value.startsWith('=')) {
+						return false;
+					}
+
 					return typeof this.value !== 'number';
 				}
 			}

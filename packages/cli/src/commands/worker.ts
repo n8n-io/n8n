@@ -246,6 +246,7 @@ export class Worker extends BaseCommand {
 		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
+		await this.initExternalSecrets();
 
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,

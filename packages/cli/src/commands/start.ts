@@ -195,6 +195,7 @@ export class Start extends BaseCommand {
 		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
+		await this.initExternalSecrets();
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();

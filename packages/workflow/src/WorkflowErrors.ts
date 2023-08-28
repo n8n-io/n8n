@@ -1,9 +1,10 @@
 import type { INode } from './Interfaces';
+import { ExecutionBaseError } from './NodeErrors';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.
  */
-export class WorkflowOperationError extends Error {
+export class WorkflowOperationError extends ExecutionBaseError {
 	node: INode | undefined;
 
 	timestamp: number;
@@ -13,7 +14,7 @@ export class WorkflowOperationError extends Error {
 	description: string | undefined;
 
 	constructor(message: string, node?: INode) {
-		super(message);
+		super(message, { cause: undefined });
 		this.name = this.constructor.name;
 		this.node = node;
 		this.timestamp = Date.now();

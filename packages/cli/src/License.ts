@@ -140,6 +140,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SOURCE_CONTROL);
 	}
 
+	isExternalSecretsEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_SECRETS);
+	}
+
 	isWorkflowHistoryLicensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.WORKFLOW_HISTORY);
 	}
