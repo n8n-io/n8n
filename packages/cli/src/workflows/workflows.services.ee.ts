@@ -122,6 +122,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 		const workflowCredentials = await EECredentials.getManyByIds(
 			Array.from(credentialIdsUsedByWorkflow),
+			{ withSharings: true },
 		);
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
