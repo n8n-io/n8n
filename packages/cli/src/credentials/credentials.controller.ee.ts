@@ -3,12 +3,11 @@ import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
-import type { CredentialWithSharings } from './credentials.types';
+import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
@@ -38,7 +37,7 @@ EECredentialsController.get(
 		let credential = (await EECredentials.get(
 			{ id: credentialId },
 			{ relations: ['shared', 'shared.role', 'shared.user'] },
-		)) as CredentialsEntity & CredentialWithSharings;
+		)) as ListQuery.Credentials.WithShared;
 
 		if (!credential) {
 			throw new ResponseHelper.NotFoundError(
@@ -52,7 +51,7 @@ EECredentialsController.get(
 			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
-		credential = EECredentials.addOwnerAndSharings(credential);
+		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
 
 		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
 			const { data: _, ...rest } = credential;

@@ -28,6 +28,7 @@ import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -163,9 +164,6 @@ export namespace ListQuery {
 	}
 
 	export namespace Credentials {
-		type BaseFields = Pick<ICredentialsDb, 'id'> &
-			Partial<Pick<ICredentialsDb, 'name' | 'type' | 'nodesAccess' | 'createdAt' | 'updatedAt'>>;
-
 		type SharedField = Pick<ICredentialsDb, 'shared'>;
 
 		type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
@@ -174,11 +172,9 @@ export namespace ListQuery {
 
 		type SharedWithField = { sharedWith: SlimUser[] };
 
-		export type Plain = BaseFields;
+		export type WithShared = CredentialsEntity & SharedField;
 
-		export type WithShared = BaseFields & SharedField;
-
-		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
+		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
 	}
 }
 
