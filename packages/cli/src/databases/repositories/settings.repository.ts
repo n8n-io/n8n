@@ -1,3 +1,4 @@
+import { EXTERNAL_SECRETS_DB_KEY } from '@/ExternalSecrets/constants';
 import { Service } from 'typedi';
 import { DataSource, Repository } from 'typeorm';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
@@ -8,6 +9,21 @@ import config from '@/config';
 export class SettingsRepository extends Repository<Settings> {
 	constructor(dataSource: DataSource) {
 		super(Settings, dataSource.manager);
+	}
+
+	async getEncryptedSecretsProviderSettings(): Promise<string | null> {
+		return (await this.findOne({ where: { key: EXTERNAL_SECRETS_DB_KEY } }))?.value ?? null;
+	}
+
+	async saveEncryptedSecretsProviderSettings(data: string): Promise<void> {
+		await this.upsert(
+			{
+				key: EXTERNAL_SECRETS_DB_KEY,
+				value: data,
+				loadOnStartup: false,
+			},
+			['key'],
+		);
 	}
 
 	async dismissBanner({ bannerName }: { bannerName: string }): Promise<{ success: boolean }> {

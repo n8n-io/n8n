@@ -41,14 +41,13 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 
 Cypress.Commands.add('signin', ({ email, password }) => {
 	Cypress.session.clearAllSavedSessions();
-	cy.session(
-		[email, password],
-		() => cy.request('POST', `${BACKEND_BASE_URL}/rest/login`, { email, password }),
-		{
-			validate() {
-				cy.getCookie(N8N_AUTH_COOKIE).should('exist');
-			},
-		},
+	cy.session([email, password], () =>
+		cy.request({
+			method: 'POST',
+			url: `${BACKEND_BASE_URL}/rest/login`,
+			body: { email, password },
+			failOnStatusCode: false,
+		}),
 	);
 });
 

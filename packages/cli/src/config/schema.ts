@@ -929,6 +929,15 @@ export const schema = {
 		},
 	},
 
+	mfa: {
+		enabled: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to enable MFA feature in instance.',
+			env: 'N8N_MFA_ENABLED',
+		},
+	},
+
 	sso: {
 		justInTimeProvisioning: {
 			format: Boolean,

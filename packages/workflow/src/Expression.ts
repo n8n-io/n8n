@@ -2,6 +2,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 import type * as tmpl from '@n8n_io/riot-tmpl';
 
 import type {
+	IDataObject,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -63,8 +64,8 @@ export class Expression {
 		this.workflow = workflow;
 	}
 
-	static resolveWithoutWorkflow(expression: string) {
-		return evaluateExpression(expression, {});
+	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
+		return tmpl.tmpl(expression, data);
 	}
 
 	/**
