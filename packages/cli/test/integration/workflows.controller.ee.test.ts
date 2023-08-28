@@ -256,8 +256,6 @@ describe('GET /workflows/:id', () => {
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
 
-		console.log('response.body.data.usedCredentials', response.body.data.usedCredentials);
-
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.usedCredentials).toMatchObject([
 			{
