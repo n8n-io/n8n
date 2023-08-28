@@ -107,8 +107,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	): Promise<void> {
 		workflow.usedCredentials = [];
 
-		// @TODO: disableGlobalRole
-		const userCredentials = await EECredentials.getMany(currentUser, { skipOwnerCheck: true });
+		const userCredentials = await EECredentials.getMany(currentUser, { all: true });
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {

@@ -41,20 +41,21 @@ export class CredentialsService {
 		return Db.collections.Credentials.find({ where: { id: In(ids) } });
 	}
 
-	static async getMany(user: User, options?: { skipOwnerCheck?: boolean }) {
+	static async getMany(user: User, options = { all: false }) {
 		type Select = Array<keyof ICredentialsDb>;
 
 		const select: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
 		const relations = ['shared', 'shared.role', 'shared.user'];
 
-		const isOwner = user.globalRole.name === 'owner';
+		const returnAll = user.globalRole.name === 'owner' || options.all;
 
 		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
 			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
 
-		if (isOwner && !options?.skipOwnerCheck) {
+		if (returnAll) {
 			const credentials = await Db.collections.Credentials.find({ select, relations });
+
 			return credentials.map(addOwnedByAndSharedWith);
 		}
 
