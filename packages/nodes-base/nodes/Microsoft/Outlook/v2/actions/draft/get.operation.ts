@@ -6,19 +6,16 @@ import type {
 } from 'n8n-workflow';
 import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { draftRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	draftRLC,
 	{
 		displayName: 'Output',
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['draft'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -41,8 +38,6 @@ export const description: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				operation: ['get'],
-				resource: ['draft'],
 				output: ['fields'],
 			},
 		},
@@ -55,12 +50,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['get'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Attachments Prefix',
@@ -82,6 +71,15 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['draft'],
+		operation: ['get'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
@@ -89,7 +87,9 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const draftId = this.getNodeParameter('draftId', index) as string;
+	const draftId = this.getNodeParameter('draftId', index, undefined, {
+		extractValue: true,
+	}) as string;
 	const options = this.getNodeParameter('options', index, {});
 	const output = this.getNodeParameter('output', index) as string;
 

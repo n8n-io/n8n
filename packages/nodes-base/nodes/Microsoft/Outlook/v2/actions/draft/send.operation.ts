@@ -1,20 +1,17 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { makeRecipient } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { draftRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	draftRLC,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['send'],
-			},
-		},
 		options: [
 			{
 				displayName: 'To',
@@ -27,11 +24,20 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['draft'],
+		operation: ['send'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const draftId = this.getNodeParameter('draftId', index);
+	const draftId = this.getNodeParameter('draftId', index, undefined, { extractValue: true });
 	const additionalFields = this.getNodeParameter('additionalFields', index, {});
 
 	if (additionalFields?.recipients) {

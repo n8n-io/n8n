@@ -1,13 +1,26 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { draftRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [];
+export const properties: INodeProperties[] = [draftRLC];
+
+const displayOptions = {
+	show: {
+		resource: ['draft'],
+		operation: ['delete'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const draftId = this.getNodeParameter('draftId', index) as string;
+	const draftId = this.getNodeParameter('draftId', index, undefined, {
+		extractValue: true,
+	}) as string;
 	await microsoftApiRequest.call(this, 'DELETE', `/messages/${draftId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(

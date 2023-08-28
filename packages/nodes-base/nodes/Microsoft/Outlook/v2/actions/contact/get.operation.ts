@@ -16,12 +16,6 @@ export const properties: INodeProperties[] = [
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['get'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -44,8 +38,6 @@ export const properties: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				resource: ['contact'],
-				operation: ['get'],
 				output: ['fields'],
 			},
 		},
@@ -69,7 +61,9 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const qs: IDataObject = {};
 
-	const contactId = this.getNodeParameter('contactId', index) as string;
+	const contactId = this.getNodeParameter('contactId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const output = this.getNodeParameter('output', index) as string;
 

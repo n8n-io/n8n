@@ -51,3 +51,29 @@ export const contactRLC: INodeProperties = {
 		},
 	],
 };
+
+export const draftRLC: INodeProperties = {
+	displayName: 'Draft',
+	name: 'draftId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a draft...',
+			typeOptions: {
+				searchListMethod: 'searchDrafts',
+				searchable: false,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. AAAkAAAhAAA0BBc5LLLwOOOtNNNkZS05Nz...',
+		},
+	],
+};

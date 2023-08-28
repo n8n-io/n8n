@@ -6,20 +6,17 @@ import type {
 } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { draftRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	draftRLC,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['update'],
-			},
-		},
 		options: [
 			{
 				displayName: 'BCC Recipients',
@@ -178,11 +175,22 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['draft'],
+		operation: ['update'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const draftId = this.getNodeParameter('draftId', index) as string;
+	const draftId = this.getNodeParameter('draftId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const updateFields = this.getNodeParameter('updateFields', index);
 

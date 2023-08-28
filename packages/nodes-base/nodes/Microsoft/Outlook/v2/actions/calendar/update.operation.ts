@@ -16,12 +16,6 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['calendar'],
-				operation: ['update'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Color',

@@ -17,12 +17,6 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['update'],
-			},
-		},
 		options: contactFields,
 	},
 ];
@@ -41,7 +35,9 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
-	const contactId = this.getNodeParameter('contactId', index) as string;
+	const contactId = this.getNodeParameter('contactId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const body: IDataObject = prepareContactFields(additionalFields);
 

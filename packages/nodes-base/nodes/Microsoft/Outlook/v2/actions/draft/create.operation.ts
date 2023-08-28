@@ -8,18 +8,13 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
 		description: 'The subject of the message',
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['create'],
-			},
-		},
 		type: 'string',
 		default: '',
 	},
@@ -31,12 +26,6 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['create'],
-			},
-		},
 		default: '',
 	},
 	{
@@ -45,12 +34,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['create'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Attachments',
@@ -210,6 +193,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['draft'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

@@ -16,12 +16,6 @@ export const properties: INodeProperties[] = [
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -44,8 +38,6 @@ export const properties: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				resource: ['contact'],
-				operation: ['getAll'],
 				output: ['fields'],
 			},
 		},
@@ -58,13 +50,6 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['contact'],
-				operation: ['getAll'],
-				// returnAll: [true],
-			},
-		},
 		options: [
 			{
 				displayName: 'Filter Query',
