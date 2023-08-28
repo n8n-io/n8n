@@ -5211,7 +5211,7 @@ packages:
     resolution: {integrity: sha512-OIQv8V7r6fqBqAXQT9mqgu1aqP+wlFGDRACyS2iym5y5B3e6fhCOUS/31pBp3vmgNRK6LAfEI0FXI71aOp82MQ==}
     peerDependencies:
       '@preact/preset-vite': '*'
-      typescript: '>= 4.3.x'
+      typescript: ^5.2.2
       vite: ^3.0.0 || ^4.0.0
       vite-plugin-glimmerx: '*'
     peerDependenciesMeta:
@@ -7214,7 +7214,7 @@ packages:
     peerDependencies:
       eslint: ^6.2.0 || ^7.0.0 || ^8.0.0
       eslint-plugin-vue: ^9.0.0
-      typescript: '*'
+      typescript: ^5.2.2
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -7232,7 +7232,7 @@ packages:
   /@vue/language-core@1.8.8(typescript@5.2.2):
     resolution: {integrity: sha512-i4KMTuPazf48yMdYoebTkgSOJdFraE4pQf0B+FTOFkbB+6hAfjrSou/UmYWRsWyZV6r4Rc6DDZdI39CJwL0rWw==}
     peerDependencies:
-      typescript: '*'
+      typescript: ^5.2.2
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -10962,7 +10962,7 @@ packages:
       '@types/eslint': '>=8.0.0'
       eslint: '>=8.0.0'
       eslint-config-prettier: '*'
-      prettier: '>=3.0.0'
+      prettier: ^3.0.0
     peerDependenciesMeta:
       '@types/eslint':
         optional: true
@@ -13698,8 +13698,8 @@ packages:
     resolution: {integrity: sha512-VxwFOC8gkiJbuodG9CPtMRjBUNZEHxwfQXmIudSTzFWxaci3Qub1ddTRbFNQlD/zUeaifLndh/eDccFX4wCMQw==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     peerDependencies:
-      '@types/node': '*'
-      ts-node: '>=9.0.0'
+      '@types/node': ^18.16.16
+      ts-node: ^10.9.1
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -13916,7 +13916,7 @@ packages:
     resolution: {integrity: sha512-2ynEZ7IEJNrhrgshklDMhrOdnmW4Nt+PhkyRqZxRgpwMo7JjmFWMzyp0+eSyk+H9KK1QjXI5xTZIw6x7cVDcRg==}
     peerDependencies:
       jest: ^24.0.0 || ^25.0.0 || ^26.0.0 || ^27.0.0 || ^28.0.0 || ^29.0.0
-      typescript: ^3.0.0 || ^4.0.0 || ^5.0.0
+      typescript: ^5.2.2
     dependencies:
       jest: 29.6.2
       ts-essentials: 7.0.3(typescript@5.2.2)
@@ -16148,7 +16148,7 @@ packages:
     engines: {node: '>= 6.9.0'}
     hasBin: true
     peerDependencies:
-      chokidar: ^3.3.0
+      chokidar: 3.5.2
     peerDependenciesMeta:
       chokidar:
         optional: true
@@ -16943,7 +16943,7 @@ packages:
     resolution: {integrity: sha512-bIU6QuE5qZviMmct5XwCesXelb5VavdOWKWaB17ggk++NUwQWWbP5YnsONTk3b752QkW9sACiR81rorpeOMSvQ==}
     peerDependencies:
       '@vue/composition-api': ^1.4.0
-      typescript: '>=4.4.4'
+      typescript: ^5.2.2
       vue: ^2.6.14 || ^3.3.0
     peerDependenciesMeta:
       '@vue/composition-api':
@@ -19935,7 +19935,7 @@ packages:
     resolution: {integrity: sha512-lC/RGlPmwdrIBFTX59wwNzqh7aR2otPNPR/5brHZm/XKFYKsfqxihXUe9pU3JI+3vGkl+vyCoNNnPhJn3aLK1A==}
     engines: {node: '>=16.13.0'}
     peerDependencies:
-      typescript: '>=4.2.0'
+      typescript: ^5.2.2
     dependencies:
       typescript: 5.2.2
     dev: true
@@ -19948,7 +19948,7 @@ packages:
   /ts-essentials@7.0.3(typescript@5.2.2):
     resolution: {integrity: sha512-8+gr5+lqO3G84KdiTSMRLtuyJ+nTBVRKuCrK4lidMPdVeEp0uqC875uE5NMcaA7YYMN7XsNiFQuMvasF8HT/xQ==}
     peerDependencies:
-      typescript: '>=3.7.0'
+      typescript: ^5.2.2
     dependencies:
       typescript: 5.2.2
     dev: true
@@ -19963,7 +19963,7 @@ packages:
       babel-jest: ^29.0.0
       esbuild: '*'
       jest: ^29.0.0
-      typescript: '>=4.3 <6'
+      typescript: ^5.2.2
     peerDependenciesMeta:
       '@babel/core':
         optional: true
@@ -20008,7 +20008,7 @@ packages:
     engines: {node: '>=12.12.0'}
     hasBin: true
     peerDependencies:
-      typescript: '*'
+      typescript: ^5.2.2
     dependencies:
       cross-spawn: 7.0.3
       node-cleanup: 2.1.2
@@ -20038,7 +20038,7 @@ packages:
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
     engines: {node: '>= 6'}
     peerDependencies:
-      typescript: '>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta'
+      typescript: ^5.2.2
     dependencies:
       tslib: 2.6.1
       typescript: 5.2.2
@@ -20255,7 +20255,7 @@ packages:
       redis: ^3.1.1 || ^4.0.0
       sql.js: ^1.4.0
       sqlite3: ^5.0.3
-      ts-node: ^10.7.0
+      ts-node: ^10.9.1
       typeorm-aurora-data-api-driver: ^2.0.0
     peerDependenciesMeta:
       '@google-cloud/spanner':
@@ -20817,7 +20817,7 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
     peerDependencies:
-      '@types/node': '>= 14'
+      '@types/node': ^18.16.16
       less: '*'
       lightningcss: ^1.21.0
       sass: '*'
@@ -20853,7 +20853,7 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     hasBin: true
     peerDependencies:
-      '@types/node': '>= 14'
+      '@types/node': ^18.16.16
       less: '*'
       lightningcss: ^1.21.0
       sass: '*'
@@ -21086,7 +21086,7 @@ packages:
     resolution: {integrity: sha512-bSydNFQsF7AMvwWsRXD7cBIXaNs/KSjvzWLymq/UtKE36697sboX4EccSHFVxvgdBlI1frYPc/VMKJNB7DFeDQ==}
     hasBin: true
     peerDependencies:
-      typescript: '*'
+      typescript: ^5.2.2
     dependencies:
       '@vue/language-core': 1.8.8(typescript@5.2.2)
       '@vue/typescript': 1.8.8(typescript@5.2.2)
