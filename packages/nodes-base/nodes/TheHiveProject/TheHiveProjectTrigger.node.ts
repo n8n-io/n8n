@@ -148,6 +148,7 @@ export class TheHiveProjectTrigger implements INodeType {
 			},
 			{
 				displayName: 'Filters',
+				description: 'Filter any incoming events based on their fields',
 				name: 'filters',
 				type: 'fixedCollection',
 				placeholder: 'Add Filter',
