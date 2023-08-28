@@ -39,6 +39,10 @@ export type RedisServiceWorkerResponseObject = {
 	  }
 	| {
 			command: 'restartEventBus';
+			payload: {
+				result: 'success' | 'error';
+				error?: string;
+			};
 	  }
 	| {
 			command: 'stopWorker';

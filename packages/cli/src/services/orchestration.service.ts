@@ -68,7 +68,7 @@ export class OrchestrationService {
 					const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(messageString);
 					if (workerResponse) {
 						// TODO: Handle worker response
-						console.log('Received worker response', workerResponse);
+						LoggerProxy.debug('Received worker response', workerResponse);
 					}
 				} else if (channel === COMMAND_REDIS_CHANNEL) {
 					if (!messageString) return;

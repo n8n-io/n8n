@@ -325,6 +325,13 @@ export class Worker extends BaseCommand {
 								break;
 							case 'restartEventBus':
 								await eventBus.restart();
+								await redisPublisher.publishToWorkerChannel({
+									workerId: this.uniqueInstanceId,
+									command: message.command,
+									payload: {
+										result: 'success',
+									},
+								});
 								break;
 							case 'stopWorker':
 								// TODO: implement proper shutdown
