@@ -5,9 +5,9 @@
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=18.10",
-    "pnpm": ">=8.6"
+    "pnpm": ">=8.7"
   },
-  "packageManager": "pnpm@8.6.12",
+  "packageManager": "pnpm@8.7.0",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
