@@ -10,50 +10,16 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { returnAllOrLimit } from '../../descriptions';
 
-export const description: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
-	},
+export const properties: INodeProperties[] = [
+	...returnAllOrLimit,
 	{
 		displayName: 'Output',
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['message'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -76,8 +42,6 @@ export const description: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['message'],
 				output: ['fields'],
 			},
 		},
@@ -92,8 +56,6 @@ export const description: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['message'],
 				returnAll: [true],
 			},
 		},
@@ -238,13 +200,6 @@ export const description: INodeProperties[] = [
 				],
 			},
 		],
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['message'],
-				// returnAll: [true],
-			},
-		},
 	},
 	{
 		displayName: 'Options',
@@ -252,12 +207,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Attachments Prefix',
@@ -278,6 +227,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['message'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

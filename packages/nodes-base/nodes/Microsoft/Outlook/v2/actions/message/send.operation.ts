@@ -8,19 +8,14 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
 	{
 		displayName: 'To',
 		name: 'toRecipients',
 		description: 'Comma-separated list of email addresses of recipients',
 		type: 'string',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['send'],
-			},
-		},
 		required: true,
 		default: '',
 	},
@@ -28,12 +23,6 @@ export const description: INodeProperties[] = [
 		displayName: 'Subject',
 		name: 'subject',
 		description: 'The subject of the message',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['send'],
-			},
-		},
 		type: 'string',
 		default: '',
 	},
@@ -45,12 +34,6 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['send'],
-			},
-		},
 		default: '',
 	},
 	{
@@ -59,12 +42,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['send'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Attachments',
@@ -219,6 +196,15 @@ export const description: INodeProperties[] = [
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['message'],
+		operation: ['send'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

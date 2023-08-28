@@ -66,19 +66,6 @@ export const description: INodeProperties[] = [
 		],
 		default: 'send',
 	},
-	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['delete', 'get', 'move', 'update', 'reply'],
-			},
-		},
-	},
 
 	...del.description,
 	...get.description,

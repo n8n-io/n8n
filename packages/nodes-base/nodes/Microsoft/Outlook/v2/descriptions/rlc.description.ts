@@ -77,3 +77,29 @@ export const draftRLC: INodeProperties = {
 		},
 	],
 };
+
+export const messageRLC: INodeProperties = {
+	displayName: 'Message',
+	name: 'messageId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a message...',
+			typeOptions: {
+				searchListMethod: 'searchMessages',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. AAAkAAAhAAA0BBc5LLLwOOOtNNNkZS05Nz...',
+		},
+	],
+};

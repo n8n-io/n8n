@@ -7,20 +7,17 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { messageRLC } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	messageRLC,
 	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-			},
-		},
 		options: [
 			{
 				displayName: 'BCC Recipients',
@@ -178,13 +175,24 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['message'],
+		operation: ['update'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	let responseData;
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
+	const messageId = this.getNodeParameter('messageId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	const updateFields = this.getNodeParameter('updateFields', index);
 

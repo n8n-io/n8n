@@ -8,8 +8,11 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { messageRLC } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	messageRLC,
 	{
 		displayName: 'Reply Type',
 		name: 'replyType',
@@ -26,23 +29,11 @@ export const description: INodeProperties[] = [
 		],
 		default: 'reply',
 		required: true,
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply'],
-			},
-		},
 	},
 	{
 		displayName: 'Comment',
 		name: 'comment',
 		description: 'A comment to include. Can be an empty string.',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply'],
-			},
-		},
 		type: 'string',
 		default: '',
 	},
@@ -51,12 +42,6 @@ export const description: INodeProperties[] = [
 		name: 'send',
 		description:
 			'Whether to send the reply message directly. If not set, it will be saved as draft.',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['reply'],
-			},
-		},
 		type: 'boolean',
 		default: true,
 	},
@@ -68,8 +53,6 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['message'],
-				operation: ['reply'],
 				replyType: ['reply'],
 			},
 		},
@@ -234,12 +217,23 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['message'],
+		operation: ['reply'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const messageId = this.getNodeParameter('messageId', index) as string;
+	const messageId = this.getNodeParameter('messageId', index, undefined, {
+		extractValue: true,
+	}) as string;
 	const replyType = this.getNodeParameter('replyType', index) as string;
 	const comment = this.getNodeParameter('comment', index) as string;
 	const send = this.getNodeParameter('send', index, false) as boolean;
