@@ -247,11 +247,14 @@ export class Worker extends BaseCommand {
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
+		await this.initEventBus();
+		await this.initRedis();
+	}
 
+	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
 		});
-		await this.initRedis();
 	}
 
 	/**

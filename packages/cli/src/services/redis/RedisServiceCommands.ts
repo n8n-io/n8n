@@ -7,6 +7,7 @@ export type RedisServiceCommand = 'getStatus' | 'getId' | 'restartEventBus' | 's
  * @field payload: Optional arguments to be sent with the command.
  */
 type RedisServiceBaseCommand = {
+	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
 		[key: string]: string | number | boolean | string[] | number[] | boolean[];

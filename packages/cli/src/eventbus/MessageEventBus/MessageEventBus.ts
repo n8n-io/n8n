@@ -29,6 +29,7 @@ import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import Container from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
+import { OrchestrationService } from '../../services/orchestration.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -210,6 +211,12 @@ export class MessageEventBus extends EventEmitter {
 		return result;
 	}
 
+	async tellWorkersToUpdateDestinations() {
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(OrchestrationService).restartEventBus();
+		}
+	}
+
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
@@ -230,6 +237,7 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
+		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
 	}
 

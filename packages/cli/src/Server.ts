@@ -176,6 +176,7 @@ import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
+import { OrchestrationController } from './controllers/orchestration.controller';
 
 const exec = promisify(callbackExec);
 
@@ -549,6 +550,7 @@ export class Server extends AbstractServer {
 			Container.get(SourceControlController),
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
+			Container.get(OrchestrationController),
 		];
 
 		if (isLdapEnabled()) {
