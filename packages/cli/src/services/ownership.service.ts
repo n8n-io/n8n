@@ -4,8 +4,9 @@ import { SharedWorkflowRepository } from '@/databases/repositories';
 import type { User } from '@/databases/entities/User';
 import { RoleService } from './role.service';
 import { UserService } from './user.service';
-import type { ListQuery } from '@/requests';
+import type { Credentials, ListQuery } from '@/requests';
 import type { Role } from '@/databases/entities/Role';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 @Service()
 export class OwnershipService {
@@ -51,12 +52,10 @@ export class OwnershipService {
 		});
 	}
 
-	addOwnedByAndSharedWith(
-		credentialsWithShared: ListQuery.Credentials.WithShared,
-	): ListQuery.Credentials.WithOwnedByAndSharedWith {
-		const { shared, ...rest } = credentialsWithShared;
+	addOwnedByAndSharedWith(_credential: CredentialsEntity): Credentials.WithOwnedByAndSharedWith {
+		const { shared, ...rest } = _credential;
 
-		const credential = rest as ListQuery.Credentials.WithOwnedByAndSharedWith;
+		const credential = rest as Credentials.WithOwnedByAndSharedWith;
 
 		credential.ownedBy = null;
 		credential.sharedWith = [];

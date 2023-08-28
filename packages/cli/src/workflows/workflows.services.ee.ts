@@ -16,7 +16,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
-import type { ListQuery } from '@/requests';
+import type { Credentials } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -151,7 +151,7 @@ export class EEWorkflowsService extends WorkflowsService {
 
 	static validateCredentialPermissionsToUser(
 		workflow: WorkflowEntity,
-		allowedCredentials: ListQuery.Credentials.WithOwnedByAndSharedWith[],
+		allowedCredentials: Credentials.WithOwnedByAndSharedWith[],
 	) {
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {

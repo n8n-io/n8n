@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import type { ListQuery } from '@/requests';
+import type { Credentials } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
@@ -59,7 +59,7 @@ describe('GET /credentials', () => {
 		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: ListQuery.Credentials.WithOwnedByAndSharedWith) => {
+		response.body.data.forEach((credential: Credentials.WithOwnedByAndSharedWith) => {
 			validateMainCredentialData(credential);
 			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
@@ -532,7 +532,7 @@ describe('GET /credentials/:id', () => {
 	});
 });
 
-function validateMainCredentialData(credential: ListQuery.Credentials.WithOwnedByAndSharedWith) {
+function validateMainCredentialData(credential: Credentials.WithOwnedByAndSharedWith) {
 	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
 
 	expect(typeof name).toBe('string');

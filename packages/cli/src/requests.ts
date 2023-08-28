@@ -21,7 +21,6 @@ import type {
 	IWorkflowDb,
 	SecretsProvider,
 	SecretsProviderState,
-	ICredentialsDb,
 } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -162,20 +161,16 @@ export namespace ListQuery {
 
 		export type WithOwnership = BaseFields & OwnedByField;
 	}
+}
 
-	export namespace Credentials {
-		type SharedField = Pick<ICredentialsDb, 'shared'>;
+export namespace Credentials {
+	type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
 
-		type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+	type OwnedByField = { ownedBy: SlimUser | null };
 
-		type OwnedByField = { ownedBy: SlimUser | null };
+	type SharedWithField = { sharedWith: SlimUser[] };
 
-		type SharedWithField = { sharedWith: SlimUser[] };
-
-		export type WithShared = CredentialsEntity & SharedField;
-
-		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
-	}
+	export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
 }
 
 export function hasSharing(
