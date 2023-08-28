@@ -4,12 +4,13 @@ import { deepCopy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 
-import type { CredentialRequest, ListQuery } from '@/requests';
+import type { CredentialRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
@@ -37,7 +38,7 @@ EECredentialsController.get(
 		let credential = (await EECredentials.get(
 			{ id: credentialId },
 			{ relations: ['shared', 'shared.role', 'shared.user'] },
-		)) as ListQuery.Credentials.WithShared;
+		)) as CredentialsEntity;
 
 		if (!credential) {
 			throw new ResponseHelper.NotFoundError(
