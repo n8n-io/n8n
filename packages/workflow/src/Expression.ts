@@ -1,5 +1,5 @@
 import { DateTime, Duration, Interval } from 'luxon';
-import type * as tmpl from '@n8n_io/riot-tmpl';
+import * as tmpl from '@n8n_io/riot-tmpl';
 
 import type {
 	IDataObject,
