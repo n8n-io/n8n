@@ -6,7 +6,7 @@ export class CreateWorkflowHistoryTable1692967111175 implements ReversibleMigrat
 	async up({ schemaBuilder: { createTable, column }, queryRunner }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
-				column('versionId').uuid.primary.notNull,
+				column('versionId').varchar(36).primary.notNull,
 				column('workflowId').varchar(36).notNull,
 				column('nodes').text.notNull,
 				column('connections').text.notNull,
