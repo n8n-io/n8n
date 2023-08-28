@@ -225,7 +225,14 @@ export class Telemetry {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
 					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
-						this.track('User toggled n8n reference option');
+						this.track(
+							'User toggled n8n reference option',
+							{
+								node: nodeType,
+								toValue: change.value,
+							},
+							{ withPostHog: true },
+						);
 					}
 					break;
 
