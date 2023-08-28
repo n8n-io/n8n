@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
-import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 
 import * as Db from '@/Db';
@@ -24,6 +24,7 @@ import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 import { RoleService } from '@/services/role.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class CredentialsService {
 	static async get(
@@ -36,10 +37,10 @@ export class CredentialsService {
 		});
 	}
 
-	static async getAll(
-		user: User,
-		options?: { relations?: string[]; roles?: string[]; disableGlobalRole?: boolean },
-	): Promise<ICredentialsDb[]> {
+	// @TODO: Used?
+	static async getAll(user: User) {
+		if (user.globalRole.name !== 'owner') return [];
+
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
@@ -49,35 +50,50 @@ export class CredentialsService {
 			'updatedAt',
 		];
 
-		// if instance owner, return all credentials
-
-		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
-			return Db.collections.Credentials.find({
-				select: SELECT_FIELDS,
-				relations: options?.relations,
-			});
-		}
-
-		// if member, return credentials owned by or shared with member
-		const userSharings = await Db.collections.SharedCredentials.find({
-			where: {
-				userId: user.id,
-				...(options?.roles?.length ? { role: { name: In(options.roles) } } : {}),
-			},
-			relations: options?.roles?.length ? ['role'] : [],
-		});
-
-		return Db.collections.Credentials.find({
-			select: SELECT_FIELDS,
-			relations: options?.relations,
-			where: {
-				id: In(userSharings.map((x) => x.credentialsId)),
-			},
-		});
+		return Db.collections.Credentials.find({ select: SELECT_FIELDS });
 	}
 
-	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
-		return Db.collections.Credentials.find(filter);
+	static async getMany(user: User, options?: { skipOwnerCheck?: boolean }) {
+		type Select = Array<keyof ICredentialsDb>;
+
+		const select: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
+
+		const relations = ['shared', 'shared.role', 'shared.user'];
+
+		const isOwner = user.globalRole.name === 'owner';
+
+		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
+			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
+
+		if (isOwner && !options?.skipOwnerCheck) {
+			const credentials = await Db.collections.Credentials.find({ select, relations });
+			return credentials.map(addOwnedByAndSharedWith);
+		}
+
+		const ids = await CredentialsService.getAccessibleCredentials(user.id);
+
+		const credentials = await Db.collections.Credentials.find({
+			select,
+			relations,
+			where: { id: In(ids) },
+		});
+
+		return credentials.map(addOwnedByAndSharedWith);
+	}
+
+	/**
+	 * Get the IDs of all credentials owned by or shared with a user.
+	 */
+	private static async getAccessibleCredentials(userId: string) {
+		const sharings = await Db.collections.SharedCredentials.find({
+			relations: ['role'],
+			where: {
+				userId,
+				role: { name: In(['owner', 'user']), scope: 'credential' },
+			},
+		});
+
+		return sharings.map((s) => s.credentialsId);
 	}
 
 	/**

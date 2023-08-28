@@ -1,6 +1,6 @@
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
-import { deepCopy, LoggerProxy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -24,27 +24,6 @@ EECredentialsController.use((req, res, next) => {
 	// use ee router
 	next();
 });
-
-/**
- * GET /credentials
- */
-EECredentialsController.get(
-	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<CredentialWithSharings[]> => {
-		try {
-			const allCredentials = await EECredentials.getAll(req.user, {
-				relations: ['shared', 'shared.role', 'shared.user'],
-			});
-
-			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) =>
-				EECredentials.addOwnerAndSharings(credential),
-			);
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error as Error);
-			throw error;
-		}
-	}),
-);
 
 /**
  * GET /credentials/:id

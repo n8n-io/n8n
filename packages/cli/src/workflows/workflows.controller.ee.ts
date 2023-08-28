@@ -151,7 +151,7 @@ EEWorkflowController.post(
 		// This is a new workflow, so we simply check if the user has access to
 		// all used workflows
 
-		const allCredentials = await EECredentials.getAll(req.user);
+		const allCredentials = await EECredentials.getMany(req.user);
 
 		try {
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);

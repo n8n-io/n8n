@@ -106,7 +106,9 @@ export class EEWorkflowsService extends WorkflowsService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await EECredentials.getAll(currentUser, { disableGlobalRole: true });
+
+		// @TODO: disableGlobalRole
+		const userCredentials = await EECredentials.getMany(currentUser, { skipOwnerCheck: true });
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -120,12 +122,14 @@ export class EEWorkflowsService extends WorkflowsService {
 				credentialIdsUsedByWorkflow.add(credential.id);
 			});
 		});
+
+		// @TODO
 		const workflowCredentials = await EECredentials.getMany({
 			where: {
 				id: In(Array.from(credentialIdsUsedByWorkflow)),
 			},
-			relations: ['shared', 'shared.user', 'shared.role'],
 		});
+
 		const userCredentialIds = userCredentials.map((credential) => credential.id);
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id;
@@ -151,7 +155,7 @@ export class EEWorkflowsService extends WorkflowsService {
 
 	static validateCredentialPermissionsToUser(
 		workflow: WorkflowEntity,
-		allowedCredentials: ICredentialsDb[],
+		allowedCredentials: ICredentialsDb[], // @TODO
 	) {
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -175,7 +179,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			throw new ResponseHelper.NotFoundError('Workflow not found');
 		}
 
-		const allCredentials = await EECredentials.getAll(user);
+		const allCredentials = await EECredentials.getMany(user);
 
 		try {
 			return WorkflowHelpers.validateWorkflowCredentialUsage(

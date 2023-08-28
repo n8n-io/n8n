@@ -50,4 +50,27 @@ export class OwnershipService {
 			ownedBy: ownerId ? { id: ownerId } : null,
 		});
 	}
+
+	addOwnedByAndSharedWith(
+		credentialWithShared: ListQuery.Credentials.WithSharings,
+	): ListQuery.Credentials.WithOwnedByAndSharedWith {
+		const { shared, ...rest } = credentialWithShared;
+
+		const credential = rest as ListQuery.Credentials.WithOwnedByAndSharedWith;
+
+		credential.ownedBy = null;
+		credential.sharedWith = [];
+
+		shared?.forEach(({ user, role }) => {
+			const { id, email, firstName, lastName } = user;
+
+			if (role.name === 'owner') {
+				credential.ownedBy = { id, email, firstName, lastName };
+			} else {
+				credential.sharedWith.push({ id, email, firstName, lastName });
+			}
+		});
+
+		return credential;
+	}
 }
