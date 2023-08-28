@@ -6,41 +6,19 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { DateTime } from 'luxon';
+import { calendarRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
-	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Calendar',
-		name: 'calendarId',
-		type: 'options',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		default: '',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['create'],
-			},
-		},
-	},
+export const properties: INodeProperties[] = [
+	calendarRLC,
 	{
 		displayName: 'Title',
 		name: 'subject',
 		type: 'string',
 		default: '',
 		required: true,
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['create'],
-			},
-		},
 	},
 	{
 		displayName: 'Start',
@@ -48,12 +26,6 @@ export const description: INodeProperties[] = [
 		type: 'dateTime',
 		default: DateTime.now().toISO(),
 		required: true,
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['create'],
-			},
-		},
 	},
 	{
 		displayName: 'End',
@@ -61,12 +33,6 @@ export const description: INodeProperties[] = [
 		type: 'dateTime',
 		required: true,
 		default: DateTime.now().plus({ minutes: 30 }).toISO(),
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['create'],
-			},
-		},
 	},
 	{
 		displayName: 'Additional Fields',
@@ -74,12 +40,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['create'],
-			},
-		},
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
@@ -246,12 +206,23 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['event'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
-	const calendarId = this.getNodeParameter('calendarId', index, '') as string;
+	const calendarId = this.getNodeParameter('calendarId', index, '', {
+		extractValue: true,
+	}) as string;
 	if (calendarId === '') {
 		throw new NodeOperationError(this.getNode(), 'Calendar ID is required');
 	}

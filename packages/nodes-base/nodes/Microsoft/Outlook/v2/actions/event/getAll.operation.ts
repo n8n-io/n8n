@@ -6,69 +6,17 @@ import type {
 } from 'n8n-workflow';
 import { eventfields } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { calendarRLC, returnAllOrLimit } from '../../descriptions';
 
-export const description: INodeProperties[] = [
-	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-		displayName: 'Calendar',
-		name: 'calendarId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
-		default: [],
-		required: true,
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['getAll'],
-			},
-		},
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
-	},
+export const properties: INodeProperties[] = [
+	calendarRLC,
+	...returnAllOrLimit,
 	{
 		displayName: 'Output',
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -91,8 +39,6 @@ export const description: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				resource: ['event'],
-				operation: ['getAll'],
 				output: ['fields'],
 			},
 		},
@@ -105,13 +51,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Filter',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['getAll'],
-				// returnAll: [true],
-			},
-		},
 		options: [
 			{
 				displayName: 'Filter Query',
@@ -125,6 +64,15 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['event'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
@@ -132,7 +80,10 @@ export async function execute(
 	let responseData;
 	const qs = {} as IDataObject;
 
-	const calendarId = this.getNodeParameter('calendarId', index) as string;
+	const calendarId = this.getNodeParameter('calendarId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filters', index, {});
 	const output = this.getNodeParameter('output', index) as string;

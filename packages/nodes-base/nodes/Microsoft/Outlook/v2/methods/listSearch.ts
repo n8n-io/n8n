@@ -1,5 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { microsoftApiRequest } from '../transport';
+import { getSubfolders, microsoftApiRequest } from '../transport';
 
 async function search(
 	this: ILoadOptionsFunctions,
@@ -137,6 +137,101 @@ export async function searchMessages(
 		results: (response.value as IDataObject[]).map((entry: IDataObject) => {
 			return {
 				name: (entry.subject || entry.bodyPreview) as string,
+				value: entry.id as string,
+			};
+		}),
+		paginationToken: response['@odata.nextLink'],
+	};
+}
+
+export async function searchEvents(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	let response: IDataObject = {};
+
+	const calendarId = this.getNodeParameter('calendarId', undefined, {
+		extractValue: true,
+	}) as string;
+
+	if (paginationToken) {
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'',
+			undefined,
+			undefined,
+			paginationToken, // paginationToken contains the full URL
+		);
+	} else {
+		const qs: IDataObject = {
+			$select: 'id,subject,bodyPreview',
+			$top: 100,
+		};
+
+		if (filter) {
+			const filterValue = encodeURI(filter);
+			qs.$filter = `startsWith(subject, '${filterValue}')`;
+		}
+
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/calendars/${calendarId}/events`,
+			undefined,
+			qs,
+		);
+	}
+
+	return {
+		results: (response.value as IDataObject[]).map((entry: IDataObject) => {
+			return {
+				name: (entry.subject || entry.bodyPreview) as string,
+				value: entry.id as string,
+			};
+		}),
+		paginationToken: response['@odata.nextLink'],
+	};
+}
+
+export async function searchFolders(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	let response: IDataObject = {};
+
+	if (paginationToken) {
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'',
+			undefined,
+			undefined,
+			paginationToken, // paginationToken contains the full URL
+		);
+	} else {
+		const qs: IDataObject = {
+			$top: 100,
+		};
+
+		response = await microsoftApiRequest.call(this, 'GET', '/mailFolders', undefined, qs);
+	}
+
+	let folders = await getSubfolders.call(this, response.value as IDataObject[]);
+
+	if (filter) {
+		filter = filter.toLowerCase();
+		folders = folders.filter((folder) =>
+			((folder.displayName as string) || '').toLowerCase().includes(filter as string),
+		);
+	}
+
+	return {
+		results: folders.map((entry: IDataObject) => {
+			return {
+				name: entry.displayName as string,
 				value: entry.id as string,
 			};
 		}),

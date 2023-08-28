@@ -11,66 +11,17 @@ import {
 	microsoftApiRequestAllItems,
 } from '../../transport';
 
-export const description: INodeProperties[] = [
-	{
-		displayName: 'Folder Name or ID',
-		name: 'folderId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getFoldersWithFilepath',
-		},
-		default: [],
-		description:
-			'The folder to get the messages from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-		displayOptions: {
-			show: {
-				resource: ['folderMessage'],
-				operation: ['getAll'],
-			},
-		},
-	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['folderMessage'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['folderMessage'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
-	},
+import { updateDisplayOptions } from '@utils/utilities';
+import { folderRLC, returnAllOrLimit } from '../../descriptions';
+
+export const properties: INodeProperties[] = [
+	folderRLC,
+	...returnAllOrLimit,
 	{
 		displayName: 'Output',
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['folderMessage'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -93,8 +44,6 @@ export const description: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['folderMessage'],
 				output: ['fields'],
 			},
 		},
@@ -109,8 +58,6 @@ export const description: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['getAll'],
-				resource: ['folderMessage'],
 				returnAll: [true],
 			},
 		},
@@ -233,13 +180,6 @@ export const description: INodeProperties[] = [
 				],
 			},
 		],
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['folderMessage'],
-				// returnAll: [true],
-			},
-		},
 	},
 	{
 		displayName: 'Options',
@@ -247,12 +187,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['folderMessage'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Attachments Prefix',
@@ -274,6 +208,15 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['folderMessage'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
@@ -281,7 +224,9 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const folderId = this.getNodeParameter('folderId', index) as string;
+	const folderId = this.getNodeParameter('folderId', index, undefined, {
+		extractValue: true,
+	}) as string;
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filtersUI.values', index, {}) as IDataObject;
 	const options = this.getNodeParameter('options', index, {});

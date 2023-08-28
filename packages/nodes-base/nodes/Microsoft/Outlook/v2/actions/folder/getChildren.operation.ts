@@ -5,39 +5,12 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { folderRLC, returnAllOrLimit } from '../../descriptions';
 
-export const description: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['getChildren'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['getChildren'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
-	},
+export const properties: INodeProperties[] = [
+	folderRLC,
+	...returnAllOrLimit,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -76,6 +49,15 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['folder'],
+		operation: ['getChildren'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
@@ -83,7 +65,9 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const folderId = this.getNodeParameter('folderId', index) as string;
+	const folderId = this.getNodeParameter('folderId', index, undefined, {
+		extractValue: true,
+	}) as string;
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const options = this.getNodeParameter('options', index);
 

@@ -5,8 +5,9 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
 	{
 		displayName: 'Type',
 		name: 'folderType',
@@ -94,6 +95,15 @@ export const description: INodeProperties[] = [
 		},
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['folder'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,

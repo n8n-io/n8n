@@ -5,22 +5,20 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { DateTime } from 'luxon';
+import { calendarRLC, eventRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	calendarRLC,
+	eventRLC,
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['update'],
-			},
-		},
 		options: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
@@ -205,12 +203,23 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['event'],
+		operation: ['update'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
-	const eventId = this.getNodeParameter('eventId', index) as string;
+	const eventId = this.getNodeParameter('eventId', index, undefined, {
+		extractValue: true,
+	}) as string;
 
 	let timeZone = 'UTC';
 

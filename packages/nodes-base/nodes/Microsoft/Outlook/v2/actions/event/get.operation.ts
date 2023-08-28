@@ -6,19 +6,17 @@ import type {
 } from 'n8n-workflow';
 import { eventfields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { calendarRLC, eventRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	calendarRLC,
+	eventRLC,
 	{
 		displayName: 'Output',
 		name: 'output',
 		type: 'options',
 		default: 'simple',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['get'],
-			},
-		},
 		options: [
 			{
 				name: 'Simplified',
@@ -41,8 +39,6 @@ export const description: INodeProperties[] = [
 		description: 'The fields to add to the output',
 		displayOptions: {
 			show: {
-				resource: ['event'],
-				operation: ['get'],
 				output: ['fields'],
 			},
 		},
@@ -51,13 +47,25 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['event'],
+		operation: ['get'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const qs = {} as IDataObject;
 
-	const eventId = this.getNodeParameter('eventId', index) as string;
+	const eventId = this.getNodeParameter('eventId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const output = this.getNodeParameter('output', index) as string;
 
 	if (output === 'fields') {

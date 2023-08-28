@@ -103,3 +103,58 @@ export const messageRLC: INodeProperties = {
 		},
 	],
 };
+
+export const eventRLC: INodeProperties = {
+	displayName: 'Event',
+	name: 'eventId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['calendarId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a event...',
+			typeOptions: {
+				searchListMethod: 'searchEvents',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. AAAkAAAhAAA0BBc5LLLwOOOtNNNkZS05Nz...',
+		},
+	],
+};
+
+export const folderRLC: INodeProperties = {
+	displayName: 'Folder',
+	name: 'folderId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a folder...',
+			typeOptions: {
+				searchListMethod: 'searchFolders',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. AAAkAAAhAAA0BBc5LLLwOOOtNNNkZS05Nz...',
+		},
+	],
+};

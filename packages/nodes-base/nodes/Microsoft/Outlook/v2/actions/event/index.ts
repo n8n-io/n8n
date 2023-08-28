@@ -52,19 +52,6 @@ export const description: INodeProperties[] = [
 		],
 		default: 'getAll',
 	},
-	{
-		displayName: 'Event ID',
-		name: 'eventId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['event'],
-				operation: ['delete', 'get', 'update'],
-			},
-		},
-	},
 
 	...create.description,
 	...del.description,
