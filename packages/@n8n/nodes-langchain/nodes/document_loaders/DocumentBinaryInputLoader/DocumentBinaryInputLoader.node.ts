@@ -89,7 +89,6 @@ export class N8nBinaryLoader {
 
 			const textSplitter = await getAndValidateSupplyInput(this.context, 'textSplitter') as TextSplitter | undefined;
       const loadedDoc = textSplitter
-				// @ts-ignore
         ? await loader.loadAndSplit(textSplitter)
         : await loader.load();
 
