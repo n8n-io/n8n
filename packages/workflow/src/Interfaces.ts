@@ -1481,7 +1481,9 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 }
 
 export type ConnectionTypes =
+	| 'agent'
 	| 'chain'
+	| 'chat'
 	| 'document'
 	| 'embedding'
 	| 'languageModel'

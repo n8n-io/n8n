@@ -6,7 +6,12 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { Document } from 'langchain/document';
 // @ts-ignore
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { PDFLoader, CSVLoader, DocxLoader, TextLoader, JSONLoader,   } from 'langchain/document_loaders'
+import { TextLoader } from 'langchain/document_loaders/fs/text';
+import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
+import { CSVLoader } from 'langchain/document_loaders/fs/csv';
+import { DocxLoader } from 'langchain/document_loaders/fs/docx'
+import { JSONLoader } from 'langchain/document_loaders/fs/json';
+
 import { N8nEPubLoader } from './EpubLoader';
 
 const SUPPORTED_MIME_TYPES = {

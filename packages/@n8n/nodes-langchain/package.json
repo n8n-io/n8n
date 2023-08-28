@@ -41,6 +41,7 @@
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
+      "dist/nodes/agents/AgentConversationRetrievalQA/AgentConversationRetrievalQA.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQA.node.js",
       "dist/nodes/chains/ChainVectorStoreQA/ChainVectorStoreQA.node.js",
       "dist/nodes/document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node.js",
@@ -51,6 +52,7 @@
       "dist/nodes/llms/LMOpenAi/LMOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LMCohere.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
+      "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",

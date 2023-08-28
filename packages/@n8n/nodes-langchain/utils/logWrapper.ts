@@ -7,7 +7,7 @@ import { CallbackManagerForLLMRun } from 'langchain/callbacks';
 import { BaseChatMemory } from 'langchain/memory';
 
 import { Embeddings } from 'langchain/embeddings';
-import { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
+import { MemoryVariables } from 'langchain/dist/memory/base';
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
@@ -22,6 +22,7 @@ export function logWrapper(
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
+			console.log("Prop: ", prop)
 			// TextSplitter
 			if (prop === 'splitText') {
 				return async (text: string): Promise<string[]> => {
@@ -95,24 +96,40 @@ export function logWrapper(
 						[{ json: { action: 'loadMemoryVariables', values } }],
 					]);
 					// @ts-ignore
-					const response = await target[prop](values);
+					const response = await target[prop](values) as MemoryVariables;
+					const messages = response['chat_history'] as BaseMessage[];
+					const serializedMessages = messages.map((message) => {
+						const serializedMessage = message.toJSON();
+
+						const payload = {
+							type: serializedMessage.id.join('.'),
+							text: message.content,
+						}
+
+						return payload;
+					});
+
 					executeFunctions.addOutputData('memory', [
-						[{ json: { action: 'loadMemoryVariables', response } }],
+						[{ json: { action: 'loadMemoryVariables', response: serializedMessages } }],
 					]);
 					return response;
 				};
-			} else if (prop === 'saveContext') {
-				return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
-					executeFunctions.addInputData('memory', [
-						[{ json: { action: 'saveContext', inputValues, outputValues } }],
-					]);
-					// @ts-ignore
-					await target[prop](inputValues, outputValues);
-					executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
-				};
+			}
+			// TODO: Do we need this? It doesn't provide much visual value for the user to know which
+			// memory variables are being saved.
+			// else if (prop === 'saveContext') {
+			// 	return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
+			// 		executeFunctions.addInputData('memory', [
+			// 			[{ json: { action: 'saveContext', inputValues, outputValues } }],
+			// 		]);
+			// 		// @ts-ignore
+			// 		await target[prop](inputValues, outputValues);
+			// 		executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
+			// 	};
 
+			// }
 				// For BaseChatModel
-			} else if (prop === '_generate') {
+			 else if (prop === '_generate') {
 				return async (
 					messages: BaseMessage[],
 					options: any,

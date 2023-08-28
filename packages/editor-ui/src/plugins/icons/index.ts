@@ -101,6 +101,7 @@ import {
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
+	faRobot,
 	faRss,
 	faSave,
 	faSatelliteDish,
@@ -248,6 +249,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faQuestion);
 		addIcon(faQuestionCircle);
 		addIcon(faRedo);
+		addIcon(faRobot);
 		addIcon(faRss);
 		addIcon(faSave);
 		addIcon(faSatelliteDish);
