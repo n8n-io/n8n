@@ -21,7 +21,7 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -37,20 +37,52 @@ export class CredentialsService {
 		});
 	}
 
-	static async getMany(user: User, options?: { disableGlobalRole: boolean }) {
+	private static toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
+
 		type Select = Array<keyof ICredentialsDb>;
 
-		const select: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
+		const defaultRelations = ['shared', 'shared.role', 'shared.user'];
+		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
-		const relations = ['shared', 'shared.role', 'shared.user'];
+		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
 
-		const returnAll = user.globalRole.name === 'owner' && options?.disableGlobalRole !== true;
+		const { filter, select, take, skip } = listQueryOptions;
+
+		if (filter) findManyOptions.where = filter;
+		if (select) findManyOptions.select = select;
+		if (take) findManyOptions.take = take;
+		if (skip) findManyOptions.skip = skip;
+
+		if (take && !select) findManyOptions.relations = defaultRelations;
+
+		if (take && select && !select?.id) {
+			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+		}
+
+		return findManyOptions;
+	}
+
+	// @TODO: Simplify flags?
+	// @TODO: Combine flags and options?
+	// @TODO: Write creds classes for listquery middleware
+	// @TODO: Tests
+	// @TODO: Abstract toFindManyOptions to QueryService
+
+	static async getMany(
+		user: User,
+		flags?: { disableGlobalRole?: boolean },
+		listQueryOptions?: ListQuery.Options,
+	) {
+		const findManyOptions = this.toFindManyOptions(listQueryOptions);
+
+		const returnAll = user.globalRole.name === 'owner' && flags?.disableGlobalRole !== true;
 
 		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
 			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
 
 		if (returnAll) {
-			const credentials = await Db.collections.Credentials.find({ select, relations });
+			const credentials = await Db.collections.Credentials.find(findManyOptions);
 
 			return credentials.map(addOwnedByAndSharedWith);
 		}
@@ -58,9 +90,8 @@ export class CredentialsService {
 		const ids = await CredentialsService.getAccessibleCredentials(user.id);
 
 		const credentials = await Db.collections.Credentials.find({
-			select,
-			relations,
-			where: { id: In(ids) },
+			...findManyOptions,
+			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
 
 		return credentials.map(addOwnedByAndSharedWith);
