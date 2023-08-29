@@ -15,14 +15,18 @@
 							{{ message.text }}
 
 							<div class="message-options no-select-on-click">
-								<n8n-info-tip type="tooltip" theme="info-light" tooltipPlacement="right" v-if="message.sender === 'bot'">
+								<n8n-info-tip
+									type="tooltip"
+									theme="info-light"
+									tooltipPlacement="right"
+									v-if="message.sender === 'bot'"
+								>
 									<div v-if="message.executionId">
 										<n8n-text :bold="true" size="small">
 											<span @click.stop="displayExecution(message.executionId)">
 												Execution ID: <a href="#" class="link">{{ message.executionId }}</a>
 											</span>
 										</n8n-text>
-
 									</div>
 								</n8n-info-tip>
 
@@ -44,7 +48,6 @@
 								>
 									<font-awesome-icon icon="copy" />
 								</div>
-
 							</div>
 						</div>
 					</div>
@@ -82,18 +85,12 @@ import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables';
 import Modal from '@/components/Modal.vue';
-import {
-	NODE_TRIGGER_CHAT_BUTTON,
-	VIEWS,
-	WORKFLOW_LM_CHAT_MODAL_KEY,
-} from '@/constants';
+import { NODE_TRIGGER_CHAT_BUTTON, VIEWS, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
 
 import { workflowRun } from '@/mixins/workflowRun';
 import { get } from 'lodash-es';
 
-import {
-	useWorkflowsStore,
-} from '@/stores';
+import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
 import { INodeType, ITaskData } from 'n8n-workflow';
 
@@ -131,9 +128,7 @@ export default defineComponent({
 	},
 
 	computed: {
-		...mapStores(
-			useWorkflowsStore,
-		),
+		...mapStores(useWorkflowsStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -189,10 +184,15 @@ export default defineComponent({
 		},
 		async startWorkflowWithMessage(message: string) {
 			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes((nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON);
+			const triggerNode = workflow.queryNodes(
+				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
+			);
 
 			if (!triggerNode.length) {
-				this.showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found')
+				this.showError(
+					new Error('Chat Trigger Node could not be found!'),
+					'Trigger Node not found',
+				);
 				return;
 			}
 
@@ -214,10 +214,17 @@ export default defineComponent({
 				source: [null],
 			};
 
-			const response = await this.runWorkflow({ triggerNode: triggerNode[0].name, nodeData, source: 'RunData.ManualChatMessage' });
+			const response = await this.runWorkflow({
+				triggerNode: triggerNode[0].name,
+				nodeData,
+				source: 'RunData.ManualChatMessage',
+			});
 
 			if (!response) {
-				this.showError(new Error('It was not possible to start workflow!'), 'Workflow could not be started')
+				this.showError(
+					new Error('It was not possible to start workflow!'),
+					'Workflow could not be started',
+				);
 				return;
 			}
 
@@ -227,10 +234,14 @@ export default defineComponent({
 			const that = this;
 			const waitInterval = setInterval(() => {
 				if (!that.isLoading) {
-					clearInterval(waitInterval)
+					clearInterval(waitInterval);
 
-					const lastNodeExecuted = this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
-					let responseMessage = get(this.workflowsStore.getWorkflowExecution?.data?.resultData.runData, `[${lastNodeExecuted}][0].data.main[0][0].json.output`) as string | undefined;
+					const lastNodeExecuted =
+						this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
+					let responseMessage = get(
+						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
+						`[${lastNodeExecuted}][0].data.main[0][0].json.output`,
+					) as string | undefined;
 
 					if (!responseMessage) {
 						responseMessage = '<NO RESPONSE FOUND>';
@@ -241,7 +252,6 @@ export default defineComponent({
 						sender: 'bot',
 						executionId,
 					} as ChatMessage);
-
 				}
 			}, 500);
 		},
@@ -261,7 +271,7 @@ export default defineComponent({
 	font-size: var(--font-size-s);
 
 	.messages {
-		border: 1px solid #E0E0E0;
+		border: 1px solid #e0e0e0;
 		border-radius: 4px;
 		height: 400px;
 		overflow: hidden auto;
@@ -280,7 +290,7 @@ export default defineComponent({
 				white-space: pre-wrap;
 
 				&.bot {
-					background-color: #E0D0D0;
+					background-color: #e0d0d0;
 					float: left;
 
 					.message-options {
@@ -289,7 +299,7 @@ export default defineComponent({
 				}
 
 				&.user {
-					background-color: #D0E0D0;
+					background-color: #d0e0d0;
 					float: right;
 					text-align: right;
 
