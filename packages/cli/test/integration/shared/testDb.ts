@@ -246,6 +246,10 @@ export async function createOwner() {
 	return createUser({ globalRole: await getGlobalOwnerRole() });
 }
 
+export async function createMember() {
+	return createUser({ globalRole: await getGlobalMemberRole() });
+}
+
 export async function createUserShell(globalRole: Role): Promise<User> {
 	if (globalRole.scope !== 'global') {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
