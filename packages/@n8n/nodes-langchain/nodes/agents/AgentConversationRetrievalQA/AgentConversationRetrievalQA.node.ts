@@ -10,6 +10,7 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import { Tool } from 'langchain/tools';
 import { BaseChatMemory } from 'langchain/memory';
+import { N8nChatProvider } from '../../trigger/ChatNode/ChatNode.node';
 
 export class AgentConversationRetrievalQA implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,9 +25,9 @@ export class AgentConversationRetrievalQA implements INodeType {
 			color: '#412012',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'tool', 'languageModel', 'memory'],
-		inputNames: ['','Tools', 'Language Model', 'Memory'],
-		outputs: ['main', 'chat'],
+		inputs: ['main', 'tool', 'languageModel', 'memory', 'chat'],
+		inputNames: ['','Tools', 'Language Model', 'Memory', 'Chat'],
+		outputs: ['main'],
 		outputNames: ['', 'Chat'],
 		credentials: [],
 		properties: [
@@ -50,8 +51,8 @@ export class AgentConversationRetrievalQA implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
-				displayName: 'Query',
-				name: 'query',
+				displayName: 'Input',
+				name: 'input',
 				type: 'string',
 				default: '',
 			},
@@ -74,9 +75,8 @@ export class AgentConversationRetrievalQA implements INodeType {
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
 		const model = await getAndValidateSupplyInput(this, 'languageModel', true) as BaseLanguageModel;
-		// @ts-ignore
+		const chat = await getAndValidateSupplyInput(this, 'chat') as N8nChatProvider;
 		const memory = await getAndValidateSupplyInput(this, 'memory', false) as BaseChatMemory;
-		// const chat = await getAndValidateSupplyInput(this, 'chat', true) as Chat;
 		const tools = await getAndValidateSupplyInput(this, 'tool', true, true) as Tool[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
@@ -98,17 +98,22 @@ export class AgentConversationRetrievalQA implements INodeType {
 
 		// chain.k = this.getNodeParameter('topK', 0, 4) as number;
 		if (runMode === 'runOnceForAllItems') {
-			const query = this.getNodeParameter('query', 0) as string;
-			const response = await agentExecutor.call({ input: query })
+			const input = this.getNodeParameter('input', 0) as string;
+			console.log('Running with input: ', input)
+			const response = await agentExecutor.call({ input })
 
+			// const messages = await memory.chatHistory.getMessages();
+			chat.refreshChat(memory);
+
+			// this.addOutputData('chat', [[{ json: { response: serializedMessages } }]]);
 			return this.prepareOutputData([{ json: { response } }]);
 		}
 
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const query = this.getNodeParameter('query', itemIndex) as string;
+			const input = this.getNodeParameter('input', itemIndex) as string;
 
-			const response = await agentExecutor.call({ input: query })
+			const response = await agentExecutor.call({ input })
 			returnData.push({ json: { response } });
 		}
 

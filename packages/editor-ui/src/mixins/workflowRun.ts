@@ -59,7 +59,7 @@ export const workflowRun = defineComponent({
 		},
 
 		async runWorkflow(options:
-			{ destinationNode: string, source?: string } |
+			{ destinationNode: string, source?: string, nodeData?: ITaskData } |
 			{ triggerNode: string, nodeData: ITaskData, source?: string } |
 			{ source?: string }
 		): Promise<IExecutionPushResponse | undefined> {
@@ -241,6 +241,14 @@ export const workflowRun = defineComponent({
 						...workflowData,
 					},
 				};
+
+				if ('destinationNode' in options && options.nodeData) {
+					const matchedNode = executionData.workflowData.nodes.find(n => n.name === options.destinationNode)
+					matchedNode!.parameters = {
+						...matchedNode!.parameters,
+						...(options.nodeData || {}),
+					}
+				}
 				this.workflowsStore.setWorkflowExecutionData(executionData);
 				this.updateNodesExecutionIssues();
 

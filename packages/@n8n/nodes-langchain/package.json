@@ -41,6 +41,7 @@
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
+      "dist/nodes/trigger/ChatNode/ChatNode.node.js",
       "dist/nodes/agents/AgentConversationRetrievalQA/AgentConversationRetrievalQA.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQA.node.js",
       "dist/nodes/chains/ChainVectorStoreQA/ChainVectorStoreQA.node.js",

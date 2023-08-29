@@ -8,6 +8,7 @@
 		:scrollable="false"
 	>
 		<template #content>
+			Chatting With: {{ selectedChatNode }}
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages" ref="messagesContainer">
 					<div :class="['message', message.sender]" v-for="message in messages">
@@ -125,7 +126,9 @@ export default defineComponent({
 		return {
 			currentMessage: '',
 			messages: [] as ChatMessage[],
+			availableChatNodes: [] as string[],
 			modalBus: createEventBus(),
+			selectedChatNode: '',
 			WORKFLOW_LM_CHAT_MODAL_KEY,
 		};
 	},
@@ -139,7 +142,13 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
+		this.availableChatNodes = this.getChatNodeNames();
+		this.selectedChatNode = this.availableChatNodes[0] ?? '';
 		this.messages = this.getChatMessages();
+
+		const workflow = this.getCurrentWorkflow();
+		const chatNode = workflow.getNode(this.selectedChatNode);
+		const connectedAgent = workflow.getChildNodes(this.selectedChatNode, 'chat');
 	},
 	methods: {
 		displayExecution(executionId: string) {
@@ -185,14 +194,38 @@ export default defineComponent({
 			}
 		},
 		getChatMessages(): ChatMessage[] {
-			return [];
+			if (!this.selectedChatNode) return []
+
+			const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(
+				this.selectedChatNode,
+			);
+			// TODO: Surely there's better way to get this data
+			const chatData = get(resultData, '0.data.chat.0.0.json.response') ?? [];
+
+			return chatData.map((message: { type: string, text: string}) => ({
+				text: message.text,
+				sender: message.type === 'langchain.schema.AIMessage' ? 'bot' : 'user',
+			}));
+		},
+		getChatNodeNames(): string[] {
+			const workflow = this.getCurrentWorkflow();
+			const chatNodes = workflow.queryNodes((nodeType: INodeType) => nodeType.description.outputs.includes('chat'));
+
+			return chatNodes.map((node) => node.name);
 		},
 		async startWorkflowWithMessage(message: string) {
 			const workflow = this.getCurrentWorkflow();
-			const triggerNode = workflow.queryNodes((nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON);
+			const chatNode = workflow.getNode(this.selectedChatNode);
 
-			if (!triggerNode.length) {
+			if (!chatNode) {
 				this.showError(new Error('Chat Trigger Node could not be found!'), 'Trigger Node not found')
+				return;
+			}
+
+			const connectedAgent = workflow.getChildNodes(this.selectedChatNode, 'chat');
+
+			if (connectedAgent.length === 0) {
+				this.showError(new Error('Chat Agent Node could not be found!'), 'Agent Node not found')
 				return;
 			}
 
@@ -214,7 +247,7 @@ export default defineComponent({
 				source: [null],
 			};
 
-			const response = await this.runWorkflow({ triggerNode: triggerNode[0].name, nodeData, source: 'RunData.ManualChatMessage' });
+			const response = await this.runWorkflow({ destinationNode: connectedAgent[0], nodeData: { input: message }, source: connectedAgent[0] });
 
 			if (!response) {
 				this.showError(new Error('It was not possible to start workflow!'), 'Workflow could not be started')
@@ -230,17 +263,20 @@ export default defineComponent({
 					clearInterval(waitInterval)
 
 					const lastNodeExecuted = this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
-					let responseMessage = get(this.workflowsStore.getWorkflowExecution?.data?.resultData.runData, `[${lastNodeExecuted}][0].data.main[0][0].json.output`) as string | undefined;
+					this.messages = this.getChatMessages();
 
-					if (!responseMessage) {
-						responseMessage = '<NO RESPONSE FOUND>';
-					}
+					// let responseMessage = get(this.workflowsStore.getWorkflowExecution?.data?.resultData.runData, `[${lastNodeExecuted}][0].data.main[0][0].json.output`) as string | undefined;
 
-					this.messages.push({
-						text: responseMessage,
-						sender: 'bot',
-						executionId,
-					} as ChatMessage);
+					// if (!responseMessage) {
+					// 	responseMessage = '<NO RESPONSE FOUND>';
+					// }
+
+					// this.messages.push({
+					// 	text: responseMessage,
+					// 	sender: 'bot',
+					// 	executionId,
+					// } as ChatMessage);
+
 
 				}
 			}, 500);

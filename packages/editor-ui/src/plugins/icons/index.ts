@@ -32,6 +32,7 @@ import {
 	faCog,
 	faCogs,
 	faComment,
+	faComments,
 	faClipboardList,
 	faClock,
 	faClone,
@@ -180,6 +181,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faCog);
 		addIcon(faCogs);
 		addIcon(faComment);
+		addIcon(faComments);
 		addIcon(faClipboardList);
 		addIcon(faClock);
 		addIcon(faClone);

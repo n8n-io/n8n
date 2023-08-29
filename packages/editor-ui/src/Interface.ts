@@ -1034,7 +1034,7 @@ export type NewCredentialsModal = ModalState & {
 	showAuthSelector?: boolean;
 };
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai' | 'chat';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {

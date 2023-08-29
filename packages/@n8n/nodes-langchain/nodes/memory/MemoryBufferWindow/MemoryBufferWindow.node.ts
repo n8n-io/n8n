@@ -51,6 +51,7 @@ class MemoryBufferSingleton {
 		}
 	}
 }
+
 export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LangChain - Window Buffer Memory',

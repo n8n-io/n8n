@@ -88,8 +88,19 @@ export function logWrapper(
 					return response;
 				};
 
-				// For BaseChatMemory
-			} else if (prop === 'loadMemoryVariables') {
+			}
+			if (prop === 'refreshChat') {
+				return async (memory: BaseChatMemory): Promise<BaseMessage[]> => {
+					executeFunctions.addInputData('chat', [[{ json: { memory: 'yes' } }]]);
+					// @ts-ignore
+					const response = await target[prop](memory);
+					executeFunctions.addOutputData('chat', [[{ json: { response } }]]);
+					return response;
+				};
+
+			}
+			// For BaseChatMemory
+			else if (prop === 'loadMemoryVariables') {
 				return async (values: InputValues): Promise<MemoryVariables> => {
 					console.log('loadMemoryVariables....1');
 					executeFunctions.addInputData('memory', [
