@@ -12,16 +12,16 @@ import type { InitializeAgentExecutorOptions } from 'langchain/agents';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 
-export class LangChain implements INodeType {
+export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain',
-		name: 'langChain',
+		displayName: 'ConversationalAgent',
+		name: 'conversationalAgent',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'LangChain',
+		description: 'Conversational Agent',
 		defaults: {
-			name: 'LangChain',
+			name: 'Conversational Agent',
 			color: '#404040',
 		},
 		codex: {
@@ -88,7 +88,6 @@ export class LangChain implements INodeType {
 
 		const options: InitializeAgentExecutorOptions = {
 			agentType: 'chat-conversational-react-description',
-			// verbose: true,
 			memory,
 		};
 

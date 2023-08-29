@@ -25,7 +25,7 @@ export class LMOpenHuggingFaceInference implements INodeType {
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['languageModel'],
-		outputNames: ['Language Model'],
+		outputNames: ['Model'],
 		credentials: [
 			{
 				name: 'huggingFaceApi',
