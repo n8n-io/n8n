@@ -10,12 +10,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import type {
-	INodeExecutionData,
-	ITaskAIRunMetadata,
-	ITaskDataConnections,
-	ITaskMetadata,
-} from 'n8n-workflow';
+import type { ITaskAIRunMetadata, ITaskDataConnections, ITaskMetadata } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
@@ -31,29 +26,21 @@ export default defineComponent({
 		RunDataAiContent,
 	},
 	props: {
-		inputData: {
-			type: Array as PropType<INodeExecutionData[]>,
-		},
-		runIndex: {
-			type: Number,
+		node: {
+			type: Object as PropType<INodeUi>,
 		},
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
-		activeNode(): INodeUi | null {
-			return this.ndvStore.activeNode;
-		},
 		aiData(): ITaskMetadata | undefined {
-			if (this.activeNode) {
-				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(
-					this.activeNode.name,
-				);
+			if (this.node) {
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
 
-				if (!resultData || !resultData[this.runIndex!]) {
+				if (!resultData || !Array.isArray(resultData)) {
 					return;
 				}
 
-				return resultData[this.runIndex!].metadata;
+				return resultData[resultData.length - 1!].metadata;
 			}
 			return;
 		},

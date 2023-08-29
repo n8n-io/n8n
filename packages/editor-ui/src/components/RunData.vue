@@ -345,7 +345,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'ai'">
-				<run-data-ai :inputData="inputData" :runIndex="runIndex" />
+				<run-data-ai :node="ndvStore.activeNode" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
