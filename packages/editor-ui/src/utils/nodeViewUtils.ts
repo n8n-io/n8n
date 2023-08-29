@@ -146,7 +146,7 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 		type: 'Arrow',
 		options: {
 			id: OVERLAY_REVERSE_ARROW_ID,
-			location: 0.05,
+			location: 0,
 			direction: -1,
 			width: 12,
 			foldback: 1,
