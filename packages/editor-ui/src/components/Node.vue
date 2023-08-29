@@ -34,7 +34,7 @@
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
-					<div v-if="hasIssues" class="node-issues">
+					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
 						<n8n-tooltip placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
