@@ -9,7 +9,7 @@ import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { INodeUi, Schema } from '@/Interface';
 import { generateCodeForPrompt } from '@/api/ai';
-import { useDataSchema, useI18n, useMessage, useToast, useTelemetry } from '@/composables';
+import { useDataSchema, useI18n, useMessage, useTelemetry, useToast } from '@/composables';
 import { useNDVStore, usePostHog, useRootStore, useWorkflowsStore } from '@/stores';
 import { executionDataToJson } from '@/utils';
 import {
@@ -131,10 +131,6 @@ async function onSubmit() {
 	if (!activeNode) return;
 	const schemas = getSchemas();
 
-	useTelemetry().trackAskAI('ask.generationClicked', {
-		prompt: prompt.value,
-	});
-
 	if (props.hasChanges) {
 		const confirmModal = await alert(i18n.baseText('codeNodeEditor.askAi.areYouSureToReplace'), {
 			title: i18n.baseText('codeNodeEditor.askAi.replaceCurrentCode'),
@@ -157,9 +153,14 @@ async function onSubmit() {
 				? 'gpt-4'
 				: 'gpt-3.5-turbo-16k';
 
-		const { code, usage } = await generateCodeForPrompt(getRestApiContext, {
+		const { code } = await generateCodeForPrompt(getRestApiContext, {
 			question: prompt.value,
-			context: { schema: schemas.parentNodesSchemas, inputSchema: schemas.inputSchema! },
+			context: {
+				schema: schemas.parentNodesSchemas,
+				inputSchema: schemas.inputSchema!,
+				ndvSessionId: useNDVStore().sessionId,
+				sessionId: useRootStore().sessionId,
+			},
 			model,
 			n8nVersion: version,
 		});
@@ -170,6 +171,10 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
+		useTelemetry().trackAskAI('askAi.generationFinished', {
+			prompt: prompt.value,
+			code,
+		});
 	} catch (error) {
 		showMessage({
 			type: 'error',
@@ -177,6 +182,11 @@ async function onSubmit() {
 			message: getErrorMessageByStatusCode(error.httpStatusCode || error?.response.status),
 		});
 		stopLoading();
+		useTelemetry().trackAskAI('askAi.generationFinished', {
+			prompt: prompt.value,
+			code: '',
+			hasError: true,
+		});
 	}
 }
 function triggerLoadingChange() {
