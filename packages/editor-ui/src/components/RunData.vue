@@ -1286,6 +1286,18 @@ export default defineComponent({
 
 			return inputData.length;
 		},
+		hasAiMetadata(): boolean {
+			if (this.node) {
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
+
+				if (!resultData || !Array.isArray(resultData)) {
+					return false;
+				}
+
+				return !!resultData[resultData.length - 1!].metadata;
+			}
+			return false;
+		},
 		init() {
 			// Reset the selected output index every time another node gets selected
 			this.outputIndex = 0;
@@ -1299,6 +1311,15 @@ export default defineComponent({
 					mode: 'binary',
 				});
 			} else if (this.displayMode === 'binary') {
+				this.ndvStore.setPanelDisplayMode({
+					pane: this.paneType as 'input' | 'output',
+					mode: 'table',
+				});
+			}
+
+			if (this.displayMode === 'ai' && !this.hasAiMetadata()) {
+				// If the user has previously selected the AI view but the
+				// current node doesn't have any data disply the table view instead
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',
 					mode: 'table',
