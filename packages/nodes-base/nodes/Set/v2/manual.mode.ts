@@ -47,24 +47,24 @@ const properties: INodeProperties[] = [
 						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 						options: [
 							{
-								name: 'Array',
-								value: 'arrayValue',
-							},
-							{
-								name: 'Boolean',
-								value: 'booleanValue',
+								name: 'String',
+								value: 'stringValue',
 							},
 							{
 								name: 'Number',
 								value: 'numberValue',
 							},
 							{
-								name: 'Object',
-								value: 'objectValue',
+								name: 'Boolean',
+								value: 'booleanValue',
 							},
 							{
-								name: 'String',
-								value: 'stringValue',
+								name: 'Array',
+								value: 'arrayValue',
+							},
+							{
+								name: 'Object',
+								value: 'objectValue',
 							},
 						],
 						default: 'stringValue',

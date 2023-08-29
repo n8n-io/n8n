@@ -100,12 +100,12 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'All Input Fields',
 					value: INCLUDE.ALL,
-					description: 'Also include all the fields available in the input',
+					description: 'Also include all unchanged fields from the input',
 				},
 				{
-					name: 'No Other Input Fields',
+					name: 'No Input Fields',
 					value: INCLUDE.NONE,
-					description: 'Include only the specified fields',
+					description: 'Include only the fields specified above',
 				},
 				{
 					name: 'Selected Input Fields',
