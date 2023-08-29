@@ -6,7 +6,7 @@ import { OpenAI } from 'langchain';
 
 export class LMOpenAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - OpenAI',
+		displayName: 'OpenAI',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
 		icon: 'file:openAi.svg',
@@ -14,7 +14,13 @@ export class LMOpenAi implements INodeType {
 		version: 1,
 		description: 'Language Model OpenAI',
 		defaults: {
-			name: 'LangChain - OpenAI',
+			name: 'OpenAI',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Language Models"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

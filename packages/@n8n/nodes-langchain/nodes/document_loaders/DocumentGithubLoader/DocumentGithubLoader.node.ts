@@ -7,16 +7,22 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Github Document Loader',
+		displayName: 'Github Document Loader',
 		name: 'documentGithubLoader',
 		icon: 'file:github.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'To create a document from Github repo',
 		defaults: {
-			name: 'LangChain - Github repo to Document',
+			name: 'Github repo to Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#500080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Document Loaders"]
+			},
 		},
 		credentials: [
 			{

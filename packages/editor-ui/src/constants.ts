@@ -201,6 +201,16 @@ export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
+export const AI_CATEGORY_AGENTS = 'Agents';
+export const AI_CATEGORY_CHAINS = 'Chains';
+export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
+export const AI_CATEGORY_MEMORY = 'Memory';
+export const AI_CATEGORY_TOOLS = 'Tools';
+export const AI_CATEGORY_VECTOR_STORES = 'Vector Stores';
+export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
+export const AI_CATEGORY_EMBEDDING = 'Embedding';
+export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
+export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 

@@ -6,7 +6,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class LMChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - ChatOpenAI',
+		displayName: 'ChatOpenAI',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatOpenAi',
 		icon: 'file:openAi.svg',
@@ -14,7 +14,13 @@ export class LMChatOpenAi implements INodeType {
 		version: 1,
 		description: 'Language Model Chat OpenAI',
 		defaults: {
-			name: 'LangChain - Chat OpenAI',
+			name: 'Chat OpenAI',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Language Models"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

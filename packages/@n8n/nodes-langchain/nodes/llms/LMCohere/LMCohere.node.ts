@@ -5,7 +5,7 @@ import { Cohere } from 'langchain/llms/cohere';
 
 export class LMCohere implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Cohere',
+		displayName: 'Cohere',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmCohere',
 		icon: 'file:cohere.svg',
@@ -13,7 +13,13 @@ export class LMCohere implements INodeType {
 		version: 1,
 		description: 'Language Model Cohere',
 		defaults: {
-			name: 'LangChain - Cohere',
+			name: 'Cohere',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Language Models"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

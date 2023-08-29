@@ -5,7 +5,7 @@ import { HuggingFaceInference } from 'langchain/llms/hf';
 
 export class LMOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - HuggingFaceInference',
+		displayName: 'HuggingFaceInference',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenHuggingFaceInference',
 		icon: 'file:huggingface.svg',
@@ -13,7 +13,13 @@ export class LMOpenHuggingFaceInference implements INodeType {
 		version: 1,
 		description: 'Language Model HuggingFaceInference',
 		defaults: {
-			name: 'LangChain - HuggingFaceInference',
+			name: 'HuggingFaceInference',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Language Models"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

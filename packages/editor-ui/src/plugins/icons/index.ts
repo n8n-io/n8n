@@ -17,6 +17,7 @@ import {
 	faBook,
 	faBoxOpen,
 	faBug,
+	faBrain,
 	faCalculator,
 	faCalendar,
 	faChartBar,
@@ -81,6 +82,7 @@ import {
 	faInfo,
 	faInfoCircle,
 	faKey,
+	faLanguage,
 	faLink,
 	faList,
 	faLightbulb,
@@ -101,6 +103,7 @@ import {
 	faQuestion,
 	faQuestionCircle,
 	faRedo,
+	faRobot,
 	faRss,
 	faSave,
 	faSatelliteDish,
@@ -138,6 +141,11 @@ import {
 	faUserLock,
 	faGem,
 	faDownload,
+	faLanguage,
+	faRemoveFormat,
+	faTools,
+	faProjectDiagram,
+	faStream,
 } from '@fortawesome/free-solid-svg-icons';
 import { faVariable, faXmark } from './custom';
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
@@ -164,6 +172,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faBook);
 		addIcon(faBoxOpen);
 		addIcon(faBug);
+		addIcon(faBrain);
 		addIcon(faCalculator);
 		addIcon(faCalendar);
 		addIcon(faChartBar);
@@ -228,6 +237,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faInfo);
 		addIcon(faInfoCircle);
 		addIcon(faKey);
+		addIcon(faLanguage);
 		addIcon(faLink);
 		addIcon(faList);
 		addIcon(faLightbulb);
@@ -245,9 +255,12 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faPlus);
 		addIcon(faPlusCircle);
 		addIcon(faPlusSquare);
+		addIcon(faProjectDiagram);
 		addIcon(faQuestion);
 		addIcon(faQuestionCircle);
 		addIcon(faRedo);
+		addIcon(faRemoveFormat);
+		addIcon(faRobot);
 		addIcon(faRss);
 		addIcon(faSave);
 		addIcon(faSatelliteDish);
@@ -263,6 +276,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faSolidStickyNote);
 		addIcon(faStickyNote as IconDefinition);
 		addIcon(faStop);
+		addIcon(faStream);
 		addIcon(faSun);
 		addIcon(faSync);
 		addIcon(faSyncAlt);
@@ -274,6 +288,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faTimes);
 		addIcon(faTimesCircle);
 		addIcon(faToolbox);
+		addIcon(faTools);
 		addIcon(faTrash);
 		addIcon(faUndo);
 		addIcon(faUnlink);

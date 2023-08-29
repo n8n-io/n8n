@@ -7,14 +7,20 @@ import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyIn
 
 export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Pinecone: Load',
+		displayName: 'Pinecone: Load',
 		name: 'vectorStorePineconeLoad',
 		icon: 'file:pinecone.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Load data from Pinecone Vector Store index',
 		defaults: {
-			name: 'LangChain - Pinecone: Load'
+			name: 'Pinecone: Load'
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Vector Stores"]
+			},
 		},
 		credentials: [
 			{

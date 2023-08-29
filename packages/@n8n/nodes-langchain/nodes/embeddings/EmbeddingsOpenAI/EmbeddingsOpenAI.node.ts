@@ -5,7 +5,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class EmbeddingsOpenAI implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Embeddings OpenAI',
+		displayName: 'Embeddings OpenAI',
 		name: 'embeddingsOpenAI',
 		icon: 'file:openAi.svg',
 		credentials: [
@@ -16,10 +16,17 @@ export class EmbeddingsOpenAI implements INodeType {
 		],
 		group: ['transform'],
 		version: 1,
-		description: 'Embeddings OpenAI',
+		description: 'Use Embeddings OpenAI',
 		defaults: {
-			name: 'LangChain - Embeddings OpenAI',
+			name: 'Embeddings OpenAI',
 			color: '#412080',
+		},
+
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Embeddings"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

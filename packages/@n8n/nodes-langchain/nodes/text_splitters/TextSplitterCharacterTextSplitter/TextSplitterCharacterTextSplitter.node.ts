@@ -5,16 +5,22 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class TextSplitterCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Character Text Splitter',
+		displayName: 'Character Text Splitter',
 		name: 'textSplitterCharacterTextSplitter',
 		// TODO: Real scissors icon
 		icon: 'fa:hand-scissors',
 		group: ['transform'],
 		version: 1,
-		description: 'Character Text Splitter',
+		description: 'Split text into chunks by characters',
 		defaults: {
-			name: 'LangChain - Character Text Splitter',
+			name: 'Character Text Splitter',
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Text Splitters"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

@@ -12,15 +12,21 @@ import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyIn
 
 export class ChainRetrievalQA implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Retrieval QA Chain',
+		displayName: 'Retrieval QA Chain',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'LangChain',
+		description: 'Chain to run QA on a retrieved document',
 		defaults: {
-			name: 'LangChain - Retrieval QA Chain',
+			name: 'Retrieval QA Chain',
 			color: '#408080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Chains"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'vectorRetriever', 'languageModel'],

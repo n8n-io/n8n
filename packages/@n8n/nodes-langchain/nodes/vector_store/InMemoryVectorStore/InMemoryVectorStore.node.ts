@@ -7,15 +7,21 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class InMemoryVectorStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - In Memory Vector Store Retriever',
+		displayName: 'In Memory Vector Store',
 		name: 'inMemoryVectorStore',
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
-		description: 'In Memory Vector Store',
+		description: 'Stores vectors in memory',
 		defaults: {
-			name: 'LangChain - In Memory Vector Store',
+			name: 'In Memory Vector Store',
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Vector Stores"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['document', 'embedding'],

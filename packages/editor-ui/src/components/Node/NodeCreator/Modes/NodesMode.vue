@@ -2,7 +2,7 @@
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
 import type { INodeCreateElement, NodeFilterType } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_VIEW, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import { TRIGGER_NODE_CREATOR_VIEW, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, REGULAR_NODE_CREATOR_VIEW, AI_NODE_CREATOR_VIEW } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -17,6 +17,7 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n, useTelemetry } from '@/composables';
+import { AIView } from '../viewsData';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -99,7 +100,18 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'view') {
-		const view = item.key === TRIGGER_NODE_CREATOR_VIEW ? TriggerView() : RegularView();
+		const views = {
+			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+			[AI_NODE_CREATOR_VIEW]: AIView,
+		}
+		const itemKey = item.key as keyof typeof views;
+		const matchedView = views[itemKey];
+		if (!matchedView) {
+			console.warn(`No view found for ${itemKey}`);
+			return;
+		};
+		const view = matchedView();
 
 		pushViewStack({
 			title: view.title,
