@@ -14,7 +14,7 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 
 export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'ConversationalAgent',
+		displayName: 'Conversational Agent',
 		name: 'conversationalAgent',
 		icon: 'fa:link',
 		group: ['transform'],
