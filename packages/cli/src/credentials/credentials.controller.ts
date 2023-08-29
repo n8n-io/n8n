@@ -38,7 +38,7 @@ credentialsController.get(
 	'/',
 	listQueryMiddleware,
 	ResponseHelper.send(async (req: ListQuery.Request) => {
-		return CredentialsService.getMany(req.user, {}, req.listQueryOptions);
+		return CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
 	}),
 );
 

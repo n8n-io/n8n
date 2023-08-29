@@ -63,8 +63,6 @@ export class CredentialsService {
 		return findManyOptions;
 	}
 
-	// @TODO: Simplify flags?
-	// @TODO: Combine flags and options?
 	// @TODO: Write creds classes for listquery middleware
 	// @TODO: Tests
 	// @TODO: Abstract toFindManyOptions to QueryService
@@ -75,12 +73,11 @@ export class CredentialsService {
 
 	static async getMany(
 		user: User,
-		flags?: { disableGlobalRole?: boolean },
-		listQueryOptions?: ListQuery.Options,
+		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
 	) {
-		const findManyOptions = this.toFindManyOptions(listQueryOptions);
+		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
 
-		const returnAll = user.globalRole.name === 'owner' && flags?.disableGlobalRole !== true;
+		const returnAll = user.globalRole.name === 'owner' && !options.onlyOwn;
 
 		if (returnAll) {
 			const credentials = await Db.collections.Credentials.find(findManyOptions);
