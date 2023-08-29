@@ -371,7 +371,9 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 			if (this.includeNodes.length) {
 				const allowedNodes: typeof this.known.nodes = {};
 				for (const nodeName of this.includeNodes) {
-					allowedNodes[nodeName] = this.known.nodes[nodeName];
+					if (nodeName in this.known.nodes) {
+						allowedNodes[nodeName] = this.known.nodes[nodeName];
+					}
 				}
 				this.known.nodes = allowedNodes;
 
