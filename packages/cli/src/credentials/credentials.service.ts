@@ -66,7 +66,6 @@ export class CredentialsService {
 	}
 
 	// @TODO: Tests
-	// @TODO: Abstract toFindManyOptions to QueryService
 
 	private static addOwnedByAndSharedWith(credentials: CredentialsEntity[]) {
 		return credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c));
@@ -79,11 +78,12 @@ export class CredentialsService {
 		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
 
 		const returnAll = user.globalRole.name === 'owner' && !options.onlyOwn;
+		const isDefaultSelect = !options.listQueryOptions;
 
 		if (returnAll) {
 			const credentials = await Db.collections.Credentials.find(findManyOptions);
 
-			return findManyOptions.select ? credentials : this.addOwnedByAndSharedWith(credentials);
+			return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
 		}
 
 		const ids = await this.getAccessibleCredentials(user.id);
@@ -93,7 +93,7 @@ export class CredentialsService {
 			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
 
-		return findManyOptions.select ? credentials : this.addOwnedByAndSharedWith(credentials);
+		return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
 	}
 
 	/**
