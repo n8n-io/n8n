@@ -76,7 +76,7 @@ export class CredentialsService {
 		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
 
 		const returnAll = user.globalRole.name === 'owner' && !options.onlyOwn;
-		const isDefaultSelect = !options.listQueryOptions;
+		const isDefaultSelect = !options.listQueryOptions?.select;
 
 		if (returnAll) {
 			const credentials = await Db.collections.Credentials.find(findManyOptions);
