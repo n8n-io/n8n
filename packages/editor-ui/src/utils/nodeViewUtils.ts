@@ -867,16 +867,12 @@ export const addConnectionActionsOverlay = (
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
 			create: (component: Connection) => {
 				const div = document.createElement('div');
-				const addButton = document.createElement('button');
 				const deleteButton = document.createElement('button');
 
 				div.classList.add(OVERLAY_CONNECTION_ACTIONS_ID);
 				addConnectionTestData(component.source, component.target, div);
-				addButton.classList.add('add');
-				deleteButton.classList.add('delete');
-				addButton.innerHTML = getIcon('plus');
+
 				deleteButton.innerHTML = getIcon('trash');
-				addButton.addEventListener('click', () => onAdd());
 				deleteButton.addEventListener('click', () => onDelete());
 				// We have to manually trigger connection mouse events because the overlay
 				// is not part of the connection element
@@ -886,7 +882,18 @@ export const addConnectionActionsOverlay = (
 				div.addEventListener('mouseover', () =>
 					connection.instance.fire(EVENT_CONNECTION_MOUSEOVER, component),
 				);
-				div.appendChild(addButton);
+
+				if (connection.parameters.type === 'main') {
+					const addButton = document.createElement('button');
+					addButton.classList.add('add');
+					addButton.innerHTML = getIcon('plus');
+					addButton.addEventListener('click', () => onAdd());
+					div.appendChild(addButton);
+					deleteButton.classList.add('delete');
+				} else {
+					deleteButton.classList.add('delete-single');
+				}
+
 				div.appendChild(deleteButton);
 				return div;
 			},
