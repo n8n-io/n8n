@@ -37,7 +37,8 @@
       "dist/credentials/MotorheadApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/PineconeApi.credentials.js"
+      "dist/credentials/PineconeApi.credentials.js",
+      "dist/credentials/XataApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/LangChain/LangChain.node.js",
@@ -52,6 +53,7 @@
       "dist/nodes/llms/LMCohere/LMCohere.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
+      "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
       "dist/nodes/tools/ToolDynamicTool/ToolDynamicTool.node.js",
