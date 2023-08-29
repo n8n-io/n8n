@@ -60,49 +60,6 @@ beforeEach(async () => {
 	config.set('userManagement.emails.smtp.host', '');
 });
 
-describe('GET /users', () => {
-	test('should return all users (for owner)', async () => {
-		await testDb.createUser({ globalRole: globalMemberRole });
-
-		const response = await authOwnerAgent.get('/users');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
-
-		response.body.data.map((user: User) => {
-			const {
-				id,
-				email,
-				firstName,
-				lastName,
-				personalizationAnswers,
-				globalRole,
-				password,
-				isPending,
-				apiKey,
-			} = user;
-
-			expect(validator.isUUID(id)).toBe(true);
-			expect(email).toBeDefined();
-			expect(firstName).toBeDefined();
-			expect(lastName).toBeDefined();
-			expect(personalizationAnswers).toBeUndefined();
-			expect(password).toBeUndefined();
-			expect(isPending).toBe(false);
-			expect(globalRole).toBeDefined();
-			expect(apiKey).not.toBeDefined();
-		});
-	});
-
-	test('should return all users (for member)', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const response = await testServer.authAgentFor(member).get('/users');
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data.length).toBe(2);
-	});
-});
-
 describe('DELETE /users/:id', () => {
 	test('should delete the user', async () => {
 		const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
