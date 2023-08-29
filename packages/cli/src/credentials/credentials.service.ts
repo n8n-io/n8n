@@ -69,6 +69,10 @@ export class CredentialsService {
 	// @TODO: Tests
 	// @TODO: Abstract toFindManyOptions to QueryService
 
+	private static addOwnedByAndSharedWith(credentials: CredentialsEntity[]) {
+		return credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c));
+	}
+
 	static async getMany(
 		user: User,
 		flags?: { disableGlobalRole?: boolean },
@@ -78,23 +82,20 @@ export class CredentialsService {
 
 		const returnAll = user.globalRole.name === 'owner' && flags?.disableGlobalRole !== true;
 
-		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
-			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
-
 		if (returnAll) {
 			const credentials = await Db.collections.Credentials.find(findManyOptions);
 
-			return credentials.map(addOwnedByAndSharedWith);
+			return this.addOwnedByAndSharedWith(credentials);
 		}
 
-		const ids = await CredentialsService.getAccessibleCredentials(user.id);
+		const ids = await this.getAccessibleCredentials(user.id);
 
 		const credentials = await Db.collections.Credentials.find({
 			...findManyOptions,
 			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
 
-		return credentials.map(addOwnedByAndSharedWith);
+		return this.addOwnedByAndSharedWith(credentials);
 	}
 
 	/**
