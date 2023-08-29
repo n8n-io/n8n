@@ -42,16 +42,22 @@ export class N8nJsonLoader {
 
 export class DocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Workflow Input to JSON Document',
+		displayName: 'Workflow Input to JSON Document',
 		name: 'documentJSONInputLoader',
 		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'To create a document from input',
+		description: 'Converts workflow JSON data to Document objects',
 		defaults: {
-			name: 'LangChain - Input to Document',
+			name: 'Workflow Input to JSON Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#500080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Document Loaders"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['textSplitter'],

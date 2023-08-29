@@ -12,15 +12,21 @@ import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyIn
 
 export class ChainVectorStoreQA implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Vector Store QA Chain',
+		displayName: 'Vector Store QA Chain',
 		name: 'chainVectorStoreQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'LangChain',
+		description: 'Chain to run QA on a vector store',
 		defaults: {
-			name: 'LangChain - Vector Store QA',
+			name: 'Vector Store QA',
 			color: '#412012',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Chains"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'vectorStore', 'languageModel'],

@@ -5,15 +5,21 @@ import { MotorheadMemory } from 'langchain/memory';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Motorhead',
+		displayName: 'Motorhead',
 		name: 'memoryMotorhead',
 		icon: 'fa:file-export',
 		group: ['transform'],
 		version: 1,
-		description: 'Motorhead Memory',
+		description: 'Use Motorhead Memory',
 		defaults: {
-			name: 'LangChain - Motorhead',
+			name: 'Motorhead',
 			color: '#303030',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Memory"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

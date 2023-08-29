@@ -100,16 +100,22 @@ export class N8nBinaryLoader {
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Binary to Document',
+		displayName: 'Binary to Document',
 		name: 'documentBinaryInputLoader',
 		icon: 'file:binary.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Create a Document from binary data',
 		defaults: {
-			name: 'LangChain - Binary to Document',
+			name: 'Binary to Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#500080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Document Loaders"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['textSplitter'],

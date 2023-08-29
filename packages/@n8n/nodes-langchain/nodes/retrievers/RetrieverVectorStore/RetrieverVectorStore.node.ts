@@ -6,15 +6,21 @@ import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyIn
 
 export class RetrieverVectorStore implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Vector Store Retriever',
+		displayName: 'Vector Store Retriever',
 		name: 'retrieverVectorStore',
 		icon: 'fa:box-open',
 		group: ['transform'],
 		version: 1,
 		description: 'Outputs Vector Store as Retriever',
 		defaults: {
-			name: 'LangChain - Outputs Vector Store as Retriever',
+			name: 'Vector Store Retriever',
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Retrievers"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['vectorStore'],

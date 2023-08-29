@@ -8,15 +8,21 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Xata',
+		displayName: 'Xata',
 		name: 'memoryXata',
 		icon: 'file:xata.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Xata Memory',
 		defaults: {
-			name: 'LangChain - Xata',
+			name: 'Xata',
 			color: '#303030',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Memory"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

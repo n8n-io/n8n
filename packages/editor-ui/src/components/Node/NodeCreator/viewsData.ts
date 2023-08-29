@@ -13,74 +13,138 @@ import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	EMAIL_IMAP_NODE_TYPE,
 	DEFAULT_SUBCATEGORY,
-	AI_SUBCATEGORY,
-	AI_NODES_CATEGORY,
 	AI_NODE_CREATOR_VIEW,
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_CHAINS,
+	AI_CATEGORY_DOCUMENT_LOADERS,
+	AI_CATEGORY_LANGUAGE_MODELS,
+	AI_CATEGORY_MEMORY,
+	AI_CATEGORY_RETRIEVERS,
+	AI_CATEGORY_TEXT_SPLITTERS,
+	AI_CATEGORY_TOOLS,
+	AI_CATEGORY_VECTOR_STORES,
+	AI_SUBCATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables';
+import { SimplifiedNodeType } from '@/Interface';
 
-export function AIView() {
+interface NodeViewItem {
+	key: string;
+	type: string;
+	properties: {
+		name?: string;
+		title: string;
+		icon: string;
+		group?: string[];
+		description?: string;
+		forceIncludeNodes?: string[];
+	};
+	category?: string | string[];
+}
+
+interface NodeView {
+	value: string;
+	title: string;
+	subtitle?: string;
+	items: NodeViewItem[];
+}
+
+export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
-		title: i18n.baseText('nodeCreator.aiPanel.selectATrigger'),
-		subtitle: i18n.baseText('nodeCreator.aiPanel.selectATriggerDescription'),
+		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
+		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			{
-				key: DEFAULT_SUBCATEGORY,
+				key: AI_CATEGORY_AGENTS,
 				type: 'subcategory',
 				properties: {
-					forceIncludeNodes: [WEBHOOK_NODE_TYPE, EMAIL_IMAP_NODE_TYPE],
-					title: 'App Trigger Nodes',
-					icon: 'satellite-dish',
+					title: AI_CATEGORY_AGENTS,
+					icon: 'robot',
 				},
 			},
 			{
-				key: SCHEDULE_TRIGGER_NODE_TYPE,
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: SCHEDULE_TRIGGER_NODE_TYPE,
-					displayName: i18n.baseText('nodeCreator.aiPanel.scheduleTriggerDisplayName'),
-					description: i18n.baseText('nodeCreator.aiPanel.scheduleTriggerDescription'),
-					icon: 'fa:clock',
-				},
-			},
-			{
-				key: WEBHOOK_NODE_TYPE,
-				type: 'node',
-				category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: WEBHOOK_NODE_TYPE,
-					displayName: i18n.baseText('nodeCreator.aiPanel.webhookTriggerDisplayName'),
-					description: i18n.baseText('nodeCreator.aiPanel.webhookTriggerDescription'),
-					iconData: {
-						type: 'file',
-						icon: 'webhook',
-						fileBuffer: '/static/webhook-icon.svg',
-					},
-				},
-			},
-			{
+				key: AI_CATEGORY_CHAINS,
 				type: 'subcategory',
-				key: AI_SUBCATEGORY,
-				category: AI_NODES_CATEGORY,
 				properties: {
-					title: AI_SUBCATEGORY,
+					title: AI_CATEGORY_CHAINS,
+					icon: 'link',
+				},
+			},
+			{
+				key: AI_CATEGORY_DOCUMENT_LOADERS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_DOCUMENT_LOADERS,
+					icon: 'file-import',
+				},
+			},
+			{
+				key: AI_CATEGORY_DOCUMENT_LOADERS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_DOCUMENT_LOADERS,
+					icon: 'stream',
+				},
+			},
+			{
+				key: AI_CATEGORY_LANGUAGE_MODELS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_LANGUAGE_MODELS,
+					icon: 'language',
+				},
+			},
+			{
+				key: AI_CATEGORY_MEMORY,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_MEMORY,
 					icon: 'brain',
+				},
+			},
+			{
+				key: AI_CATEGORY_RETRIEVERS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_RETRIEVERS,
+					icon: 'search',
+				},
+			},
+			{
+				key: AI_CATEGORY_TEXT_SPLITTERS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_TEXT_SPLITTERS,
+					icon: 'remove-format',
+				},
+			},
+			{
+				key: AI_CATEGORY_TOOLS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_TOOLS,
+					icon: 'tools',
+				},
+			},
+			{
+				key: AI_CATEGORY_VECTOR_STORES,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_VECTOR_STORES,
+					icon: 'project-diagram',
 				},
 			},
 		],
 	};
 }
 
-export function TriggerView() {
+export function TriggerView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
-	return {
+	const view: NodeView = {
 		value: TRIGGER_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
@@ -157,12 +221,25 @@ export function TriggerView() {
 			},
 		],
 	};
+
+	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
+	if(hasAINodes) view.items.push({
+		key: AI_NODE_CREATOR_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+			icon: 'robot',
+			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+		},
+	});
+
+	return view;
 }
 
-export function RegularView() {
+export function RegularView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
-	return {
+	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
@@ -218,7 +295,20 @@ export function RegularView() {
 					icon: 'bolt',
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 				},
-			},
+			}
 		],
 	};
+
+	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
+	if (hasAINodes) view.items.push({
+		key: AI_NODE_CREATOR_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+			icon: 'robot',
+			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+		},
+	});
+
+	return view;
 }
