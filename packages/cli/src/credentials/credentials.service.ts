@@ -63,7 +63,6 @@ export class CredentialsService {
 		return findManyOptions;
 	}
 
-	// @TODO: Write creds classes for listquery middleware
 	// @TODO: Tests
 	// @TODO: Abstract toFindManyOptions to QueryService
 
