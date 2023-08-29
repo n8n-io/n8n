@@ -202,6 +202,9 @@ export class WorkflowExecute {
 						if (node && pinData && pinData[node.name]) {
 							incomingData.push(pinData[node.name]);
 						} else {
+							if (!runData[connection.node]) {
+								continue;
+							}
 							const nodeIncomingData =
 								runData[connection.node][runIndex]?.data?.[connection.type][connection.index];
 							if (nodeIncomingData) {
