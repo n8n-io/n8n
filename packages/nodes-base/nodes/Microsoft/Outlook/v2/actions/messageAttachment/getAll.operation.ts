@@ -12,11 +12,20 @@ export const properties: INodeProperties[] = [
 	messageRLC,
 	...returnAllOrLimit,
 	{
-		displayName: 'Filter Query',
-		name: 'filter',
-		type: 'string',
-		default: '',
-		hint: 'Search query to filter attachments. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		options: [
+			{
+				displayName: 'Filter Query',
+				name: 'filter',
+				type: 'string',
+				default: '',
+				hint: 'Search query to filter attachments. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -82,7 +91,7 @@ export async function execute(
 
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const options = this.getNodeParameter('options', index);
-	const filter = this.getNodeParameter('filter', index) as string;
+	const filter = this.getNodeParameter('filters.filter', index, '') as string;
 
 	// Have sane defaults so we don't fetch attachment data in this operation
 	qs.$select = 'id,lastModifiedDateTime,name,contentType,size,isInline';
