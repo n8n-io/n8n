@@ -44,12 +44,30 @@ export class RssFeedRead implements INodeType {
 				required: true,
 				description: 'URL of the RSS feed',
 			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Ignore SSL Issues',
+						name: 'ignoreSSL',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore SSL/TLS certificate issues or not',
+					},
+				],
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const url = this.getNodeParameter('url', 0) as string;
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
+			const ignoreSSL = Boolean(additionalFields.ignoreSSL);
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -59,7 +77,11 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'The provided "URL" is not valid!');
 			}
 
-			const parser = new Parser();
+			const parser = new Parser({
+				requestOptions: {
+					rejectUnauthorized: !ignoreSSL,
+				},
+			});
 
 			let feed: Parser.Output<IDataObject>;
 			try {
