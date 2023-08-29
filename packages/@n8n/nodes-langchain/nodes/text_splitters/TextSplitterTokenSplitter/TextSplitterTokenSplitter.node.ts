@@ -7,8 +7,7 @@ export class TextSplitterTokenSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Token Splitter',
 		name: 'textSplitterTokenSplitter',
-		// TODO: Real scissors icon
-		icon: 'fa:hand-scissors',
+		icon: 'fa:remove-format',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by tokens',
