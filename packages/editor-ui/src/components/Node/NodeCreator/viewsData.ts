@@ -23,10 +23,33 @@ import {
 	AI_CATEGORY_TEXT_SPLITTERS,
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
+	AI_SUBCATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables';
+import { SimplifiedNodeType } from '@/Interface';
 
-export function AIView() {
+interface NodeViewItem {
+	key: string;
+	type: string;
+	properties: {
+		name?: string;
+		title: string;
+		icon: string;
+		group?: string[];
+		description?: string;
+		forceIncludeNodes?: string[];
+	};
+	category?: string | string[];
+}
+
+interface NodeView {
+	value: string;
+	title: string;
+	subtitle?: string;
+	items: NodeViewItem[];
+}
+
+export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 
 	return {
@@ -118,10 +141,10 @@ export function AIView() {
 	};
 }
 
-export function TriggerView() {
+export function TriggerView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
-	return {
+	const view: NodeView = {
 		value: TRIGGER_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.selectATrigger'),
 		subtitle: i18n.baseText('nodeCreator.triggerHelperPanel.selectATriggerDescription'),
@@ -196,23 +219,27 @@ export function TriggerView() {
 					icon: 'folder-open',
 				},
 			},
-			{
-				key: AI_NODE_CREATOR_VIEW,
-				type: 'view',
-				properties: {
-					title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-					icon: 'robot',
-					description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				},
-			},
 		],
 	};
+
+	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
+	if(hasAINodes) view.items.push({
+		key: AI_NODE_CREATOR_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+			icon: 'robot',
+			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+		},
+	});
+
+	return view;
 }
 
-export function RegularView() {
+export function RegularView(nodes: SimplifiedNodeType[]) {
 	const i18n = useI18n();
 
-	return {
+	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.triggerHelperPanel.whatHappensNext'),
 		items: [
@@ -268,16 +295,20 @@ export function RegularView() {
 					icon: 'bolt',
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 				},
-			},
-			{
-				key: AI_NODE_CREATOR_VIEW,
-				type: 'view',
-				properties: {
-					title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-					icon: 'robot',
-					description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-				},
-			},
+			}
 		],
 	};
+
+	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
+	if (hasAINodes) view.items.push({
+		key: AI_NODE_CREATOR_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+			icon: 'robot',
+			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+		},
+	});
+
+	return view;
 }

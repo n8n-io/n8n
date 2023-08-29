@@ -8,7 +8,7 @@ import type { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView } from '../viewsData';
+import { TriggerView, RegularView, AIView } from '../viewsData';
 import { transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
@@ -17,7 +17,6 @@ import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
 import { useI18n, useTelemetry } from '@/composables';
-import { AIView } from '../viewsData';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -105,13 +104,15 @@ function onSelected(item: INodeCreateElement) {
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
 			[AI_NODE_CREATOR_VIEW]: AIView,
 		}
+
 		const itemKey = item.key as keyof typeof views;
 		const matchedView = views[itemKey];
+
 		if (!matchedView) {
 			console.warn(`No view found for ${itemKey}`);
 			return;
 		};
-		const view = matchedView();
+		const view = matchedView(mergedNodes);
 
 		pushViewStack({
 			title: view.title,
