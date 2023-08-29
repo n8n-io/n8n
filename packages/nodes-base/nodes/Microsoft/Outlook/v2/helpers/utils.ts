@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import { type IDataObject } from 'n8n-workflow';
 
 export const messageFields = [
 	'bccRecipients',
@@ -183,6 +183,8 @@ export function simplifyOutputMessages(data: IDataObject[]) {
 }
 
 export function prepareContactFields(fields: IDataObject) {
+	const returnData: IDataObject = {};
+
 	const typeStringCollection = [
 		'businessPhones',
 		'categories',
@@ -192,19 +194,26 @@ export function prepareContactFields(fields: IDataObject) {
 	];
 	const typeValuesToExtract = ['businessAddress', 'emailAddresses', 'homePhones', 'otherAddress'];
 
-	Object.keys(fields).map((field: string) => {
-		if (typeStringCollection.includes(field) && fields[field] && !Array.isArray(fields[field])) {
-			fields[field] = (fields[field] as string).split(',');
+	for (const [key, value] of Object.entries(fields)) {
+		if (value === undefined || value === '') {
+			continue;
 		}
-		if (
-			typeValuesToExtract.includes(field) &&
-			(fields[field] as IDataObject).values !== undefined
-		) {
-			fields[field] = (fields[field] as IDataObject).values;
-		}
-	});
 
-	return fields;
+		if (typeStringCollection.includes(key) && !Array.isArray(value)) {
+			returnData[key] = (value as string).split(',').map((item) => item.trim());
+			continue;
+		}
+
+		if (typeValuesToExtract.includes(key)) {
+			if ((value as IDataObject).values !== undefined) continue;
+			returnData[key] = (value as IDataObject).values;
+			continue;
+		}
+
+		returnData[key] = value;
+	}
+
+	return returnData;
 }
 
 export function prepareFilterString(filters: IDataObject) {

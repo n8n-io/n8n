@@ -7,20 +7,12 @@ import { draftRLC } from '../../descriptions';
 export const properties: INodeProperties[] = [
 	draftRLC,
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		options: [
-			{
-				displayName: 'To',
-				name: 'recipients',
-				description: 'Comma-separated list of email addresses of recipients',
-				type: 'string',
-				default: '',
-			},
-		],
+		displayName: 'To',
+		name: 'to',
+		description: 'Comma-separated list of email addresses of recipients',
+		type: 'string',
+		default: '',
+		required: true,
 	},
 ];
 
@@ -38,12 +30,14 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const draftId = this.getNodeParameter('draftId', index, undefined, { extractValue: true });
-	const additionalFields = this.getNodeParameter('additionalFields', index, {});
+	const to = this.getNodeParameter('to', index) as string;
 
-	if (additionalFields?.recipients) {
-		const recipients = (additionalFields.recipients as string)
+	if (to) {
+		const recipients = to
 			.split(',')
-			.filter((email) => !!email);
+			.map((s) => s.trim())
+			.filter((email) => email);
+
 		if (recipients.length !== 0) {
 			await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, {
 				toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),

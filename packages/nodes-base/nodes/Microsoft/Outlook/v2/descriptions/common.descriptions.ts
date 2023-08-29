@@ -19,7 +19,6 @@ export const returnAllOrLimit: INodeProperties[] = [
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 500,
 		},
 		default: 100,
 		description: 'Max number of results to return',

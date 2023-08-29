@@ -10,7 +10,20 @@ import { updateDisplayOptions } from '@utils/utilities';
 import { calendarRLC, returnAllOrLimit } from '../../descriptions';
 
 export const properties: INodeProperties[] = [
-	calendarRLC,
+	{
+		displayName: 'From All Calendars',
+		name: 'fromAllCalendars',
+		type: 'boolean',
+		default: true,
+	},
+	{
+		...calendarRLC,
+		displayOptions: {
+			show: {
+				fromAllCalendars: [false],
+			},
+		},
+	},
 	...returnAllOrLimit,
 	{
 		displayName: 'Output',
@@ -57,7 +70,7 @@ export const properties: INodeProperties[] = [
 				name: 'custom',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. canShare eq true',
+				placeholder: "e.g. contains(subject,'Hello')",
 				hint: 'Search query to filter events. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 			},
 		],
@@ -77,12 +90,8 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
+	const responseData: IDataObject[] = [];
 	const qs = {} as IDataObject;
-
-	const calendarId = this.getNodeParameter('calendarId', index, undefined, {
-		extractValue: true,
-	}) as string;
 
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filters', index, {});
@@ -109,25 +118,51 @@ export async function execute(
 		}
 	}
 
-	const endpoint = `/calendars/${calendarId}/events`;
+	const calendars: string[] = [];
 
-	if (returnAll) {
-		responseData = await microsoftApiRequestAllItems.call(
-			this,
-			'value',
-			'GET',
-			endpoint,
-			undefined,
-			qs,
-		);
+	const fromAllCalendars = this.getNodeParameter('fromAllCalendars', index) as boolean;
+
+	if (fromAllCalendars) {
+		const response = await microsoftApiRequest.call(this, 'GET', '/calendars', undefined, {
+			$select: 'id',
+		});
+		for (const calendar of response.value) {
+			calendars.push(calendar.id as string);
+		}
 	} else {
-		qs.$top = this.getNodeParameter('limit', index);
-		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
-		responseData = responseData.value;
+		const calendarId = this.getNodeParameter('calendarId', index, undefined, {
+			extractValue: true,
+		}) as string;
+
+		calendars.push(calendarId);
+	}
+	const limit = this.getNodeParameter('limit', index, 0);
+
+	for (const calendarId of calendars) {
+		const endpoint = `/calendars/${calendarId}/events`;
+
+		if (returnAll) {
+			const response = await microsoftApiRequestAllItems.call(
+				this,
+				'value',
+				'GET',
+				endpoint,
+				undefined,
+				qs,
+			);
+			responseData.push(...response);
+		} else {
+			qs.$top = limit - responseData.length;
+
+			if (qs.$top <= 0) break;
+
+			const response = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+			responseData.push(...response.value);
+		}
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData as IDataObject[]),
+		this.helpers.returnJsonArray(responseData),
 		{ itemData: { item: index } },
 	);
 

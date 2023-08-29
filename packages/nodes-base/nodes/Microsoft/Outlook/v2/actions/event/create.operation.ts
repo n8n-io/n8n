@@ -10,6 +10,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { DateTime } from 'luxon';
 import { calendarRLC } from '../../descriptions';
+import moment from 'moment-timezone';
 
 export const properties: INodeProperties[] = [
 	calendarRLC,
@@ -175,8 +176,12 @@ export const properties: INodeProperties[] = [
 			{
 				displayName: 'Timezone',
 				name: 'timeZone',
-				type: 'string',
-				default: '',
+				type: 'options',
+				default: 'UTC',
+				options: moment.tz.names().map((name) => ({
+					name,
+					value: name,
+				})),
 			},
 			{
 				displayName: 'Type',
@@ -219,10 +224,19 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const additionalFields = this.getNodeParameter('additionalFields', index);
+	let additionalFields = this.getNodeParameter('additionalFields', index);
+
+	additionalFields = Object.keys(additionalFields).reduce((acc: IDataObject, key: string) => {
+		if (additionalFields[key] !== '' || additionalFields[key] !== undefined) {
+			acc[key] = additionalFields[key];
+		}
+		return acc;
+	}, {});
+
 	const calendarId = this.getNodeParameter('calendarId', index, '', {
 		extractValue: true,
 	}) as string;
+
 	if (calendarId === '') {
 		throw new NodeOperationError(this.getNode(), 'Calendar ID is required');
 	}

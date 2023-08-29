@@ -11,11 +11,17 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	{
-		displayName: 'Name',
+		displayName: 'First Name',
 		name: 'givenName',
 		type: 'string',
 		default: '',
 		required: true,
+	},
+	{
+		displayName: 'Last Name',
+		name: 'surname',
+		type: 'string',
+		default: '',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -42,11 +48,16 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const givenName = this.getNodeParameter('givenName', index) as string;
+	const surname = this.getNodeParameter('surname', index) as string;
 
 	const body: IDataObject = {
 		givenName,
 		...prepareContactFields(additionalFields),
 	};
+
+	if (surname) {
+		body.surname = surname;
+	}
 
 	const responseData = await microsoftApiRequest.call(this, 'POST', '/contacts', body);
 
