@@ -14,10 +14,10 @@ import { TextSplitter } from 'langchain/text_splitter';
 import { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
-import { N8nLoaderTransformer } from '../nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
+import { N8nJsonLoader } from '../nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
 
 export function logWrapper(
-	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter |  VectorStore | N8nLoaderTransformer,
+	originalInstance: Tool | BaseChatMemory | BaseChatModel | BaseLLM | Embeddings | Document[] | Document | BaseDocumentLoader | VectorStoreRetriever | TextSplitter |  VectorStore | N8nJsonLoader,
 	executeFunctions: IExecuteFunctions,
 ) {
 	return new Proxy(originalInstance, {

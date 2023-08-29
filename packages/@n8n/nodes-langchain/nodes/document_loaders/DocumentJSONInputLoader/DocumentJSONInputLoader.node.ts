@@ -7,25 +7,30 @@ import { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
-export class N8nLoaderTransformer {
-  private pointersArray: string[];
-  private textSplitter?: CharacterTextSplitter;
+export class N8nJsonLoader {
+	private context: IExecuteFunctions;
 
-  constructor(pointersArray: string[], textSplitter?: CharacterTextSplitter) {
-    this.pointersArray = pointersArray;
-    this.textSplitter = textSplitter;
+  constructor(context: IExecuteFunctions) {
+		this.context = context;
   }
 
-  async process(items: INodeExecutionData[]): Promise<Document[]> {
-    const docs: Document[] = [];
-    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+  async process(items?: INodeExecutionData[]): Promise<Document[]> {
+		const pointers = this.context.getNodeParameter('pointers', 0) as string;
+		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
+		const textSplitter = await getAndValidateSupplyInput(this.context, 'textSplitter') as CharacterTextSplitter | undefined;
+
+		const docs: Document[] = [];
+
+		if(!items) return docs;
+
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
       const itemData = items[itemIndex].json;
       const itemString = JSON.stringify(itemData);
 
       const itemBlob = new Blob([itemString], { type: 'application/json' })
-      const jsonDoc = new JSONLoader(itemBlob, this.pointersArray);
-      const loadedDoc = this.textSplitter
-        ? await jsonDoc.loadAndSplit(this.textSplitter)
+      const jsonDoc = new JSONLoader(itemBlob, pointersArray);
+      const loadedDoc = textSplitter
+        ? await jsonDoc.loadAndSplit(textSplitter)
         : await jsonDoc.load();
 
       docs.push(...loadedDoc)
@@ -33,6 +38,7 @@ export class N8nLoaderTransformer {
     return docs;
   }
 }
+
 
 export class DocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -66,11 +72,7 @@ export class DocumentJSONInputLoader implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		this.logger.verbose('Supply Data for JSON Input Loader');
-		const pointers = this.getNodeParameter('pointers', 0) as string;
-		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-		const textSplitter = await getAndValidateSupplyInput(this, 'textSplitter') as CharacterTextSplitter;
-
-		const processor = new N8nLoaderTransformer(pointersArray, textSplitter);
+		const processor = new N8nJsonLoader(this);
 
 		return {
 			response: logWrapper(processor, this),
