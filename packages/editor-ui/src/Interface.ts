@@ -180,6 +180,10 @@ export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
 	type: EndpointType;
+	metadata: {
+		executionTime: number;
+		startTime: number;
+	};
 }
 
 export interface IAiData {

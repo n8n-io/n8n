@@ -27,6 +27,24 @@
 						:style="{ 'background-color': `var(${CONNECTOR_COLOR[fullData.type]})` }"
 						>{{ fullData.type }}</span
 					>
+
+					<n8n-info-tip
+						type="tooltip"
+						theme="info-light"
+						tooltipPlacement="right"
+						v-if="fullData.inOut === 'output'"
+					>
+						<div>
+							<n8n-text :bold="true" size="small">{{
+								$locale.baseText('runData.startTime') + ':'
+							}}</n8n-text>
+							{{ new Date(fullData.metadata.startTime).toLocaleString() }}<br />
+							<n8n-text :bold="true" size="small">{{
+								$locale.baseText('runData.executionTime') + ':'
+							}}</n8n-text>
+							{{ fullData.metadata.executionTime }} {{ $locale.baseText('runData.ms') }}
+						</div>
+					</n8n-info-tip>
 				</div>
 
 				<div class="full-data" v-for="typeData in fullData.data" v-if="!hideDataToggle[index]">
@@ -63,7 +81,7 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { IAiData } from '@/Interface';
+import { IAiData, IAiDataContent } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';

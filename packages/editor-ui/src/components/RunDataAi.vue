@@ -71,6 +71,10 @@ export default defineComponent({
 						data: data[type][0],
 						inOut,
 						type: type as EndpointType,
+						metadata: {
+							executionTime: taskData.executionTime,
+							startTime: taskData.startTime,
+						},
 					});
 				});
 			}
