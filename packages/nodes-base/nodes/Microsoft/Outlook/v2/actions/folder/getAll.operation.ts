@@ -6,38 +6,26 @@ import type {
 } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
+import { folderFields, folderRLC, returnAllOrLimit } from '../../descriptions';
 
 export const properties: INodeProperties[] = [
+	...returnAllOrLimit,
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['getAll'],
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		options: [
+			{
+				displayName: 'Filter Query',
+				name: 'filter',
+				type: 'string',
+				default: '',
+				placeholder: "e.g. displayName eq 'My Folder'",
+				hint: 'Search query to filter folders. <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">More info</a>.',
 			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
+		],
 	},
 	{
 		displayName: 'Options',
@@ -45,26 +33,14 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by ,.',
-			},
-			{
-				displayName: 'Filter Query',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				hint: 'Search query to filter folders. <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">More info</a>.',
+				type: 'multiOptions',
+				description: 'The fields to add to the output',
+				options: folderFields,
+				default: [],
 			},
 			{
 				displayName: 'Include Child Folders',
@@ -72,6 +48,12 @@ export const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to include child folders in the response',
+			},
+			{
+				...folderRLC,
+				displayName: 'Parent Folder',
+				required: false,
+				description: 'The folder you want to search in',
 			},
 		],
 	},
@@ -95,27 +77,32 @@ export async function execute(
 
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const options = this.getNodeParameter('options', index);
+	const filter = this.getNodeParameter('filters.filter', index, '') as string;
+
+	const parentFolderId = this.getNodeParameter('options.folderId', index, '', {
+		extractValue: true,
+	}) as string;
 
 	if (options.fields) {
-		qs.$select = options.fields;
+		qs.$select = (options.fields as string[]).join(',');
 	}
 
-	if (options.filter) {
-		qs.$filter = options.filter;
+	if (filter) {
+		qs.$filter = filter;
+	}
+
+	let endpoint;
+	if (parentFolderId) {
+		endpoint = `/mailFolders/${parentFolderId}/childFolders`;
+	} else {
+		endpoint = '/mailFolders';
 	}
 
 	if (returnAll) {
-		responseData = await microsoftApiRequestAllItems.call(
-			this,
-			'value',
-			'GET',
-			'/mailFolders',
-			{},
-			qs,
-		);
+		responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, {}, qs);
 	} else {
 		qs.$top = this.getNodeParameter('limit', index);
-		responseData = await microsoftApiRequest.call(this, 'GET', '/mailFolders', {}, qs);
+		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, {}, qs);
 		responseData = responseData.value;
 	}
 

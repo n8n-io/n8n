@@ -25,6 +25,33 @@ export const returnAllOrLimit: INodeProperties[] = [
 	},
 ];
 
+export const folderFields = [
+	{
+		name: 'Child Folder Count',
+		value: 'childFolderCount',
+	},
+	{
+		name: 'Display Name',
+		value: 'displayName',
+	},
+	{
+		name: 'Is Hidden',
+		value: 'isHidden',
+	},
+	{
+		name: 'Parent Folder ID',
+		value: 'parentFolderId',
+	},
+	{
+		name: 'Total Item Count',
+		value: 'totalItemCount',
+	},
+	{
+		name: 'Unread Item Count',
+		value: 'unreadItemCount',
+	},
+];
+
 export const contactFields: INodeProperties[] = [
 	{
 		displayName: 'Assistant Name',

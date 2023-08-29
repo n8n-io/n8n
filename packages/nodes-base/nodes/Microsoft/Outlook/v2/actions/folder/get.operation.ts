@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
-import { folderRLC } from '../../descriptions';
+import { folderFields, folderRLC } from '../../descriptions';
 
 export const properties: INodeProperties[] = [
 	folderRLC,
@@ -16,27 +16,14 @@ export const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['get'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by ,.',
-			},
-			{
-				displayName: 'Filter',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				description:
-					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+				type: 'multiOptions',
+				description: 'The fields to add to the output',
+				options: folderFields,
+				default: [],
 			},
 		],
 	},
@@ -63,7 +50,7 @@ export async function execute(
 	const options = this.getNodeParameter('options', index);
 
 	if (options.fields) {
-		qs.$select = options.fields;
+		qs.$select = (options.fields as string[]).join(',');
 	}
 
 	if (options.filter) {

@@ -7,20 +7,11 @@ import type {
 import { microsoftApiRequest } from '../../transport';
 import { messageRLC } from '../../descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
+import { folderRLC } from '../../../../../Google/Drive/v2/actions/common.descriptions';
 
 export const properties: INodeProperties[] = [
 	messageRLC,
-	{
-		displayName: 'Folder Name or ID',
-		name: 'folderId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getFoldersWithFilepath',
-		},
-		default: [],
-		description:
-			'The folder to move the message to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
+	{ ...folderRLC, displayName: 'Parent Folder' },
 ];
 
 const displayOptions = {
@@ -39,7 +30,11 @@ export async function execute(
 	const messageId = this.getNodeParameter('messageId', index, undefined, {
 		extractValue: true,
 	}) as string;
-	const destinationId = this.getNodeParameter('folderId', index) as string;
+
+	const destinationId = this.getNodeParameter('folderId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const body: IDataObject = {
 		destinationId,
 	};

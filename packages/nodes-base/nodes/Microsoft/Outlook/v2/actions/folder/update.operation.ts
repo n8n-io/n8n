@@ -16,12 +16,6 @@ export const properties: INodeProperties[] = [
 		description: 'Fields to update',
 		type: 'collection',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['update'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Name',

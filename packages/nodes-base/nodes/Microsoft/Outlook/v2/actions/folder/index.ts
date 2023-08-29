@@ -3,10 +3,9 @@ import * as create from './create.operation';
 import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
-import * as getChildren from './getChildren.operation';
 import * as update from './update.operation';
 
-export { create, del as delete, get, getAll, getChildren, update };
+export { create, del as delete, get, getAll, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -39,12 +38,6 @@ export const description: INodeProperties[] = [
 				action: 'Get a folder',
 			},
 			{
-				name: 'Get Children',
-				value: 'getChildren',
-				description: 'Lists all child folders under a parent folder',
-				action: 'Get children in a folder',
-			},
-			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get many folders',
@@ -63,6 +56,5 @@ export const description: INodeProperties[] = [
 	...del.description,
 	...get.description,
 	...getAll.description,
-	...getChildren.description,
 	...update.description,
 ];
