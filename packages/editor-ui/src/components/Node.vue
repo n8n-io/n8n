@@ -837,7 +837,6 @@ export default defineComponent({
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
-				height: 20px;
 			}
 		}
 	}
@@ -853,7 +852,6 @@ export default defineComponent({
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
-				height: 20px;
 				left: 65px;
 			}
 		}
