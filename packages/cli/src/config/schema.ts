@@ -762,7 +762,7 @@ export const schema = {
 	externalFrontendHooksUrls: {
 		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
-		default: 'https://public.n8n.cloud/posthog-hooks.js',
+		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
@@ -926,6 +926,15 @@ export const schema = {
 			format: String,
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	mfa: {
+		enabled: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to enable MFA feature in instance.',
+			env: 'N8N_MFA_ENABLED',
 		},
 	},
 

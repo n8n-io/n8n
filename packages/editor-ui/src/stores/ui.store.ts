@@ -18,6 +18,7 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
@@ -28,8 +29,10 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -49,14 +52,14 @@ import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows.store';
-import { useSettingsStore } from './settings.store';
-import { useCloudPlanStore } from './cloudPlan.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
-import type { Banners } from 'n8n-workflow';
+import type { BannerName } from 'n8n-workflow';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -122,6 +125,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: '',
 				httpNodeParameters: '',
 			},
+			[MFA_SETUP_MODAL_KEY]: {
+				open: false,
+			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
 				data: undefined,
@@ -136,6 +142,12 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[SOURCE_CONTROL_PULL_MODAL_KEY]: {
+				open: false,
+			},
+			[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]: {
+				open: false,
+			},
+			[DEBUG_PAYWALL_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -176,6 +188,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			V1: { dismissed: true },
 			TRIAL: { dismissed: true },
 			TRIAL_OVER: { dismissed: true },
+			NON_PRODUCTION_LICENSE: { dismissed: true },
 		},
 		bannersHeight: 0,
 	}),
@@ -193,6 +206,11 @@ export const useUIStore = defineStore(STORES.UI, {
 
 			return {
 				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				feature: {
+					unavailable: {
+						title: `contextual.feature.unavailable.title${contextKey}`,
+					},
+				},
 				credentials: {
 					sharing: {
 						unavailable: {
@@ -279,7 +297,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
 		isReadOnlyView(): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS);
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG].includes(
+				this.currentView as VIEWS,
+			);
 		},
 		isNodeView(): boolean {
 			return [
@@ -333,12 +353,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setBanners(banners: UIState['banners']): void {
-			this.banners = {
-				...this.banners,
-				...banners,
-			};
-		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -541,7 +555,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 		},
 		async dismissBanner(
-			name: Banners,
+			name: BannerName,
 			type: 'temporary' | 'permanent' = 'temporary',
 		): Promise<void> {
 			if (type === 'permanent') {
@@ -556,11 +570,29 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.banners[name].dismissed = true;
 			this.banners[name].type = 'temporary';
 		},
-		showBanner(name: Banners): void {
+		showBanner(name: BannerName): void {
 			this.banners[name].dismissed = false;
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
+		},
+		async initBanners(): Promise<void> {
+			const cloudPlanStore = useCloudPlanStore();
+			if (cloudPlanStore.userIsTrialing) {
+				await this.dismissBanner('V1', 'temporary');
+				if (cloudPlanStore.trialExpired) {
+					this.showBanner('TRIAL_OVER');
+				} else {
+					this.showBanner('TRIAL');
+				}
+			}
+		},
+		async dismissAllBanners() {
+			return Promise.all([
+				this.dismissBanner('TRIAL', 'temporary'),
+				this.dismissBanner('TRIAL_OVER', 'temporary'),
+				this.dismissBanner('V1', 'temporary'),
+			]);
 		},
 	},
 });

@@ -36,7 +36,7 @@
 			<div
 				v-if="$slots.options"
 				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
-				data-test-id="parameter-input-options-container"
+				:data-test-id="`${inputName}-parameter-input-options-container`"
 			>
 				<slot name="options" />
 			</div>
