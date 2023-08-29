@@ -5,15 +5,21 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Calculator',
+		displayName: 'Calculator',
 		name: 'toolCalculator',
 		icon: 'fa:calculator',
 		group: ['transform'],
 		version: 1,
-		description: 'Calculator',
+		description: 'Use Calculator',
 		defaults: {
-			name: 'LangChain - Calculator',
+			name: 'Calculator',
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Tools"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

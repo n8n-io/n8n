@@ -9,14 +9,20 @@ import { N8nBinaryLoader } from '../../document_loaders/DocumentBinaryInputLoade
 
 export class VectorStorePineconeInsert implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Pinecone: Insert',
+		displayName: 'Pinecone: Insert',
 		name: 'vectorStorePineconeInsert',
 		icon: 'file:pinecone.png',
 		group: ['transform'],
 		version: 1,
 		description: 'Insert data into Pinecone Vector Store index',
 		defaults: {
-			name: 'LangChain - Pinecone: Insert',
+			name: 'Pinecone: Insert',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Vector Stores"]
+			},
 		},
 		credentials: [
 			{

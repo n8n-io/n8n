@@ -6,16 +6,22 @@ import { SerpAPI } from 'langchain/tools';
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - SerpAPI',
+		displayName: 'SerpAPI',
 		name: 'toolSerpApi',
 		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Search in Google',
+		description: 'Search in Google using SerpAPI',
 		defaults: {
-			name: 'LangChain - SerpAPI',
+			name: 'SerpAPI',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Tools"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

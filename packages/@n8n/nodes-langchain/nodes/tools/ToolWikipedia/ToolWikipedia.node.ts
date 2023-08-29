@@ -5,16 +5,22 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class ToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Wikipedia',
+		displayName: 'Wikipedia',
 		name: 'toolWikipedia',
 		icon: 'file:wikipedia.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Search in Wikipedia',
 		defaults: {
-			name: 'LangChain - Wikipedia',
+			name: 'Wikipedia',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Tools"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

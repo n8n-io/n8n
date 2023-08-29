@@ -18,15 +18,21 @@ import get from 'lodash/get';
 
 export class ToolDynamicTool implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - DynamicTool',
+		displayName: 'DynamicTool',
 		name: 'dynamicTool',
 		icon: 'fa:screwdriver',
 		group: ['transform'],
 		version: 1,
-		description: 'DynamicTool',
+		description: 'Use DynamicTool',
 		defaults: {
-			name: 'LangChain - DynamicTool',
+			name: 'DynamicTool',
 			color: '#400080',
+		},
+		codex: {
+			categories: ["AI"],
+			subcategories: {
+				AI: ["Tools"]
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
-import { AI_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import { AI_NODE_CREATOR_VIEW, REGULAR_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -59,17 +59,20 @@ onUnmounted(() => {
 watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
-		let view;
-		switch (selectedView) {
-			case AI_NODE_CREATOR_VIEW:
-				view = AIView();
-				break;
-			case TRIGGER_NODE_CREATOR_VIEW:
-				view = TriggerView();
-				break;
-			default:
-				view = RegularView();
+		const views = {
+			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+			[AI_NODE_CREATOR_VIEW]: AIView,
 		}
+
+		const itemKey = selectedView;
+		const matchedView = views[itemKey];
+
+		if (!matchedView) {
+			console.warn(`No view found for ${itemKey}`);
+			return;
+		};
+		const view = matchedView(mergedNodes);
 
 		pushViewStack({
 			title: view.title,
