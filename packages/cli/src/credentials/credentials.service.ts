@@ -40,7 +40,7 @@ export class CredentialsService {
 	private static toFindManyOptions(listQueryOptions?: ListQuery.Options) {
 		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
-		type Select = Array<keyof ICredentialsDb>;
+		type Select = Array<keyof CredentialsEntity>;
 
 		const defaultRelations = ['shared', 'shared.role', 'shared.user'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
