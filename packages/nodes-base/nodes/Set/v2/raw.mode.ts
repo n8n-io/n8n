@@ -21,7 +21,7 @@ const properties: INodeProperties[] = [
 			editorLanguage: 'json',
 			rows: 5,
 		},
-		default: '={\n  "key": "value"\n}',
+		default: '{\n  "my_field_1": "value",\n  "my_field_2": 1\n}',
 		validateType: 'object',
 		ignoreValidationDuringExecution: true,
 	},
