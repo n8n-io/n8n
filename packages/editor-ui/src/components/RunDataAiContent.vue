@@ -152,7 +152,23 @@ export default defineComponent({
 				if (data.response.generations) {
 					return {
 						type: 'json',
-						data: data.response.generations.map((content) => content.text),
+						data: data.response.generations.map((content) => {
+							if (Array.isArray(content)) {
+								return content
+									.map((item) => {
+										if (item.text) {
+											return item.text;
+										}
+										return item;
+									})
+									.join('\n\n')
+									.trim();
+							} else if (content.text) {
+								return content.text;
+							}
+
+							return content;
+						}),
 					};
 				} else if (
 					Array.isArray(data.response) &&
@@ -177,7 +193,15 @@ export default defineComponent({
 			} else if (data.messages) {
 				return {
 					type: 'markdown',
-					data: data.messages.map((content) => content.kwargs.content).join('\n\n'),
+					data: data.messages
+						.map((content) => {
+							if (content && typeof content === 'string') {
+								return content;
+							} else {
+								return content.kwargs.content;
+							}
+						})
+						.join('\n\n'),
 				};
 			} else if (data.documents) {
 				return {
