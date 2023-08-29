@@ -23,14 +23,14 @@ export class ChainRetrievalQA implements INodeType {
 			color: '#408080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Chains"]
+				AI: ['Chains'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'vectorRetriever', 'languageModel'],
-		inputNames: ['','Vector Retriever', 'Language Model'],
+		inputNames: ['', 'Vector Retriever', 'Language Model'],
 		outputs: ['main'],
 		// outputNames: ['', 'Chain'],
 		credentials: [],
@@ -59,15 +59,23 @@ export class ChainRetrievalQA implements INodeType {
 				name: 'query',
 				type: 'string',
 				default: '',
-			}
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Retrieval QA Chain');
 
-		const model = await getAndValidateSupplyInput(this, 'languageModel', true) as BaseLanguageModel;
-		const vectorRetriever = await getAndValidateSupplyInput(this, 'vectorRetriever', true) as BaseRetriever;
+		const model = (await getAndValidateSupplyInput(
+			this,
+			'languageModel',
+			true,
+		)) as BaseLanguageModel;
+		const vectorRetriever = (await getAndValidateSupplyInput(
+			this,
+			'vectorRetriever',
+			true,
+		)) as BaseRetriever;
 
 		const items = this.getInputData();
 		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever!);
@@ -75,9 +83,9 @@ export class ChainRetrievalQA implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		if(runMode === 'runOnceForAllItems') {
+		if (runMode === 'runOnceForAllItems') {
 			const query = this.getNodeParameter('query', 0) as string;
-			const response = await chain.call({ query })
+			const response = await chain.call({ query });
 
 			return this.prepareOutputData([{ json: { response } }]);
 		}
@@ -85,7 +93,7 @@ export class ChainRetrievalQA implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
 
-			const response = await chain.call({ query })
+			const response = await chain.call({ query });
 			returnData.push({ json: { response } });
 		}
 		return this.prepareOutputData(returnData);

@@ -23,14 +23,14 @@ export class ChainVectorStoreQA implements INodeType {
 			color: '#412012',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Chains"]
+				AI: ['Chains'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'vectorStore', 'languageModel'],
-		inputNames: ['','Vector Store', 'Language Model'],
+		inputNames: ['', 'Vector Store', 'Language Model'],
 		outputs: ['main', 'chain'],
 		outputNames: ['', 'Chain'],
 		credentials: [],
@@ -71,11 +71,15 @@ export class ChainVectorStoreQA implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Vector Store QA Chain')
+		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = await getAndValidateSupplyInput(this, 'languageModel', true) as BaseLanguageModel;
-		const vectorStore = await getAndValidateSupplyInput(this, 'vectorStore', true) as VectorStore;
+		const model = (await getAndValidateSupplyInput(
+			this,
+			'languageModel',
+			true,
+		)) as BaseLanguageModel;
+		const vectorStore = (await getAndValidateSupplyInput(this, 'vectorStore', true)) as VectorStore;
 
 		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
 		const items = this.getInputData();
@@ -85,7 +89,7 @@ export class ChainVectorStoreQA implements INodeType {
 		chain.k = this.getNodeParameter('topK', 0, 4) as number;
 		if (runMode === 'runOnceForAllItems') {
 			const query = this.getNodeParameter('query', 0) as string;
-			const response = await chain.call({ query })
+			const response = await chain.call({ query });
 			return this.prepareOutputData([{ json: { response } }]);
 		}
 
@@ -93,7 +97,7 @@ export class ChainVectorStoreQA implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
 
-			const response = await chain.call({ query,  })
+			const response = await chain.call({ query });
 			returnData.push({ json: { response } });
 		}
 

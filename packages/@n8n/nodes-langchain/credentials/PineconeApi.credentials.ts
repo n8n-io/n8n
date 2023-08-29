@@ -20,7 +20,8 @@ export class PineconeApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
-		}, {
+		},
+		{
 			displayName: 'Environment',
 			name: 'environment',
 			type: 'string',

@@ -1,5 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { type IExecuteFunctions, type INodeType, type INodeTypeDescription, type SupplyData } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
@@ -19,16 +24,16 @@ export class DocumentGithubLoader implements INodeType {
 			color: '#500080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Document Loaders"]
+				AI: ['Document Loaders'],
 			},
 		},
 		credentials: [
 			{
 				name: 'githubApi',
 				required: true,
-			}
+			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['textSplitter'],
@@ -42,12 +47,14 @@ export class DocumentGithubLoader implements INodeType {
 				name: 'repository',
 				type: 'string',
 				default: '',
-			}, {
+			},
+			{
 				displayName: 'Branch',
 				name: 'branch',
 				type: 'string',
 				default: 'main',
-			}, {
+			},
+			{
 				displayName: 'Options',
 				name: 'additionalOptions',
 				type: 'collection',
@@ -60,7 +67,8 @@ export class DocumentGithubLoader implements INodeType {
 						name: 'recursive',
 						type: 'boolean',
 						default: false,
-					}, {
+					},
+					{
 						displayName: 'Ignore Paths',
 						name: 'recursive',
 						type: 'string',
@@ -78,18 +86,22 @@ export class DocumentGithubLoader implements INodeType {
 		const repository = this.getNodeParameter('repository', 0) as string;
 		const branch = this.getNodeParameter('branch', 0) as string;
 		const credentials = await this.getCredentials('githubApi');
-		const { ignorePaths, recursive} = this.getNodeParameter('additionalOptions', 0) as { recursive: boolean, ignorePaths: string };
-		const textSplitter = await getAndValidateSupplyInput(this, 'textSplitter', false) as CharacterTextSplitter | undefined;
+		const { ignorePaths, recursive } = this.getNodeParameter('additionalOptions', 0) as {
+			recursive: boolean;
+			ignorePaths: string;
+		};
+		const textSplitter = (await getAndValidateSupplyInput(this, 'textSplitter', false)) as
+			| CharacterTextSplitter
+			| undefined;
 
 		const docs = new GithubRepoLoader(repository, {
 			branch,
 			ignorePaths: (ignorePaths ?? '').split(',').map((p) => p.trim()),
 			recursive,
-			accessToken: credentials.accessToken as string || ''
+			accessToken: (credentials.accessToken as string) || '',
 		});
 
-		const loadedDocs = textSplitter ? await docs.loadAndSplit(textSplitter) : await docs.load()
-
+		const loadedDocs = textSplitter ? await docs.loadAndSplit(textSplitter) : await docs.load();
 
 		return {
 			response: logWrapper(loadedDocs, this),

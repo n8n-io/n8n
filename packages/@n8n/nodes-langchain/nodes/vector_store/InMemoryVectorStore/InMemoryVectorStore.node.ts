@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { Document } from 'langchain/document';
-import { MemoryVectorStore  } from 'langchain/vectorstores/memory';
-import { Embeddings  } from 'langchain/embeddings/base';
+import { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class InMemoryVectorStore implements INodeType {
@@ -18,9 +18,9 @@ export class InMemoryVectorStore implements INodeType {
 			color: '#400080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Vector Stores"]
+				AI: ['Vector Stores'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -32,7 +32,7 @@ export class InMemoryVectorStore implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const documentsNodes = await this.getInputConnectionData('document', 0) || [];
+		const documentsNodes = (await this.getInputConnectionData('document', 0)) || [];
 		const documents = documentsNodes.flatMap((node) => node.response as Document);
 		const embeddingNodes = await this.getInputConnectionData('embedding', 0);
 		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
@@ -40,7 +40,7 @@ export class InMemoryVectorStore implements INodeType {
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
 
 		return {
-			response: logWrapper(documentsStore, this)
+			response: logWrapper(documentsStore, this),
 		};
 	}
 }

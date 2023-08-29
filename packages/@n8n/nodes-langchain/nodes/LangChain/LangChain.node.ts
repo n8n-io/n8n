@@ -25,9 +25,9 @@ export class LangChain implements INodeType {
 			color: '#404040',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Agents"]
+				AI: ['Agents'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

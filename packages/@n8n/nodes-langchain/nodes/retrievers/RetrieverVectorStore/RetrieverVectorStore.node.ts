@@ -17,9 +17,9 @@ export class RetrieverVectorStore implements INodeType {
 			color: '#400080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Retrievers"]
+				AI: ['Retrievers'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -29,17 +29,17 @@ export class RetrieverVectorStore implements INodeType {
 		outputNames: ['Vector Retriever'],
 		properties: [
 			{
-					displayName: 'Retriever Name',
-					name: 'name',
-					type: 'string',
-					default: '',
+				displayName: 'Retriever Name',
+				name: 'name',
+				type: 'string',
+				default: '',
 			},
 			{
-					displayName: 'Retriever Description',
-					name: 'description',
-					type: 'string',
-					default: '',
-					typeOptions: { rows: 5 },
+				displayName: 'Retriever Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				typeOptions: { rows: 5 },
 			},
 			{
 				displayName: 'Top K',
@@ -55,12 +55,16 @@ export class RetrieverVectorStore implements INodeType {
 		this.logger.verbose('Supplying data for Vector Store Retriever');
 
 		const topK = this.getNodeParameter('topK', 0, 4) as number;
-		const vectorStore = await getAndValidateSupplyInput(this, 'vectorStore', true) as PineconeStore;
+		const vectorStore = (await getAndValidateSupplyInput(
+			this,
+			'vectorStore',
+			true,
+		)) as PineconeStore;
 
 		const retriever = vectorStore.asRetriever(topK);
 
 		return {
-			response: logWrapper(retriever, this)
+			response: logWrapper(retriever, this),
 		};
 	}
 }

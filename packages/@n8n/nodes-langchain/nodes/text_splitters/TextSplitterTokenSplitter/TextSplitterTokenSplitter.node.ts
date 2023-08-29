@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { TokenTextSplitter } from 'langchain/text_splitter'
+import { TokenTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class TextSplitterTokenSplitter implements INodeType {
@@ -16,9 +16,9 @@ export class TextSplitterTokenSplitter implements INodeType {
 			color: '#400080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Text Splitters"]
+				AI: ['Text Splitters'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -28,17 +28,17 @@ export class TextSplitterTokenSplitter implements INodeType {
 		outputNames: ['Text Splitter'],
 		properties: [
 			{
-					displayName: 'Chunk Size',
-					name: 'chunkSize',
-					type: 'number',
-					default: 1000,
+				displayName: 'Chunk Size',
+				name: 'chunkSize',
+				type: 'number',
+				default: 1000,
 			},
 			{
-					displayName: 'Chunk Overlap',
-					name: 'chunkOverlap',
-					type: 'number',
-					default: 0,
-			}
+				displayName: 'Chunk Overlap',
+				name: 'chunkOverlap',
+				type: 'number',
+				default: 0,
+			},
 		],
 	};
 
@@ -53,17 +53,16 @@ export class TextSplitterTokenSplitter implements INodeType {
 			chunkSize,
 			chunkOverlap,
 			allowedSpecial: 'all',
-			disallowedSpecial:'all',
+			disallowedSpecial: 'all',
 			encodingName: 'cl100k_base',
 			keepSeparator: false,
 			// allowedSpecial: 'all',
 			// disallowedSpecial: 'all',
 			// encodingName: 'cl100k_base',
-
 		});
 
 		return {
-			response: logWrapper(splitter, this)
+			response: logWrapper(splitter, this),
 		};
 	}
 }

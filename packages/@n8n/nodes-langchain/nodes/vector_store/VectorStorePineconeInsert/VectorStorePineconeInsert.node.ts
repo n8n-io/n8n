@@ -1,6 +1,11 @@
-import { IExecuteFunctions, INodeType, INodeTypeDescription, INodeExecutionData } from 'n8n-workflow';
+import {
+	IExecuteFunctions,
+	INodeType,
+	INodeTypeDescription,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone'
+import { PineconeClient } from '@pinecone-database/pinecone';
 import { Embeddings } from 'langchain/embeddings/base';
 import { N8nJsonLoader } from '../../document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
@@ -19,9 +24,9 @@ export class VectorStorePineconeInsert implements INodeType {
 			name: 'Pinecone: Insert',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Vector Stores"]
+				AI: ['Vector Stores'],
 			},
 		},
 		credentials: [
@@ -54,7 +59,7 @@ export class VectorStorePineconeInsert implements INodeType {
 				type: 'boolean',
 				default: false,
 				description: 'Clear the index before inserting new data',
-			}
+			},
 		],
 	};
 
@@ -66,17 +71,18 @@ export class VectorStorePineconeInsert implements INodeType {
 		const index = this.getNodeParameter('pineconeIndex', 0) as string;
 		const clearIndex = this.getNodeParameter('clearIndex', 0) as boolean;
 
-
 		const credentials = await this.getCredentials('pineconeApi');
 
-		const documentInput = await getAndValidateSupplyInput(this, 'document', true) as N8nJsonLoader | Document<Record<string, any>>[];
-		const embeddings = await getAndValidateSupplyInput(this, 'embedding', true) as Embeddings;
+		const documentInput = (await getAndValidateSupplyInput(this, 'document', true)) as
+			| N8nJsonLoader
+			| Document<Record<string, any>>[];
+		const embeddings = (await getAndValidateSupplyInput(this, 'embedding', true)) as Embeddings;
 
-		const client = new PineconeClient()
+		const client = new PineconeClient();
 		await client.init({
-				apiKey: credentials.apiKey as string,
-				environment: credentials.environment as string,
-		})
+			apiKey: credentials.apiKey as string,
+			environment: credentials.environment as string,
+		});
 
 		const pineconeIndex = client.Index(index);
 
@@ -86,7 +92,7 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		let processedDocuments: Document[];
 
-		if (documentInput instanceof N8nJsonLoader  || documentInput instanceof N8nBinaryLoader) {
+		if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
 			processedDocuments = await documentInput.process(items);
 		} else {
 			processedDocuments = documentInput;
@@ -95,10 +101,11 @@ export class VectorStorePineconeInsert implements INodeType {
 		await PineconeStore.fromDocuments(processedDocuments, embeddings, {
 			namespace: namespace || undefined,
 			pineconeIndex,
-		})
+		});
 
-		const serializedDocuments = processedDocuments
-			.map(({ metadata, pageContent }) => ({ json: { metadata, pageContent } }));
+		const serializedDocuments = processedDocuments.map(({ metadata, pageContent }) => ({
+			json: { metadata, pageContent },
+		}));
 
 		return this.prepareOutputData(serializedDocuments);
 	}

@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData, INodeExecutionData } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+	INodeExecutionData,
+} from 'n8n-workflow';
 
 import { CharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
@@ -10,35 +16,36 @@ import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyIn
 export class N8nJsonLoader {
 	private context: IExecuteFunctions;
 
-  constructor(context: IExecuteFunctions) {
+	constructor(context: IExecuteFunctions) {
 		this.context = context;
-  }
+	}
 
-  async process(items?: INodeExecutionData[]): Promise<Document[]> {
+	async process(items?: INodeExecutionData[]): Promise<Document[]> {
 		const pointers = this.context.getNodeParameter('pointers', 0) as string;
 		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-		const textSplitter = await getAndValidateSupplyInput(this.context, 'textSplitter') as CharacterTextSplitter | undefined;
+		const textSplitter = (await getAndValidateSupplyInput(this.context, 'textSplitter')) as
+			| CharacterTextSplitter
+			| undefined;
 
 		const docs: Document[] = [];
 
-		if(!items) return docs;
+		if (!items) return docs;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-      const itemData = items[itemIndex].json;
-      const itemString = JSON.stringify(itemData);
+			const itemData = items[itemIndex].json;
+			const itemString = JSON.stringify(itemData);
 
-      const itemBlob = new Blob([itemString], { type: 'application/json' })
-      const jsonDoc = new JSONLoader(itemBlob, pointersArray);
-      const loadedDoc = textSplitter
-        ? await jsonDoc.loadAndSplit(textSplitter)
-        : await jsonDoc.load();
+			const itemBlob = new Blob([itemString], { type: 'application/json' });
+			const jsonDoc = new JSONLoader(itemBlob, pointersArray);
+			const loadedDoc = textSplitter
+				? await jsonDoc.loadAndSplit(textSplitter)
+				: await jsonDoc.load();
 
-      docs.push(...loadedDoc)
-    }
-    return docs;
-  }
+			docs.push(...loadedDoc);
+		}
+		return docs;
+	}
 }
-
 
 export class DocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,9 +61,9 @@ export class DocumentJSONInputLoader implements INodeType {
 			color: '#500080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Document Loaders"]
+				AI: ['Document Loaders'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -72,7 +79,7 @@ export class DocumentJSONInputLoader implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
-			}
+			},
 		],
 	};
 

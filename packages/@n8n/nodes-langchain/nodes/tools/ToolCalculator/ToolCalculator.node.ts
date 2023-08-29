@@ -16,9 +16,9 @@ export class ToolCalculator implements INodeType {
 			color: '#400080',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Tools"]
+				AI: ['Tools'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

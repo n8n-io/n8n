@@ -17,9 +17,9 @@ export class LMOpenAi implements INodeType {
 			name: 'OpenAI',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Language Models"]
+				AI: ['Language Models'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

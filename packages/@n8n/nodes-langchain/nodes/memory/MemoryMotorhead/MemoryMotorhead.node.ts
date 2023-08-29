@@ -16,9 +16,9 @@ export class MemoryMotorhead implements INodeType {
 			color: '#303030',
 		},
 		codex: {
-			categories: ["AI"],
+			categories: ['AI'],
 			subcategories: {
-				AI: ["Memory"]
+				AI: ['Memory'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
