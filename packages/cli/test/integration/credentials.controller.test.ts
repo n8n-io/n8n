@@ -20,48 +20,50 @@ beforeEach(async () => {
 type GetAllResponse = { body: { data: Credentials.WithOwnedByAndSharedWith[] } };
 
 describe('GET /credentials', () => {
-	test('should return all creds for owner', async () => {
-		const role = await testDb.getCredentialOwnerRole();
+	describe('should return', () => {
+		test('all creds for owner', async () => {
+			const role = await testDb.getCredentialOwnerRole();
 
-		const { id: id1 } = await testDb.saveCredential(payload(), { user: owner, role });
-		const { id: id2 } = await testDb.saveCredential(payload(), { user: member, role });
+			const { id: id1 } = await testDb.saveCredential(payload(), { user: owner, role });
+			const { id: id2 } = await testDb.saveCredential(payload(), { user: member, role });
 
-		const response: GetAllResponse = await testServer
-			.authAgentFor(owner)
-			.get('/credentials')
-			.expect(200);
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.expect(200);
 
-		expect(response.body.data).toHaveLength(2);
+			expect(response.body.data).toHaveLength(2);
 
-		response.body.data.forEach(validateCredential);
+			response.body.data.forEach(validateCredential);
 
-		const savedIds = [id1, id2];
-		const returnedIds = response.body.data.map((c) => c.id);
+			const savedIds = [id1, id2];
+			const returnedIds = response.body.data.map((c) => c.id);
 
-		expect(savedIds).toEqual(returnedIds);
-	});
+			expect(savedIds).toEqual(returnedIds);
+		});
 
-	test('should return only own creds for member', async () => {
-		const role = await testDb.getCredentialOwnerRole();
+		test('only own creds for member', async () => {
+			const role = await testDb.getCredentialOwnerRole();
 
-		const firstMember = member;
-		const secondMember = await testDb.createMember();
+			const firstMember = member;
+			const secondMember = await testDb.createMember();
 
-		const c1 = await testDb.saveCredential(payload(), { user: firstMember, role });
-		const c2 = await testDb.saveCredential(payload(), { user: secondMember, role });
+			const c1 = await testDb.saveCredential(payload(), { user: firstMember, role });
+			const c2 = await testDb.saveCredential(payload(), { user: secondMember, role });
 
-		const response: GetAllResponse = await testServer
-			.authAgentFor(firstMember)
-			.get('/credentials')
-			.expect(200);
+			const response: GetAllResponse = await testServer
+				.authAgentFor(firstMember)
+				.get('/credentials')
+				.expect(200);
 
-		expect(response.body.data).toHaveLength(1);
+			expect(response.body.data).toHaveLength(1);
 
-		const [firstMemberCred] = response.body.data;
+			const [firstMemberCred] = response.body.data;
 
-		validateCredential(firstMemberCred);
-		expect(firstMemberCred.id).toBe(c1.id);
-		expect(firstMemberCred.id).not.toBe(c2.id);
+			validateCredential(firstMemberCred);
+			expect(firstMemberCred.id).toBe(c1.id);
+			expect(firstMemberCred.id).not.toBe(c2.id);
+		});
 	});
 });
 
