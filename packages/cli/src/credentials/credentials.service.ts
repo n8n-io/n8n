@@ -81,7 +81,7 @@ export class CredentialsService {
 		if (returnAll) {
 			const credentials = await Db.collections.Credentials.find(findManyOptions);
 
-			return this.addOwnedByAndSharedWith(credentials);
+			return findManyOptions.select ? credentials : this.addOwnedByAndSharedWith(credentials);
 		}
 
 		const ids = await this.getAccessibleCredentials(user.id);
@@ -91,7 +91,7 @@ export class CredentialsService {
 			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
 
-		return this.addOwnedByAndSharedWith(credentials);
+		return findManyOptions.select ? credentials : this.addOwnedByAndSharedWith(credentials);
 	}
 
 	/**

@@ -5,6 +5,8 @@ import { randomCredentialPayload as payload } from './shared/random';
 import type { Credentials } from '@/requests';
 import type { User } from '@db/entities/User';
 
+const { any } = expect;
+
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
 let owner: User;
@@ -21,7 +23,7 @@ type GetAllResponse = { body: { data: Credentials.WithOwnedByAndSharedWith[] } }
 
 describe('GET /credentials', () => {
 	describe('should return', () => {
-		test('all creds for owner', async () => {
+		test('all credentials for owner', async () => {
 			const role = await testDb.getCredentialOwnerRole();
 
 			const { id: id1 } = await testDb.saveCredential(payload(), { user: owner, role });
@@ -42,7 +44,7 @@ describe('GET /credentials', () => {
 			expect(savedIds).toEqual(returnedIds);
 		});
 
-		test('only own creds for member', async () => {
+		test('only own credentials for member', async () => {
 			const role = await testDb.getCredentialOwnerRole();
 
 			const firstMember = member;
@@ -65,6 +67,112 @@ describe('GET /credentials', () => {
 			expect(firstMemberCred.id).not.toBe(c2.id);
 		});
 	});
+
+	describe('filter', () => {
+		test('should filter crcredentials by field: name', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query(`filter={ "name": "${savedCred.name}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [returnedCred] = response.body.data;
+
+			expect(returnedCred.name).toBe(savedCred.name);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('filter={ "name": "Non-Existing Credential" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter credentials by field: type', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query(`filter={ "type": "${savedCred.type}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [returnedCred] = response.body.data;
+
+			expect(returnedCred.type).toBe(savedCred.type);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('filter={ "type": "Non-Existing Credential" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+	});
+
+	describe('select', () => {
+		test('should select credential field: id', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			await testDb.saveCredential(payload(), { user: owner, role });
+			await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('select=["id"]')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ id: any(String) }, { id: any(String) }],
+			});
+		});
+
+		test('should select credential field: name', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			await testDb.saveCredential(payload(), { user: owner, role });
+			await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('select=["name"]')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ name: any(String) }, { name: any(String) }],
+			});
+		});
+
+		test('should select credential field: type', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			await testDb.saveCredential(payload(), { user: owner, role });
+			await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('select=["type"]')
+				.expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ type: any(String) }, { type: any(String) }],
+			});
+		});
+	});
 });
 
 function validateCredential(credential: Credentials.WithOwnedByAndSharedWith) {
@@ -75,14 +183,14 @@ function validateCredential(credential: Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof nodesAccess[0].nodeType).toBe('string');
 	expect('data' in credential).toBe(false);
 
-	expect(Array.isArray(sharedWith)).toBe(true);
+	if (sharedWith) expect(Array.isArray(sharedWith)).toBe(true);
 
-	if (ownedBy === null) fail('Expected `ownedBy` not to be `null`');
+	if (ownedBy) {
+		const { id, email, firstName, lastName } = ownedBy;
 
-	const { id, email, firstName, lastName } = ownedBy;
-
-	expect(typeof id).toBe('string');
-	expect(typeof email).toBe('string');
-	expect(typeof firstName).toBe('string');
-	expect(typeof lastName).toBe('string');
+		expect(typeof id).toBe('string');
+		expect(typeof email).toBe('string');
+		expect(typeof firstName).toBe('string');
+		expect(typeof lastName).toBe('string');
+	}
 }
