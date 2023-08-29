@@ -275,7 +275,9 @@ export const getInputNameOverlay = (labelText: string, inputName: string): Overl
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-input-endpoint-label');
-			label.classList.add(`node-input-endpoint-label--${inputName}`);
+			if (inputName !== 'main') {
+				label.classList.add(`node-input-endpoint-label--data`);
+			}
 			return label;
 		},
 	},
@@ -300,7 +302,9 @@ export const getOutputNameOverlay = (labelText: string, outputName: string): Ove
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
-			label.classList.add(`node-output-endpoint-label--${outputName}`);
+			if (outputName !== 'main') {
+				label.classList.add(`node-output-endpoint-label--data`);
+			}
 			return label;
 		},
 	},

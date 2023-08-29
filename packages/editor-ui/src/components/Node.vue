@@ -1218,13 +1218,7 @@ export default defineComponent({
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
 
-	&--tool,
-	&--memory,
-	&--languageModel,
-	&--vectorRetriever,
-	&--embedding,
-	&--document,
-	&--textSplitter {
+	&--data {
 		text-align: center;
 		margin-top: calc(var(--spacing-m) * -1);
 		margin-left: 0;
@@ -1239,13 +1233,7 @@ export default defineComponent({
 		margin-left: -40px;
 	}
 
-	&--tool,
-	&--memory,
-	&--languageModel,
-	&--vectorRetriever,
-	&--embedding,
-	&--document,
-	&--textSplitter {
+	&--data {
 		text-align: center;
 		margin-top: calc(var(--spacing-m) * -1);
 		margin-left: 0;
