@@ -331,7 +331,7 @@ import {
 } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { CONNECTOR_PAINT_STYLE_DATA } from '@/utils/nodeViewUtils';
+import { CONNECTOR_PAINT_STYLE_DATA, OVERLAY_REVERSE_ARROW_ID } from '@/utils/nodeViewUtils';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2161,8 +2161,6 @@ export default defineComponent({
 				this.canvasStore.lastSelectedConnection = info.connection;
 			}
 
-			console.log('here', info.eventSource, info.nodeCreatorView);
-
 			this.onToggleNodeCreator({
 				source: info.eventSource,
 				createNodeActive: true,
@@ -2241,6 +2239,13 @@ export default defineComponent({
 		},
 		onEventConnection(info: ConnectionEstablishedParams) {
 			try {
+				if (info.sourceEndpoint.parameters.connection === 'target') {
+					// Allow that not "main" connections can also be dragged the other way around
+					const tempEndpoint = info.sourceEndpoint;
+					info.sourceEndpoint = info.targetEndpoint;
+					info.targetEndpoint = tempEndpoint;
+				}
+
 				const sourceInfo = info.sourceEndpoint.parameters;
 				const targetInfo = info.targetEndpoint.parameters;
 
@@ -2304,8 +2309,14 @@ export default defineComponent({
 						);
 					}, 0);
 
-					if (sourceInfo.type !== 'main') {
+					const arrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
+					if (sourceInfo.type === 'main') {
+						// For some reason the arrow is visible by default, so hide it
+						arrow?.setVisible(false);
+					} else {
+						// Not "main" connections get a different connection style
 						info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DATA);
+						arrow?.setVisible(true);
 					}
 				}
 			} catch (e) {
@@ -2430,6 +2441,13 @@ export default defineComponent({
 		},
 		async onConnectionDetached(info: ConnectionDetachedParams) {
 			try {
+				if (info.sourceEndpoint.parameters.connection === 'target') {
+					// Allow that not "main" connections can also be dragged the other way around
+					const tempEndpoint = info.sourceEndpoint;
+					info.sourceEndpoint = info.targetEndpoint;
+					info.targetEndpoint = tempEndpoint;
+				}
+
 				const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 				NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
 				info.connection.removeOverlays();
@@ -4275,6 +4293,10 @@ export default defineComponent({
 
 		&.delete {
 			left: 4px;
+		}
+
+		&.delete-single {
+			left: -12px;
 		}
 
 		svg {

@@ -127,9 +127,10 @@ export const nodeBase = defineComponent({
 						inputName,
 					),
 					scope,
-					source: false,
+					source: inputName !== 'main',
 					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
+						connection: 'target',
 						nodeId: this.nodeId,
 						type: inputName,
 						index: i,
@@ -181,8 +182,6 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			// TODO: Does not save connections perfectly. If there are two types
-			//      they do not both start with index 0 in the workflow JSON
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
 
@@ -223,9 +222,10 @@ export const nodeBase = defineComponent({
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					scope,
 					source: true,
-					target: false,
+					target: outputName !== 'main',
 					enabled: !this.isReadOnly,
 					parameters: {
+						connection: 'source',
 						nodeId: this.nodeId,
 						type: outputName,
 						index: i,
@@ -284,6 +284,7 @@ export const nodeBase = defineComponent({
 							outlineStroke: 'none',
 						},
 						parameters: {
+							connection: 'source',
 							nodeId: this.nodeId,
 							type: outputName,
 							index: i,
