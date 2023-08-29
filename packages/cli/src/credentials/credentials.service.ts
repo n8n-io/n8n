@@ -65,8 +65,6 @@ export class CredentialsService {
 		return findManyOptions;
 	}
 
-	// @TODO: Tests
-
 	private static addOwnedByAndSharedWith(credentials: CredentialsEntity[]) {
 		return credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c));
 	}
