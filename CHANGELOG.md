@@ -1,3 +1,13 @@
+## [1.4.1](https://github.com/n8n-io/n8n/compare/n8n@1.4.0...n8n@1.4.1) (2023-08-29)
+
+
+### Bug Fixes
+
+* **editor:** Fix sending of Ask AI tracking events ([#7002](https://github.com/n8n-io/n8n/issues/7002)) ([bf4f545](https://github.com/n8n-io/n8n/commit/bf4f545b1c90082220fa9f0d1e463b48f5d735d2))
+* **Webhook Node:** Fix URL params for webhooks ([#6986](https://github.com/n8n-io/n8n/issues/6986)) ([60f70f1](https://github.com/n8n-io/n8n/commit/60f70f1ddadc623b959d249c0d47b7555eb6caf3))
+
+
+
 # [1.4.0](https://github.com/n8n-io/n8n/compare/n8n@1.3.0...n8n@1.4.0) (2023-08-23)
 
 
