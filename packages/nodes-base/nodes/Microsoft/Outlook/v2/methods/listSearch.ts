@@ -84,11 +84,6 @@ export async function searchDrafts(
 			$filter: 'isDraft eq true',
 		};
 
-		// if (filter) {
-		// 	const filterValue = encodeURI(filter);
-		// 	qs.$search = `"${filterValue}"`;
-		// }
-
 		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
 	}
 
@@ -232,6 +227,57 @@ export async function searchFolders(
 		results: folders.map((entry: IDataObject) => {
 			return {
 				name: entry.displayName as string,
+				value: entry.id as string,
+			};
+		}),
+		paginationToken: response['@odata.nextLink'],
+	};
+}
+
+export async function searchAttachments(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	let response: IDataObject = {};
+
+	const messageId = this.getNodeParameter('messageId', undefined, {
+		extractValue: true,
+	}) as string;
+
+	if (paginationToken) {
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			'',
+			undefined,
+			undefined,
+			paginationToken, // paginationToken contains the full URL
+		);
+	} else {
+		const qs: IDataObject = {
+			// $select: 'id,subject,bodyPreview',
+			$top: 100,
+		};
+
+		if (filter) {
+			const filterValue = encodeURI(filter);
+			qs.$filter = `startsWith(name, '${filterValue}')`;
+		}
+
+		response = await microsoftApiRequest.call(
+			this,
+			'GET',
+			`/messages/${messageId}/attachments`,
+			undefined,
+			qs,
+		);
+	}
+
+	return {
+		results: (response.value as IDataObject[]).map((entry: IDataObject) => {
+			return {
+				name: entry.name as string,
 				value: entry.id as string,
 			};
 		}),

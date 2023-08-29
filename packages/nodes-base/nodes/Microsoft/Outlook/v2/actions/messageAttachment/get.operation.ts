@@ -5,20 +5,18 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { attachmentRLC, messageRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	messageRLC,
+	attachmentRLC,
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['get'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Fields',
@@ -55,14 +53,29 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['messageAttachment'],
+		operation: ['get'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const qs: IDataObject = {};
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
-	const attachmentId = this.getNodeParameter('attachmentId', index) as string;
+	const messageId = this.getNodeParameter('messageId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const attachmentId = this.getNodeParameter('attachmentId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const options = this.getNodeParameter('options', index);
 
 	// Have sane defaults so we don't fetch attachment data in this operation

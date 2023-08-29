@@ -5,38 +5,18 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { messageRLC, returnAllOrLimit } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	messageRLC,
+	...returnAllOrLimit,
 	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 500,
-		},
-		default: 100,
-		description: 'Max number of results to return',
+		displayName: 'Filter Query',
+		name: 'filter',
+		type: 'string',
+		default: '',
+		hint: 'Search query to filter attachments. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -44,12 +24,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
 				displayName: 'Fields',
@@ -82,16 +56,18 @@ export const description: INodeProperties[] = [
 					},
 				],
 			},
-			{
-				displayName: 'Filter Query',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				hint: 'Search query to filter attachments. <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">More info</a>.',
-			},
 		],
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['messageAttachment'],
+		operation: ['getAll'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
@@ -100,9 +76,13 @@ export async function execute(
 	let responseData;
 	const qs = {} as IDataObject;
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
+	const messageId = this.getNodeParameter('messageId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const options = this.getNodeParameter('options', index);
+	const filter = this.getNodeParameter('filter', index) as string;
 
 	// Have sane defaults so we don't fetch attachment data in this operation
 	qs.$select = 'id,lastModifiedDateTime,name,contentType,size,isInline';
@@ -111,8 +91,8 @@ export async function execute(
 		qs.$select = (options.fields as string[]).map((field) => field.trim()).join(',');
 	}
 
-	if (options.filter) {
-		qs.$filter = options.filter;
+	if (filter) {
+		qs.$filter = filter;
 	}
 
 	const endpoint = `/messages/${messageId}/attachments`;

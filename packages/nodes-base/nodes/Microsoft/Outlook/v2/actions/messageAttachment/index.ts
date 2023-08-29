@@ -45,38 +45,6 @@ export const description: INodeProperties[] = [
 		],
 		default: 'add',
 	},
-	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['add', 'download', 'get', 'getAll'],
-			},
-		},
-	},
-	{
-		displayName: 'Attachment Name or ID',
-		name: 'attachmentId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getMessageAttachments',
-			loadOptionsDependsOn: ['messageId'],
-		},
-		default: '',
-		description:
-			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['get', 'download'],
-			},
-		},
-	},
-
 	...add.description,
 	...download.description,
 	...get.description,

@@ -1,7 +1,11 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { attachmentRLC, messageRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	messageRLC,
+	attachmentRLC,
 	{
 		displayName: 'Put Output in Field',
 		name: 'binaryPropertyName',
@@ -9,22 +13,31 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['download'],
-			},
-		},
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['messageAttachment'],
+		operation: ['download'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const messageId = this.getNodeParameter('messageId', index) as string;
-	const attachmentId = this.getNodeParameter('attachmentId', index) as string;
+	const messageId = this.getNodeParameter('messageId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const attachmentId = this.getNodeParameter('attachmentId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', index);
 
 	// Get attachment details first

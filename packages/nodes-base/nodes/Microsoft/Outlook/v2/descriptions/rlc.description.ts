@@ -158,3 +158,32 @@ export const folderRLC: INodeProperties = {
 		},
 	],
 };
+
+export const attachmentRLC: INodeProperties = {
+	displayName: 'Attachment',
+	name: 'attachmentId',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['messageId.value'],
+	},
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			placeholder: 'Select a attachment...',
+			typeOptions: {
+				searchListMethod: 'searchAttachments',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. AAAkAAAhAAA0BBc5LLLwOOOtNNNkZS05Nz...',
+		},
+	],
+};

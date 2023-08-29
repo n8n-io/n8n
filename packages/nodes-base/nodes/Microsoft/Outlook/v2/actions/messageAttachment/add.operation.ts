@@ -8,8 +8,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { messageRLC } from '../../descriptions';
 
-export const description: INodeProperties[] = [
+export const properties: INodeProperties[] = [
+	messageRLC,
 	{
 		displayName: 'Input Data Field Name',
 		name: 'binaryPropertyName',
@@ -18,12 +21,6 @@ export const description: INodeProperties[] = [
 		required: true,
 		default: 'data',
 		placeholder: 'e.g. data',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['add'],
-			},
-		},
 	},
 	{
 		displayName: 'Options',
@@ -31,12 +28,6 @@ export const description: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['add'],
-			},
-		},
 		options: [
 			{
 				displayName: 'File Name',
@@ -50,6 +41,15 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+const displayOptions = {
+	show: {
+		resource: ['messageAttachment'],
+		operation: ['add'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
@@ -57,7 +57,10 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	let responseData;
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
+	const messageId = this.getNodeParameter('messageId', index, undefined, {
+		extractValue: true,
+	}) as string;
+
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 	const options = this.getNodeParameter('options', index);
 
