@@ -173,6 +173,52 @@ describe('GET /credentials', () => {
 			});
 		});
 	});
+
+	describe('take', () => {
+		test('should return n credentials or less, without skip', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			await testDb.saveCredential(payload(), { user: owner, role });
+			await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('take=2')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+
+			response.body.data.forEach(validateCredential);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('take=1')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(1);
+
+			_response.body.data.forEach(validateCredential);
+		});
+
+		test('should return n credentials or less, with skip', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			await testDb.saveCredential(payload(), { user: owner, role });
+			await testDb.saveCredential(payload(), { user: owner, role });
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('take=1&skip=1')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			response.body.data.forEach(validateCredential);
+		});
+	});
 });
 
 function validateCredential(credential: Credentials.WithOwnedByAndSharedWith) {

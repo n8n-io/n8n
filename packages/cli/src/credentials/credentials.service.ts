@@ -60,6 +60,8 @@ export class CredentialsService {
 			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
 		}
 
+		if (!findManyOptions.select) findManyOptions.select = defaultSelect;
+
 		return findManyOptions;
 	}
 
