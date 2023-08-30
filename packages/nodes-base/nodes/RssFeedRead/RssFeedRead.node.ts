@@ -45,10 +45,10 @@ export class RssFeedRead implements INodeType {
 				description: 'URL of the RSS feed',
 			},
 			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
-				placeholder: 'Add Field',
+				placeholder: 'Add Option',
 				default: {},
 				options: [
 					{
@@ -66,8 +66,8 @@ export class RssFeedRead implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const url = this.getNodeParameter('url', 0) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', 0);
-			const ignoreSSL = Boolean(additionalFields.ignoreSSL);
+			const options = this.getNodeParameter('options', 0);
+			const ignoreSSL = Boolean(options.ignoreSSL);
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
