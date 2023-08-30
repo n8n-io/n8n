@@ -100,9 +100,11 @@ export class MessageEventBus extends EventEmitter {
 
 		LoggerProxy.debug('Initializing event writer');
 		if (options?.workerId) {
+			// only add 'worker' to log file name since the ID changes on every start and we
+			// would not be able to recover the log files from the previous run not knowing it
+			const logBaseName = config.getEnv('eventBus.logWriter.logBaseName') + '-worker';
 			this.logWriter = await MessageEventBusLogWriter.getInstance({
-				logBaseName:
-					config.getEnv('eventBus.logWriter.logBaseName') + '-worker-' + options.workerId,
+				logBaseName,
 			});
 		} else {
 			this.logWriter = await MessageEventBusLogWriter.getInstance();
