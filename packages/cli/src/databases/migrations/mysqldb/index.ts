@@ -45,6 +45,7 @@ import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwn
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -93,4 +94,5 @@ export const mysqlMigrations: Migration[] = [
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
 	AddMfaColumns1690000000030,
+	CreateWorkflowHistoryTable1692967111175,
 ];

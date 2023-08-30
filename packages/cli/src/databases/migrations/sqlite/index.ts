@@ -42,6 +42,7 @@ import { FixMissingIndicesFromStringIdMigration1690000000020 } from './169000000
 import { RemoveResetPasswordColumns1690000000030 } from './1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './1690000000040-AddMfaColumns';
+import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -87,6 +88,7 @@ const sqliteMigrations: Migration[] = [
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
 	AddMfaColumns1690000000030,
+	CreateWorkflowHistoryTable1692967111175,
 ];
 
 export { sqliteMigrations };
