@@ -1,8 +1,8 @@
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
-import { DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import type { EndpointType, INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
+import { AI_NODE_CREATOR_VIEW, DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -13,6 +13,10 @@ import {
 	sortNodeCreateElements,
 	searchNodes,
 } from '../utils';
+import { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores';
+import { useI18n } from '@/composables';
+import { BaseTextKey } from '@/plugins/i18n';
 
 interface ViewStack {
 	uuid?: string;
@@ -30,6 +34,7 @@ interface ViewStack {
 	activeIndex?: number;
 	transitionDirection?: 'in' | 'out';
 	hasSearch?: boolean;
+	preventBack?: boolean;
 	items?: INodeCreateElement[];
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
@@ -96,13 +101,27 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 	});
 
+	async function gotoCompatibleConnectionView(connectionType: EndpointType) {
+		const nodesByOutputType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
+		const i18n = useI18n();
+
+		await nextTick();
+		pushViewStack({
+			title: i18n.baseText(`nodeCreator.connectionNames.${connectionType}` as BaseTextKey),
+			rootView: AI_NODE_CREATOR_VIEW,
+			mode: "nodes",
+			items: nodeCreatorStore.allNodeCreatorNodes,
+			baseFilter: (i) => nodesByOutputType[connectionType].includes(i.key),
+			preventBack: true,
+		});
+	}
+
 	function setStackBaselineItems() {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
 		if (!stack || !activeViewStack.value.uuid) return;
 
-		const subcategorizedItems = subcategorizeItems(nodeCreatorStore.mergedNodes);
 		let stackItems =
-			stack?.items ?? subcategorizedItems[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
+			stack?.items ?? subcategorizeItems(nodeCreatorStore.mergedNodes)[stack?.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
 
 		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
 		// regardless of whether the subcategory is matched
@@ -183,6 +202,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		activeViewStack,
 		activeViewStackMode,
 		globalSearchItemsDiff,
+		gotoCompatibleConnectionView,
 		resetViewStacks,
 		updateCurrentViewStack,
 		pushViewStack,

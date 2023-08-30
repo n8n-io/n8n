@@ -105,7 +105,7 @@ function onBackButton() {
 				data-test-id="nodes-list-header"
 			>
 				<div :class="$style.top">
-					<button :class="$style.backButton" @click="onBackButton" v-if="viewStacks.length > 1">
+					<button :class="$style.backButton" @click="onBackButton" v-if="viewStacks.length > 1 && !activeViewStack.preventBack">
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
 					</button>
 					<n8n-node-icon

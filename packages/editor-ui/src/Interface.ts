@@ -1,4 +1,4 @@
-import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { AI_NODE_CREATOR_VIEW, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -111,6 +111,7 @@ export type EndpointStyle = {
 };
 
 export const enum EndpointType {
+	Agent = 'agent',
 	Chain = 'chain',
 	Main = 'main',
 	Tool = 'tool',
@@ -1105,6 +1106,7 @@ export interface UIState {
 	stateIsDirty: boolean;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
+	lastSelectedNodeEndpointUuid: string | null;
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -1134,7 +1136,7 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW;
+export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW | typeof AI_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''
