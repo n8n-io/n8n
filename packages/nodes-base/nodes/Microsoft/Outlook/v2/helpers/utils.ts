@@ -1,4 +1,11 @@
-import { type IDataObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	IExecuteSingleFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 export const messageFields = [
 	'bccRecipients',
@@ -143,24 +150,27 @@ export function createMessage(fields: IDataObject) {
 		fields.internetMessageHeaders = (fields.internetMessageHeaders as IDataObject).headers;
 	}
 
-	// Handle recipient fields
-	['bccRecipients', 'ccRecipients', 'replyTo', 'sender', 'toRecipients'].forEach((key) => {
-		if (Array.isArray(fields[key])) {
-			fields[key] = (fields[key] as string[]).map((email) => makeRecipient(email));
-		} else if (fields[key] !== undefined) {
-			fields[key] = (fields[key] as string)
-				.split(',')
-				.map((recipient: string) => makeRecipient(recipient));
+	for (const [key, value] of Object.entries(fields)) {
+		if (['bccRecipients', 'ccRecipients', 'replyTo', 'sender', 'toRecipients'].includes(key)) {
+			if (Array.isArray(value)) {
+				message[key] = (value as string[]).map((email) => makeRecipient(email));
+			} else if (typeof value === 'string') {
+				message[key] = value.split(',').map((recipient: string) => makeRecipient(recipient.trim()));
+			} else {
+				throw new Error(`The "${key}" field must be a string or an array of strings`);
+			}
+			continue;
 		}
-	});
 
-	['from', 'sender'].forEach((key) => {
-		if (fields[key] !== undefined) {
-			fields[key] = makeRecipient(fields[key] as string);
+		if (['from', 'sender'].includes(key)) {
+			if (value) {
+				message[key] = makeRecipient(value as string);
+			}
+			continue;
 		}
-	});
 
-	Object.assign(message, fields);
+		message[key] = value;
+	}
 
 	return message;
 }
@@ -263,4 +273,22 @@ export function prepareFilterString(filters: IDataObject) {
 	}
 
 	return filterString.length ? filterString.join(' and ') : undefined;
+}
+
+export function prepareApiError(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	error: IDataObject,
+	itemIndex = 0,
+) {
+	const [httpCode, err, message] = (error.description as string).split(' - ');
+	const json = jsonParse(err);
+	return new NodeApiError(this.getNode(), json as JsonObject, {
+		itemIndex,
+		httpCode,
+		//In UI we are replacing some of the field names to make them more user friendly, updating error message to reflect that
+		message: message
+			.replace(/toRecipients/g, 'toRecipients (To)')
+			.replace(/bodyContent/g, 'bodyContent (Message)')
+			.replace(/bodyContentType/g, 'bodyContentType (Message Type)'),
+	});
 }

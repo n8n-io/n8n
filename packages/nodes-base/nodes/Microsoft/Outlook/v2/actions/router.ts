@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { MicrosoftOutlook } from './node.type';
 import * as calendar from './calendar';
@@ -69,6 +69,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				);
 				returnData.push(...executionErrorData);
 				continue;
+			}
+			//NodeApiError would be missing the itemIndex, add it
+			if (error instanceof NodeApiError && error?.context?.itemIndex === undefined) {
+				if (error.context === undefined) {
+					error.context = {};
+				}
+				error.context.itemIndex = i;
 			}
 			throw error;
 		}

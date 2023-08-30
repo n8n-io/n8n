@@ -1,14 +1,13 @@
 import type { OptionsWithUri } from 'request';
 
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	JsonObject,
+import {
+	type IDataObject,
+	type IExecuteFunctions,
+	type IExecuteSingleFunctions,
+	type ILoadOptionsFunctions,
+	type INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { prepareApiError } from '../helpers/utils';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -54,18 +53,24 @@ export async function microsoftApiRequest(
 			options,
 		);
 	} catch (error) {
-		let message = (error.message as string) || '';
 		if (
-			message.toLowerCase().includes('bad request') ||
-			message.toLowerCase().includes('unknown error')
+			((error.message || '').toLowerCase().includes('bad request') ||
+				(error.message || '').toLowerCase().includes('unknown error')) &&
+			error.description
 		) {
-			message = error.description;
+			let updatedError;
+			// Try to return the error prettier, otherwise return the original one repalcing the message with the description
+			try {
+				updatedError = prepareApiError.call(this, error);
+			} catch (e) {}
+
+			if (updatedError) throw updatedError;
+
+			error.message = error.description;
+			error.description = '';
 		}
 
-		throw new NodeApiError(this.getNode(), error as JsonObject, {
-			message,
-			...(error as JsonObject),
-		});
+		throw error;
 	}
 }
 
