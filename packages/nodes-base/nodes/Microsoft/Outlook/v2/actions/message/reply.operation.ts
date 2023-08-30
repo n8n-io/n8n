@@ -38,14 +38,6 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Send',
-		name: 'send',
-		description:
-			'Whether to send the reply message directly. If not set, it will be saved as draft.',
-		type: 'boolean',
-		default: true,
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -215,6 +207,23 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Save as Draft',
+				name: 'saveAsDraft',
+				description:
+					'Whether to save the message as a draft. If false, the message is sent immediately.',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
 ];
 
 const displayOptions = {
@@ -236,7 +245,7 @@ export async function execute(
 	}) as string;
 	const replyType = this.getNodeParameter('replyType', index) as string;
 	const comment = this.getNodeParameter('comment', index) as string;
-	const send = this.getNodeParameter('send', index, false) as boolean;
+	const saveAsDraft = this.getNodeParameter('options.saveAsDraft', index, false) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index, {});
 
 	const body: IDataObject = {};
@@ -302,7 +311,7 @@ export async function execute(
 		}
 	}
 
-	if (send) {
+	if (!saveAsDraft) {
 		await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`);
 	}
 

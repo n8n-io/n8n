@@ -7,7 +7,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { createMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
-import { messageRLC } from '../../descriptions';
+import { folderRLC, messageRLC } from '../../descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
@@ -76,18 +76,7 @@ export const properties: INodeProperties[] = [
 					},
 				],
 			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-				displayName: 'Folder',
-				name: 'folder',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getFolders',
-				},
-				default: [],
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-			},
+			{ ...folderRLC, required: false },
 			{
 				displayName: 'Importance',
 				name: 'importance',
@@ -195,10 +184,13 @@ export async function execute(
 	}) as string;
 
 	const updateFields = this.getNodeParameter('updateFields', index);
+	const folderId = this.getNodeParameter('updateFields.folderId', index, '', {
+		extractValue: true,
+	}) as string;
 
-	if (updateFields.folder) {
+	if (folderId) {
 		const body: IDataObject = {
-			destinationId: updateFields.folder,
+			destinationId: folderId,
 		};
 
 		responseData = await microsoftApiRequest.call(
@@ -208,7 +200,16 @@ export async function execute(
 			body,
 		);
 
-		delete updateFields.folder;
+		delete updateFields.folderId;
+
+		if (!Object.keys(updateFields).length) {
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData as IDataObject),
+				{ itemData: { item: index } },
+			);
+
+			return executionData;
+		}
 	}
 
 	const body: IDataObject = createMessage(updateFields);
