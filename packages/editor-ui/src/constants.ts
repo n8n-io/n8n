@@ -211,6 +211,7 @@ export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
 export const AI_CATEGORY_EMBEDDING = 'Embedding';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_CONNECTION_TYPES = ['languageModel', 'vectorRetriever', 'vectorStore', 'embedding', 'document', 'textSplitter', 'tool', 'chain', 'agent', 'memory'];
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 

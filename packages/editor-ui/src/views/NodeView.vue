@@ -220,6 +220,7 @@ import {
 	NODE_TRIGGER_CHAT_BUTTON,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
+	AI_CONNECTION_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -332,6 +333,7 @@ import {
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { CONNECTOR_PAINT_STYLE_DATA, OVERLAY_REVERSE_ARROW_ID } from '@/utils/nodeViewUtils';
+import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -662,6 +664,7 @@ export default defineComponent({
 			// This should prevent automatically removed connections from populating undo stack
 			suspendRecordingDetachedConnections: false,
 			NODE_CREATOR_OPEN_SOURCES,
+			eventsAttached: false,
 		};
 	},
 	methods: {
@@ -1771,6 +1774,7 @@ export default defineComponent({
 				this.nodeSelected(node);
 				this.uiStore.lastSelectedNode = node.name;
 				this.uiStore.lastSelectedNodeOutputIndex = null;
+				this.uiStore.lastSelectedNodeEndpointUuid = null;
 				this.canvasStore.lastSelectedConnection = null;
 				this.canvasStore.newNodeInsertPosition = null;
 
@@ -2105,6 +2109,8 @@ export default defineComponent({
 			const lastSelectedConnection = this.canvasStore.lastSelectedConnection;
 			const lastSelectedNode = this.lastSelectedNode;
 			const lastSelectedNodeOutputIndex = this.uiStore.lastSelectedNodeOutputIndex;
+			const lastSelectedNodeEndpointUuid = this.uiStore.lastSelectedNodeEndpointUuid;
+			console.log("🚀 ~ file: NodeView.vue:2112 ~ lastSelectedNodeEndpointUuid:", lastSelectedNodeEndpointUuid)
 
 			this.historyStore.startRecordingUndo();
 
@@ -2120,6 +2126,8 @@ export default defineComponent({
 			}
 
 			const outputIndex = lastSelectedNodeOutputIndex || 0;
+			const targetEndpoint = lastSelectedNodeEndpointUuid || '';
+			console.log("🚀 ~ file: NodeView.vue:2130 ~ targetEndpoint:", targetEndpoint)
 
 			// If a node is last selected then connect between the active and its child ones
 			if (lastSelectedNode) {
@@ -2130,11 +2138,13 @@ export default defineComponent({
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, 'main');
+					const connectionType = lastSelectedConnection.scope || 'main';
+					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, connectionType);
 				}
 
 				// Connect active node to the newly created one
-				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, 'main');
+				const connectionType = lastSelectedConnection?.scope || 'main';
+				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, connectionType);
 			}
 			this.historyStore.stopRecordingUndo();
 		},
@@ -2144,7 +2154,9 @@ export default defineComponent({
 			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
 			nodeCreatorView?: string;
+			outputType?: ConnectionTypes;
 		}) {
+			const type = info.outputType || 'main';
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
 			// to it.
@@ -2154,6 +2166,7 @@ export default defineComponent({
 			}
 
 			this.uiStore.lastSelectedNode = sourceNode.name;
+			this.uiStore.lastSelectedNodeEndpointUuid = info.connection?.target.jtk.endpoint.uuid;
 			this.uiStore.lastSelectedNodeOutputIndex = info.index;
 			this.canvasStore.newNodeInsertPosition = null;
 
@@ -2166,8 +2179,20 @@ export default defineComponent({
 				createNodeActive: true,
 				nodeCreatorView: info.nodeCreatorView,
 			});
+
+			// TODO: The animation is a bit glitchy because we're updating view stack immediately
+			// after the node creator is opened
+			const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
+			const isAiConnection = AI_CONNECTION_TYPES.includes(type);
+			if (isAiConnection && !isOutput) {
+				this.nodeCreatorStore.setSelectedView(AI_NODE_CREATOR_VIEW)
+				useViewStacks().gotoCompatibleConnectionView(type);
+			}
+
 		},
 		onEventConnectionAbort(connection: Connection) {
+			console.log('Event Connection Aborted', connection)
+
 			try {
 				if (this.dropPrevented) {
 					this.dropPrevented = false;
@@ -2193,13 +2218,19 @@ export default defineComponent({
 					return;
 				}
 
-				if (connection.parameters.type === 'main') {
-					this.insertNodeAfterSelected({
-						sourceId: connection.parameters.nodeId,
-						index: connection.parameters.index,
-						eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
-					});
-				}
+			const isOutput = connection.endpoints[0].parameters.connection === 'source';
+
+			// Non main output connections shouldn't open node creator as they couldn't map 1:1
+			if (connection.parameters.type !== 'main' && isOutput) return;
+
+			this.insertNodeAfterSelected({
+				sourceId: connection.parameters.nodeId,
+				index: connection.parameters.index,
+				eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_DROP,
+				connection,
+				outputType: connection.parameters.type,
+			});
+
 			} catch (e) {
 				console.error(e);
 			}
@@ -2560,11 +2591,13 @@ export default defineComponent({
 				.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 		},
 		onPlusEndpointClick(endpoint: Endpoint) {
+			console.log("🚀 ~ file: NodeView.vue:2583 ~ onPlusEndpointClick ~ endpoint:", endpoint)
 			if (endpoint && endpoint.__meta) {
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
+					outputType: endpoint.scope as ConnectionTypes,
 				});
 			}
 		},
@@ -2575,10 +2608,13 @@ export default defineComponent({
 					index: endpoint.__meta.index,
 					eventSource: NODE_CREATOR_OPEN_SOURCES.ADD_INPUT_ENDPOINT,
 					nodeCreatorView: AI_NODE_CREATOR_VIEW,
+					outputType: endpoint.scope as ConnectionTypes,
 				});
 			}
 		},
 		bindCanvasEvents() {
+			if(this.eventsAttached)	return;
+			console.log('Bind events?')
 			this.instance.bind(EVENT_CONNECTION_ABORT, this.onEventConnectionAbort);
 
 			this.instance.bind(INTERCEPT_BEFORE_DROP, this.onInterceptBeforeDrop);
@@ -2600,6 +2636,8 @@ export default defineComponent({
 			);
 			this.instance.bind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.bind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+
+			this.eventsAttached = true;
 		},
 		unbindCanvasEvents() {
 			this.instance.unbind(EVENT_CONNECTION_ABORT, this.onEventConnectionAbort);
@@ -2635,6 +2673,8 @@ export default defineComponent({
 					}
 				}
 			}
+
+			this.eventsAttached = false;
 		},
 		onBeforeUnload(e) {
 			if (this.isDemo || window.preventNodeViewBeforeUnload) {
@@ -2738,6 +2778,7 @@ export default defineComponent({
 			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(nodeName: string, index: number): string | null {
+			console.log('Debug: getOutputEndpointUUID', nodeName, index);
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return null;
@@ -2746,6 +2787,7 @@ export default defineComponent({
 			return NodeViewUtils.getOutputEndpointUUID(node.id, index);
 		},
 		getInputEndpointUUID(nodeName: string, index: number) {
+			console.log('Debug: getInputEndpointUUID', nodeName, index);
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return null;
@@ -2756,7 +2798,9 @@ export default defineComponent({
 		__addConnection(connection: [IConnection, IConnection]) {
 			const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
 			const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+			console.log('Debug: outputUuid:', outputUuid, 'inputUuid:', inputUuid);
 			if (!outputUuid || !inputUuid) {
+				console.log('Debug: outputUuid or inputUuid is null');
 				return;
 			}
 
@@ -2766,9 +2810,11 @@ export default defineComponent({
 				uuids: uuid,
 				detachable: !this.isReadOnlyRoute && !this.readOnlyEnv,
 			});
+			console.log('Debug: Connection created with uuids:', uuid);
 
 			setTimeout(() => {
 				this.addPinDataConnections(this.workflowsStore.pinData);
+				console.log('Debug: Pin data connections added');
 			});
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
@@ -4005,6 +4051,13 @@ export default defineComponent({
 		}
 	},
 	async mounted() {
+		const nodeCreatorViewStack = useViewStacks();
+		// Debug
+		window.__viewStacksPush = async () => {
+			this.onToggleNodeCreator({ createNodeActive: true });
+			nodeCreatorViewStack.gotoCompatibleConnectionView('languageModel');
+		}
+
 		this.resetWorkspace();
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
 		this.titleReset();
@@ -4037,6 +4090,7 @@ export default defineComponent({
 			try {
 				try {
 					this.bindCanvasEvents();
+					window.__instance = this.instance;
 				} catch {} // This will break if mounted after jsplumb has been initiated from executions preview, so continue if it breaks
 				await this.initView();
 				if (window.parent) {
