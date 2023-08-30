@@ -1,7 +1,7 @@
 import { computed, nextTick, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
+import type { EndpointType, INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { AI_NODE_CREATOR_VIEW, DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
@@ -32,7 +32,7 @@ interface ViewStack {
 	iconUrl?: string;
 	rootView?: NodeFilterType;
 	activeIndex?: number;
-	transitionDirection?: 'in' | 'out' | 'off';
+	transitionDirection?: 'in' | 'out';
 	hasSearch?: boolean;
 	items?: INodeCreateElement[];
 	baselineItems?: INodeCreateElement[];
@@ -100,22 +100,17 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 	});
 
-	async function gotoCompatibleConnectionView(connectionType: ConnectionTypes) {
+	async function gotoCompatibleConnectionView(connectionType: EndpointType) {
 		const nodesByOutputType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
 		const i18n = useI18n();
-		console.log('By output type: ', nodesByOutputType)
-		// this.onToggleNodeCreator({ createNodeActive: true });
-		nodeCreatorStore.setSelectedView(AI_NODE_CREATOR_VIEW);
+
 		await nextTick();
 		pushViewStack({
 			title: i18n.baseText(`nodeCreator.connectionNames.${connectionType}` as BaseTextKey),
-			rootView: "AI",
+			rootView: AI_NODE_CREATOR_VIEW,
 			mode: "nodes",
-			transitionDirection: 'off',
 			items: nodeCreatorStore.allNodeCreatorNodes,
-			baseFilter: (i) => {
-				return nodesByOutputType[connectionType].includes(i.key);
-			},
+			baseFilter: (i) => nodesByOutputType[connectionType].includes(i.key),
 		});
 	}
 

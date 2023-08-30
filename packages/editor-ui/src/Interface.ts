@@ -111,6 +111,7 @@ export type EndpointStyle = {
 };
 
 export const enum EndpointType {
+	Agent = 'agent',
 	Chain = 'chain',
 	Main = 'main',
 	Tool = 'tool',

@@ -113,21 +113,6 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return acc;
 			}, []);
 		},
-		visibleNodeTypesByOutputConnectionType(): {[key:string]: INodeTypeDescription[]} {
-			const nodesByOutputType = this.visibleNodeTypes.reduce((acc, node) => {
-				const outputTypes = node.outputs;
-				outputTypes.forEach((outputType: ConnectionTypes) => {
-					if (!acc[outputType]) {
-						acc[outputType] = [];
-					}
-					acc[outputType].push(node);
-				});
-
-				return acc;
-			}, {} as { [key:string]: INodeTypeDescription[]});
-
-			return nodesByOutputType;
-		},
 		visibleNodeTypesByOutputConnectionTypeNames(): {[key:string]: string[]} {
 			const nodesByOutputType = this.visibleNodeTypes.reduce((acc, node) => {
 				const outputTypes = node.outputs;
