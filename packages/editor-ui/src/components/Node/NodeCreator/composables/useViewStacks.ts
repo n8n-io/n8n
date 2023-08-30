@@ -34,6 +34,7 @@ interface ViewStack {
 	activeIndex?: number;
 	transitionDirection?: 'in' | 'out';
 	hasSearch?: boolean;
+	preventBack?: boolean;
 	items?: INodeCreateElement[];
 	baselineItems?: INodeCreateElement[];
 	searchItems?: SimplifiedNodeType[];
@@ -111,6 +112,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			mode: "nodes",
 			items: nodeCreatorStore.allNodeCreatorNodes,
 			baseFilter: (i) => nodesByOutputType[connectionType].includes(i.key),
+			preventBack: true,
 		});
 	}
 
