@@ -79,7 +79,7 @@ export async function searchDrafts(
 		);
 	} else {
 		const qs: IDataObject = {
-			$select: 'id,subject,bodyPreview',
+			$select: 'id,subject,bodyPreview,webLink',
 			$top: 100,
 			$filter: 'isDraft eq true',
 		};
@@ -92,6 +92,7 @@ export async function searchDrafts(
 			return {
 				name: (entry.subject || entry.bodyPreview) as string,
 				value: entry.id as string,
+				url: entry.webLink as string,
 			};
 		}),
 		paginationToken: response['@odata.nextLink'],
@@ -116,7 +117,7 @@ export async function searchMessages(
 		);
 	} else {
 		const qs: IDataObject = {
-			$select: 'id,subject,bodyPreview',
+			$select: 'id,subject,bodyPreview,webLink',
 			$top: 100,
 		};
 
@@ -133,6 +134,7 @@ export async function searchMessages(
 			return {
 				name: (entry.subject || entry.bodyPreview) as string,
 				value: entry.id as string,
+				url: entry.webLink as string,
 			};
 		}),
 		paginationToken: response['@odata.nextLink'],
