@@ -319,6 +319,7 @@
       "dist/credentials/StoryblokContentApi.credentials.js",
       "dist/credentials/StoryblokManagementApi.credentials.js",
       "dist/credentials/StrapiApi.credentials.js",
+      "dist/credentials/StrapiTokenApi.credentials.js",
       "dist/credentials/StravaOAuth2Api.credentials.js",
       "dist/credentials/StripeApi.credentials.js",
       "dist/credentials/SupabaseApi.credentials.js",
