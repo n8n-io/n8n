@@ -1,4 +1,9 @@
-import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class StrapiTokenApi implements ICredentialType {
 	name = 'strapiTokenApi';
@@ -50,5 +55,23 @@ export class StrapiTokenApi implements ICredentialType {
 				Authorization: '=Bearer {{$credentials.apiToken}}',
 			},
 		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.url}}',
+			url: '={{$credentials.apiVersion === "v3" ? "/users/count" : "/api/users/count"}}',
+			ignoreHttpStatusErrors: true,
+		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'error.name',
+					value: 'UnauthorizedError',
+					message: 'Invalid API token',
+				},
+			},
+		],
 	};
 }
