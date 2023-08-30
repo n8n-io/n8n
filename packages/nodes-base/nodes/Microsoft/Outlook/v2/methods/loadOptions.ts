@@ -50,21 +50,6 @@ export async function getFolders(this: ILoadOptionsFunctions): Promise<INodeProp
 	return returnData;
 }
 
-export async function getFoldersWithFilepath(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const response = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/mailFolders', {});
-	const folders = await getSubfolders.call(this, response, true);
-	for (const folder of folders) {
-		returnData.push({
-			name: folder.displayName as string,
-			value: folder.id as string,
-		});
-	}
-	return returnData;
-}
-
 export async function getCalendarGroups(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -80,68 +65,6 @@ export async function getCalendarGroups(
 		returnData.push({
 			name: calendar.name as string,
 			value: calendar.id as string,
-		});
-	}
-	return returnData;
-}
-
-export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const calendars = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/calendars');
-	for (const calendar of calendars) {
-		returnData.push({
-			name: calendar.name as string,
-			value: calendar.id as string,
-		});
-	}
-	return returnData;
-}
-
-export async function getMessageAttachments(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const messageId = this.getNodeParameter('messageId', '') as string;
-
-	if (messageId === '') {
-		return [];
-	}
-
-	const attachments = await microsoftApiRequestAllItems.call(
-		this,
-		'value',
-		'GET',
-		`/messages/${messageId}/attachments`,
-	);
-	for (const attachment of attachments) {
-		returnData.push({
-			name: attachment.name as string,
-			value: attachment.id as string,
-			description: attachment.contentType as string,
-		});
-	}
-	return returnData;
-}
-
-export async function getDrafts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const qs = {
-		$select: 'id,conversationId,subject,bodyPreview',
-		$filter: 'isDraft eq true',
-	};
-	const drafts = await microsoftApiRequestAllItems.call(
-		this,
-		'value',
-		'GET',
-		'/messages',
-		undefined,
-		qs,
-	);
-	for (const draft of drafts) {
-		returnData.push({
-			name: (draft.subject as string) || 'No Subject',
-			value: draft.id as string,
-			description: draft.bodyPreview as string,
 		});
 	}
 	return returnData;

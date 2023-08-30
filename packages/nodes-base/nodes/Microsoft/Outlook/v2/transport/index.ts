@@ -106,38 +106,6 @@ export async function microsoftApiRequestAllItems(
 	return returnData;
 }
 
-export async function microsoftApiRequestAllItemsSkip(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
-	method: string,
-	endpoint: string,
-	body: IDataObject = {},
-	query: IDataObject = {},
-	headers: IDataObject = {},
-) {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.$top = 100;
-	query.$skip = 0;
-
-	do {
-		responseData = await microsoftApiRequest.call(
-			this,
-			method,
-			endpoint,
-			body,
-			query,
-			undefined,
-			headers,
-		);
-		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-	} while (responseData.value.length !== 0);
-
-	return returnData;
-}
-
 export async function downloadAttachments(
 	this: IExecuteFunctions,
 	messages: IDataObject[] | IDataObject,
