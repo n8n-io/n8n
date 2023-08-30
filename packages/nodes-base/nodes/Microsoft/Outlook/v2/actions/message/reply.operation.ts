@@ -14,28 +14,21 @@ import { updateDisplayOptions } from '@utils/utilities';
 export const properties: INodeProperties[] = [
 	messageRLC,
 	{
-		displayName: 'Reply Type',
-		name: 'replyType',
-		type: 'options',
-		options: [
-			{
-				name: 'Reply',
-				value: 'reply',
-			},
-			{
-				name: 'Reply All',
-				value: 'replyAll',
-			},
-		],
-		default: 'reply',
-		required: true,
+		displayName: 'Reply to Sender Only',
+		name: 'replyToSenderOnly',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to reply to the sender only or to the entire list of recipients',
 	},
 	{
-		displayName: 'Comment',
-		name: 'comment',
-		description:
-			'The text of the reply. When replying to all, only the comment can be used. For a regular reply, either the comment or the message can be used, but not both.',
+		displayName: 'Message',
+		name: 'message',
+		// name: 'bodyContent',
+		description: 'Message body content',
 		type: 'string',
+		typeOptions: {
+			rows: 2,
+		},
 		default: '',
 	},
 	{
@@ -46,7 +39,7 @@ export const properties: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				replyType: ['reply'],
+				replyToSenderOnly: [true],
 			},
 		},
 		options: [
@@ -152,16 +145,6 @@ export const properties: INodeProperties[] = [
 				default: 'Low',
 			},
 			{
-				displayName: 'Message',
-				name: 'bodyContent',
-				description: 'Message body content',
-				type: 'string',
-				typeOptions: {
-					rows: 2,
-				},
-				default: '',
-			},
-			{
 				displayName: 'Message Type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
@@ -244,20 +227,22 @@ export async function execute(
 	const messageId = this.getNodeParameter('messageId', index, undefined, {
 		extractValue: true,
 	}) as string;
-	const replyType = this.getNodeParameter('replyType', index) as string;
-	const comment = this.getNodeParameter('comment', index) as string;
+	const replyToSenderOnly = this.getNodeParameter('replyToSenderOnly', index, false) as string;
+	const message = this.getNodeParameter('message', index) as string;
 	const saveAsDraft = this.getNodeParameter('options.saveAsDraft', index, false) as boolean;
 	const additionalFields = this.getNodeParameter('additionalFields', index, {});
 
 	const body: IDataObject = {};
 
 	let action = 'createReply';
-	if (replyType === 'replyAll') {
-		body.comment = comment;
+
+	if (!replyToSenderOnly) {
+		body.comment = message;
 		action = 'createReplyAll';
 	} else {
-		body.comment = comment;
-		body.message = {};
+		// body.comment = comment;
+		body.message = {} as IDataObject;
+		additionalFields.bodyContent = message;
 		Object.assign(body.message, createMessage(additionalFields));
 
 		delete (body.message as IDataObject).attachments;

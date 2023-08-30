@@ -215,7 +215,7 @@ export function prepareContactFields(fields: IDataObject) {
 		}
 
 		if (typeValuesToExtract.includes(key)) {
-			if ((value as IDataObject).values !== undefined) continue;
+			if ((value as IDataObject).values === undefined) continue;
 			returnData[key] = (value as IDataObject).values;
 			continue;
 		}
