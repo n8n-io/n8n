@@ -2,6 +2,7 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
 import { MotorheadMemory } from 'langchain/memory';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,12 +35,6 @@ export class MemoryMotorhead implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Memory Key',
-				name: 'memoryKey',
-				type: 'string',
-				default: '',
-			},
-			{
 				displayName: 'Session ID',
 				name: 'sessionId',
 				type: 'string',
@@ -54,18 +49,19 @@ export class MemoryMotorhead implements INodeType {
 		const itemIndex = 0;
 
 		// TODO: Should it get executed once per item or not?
-		const memoryKey = this.getNodeParameter('memoryKey', itemIndex) as string;
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 
+		const memory = new MotorheadMemory({
+			sessionId,
+			url: credentials.host as string,
+			clientId: credentials.clientId as string,
+			apiKey: credentials.apiKey as string,
+			memoryKey: 'chat_history',
+			returnMessages: true,
+		});
+
 		return {
-			// TODO: Does not work yet
-			response: new MotorheadMemory({
-				memoryKey,
-				sessionId,
-				url: credentials.host as string,
-				clientId: credentials.clientId as string,
-				apiKey: credentials.apiKey as string,
-			}),
+			response: logWrapper(memory, this),
 		};
 	}
 }

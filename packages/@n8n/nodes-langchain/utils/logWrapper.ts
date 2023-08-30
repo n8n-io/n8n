@@ -157,8 +157,7 @@ export function logWrapper(
 					return response;
 				};
 			} else {
-				// @ts-ignore
-				return target[prop];
+				return (target as any)[prop];
 			}
 		},
 	});
