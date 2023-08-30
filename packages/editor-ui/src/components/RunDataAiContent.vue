@@ -158,6 +158,7 @@ export default defineComponent({
 			type: EndpointType,
 			rawData: boolean,
 		): { type: 'json' | 'text' | 'markdown'; data: string | IDataObject } | undefined {
+			// TODO: All that is super horrible. Has to be rewritten
 			if (rawData) {
 				return {
 					type: 'json',
@@ -179,27 +180,36 @@ export default defineComponent({
 							responses = [responses];
 						}
 
-						const responseText = responses.map((content) => {
-							if (
-								content.type === 'constructor' &&
-								content.id?.includes('schema') &&
-								content.kwargs
-							) {
-								let message = content.kwargs.content;
-								if (Object.keys(content.kwargs.additional_kwargs).length) {
-									message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
-								}
-								if (content.id.includes('HumanMessage')) {
-									message = `**Human:** ${message.trim()}`;
-								} else if (content.id.includes('AIMessage')) {
-									message = `**AI:** ${message.trim()}`;
-								}
-								if (data.action && data.action !== 'getMessages') {
-									message = `## Action: ${data.action}\n\n${message}`;
-								}
-
-								return message;
+						const responseText = responses.map((response) => {
+							let responseData = [response];
+							if (Array.isArray(response.chat_history)) {
+								responseData = response.chat_history;
 							}
+
+							return responseData
+								.map((content) => {
+									if (
+										content.type === 'constructor' &&
+										content.id?.includes('schema') &&
+										content.kwargs
+									) {
+										let message = content.kwargs.content;
+										if (Object.keys(content.kwargs.additional_kwargs).length) {
+											message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
+										}
+										if (content.id.includes('HumanMessage')) {
+											message = `**Human:** ${message.trim()}`;
+										} else if (content.id.includes('AIMessage')) {
+											message = `**AI:** ${message.trim()}`;
+										}
+										if (data.action && data.action !== 'getMessages') {
+											message = `## Action: ${data.action}\n\n${message}`;
+										}
+
+										return message;
+									}
+								})
+								.join('\n\n');
 						});
 
 						return {
