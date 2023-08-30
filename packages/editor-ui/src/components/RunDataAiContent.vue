@@ -45,6 +45,12 @@
 							{{ fullData.metadata.executionTime }} {{ $locale.baseText('runData.ms') }}
 						</div>
 					</n8n-info-tip>
+					<el-switch
+						ref="inputField"
+						class="raw-data-toggle"
+						active-text="RAW JSON"
+						v-model="rawDataToggle[index]"
+					/>
 				</div>
 
 				<div class="full-data" v-for="typeData in fullData.data" v-if="!hideDataToggle[index]">
@@ -56,7 +62,7 @@
 						Completion + {{ tokenData.promptTokens }} Prompt)
 					</div>
 
-					{{ void (contentData = getContent(typeData.json)) }}
+					{{ void (contentData = getContent(typeData.json, fullData.type, rawDataToggle[index])) }}
 					<div v-if="contentData.type === 'text'" class="content-text">
 						{{ contentData.data }}
 					</div>
@@ -81,7 +87,7 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { IAiData, IAiDataContent } from '@/Interface';
+import { EndpointType, IAiData, IAiDataContent } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
@@ -104,6 +110,7 @@ export default defineComponent({
 		return {
 			CONNECTOR_COLOR,
 			hideDataToggle: [] as boolean[],
+			rawDataToggle: [] as boolean[],
 		};
 	},
 	mounted() {
@@ -117,6 +124,7 @@ export default defineComponent({
 			) {
 				this.hideDataToggle[index] = true;
 			}
+			this.rawDataToggle[index] = false;
 		});
 	},
 	computed: {
@@ -147,73 +155,132 @@ export default defineComponent({
 		},
 		getContent(
 			data: IDataObject,
+			type: EndpointType,
+			rawData: boolean,
 		): { type: 'json' | 'text' | 'markdown'; data: string | IDataObject } | undefined {
-			if (data.response) {
-				if (data.response.generations) {
-					return {
-						type: 'json',
-						data: data.response.generations.map((content) => {
-							if (Array.isArray(content)) {
-								return content
-									.map((item) => {
-										if (item.text) {
-											return item.text;
-										}
-										return item;
-									})
-									.join('\n\n')
-									.trim();
-							} else if (content.text) {
-								return content.text;
-							}
-
-							return content;
-						}),
-					};
-				} else if (
-					Array.isArray(data.response) &&
-					data.response.length === 1 &&
-					typeof data.response[0] === 'string'
-				) {
-					return {
-						type: 'text',
-						data: data.response[0],
-					};
-				} else if (Array.isArray(data.response) && data.response.length) {
-					return {
-						type: 'json',
-						data: data.response,
-					};
-				}
-			} else if (data.textSplitter) {
-				return {
-					type: 'text',
-					data: data.textSplitter,
-				};
-			} else if (data.messages) {
-				return {
-					type: 'markdown',
-					data: data.messages
-						.map((content) => {
-							if (content && typeof content === 'string') {
-								return content;
-							} else {
-								return content.kwargs.content;
-							}
-						})
-						.join('\n\n'),
-				};
-			} else if (data.documents) {
+			if (rawData) {
 				return {
 					type: 'json',
-					data: data.documents,
+					data,
 				};
 			}
 
-			return {
-				type: 'json',
-				data,
-			};
+			try {
+				if (type === 'memory') {
+					let responses;
+
+					if (data.response || data.message) {
+						if (data.response) {
+							responses = data.response;
+						} else if (data.message) {
+							responses = data.message;
+						}
+						if (!Array.isArray(responses)) {
+							responses = [responses];
+						}
+
+						const responseText = responses.map((content) => {
+							if (
+								content.type === 'constructor' &&
+								content.id?.includes('schema') &&
+								content.kwargs
+							) {
+								let message = content.kwargs.content;
+								if (Object.keys(content.kwargs.additional_kwargs).length) {
+									message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
+								}
+								if (content.id.includes('HumanMessage')) {
+									message = `**Human:** ${message.trim()}`;
+								} else if (content.id.includes('AIMessage')) {
+									message = `**AI:** ${message.trim()}`;
+								}
+								if (data.action && data.action !== 'getMessages') {
+									message = `## Action: ${data.action}\n\n${message}`;
+								}
+
+								return message;
+							}
+						});
+
+						return {
+							type: 'markdown',
+							data: responseText.join('\n\n'),
+						};
+					}
+				}
+
+				if (data.response) {
+					if (data.response.generations) {
+						return {
+							type: 'json',
+							data: data.response.generations.map((content) => {
+								if (Array.isArray(content)) {
+									return content
+										.map((item) => {
+											if (item.text) {
+												return item.text;
+											}
+											return item;
+										})
+										.join('\n\n')
+										.trim();
+								} else if (content.text) {
+									return content.text;
+								}
+
+								return content;
+							}),
+						};
+					} else if (
+						Array.isArray(data.response) &&
+						data.response.length === 1 &&
+						typeof data.response[0] === 'string'
+					) {
+						return {
+							type: 'text',
+							data: data.response[0],
+						};
+					} else if (Array.isArray(data.response) && data.response.length) {
+						return {
+							type: 'json',
+							data: data.response,
+						};
+					}
+				} else if (data.textSplitter) {
+					return {
+						type: 'text',
+						data: data.textSplitter,
+					};
+				} else if (data.messages) {
+					return {
+						type: 'markdown',
+						data: data.messages
+							.map((content) => {
+								if (content && typeof content === 'string') {
+									return content;
+								} else {
+									return content.kwargs.content;
+								}
+							})
+							.join('\n\n'),
+					};
+				} else if (data.documents) {
+					return {
+						type: 'json',
+						data: data.documents,
+					};
+				}
+
+				return {
+					type: 'json',
+					data,
+				};
+			} catch (e) {
+				return {
+					type: 'json',
+					data,
+				};
+			}
 		},
 	},
 });
@@ -315,6 +382,10 @@ export default defineComponent({
 		padding: 0.25em 0.5em;
 		position: relative;
 		top: -2px;
+	}
+
+	.raw-data-toggle {
+		float: right;
 	}
 }
 </style>
