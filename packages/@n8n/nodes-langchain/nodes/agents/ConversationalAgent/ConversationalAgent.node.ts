@@ -7,10 +7,11 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { Tool } from 'langchain/tools';
-import type { BaseChatMemory } from 'langchain/memory';
+import { BufferMemory } from 'langchain/memory';
 import type { InitializeAgentExecutorOptions } from 'langchain/agents';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import { BaseChatMessageHistory } from 'langchain/schema';
 
 export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,7 +47,7 @@ export class ConversationalAgent implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let memory: BaseChatMemory | undefined;
+		let memory: BufferMemory | undefined;
 
 		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
 		if (languageModelNodes.length === 0) {
@@ -76,7 +77,11 @@ export class ConversationalAgent implements INodeType {
 
 		const memoryNodes = await this.getInputConnectionData('memory', 0);
 		if (memoryNodes.length === 1) {
-			memory = memoryNodes[0].response as BaseChatMemory;
+			memory = new BufferMemory({
+				memoryKey: 'chat_history',
+				returnMessages: true,
+				chatHistory: memoryNodes[0].response as BaseChatMessageHistory,
+			});
 		} else if (languageModelNodes.length > 1) {
 			throw new NodeOperationError(this.getNode(), 'Only one Memory is allowed to be connected!');
 		}

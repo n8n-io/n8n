@@ -1,13 +1,11 @@
 import { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
-import { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
+import { BaseListChatMessageHistory, BaseMessage, ChatResult } from 'langchain/schema';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import { CallbackManagerForLLMRun } from 'langchain/callbacks';
-import { BaseChatMemory } from 'langchain/memory';
 
 import { Embeddings } from 'langchain/embeddings';
-import { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
 import { VectorStore, VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
@@ -19,9 +17,9 @@ import { N8nJsonLoader } from '../nodes/document_loaders/DocumentJSONInputLoader
 export function logWrapper(
 	originalInstance:
 		| Tool
-		| BaseChatMemory
 		| BaseChatModel
 		| BaseLLM
+		| BaseListChatMessageHistory
 		| Embeddings
 		| Document[]
 		| Document
@@ -96,28 +94,23 @@ export function logWrapper(
 					return response;
 				};
 
-				// For BaseChatMemory
-			} else if (prop === 'loadMemoryVariables') {
-				return async (values: InputValues): Promise<MemoryVariables> => {
-					console.log('loadMemoryVariables....1');
-					executeFunctions.addInputData('memory', [
-						[{ json: { action: 'loadMemoryVariables', values } }],
-					]);
+				// For BaseListChatMessageHistory
+			} else if (prop === 'getMessages') {
+				return async (): Promise<BaseMessage[]> => {
+					executeFunctions.addInputData('memory', [[{ json: { action: 'getMessages' } }]]);
 					// @ts-ignore
-					const response = await target[prop](values);
+					const response = await target[prop]();
 					executeFunctions.addOutputData('memory', [
-						[{ json: { action: 'loadMemoryVariables', response } }],
+						[{ json: { action: 'getMessages', response } }],
 					]);
 					return response;
 				};
-			} else if (prop === 'saveContext') {
-				return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
-					executeFunctions.addInputData('memory', [
-						[{ json: { action: 'saveContext', inputValues, outputValues } }],
-					]);
+			} else if (prop === 'addMessage') {
+				return async (message: BaseMessage): Promise<void> => {
+					executeFunctions.addInputData('memory', [[{ json: { action: 'addMessage', message } }]]);
 					// @ts-ignore
-					await target[prop](inputValues, outputValues);
-					executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
+					await target[prop](message);
+					executeFunctions.addOutputData('memory', [[{ json: { action: 'addMessage' } }]]);
 				};
 
 				// For BaseChatModel
@@ -138,6 +131,7 @@ export function logWrapper(
 				return async (
 					query: string,
 					k?: number,
+					// @ts-ignore
 					filter?: BiquadFilterType | undefined,
 					_callbacks?: Callbacks | undefined,
 				): Promise<Document[]> => {
