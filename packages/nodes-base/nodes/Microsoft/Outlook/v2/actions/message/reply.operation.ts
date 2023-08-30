@@ -33,7 +33,8 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Comment',
 		name: 'comment',
-		description: 'A comment to include. Can be an empty string.',
+		description:
+			'The text of the reply. When replying to all, only the comment can be used. For a regular reply, either the comment or the message can be used, but not both.',
 		type: 'string',
 		default: '',
 	},
