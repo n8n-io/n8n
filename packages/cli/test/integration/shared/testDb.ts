@@ -98,7 +98,7 @@ export async function init() {
 		await Db.init(getDBOptions('postgres', testDbName));
 	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
-		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
+		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
 		await bootstrapMysql.destroy();
 
 		await Db.init(getDBOptions('mysql', testDbName));
