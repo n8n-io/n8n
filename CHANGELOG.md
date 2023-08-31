@@ -1,3 +1,12 @@
+## [1.5.1](https://github.com/n8n-io/n8n/compare/n8n@1.5.0...n8n@1.5.1) (2023-08-31)
+
+
+### Features
+
+* **Strapi Node:** Add token credentials ([#7048](https://github.com/n8n-io/n8n/issues/7048)) ([c01bca5](https://github.com/n8n-io/n8n/commit/c01bca562b71d8b524e29edd37e8397d0689b180))
+
+
+
 # [1.5.0](https://github.com/n8n-io/n8n/compare/n8n@1.4.0...n8n@1.5.0) (2023-08-31)
 
 
