@@ -87,8 +87,8 @@ export class ConversationalAgent implements INodeType {
 		}
 
 		const toolNodes = await this.getInputConnectionData('tool', 0);
-		const tools = toolNodes.map((connectedNode) => {
-			return connectedNode.response as Tool;
+		const tools = toolNodes.map((connectedNode: { response: Tool}) => {
+			return connectedNode.response;
 		});
 
 		const options: InitializeAgentExecutorOptions = {

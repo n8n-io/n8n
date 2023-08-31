@@ -43,7 +43,6 @@
     ],
     "nodes": [
       "dist/nodes/agents/ConversationalAgent/ConversationalAgent.node.js",
-      "dist/nodes/agents/AgentConversationRetrievalQA/AgentConversationRetrievalQA.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQA.node.js",
       "dist/nodes/chains/ChainVectorStoreQA/ChainVectorStoreQA.node.js",
       "dist/nodes/document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node.js",

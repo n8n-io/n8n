@@ -3,7 +3,7 @@
 		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
-		:title="`Chat Window(${connectedNode?.name})`"
+		:title="`Chat Window(${connectedNode?.name || 'No Chat Node'})`"
 		:eventBus="modalBus"
 		:scrollable="false"
 	>
@@ -165,7 +165,7 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
-			if (event.ctrlKey && event.key === 'Enter') {
+			if ((event.ctrlKey || event.shiftKey) && event.key === 'Enter') {
 				this.sendChatMessage(this.currentMessage);
 			}
 		},

@@ -70,20 +70,20 @@ export class MemoryBufferWindow implements INodeType {
 		outputs: ['memory'],
 		outputNames: ['Memory'],
 		properties: [
-			// TODO: Should we allow the user to specify the input & memory key?
+			// TODO: Should we allow the user to specify the input key?
 			// {
 			// 	displayName: 'Input Key',
 			// 	name: 'inputKey',
 			// 	type: 'string',
 			// 	default: 'input',
 			// },
-			// {
-			// 	displayName: 'Memory Key',
-			// 	name: 'memoryKey',
-			// 	type: 'string',
-			// 	default: 'chat_history',
-			// 	description: 'The key to use to store the memory in the workflow data',
-			// },
+			{
+				displayName: 'Memory Key',
+				name: 'memoryKey',
+				type: 'string',
+				default: 'chat_history',
+				description: 'The key to use to store the memory in the workflow data',
+			},
 			{
 				displayName: 'Context Window Length',
 				name: 'contextWindowLength',
@@ -95,7 +95,6 @@ export class MemoryBufferWindow implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const inputKey = this.getNodeParameter('inputKey', 0) as string;
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
 		const contextWindowLength = this.getNodeParameter('contextWindowLength', 0) as number;
 		const workflowId = this.getWorkflow().id;
@@ -103,12 +102,11 @@ export class MemoryBufferWindow implements INodeType {
 
 		const memory = await memoryInstance.getMemory(`${workflowId}__${memoryKey}`, {
 			k: contextWindowLength,
-			inputKey: inputKey ?? 'input',
+			inputKey: 'input',
 			memoryKey: 'chat_history',
 			outputKey: 'output',
 			returnMessages: true,
 		});
-
 
 		return {
 			response: logWrapper(memory, this),
