@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-// import { logWrapper } from '../../../utils/logWrapper';
 import { BufferWindowMemory, BufferWindowMemoryInput } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -24,11 +23,9 @@ class MemoryBufferSingleton {
 
 		let memoryInstance = this.memoryBuffer.get(memoryKey);
 		if (memoryInstance) {
-			console.log(`Memory "${memoryKey}" already exists`);
 			memoryInstance.last_accessed = new Date();
 		} else {
 			const newMemory = new BufferWindowMemory(memoryParams);
-			console.log(`Creating new memory "${memoryKey}"`, newMemory)
 
 			memoryInstance = {
 				buffer: newMemory,
