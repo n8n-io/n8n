@@ -1,7 +1,5 @@
 import type express from 'express';
 
-import { BinaryDataManager } from 'n8n-core';
-
 import {
 	getExecutions,
 	getExecutionInWorkflows,
@@ -36,8 +34,6 @@ export = {
 			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
-
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionIds([execution.id!]);
 
 			await deleteExecution(execution);
 

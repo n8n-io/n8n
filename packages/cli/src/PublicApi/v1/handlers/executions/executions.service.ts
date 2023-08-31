@@ -110,6 +110,6 @@ export async function getExecutionInWorkflows(
 	});
 }
 
-export async function deleteExecution(execution: IExecutionBase): Promise<DeleteResult> {
-	return Container.get(ExecutionRepository).deleteExecution(execution.id as string);
+export async function deleteExecution(execution: IExecutionBase): Promise<void> {
+	return Container.get(ExecutionRepository).softDeleteExecution(execution.id as string);
 }
