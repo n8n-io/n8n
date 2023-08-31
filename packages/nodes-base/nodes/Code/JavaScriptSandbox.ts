@@ -1,4 +1,4 @@
-import { NodeVM, makeResolverFromLegacyOptions } from 'vm2';
+import { NodeVM, makeResolverFromLegacyOptions } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ValidationError } from './ValidationError';

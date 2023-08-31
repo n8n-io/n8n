@@ -8,17 +8,17 @@ import {
 	InternalServerError,
 	UnauthorizedError,
 } from '@/ResponseHelper';
-import { sanitizeUser, withFeatureFlags } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
+import { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Config } from '@/config';
-import type { PublicUser, IInternalHooksClass, CurrentUser } from '@/Interfaces';
+import type { PublicUser } from '@/Interfaces';
+import { Config } from '@/config';
+import { IInternalHooksClass } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import {
 	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
@@ -27,42 +27,18 @@ import {
 import { InternalHooks } from '../InternalHooks';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
-import type { MfaService } from '@/Mfa/mfa.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class AuthController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userService: UserService;
-
-	private readonly postHog?: PostHogClient;
-
-	private readonly mfaService: MfaService;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		postHog,
-		mfaService,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		postHog?: PostHogClient;
-		mfaService: MfaService;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.postHog = postHog;
-		this.userService = Container.get(UserService);
-		this.mfaService = mfaService;
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly mfaService: MfaService,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Log in a user.
@@ -121,7 +97,8 @@ export class AuthController {
 				user,
 				authenticationMethod: usedAuthenticationMethod,
 			});
-			return withFeatureFlags(this.postHog, sanitizeUser(user));
+
+			return this.userService.toPublic(user, { posthog: this.postHog });
 		}
 		void Container.get(InternalHooks).onUserLoginFailed({
 			user: email,
@@ -135,7 +112,7 @@ export class AuthController {
 	 * Manually check the `n8n-auth` cookie.
 	 */
 	@Get('/login')
-	async currentUser(req: Request, res: Response): Promise<CurrentUser> {
+	async currentUser(req: Request, res: Response): Promise<PublicUser> {
 		// Manually check the existing cookie.
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
@@ -146,7 +123,7 @@ export class AuthController {
 			try {
 				user = await resolveJwt(cookieContents);
 
-				return await withFeatureFlags(this.postHog, sanitizeUser(user));
+				return await this.userService.toPublic(user, { posthog: this.postHog });
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -169,7 +146,7 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return withFeatureFlags(this.postHog, sanitizeUser(user));
+		return this.userService.toPublic(user, { posthog: this.postHog });
 	}
 
 	/**
@@ -206,7 +183,10 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userService.findMany({ where: { id: In([inviterId, inviteeId]) } });
+		const users = await this.userService.findMany({
+			where: { id: In([inviterId, inviteeId]) },
+			relations: ['globalRole'],
+		});
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',

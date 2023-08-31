@@ -72,6 +72,7 @@ export function resolveParameter(
 		inputNodeName?: string;
 		inputRunIndex?: number;
 		inputBranchIndex?: number;
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 	} = {},
 ): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
@@ -147,6 +148,8 @@ export function resolveParameter(
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+
+		...opts.additionalKeys,
 	};
 
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
@@ -687,6 +690,7 @@ export const workflowHelpers = defineComponent({
 				inputRunIndex?: number;
 				inputBranchIndex?: number;
 				c?: number;
+				additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 			} = {},
 		) {
 			const parameters = {

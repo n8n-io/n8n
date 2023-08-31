@@ -22,6 +22,7 @@ export class WorkflowExecutionsTab extends BasePage {
 			this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-label"]'),
 		executionPreviewId: () =>
 			this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-id"]'),
+		executionDebugButton: () => cy.getByTestId('execution-debug-button'),
 	};
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {

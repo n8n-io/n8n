@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -319,6 +319,7 @@
       "dist/credentials/StoryblokContentApi.credentials.js",
       "dist/credentials/StoryblokManagementApi.credentials.js",
       "dist/credentials/StrapiApi.credentials.js",
+      "dist/credentials/StrapiTokenApi.credentials.js",
       "dist/credentials/StravaOAuth2Api.credentials.js",
       "dist/credentials/StripeApi.credentials.js",
       "dist/credentials/SupabaseApi.credentials.js",
@@ -810,6 +811,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
+    "@n8n/vm2": "^3.9.19",
     "amqplib": "^0.10.3",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
@@ -839,7 +841,7 @@
     "minifaker": "^1.34.1",
     "moment": "~2.29.2",
     "moment-timezone": "^0.5.28",
-    "mongodb": "^4.9.1",
+    "mongodb": "^4.17.1",
     "mqtt": "^5.0.2",
     "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
@@ -862,11 +864,10 @@
     "semver": "^7.5.4",
     "showdown": "^2.0.3",
     "simple-git": "^3.17.0",
-    "snowflake-sdk": "^1.6.23",
+    "snowflake-sdk": "^1.8.0",
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
     "uuid": "^8.3.2",
-    "vm2": "^3.9.19",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz",
     "xml2js": "^0.5.0"
   }

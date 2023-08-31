@@ -1,0 +1,93 @@
+{
+    "name": "Null Date",
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "62bb450c-f2e3-41c9-9894-a954d2c5e115",
+        "name": "When clicking \"Execute Workflow\"",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          1600,
+          740
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "return {date: null}"
+        },
+        "id": "47e4ce5b-2365-4987-a058-ae21964d135d",
+        "name": "Code",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1820,
+          740
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "formatDate",
+          "date": "={{ $json.date }}",
+          "options": {}
+        },
+        "id": "9af21b91-9db6-40cd-98ee-ee969eb0a348",
+        "name": "Date & Time",
+        "type": "n8n-nodes-base.dateTime",
+        "typeVersion": 2,
+        "position": [
+          2040,
+          740
+        ]
+      }
+    ],
+    "pinData": {
+      "Date & Time": [
+        {
+          "json": {
+            "formattedDate": null
+          }
+        }
+      ],
+      "Code": [
+        {
+          "json": {
+            "date": null
+          }
+        }
+      ]
+    },
+    "connections": {
+      "When clicking \"Execute Workflow\"": {
+        "main": [
+          [
+            {
+              "node": "Code",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code": {
+        "main": [
+          [
+            {
+              "node": "Date & Time",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": false,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "versionId": "",
+    "meta": {
+      "instanceId": "78577815012af39cf16dad7a787b0898c42fb7514b8a7f99b2136862c2af502c"
+    },
+    "tags": []
+  }

@@ -77,6 +77,7 @@ export const LICENSE_FEATURES = {
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
 	API_DISABLED: 'feat:apiDisabled',
+	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
@@ -90,3 +91,6 @@ export const LICENSE_QUOTAS = {
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
+
+export const UM_FIX_INSTRUCTION =
+	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';

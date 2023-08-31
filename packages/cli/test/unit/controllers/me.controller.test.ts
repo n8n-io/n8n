@@ -2,27 +2,21 @@ import type { CookieOptions, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject, captor } from 'jest-mock-extended';
 import type { ILogger } from 'n8n-workflow';
-import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, IInternalHooksClass, PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { badPasswords } from '../shared/testData';
-import { UserService } from '@/services/user.service';
-import Container from 'typedi';
+import type { UserService } from '@/services/user.service';
 
 describe('MeController', () => {
 	const logger = mock<ILogger>();
 	const externalHooks = mock<IExternalHooksClass>();
 	const internalHooks = mock<IInternalHooksClass>();
 	const userService = mock<UserService>();
-	Container.set(UserService, userService);
-	const controller = new MeController({
-		logger,
-		externalHooks,
-		internalHooks,
-	});
+	const controller = new MeController(logger, externalHooks, internalHooks, userService);
 
 	describe('updateCurrentUser', () => {
 		it('should throw BadRequestError if email is missing in the payload', async () => {
@@ -51,6 +45,7 @@ describe('MeController', () => {
 			const res = mock<Response>();
 			userService.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res);
 

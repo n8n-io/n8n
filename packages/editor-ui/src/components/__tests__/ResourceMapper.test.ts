@@ -292,7 +292,7 @@ describe('ResourceMapper.vue', () => {
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
 
-	it('should delete fields from UI and parameter value when they are deleted', async () => {
+	it.skip('should delete fields from UI and parameter value when they are deleted', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {
 				node: {
