@@ -181,6 +181,12 @@ export class NDV extends BasePage {
 
 			getVisiblePopper().find('li').last().click();
 		},
+
+		setInvalidExpression: (fieldName: string, invalidExpression?: string) => {
+			this.actions.typeIntoParameterInput(fieldName, "=");
+			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", { parseSpecialCharSequences: false });
+			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+		}
 	};
 }
 

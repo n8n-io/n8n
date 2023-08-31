@@ -59,9 +59,7 @@ describe('Resource Locator', () => {
 		ndv.getters.resourceLocatorInput('rlc').click();
 		getVisiblePopper().should('have.length', 1).findChildByTestId('rlc-item').should('have.length', 5);
 
-		ndv.actions.typeIntoParameterInput('fieldId', "=");
-		ndv.actions.typeIntoParameterInput('fieldId', "{{ $('unknown')", {parseSpecialCharSequences: false});
-		ndv.actions.validateExpressionPreview('fieldId', `node doesn't exist`);
+		ndv.actions.setInvalidExpression('fieldId');
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 

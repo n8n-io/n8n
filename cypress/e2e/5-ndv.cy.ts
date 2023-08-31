@@ -296,9 +296,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.typeIntoParameterInput('fieldId', "=");
-		ndv.actions.typeIntoParameterInput('fieldId', "{{ $('unknown')", {parseSpecialCharSequences: false});
-		ndv.actions.validateExpressionPreview('fieldId', `node doesn't exist`);
+		ndv.actions.setInvalidExpression('fieldId');
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
@@ -316,9 +314,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.typeIntoParameterInput('otherField', "=");
-		ndv.actions.typeIntoParameterInput('otherField', "{{ $('unknown')", {parseSpecialCharSequences: false});
-		ndv.actions.validateExpressionPreview('otherField', `node doesn't exist`);
+		ndv.actions.setInvalidExpression('otherField');
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
