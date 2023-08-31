@@ -1,29 +1,33 @@
 import { Service } from 'typedi';
 import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOptionsWhere,
 	SelectQueryBuilder,
 } from 'typeorm';
-import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
+import { LoggerProxy as Logger } from 'n8n-workflow';
+import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
+import { BinaryDataManager } from 'n8n-core';
 import type {
 	IExecutionBase,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/Interfaces';
-import { LoggerProxy } from 'n8n-workflow';
-import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
-import { ExecutionDataRepository } from './executionData.repository';
-import type { ExecutionData } from '../entities/ExecutionData';
+
+import config from '@/config';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
+import type { ExecutionData } from '../entities/ExecutionData';
+import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
-import { DateUtils } from 'typeorm/util/DateUtils';
-import { BinaryDataManager } from 'n8n-core';
-import config from '@/config';
+import { ExecutionDataRepository } from './executionData.repository';
+import { inTest } from '@/constants';
+
+const PRUNING_BATCH_SIZE = 100;
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -71,6 +75,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly executionDataRepository: ExecutionDataRepository,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+
+		if (!inTest) {
+			if (config.getEnv('executions.pruneData')) {
+				setInterval(async () => this.pruneOlderExecutions(), 60 * 60 * 1000); // Every hour
+			}
+
+			setInterval(async () => this.deleteSoftDeletedExecutions(), 15 * 60 * 1000); // Every 15 minutes
+		}
 	}
 
 	async findMultipleExecutions(
@@ -238,16 +250,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 	}
 
-	async deleteExecution(executionId: string, deferBinaryDataDeletion = false) {
-		const binaryDataManager = BinaryDataManager.getInstance();
-		if (deferBinaryDataDeletion) {
-			await binaryDataManager.markDataForDeletionByExecutionId(executionId);
-		} else {
-			await binaryDataManager.deleteBinaryDataByExecutionIds([executionId]);
-		}
-		return this.delete({ id: executionId });
-	}
-
 	async countExecutions(
 		filters: IGetExecutionsQueryFilter | undefined,
 		accessibleWorkflowIds: string[],
@@ -287,7 +289,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		} catch (error) {
 			if (error instanceof Error) {
-				LoggerProxy.warn(`Failed to get executions count from Postgres: ${error.message}`, {
+				Logger.warn(`Failed to get executions count from Postgres: ${error.message}`, {
 					error,
 				});
 			}
@@ -357,7 +359,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutions(
+	async softDeleteExecution(executionId: string) {
+		await this.update({ id: executionId }, { deletedAt: Date.now() });
+	}
+
+	async softDeleteExecutions(executionIds: string[]) {
+		await this.update({ id: In(executionIds) }, { deletedAt: Date.now() });
+	}
+
+	async deleteExecutionsByFilter(
 		filters: IGetExecutionsQueryFilter | undefined,
 		accessibleWorkflowIds: string[],
 		deleteConditions: {
@@ -389,7 +399,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (!executions.length) {
 			if (deleteConditions.ids) {
-				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+				Logger.error('Failed to delete an execution due to insufficient permissions', {
 					executionIds: deleteConditions.ids,
 				});
 			}
@@ -397,13 +407,78 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const executionIds = executions.map(({ id }) => id);
+		do {
+			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
+			const batch = executionIds.splice(0, PRUNING_BATCH_SIZE);
+			await this.softDeleteExecutions(batch);
+		} while (executionIds.length > 0);
+	}
+
+	private async pruneOlderExecutions() {
+		Logger.verbose('Pruning execution data from database');
+
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+
+		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
+		const date = new Date();
+		date.setHours(date.getHours() - maxAge);
+
+		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
+			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
+		];
+
+		if (maxCount > 0) {
+			const executions = await this.find({
+				select: ['id'],
+				skip: maxCount,
+				take: 1,
+				order: { id: 'DESC' },
+			});
+
+			if (executions[0]) {
+				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
+			}
+		}
+
+		const executionIds = (
+			await this.find({
+				select: ['id'],
+				where: toPrune,
+				take: PRUNING_BATCH_SIZE,
+			})
+		).map(({ id }) => id);
+		await this.softDeleteExecutions(executionIds);
+
+		if (executionIds.length === PRUNING_BATCH_SIZE) {
+			setTimeout(async () => this.pruneOlderExecutions(), 1000);
+		}
+	}
+
+	private async deleteSoftDeletedExecutions() {
+		// Find ids of all executions that were deleted over an hour ago
+		const date = new Date();
+		date.setHours(date.getHours() - 1);
+
+		const executionIds = (
+			await this.find({
+				select: ['id'],
+				where: {
+					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				},
+				take: PRUNING_BATCH_SIZE,
+			})
+		).map(({ id }) => id);
+
 		const binaryDataManager = BinaryDataManager.getInstance();
 		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = executionIds.splice(0, 500);
-			await this.delete(batch);
-		} while (executionIds.length > 0);
+		// Actually delete these executions
+		await this.delete({ id: In(executionIds) });
+
+		if (executionIds.length === PRUNING_BATCH_SIZE) {
+			setTimeout(async () => this.deleteSoftDeletedExecutions(), 1000);
+		}
 	}
 }

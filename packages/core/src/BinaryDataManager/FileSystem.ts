@@ -1,4 +1,3 @@
-import glob from 'fast-glob';
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
@@ -10,32 +9,19 @@ import { jsonParse } from 'n8n-workflow';
 import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { FileNotFoundError } from '../errors';
 
-const PREFIX_METAFILE = 'binarymeta';
-
 const executionExtractionRegexp =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
 export class BinaryDataFileSystem implements IBinaryDataManager {
 	private storagePath: string;
 
-	private binaryDataTTL: number;
-
 	constructor(config: IBinaryDataConfig) {
 		this.storagePath = config.localStoragePath;
-		this.binaryDataTTL = config.binaryDataTTL;
 	}
 
-	async init(startPurger = false): Promise<void> {
-		if (startPurger) {
-			setInterval(async () => {
-				await this.deleteMarkedFiles();
-			}, this.binaryDataTTL * 30000);
-		}
-
+	async init(): Promise<void> {
 		await this.assertFolder(this.storagePath);
 		await this.assertFolder(this.getBinaryDataMetaPath());
-
-		await this.deleteMarkedFiles();
 	}
 
 	async getFileSize(identifier: string): Promise<number> {
@@ -81,47 +67,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return this.resolveStoragePath(`${identifier}.metadata`);
 	}
 
-	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
-		const tt = new Date(new Date().getTime() + this.binaryDataTTL * 60000);
-		return fs.writeFile(
-			this.resolveStoragePath('meta', `${PREFIX_METAFILE}_${executionId}_${tt.valueOf()}`),
-			'',
-		);
-	}
-
-	async deleteMarkedFiles(): Promise<void> {
-		return this.deleteMarkedFilesByMeta(this.getBinaryDataMetaPath(), PREFIX_METAFILE);
-	}
-
-	private async deleteMarkedFilesByMeta(metaPath: string, filePrefix: string): Promise<void> {
-		const currentTimeValue = new Date().valueOf();
-		const metaFileNames = await glob(`${filePrefix}_*`, { cwd: metaPath });
-
-		const executionIds = metaFileNames
-			.map((f) => f.split('_') as [string, string, string])
-			.filter(([prefix, , ts]) => {
-				if (prefix !== filePrefix) return false;
-				const execTimestamp = parseInt(ts, 10);
-				return execTimestamp < currentTimeValue;
-			})
-			.map((e) => e[1]);
-
-		const filesToDelete = [];
-		const deletedIds = await this.deleteBinaryDataByExecutionIds(executionIds);
-		for (const executionId of deletedIds) {
-			filesToDelete.push(
-				...(await glob(`${filePrefix}_${executionId}_`, {
-					absolute: true,
-					cwd: metaPath,
-				})),
-			);
-		}
-		await Promise.all(filesToDelete.map(async (file) => fs.rm(file)));
-	}
-
 	async duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string> {
 		const newBinaryDataId = this.generateFileName(prefix);
-
 		await fs.copyFile(
 			this.resolveStoragePath(binaryDataId),
 			this.resolveStoragePath(newBinaryDataId),
@@ -130,6 +77,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	}
 
 	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]> {
+		// TODO: switch over to new folder structure, and delete folders instead
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
 		const deletedIds = [];

@@ -9,7 +9,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { UserSettings, WorkflowExecute } from 'n8n-core';
 
 import type {
 	IDataObject,
@@ -38,9 +38,6 @@ import {
 
 import pick from 'lodash/pick';
 import { Container } from 'typedi';
-import type { FindOptionsWhere } from 'typeorm';
-import { LessThanOrEqual, In } from 'typeorm';
-import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -48,7 +45,6 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
 	IExecutionDb,
-	IExecutionFlattedDb,
 	IPushDataExecutionFinished,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
@@ -177,77 +173,6 @@ export function executeErrorWorkflow(
 				.then((user) => {
 					void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
 				});
-		}
-	}
-}
-
-/**
- * Prunes Saved Execution which are older than configured.
- * Throttled to be executed just once in configured timeframe.
- * TODO: Consider moving this whole function to the repository or at least the queries
- */
-let throttling = false;
-async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
-	if (!throttling) {
-		Logger.verbose('Pruning execution data from database');
-
-		throttling = true;
-		const timeout = config.getEnv('executions.pruneDataTimeout'); // in seconds
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
-		const date = new Date(); // today
-		date.setHours(date.getHours() - maxAge);
-
-		// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-
-		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
-
-		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
-			{ stoppedAt: LessThanOrEqual(utcDate) },
-		];
-
-		if (maxCount > 0) {
-			const executions = await Db.collections.Execution.find({
-				select: ['id'],
-				skip: maxCount,
-				take: 1,
-				order: { id: 'DESC' },
-			});
-
-			if (executions[0]) {
-				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
-			}
-		}
-
-		try {
-			setTimeout(() => {
-				throttling = false;
-			}, timeout * 1000);
-			let executionIds: Array<IExecutionFlattedDb['id']>;
-			do {
-				executionIds = (
-					await Db.collections.Execution.find({
-						select: ['id'],
-						where: toPrune,
-						take: 100,
-					})
-				).map(({ id }) => id);
-				await Db.collections.Execution.delete({ id: In(executionIds) });
-				// Mark binary data for deletion for all executions
-				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(executionIds);
-			} while (executionIds.length > 0);
-		} catch (error) {
-			ErrorReporter.error(error);
-			throttling = false;
-			Logger.error(
-				`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
-				{
-					...error,
-					executionId: this.executionId,
-					sessionId: this.sessionId,
-					workflowId: this.workflowData.id,
-				},
-			);
 		}
 	}
 }
@@ -535,11 +460,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				// Prune old execution data
-				if (config.getEnv('executions.pruneData')) {
-					await pruneExecutionData.call(this);
-				}
-
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 
 				try {
@@ -567,8 +487,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
-						// Data is always saved, so we remove from database
-						await Container.get(ExecutionRepository).deleteExecution(this.executionId, true);
+						await Container.get(ExecutionRepository).softDeleteExecution(this.executionId);
 
 						return;
 					}
@@ -606,8 +525,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.executionId,
 								this.retryOf,
 							);
-							// Data is always saved, so we remove from database
-							await Container.get(ExecutionRepository).deleteExecution(this.executionId);
+							await Container.get(ExecutionRepository).softDeleteExecution(this.executionId);
 
 							return;
 						}
