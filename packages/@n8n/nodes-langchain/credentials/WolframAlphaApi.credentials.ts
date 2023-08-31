@@ -1,6 +1,6 @@
 import type {
 	IAuthenticateGeneric,
-	// ICredentialTestRequest,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
@@ -32,10 +32,10 @@ export class WolframAlphaApi implements ICredentialType {
 		},
 	};
 
-	// test: ICredentialTestRequest = {
-	// 	request: {
-	// 		baseURL: 'https://serpapi.com',
-	// 		url: '/account.json ',
-	// 	},
-	// };
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.wolframalpha.com/v1',
+			url: '=/simple?i=How+much+is+1+1&appid={{$credentials.appId}}',
+		},
+	};
 }
