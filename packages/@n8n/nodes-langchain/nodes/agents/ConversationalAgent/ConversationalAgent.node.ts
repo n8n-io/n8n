@@ -17,7 +17,7 @@ export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Conversational Agent',
 		name: 'conversationalAgent',
-		icon: 'fa:link',
+		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
 		description: 'Conversational Agent',

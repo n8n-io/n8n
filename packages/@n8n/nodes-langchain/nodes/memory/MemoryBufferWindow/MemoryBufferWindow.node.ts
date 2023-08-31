@@ -97,10 +97,10 @@ export class MemoryBufferWindow implements INodeType {
 		const inputKey = this.getNodeParameter('inputKey', 0) as string;
 		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
 		const contextWindowLength = this.getNodeParameter('contextWindowLength', 0) as number;
-
+		const workflowId = this.getWorkflow().id;
 		const memoryInstance = MemoryBufferSingleton.getInstance();
 
-		const memory = await memoryInstance.getMemory(memoryKey, {
+		const memory = await memoryInstance.getMemory(`${workflowId}__${memoryKey}`, {
 			k: contextWindowLength,
 			inputKey: inputKey ?? 'input',
 			memoryKey: 'chat_history',

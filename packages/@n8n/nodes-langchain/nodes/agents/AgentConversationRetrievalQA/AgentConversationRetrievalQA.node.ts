@@ -14,15 +14,21 @@ import { BaseChatMemory } from 'langchain/memory';
 
 export class AgentConversationRetrievalQA implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LangChain - Conversation Retrieval QA Agent',
+		displayName: 'Conversation Retrieval QA Agent',
 		name: 'agentConversationRetrievalQA',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'LangChain',
+		description: 'Conversation Retrieval QA Agent',
 		defaults: {
-			name: 'LangChain - Conversation Retrieval QA Agent',
+			name: 'Conversation Retrieval QA Agent',
 			color: '#412012',
+		},
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Agents'],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'tool', 'languageModel', 'memory'],
@@ -102,7 +108,7 @@ export class AgentConversationRetrievalQA implements INodeType {
 			console.log('Running with input: ', input)
 			const response = await agentExecutor.call({ input })
 
-			return this.prepareOutputData([{ json: { response } }]);
+			return this.prepareOutputData([{ json: response }]);
 		}
 
 		// Run for each item
@@ -110,7 +116,8 @@ export class AgentConversationRetrievalQA implements INodeType {
 			const input = this.getNodeParameter('input', itemIndex) as string;
 
 			const response = await agentExecutor.call({ input })
-			returnData.push({ json: { response } });
+
+			returnData.push({ json: response });
 		}
 
 		return this.prepareOutputData(returnData);
