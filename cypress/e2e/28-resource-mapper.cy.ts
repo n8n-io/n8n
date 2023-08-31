@@ -15,7 +15,7 @@ describe('Resource Mapper', () => {
 		ndv.getters.resourceMapperFieldsContainer().should('be.visible').findChildByTestId('parameter-input').should('have.length', 2);
 
 		ndv.actions.typeIntoParameterInput('fieldId', "=");
-		ndv.actions.typeIntoParameterInput('fieldId', "{{ $('unkown')", {parseSpecialCharSequences: false});
+		ndv.actions.typeIntoParameterInput('fieldId', "{{ $('unknown')", {parseSpecialCharSequences: false});
 		ndv.actions.validateExpressionPreview('fieldId', `node doesn't exist`);
 
 		ndv.actions.refreshResourceMapperColumns();
@@ -28,7 +28,7 @@ describe('Resource Mapper', () => {
 		ndv.getters.resourceMapperFieldsContainer().should('be.visible').findChildByTestId('parameter-input').should('have.length', 2);
 
 		ndv.actions.typeIntoParameterInput('otherField', "=");
-		ndv.actions.typeIntoParameterInput('otherField', "{{ $('unkown')", {parseSpecialCharSequences: false});
+		ndv.actions.typeIntoParameterInput('otherField', "{{ $('unknown')", {parseSpecialCharSequences: false});
 		ndv.actions.validateExpressionPreview('otherField', `node doesn't exist`);
 
 		ndv.actions.refreshResourceMapperColumns();
