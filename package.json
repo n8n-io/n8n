@@ -50,6 +50,7 @@
     "jest-expect-message": "^1.1.3",
     "jest-mock": "^29.6.2",
     "jest-mock-extended": "^3.0.4",
+    "minifaker": "^1.34.1",
     "nock": "^13.3.2",
     "nodemon": "^3.0.1",
     "p-limit": "^3.1.0",
