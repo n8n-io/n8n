@@ -10,7 +10,7 @@ export class ToolWolframAlpha implements INodeType {
 		icon: 'file:wolfram-alpha.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Connects to WolframAlpha\'s computational intelligence engine.',
+		description: "Connects to WolframAlpha's computational intelligence engine.",
 		defaults: {
 			name: 'Wolfram Alpha',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
@@ -40,7 +40,7 @@ export class ToolWolframAlpha implements INodeType {
 		const credentials = await this.getCredentials('wolframAlphaApi');
 
 		return {
-			response: logWrapper(new WolframAlphaTool({ appid: credentials.appId as string}), this),
+			response: logWrapper(new WolframAlphaTool({ appid: credentials.appId as string }), this),
 		};
 	}
 }

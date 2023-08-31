@@ -14,7 +14,7 @@ export class WolframAlphaApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'APP Id',
+			displayName: 'APP ID',
 			name: 'appId',
 			type: 'string',
 			typeOptions: { password: true },
@@ -35,7 +35,11 @@ export class WolframAlphaApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.wolframalpha.com/v1',
-			url: '=/simple?i=How+much+is+1+1&appid={{$credentials.appId}}',
+			url: '=/simple',
+			qs: {
+				i: 'How much is 1 1',
+				appid: '={{$credentials.appId}}',
+			},
 		},
 	};
 }

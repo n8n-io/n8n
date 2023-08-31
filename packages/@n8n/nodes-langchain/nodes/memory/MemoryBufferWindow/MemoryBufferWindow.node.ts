@@ -5,7 +5,10 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 class MemoryBufferSingleton {
 	private static instance: MemoryBufferSingleton;
-	private memoryBuffer: Map<string, { buffer: BufferWindowMemory, created: Date, last_accessed: Date }>;
+	private memoryBuffer: Map<
+		string,
+		{ buffer: BufferWindowMemory; created: Date; last_accessed: Date }
+	>;
 
 	private constructor() {
 		this.memoryBuffer = new Map();
@@ -18,7 +21,10 @@ class MemoryBufferSingleton {
 		return MemoryBufferSingleton.instance;
 	}
 
-	public async getMemory(memoryKey: string, memoryParams: BufferWindowMemoryInput): Promise<BufferWindowMemory> {
+	public async getMemory(
+		memoryKey: string,
+		memoryParams: BufferWindowMemoryInput,
+	): Promise<BufferWindowMemory> {
 		await this.cleanupStaleBuffers();
 
 		let memoryInstance = this.memoryBuffer.get(memoryKey);
@@ -30,7 +36,7 @@ class MemoryBufferSingleton {
 			memoryInstance = {
 				buffer: newMemory,
 				created: new Date(),
-				last_accessed: new Date()
+				last_accessed: new Date(),
 			};
 			this.memoryBuffer.set(memoryKey, memoryInstance);
 		}
@@ -87,7 +93,7 @@ export class MemoryBufferWindow implements INodeType {
 				type: 'number',
 				default: 5,
 				description: 'The number of previous messages to consider for context',
-			}
+			},
 		],
 	};
 

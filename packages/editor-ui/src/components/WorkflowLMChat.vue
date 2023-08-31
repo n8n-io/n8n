@@ -85,7 +85,14 @@ import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables';
 import Modal from '@/components/Modal.vue';
-import { AI_CATEGORY_AGENTS, AI_CATEGORY_CHAINS, AI_SUBCATEGORY, NODE_TRIGGER_CHAT_BUTTON, VIEWS, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
+import {
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_CHAINS,
+	AI_SUBCATEGORY,
+	NODE_TRIGGER_CHAT_BUTTON,
+	VIEWS,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
+} from '@/constants';
 
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
@@ -103,10 +110,10 @@ interface ChatMessage {
 
 // TODO: Add proper type
 interface LangchainMessage {
-	id: string[],
+	id: string[];
 	kwargs: {
-		content: string
-	}
+		content: string;
+	};
 }
 
 // TODO:
@@ -203,22 +210,24 @@ export default defineComponent({
 				);
 				return;
 			}
-			const chatNode =  this.workflowsStore.getNodes().find(
-				(node: INodeUi): boolean => {
-					const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-					if (!nodeType) return false;
+			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) return false;
 
-					const isAgent = nodeType.codex?.subcategories?.[AI_SUBCATEGORY].includes(AI_CATEGORY_AGENTS)
-					const isChain = nodeType.codex?.subcategories?.[AI_SUBCATEGORY].includes(AI_CATEGORY_CHAINS)
+				const isAgent =
+					nodeType.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_AGENTS);
+				const isChain =
+					nodeType.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_CHAINS);
 
-					if (!isAgent && !isChain) return false
+				if (!isAgent && !isChain) return false;
 
-					const parentNodes = workflow.getParentNodes(nodeType.displayName);
-					const isChatChild = parentNodes.some((parentNodeName) => parentNodeName === triggerNode[0].name);
+				const parentNodes = workflow.getParentNodes(node.name);
+				const isChatChild = parentNodes.some(
+					(parentNodeName) => parentNodeName === triggerNode[0].name,
+				);
 
-					return Boolean(isChatChild && (isAgent || isChain));
-				}
-			);
+				return Boolean(isChatChild && (isAgent || isChain));
+			});
 
 			if (!chatNode) {
 				this.showError(
@@ -231,21 +240,23 @@ export default defineComponent({
 			this.connectedNode = chatNode;
 		},
 		getChatMessages(): ChatMessage[] {
-			if (!this.connectedNode) return []
+			if (!this.connectedNode) return [];
 
 			const workflow = this.getCurrentWorkflow();
-			const connectedMemoryInputs = workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory
+			const connectedMemoryInputs =
+				workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory;
 			if (!connectedMemoryInputs) return [];
 
-			const memoryConnection = (connectedMemoryInputs ?? []).find(i => i.length > 0)?.[0]
+			const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
 
 			if (!memoryConnection) return [];
 
 			const memoryOutputData = this.workflowsStore
 				?.getWorkflowResultDataByNodeName(memoryConnection.node)
-				?.map((data): { action: string, chatHistory: unknown[]} => get(data, 'data.memory.0.0.json')!)
-				?.find((data) => data?.action === 'chatHistory' ? data : undefined);
-
+				?.map(
+					(data): { action: string; chatHistory: unknown[] } => get(data, 'data.memory.0.0.json')!,
+				)
+				?.find((data) => (data?.action === 'chatHistory' ? data : undefined));
 
 			const chatHistory = (memoryOutputData?.chatHistory ?? []) as LangchainMessage[];
 
@@ -253,8 +264,8 @@ export default defineComponent({
 				return {
 					text: message.kwargs.content,
 					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
-				}
-			})
+				};
+			});
 		},
 		async startWorkflowWithMessage(message: string) {
 			const workflow = this.getCurrentWorkflow();

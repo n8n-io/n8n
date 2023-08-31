@@ -120,27 +120,28 @@ export function logWrapper(
 					]);
 					return response;
 				};
-			} else if (prop === 'outputKey' && 'outputKey' in target && target.constructor.name === 'BufferWindowMemory') {
-				console.log('Chat History: ', target['chatHistory']);
-					executeFunctions.addInputData('memory', [
-						[{ json: { action: 'chatHistory' } }],
+			} else if (
+				prop === 'outputKey' &&
+				'outputKey' in target &&
+				target.constructor.name === 'BufferWindowMemory'
+			) {
+				executeFunctions.addInputData('memory', [[{ json: { action: 'chatHistory' } }]]);
+				const response = target[prop];
+				target['chatHistory'].getMessages().then((messages) => {
+					executeFunctions.addOutputData('memory', [
+						[{ json: { action: 'chatHistory', chatHistory: messages } }],
 					]);
-					const response = target[prop];
-					target['chatHistory'].getMessages().then((messages) => {
-						executeFunctions.addOutputData('memory', [
-							[{ json: { action: 'chatHistory', chatHistory: messages } }],
-						]);
-					})
-					return response;
-			// TODO: Is this needed?
-			// } else if (prop === 'saveContext' && 'saveContext' in target) {
-			// 	return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
-			// 		executeFunctions.addInputData('memory', [
-			// 			[{ json: { action: 'saveContext', inputValues, outputValues } }],
-			// 		]);
-			// 		await target[prop](inputValues, outputValues);
-			// 		executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
-			// 	};
+				});
+				return response;
+				// TODO: Is this needed?
+				// } else if (prop === 'saveContext' && 'saveContext' in target) {
+				// 	return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
+				// 		executeFunctions.addInputData('memory', [
+				// 			[{ json: { action: 'saveContext', inputValues, outputValues } }],
+				// 		]);
+				// 		await target[prop](inputValues, outputValues);
+				// 		executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
+				// 	};
 
 				// For BaseChatModel
 			} else if (prop === '_generate' && '_generate' in target) {

@@ -65,7 +65,8 @@ export class ConversationalAgent implements INodeType {
 				displayName: 'System Message',
 				name: 'systemMessage',
 				type: 'string',
-				default: 'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
+				default:
+					'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
 				description: 'The message that will be sent to the agent before the conversation starts.',
 				typeOptions: {
 					rows: 3,
@@ -75,12 +76,16 @@ export class ConversationalAgent implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Vector Store QA Chain')
+		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = await getAndValidateSupplyInput(this, 'languageModel', true) as BaseLanguageModel;
-		const memory = await getAndValidateSupplyInput(this, 'memory', false) as BaseChatMemory;
-		const tools = await getAndValidateSupplyInput(this, 'tool', true, true) as Tool[];
+		const model = (await getAndValidateSupplyInput(
+			this,
+			'languageModel',
+			true,
+		)) as BaseLanguageModel;
+		const memory = (await getAndValidateSupplyInput(this, 'memory', false)) as BaseChatMemory;
+		const tools = (await getAndValidateSupplyInput(this, 'tool', true, true)) as Tool[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 			// Passing "chat-conversational-react-description" as the agent type
@@ -92,8 +97,7 @@ export class ConversationalAgent implements INodeType {
 			agentArgs: {
 				systemMessage: this.getNodeParameter('systemMessage', 0) as string,
 			},
-			// verbose: false
-		})
+		});
 
 		const items = this.getInputData();
 
@@ -101,7 +105,7 @@ export class ConversationalAgent implements INodeType {
 
 		if (runMode === 'runOnceForAllItems') {
 			const input = this.getNodeParameter('text', 0) as string;
-			const response = await agentExecutor.call({ input })
+			const response = await agentExecutor.call({ input });
 
 			return this.prepareOutputData([{ json: response }]);
 		}
@@ -110,7 +114,7 @@ export class ConversationalAgent implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const input = this.getNodeParameter('text', itemIndex) as string;
 
-			const response = await agentExecutor.call({ input })
+			const response = await agentExecutor.call({ input });
 
 			returnData.push({ json: response });
 		}
