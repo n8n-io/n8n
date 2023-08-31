@@ -1,12 +1,7 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
-import {
-	compareHash,
-	hashPassword,
-	sanitizeUser,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
+import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
@@ -89,9 +84,11 @@ export class MeController {
 			fields_changed: updatedKeys,
 		});
 
-		await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
+		const publicUser = await this.userService.toPublic(user);
 
-		return sanitizeUser(user);
+		await this.externalHooks.run('user.profile.update', [currentEmail, publicUser]);
+
+		return publicUser;
 	}
 
 	/**

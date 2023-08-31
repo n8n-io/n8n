@@ -175,8 +175,6 @@ export class E2EController {
 			);
 		}
 
-		console.log('users', users);
-
 		await this.userRepo.insert(users);
 
 		await this.settingsRepo.update(
