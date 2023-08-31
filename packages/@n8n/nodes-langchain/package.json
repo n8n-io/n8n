@@ -38,7 +38,8 @@
       "dist/credentials/SerpApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/PineconeApi.credentials.js",
-      "dist/credentials/XataApi.credentials.js"
+      "dist/credentials/XataApi.credentials.js",
+      "dist/credentials/WolframAlphaApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/agents/ConversationalAgent/ConversationalAgent.node.js",
@@ -52,6 +53,7 @@
       "dist/nodes/llms/LMOpenAi/LMOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LMCohere.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LMOpenHuggingFaceInference.node.js",
+      "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
@@ -60,6 +62,7 @@
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolSerpApi/ToolSerpApi.node.js",
       "dist/nodes/tools/ToolWikipedia/ToolWikipedia.node.js",
+      "dist/nodes/tools/ToolWolframAlpha/ToolWolframAlpha.node.js",
       "dist/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node.js",
       "dist/nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.js",
       "dist/nodes/vector_store/InMemoryVectorStore/InMemoryVectorStore.node.js",
@@ -87,7 +90,7 @@
     "cohere-ai": "^6.2.2",
     "html-to-text": "^9.0.5",
     "ignore": "^5.2.4",
-    "langchain": "^0.0.134",
+    "langchain": "^0.0.136",
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
     "n8n-nodes-base": "workspace:*",

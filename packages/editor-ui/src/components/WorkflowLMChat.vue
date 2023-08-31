@@ -3,7 +3,7 @@
 		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
 		width="65%"
 		maxHeight="80%"
-		title="Chat Window"
+		:title="`Chat Window(${connectedNode?.name || 'No Chat Node'})`"
 		:eventBus="modalBus"
 		:scrollable="false"
 	>
@@ -85,19 +85,35 @@ import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables';
 import Modal from '@/components/Modal.vue';
-import { NODE_TRIGGER_CHAT_BUTTON, VIEWS, WORKFLOW_LM_CHAT_MODAL_KEY } from '@/constants';
+import {
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_CHAINS,
+	AI_SUBCATEGORY,
+	NODE_TRIGGER_CHAT_BUTTON,
+	VIEWS,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
+} from '@/constants';
 
 import { workflowRun } from '@/mixins/workflowRun';
-import { get } from 'lodash-es';
+import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
 import { INodeType, ITaskData } from 'n8n-workflow';
+import { INodeUi } from '@/Interface';
 
 interface ChatMessage {
 	text: string;
 	sender: 'bot' | 'user';
 	executionId?: string;
+}
+
+// TODO: Add proper type
+interface LangchainMessage {
+	id: string[];
+	kwargs: {
+		content: string;
+	};
 }
 
 // TODO:
@@ -124,6 +140,7 @@ export default defineComponent({
 			messages: [] as ChatMessage[],
 			modalBus: createEventBus(),
 			WORKFLOW_LM_CHAT_MODAL_KEY,
+			connectedNode: null as INodeUi | null,
 		};
 	},
 
@@ -134,6 +151,7 @@ export default defineComponent({
 		},
 	},
 	async mounted() {
+		this.setConnectedNode();
 		this.messages = this.getChatMessages();
 	},
 	methods: {
@@ -154,7 +172,7 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
-			if (event.ctrlKey && event.key === 'Enter') {
+			if ((event.ctrlKey || event.shiftKey) && event.key === 'Enter') {
 				this.sendChatMessage(this.currentMessage);
 			}
 		},
@@ -179,8 +197,75 @@ export default defineComponent({
 				});
 			}
 		},
+		setConnectedNode() {
+			const workflow = this.getCurrentWorkflow();
+			const triggerNode = workflow.queryNodes(
+				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
+			);
+
+			if (!triggerNode.length) {
+				this.showError(
+					new Error('Chat Trigger Node could not be found!'),
+					'Trigger Node not found',
+				);
+				return;
+			}
+			const chatNode = this.workflowsStore.getNodes().find((node: INodeUi): boolean => {
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) return false;
+
+				const isAgent =
+					nodeType.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_AGENTS);
+				const isChain =
+					nodeType.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_CHAINS);
+
+				if (!isAgent && !isChain) return false;
+
+				const parentNodes = workflow.getParentNodes(node.name);
+				const isChatChild = parentNodes.some(
+					(parentNodeName) => parentNodeName === triggerNode[0].name,
+				);
+
+				return Boolean(isChatChild && (isAgent || isChain));
+			});
+
+			if (!chatNode) {
+				this.showError(
+					new Error('Chat viable node(Agent or Chain) could not be found!'),
+					'Chat node not found',
+				);
+				return;
+			}
+
+			this.connectedNode = chatNode;
+		},
 		getChatMessages(): ChatMessage[] {
-			return [];
+			if (!this.connectedNode) return [];
+
+			const workflow = this.getCurrentWorkflow();
+			const connectedMemoryInputs =
+				workflow.connectionsByDestinationNode[this.connectedNode.name]?.memory;
+			if (!connectedMemoryInputs) return [];
+
+			const memoryConnection = (connectedMemoryInputs ?? []).find((i) => i.length > 0)?.[0];
+
+			if (!memoryConnection) return [];
+
+			const memoryOutputData = this.workflowsStore
+				?.getWorkflowResultDataByNodeName(memoryConnection.node)
+				?.map(
+					(data): { action: string; chatHistory: unknown[] } => get(data, 'data.memory.0.0.json')!,
+				)
+				?.find((data) => (data?.action === 'chatHistory' ? data : undefined));
+
+			const chatHistory = (memoryOutputData?.chatHistory ?? []) as LangchainMessage[];
+
+			return chatHistory.map((message) => {
+				return {
+					text: message.kwargs.content,
+					sender: last(message.id) === 'HumanMessage' ? 'user' : 'bot',
+				};
+			});
 		},
 		async startWorkflowWithMessage(message: string) {
 			const workflow = this.getCurrentWorkflow();

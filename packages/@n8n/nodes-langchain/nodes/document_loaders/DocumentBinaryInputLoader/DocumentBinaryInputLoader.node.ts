@@ -74,7 +74,7 @@ export class N8nBinaryLoader {
 			}
 
 			const bufferData = Buffer.from(data, BINARY_ENCODING).buffer;
-			const itemBlob = new Blob([bufferData], { type: mimeType });
+			const itemBlob = new Blob([new Uint8Array(bufferData)], { type: mimeType });
 
 			let loader: PDFLoader | CSVLoader | N8nEPubLoader | DocxLoader | TextLoader | JSONLoader;
 			switch (mimeType) {

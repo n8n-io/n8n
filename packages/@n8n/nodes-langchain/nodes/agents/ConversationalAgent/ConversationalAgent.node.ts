@@ -1,23 +1,21 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
-import type { Tool } from 'langchain/tools';
-import { BufferMemory } from 'langchain/memory';
-import type { InitializeAgentExecutorOptions } from 'langchain/agents';
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { BaseChatMessageHistory } from 'langchain/schema';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
+import { Tool } from 'langchain/tools';
+import { BaseChatMemory } from 'langchain/memory';
 
 export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Conversational Agent',
 		name: 'conversationalAgent',
-		icon: 'fa:link',
+		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
 		description: 'Conversational Agent',
@@ -43,73 +41,84 @@ export class ConversationalAgent implements INodeType {
 				type: 'string',
 				default: '={{ $json.input }}',
 			},
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Run Once for All Items',
+						value: 'runOnceForAllItems',
+						description: 'Run this chain only once, no matter how many input items there are',
+					},
+					{
+						name: 'Run Once for Each Item',
+						value: 'runOnceForEachItem',
+						description: 'Run this chain as many times as there are input items',
+					},
+				],
+				default: 'runOnceForAllItems',
+			},
+
+			{
+				displayName: 'System Message',
+				name: 'systemMessage',
+				type: 'string',
+				default:
+					'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
+				description: 'The message that will be sent to the agent before the conversation starts.',
+				typeOptions: {
+					rows: 3,
+				},
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		let memory: BufferMemory | undefined;
+		this.logger.verbose('Executing Vector Store QA Chain');
+		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const languageModelNodes = await this.getInputConnectionData('languageModel', 0);
-		if (languageModelNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Language Model has to be connected!',
-			);
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only one Language Model is allowed to be connected!',
-			);
-		}
-		const model = languageModelNodes[0].response as BaseLanguageModel;
+		const model = (await getAndValidateSupplyInput(
+			this,
+			'languageModel',
+			true,
+		)) as BaseLanguageModel;
+		const memory = (await getAndValidateSupplyInput(this, 'memory', false)) as BaseChatMemory;
+		const tools = (await getAndValidateSupplyInput(this, 'tool', true, true)) as Tool[];
 
-		if (languageModelNodes.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'At least one Language Model has to be connected!',
-			);
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Only one Language Model is allowed to be connected!',
-			);
-		}
-
-		const memoryNodes = await this.getInputConnectionData('memory', 0);
-		if (memoryNodes.length === 1) {
-			memory = new BufferMemory({
-				memoryKey: 'chat_history',
-				returnMessages: true,
-				chatHistory: memoryNodes[0].response as BaseChatMessageHistory,
-			});
-		} else if (languageModelNodes.length > 1) {
-			throw new NodeOperationError(this.getNode(), 'Only one Memory is allowed to be connected!');
-		}
-
-		const toolNodes = await this.getInputConnectionData('tool', 0);
-		const tools = toolNodes.map((connectedNode) => {
-			return connectedNode.response as Tool;
-		});
-
-		const options: InitializeAgentExecutorOptions = {
+		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
+			// Passing "chat-conversational-react-description" as the agent type
+			// automatically creates and uses BufferMemory with the executor.
+			// If you would like to override this, you can pass in a custom
+			// memory option, but the memoryKey set on it must be "chat_history".
 			agentType: 'chat-conversational-react-description',
-			memory,
-		};
-
-		const executor = await initializeAgentExecutorWithOptions(tools, model, options);
+			memory: memory,
+			agentArgs: {
+				systemMessage: this.getNodeParameter('systemMessage', 0) as string,
+			},
+		});
 
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const text = this.getNodeParameter('text', itemIndex) as string;
 
-			const response = await executor.call({
-				input: text,
-			});
+		if (runMode === 'runOnceForAllItems') {
+			const input = this.getNodeParameter('text', 0) as string;
+			const response = await agentExecutor.call({ input });
+
+			return this.prepareOutputData([{ json: response }]);
+		}
+
+		// Run for each item
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const input = this.getNodeParameter('text', itemIndex) as string;
+
+			const response = await agentExecutor.call({ input });
 
 			returnData.push({ json: response });
 		}
+
 		return this.prepareOutputData(returnData);
 	}
 }

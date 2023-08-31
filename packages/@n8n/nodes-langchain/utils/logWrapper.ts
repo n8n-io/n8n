@@ -14,7 +14,7 @@ import { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callba
 import { BaseLLM } from 'langchain/llms/base';
 import { N8nJsonLoader } from '../nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
 import { BaseChatMemory } from 'langchain/memory';
-import { MemoryVariables, OutputValues } from 'langchain/dist/memory/base';
+import { MemoryVariables } from 'langchain/dist/memory/base';
 
 export function logWrapper(
 	originalInstance:
@@ -120,14 +120,28 @@ export function logWrapper(
 					]);
 					return response;
 				};
-			} else if (prop === 'saveContext' && 'saveContext' in target) {
-				return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
-					executeFunctions.addInputData('memory', [
-						[{ json: { action: 'saveContext', inputValues, outputValues } }],
+			} else if (
+				prop === 'outputKey' &&
+				'outputKey' in target &&
+				target.constructor.name === 'BufferWindowMemory'
+			) {
+				executeFunctions.addInputData('memory', [[{ json: { action: 'chatHistory' } }]]);
+				const response = target[prop];
+				target['chatHistory'].getMessages().then((messages) => {
+					executeFunctions.addOutputData('memory', [
+						[{ json: { action: 'chatHistory', chatHistory: messages } }],
 					]);
-					await target[prop](inputValues, outputValues);
-					executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
-				};
+				});
+				return response;
+				// TODO: Is this needed?
+				// } else if (prop === 'saveContext' && 'saveContext' in target) {
+				// 	return async (inputValues: InputValues, outputValues: OutputValues): Promise<void> => {
+				// 		executeFunctions.addInputData('memory', [
+				// 			[{ json: { action: 'saveContext', inputValues, outputValues } }],
+				// 		]);
+				// 		await target[prop](inputValues, outputValues);
+				// 		executeFunctions.addOutputData('memory', [[{ json: { action: 'saveContext' } }]]);
+				// 	};
 
 				// For BaseChatModel
 			} else if (prop === '_generate' && '_generate' in target) {
