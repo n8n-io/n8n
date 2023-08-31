@@ -173,6 +173,11 @@ export const genericFiltersCollection: INodeProperties = {
 							description: "Field is between two values ('From' is inclusive, 'To' is exclusive)",
 						},
 						{
+							name: 'Contains',
+							value: '_like',
+							description: 'Field contains the substring from value',
+						},
+						{
 							name: 'Ends With',
 							value: '_endsWith',
 							description: 'Field ends with value',
@@ -206,11 +211,6 @@ export const genericFiltersCollection: INodeProperties = {
 							name: 'Less Than Or Equal',
 							value: '_lte',
 							description: 'Field is less than or equal to value',
-						},
-						{
-							name: 'Like',
-							value: '_like',
-							description: 'Field contains the substring from value',
 						},
 						{
 							name: 'Match Word',

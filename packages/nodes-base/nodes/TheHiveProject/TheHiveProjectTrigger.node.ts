@@ -38,6 +38,7 @@ export class TheHiveProjectTrigger implements INodeType {
 				default: [],
 				required: true,
 				description: 'Events types',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: '*',
@@ -90,21 +91,6 @@ export class TheHiveProjectTrigger implements INodeType {
 						description: 'Triggered when a comment is updated',
 					},
 					{
-						name: 'Log Created',
-						value: 'log_create',
-						description: 'Triggered when a task log is created',
-					},
-					{
-						name: 'Log Deleted',
-						value: 'log_delete',
-						description: 'Triggered when a task log is deleted',
-					},
-					{
-						name: 'Log Updated',
-						value: 'log_update',
-						description: 'Triggered when a task log is updated',
-					},
-					{
 						name: 'Observable Created',
 						value: 'observable_create',
 						description: 'Triggered when an observable is created',
@@ -143,6 +129,21 @@ export class TheHiveProjectTrigger implements INodeType {
 						name: 'Task Updated',
 						value: 'task_update',
 						description: 'Triggered when a task is updated',
+					},
+					{
+						name: 'Task Log Created',
+						value: 'log_create',
+						description: 'Triggered when a task log is created',
+					},
+					{
+						name: 'Task Log Deleted',
+						value: 'log_delete',
+						description: 'Triggered when a task log is deleted',
+					},
+					{
+						name: 'Task Log Updated',
+						value: 'log_update',
+						description: 'Triggered when a task log is updated',
 					},
 				],
 			},

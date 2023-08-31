@@ -7,7 +7,7 @@ import { theHiveApiRequest } from './requestApi';
 export async function theHiveApiQuery(
 	this: IExecuteFunctions,
 	scope: QueryScope,
-	filters?: IDataObject | IDataObject[],
+	filters?: IDataObject[],
 	sortFields?: IDataObject[],
 	limit?: number,
 	returnCount = false,
@@ -35,7 +35,7 @@ export async function theHiveApiQuery(
 	if (filters && Array.isArray(filters) && filters.length) {
 		const filter = {
 			_name: 'filter',
-			_and: filters.map(constructFilter),
+			_and: filters.filter((f) => f.field).map(constructFilter),
 		};
 
 		query.push(filter);
