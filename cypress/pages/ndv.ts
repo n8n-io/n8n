@@ -1,5 +1,5 @@
 import { BasePage } from './base';
-import { getVisibleSelect } from '../utils';
+import { getVisiblePopper, getVisibleSelect } from '../utils';
 
 export class NDV extends BasePage {
 	getters = {
@@ -39,6 +39,7 @@ export class NDV extends BasePage {
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
+		parameterInputIssues: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`).should('have.length', 1).findChildByTestId('parameter-issues'),
 		parameterExpressionPreview: (parameterName: string) =>
 			this.getters
 				.nodeParameters()
@@ -64,6 +65,8 @@ export class NDV extends BasePage {
 		resourceLocatorErrorMessage: () => cy.getByTestId('rlc-error-container'),
 		resourceLocatorModeSelector: (paramName: string) =>
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
+		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
+		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
 	};
 
 	actions = {
@@ -99,8 +102,8 @@ export class NDV extends BasePage {
 		clearParameterInput: (parameterName: string) => {
 			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
 		},
-		typeIntoParameterInput: (parameterName: string, content: string) => {
-			this.getters.parameterInput(parameterName).type(content);
+		typeIntoParameterInput: (parameterName: string, content: string, opts?: { parseSpecialCharSequences: boolean }) => {
+			this.getters.parameterInput(parameterName).type(content, opts);
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
 			getVisibleSelect().find('.option-headline').contains(content).click();
@@ -171,6 +174,19 @@ export class NDV extends BasePage {
 				.find('span')
 				.should('include.html', asEncodedHTML(value));
 		},
+
+		refreshResourceMapperColumns: () => {
+			this.getters.resourceMapperSelectColumn().realHover();
+			this.getters.resourceMapperSelectColumn().findChildByTestId('action-toggle').should('have.length', 1).click();
+
+			getVisiblePopper().find('li').last().click();
+		},
+
+		setInvalidExpression: (fieldName: string, invalidExpression?: string) => {
+			this.actions.typeIntoParameterInput(fieldName, "=");
+			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", { parseSpecialCharSequences: false });
+			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
+		}
 	};
 }
 
