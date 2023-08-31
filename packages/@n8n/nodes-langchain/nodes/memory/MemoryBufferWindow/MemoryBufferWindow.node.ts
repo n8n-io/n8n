@@ -70,19 +70,20 @@ export class MemoryBufferWindow implements INodeType {
 		outputs: ['memory'],
 		outputNames: ['Memory'],
 		properties: [
-			{
-				displayName: 'Input Key',
-				name: 'inputKey',
-				type: 'string',
-				default: 'input',
-			},
-			{
-				displayName: 'Memory Key',
-				name: 'memoryKey',
-				type: 'string',
-				default: 'chat_history',
-				description: 'The key to use to store the memory in the workflow data',
-			},
+			// TODO: Should we allow the user to specify the input & memory key?
+			// {
+			// 	displayName: 'Input Key',
+			// 	name: 'inputKey',
+			// 	type: 'string',
+			// 	default: 'input',
+			// },
+			// {
+			// 	displayName: 'Memory Key',
+			// 	name: 'memoryKey',
+			// 	type: 'string',
+			// 	default: 'chat_history',
+			// 	description: 'The key to use to store the memory in the workflow data',
+			// },
 			{
 				displayName: 'Context Window Length',
 				name: 'contextWindowLength',

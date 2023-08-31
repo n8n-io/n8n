@@ -91,7 +91,7 @@
     "cohere-ai": "^6.2.2",
     "html-to-text": "^9.0.5",
     "ignore": "^5.2.4",
-    "langchain": "^0.0.134",
+    "langchain": "^0.0.136",
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
     "n8n-nodes-base": "workspace:*",
