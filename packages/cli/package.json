@@ -186,7 +186,7 @@
     "swagger-ui-express": "^4.3.0",
     "syslog-client": "^1.1.1",
     "typedi": "^0.10.0",
-    "typeorm": "^0.3.12",
+    "typeorm": "^0.3.17",
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",
