@@ -1,20 +1,17 @@
 import validator from 'validator';
-import { In } from 'typeorm';
-import type { ILogger } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import type { FindManyOptions } from 'typeorm';
+import { In, Not } from 'typeorm';
+import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
-	addInviteLinkToUser,
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	sanitizeUser,
 	validatePassword,
-	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import {
@@ -24,21 +21,16 @@ import {
 	UnauthorizedError,
 } from '@/ResponseHelper';
 import { Response } from 'express';
-import type { Config } from '@/config';
-import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
-import type { UserManagementMailer } from '@/UserManagement/email';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IExternalHooksClass,
-	IInternalHooksClass,
-	ITelemetryUserDeletionData,
-} from '@/Interfaces';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
+import { UserManagementMailer } from '@/UserManagement/email';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { Config } from '@/config';
+import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import type { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
+import { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
 import { plainToInstance } from 'class-transformer';
 import { License } from '@/License';
 import { Container } from 'typedi';
@@ -46,66 +38,25 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
+import { listQueryMiddleware } from '@/middlewares';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
-	private config: Config;
-
-	private logger: ILogger;
-
-	private externalHooks: IExternalHooksClass;
-
-	private internalHooks: IInternalHooksClass;
-
-	private sharedCredentialsRepository: SharedCredentialsRepository;
-
-	private sharedWorkflowRepository: SharedWorkflowRepository;
-
-	private activeWorkflowRunner: ActiveWorkflowRunner;
-
-	private mailer: UserManagementMailer;
-
-	private jwtService: JwtService;
-
-	private postHog?: PostHogClient;
-
-	private roleService: RoleService;
-
-	private userService: UserService;
-
-	constructor({
-		config,
-		logger,
-		externalHooks,
-		internalHooks,
-		repositories,
-		activeWorkflowRunner,
-		mailer,
-		postHog,
-	}: {
-		config: Config;
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'SharedCredentials' | 'SharedWorkflow'>;
-		activeWorkflowRunner: ActiveWorkflowRunner;
-		mailer: UserManagementMailer;
-		postHog?: PostHogClient;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.sharedCredentialsRepository = repositories.SharedCredentials;
-		this.sharedWorkflowRepository = repositories.SharedWorkflow;
-		this.activeWorkflowRunner = activeWorkflowRunner;
-		this.mailer = mailer;
-		this.jwtService = Container.get(JwtService);
-		this.postHog = postHog;
-		this.roleService = Container.get(RoleService);
-		this.userService = Container.get(UserService);
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly externalHooks: IExternalHooksClass,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly mailer: UserManagementMailer,
+		private readonly jwtService: JwtService,
+		private readonly roleService: RoleService,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
@@ -179,6 +130,7 @@ export class UsersController {
 		// remove/exclude existing users from creation
 		const existingUsers = await this.userService.findMany({
 			where: { email: In(Object.keys(createUsers)) },
+			relations: ['globalRole'],
 		});
 		existingUsers.forEach((user) => {
 			if (user.password) {
@@ -354,20 +306,98 @@ export class UsersController {
 			was_disabled_ldap_user: false,
 		});
 
-		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
+		const publicInvitee = await this.userService.toPublic(invitee);
+
+		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
+		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
+	}
+
+	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+		const findManyOptions: FindManyOptions<User> = {};
+
+		if (!listQueryOptions) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+			return findManyOptions;
+		}
+
+		const { filter, select, take, skip } = listQueryOptions;
+
+		if (select) findManyOptions.select = select;
+		if (take) findManyOptions.take = take;
+		if (skip) findManyOptions.skip = skip;
+
+		if (take && !select) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+		}
+
+		if (take && select && !select?.id) {
+			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+		}
+
+		if (filter) {
+			const { isOwner, ...otherFilters } = filter;
+
+			findManyOptions.where = otherFilters;
+
+			if (isOwner !== undefined) {
+				const ownerRole = await this.roleService.findGlobalOwnerRole();
+
+				findManyOptions.relations = ['globalRole'];
+				findManyOptions.where.globalRole = { id: isOwner ? ownerRole.id : Not(ownerRole.id) };
+			}
+		}
+
+		return findManyOptions;
+	}
+
+	removeSupplementaryFields(
+		publicUsers: Array<Partial<PublicUser>>,
+		listQueryOptions: ListQuery.Options,
+	) {
+		const { take, select, filter } = listQueryOptions;
+
+		// remove fields added to satisfy query
+
+		if (take && select && !select?.id) {
+			for (const user of publicUsers) delete user.id;
+		}
+
+		if (filter?.isOwner) {
+			for (const user of publicUsers) delete user.globalRole;
+		}
+
+		// remove computed fields (unselectable)
+
+		if (select) {
+			for (const user of publicUsers) {
+				delete user.isOwner;
+				delete user.isPending;
+				delete user.signInType;
+				delete user.hasRecoveryCodesLeft;
+			}
+		}
+
+		return publicUsers;
 	}
 
 	@Authorized('any')
-	@Get('/')
-	async listUsers(req: UserRequest.List) {
-		const users = await this.userService.findMany({ relations: ['globalRole', 'authIdentities'] });
-		return users.map(
-			(user): PublicUser =>
-				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
+	@Get('/', { middlewares: listQueryMiddleware })
+	async listUsers(req: ListQuery.Request) {
+		const { listQueryOptions } = req;
+
+		const findManyOptions = await this.toFindManyOptions(listQueryOptions);
+
+		const users = await this.userService.findMany(findManyOptions);
+
+		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
+			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
 		);
+
+		return listQueryOptions
+			? this.removeSupplementaryFields(publicUsers, listQueryOptions)
+			: publicUsers;
 	}
 
 	@Authorized(['global', 'owner'])
@@ -441,6 +471,7 @@ export class UsersController {
 
 		const users = await this.userService.findMany({
 			where: { id: In([transferId, idToDelete]) },
+			relations: ['globalRole'],
 		});
 
 		if (!users.length || (transferId && users.length !== 2)) {
@@ -531,7 +562,7 @@ export class UsersController {
 				telemetryData,
 				publicApi: false,
 			});
-			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+			await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 			return { success: true };
 		}
 
@@ -569,7 +600,7 @@ export class UsersController {
 			publicApi: false,
 		});
 
-		await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 		return { success: true };
 	}
 

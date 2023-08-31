@@ -11,9 +11,13 @@ export const paginationListQueryMiddleware: RequestHandler = (
 ) => {
 	const { take: rawTake, skip: rawSkip = '0' } = req.query;
 
-	if (!rawTake) return next();
-
 	try {
+		if (!rawTake && req.query.skip) {
+			throw new Error('Please specify `take` when using `skip`');
+		}
+
+		if (!rawTake) return next();
+
 		const { take, skip } = Pagination.fromString(rawTake, rawSkip);
 
 		req.listQueryOptions = { ...req.listQueryOptions, skip, take };

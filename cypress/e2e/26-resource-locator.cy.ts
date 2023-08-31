@@ -1,5 +1,5 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
-import { getVisibleSelect } from '../utils';
+import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -50,5 +50,20 @@ describe('Resource Locator', () => {
 		ndv.actions.setRLCValue('sheetName', '123');
 		ndv.actions.setRLCValue('documentId', '321');
 		ndv.getters.resourceLocatorInput('sheetName').should('have.value', '');
+	});
+
+	// unlike RMC and remote options, RLC does not support loadOptionDependsOn
+	it('should retrieve list options when other params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {action: 'Resource Locator'});
+
+		ndv.getters.resourceLocatorInput('rlc').click();
+		getVisiblePopper().should('have.length', 1).findChildByTestId('rlc-item').should('have.length', 5);
+
+		ndv.actions.setInvalidExpression('fieldId');
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.resourceLocatorInput('rlc').click();
+		getVisiblePopper().should('have.length', 1).findChildByTestId('rlc-item').should('have.length', 5);
 	});
 });

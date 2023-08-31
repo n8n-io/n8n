@@ -8,7 +8,7 @@ const escape = (str: string) => str.replace('$', '\\$');
 export const variablesCompletions = defineComponent({
 	methods: {
 		/**
-		 * Complete `$workflow.` to `.id .name .active`.
+		 * Complete `$vars.` to `$vars.VAR_NAME`.
 		 */
 		variablesCompletions(context: CompletionContext, matcher = '$vars'): CompletionResult | null {
 			const pattern = new RegExp(`${escape(matcher)}\..*`);

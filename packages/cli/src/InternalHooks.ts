@@ -1,6 +1,5 @@
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
-import { BinaryDataManager } from 'n8n-core';
 import type {
 	AuthenticationMethod,
 	ExecutionStatus,
@@ -460,8 +459,6 @@ export class InternalHooks implements IInternalHooksClass {
 						},
 				  }),
 		);
-
-		await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
 	}
@@ -1085,5 +1082,15 @@ export class InternalHooks implements IInternalHooksClass {
 		variables_pushed: number;
 	}): Promise<void> {
 		return this.telemetry.track('User finished push via UI', data);
+	}
+
+	async onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string | undefined;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string | undefined;
+	}): Promise<void> {
+		return this.telemetry.track('User updated external secrets settings', saveData);
 	}
 }

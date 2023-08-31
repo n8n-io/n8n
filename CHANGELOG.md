@@ -1,3 +1,41 @@
+## [1.5.1](https://github.com/n8n-io/n8n/compare/n8n@1.5.0...n8n@1.5.1) (2023-08-31)
+
+
+### Features
+
+* **Strapi Node:** Add token credentials ([#7048](https://github.com/n8n-io/n8n/issues/7048)) ([c01bca5](https://github.com/n8n-io/n8n/commit/c01bca562b71d8b524e29edd37e8397d0689b180))
+
+
+
+# [1.5.0](https://github.com/n8n-io/n8n/compare/n8n@1.4.0...n8n@1.5.0) (2023-08-31)
+
+
+### Bug Fixes
+
+* **Agile CRM Node:** Fix issue with company address not working ([#6997](https://github.com/n8n-io/n8n/issues/6997)) ([2f81652](https://github.com/n8n-io/n8n/commit/2f81652400b6a793fa610728519fd992c03c3d0d))
+* **Code Node:** Switch over to vm2 fork ([#7018](https://github.com/n8n-io/n8n/issues/7018)) ([dfe0fa6](https://github.com/n8n-io/n8n/commit/dfe0fa65f8111cd534387e26197cb3836d694e27))
+* **core:** Invalid NODES_INCLUDE should not crash the app ([#7038](https://github.com/n8n-io/n8n/issues/7038)) ([04e3178](https://github.com/n8n-io/n8n/commit/04e31789019aad6fe122ed81b06552a61d7f3a6d)), closes [#6683](https://github.com/n8n-io/n8n/issues/6683)
+* **core:** Setup websocket keep-live messages ([#6866](https://github.com/n8n-io/n8n/issues/6866)) ([8bdb07d](https://github.com/n8n-io/n8n/commit/8bdb07d33ded48eab0b8f892a06e18f37bee9372)), closes [#6757](https://github.com/n8n-io/n8n/issues/6757)
+* **core:** Throw `NodeSSLError` only for nodes that allow ignoring SSL issues ([#6928](https://github.com/n8n-io/n8n/issues/6928)) ([a01c3fb](https://github.com/n8n-io/n8n/commit/a01c3fbc19d66cf8b1dac3e34e0999dd36d81e7c))
+* **Date & Time Node:** Dont parse date if it's not set (null or undefined) ([#7050](https://github.com/n8n-io/n8n/issues/7050)) ([d72f79f](https://github.com/n8n-io/n8n/commit/d72f79ffb393a096f510f0c41bb66d987fe8cb0d))
+* **editor:** Fix sending of Ask AI tracking events ([#7002](https://github.com/n8n-io/n8n/issues/7002)) ([fb05afa](https://github.com/n8n-io/n8n/commit/fb05afa16560c3c837abf46824f8dc7fa3bb1c83))
+* **Microsoft Excel 365 Node:** Support for more extensions in workbook rlc ([#7020](https://github.com/n8n-io/n8n/issues/7020)) ([d6e1cf2](https://github.com/n8n-io/n8n/commit/d6e1cf232f86ddc69cceb69c8971c3373dab454c))
+* **MongoDB Node:** Stringify response ObjectIDs ([#6990](https://github.com/n8n-io/n8n/issues/6990)) ([9ca990b](https://github.com/n8n-io/n8n/commit/9ca990b9936ee80972952d0a1ad73c2926809ba2))
+* **MongoDB Node:** Upgrade mongodb package to address  CVE-2021-32050 ([#7054](https://github.com/n8n-io/n8n/issues/7054)) ([d3f6356](https://github.com/n8n-io/n8n/commit/d3f635657c7514296fd0a473ba13672db2717490))
+* **Postgres Node:** Empty return data fix for Postgres and MySQL ([#7016](https://github.com/n8n-io/n8n/issues/7016)) ([176ccd6](https://github.com/n8n-io/n8n/commit/176ccd62bc1d6f28958c0fc894ee647f1e3a5f6e))
+* **Webhook Node:** Fix URL params for webhooks ([#6986](https://github.com/n8n-io/n8n/issues/6986)) ([596b569](https://github.com/n8n-io/n8n/commit/596b5695cdcca33da02bec428d58de8b2a13297e))
+
+
+### Features
+
+* **core:** Add filtering, selection and pagination to users ([#6994](https://github.com/n8n-io/n8n/issues/6994)) ([b716241](https://github.com/n8n-io/n8n/commit/b716241b428ef09cf6bdf32cb3a8680e9ba8f25f))
+* **core:** Add MFA ([#4767](https://github.com/n8n-io/n8n/issues/4767)) ([2b7ba6f](https://github.com/n8n-io/n8n/commit/2b7ba6fdf100ef78b60358648d773e2f200847b8))
+* **editor:** Debug executions in the editor ([#6834](https://github.com/n8n-io/n8n/issues/6834)) ([c833078](https://github.com/n8n-io/n8n/commit/c833078c87adeadb1e701f17d3f380c669eb1460))
+* External Secrets storage for credentials ([#6477](https://github.com/n8n-io/n8n/issues/6477)) ([ed927d3](https://github.com/n8n-io/n8n/commit/ed927d34b25b4ddd7048b622c141e32a8a57b6b7))
+* **RSS Read Node:** Add support for self signed certificates ([#7039](https://github.com/n8n-io/n8n/issues/7039)) ([3b9f0fe](https://github.com/n8n-io/n8n/commit/3b9f0fed7af2d3a234049ab7d50d883ee4608007))
+
+
+
 # [1.4.0](https://github.com/n8n-io/n8n/compare/n8n@1.3.0...n8n@1.4.0) (2023-08-23)
 
 

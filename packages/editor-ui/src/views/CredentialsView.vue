@@ -56,6 +56,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useExternalSecretsStore } from '@/stores';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
@@ -84,6 +85,7 @@ export default defineComponent({
 			useUIStore,
 			useUsersStore,
 			useSourceControlStore,
+			useExternalSecretsStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.credentialsStore.allCredentials;
@@ -107,6 +109,7 @@ export default defineComponent({
 			const loadPromises = [
 				this.credentialsStore.fetchAllCredentials(),
 				this.credentialsStore.fetchCredentialTypes(false),
+				this.externalSecretsStore.fetchAllSecrets(),
 			];
 
 			if (this.nodeTypesStore.allNodeTypes.length === 0) {

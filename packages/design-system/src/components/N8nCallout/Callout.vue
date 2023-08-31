@@ -24,7 +24,7 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',
-	danger: 'times-circle',
+	danger: 'exclamation-triangle',
 };
 
 export default defineComponent({

@@ -12,7 +12,6 @@ import { OwnerController } from '@/controllers';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { UserService } from '@/services/user.service';
-import Container from 'typedi';
 import { mockInstance } from '../../integration/shared/utils';
 
 describe('OwnerController', () => {
@@ -20,16 +19,14 @@ describe('OwnerController', () => {
 	const logger = mock<ILogger>();
 	const internalHooks = mock<IInternalHooksClass>();
 	const userService = mockInstance(UserService);
-	Container.set(UserService, userService);
 	const settingsRepository = mock<SettingsRepository>();
-	const controller = new OwnerController({
+	const controller = new OwnerController(
 		config,
 		logger,
 		internalHooks,
-		repositories: {
-			Settings: settingsRepository,
-		},
-	});
+		settingsRepository,
+		userService,
+	);
 
 	describe('setupOwner', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {

@@ -49,7 +49,10 @@ export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
+export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
 export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -75,7 +78,8 @@ export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
+export const COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/manual-install/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
@@ -380,6 +384,7 @@ export const enum VIEWS {
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
+	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
@@ -407,6 +412,7 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
@@ -479,7 +485,9 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	SourceControl = 'sourceControl',
+	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
+	DebugInEditor = 'debugInEditor',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
