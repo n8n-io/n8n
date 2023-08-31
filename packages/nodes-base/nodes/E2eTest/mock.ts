@@ -1,4 +1,5 @@
 import { array, name, uuid } from 'minifaker';
+import 'minifaker/locales/en';
 import type {
 	INodeExecutionData,
 	INodeListSearchResult,
