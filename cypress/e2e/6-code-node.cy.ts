@@ -110,23 +110,17 @@ describe('Code node', () => {
 					statusCode: 200,
 					body: {
 						data: {
-							code: 'console.log("Hello World")',
-							usage: {
-								prompt_tokens: 15,
-								completion_tokens: 15,
-								total_tokens: 30
-							}
+							code: 'console.log("Hello World")'
 						},
 					}
 				}).as('ask-ai');
+
 				cy.getByTestId('ask-ai-cta').click();
-				cy.wait('@ask-ai')
-					.its('request.body')
-					.should('deep.include', {
-						question: prompt,
-						model: "gpt-3.5-turbo-16k",
-						context: { schema: [] }
-					});
+				const askAiReq = cy.wait('@ask-ai')
+
+				askAiReq.its('request.body').should('have.keys', ['question', 'model', 'context', 'n8nVersion']);
+
+				askAiReq.its('context').should('have.keys', ['schema', 'ndvSessionId', 'sessionId']);
 
 				cy.contains('Code generation completed').should('be.visible')
 				cy.getByTestId('code-node-tab-code').should('contain.text', 'console.log("Hello World")');

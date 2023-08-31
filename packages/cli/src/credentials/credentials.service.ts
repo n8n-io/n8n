@@ -309,7 +309,10 @@ export class CredentialsService {
 			if (!prop) {
 				continue;
 			}
-			if (prop.typeOptions?.password) {
+			if (
+				prop.typeOptions?.password &&
+				(!(copiedData[dataKey] as string).startsWith('={{') || prop.noDataExpression)
+			) {
 				if (copiedData[dataKey].toString().length > 0) {
 					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {

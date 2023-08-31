@@ -18,6 +18,7 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
@@ -28,8 +29,10 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -122,6 +125,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: '',
 				httpNodeParameters: '',
 			},
+			[MFA_SETUP_MODAL_KEY]: {
+				open: false,
+			},
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
 				data: undefined,
@@ -136,6 +142,12 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[SOURCE_CONTROL_PULL_MODAL_KEY]: {
+				open: false,
+			},
+			[EXTERNAL_SECRETS_PROVIDER_MODAL_KEY]: {
+				open: false,
+			},
+			[DEBUG_PAYWALL_MODAL_KEY]: {
 				open: false,
 			},
 		},
@@ -194,6 +206,11 @@ export const useUIStore = defineStore(STORES.UI, {
 
 			return {
 				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				feature: {
+					unavailable: {
+						title: `contextual.feature.unavailable.title${contextKey}`,
+					},
+				},
 				credentials: {
 					sharing: {
 						unavailable: {
@@ -280,7 +297,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
 		isReadOnlyView(): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS);
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG].includes(
+				this.currentView as VIEWS,
+			);
 		},
 		isNodeView(): boolean {
 			return [
