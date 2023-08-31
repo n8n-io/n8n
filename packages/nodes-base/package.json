@@ -839,7 +839,7 @@
     "minifaker": "^1.34.1",
     "moment": "~2.29.2",
     "moment-timezone": "^0.5.28",
-    "mongodb": "^4.9.1",
+    "mongodb": "^4.17.1",
     "mqtt": "^5.0.2",
     "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
