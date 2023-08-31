@@ -1,6 +1,5 @@
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
-import { BinaryDataManager } from 'n8n-core';
 import type {
 	AuthenticationMethod,
 	ExecutionStatus,
@@ -460,8 +459,6 @@ export class InternalHooks implements IInternalHooksClass {
 						},
 				  }),
 		);
-
-		await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
 	}
