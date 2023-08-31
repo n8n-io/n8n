@@ -66,13 +66,15 @@ export class ChainSummarization implements INodeType {
 					{
 						name: 'Map Reduce',
 						value: 'map_reduce',
-					}, {
-						name: 'Stuff',
-						value: 'stuff',
-					}, {
+					},
+					{
 						name: 'Refine',
 						value: 'refine',
-					}
+					},
+					{
+						name: 'Stuff',
+						value: 'stuff',
+					},
 				],
 			},
 		],

@@ -1,6 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { RecursiveCharacterTextSplitter, RecursiveCharacterTextSplitterParams } from 'langchain/text_splitter';
+import {
+	RecursiveCharacterTextSplitter,
+	RecursiveCharacterTextSplitterParams,
+} from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
@@ -73,7 +76,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 
 		const params: RecursiveCharacterTextSplitterParams = {
 			// TODO: These are the default values, should we allow the user to change them?
-			separators: ["\n\n", "\n", " ", ""],
+			separators: ['\n\n', '\n', ' ', ''],
 			chunkSize,
 			chunkOverlap,
 			keepSeparator: false,
