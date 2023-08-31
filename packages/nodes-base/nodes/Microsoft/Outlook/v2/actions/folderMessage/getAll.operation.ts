@@ -96,7 +96,7 @@ export const properties: INodeProperties[] = [
 						default: '',
 						placeholder: 'e.g. automation',
 						description:
-							'Only return messages that contains search term. Without specific message properties, the search is carried out on the default search properties of from, subject, and body. More info <a href="https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter target="_blank">here</a>.',
+							'Only return messages that contains search term. Without specific message properties, the search is carried out on the default search properties of from, subject, and body. <a href="https://docs.microsoft.com/en-us/graph/query-parameters#search-parameter target="_blank">More info</a>.',
 						displayOptions: {
 							show: {
 								filterBy: ['search'],
