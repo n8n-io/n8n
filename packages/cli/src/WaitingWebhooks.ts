@@ -32,6 +32,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { path: executionId, suffix } = req.params;
 		Logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
 
+		// Reset request parameters
+		req.params = {} as WaitingWebhookRequest['params'];
+
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,

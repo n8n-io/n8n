@@ -14,7 +14,7 @@ import { useToast } from '@/composables';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 
@@ -39,7 +39,7 @@ export default defineComponent({
 		...mapStores(useUsersStore),
 	},
 	async mounted() {
-		this.config = {
+		const form: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.changePassword'),
 			buttonText: this.$locale.baseText('auth.changePassword'),
 			redirectText: this.$locale.baseText('auth.signin'),
@@ -77,6 +77,24 @@ export default defineComponent({
 		};
 
 		const token = this.getResetToken();
+		const mfaEnabled = this.getMfaEnabled();
+
+		if (mfaEnabled) {
+			form.inputs.push({
+				name: 'mfaToken',
+				initialValue: '',
+				properties: {
+					required: true,
+					label: this.$locale.baseText('mfa.code.input.label'),
+					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
+					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+					capitalize: true,
+					validateOnBlur: true,
+				},
+			});
+		}
+
+		this.config = form;
 
 		try {
 			if (!token) {
@@ -110,18 +128,28 @@ export default defineComponent({
 				this.password = e.value;
 			}
 		},
-		getResetToken(): string | null {
+		getResetToken() {
 			return !this.$route.query.token || typeof this.$route.query.token !== 'string'
 				? null
 				: this.$route.query.token;
 		},
-		async onSubmit() {
+		getMfaEnabled() {
+			if (!this.$route.query.mfaEnabled) return null;
+			return this.$route.query.mfaEnabled === 'true' ? true : false;
+		},
+		async onSubmit(values: { mfaToken: string }) {
 			try {
 				this.loading = true;
 				const token = this.getResetToken();
 
 				if (token) {
-					await this.usersStore.changePassword({ token, password: this.password });
+					const changePasswordParameters = {
+						token,
+						password: this.password,
+						...(values.mfaToken && { mfaToken: values.mfaToken }),
+					};
+
+					await this.usersStore.changePassword(changePasswordParameters);
 
 					this.showMessage({
 						type: 'success',

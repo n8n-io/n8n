@@ -21,7 +21,6 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import type {
@@ -35,8 +34,12 @@ import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
-import { TagRepository } from '@/databases/repositories';
+import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
 import { separate } from '@/utils';
+
+import { randomPassword } from '@/Ldap/helpers';
+import { TOTPService } from '@/Mfa/totp.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -95,7 +98,7 @@ export async function init() {
 		await Db.init(getDBOptions('postgres', testDbName));
 	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
-		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
+		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
 		await bootstrapMysql.destroy();
 
 		await Db.init(getDBOptions('mysql', testDbName));
@@ -119,6 +122,7 @@ export async function truncate(collections: CollectionName[]) {
 
 	if (tag) {
 		await Container.get(TagRepository).delete({});
+		await Container.get(WorkflowTagMappingRepository).delete({});
 	}
 
 	for (const collection of rest) {
@@ -203,8 +207,47 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 	return user;
 }
 
+export async function createUserWithMfaEnabled(
+	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
+) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	const email = randomEmail();
+	const password = randomPassword();
+
+	const toptService = new TOTPService();
+
+	const secret = toptService.generateSecret();
+
+	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
+
+	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
+
+	const { encryptedSecret, encryptedRecoveryCodes } = mfaService.encryptSecretAndRecoveryCodes(
+		secret,
+		recoveryCodes,
+	);
+
+	return {
+		user: await createUser({
+			mfaEnabled: true,
+			password,
+			email,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
+		}),
+		rawPassword: password,
+		rawSecret: secret,
+		rawRecoveryCodes: recoveryCodes,
+	};
+}
+
 export async function createOwner() {
 	return createUser({ globalRole: await getGlobalOwnerRole() });
+}
+
+export async function createMember() {
+	return createUser({ globalRole: await getGlobalMemberRole() });
 }
 
 export async function createUserShell(globalRole: Role): Promise<User> {
@@ -389,14 +432,24 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 //          Tags
 // ----------------------------------
 
-export async function createTag(attributes: Partial<TagEntity> = {}) {
+export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: WorkflowEntity) {
 	const { name } = attributes;
 
-	return Container.get(TagRepository).save({
+	const tag = await Container.get(TagRepository).save({
 		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
 	});
+
+	if (workflow) {
+		const mappingRepository = Container.get(WorkflowTagMappingRepository);
+
+		const mapping = mappingRepository.create({ tagId: tag.id, workflowId: workflow.id });
+
+		await mappingRepository.save(mapping);
+	}
+
+	return tag;
 }
 
 // ----------------------------------
@@ -581,13 +634,12 @@ const baseOptions = (type: TestDBType) => ({
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapDBOptions = (type: TestDBType) =>
-	({
-		type,
-		name: type,
-		database: type,
-		...baseOptions(type),
-	}) as const;
+export const getBootstrapDBOptions = (type: TestDBType) => ({
+	type,
+	name: type,
+	database: type,
+	...baseOptions(type),
+});
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,
