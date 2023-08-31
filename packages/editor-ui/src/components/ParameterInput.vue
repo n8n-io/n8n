@@ -888,7 +888,8 @@ export default defineComponent({
 			if (
 				this.node === null ||
 				this.hasRemoteMethod === false ||
-				this.remoteParameterOptionsLoading
+				this.remoteParameterOptionsLoading ||
+				!this.parameter
 			) {
 				return;
 			}
@@ -900,7 +901,8 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveParameter(
+				const resolvedNodeParameters = this.resolveRequiredParameters(
+					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;
 				const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;

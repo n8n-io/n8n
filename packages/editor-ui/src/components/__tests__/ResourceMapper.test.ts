@@ -26,7 +26,7 @@ describe('ResourceMapper.vue', () => {
 			.spyOn(nodeTypeStore, 'getResourceMapperFields')
 			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
 		resolveParameterSpy = vi
-			.spyOn(workflowHelpers, 'resolveParameter')
+			.spyOn(workflowHelpers, 'resolveRequiredParameters')
 			.mockReturnValue(NODE_PARAMETER_VALUES);
 	});
 
