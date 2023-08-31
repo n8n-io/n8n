@@ -18,6 +18,7 @@
 				@update:modelValue="onFilterInput"
 				ref="search"
 				:placeholder="$locale.baseText('resourceLocator.search.placeholder')"
+				data-test-id="rlc-search"
 			>
 				<template #prefix>
 					<font-awesome-icon :class="$style.searchIcon" icon="search" />
@@ -47,6 +48,7 @@
 					[$style.selected]: result.value === modelValue,
 					[$style.hovering]: hoverIndex === i,
 				}"
+				data-test-id="rlc-item"
 				@click="() => onItemClick(result.value)"
 				@mouseenter="() => onItemHover(i)"
 				@mouseleave="() => onItemHoverLeave()"

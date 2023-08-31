@@ -466,6 +466,7 @@
       "dist/nodes/Dropbox/Dropbox.node.js",
       "dist/nodes/Dropcontact/Dropcontact.node.js",
       "dist/nodes/EditImage/EditImage.node.js",
+      "dist/nodes/E2eTest/E2eTest.node.js",
       "dist/nodes/Egoi/Egoi.node.js",
       "dist/nodes/Elastic/Elasticsearch/Elasticsearch.node.js",
       "dist/nodes/Elastic/ElasticSecurity/ElasticSecurity.node.js",
