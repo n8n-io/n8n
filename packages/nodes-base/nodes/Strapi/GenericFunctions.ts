@@ -97,9 +97,9 @@ export async function strapiApiRequestAllItems(
 	body: IDataObject = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
+	apiVersion: string = 'v3',
 ) {
 	const returnData: IDataObject[] = [];
-	const { apiVersion } = await this.getCredentials('strapiApi');
 
 	let responseData;
 	if (apiVersion === 'v4') {

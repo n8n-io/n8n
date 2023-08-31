@@ -9,7 +9,6 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	CredentialInformation,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -145,14 +144,14 @@ export class Strapi implements INodeType {
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		let apiVersion: CredentialInformation;
+		let apiVersion: string;
 
 		if (authenticationMethod === 'password') {
 			const { jwt } = await getToken.call(this);
-			apiVersion = (await this.getCredentials('strapiApi')).apiVersion;
+			apiVersion = (await this.getCredentials('strapiApi')).apiVersion as string;
 			headers.Authorization = `Bearer ${jwt}`;
 		} else {
-			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion;
+			apiVersion = (await this.getCredentials('strapiTokenApi')).apiVersion as string;
 		}
 
 		for (let i = 0; i < length; i++) {
@@ -252,6 +251,7 @@ export class Strapi implements INodeType {
 									{},
 									qs,
 									headers,
+									apiVersion,
 								);
 							} else {
 								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i);
@@ -295,6 +295,7 @@ export class Strapi implements INodeType {
 									{},
 									qs,
 									headers,
+									apiVersion,
 								);
 							} else {
 								qs._limit = this.getNodeParameter('limit', i);
