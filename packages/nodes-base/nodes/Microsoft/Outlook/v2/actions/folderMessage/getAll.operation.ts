@@ -4,7 +4,12 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { messageFields, prepareFilterString, simplifyOutputMessages } from '../../helpers/utils';
+import {
+	decodeOutlookId,
+	messageFields,
+	prepareFilterString,
+	simplifyOutputMessages,
+} from '../../helpers/utils';
 import {
 	downloadAttachments,
 	microsoftApiRequest,
@@ -225,9 +230,12 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const folderId = this.getNodeParameter('folderId', index, undefined, {
-		extractValue: true,
-	}) as string;
+	const folderId = decodeOutlookId(
+		this.getNodeParameter('folderId', index, undefined, {
+			extractValue: true,
+		}) as string,
+	);
+
 	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filtersUI.values', index, {}) as IDataObject;
 	const options = this.getNodeParameter('options', index, {});

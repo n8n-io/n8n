@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { eventfields } from '../../helpers/utils';
+import { decodeOutlookId, eventfields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
 import { calendarRLC, eventRLC } from '../../descriptions';
@@ -62,9 +62,11 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const qs = {} as IDataObject;
 
-	const eventId = this.getNodeParameter('eventId', index, undefined, {
-		extractValue: true,
-	}) as string;
+	const eventId = decodeOutlookId(
+		this.getNodeParameter('eventId', index, undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	const output = this.getNodeParameter('output', index) as string;
 

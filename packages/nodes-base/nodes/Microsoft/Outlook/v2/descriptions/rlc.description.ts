@@ -125,6 +125,27 @@ export const eventRLC: INodeProperties = {
 			},
 		},
 		{
+			displayName: 'Link',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://outlook.office365.com/calendar/item/AAMkADlhOTA0M...UAAA%3D',
+			extractValue: {
+				type: 'regex',
+				regex:
+					'https:\\/\\/outlook\\.office365\\.com\\/calendar\\/item\\/([A-Za-z0-9%]+)(?:\\/.*|)',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex:
+							'https:\\/\\/outlook\\.office365\\.com\\/calendar\\/item\\/([A-Za-z0-9%]+)(?:\\/.*|)',
+						errorMessage: 'Not a valid Outlook Event URL',
+					},
+				},
+			],
+		},
+		{
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
@@ -149,6 +170,25 @@ export const folderRLC: INodeProperties = {
 				searchListMethod: 'searchFolders',
 				searchable: true,
 			},
+		},
+		{
+			displayName: 'Link',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://outlook.office365.com/mail/AAMkADlhOT...AAA%3D',
+			extractValue: {
+				type: 'regex',
+				regex: 'https:\\/\\/outlook\\.office365\\.com\\/mail\\/([A-Za-z0-9%]+)(?:\\/.*|)',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: 'https:\\/\\/outlook\\.office365\\.com\\/mail\\/([A-Za-z0-9%]+)(?:\\/.*|)',
+						errorMessage: 'Not a valid Outlook Folder URL',
+					},
+				},
+			],
 		},
 		{
 			displayName: 'ID',

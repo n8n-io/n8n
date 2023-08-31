@@ -1,5 +1,6 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequest } from '../transport';
+import { encodeOutlookId } from '../helpers/utils';
 
 async function search(
 	this: ILoadOptionsFunctions,
@@ -186,6 +187,7 @@ export async function searchEvents(
 			return {
 				name: (entry.subject || entry.bodyPreview) as string,
 				value: entry.id as string,
+				url: `https://outlook.office365.com/calendar/item/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
 		paginationToken: response['@odata.nextLink'],
@@ -230,6 +232,7 @@ export async function searchFolders(
 			return {
 				name: entry.displayName as string,
 				value: entry.id as string,
+				url: `https://outlook.office365.com/mail/${encodeOutlookId(entry.id as string)}`,
 			};
 		}),
 		paginationToken: response['@odata.nextLink'],

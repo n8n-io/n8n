@@ -292,3 +292,11 @@ export function prepareApiError(
 			.replace(/bodyContentType/g, 'bodyContentType (Message Type)'),
 	});
 }
+
+export const encodeOutlookId = (id: string) => {
+	return id.replace(/-/g, '%2F').replace(/=/g, '%3D').replace(/\+/g, '%2B');
+};
+
+export const decodeOutlookId = (id: string) => {
+	return id.replace(/%2F/g, '-').replace(/%3D/g, '=').replace(/%2B/g, '+');
+};

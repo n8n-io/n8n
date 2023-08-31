@@ -7,6 +7,7 @@ import type {
 import { microsoftApiRequest } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
 import { folderRLC } from '../../descriptions';
+import { decodeOutlookId } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [folderRLC];
 
@@ -23,9 +24,12 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const folderId = this.getNodeParameter('folderId', index, undefined, {
-		extractValue: true,
-	}) as string;
+	const folderId = decodeOutlookId(
+		this.getNodeParameter('folderId', index, undefined, {
+			extractValue: true,
+		}) as string,
+	);
+
 	const responseData = await microsoftApiRequest.call(this, 'DELETE', `/mailFolders/${folderId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(

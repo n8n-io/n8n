@@ -2,6 +2,7 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { microsoftApiRequest } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
 import { calendarRLC, eventRLC } from '../../descriptions';
+import { decodeOutlookId } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [calendarRLC, eventRLC];
 
@@ -18,9 +19,11 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const eventId = this.getNodeParameter('eventId', index, undefined, {
-		extractValue: true,
-	}) as string;
+	const eventId = decodeOutlookId(
+		this.getNodeParameter('eventId', index, undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	await microsoftApiRequest.call(this, 'DELETE', `/calendar/events/${eventId}`);
 

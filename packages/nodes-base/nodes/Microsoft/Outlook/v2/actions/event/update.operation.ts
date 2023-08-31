@@ -9,6 +9,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { DateTime } from 'luxon';
 import { calendarRLC, eventRLC } from '../../descriptions';
+import { decodeOutlookId } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	calendarRLC,
@@ -217,9 +218,12 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
-	const eventId = this.getNodeParameter('eventId', index, undefined, {
-		extractValue: true,
-	}) as string;
+
+	const eventId = decodeOutlookId(
+		this.getNodeParameter('eventId', index, undefined, {
+			extractValue: true,
+		}) as string,
+	);
 
 	let timeZone = 'UTC';
 

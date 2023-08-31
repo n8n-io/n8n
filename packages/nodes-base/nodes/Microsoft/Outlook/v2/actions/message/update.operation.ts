@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { createMessage } from '../../helpers/utils';
+import { createMessage, decodeOutlookId } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { folderRLC, messageRLC } from '../../descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
@@ -184,9 +184,12 @@ export async function execute(
 	}) as string;
 
 	const updateFields = this.getNodeParameter('updateFields', index);
-	const folderId = this.getNodeParameter('updateFields.folderId', index, '', {
-		extractValue: true,
-	}) as string;
+
+	const folderId = decodeOutlookId(
+		this.getNodeParameter('folderId', index, '', {
+			extractValue: true,
+		}) as string,
+	);
 
 	if (folderId) {
 		const body: IDataObject = {

@@ -7,6 +7,7 @@ import type {
 import { microsoftApiRequest } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
 import { folderFields, folderRLC } from '../../descriptions';
+import { decodeOutlookId } from '../../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	folderRLC,
@@ -44,9 +45,12 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const qs: IDataObject = {};
 
-	const folderId = this.getNodeParameter('folderId', index, undefined, {
-		extractValue: true,
-	}) as string;
+	const folderId = decodeOutlookId(
+		this.getNodeParameter('folderId', index, undefined, {
+			extractValue: true,
+		}) as string,
+	);
+
 	const options = this.getNodeParameter('options', index);
 
 	if (options.fields) {
