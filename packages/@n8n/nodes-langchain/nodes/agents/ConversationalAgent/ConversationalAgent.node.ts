@@ -85,7 +85,7 @@ export class ConversationalAgent implements INodeType {
 			true,
 		)) as BaseLanguageModel;
 		const memory = (await getAndValidateSupplyInput(this, 'memory', false)) as BaseChatMemory;
-		const tools = (await getAndValidateSupplyInput(this, 'tool', true, true)) as Tool[];
+		const tools = (await getAndValidateSupplyInput(this, 'tool', false, true)) as Tool[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 			// Passing "chat-conversational-react-description" as the agent type
