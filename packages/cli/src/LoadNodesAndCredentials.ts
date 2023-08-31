@@ -31,6 +31,7 @@ import {
 	CUSTOM_API_CALL_NAME,
 	inTest,
 	CLI_DIR,
+	inE2ETests,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { Service } from 'typedi';
@@ -63,6 +64,11 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		// @ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		if (!inTest) module.constructor._initPaths();
+
+		if (!inE2ETests) {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+		}
 
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
