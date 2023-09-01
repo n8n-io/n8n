@@ -157,15 +157,24 @@ export class ToolWorkflow implements INodeType {
 
 				const items = [{ json: { query } }] as INodeExecutionData[];
 
-				const receivedData = await this.executeWorkflow(workflowInfo, items);
+				const receivedData = (await this.executeWorkflow(
+					workflowInfo,
+					items,
+				)) as INodeExecutionData;
 
-				let response = get(receivedData, [0, 0, 'json', responsePropertyName]);
+				let response: string | undefined = get(receivedData, [
+					0,
+					0,
+					'json',
+					responsePropertyName,
+				]) as string | undefined;
 				if (response === undefined) {
 					response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
 				}
 
 				return response;
 			} catch (error) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				return `There was an error: "${error.message}"`;
 			}
 		};
@@ -184,7 +193,9 @@ export class ToolWorkflow implements INodeType {
 						response = await runFunction(query);
 					} catch (error) {
 						// TODO: Do some more testing. Issues here should actually fail the workflow
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 						executionError = error;
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						response = `There was an error: "${error.message}"`;
 					}
 

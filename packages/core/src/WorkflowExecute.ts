@@ -315,10 +315,10 @@ export class WorkflowExecute {
 	}
 
 	moveNodeMetadata(): void {
-		const metadata = get(this.runExecutionData, `executionData.metadata`);
+		const metadata = get(this.runExecutionData, 'executionData.metadata');
 
 		if (metadata) {
-			const runData = get(this.runExecutionData, `resultData.runData`);
+			const runData = get(this.runExecutionData, 'resultData.runData');
 
 			let index: number;
 			let metaRunData: ITaskMetadata;
@@ -1555,7 +1555,7 @@ export class WorkflowExecute {
 						newStaticData = workflow.staticData;
 					}
 
-					await this.moveNodeMetadata();
+					this.moveNodeMetadata();
 
 					await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
 						// eslint-disable-next-line @typescript-eslint/no-shadow
@@ -1625,7 +1625,7 @@ export class WorkflowExecute {
 			newStaticData = workflow.staticData;
 		}
 
-		await this.moveNodeMetadata();
+		this.moveNodeMetadata();
 
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 

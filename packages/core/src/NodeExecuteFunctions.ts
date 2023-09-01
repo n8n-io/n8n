@@ -2719,7 +2719,6 @@ export function getExecuteFunctions(
 
 						const context = Object.assign({}, this);
 
-						// @ts-ignore
 						context.getNodeParameter = (
 							parameterName: string,
 							itemIndex: number,
@@ -2740,7 +2739,7 @@ export function getExecuteFunctions(
 								executeData,
 								fallbackValue,
 								options,
-							);
+							) as any;
 						};
 
 						// TODO: Check what else should be overwritten
@@ -2768,7 +2767,7 @@ export function getExecuteFunctions(
 									connectedNode.name,
 									error,
 									runExecutionData,
-									inputName!,
+									inputName,
 									additionalData,
 									node.name,
 									runIndex,
@@ -2800,7 +2799,7 @@ export function getExecuteFunctions(
 								connectedNode.name,
 								error,
 								runExecutionData,
-								inputName!,
+								inputName,
 								additionalData,
 								node.name,
 								runIndex,
