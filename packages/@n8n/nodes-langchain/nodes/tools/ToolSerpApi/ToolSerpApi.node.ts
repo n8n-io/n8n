@@ -1,8 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { logWrapper } from '../../../utils/logWrapper';
-
 import { SerpAPI } from 'langchain/tools';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
@@ -77,7 +76,7 @@ export class ToolSerpApi implements INodeType {
 						type: 'boolean',
 						default: false,
 						description:
-							'Force SerpApi to fetch the Google results even if a cached version is already present. Cache expires after 1h. Cached searches are free, and are not counted towards your searches per month.',
+							'Whether to force SerpApi to fetch the Google results even if a cached version is already present. Cache expires after 1h. Cached searches are free, and are not counted towards your searches per month.',
 					},
 					{
 						displayName: 'Google Domain',

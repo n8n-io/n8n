@@ -1,9 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import {
-	RecursiveCharacterTextSplitter,
-	RecursiveCharacterTextSplitterParams,
-} from 'langchain/text_splitter';
+import type { RecursiveCharacterTextSplitterParams } from 'langchain/text_splitter';
+import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {

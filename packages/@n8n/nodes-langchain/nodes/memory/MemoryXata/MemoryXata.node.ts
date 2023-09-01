@@ -9,13 +9,12 @@ export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xata',
 		name: 'memoryXata',
-		icon: 'file:xata.png',
+		icon: 'file:xata.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
-			color: '#303030',
 		},
 		codex: {
 			categories: ['AI'],

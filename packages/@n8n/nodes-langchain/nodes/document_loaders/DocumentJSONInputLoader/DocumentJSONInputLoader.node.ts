@@ -7,10 +7,10 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 
-import { CharacterTextSplitter } from 'langchain/text_splitter';
-import { logWrapper } from '../../../utils/logWrapper';
-import { Document } from 'langchain/document';
+import type { CharacterTextSplitter } from 'langchain/text_splitter';
+import type { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
+import { logWrapper } from '../../../utils/logWrapper';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class N8nJsonLoader {
@@ -50,7 +50,7 @@ export class N8nJsonLoader {
 export class DocumentJSONInputLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Input to JSON Document',
-		name: 'documentJSONInputLoader',
+		name: 'documentJsonInputLoader',
 		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,

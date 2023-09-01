@@ -7,8 +7,8 @@ import {
 
 import { LLMChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import { PromptTemplate } from 'langchain';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 async function getChain(context: IExecuteFunctions, query: string) {
 	const llm = (await getAndValidateSupplyInput(
@@ -24,10 +24,10 @@ async function getChain(context: IExecuteFunctions, query: string) {
 	return response;
 }
 
-export class ChainLLM implements INodeType {
+export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LLM Chain',
-		name: 'chainLLM',
+		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,

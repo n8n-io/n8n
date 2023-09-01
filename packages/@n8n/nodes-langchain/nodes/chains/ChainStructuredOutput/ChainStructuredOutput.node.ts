@@ -4,16 +4,17 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	NodeOperationError,
+	jsonParse,
 } from 'n8n-workflow';
 
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import {
 	ChatPromptTemplate,
 	HumanMessagePromptTemplate,
 	SystemMessagePromptTemplate,
 } from 'langchain/prompts';
-import { ChatOpenAI } from 'langchain/chat_models/openai';
+import type { ChatOpenAI } from 'langchain/chat_models/openai';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 function getPromptTemplate(prompt: string) {
 	return new ChatPromptTemplate({
@@ -47,8 +48,7 @@ export class ChainStructuredOutput implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'languageModel'],
 		inputNames: ['', 'Language Model'],
-		outputs: ['main', 'chain'],
-		outputNames: ['', 'Chain'],
+		outputs: ['main'],
 		credentials: [],
 		properties: [
 			{
@@ -79,7 +79,7 @@ export class ChainStructuredOutput implements INodeType {
 				displayName: 'JSON Schema',
 				name: 'jsonSchema',
 				type: 'json',
-				description: 'JSON Schema to structure the output.',
+				description: 'JSON Schema to structure the output',
 				default: '',
 				typeOptions: {
 					rows: 4,
@@ -104,7 +104,7 @@ export class ChainStructuredOutput implements INodeType {
 			const schema = this.getNodeParameter('jsonSchema', i) as string;
 
 			try {
-				JSON.parse(schema);
+				jsonParse(schema);
 			} catch (error) {
 				throw new NodeOperationError(this.getNode(), 'Error whinl parsing JSON Schema.');
 			}
@@ -113,7 +113,7 @@ export class ChainStructuredOutput implements INodeType {
 					{
 						name: 'output_formatter',
 						description: 'Should always be used to properly format output',
-						parameters: JSON.parse(schema),
+						parameters: jsonParse(schema),
 					},
 				],
 				function_call: { name: 'output_formatter' },

@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type {
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
@@ -7,8 +6,9 @@ import type {
 	INodeTypeDescription,
 	IWorkflowBase,
 	SupplyData,
+	ExecutionError,
 } from 'n8n-workflow';
-import { ExecutionError, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
@@ -137,9 +137,7 @@ export class ToolWorkflow implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
-		let runFunction: (query: string) => Promise<string>;
-
-		runFunction = async (query: string): Promise<string> => {
+		const runFunction = async (query: string): Promise<string> => {
 			try {
 				const source = this.getNodeParameter('source', itemIndex) as string;
 				const responsePropertyName = this.getNodeParameter(
@@ -178,7 +176,7 @@ export class ToolWorkflow implements INodeType {
 				description,
 
 				func: async (query: string): Promise<string> => {
-					this.addInputData('tool', [[{ json: { query } }]]);
+					void this.addInputData('tool', [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
@@ -200,13 +198,13 @@ export class ToolWorkflow implements INodeType {
 							this.getNode(),
 							`The code did not return a valid value. Instead of a string did a value of type '${typeof response}' get returned.`,
 						);
-						response = `There was an error: "${executionError!.message}"`;
+						response = `There was an error: "${executionError.message}"`;
 					}
 
 					if (executionError) {
-						this.addOutputData('tool', [[{ json: { error: executionError } }]]);
+						void this.addOutputData('tool', [[{ json: { error: executionError } }]]);
 					} else {
-						this.addOutputData('tool', [[{ json: { response } }]]);
+						void this.addOutputData('tool', [[{ json: { response } }]]);
 					}
 					return response;
 				},

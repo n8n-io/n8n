@@ -1,10 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { BufferWindowMemory, BufferWindowMemoryInput } from 'langchain/memory';
+import type { BufferWindowMemoryInput } from 'langchain/memory';
+import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
 
 class MemoryBufferSingleton {
 	private static instance: MemoryBufferSingleton;
+
 	private memoryBuffer: Map<
 		string,
 		{ buffer: BufferWindowMemory; created: Date; last_accessed: Date }
