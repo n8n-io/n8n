@@ -70,7 +70,8 @@ export async function getMappingColumns(
 				const canBeUsedToMatch =
 					operation === 'upsert' ? unique.some((u) => u.attname === col.column_name) : true;
 				const type = mapPostgresType(col.data_type);
-				const options = type === 'options' ? getEnumValues(enumInfo, col.udt_name) : undefined;
+				const options =
+					type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
 				const isAutoIncrement = col.column_default?.startsWith('nextval');
 				return {
 					id: col.column_name,
