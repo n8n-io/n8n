@@ -963,14 +963,6 @@ export class InternalHooks implements IInternalHooksClass {
 		return this.telemetry.track('Ldap general sync finished', data);
 	}
 
-	async onLdapUsersDisabled(data: {
-		reason: 'ldap_update' | 'ldap_feature_deactivated';
-		users: number;
-		user_ids: string[];
-	}): Promise<void> {
-		return this.telemetry.track('Ldap users disabled', data);
-	}
-
 	async onUserUpdatedLdapSettings(data: {
 		user_id: string;
 		loginIdAttribute: string;
