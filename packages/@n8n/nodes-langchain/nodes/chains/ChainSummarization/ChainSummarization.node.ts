@@ -9,8 +9,8 @@ import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Document } from 'langchain/document';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { N8nJsonLoader } from '../../document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
-import { N8nBinaryLoader } from '../../document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node';
+import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export class ChainSummarization implements INodeType {
 	description: INodeTypeDescription = {
@@ -94,7 +94,7 @@ export class ChainSummarization implements INodeType {
 
 		const documentInput = (await getAndValidateSupplyInput(this, 'document', true)) as
 			| N8nJsonLoader
-			| Array<Document<Record<string, any>>>;
+			| Array<Document<Record<string, unknown>>>;
 		const chain = loadSummarizationChain(model, { type });
 
 		const items = this.getInputData();
