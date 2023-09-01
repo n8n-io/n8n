@@ -7,7 +7,11 @@ import {
 } from 'n8n-workflow';
 
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate } from 'langchain/prompts';
+import {
+	ChatPromptTemplate,
+	HumanMessagePromptTemplate,
+	SystemMessagePromptTemplate,
+} from 'langchain/prompts';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
 
@@ -15,9 +19,9 @@ function getPromptTemplate(prompt: string) {
 	return new ChatPromptTemplate({
 		promptMessages: [
 			SystemMessagePromptTemplate.fromTemplate(prompt),
-			HumanMessagePromptTemplate.fromTemplate("{inputText}"),
+			HumanMessagePromptTemplate.fromTemplate('{inputText}'),
 		],
-		inputVariables: ["inputText"],
+		inputVariables: ['inputText'],
 	});
 }
 
@@ -28,7 +32,8 @@ export class ChainStructuredOutput implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Processes input text and structures the output according to a specified JSON schema',
+		description:
+			'Processes input text and structures the output according to a specified JSON schema',
 		defaults: {
 			name: 'Structured Output Chain',
 			color: '#432032',
@@ -80,21 +85,15 @@ export class ChainStructuredOutput implements INodeType {
 					rows: 4,
 				},
 				required: true,
-			}
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Structured Output Chain');
-		const model = (await getAndValidateSupplyInput(
-			this,
-			'languageModel',
-			true,
-		)) as ChatOpenAI;
-
+		const model = (await getAndValidateSupplyInput(this, 'languageModel', true)) as ChatOpenAI;
 
 		const outputParser = new JsonOutputFunctionsParser();
-
 
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -104,7 +103,6 @@ export class ChainStructuredOutput implements INodeType {
 			const inputText = this.getNodeParameter('inputText', i) as string;
 			const schema = this.getNodeParameter('jsonSchema', i) as string;
 
-
 			try {
 				JSON.parse(schema);
 			} catch (error) {
@@ -113,17 +111,15 @@ export class ChainStructuredOutput implements INodeType {
 			const functionCallingModel = model.bind({
 				functions: [
 					{
-						name: "output_formatter",
-						description: "Should always be used to properly format output",
+						name: 'output_formatter',
+						description: 'Should always be used to properly format output',
 						parameters: JSON.parse(schema),
 					},
 				],
-				function_call: { name: "output_formatter" },
+				function_call: { name: 'output_formatter' },
 			});
 
-			const chain = getPromptTemplate(prompt)
-				.pipe(functionCallingModel)
-				.pipe(outputParser);
+			const chain = getPromptTemplate(prompt).pipe(functionCallingModel).pipe(outputParser);
 
 			const response = await chain.invoke({
 				inputText,

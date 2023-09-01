@@ -18,7 +18,7 @@ async function getChain(context: IExecuteFunctions, query: string) {
 	)) as BaseLanguageModel;
 	const prompt = PromptTemplate.fromTemplate(query);
 
-	const chain = new LLMChain({ llm, prompt })
+	const chain = new LLMChain({ llm, prompt });
 	const response = await chain.call({ query });
 
 	return response;
@@ -85,14 +85,14 @@ export class ChainLLM implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		if (runMode === 'runOnceForAllItems') {
 			const prompt = this.getNodeParameter('prompt', 0) as string;
-			const response = await getChain(this, prompt)
+			const response = await getChain(this, prompt);
 
 			return this.prepareOutputData([{ json: { response } }]);
 		}
 		// Run for each item
 		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('query', i) as string;
-			const response = await getChain(this, prompt)
+			const response = await getChain(this, prompt);
 
 			returnData.push({ json: { response } });
 		}
