@@ -164,7 +164,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 		},
 		currentWorkflowHasWebhookNode(): boolean {
-			return !!this.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
+			return !!this.workflow.nodes.find((node: INodeUi) => !!node.webhookId); // includes Wait node
 		},
 		getWorkflowRunData(): IRunData | null {
 			if (!this.workflowExecutionData?.data?.resultData) {
