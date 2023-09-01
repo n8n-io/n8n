@@ -10,7 +10,7 @@ import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseRetriever } from 'langchain/schema/retriever';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
-export class ChainRetrievalQA implements INodeType {
+export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Retrieval QA Chain',
 		name: 'chainRetrievalQa',
