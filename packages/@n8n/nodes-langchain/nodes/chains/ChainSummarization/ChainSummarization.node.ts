@@ -19,7 +19,8 @@ export class ChainSummarization implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Chain to run to summarize text',
+		description: 'Transforms text into a concise summary',
+
 		defaults: {
 			name: 'Summarization Chain',
 			color: '#432032',

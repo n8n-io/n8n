@@ -28,7 +28,7 @@ export class ChainStructuredOutput implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Chain to run to output structured data following a schema',
+		description: 'Processes input text and structures the output according to a specified JSON schema',
 		defaults: {
 			name: 'Structured Output Chain',
 			color: '#432032',

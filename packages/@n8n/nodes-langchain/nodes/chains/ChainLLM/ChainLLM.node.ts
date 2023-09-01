@@ -31,7 +31,7 @@ export class ChainLLM implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Chain to prompt LLM',
+		description: 'A simple chain to prompt LLM',
 		defaults: {
 			name: 'LLM Chain',
 			color: '#408012',

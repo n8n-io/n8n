@@ -17,7 +17,7 @@ export class DocumentGithubLoader implements INodeType {
 		icon: 'file:github.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'To create a document from Github repo',
+		description: 'Load files from a Github repository as documents',
 		defaults: {
 			name: 'Github repo to Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present

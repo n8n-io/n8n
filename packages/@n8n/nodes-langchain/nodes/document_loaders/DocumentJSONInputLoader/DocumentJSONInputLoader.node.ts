@@ -54,7 +54,7 @@ export class DocumentJSONInputLoader implements INodeType {
 		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Converts workflow JSON data to Document objects',
+		description: 'Converts workflow JSON data to Document object(s)',
 		defaults: {
 			name: 'Workflow Input to JSON Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present

@@ -57,7 +57,6 @@ export class LMChatOpenAi implements INodeType {
 				],
 				default: 'gpt-3.5-turbo',
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',

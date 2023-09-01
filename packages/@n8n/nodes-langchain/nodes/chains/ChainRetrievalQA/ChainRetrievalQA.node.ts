@@ -17,7 +17,7 @@ export class ChainRetrievalQA implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Chain to run QA on a retrieved document',
+		description: 'Retrieves answers to queries based on retrieved documents',
 		defaults: {
 			name: 'Retrieval QA Chain',
 			color: '#408080',

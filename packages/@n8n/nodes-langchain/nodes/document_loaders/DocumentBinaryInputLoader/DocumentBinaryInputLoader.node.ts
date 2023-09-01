@@ -134,7 +134,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 		icon: 'file:binary.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Create a Document from binary data',
+		description: 'Converts binary data to Document object(s)',
 		defaults: {
 			name: 'Binary to Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
