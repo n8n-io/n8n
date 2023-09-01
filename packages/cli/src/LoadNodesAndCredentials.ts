@@ -23,7 +23,7 @@ import { mkdir } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { executeCommand } from '@/CommunityNodes/helpers';
+import { CommunityPackageService } from './services/communityPackage.service';
 import {
 	GENERATED_STATIC_DIR,
 	RESPONSE_ERROR_MESSAGES,
@@ -34,7 +34,7 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 @Service()
 export class LoadNodesAndCredentials implements INodesAndCredentials {
@@ -189,8 +189,10 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			? `npm update ${packageName}`
 			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
 
+		const communityPackageService = Container.get(CommunityPackageService);
+
 		try {
-			await executeCommand(command);
+			await communityPackageService.executeNpmCommand(command);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new Error(`The npm package "${packageName}" could not be found.`);
@@ -207,7 +209,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			// Remove this package since loading it failed
 			const removeCommand = `npm remove ${packageName}`;
 			try {
-				await executeCommand(removeCommand);
+				await communityPackageService.executeNpmCommand(removeCommand);
 			} catch {}
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
@@ -215,11 +217,10 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
-					'@/CommunityNodes/packageModel'
-				);
-				if (isUpdate) await removePackageFromDatabase(options.installedPackage);
-				const installedPackage = await persistInstalledPackageData(loader);
+				if (isUpdate) {
+					await communityPackageService.removePackageFromDatabase(options.installedPackage);
+				}
+				const installedPackage = await communityPackageService.persistInstalledPackage(loader);
 				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
 				return installedPackage;
@@ -234,7 +235,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			// Remove this package since it contains no loadable nodes
 			const removeCommand = `npm remove ${packageName}`;
 			try {
-				await executeCommand(removeCommand);
+				await communityPackageService.executeNpmCommand(removeCommand);
 			} catch {}
 
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
@@ -246,12 +247,11 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 	}
 
 	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
-		const command = `npm remove ${packageName}`;
+		const communityPackageService = Container.get(CommunityPackageService);
 
-		await executeCommand(command);
+		await communityPackageService.executeNpmCommand(`npm remove ${packageName}`);
 
-		const { removePackageFromDatabase } = await import('@/CommunityNodes/packageModel');
-		await removePackageFromDatabase(installedPackage);
+		await communityPackageService.removePackageFromDatabase(installedPackage);
 
 		if (packageName in this.loaders) {
 			this.loaders[packageName].reset();
