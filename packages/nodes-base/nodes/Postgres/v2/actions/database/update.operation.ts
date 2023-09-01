@@ -18,6 +18,7 @@ import type {
 import {
 	addReturning,
 	checkItemAgainstSchema,
+	configureTableSchemaUpdater,
 	doesRowExist,
 	getTableSchema,
 	prepareItem,
@@ -208,9 +209,9 @@ export async function execute(
 		extractValue: true,
 	}) as string;
 
+	const updateTableSchema = configureTableSchemaUpdater(schema, table);
+
 	let tableSchema = await getTableSchema(db, schema, table);
-	let currentSchema = schema;
-	let currentTable = table;
 
 	const queries: QueryWithValues[] = [];
 
@@ -298,11 +299,7 @@ export async function execute(
 			}
 		}
 
-		if (currentSchema !== schema || currentTable !== table) {
-			currentSchema = schema;
-			currentTable = table;
-			tableSchema = await getTableSchema(db, schema, table);
-		}
+		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 
