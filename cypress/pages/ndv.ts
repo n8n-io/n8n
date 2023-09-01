@@ -39,7 +39,11 @@ export class NDV extends BasePage {
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
-		parameterInputIssues: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`).should('have.length', 1).findChildByTestId('parameter-issues'),
+		parameterInputIssues: (parameterName: string) =>
+			cy
+				.getByTestId(`parameter-input-${parameterName}`)
+				.should('have.length', 1)
+				.findChildByTestId('parameter-issues'),
 		parameterExpressionPreview: (parameterName: string) =>
 			this.getters
 				.nodeParameters()
@@ -102,7 +106,11 @@ export class NDV extends BasePage {
 		clearParameterInput: (parameterName: string) => {
 			this.getters.parameterInput(parameterName).type(`{selectall}{backspace}`);
 		},
-		typeIntoParameterInput: (parameterName: string, content: string, opts?: { parseSpecialCharSequences: boolean }) => {
+		typeIntoParameterInput: (
+			parameterName: string,
+			content: string,
+			opts?: { parseSpecialCharSequences: boolean },
+		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
 		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
@@ -177,16 +185,22 @@ export class NDV extends BasePage {
 
 		refreshResourceMapperColumns: () => {
 			this.getters.resourceMapperSelectColumn().realHover();
-			this.getters.resourceMapperSelectColumn().findChildByTestId('action-toggle').should('have.length', 1).click();
+			this.getters
+				.resourceMapperSelectColumn()
+				.findChildByTestId('action-toggle')
+				.should('have.length', 1)
+				.click();
 
 			getVisiblePopper().find('li').last().click();
 		},
 
 		setInvalidExpression: (fieldName: string, invalidExpression?: string) => {
-			this.actions.typeIntoParameterInput(fieldName, "=");
-			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", { parseSpecialCharSequences: false });
+			this.actions.typeIntoParameterInput(fieldName, '=');
+			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
+				parseSpecialCharSequences: false,
+			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
-		}
+		},
 	};
 }
 

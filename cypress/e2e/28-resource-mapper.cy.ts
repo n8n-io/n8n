@@ -9,9 +9,15 @@ describe('Resource Mapper', () => {
 	});
 
 	it('should not retrieve list options when required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {action: 'Resource Mapping Component'});
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {
+			action: 'Resource Mapping Component',
+		});
 
-		ndv.getters.resourceMapperFieldsContainer().should('be.visible').findChildByTestId('parameter-input').should('have.length', 2);
+		ndv.getters
+			.resourceMapperFieldsContainer()
+			.should('be.visible')
+			.findChildByTestId('parameter-input')
+			.should('have.length', 2);
 
 		ndv.actions.setInvalidExpression('fieldId');
 
@@ -20,13 +26,23 @@ describe('Resource Mapper', () => {
 	});
 
 	it('should retrieve list options when optional params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {action: 'Resource Mapping Component'});
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {
+			action: 'Resource Mapping Component',
+		});
 
-		ndv.getters.resourceMapperFieldsContainer().should('be.visible').findChildByTestId('parameter-input').should('have.length', 2);
+		ndv.getters
+			.resourceMapperFieldsContainer()
+			.should('be.visible')
+			.findChildByTestId('parameter-input')
+			.should('have.length', 2);
 
 		ndv.actions.setInvalidExpression('otherField');
 
 		ndv.actions.refreshResourceMapperColumns();
-		ndv.getters.resourceMapperFieldsContainer().should('be.visible').findChildByTestId('parameter-input').should('have.length', 2);
+		ndv.getters
+			.resourceMapperFieldsContainer()
+			.should('be.visible')
+			.findChildByTestId('parameter-input')
+			.should('have.length', 2);
 	});
 });
