@@ -13,7 +13,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		icon: 'fa:remove-format',
 		group: ['transform'],
 		version: 1,
-		description: 'Split text into chunks by characters',
+		description: 'Split text into chunks by characters recursively',
 		defaults: {
 			name: 'Recursive Character Text Splitter',
 			color: '#400080',

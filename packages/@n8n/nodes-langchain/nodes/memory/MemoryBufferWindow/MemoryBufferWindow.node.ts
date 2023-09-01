@@ -62,10 +62,16 @@ export class MemoryBufferWindow implements INodeType {
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
-		description: 'Stores the chat history in a window buffer. Refreshes on restart.',
+		description: 'Stores the chat history in a windowed buffer. Refreshes on restart.',
 		defaults: {
 			name: 'Window Buffer Memory',
 			color: '#400080',
+		},
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Memory'],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

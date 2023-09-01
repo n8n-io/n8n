@@ -17,7 +17,7 @@ export class ChainVectorStoreQA implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Chain to run QA on a vector store',
+		description: 'Performs a question-answering operation on a vector store based on the input query',
 		defaults: {
 			name: 'Vector Store QA',
 			color: '#412012',

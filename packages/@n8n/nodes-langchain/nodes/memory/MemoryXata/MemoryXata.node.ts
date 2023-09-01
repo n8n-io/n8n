@@ -12,7 +12,7 @@ export class MemoryXata implements INodeType {
 		icon: 'file:xata.png',
 		group: ['transform'],
 		version: 1,
-		description: 'Xata Memory',
+		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
 			color: '#303030',

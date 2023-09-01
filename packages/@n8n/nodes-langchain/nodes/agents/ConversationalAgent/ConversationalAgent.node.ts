@@ -18,7 +18,7 @@ export class ConversationalAgent implements INodeType {
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Conversational Agent',
+		description: 'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
 		defaults: {
 			name: 'Conversational Agent',
 			color: '#404040',
