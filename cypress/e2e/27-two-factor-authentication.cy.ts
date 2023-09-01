@@ -42,7 +42,7 @@ describe('Two-factor authentication', () => {
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		const token = generateOTPToken(user.mfaSecret)
+		const token = generateOTPToken(user.mfaSecret);
 		mfaLoginPage.actions.loginWithMfaToken(email, password, token);
 		mainSidebar.actions.signout();
 	});
@@ -61,7 +61,7 @@ describe('Two-factor authentication', () => {
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
 		mainSidebar.actions.signout();
-		const token = generateOTPToken(user.mfaSecret)
+		const token = generateOTPToken(user.mfaSecret);
 		mfaLoginPage.actions.loginWithMfaToken(email, password, token);
 		personalSettingsPage.actions.disableMfa();
 		mainSidebar.actions.signout();

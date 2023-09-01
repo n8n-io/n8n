@@ -29,9 +29,11 @@ export class WorkflowPage extends BasePage {
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
 		nodeIssuesByName: (nodeName: string) =>
-			this.getters.canvasNodes().filter(`:contains(${nodeName})`)
-			.should('have.length.greaterThan', 0)
-			.findChildByTestId('node-issues'),
+			this.getters
+				.canvasNodes()
+				.filter(`:contains(${nodeName})`)
+				.should('have.length.greaterThan', 0)
+				.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
@@ -132,14 +134,16 @@ export class WorkflowPage extends BasePage {
 				win.preventNodeViewBeforeUnload = preventNodeViewUnload;
 			});
 		},
-		addInitialNodeToCanvas: (nodeDisplayName: string, opts?: { keepNdvOpen?: boolean, action?: string }) => {
+		addInitialNodeToCanvas: (
+			nodeDisplayName: string,
+			opts?: { keepNdvOpen?: boolean; action?: string },
+		) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			if (opts?.action) {
 				nodeCreator.getters.getCreatorItem(opts.action).click();
-			}
-			else if (!opts?.keepNdvOpen) {
+			} else if (!opts?.keepNdvOpen) {
 				cy.get('body').type('{esc}');
 			}
 		},
