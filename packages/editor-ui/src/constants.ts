@@ -172,7 +172,7 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	NODE_TRIGGER_CHAT_BUTTON,
 ];
 
-export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, '@n8n/nodes-langchain.dynamicTool'];
+export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, '@n8n/nodes-langchain.codeTool'];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
