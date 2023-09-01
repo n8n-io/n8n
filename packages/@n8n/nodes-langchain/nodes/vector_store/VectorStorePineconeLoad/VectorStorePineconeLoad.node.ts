@@ -1,7 +1,7 @@
-import { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
-import { Embeddings } from 'langchain/embeddings/base';
+import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
@@ -9,7 +9,7 @@ export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pinecone: Load',
 		name: 'vectorStorePineconeLoad',
-		icon: 'file:pinecone.png',
+		icon: 'file:pinecone.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Load data from Pinecone Vector Store index',

@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import type { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { logWrapper } from '../../../utils/logWrapper';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class RetrieverVectorStore implements INodeType {
@@ -46,7 +46,7 @@ export class RetrieverVectorStore implements INodeType {
 				name: 'topK',
 				type: 'number',
 				default: 4,
-				description: 'Number of top results to fetch from vector store.',
+				description: 'Number of top results to fetch from vector store',
 			},
 		],
 	};

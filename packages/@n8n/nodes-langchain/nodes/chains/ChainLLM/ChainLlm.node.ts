@@ -5,22 +5,36 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { RetrievalQAChain } from 'langchain/chains';
+import { LLMChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { BaseRetriever } from 'langchain/schema/retriever';
+import { PromptTemplate } from 'langchain';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
-export class ChainRetrievalQA implements INodeType {
+async function getChain(context: IExecuteFunctions, query: string) {
+	const llm = (await getAndValidateSupplyInput(
+		context,
+		'languageModel',
+		true,
+	)) as BaseLanguageModel;
+	const prompt = PromptTemplate.fromTemplate(query);
+
+	const chain = new LLMChain({ llm, prompt });
+	const response = await chain.call({ query });
+
+	return response;
+}
+
+export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Retrieval QA Chain',
-		name: 'chainRetrievalQa',
+		displayName: 'LLM Chain',
+		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Retrieves answers to queries based on retrieved documents',
+		description: 'A simple chain to prompt LLM',
 		defaults: {
-			name: 'Retrieval QA Chain',
-			color: '#408080',
+			name: 'LLM Chain',
+			color: '#408012',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -30,10 +44,9 @@ export class ChainRetrievalQA implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel', 'vectorRetriever'],
-		inputNames: ['', 'Language Model', 'Vector Retriever'],
+		inputs: ['main', 'languageModel'],
+		inputNames: ['', 'Language Model'],
 		outputs: ['main'],
-		// outputNames: ['', 'Chain'],
 		credentials: [],
 		properties: [
 			{
@@ -56,8 +69,8 @@ export class ChainRetrievalQA implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
-				displayName: 'Query',
-				name: 'query',
+				displayName: 'Prompt',
+				name: 'prompt',
 				type: 'string',
 				default: '',
 			},
@@ -65,36 +78,22 @@ export class ChainRetrievalQA implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Retrieval QA Chain');
-
-		const model = (await getAndValidateSupplyInput(
-			this,
-			'languageModel',
-			true,
-		)) as BaseLanguageModel;
-		const vectorRetriever = (await getAndValidateSupplyInput(
-			this,
-			'vectorRetriever',
-			true,
-		)) as BaseRetriever;
-
+		this.logger.verbose('Executing LLM Chain');
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever!);
-
-		const returnData: INodeExecutionData[] = [];
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
+		const returnData: INodeExecutionData[] = [];
 		if (runMode === 'runOnceForAllItems') {
-			const query = this.getNodeParameter('query', 0) as string;
-			const response = await chain.call({ query });
+			const prompt = this.getNodeParameter('prompt', 0) as string;
+			const response = await getChain(this, prompt);
 
 			return this.prepareOutputData([{ json: { response } }]);
 		}
 		// Run for each item
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const query = this.getNodeParameter('query', itemIndex) as string;
+		for (let i = 0; i < items.length; i++) {
+			const prompt = this.getNodeParameter('query', i) as string;
+			const response = await getChain(this, prompt);
 
-			const response = await chain.call({ query });
 			returnData.push({ json: { response } });
 		}
 		return this.prepareOutputData(returnData);

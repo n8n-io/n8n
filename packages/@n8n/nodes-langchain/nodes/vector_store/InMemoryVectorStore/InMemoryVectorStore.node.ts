@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { Document } from 'langchain/document';
+import type { Document } from 'langchain/document';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import { Embeddings } from 'langchain/embeddings/base';
+import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class InMemoryVectorStore implements INodeType {

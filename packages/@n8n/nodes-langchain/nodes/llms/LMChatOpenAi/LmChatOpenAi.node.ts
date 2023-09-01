@@ -4,7 +4,7 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LMChatOpenAi implements INodeType {
+export class LmChatOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ChatOpenAI',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased

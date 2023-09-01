@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 
 import { Cohere } from 'langchain/llms/cohere';
 
-export class LMCohere implements INodeType {
+export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cohere',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased

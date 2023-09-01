@@ -28,7 +28,7 @@ export class N8nEPubLoader extends BaseDocumentLoader {
 	 */
 	protected async parse(
 		epub: ReturnType<typeof parseEpub>,
-	): Promise<{ pageContent: string; metadata?: object }[]> {
+	): Promise<Array<{ pageContent: string; metadata?: object }>> {
 		// We await it here because epub-parsers doesn't export a type for the
 		// return value of parseEpub.
 		const parsed = await epub;

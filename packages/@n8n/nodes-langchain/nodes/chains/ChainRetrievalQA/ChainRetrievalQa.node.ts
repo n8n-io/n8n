@@ -5,23 +5,22 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { VectorDBQAChain } from 'langchain/chains';
+import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { VectorStore } from 'langchain/vectorstores/base';
+import type { BaseRetriever } from 'langchain/schema/retriever';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
-export class ChainVectorStoreQA implements INodeType {
+export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store QA Chain',
-		name: 'chainVectorStoreQa',
+		displayName: 'Retrieval QA Chain',
+		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description:
-			'Performs a question-answering operation on a vector store based on the input query',
+		description: 'Retrieves answers to queries based on retrieved documents',
 		defaults: {
-			name: 'Vector Store QA',
-			color: '#412012',
+			name: 'Retrieval QA Chain',
+			color: '#408080',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -31,10 +30,10 @@ export class ChainVectorStoreQA implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel', 'vectorStore'],
-		inputNames: ['', 'Language Model', 'Vector Store'],
-		outputs: ['main', 'chain'],
-		outputNames: ['', 'Chain'],
+		inputs: ['main', 'languageModel', 'vectorRetriever'],
+		inputNames: ['', 'Language Model', 'Vector Retriever'],
+		outputs: ['main'],
+		// outputNames: ['', 'Chain'],
 		credentials: [],
 		properties: [
 			{
@@ -62,39 +61,35 @@ export class ChainVectorStoreQA implements INodeType {
 				type: 'string',
 				default: '',
 			},
-			{
-				displayName: 'Top K',
-				name: 'topK',
-				type: 'number',
-				default: 4,
-				description: 'Number of top results to fetch from vector store.',
-			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Vector Store QA Chain');
-		const runMode = this.getNodeParameter('mode', 0) as string;
+		this.logger.verbose('Executing Retrieval QA Chain');
 
 		const model = (await getAndValidateSupplyInput(
 			this,
 			'languageModel',
 			true,
 		)) as BaseLanguageModel;
-		const vectorStore = (await getAndValidateSupplyInput(this, 'vectorStore', true)) as VectorStore;
+		const vectorRetriever = (await getAndValidateSupplyInput(
+			this,
+			'vectorRetriever',
+			true,
+		)) as BaseRetriever;
 
-		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
 		const items = this.getInputData();
+		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever);
 
 		const returnData: INodeExecutionData[] = [];
+		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		chain.k = this.getNodeParameter('topK', 0, 4) as number;
 		if (runMode === 'runOnceForAllItems') {
 			const query = this.getNodeParameter('query', 0) as string;
 			const response = await chain.call({ query });
+
 			return this.prepareOutputData([{ json: { response } }]);
 		}
-
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
@@ -102,7 +97,6 @@ export class ChainVectorStoreQA implements INodeType {
 			const response = await chain.call({ query });
 			returnData.push({ json: { response } });
 		}
-
 		return this.prepareOutputData(returnData);
 	}
 }

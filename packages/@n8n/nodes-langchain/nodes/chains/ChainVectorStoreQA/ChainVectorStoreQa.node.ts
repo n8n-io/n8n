@@ -5,36 +5,23 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { LLMChain } from 'langchain/chains';
+import { VectorDBQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import type { VectorStore } from 'langchain/vectorstores/base';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { PromptTemplate } from 'langchain';
 
-async function getChain(context: IExecuteFunctions, query: string) {
-	const llm = (await getAndValidateSupplyInput(
-		context,
-		'languageModel',
-		true,
-	)) as BaseLanguageModel;
-	const prompt = PromptTemplate.fromTemplate(query);
-
-	const chain = new LLMChain({ llm, prompt });
-	const response = await chain.call({ query });
-
-	return response;
-}
-
-export class ChainLLM implements INodeType {
+export class ChainVectorStoreQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LLM Chain',
-		name: 'chainLLM',
+		displayName: 'Vector Store QA Chain',
+		name: 'chainVectorStoreQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'A simple chain to prompt LLM',
+		description:
+			'Performs a question-answering operation on a vector store based on the input query',
 		defaults: {
-			name: 'LLM Chain',
-			color: '#408012',
+			name: 'Vector Store QA',
+			color: '#412012',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -44,8 +31,8 @@ export class ChainLLM implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel'],
-		inputNames: ['', 'Language Model'],
+		inputs: ['main', 'languageModel', 'vectorStore'],
+		inputNames: ['', 'Language Model', 'Vector Store'],
 		outputs: ['main'],
 		credentials: [],
 		properties: [
@@ -69,33 +56,52 @@ export class ChainLLM implements INodeType {
 				default: 'runOnceForAllItems',
 			},
 			{
-				displayName: 'Prompt',
-				name: 'prompt',
+				displayName: 'Query',
+				name: 'query',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Top K',
+				name: 'topK',
+				type: 'number',
+				default: 4,
+				description: 'Number of top results to fetch from vector store',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing LLM Chain');
-		const items = this.getInputData();
+		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const returnData: INodeExecutionData[] = [];
-		if (runMode === 'runOnceForAllItems') {
-			const prompt = this.getNodeParameter('prompt', 0) as string;
-			const response = await getChain(this, prompt);
+		const model = (await getAndValidateSupplyInput(
+			this,
+			'languageModel',
+			true,
+		)) as BaseLanguageModel;
+		const vectorStore = (await getAndValidateSupplyInput(this, 'vectorStore', true)) as VectorStore;
 
+		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
+		const items = this.getInputData();
+
+		const returnData: INodeExecutionData[] = [];
+
+		chain.k = this.getNodeParameter('topK', 0, 4) as number;
+		if (runMode === 'runOnceForAllItems') {
+			const query = this.getNodeParameter('query', 0) as string;
+			const response = await chain.call({ query });
 			return this.prepareOutputData([{ json: { response } }]);
 		}
-		// Run for each item
-		for (let i = 0; i < items.length; i++) {
-			const prompt = this.getNodeParameter('query', i) as string;
-			const response = await getChain(this, prompt);
 
+		// Run for each item
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			const query = this.getNodeParameter('query', itemIndex) as string;
+
+			const response = await chain.call({ query });
 			returnData.push({ json: { response } });
 		}
+
 		return this.prepareOutputData(returnData);
 	}
 }

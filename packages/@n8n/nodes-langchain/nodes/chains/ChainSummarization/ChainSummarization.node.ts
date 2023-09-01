@@ -7,10 +7,10 @@ import {
 
 import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import type { Document } from 'langchain/document';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { N8nJsonLoader } from '../../document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
-import { Document } from 'langchain/document';
-import { N8nBinaryLoader } from '../../document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node';
+import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export class ChainSummarization implements INodeType {
 	description: INodeTypeDescription = {
@@ -35,8 +35,7 @@ export class ChainSummarization implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'languageModel', 'document'],
 		inputNames: ['', 'Language Model', 'Document'],
-		outputs: ['main', 'chain'],
-		outputNames: ['', 'Chain'],
+		outputs: ['main'],
 		credentials: [],
 		properties: [
 			{
@@ -95,7 +94,7 @@ export class ChainSummarization implements INodeType {
 
 		const documentInput = (await getAndValidateSupplyInput(this, 'document', true)) as
 			| N8nJsonLoader
-			| Document<Record<string, any>>[];
+			| Array<Document<Record<string, unknown>>>;
 		const chain = loadSummarizationChain(model, { type });
 
 		const items = this.getInputData();

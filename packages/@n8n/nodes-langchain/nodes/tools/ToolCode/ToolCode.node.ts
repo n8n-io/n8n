@@ -1,7 +1,14 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
-import { ExecutionError, NodeOperationError } from 'n8n-workflow';
-import { getSandboxContext, Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import type {
+	IExecuteFunctions,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+	ExecutionError,
+} from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
@@ -119,8 +126,6 @@ export class ToolCode implements INodeType {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
-		let runFunction: (query: string) => Promise<string>;
-
 		const language = this.getNodeParameter('language', itemIndex) as string;
 		let code = '';
 		if (language === 'javaScript') {
@@ -143,14 +148,14 @@ export class ToolCode implements INodeType {
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'
-					? this.sendMessageToUI
-					: (...args) =>
+					? this.sendMessageToUI.bind(this)
+					: (...args: unknown[]) =>
 							console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
 			);
 			return sandbox;
 		};
 
-		runFunction = async (query: string): Promise<string> => {
+		const runFunction = async (query: string): Promise<string> => {
 			const sandbox = getSandbox(query, itemIndex);
 			return sandbox.runCode();
 		};
@@ -161,15 +166,15 @@ export class ToolCode implements INodeType {
 				description,
 
 				func: async (query: string): Promise<string> => {
-					this.addInputData('tool', [[{ json: { query } }]]);
+					void this.addInputData('tool', [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
 					try {
 						response = await runFunction(query);
-					} catch (error) {
-						executionError = error;
-						response = `There was an error: "${error.message}"`;
+					} catch (error: unknown) {
+						executionError = error as ExecutionError;
+						response = `There was an error: "${executionError.message}"`;
 					}
 
 					if (typeof response === 'number') {
@@ -182,13 +187,13 @@ export class ToolCode implements INodeType {
 							this.getNode(),
 							`The code did not return a valid value. Instead of a string did a value of type '${typeof response}' get returned.`,
 						);
-						response = `There was an error: "${executionError!.message}"`;
+						response = `There was an error: "${executionError.message}"`;
 					}
 
 					if (executionError) {
-						this.addOutputData('tool', [[{ json: { error: executionError } }]]);
+						void this.addOutputData('tool', [[{ json: { error: executionError } }]]);
 					} else {
-						this.addOutputData('tool', [[{ json: { response } }]]);
+						void this.addOutputData('tool', [[{ json: { response } }]]);
 					}
 					return response;
 				},
