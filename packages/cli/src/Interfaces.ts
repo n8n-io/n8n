@@ -57,6 +57,7 @@ import type {
 	SharedWorkflowRepository,
 	UserRepository,
 	VariablesRepository,
+	WorkflowHistoryRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
@@ -104,6 +105,7 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	User: UserRepository;
 	Variables: VariablesRepository;
 	Workflow: WorkflowRepository;
+	WorkflowHistory: WorkflowHistoryRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
 	WorkflowTagMapping: WorkflowTagMappingRepository;
 }

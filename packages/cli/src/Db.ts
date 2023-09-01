@@ -37,6 +37,7 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	VariablesRepository,
+	WorkflowHistoryRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
@@ -179,6 +180,7 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	collections.Variables = Container.get(VariablesRepository);
 	collections.WorkflowStatistics = Container.get(WorkflowStatisticsRepository);
 	collections.WorkflowTagMapping = Container.get(WorkflowTagMappingRepository);
+	collections.WorkflowHistory = Container.get(WorkflowHistoryRepository);
 
 	/**
 	 * @important Do not remove these collections until cloud hooks are backwards compatible.
