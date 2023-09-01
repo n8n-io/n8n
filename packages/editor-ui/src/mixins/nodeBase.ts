@@ -83,22 +83,33 @@ export const nodeBase = defineComponent({
 		},
 		__addInputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs
-			const indexData: {
+			const rootTypeIndexData: {
+				[key: string]: number;
+			} = {};
+			const typeIndexData: {
 				[key: string]: number;
 			} = {};
 
 			nodeTypeData.inputs.forEach((inputName, i) => {
-				const locactionIntputName = inputName === 'main' ? 'main' : 'other';
+				const rootCategoryInputName = inputName === 'main' ? 'main' : 'other';
 
 				// Increment the index for inputs with current name
-				if (indexData.hasOwnProperty(locactionIntputName)) {
-					indexData[locactionIntputName]++;
+				if (rootTypeIndexData.hasOwnProperty(rootCategoryInputName)) {
+					rootTypeIndexData[rootCategoryInputName]++;
 				} else {
-					indexData[locactionIntputName] = 0;
+					rootTypeIndexData[rootCategoryInputName] = 0;
 				}
-				const typeIndex = indexData[locactionIntputName];
 
-				const inputsOfSameType = nodeTypeData.inputs.filter((input) =>
+				if (typeIndexData.hasOwnProperty(inputName)) {
+					typeIndexData[inputName]++;
+				} else {
+					typeIndexData[inputName] = 0;
+				}
+
+				const rootTypeIndex = rootTypeIndexData[rootCategoryInputName];
+				const typeIndex = typeIndexData[inputName];
+
+				const inputsOfSameRootType = nodeTypeData.inputs.filter((input) =>
 					inputName === 'main' ? input === 'main' : input !== 'main',
 				);
 
@@ -106,13 +117,13 @@ export const nodeBase = defineComponent({
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					inputName,
 					'input',
-					inputsOfSameType.length,
-				)[typeIndex];
+					inputsOfSameRootType.length,
+				)[rootTypeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(inputName);
+				const scope = NodeViewUtils.getEndpointScope(inputName as EndpointType);
 
 				const newEndpointData: EndpointOptions = {
-					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, i),
+					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, inputName, typeIndex),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
@@ -133,7 +144,7 @@ export const nodeBase = defineComponent({
 						connection: 'target',
 						nodeId: this.nodeId,
 						type: inputName,
-						index: i,
+						index: typeIndex,
 					},
 					enabled: !this.isReadOnly, // enabled in default case to allow dragging
 					cssClass: 'rect-input-endpoint',
@@ -145,8 +156,8 @@ export const nodeBase = defineComponent({
 				const endpoint = this.instance?.addEndpoint(
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
-				);
-				this.__addEndpointTestingData(endpoint, 'input', i);
+				) as Endpoint;
+				this.__addEndpointTestingData(endpoint, 'input', typeIndex);
 				if (nodeTypeData.inputNames?.[i]) {
 					// Apply input names if they got set
 					endpoint.addOverlay(
@@ -157,8 +168,8 @@ export const nodeBase = defineComponent({
 					endpoint.__meta = {
 						nodeName: node.name,
 						nodeId: this.nodeId,
-						index: i,
-						totalEndpoints: nodeTypeData.inputs.length,
+						index: typeIndex,
+						totalEndpoints: inputsOfSameRootType.length,
 					};
 				}
 
@@ -178,7 +189,10 @@ export const nodeBase = defineComponent({
 			}
 		},
 		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
-			const indexData: {
+			const rootTypeIndexData: {
+				[key: string]: number;
+			} = {};
+			const typeIndexData: {
 				[key: string]: number;
 			} = {};
 
@@ -186,17 +200,25 @@ export const nodeBase = defineComponent({
 			//       other locations. So assume there will be more problems
 
 			nodeTypeData.outputs.forEach((outputName, i) => {
-				const locactionOutputName = outputName === 'main' ? 'main' : 'other';
+				const rootCategoryOutputName = outputName === 'main' ? 'main' : 'other';
 
 				// Increment the index for outputs with current name
-				if (indexData.hasOwnProperty(locactionOutputName)) {
-					indexData[locactionOutputName]++;
+				if (rootTypeIndexData.hasOwnProperty(rootCategoryOutputName)) {
+					rootTypeIndexData[rootCategoryOutputName]++;
 				} else {
-					indexData[locactionOutputName] = 0;
+					rootTypeIndexData[rootCategoryOutputName] = 0;
 				}
-				const typeIndex = indexData[locactionOutputName];
 
-				const outputsOfSameType = nodeTypeData.outputs.filter((output) =>
+				if (typeIndexData.hasOwnProperty(outputName)) {
+					typeIndexData[outputName]++;
+				} else {
+					typeIndexData[outputName] = 0;
+				}
+
+				const rootTypeIndex = rootTypeIndexData[rootCategoryOutputName];
+				const typeIndex = typeIndexData[outputName];
+
+				const outputsOfSameRootType = nodeTypeData.outputs.filter((output) =>
 					outputName === 'main' ? output === 'main' : output !== 'main',
 				);
 
@@ -204,19 +226,19 @@ export const nodeBase = defineComponent({
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					outputName,
 					'output',
-					outputsOfSameType.length,
-				)[typeIndex];
+					outputsOfSameRootType.length,
+				)[rootTypeIndex];
 
 				const scope = NodeViewUtils.getEndpointScope(outputName as EndpointType);
 
 				const newEndpointData: EndpointOptions = {
-					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
+					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, outputName, typeIndex),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: {
 						type: 'Dot',
 						options: {
-							radius: nodeTypeData && outputsOfSameType.length > 2 ? 7 : 9,
+							radius: nodeTypeData && outputsOfSameRootType.length > 2 ? 7 : 9,
 						},
 					},
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
@@ -228,7 +250,7 @@ export const nodeBase = defineComponent({
 						connection: 'source',
 						nodeId: this.nodeId,
 						type: outputName,
-						index: i,
+						index: typeIndex,
 					},
 					hoverClass: 'dot-output-endpoint-hover',
 					connectionsDirected: true,
@@ -240,7 +262,7 @@ export const nodeBase = defineComponent({
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
-				this.__addEndpointTestingData(endpoint, 'output', i);
+				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
 				if (nodeTypeData.outputNames?.[i]) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
@@ -254,14 +276,14 @@ export const nodeBase = defineComponent({
 					endpoint.__meta = {
 						nodeName: node.name,
 						nodeId: this.nodeId,
-						index: i,
-						totalEndpoints: nodeTypeData.outputs.length,
+						index: typeIndex,
+						totalEndpoints: outputsOfSameRootType.length,
 					};
 				}
 
 				if (!this.isReadOnly && outputName === 'main') {
 					const plusEndpointData: EndpointOptions = {
-						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, i),
+						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, outputName, typeIndex),
 						anchor: anchorPosition,
 						maxConnections: -1,
 						endpoint: {
@@ -287,7 +309,7 @@ export const nodeBase = defineComponent({
 							connection: 'source',
 							nodeId: this.nodeId,
 							type: outputName,
-							index: i,
+							index: typeIndex,
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
@@ -296,14 +318,14 @@ export const nodeBase = defineComponent({
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
 					);
-					this.__addEndpointTestingData(plusEndpoint, 'plus', i);
+					this.__addEndpointTestingData(plusEndpoint, 'plus', typeIndex);
 
 					if (!Array.isArray(plusEndpoint)) {
 						plusEndpoint.__meta = {
 							nodeName: node.name,
 							nodeId: this.nodeId,
-							index: i,
-							totalEndpoints: nodeTypeData.outputs.length,
+							index: typeIndex,
+							totalEndpoints: outputsOfSameRootType.length,
 						};
 					}
 				}

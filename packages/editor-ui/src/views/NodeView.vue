@@ -2817,25 +2817,37 @@ export default defineComponent({
 
 			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
-		getOutputEndpointUUID(nodeName: string, index: number): string | null {
+		getOutputEndpointUUID(
+			nodeName: string,
+			connectionType: ConnectionTypes,
+			index: number,
+		): string | null {
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return null;
 			}
 
-			return NodeViewUtils.getOutputEndpointUUID(node.id, index);
+			return NodeViewUtils.getOutputEndpointUUID(node.id, connectionType, index);
 		},
-		getInputEndpointUUID(nodeName: string, index: number) {
+		getInputEndpointUUID(nodeName: string, connectionType: ConnectionTypes, index: number) {
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			if (!node) {
 				return null;
 			}
 
-			return NodeViewUtils.getInputEndpointUUID(node.id, index);
+			return NodeViewUtils.getInputEndpointUUID(node.id, connectionType, index);
 		},
 		__addConnection(connection: [IConnection, IConnection]) {
-			const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
-			const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
+			const outputUuid = this.getOutputEndpointUUID(
+				connection[0].node,
+				connection[0].type as ConnectionTypes,
+				connection[0].index,
+			);
+			const inputUuid = this.getInputEndpointUUID(
+				connection[1].node,
+				connection[1].type as ConnectionTypes,
+				connection[1].index,
+			);
 			if (!outputUuid || !inputUuid) {
 				return;
 			}
@@ -3000,6 +3012,7 @@ export default defineComponent({
 			sourceOutputIndex: number,
 			targetNodeName: string,
 			targetInputIndex: number,
+			connectionType: ConnectionTypes,
 		): Connection | undefined {
 			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
 			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
@@ -3010,8 +3023,16 @@ export default defineComponent({
 			const sourceId = sourceNode.id;
 			const targetId = targetNode.id;
 
-			const sourceEndpoint = NodeViewUtils.getOutputEndpointUUID(sourceId, sourceOutputIndex);
-			const targetEndpoint = NodeViewUtils.getInputEndpointUUID(targetId, targetInputIndex);
+			const sourceEndpoint = NodeViewUtils.getOutputEndpointUUID(
+				sourceId,
+				connectionType,
+				sourceOutputIndex,
+			);
+			const targetEndpoint = NodeViewUtils.getInputEndpointUUID(
+				targetId,
+				connectionType,
+				targetInputIndex,
+			);
 
 			// @ts-ignore
 			const connections = this.instance?.getConnections({
@@ -3110,7 +3131,11 @@ export default defineComponent({
 
 			const connectionType = Object.keys(allNodeConnections)[0];
 			const nodeConnections = allNodeConnections[connectionType];
-			const outputMap = NodeViewUtils.getOutputSummary(data, nodeConnections || [], connectionType);
+			const outputMap = NodeViewUtils.getOutputSummary(
+				data,
+				nodeConnections || [],
+				connectionType as ConnectionTypes,
+			);
 
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
@@ -3122,6 +3147,7 @@ export default defineComponent({
 									parseInt(sourceOutputIndex, 10),
 									targetNodeName,
 									parseInt(targetInputIndex, 10),
+									connectionType as ConnectionTypes,
 								);
 
 								if (connection) {

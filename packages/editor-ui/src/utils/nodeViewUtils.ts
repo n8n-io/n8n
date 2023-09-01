@@ -921,12 +921,20 @@ export const addConnectionActionsOverlay = (
 	overlay.setVisible(false);
 };
 
-export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {
-	return `${nodeId}${OUTPUT_UUID_KEY}${outputIndex}`;
+export const getOutputEndpointUUID = (
+	nodeId: string,
+	connectionType: ConnectionTypes,
+	outputIndex: number,
+) => {
+	return `${nodeId}${OUTPUT_UUID_KEY}${connectionType}${outputIndex}`;
 };
 
-export const getInputEndpointUUID = (nodeId: string, inputIndex: number) => {
-	return `${nodeId}${INPUT_UUID_KEY}${inputIndex}`;
+export const getInputEndpointUUID = (
+	nodeId: string,
+	connectionType: ConnectionTypes,
+	inputIndex: number,
+) => {
+	return `${nodeId}${INPUT_UUID_KEY}${connectionType}${inputIndex}`;
 };
 
 export const getFixedNodesList = (workflowNodes: INode[]) => {
