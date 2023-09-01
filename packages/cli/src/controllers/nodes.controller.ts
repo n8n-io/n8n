@@ -251,9 +251,8 @@ export class NodesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		const previouslyInstalledPackage = await this.communityPackageService.findInstalledPackage(
-			name,
-		);
+		const previouslyInstalledPackage =
+			await this.communityPackageService.findInstalledPackage(name);
 
 		if (!previouslyInstalledPackage) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
