@@ -74,7 +74,7 @@
       "@types/node": "^18.16.16",
       "chokidar": "3.5.2",
       "jsonwebtoken": "9.0.0",
-      "prettier": "^3.0.0",
+      "prettier": "^3.0.3",
       "semver": "^7.5.4",
       "tough-cookie": "^4.1.3",
       "tslib": "^2.6.1",

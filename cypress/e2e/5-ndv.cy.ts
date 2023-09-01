@@ -291,7 +291,7 @@ describe('NDV', () => {
 	});
 
 	it('should not retrieve remote options when required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {action: 'Remote Options'});
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
 
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
@@ -308,7 +308,7 @@ describe('NDV', () => {
 	});
 
 	it('should retrieve remote options when non-required params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {action: 'Remote Options'});
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
 
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
@@ -338,7 +338,7 @@ describe('NDV', () => {
 		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.parameterInput('path').type('t')
+		ndv.getters.parameterInput('path').type('t');
 
 		ndv.getters.nodeExecuteButton().should('not.be.disabled');
 		ndv.getters.triggerPanelExecuteButton().should('exist');
