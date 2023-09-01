@@ -442,6 +442,8 @@ export default defineComponent({
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
+					returnStyles['border-width'] = '2px';
+					returnStyles['border-style'] = 'solid';
 					borderColor = getStyleTokenValue('--color-success');
 				}
 			}
