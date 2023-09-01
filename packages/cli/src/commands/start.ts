@@ -13,7 +13,7 @@ import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
 
-import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
+import { sleep, jsonParse } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
@@ -23,7 +23,7 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
-import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
+import { CommunityPackageService } from '@/services/communityPackage.service';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
@@ -233,54 +233,12 @@ export class Start extends BaseCommand {
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			const installedPackages = await getAllInstalledPackages();
-			const missingPackages = new Set<{
-				packageName: string;
-				version: string;
-			}>();
-			installedPackages.forEach((installedPackage) => {
-				installedPackage.installedNodes.forEach((installedNode) => {
-					if (!this.loadNodesAndCredentials.known.nodes[installedNode.type]) {
-						// Leave the list ready for installing in case we need.
-						missingPackages.add({
-							packageName: installedPackage.packageName,
-							version: installedPackage.installedVersion,
-						});
-					}
-				});
-			});
-
-			config.set('nodes.packagesMissing', '');
-			if (missingPackages.size) {
-				LoggerProxy.error(
-					'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
-				);
-
-				if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
-					LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
-					try {
-						// Optimistic approach - stop if any installation fails
-
-						for (const missingPackage of missingPackages) {
-							await this.loadNodesAndCredentials.installNpmModule(
-								missingPackage.packageName,
-								missingPackage.version,
-							);
-							missingPackages.delete(missingPackage);
-						}
-						LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
-					} catch (error) {
-						LoggerProxy.error('n8n was unable to install the missing packages.');
-					}
-				}
-
-				config.set(
-					'nodes.packagesMissing',
-					Array.from(missingPackages)
-						.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
-						.join(' '),
-				);
-			}
+			await Container.get(CommunityPackageService).setMissingPackages(
+				this.loadNodesAndCredentials,
+				{
+					reinstallMissingPackages: flags.reinstallMissingPackages,
+				},
+			);
 		}
 
 		const dbType = config.getEnv('database.type');
