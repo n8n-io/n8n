@@ -2089,7 +2089,7 @@ export default defineComponent({
 			sourceNodeName: string,
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
-			targetNodeOuputIndex: number,
+			targetNodeOutputIndex: number,
 			type: ConnectionTypes,
 		) {
 			this.uiStore.stateIsDirty = true;
@@ -2099,7 +2099,7 @@ export default defineComponent({
 					sourceNodeName,
 					sourceNodeOutputIndex,
 					targetNodeName,
-					targetNodeOuputIndex,
+					targetNodeOutputIndex,
 					type,
 				)
 			) {
@@ -2115,7 +2115,7 @@ export default defineComponent({
 				{
 					node: targetNodeName,
 					type,
-					index: targetNodeOuputIndex,
+					index: targetNodeOutputIndex,
 				},
 			] as [IConnection, IConnection];
 
