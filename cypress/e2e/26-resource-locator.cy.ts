@@ -54,16 +54,22 @@ describe('Resource Locator', () => {
 
 	// unlike RMC and remote options, RLC does not support loadOptionDependsOn
 	it('should retrieve list options when other params throw errors', () => {
-		workflowPage.actions.addInitialNodeToCanvas('E2e Test', {action: 'Resource Locator'});
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Resource Locator' });
 
 		ndv.getters.resourceLocatorInput('rlc').click();
-		getVisiblePopper().should('have.length', 1).findChildByTestId('rlc-item').should('have.length', 5);
+		getVisiblePopper()
+			.should('have.length', 1)
+			.findChildByTestId('rlc-item')
+			.should('have.length', 5);
 
 		ndv.actions.setInvalidExpression('fieldId');
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.resourceLocatorInput('rlc').click();
-		getVisiblePopper().should('have.length', 1).findChildByTestId('rlc-item').should('have.length', 5);
+		getVisiblePopper()
+			.should('have.length', 1)
+			.findChildByTestId('rlc-item')
+			.should('have.length', 5);
 	});
 });
