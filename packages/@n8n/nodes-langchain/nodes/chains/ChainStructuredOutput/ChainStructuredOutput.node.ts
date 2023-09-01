@@ -48,7 +48,7 @@ export class ChainStructuredOutput implements INodeType {
 		properties: [
 			{
 				displayName:
-					'This Chain depends on OpenAI functions. So it can only be used with supported OpenAI models',
+					'This Chain depends on OpenAI functions. So it can only be used with supported OpenAI models.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -76,6 +76,9 @@ export class ChainStructuredOutput implements INodeType {
 				type: 'json',
 				description: 'JSON Schema to structure the output.',
 				default: '',
+				typeOptions: {
+					rows: 4,
+				},
 				required: true,
 			}
 		],
@@ -105,7 +108,7 @@ export class ChainStructuredOutput implements INodeType {
 			try {
 				JSON.parse(schema);
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Error whine parsing JSON Schema.');
+				throw new NodeOperationError(this.getNode(), 'Error whinl parsing JSON Schema.');
 			}
 			const functionCallingModel = model.bind({
 				functions: [
