@@ -161,15 +161,28 @@ export async function execute(
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
+	const nodeVersion = nodeOptions.typeVersion as number;
+
+	let schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let tableSchema = await getTableSchema(db, schema, table);
+	let currentSchema = schema;
+	let currentTable = table;
 
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const schema = this.getNodeParameter('schema', i, undefined, {
+		schema = this.getNodeParameter('schema', i, undefined, {
 			extractValue: true,
 		}) as string;
 
-		const table = this.getNodeParameter('table', i, undefined, {
+		table = this.getNodeParameter('table', i, undefined, {
 			extractValue: true,
 		}) as string;
 
@@ -183,7 +196,6 @@ export async function execute(
 		let query = `INSERT INTO $1:name.$2:name($3:name) VALUES($3:csv)${onConflict}`;
 		let values: QueryValues = [schema, table];
 
-		const nodeVersion = this.getNode().typeVersion;
 		const dataMode =
 			nodeVersion < 2.2
 				? (this.getNodeParameter('dataMode', i) as string)
@@ -209,7 +221,11 @@ export async function execute(
 			}
 		}
 
-		const tableSchema = await getTableSchema(db, schema, table);
+		if (currentSchema !== schema || currentTable !== table) {
+			currentSchema = schema;
+			currentTable = table;
+			tableSchema = await getTableSchema(db, schema, table);
+		}
 
 		values.push(checkItemAgainstSchema(this.getNode(), item, tableSchema, i));
 
