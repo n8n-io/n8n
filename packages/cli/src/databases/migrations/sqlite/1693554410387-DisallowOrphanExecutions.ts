@@ -9,7 +9,7 @@ export class DisallowOrphanExecutions1693554410387 implements ReversibleMigratio
 	 */
 	async up({ escape, schemaBuilder: { createTable, column }, runQuery }: MigrationContext) {
 		const executionEntity = escape.tableName('execution_entity');
-		const workflowId = escape.tableName('workflowId');
+		const workflowId = escape.columnName('workflowId');
 
 		await runQuery(`DELETE FROM ${executionEntity} WHERE ${workflowId} IS NULL;`);
 
