@@ -23,6 +23,7 @@ export class ChainVectorStoreQA implements INodeType {
 			color: '#412012',
 		},
 		codex: {
+			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Chains'],

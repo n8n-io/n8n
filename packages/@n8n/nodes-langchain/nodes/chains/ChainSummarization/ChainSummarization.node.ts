@@ -25,6 +25,7 @@ export class ChainSummarization implements INodeType {
 			color: '#432032',
 		},
 		codex: {
+			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Chains'],

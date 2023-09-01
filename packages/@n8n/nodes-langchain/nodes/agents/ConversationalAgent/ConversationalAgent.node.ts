@@ -24,6 +24,7 @@ export class ConversationalAgent implements INodeType {
 			color: '#404040',
 		},
 		codex: {
+			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents'],

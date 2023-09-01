@@ -23,6 +23,7 @@ export class ChainRetrievalQA implements INodeType {
 			color: '#408080',
 		},
 		codex: {
+			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Chains'],
