@@ -18,7 +18,8 @@ export class ConversationalAgent implements INodeType {
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
+		description:
+			'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
 		defaults: {
 			name: 'Conversational Agent',
 			color: '#404040',
@@ -31,8 +32,8 @@ export class ConversationalAgent implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'tool', 'memory', 'languageModel'],
-		inputNames: ['', 'Tools', 'Memory', 'Model'],
+		inputs: ['main', 'languageModel', 'memory', 'tool'],
+		inputNames: ['', 'Model', 'Memory', 'Tools'],
 		outputs: ['main'],
 		credentials: [],
 		properties: [

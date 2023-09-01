@@ -33,8 +33,8 @@ export class ChainSummarization implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'document', 'languageModel'],
-		inputNames: ['', 'Document', 'Language Model'],
+		inputs: ['main', 'languageModel', 'document'],
+		inputNames: ['', 'Language Model', 'Document'],
 		outputs: ['main', 'chain'],
 		outputNames: ['', 'Chain'],
 		credentials: [],

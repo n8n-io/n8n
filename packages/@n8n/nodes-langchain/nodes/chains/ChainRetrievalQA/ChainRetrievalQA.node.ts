@@ -30,8 +30,8 @@ export class ChainRetrievalQA implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'vectorRetriever', 'languageModel'],
-		inputNames: ['', 'Vector Retriever', 'Language Model'],
+		inputs: ['main', 'languageModel', 'vectorRetriever'],
+		inputNames: ['', 'Language Model', 'Vector Retriever'],
 		outputs: ['main'],
 		// outputNames: ['', 'Chain'],
 		credentials: [],

@@ -17,7 +17,8 @@ export class ChainVectorStoreQA implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Performs a question-answering operation on a vector store based on the input query',
+		description:
+			'Performs a question-answering operation on a vector store based on the input query',
 		defaults: {
 			name: 'Vector Store QA',
 			color: '#412012',
@@ -30,8 +31,8 @@ export class ChainVectorStoreQA implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'vectorStore', 'languageModel'],
-		inputNames: ['', 'Vector Store', 'Language Model'],
+		inputs: ['main', 'languageModel', 'vectorStore'],
+		inputNames: ['', 'Language Model', 'Vector Store'],
 		outputs: ['main', 'chain'],
 		outputNames: ['', 'Chain'],
 		credentials: [],
