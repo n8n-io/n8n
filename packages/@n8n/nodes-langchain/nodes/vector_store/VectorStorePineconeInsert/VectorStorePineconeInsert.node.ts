@@ -1,4 +1,4 @@
-import {
+import type {
 	IExecuteFunctions,
 	INodeType,
 	INodeTypeDescription,
@@ -6,17 +6,17 @@ import {
 } from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
-import { Embeddings } from 'langchain/embeddings/base';
-import { N8nJsonLoader } from '../../document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
+import type { Embeddings } from 'langchain/embeddings/base';
+import type { Document } from 'langchain/document';
+import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { Document } from 'langchain/document';
-import { N8nBinaryLoader } from '../../document_loaders/DocumentBinaryInputLoader/DocumentBinaryInputLoader.node';
+import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export class VectorStorePineconeInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pinecone: Insert',
 		name: 'vectorStorePineconeInsert',
-		icon: 'file:pinecone.png',
+		icon: 'file:pinecone.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Insert data into Pinecone Vector Store index',
@@ -35,7 +35,7 @@ export class VectorStorePineconeInsert implements INodeType {
 				required: true,
 			},
 		],
-		inputs: ['main', 'document', 'embedding'],
+		inputs: ['main'],
 		inputNames: ['', 'Document', 'Embedding'],
 		outputs: ['main'],
 		outputNames: [''],
@@ -58,7 +58,7 @@ export class VectorStorePineconeInsert implements INodeType {
 				name: 'clearIndex',
 				type: 'boolean',
 				default: false,
-				description: 'Clear the index before inserting new data',
+				description: 'Whether to clear the index before inserting new data',
 			},
 		],
 	};
@@ -75,7 +75,7 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const documentInput = (await getAndValidateSupplyInput(this, 'document', true)) as
 			| N8nJsonLoader
-			| Document<Record<string, any>>[];
+			| Array<Document<Record<string, unknown>>>;
 		const embeddings = (await getAndValidateSupplyInput(this, 'embedding', true)) as Embeddings;
 
 		const client = new PineconeClient();
@@ -87,7 +87,7 @@ export class VectorStorePineconeInsert implements INodeType {
 		const pineconeIndex = client.Index(index);
 
 		if (namespace && clearIndex) {
-			await pineconeIndex.delete1({ deleteAll: true, namespace: namespace });
+			await pineconeIndex.delete1({ deleteAll: true, namespace });
 		}
 
 		let processedDocuments: Document[];

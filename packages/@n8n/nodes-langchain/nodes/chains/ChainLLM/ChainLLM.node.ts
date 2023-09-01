@@ -7,8 +7,8 @@ import {
 
 import { LLMChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import { PromptTemplate } from 'langchain';
+import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 async function getChain(context: IExecuteFunctions, query: string) {
 	const llm = (await getAndValidateSupplyInput(
@@ -18,16 +18,16 @@ async function getChain(context: IExecuteFunctions, query: string) {
 	)) as BaseLanguageModel;
 	const prompt = PromptTemplate.fromTemplate(query);
 
-	const chain = new LLMChain({ llm, prompt })
+	const chain = new LLMChain({ llm, prompt });
 	const response = await chain.call({ query });
 
 	return response;
 }
 
-export class ChainLLM implements INodeType {
+export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'LLM Chain',
-		name: 'chainLLM',
+		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
@@ -85,14 +85,14 @@ export class ChainLLM implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		if (runMode === 'runOnceForAllItems') {
 			const prompt = this.getNodeParameter('prompt', 0) as string;
-			const response = await getChain(this, prompt)
+			const response = await getChain(this, prompt);
 
 			return this.prepareOutputData([{ json: { response } }]);
 		}
 		// Run for each item
 		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('query', i) as string;
-			const response = await getChain(this, prompt)
+			const response = await getChain(this, prompt);
 
 			returnData.push({ json: { response } });
 		}

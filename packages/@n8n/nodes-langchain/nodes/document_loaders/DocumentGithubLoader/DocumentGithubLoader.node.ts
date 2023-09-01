@@ -6,7 +6,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
-import { CharacterTextSplitter } from 'langchain/text_splitter';
+import type { CharacterTextSplitter } from 'langchain/text_splitter';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -72,7 +72,7 @@ export class DocumentGithubLoader implements INodeType {
 						displayName: 'Ignore Paths',
 						name: 'recursive',
 						type: 'string',
-						description: 'Comma separated list of paths to ignore, e.g. "docs, src/tests',
+						description: 'Comma-separated list of paths to ignore, e.g. "docs, src/tests',
 						default: '',
 					},
 				],

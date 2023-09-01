@@ -3,10 +3,10 @@ import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } f
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class EmbeddingsOpenAI implements INodeType {
+export class EmbeddingsOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings OpenAI',
-		name: 'embeddingsOpenAI',
+		name: 'embeddingsOpenAi',
 		icon: 'file:openAi.svg',
 		credentials: [
 			{
@@ -19,7 +19,6 @@ export class EmbeddingsOpenAI implements INodeType {
 		description: 'Use Embeddings OpenAI',
 		defaults: {
 			name: 'Embeddings OpenAI',
-			color: '#412080',
 		},
 
 		codex: {

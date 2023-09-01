@@ -7,7 +7,7 @@ import {
 
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { BaseRetriever } from 'langchain/schema/retriever';
+import type { BaseRetriever } from 'langchain/schema/retriever';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class ChainRetrievalQA implements INodeType {
@@ -79,7 +79,7 @@ export class ChainRetrievalQA implements INodeType {
 		)) as BaseRetriever;
 
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever!);
+		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever);
 
 		const returnData: INodeExecutionData[] = [];
 		const runMode = this.getNodeParameter('mode', 0) as string;

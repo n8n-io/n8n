@@ -6,8 +6,8 @@ import { logWrapper } from '../../../utils/logWrapper';
 export class ToolWolframAlpha implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Wolfram Alpha',
-		name: 'toolWolfram Alpha',
-		icon: 'file:wolfram-alpha.png',
+		name: 'toolWolframAlpha',
+		icon: 'file:wolfram-alpha.svg',
 		group: ['transform'],
 		version: 1,
 		description: "Connects to WolframAlpha's computational intelligence engine.",

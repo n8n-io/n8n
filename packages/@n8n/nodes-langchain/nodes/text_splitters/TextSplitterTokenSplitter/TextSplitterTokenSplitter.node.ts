@@ -56,9 +56,6 @@ export class TextSplitterTokenSplitter implements INodeType {
 			disallowedSpecial: 'all',
 			encodingName: 'cl100k_base',
 			keepSeparator: false,
-			// allowedSpecial: 'all',
-			// disallowedSpecial: 'all',
-			// encodingName: 'cl100k_base',
 		});
 
 		return {

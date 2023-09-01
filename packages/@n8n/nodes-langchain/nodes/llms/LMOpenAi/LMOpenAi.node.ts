@@ -1,10 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
-import { logWrapper } from '../../../utils/logWrapper';
 import { OpenAI } from 'langchain';
+import { logWrapper } from '../../../utils/logWrapper';
 
-export class LMOpenAi implements INodeType {
+export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'OpenAI',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased

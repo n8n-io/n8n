@@ -7,9 +7,9 @@ import {
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import type { Tool } from 'langchain/tools';
+import type { BaseChatMemory } from 'langchain/memory';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
-import { Tool } from 'langchain/tools';
-import { BaseChatMemory } from 'langchain/memory';
 
 export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +18,8 @@ export class ConversationalAgent implements INodeType {
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
+		description:
+			'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
 		defaults: {
 			name: 'Conversational Agent',
 			color: '#404040',
@@ -68,7 +69,7 @@ export class ConversationalAgent implements INodeType {
 				type: 'string',
 				default:
 					'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
-				description: 'The message that will be sent to the agent before the conversation starts.',
+				description: 'The message that will be sent to the agent before the conversation starts',
 				typeOptions: {
 					rows: 3,
 				},
@@ -94,7 +95,7 @@ export class ConversationalAgent implements INodeType {
 			// If you would like to override this, you can pass in a custom
 			// memory option, but the memoryKey set on it must be "chat_history".
 			agentType: 'chat-conversational-react-description',
-			memory: memory,
+			memory,
 			agentArgs: {
 				systemMessage: this.getNodeParameter('systemMessage', 0) as string,
 			},

@@ -12,9 +12,10 @@ import { TextSplitter } from 'langchain/text_splitter';
 import { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
-import { N8nJsonLoader } from '../nodes/document_loaders/DocumentJSONInputLoader/DocumentJSONInputLoader.node';
+import { N8nJsonLoader } from './N8nJsonLoader';
 import { BaseChatMemory } from 'langchain/memory';
 import { MemoryVariables } from 'langchain/dist/memory/base';
+import { N8nBinaryLoader } from './N8nBinaryLoader';
 
 export function logWrapper(
 	originalInstance:
@@ -30,6 +31,7 @@ export function logWrapper(
 		| VectorStoreRetriever
 		| TextSplitter
 		| VectorStore
+		| N8nBinaryLoader
 		| N8nJsonLoader,
 	executeFunctions: IExecuteFunctions,
 ) {

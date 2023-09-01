@@ -7,17 +7,18 @@ import {
 
 import { VectorDBQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { VectorStore } from 'langchain/vectorstores/base';
+import type { VectorStore } from 'langchain/vectorstores/base';
 import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
-export class ChainVectorStoreQA implements INodeType {
+export class ChainVectorStoreQa implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Vector Store QA Chain',
 		name: 'chainVectorStoreQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'Performs a question-answering operation on a vector store based on the input query',
+		description:
+			'Performs a question-answering operation on a vector store based on the input query',
 		defaults: {
 			name: 'Vector Store QA',
 			color: '#412012',
@@ -32,7 +33,7 @@ export class ChainVectorStoreQA implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'vectorStore', 'languageModel'],
 		inputNames: ['', 'Vector Store', 'Language Model'],
-		outputs: ['main', 'chain'],
+		outputs: ['main'],
 		outputNames: ['', 'Chain'],
 		credentials: [],
 		properties: [
@@ -66,7 +67,7 @@ export class ChainVectorStoreQA implements INodeType {
 				name: 'topK',
 				type: 'number',
 				default: 4,
-				description: 'Number of top results to fetch from vector store.',
+				description: 'Number of top results to fetch from vector store',
 			},
 		],
 	};
