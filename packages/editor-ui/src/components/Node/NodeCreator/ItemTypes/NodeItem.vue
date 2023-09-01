@@ -8,6 +8,7 @@
 		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
+		:is-ai="isAi"
 		:is-trigger="isTrigger"
 		:data-test-id="dataTestId"
 	>
@@ -109,9 +110,14 @@ const displayName = computed<any>(() => {
 	});
 });
 
+const isAi = computed<boolean>(() => {
+	return (props.nodeType.codex?.categories?.includes('AI') ?? false) && !hasActions.value;
+});
+
 const isTrigger = computed<boolean>(() => {
 	return props.nodeType.group.includes('trigger') && !hasActions.value;
 });
+
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.

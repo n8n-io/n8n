@@ -1,3 +1,26 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import N8nTooltip from '../N8nTooltip';
+
+export interface Props {
+	active?: boolean;
+	isAi?: boolean;
+	isTrigger?: boolean;
+	description?: string;
+	title: string;
+	showActionArrow?: boolean;
+}
+
+defineProps<Props>();
+
+defineEmits<{
+	(event: 'tooltipClick', $e: MouseEvent): void;
+}>();
+
+const i18n = useI18n();
+</script>
+
 <template>
 	<div
 		:class="{
@@ -12,7 +35,20 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
-				<font-awesome-icon icon="bolt" v-if="isTrigger" size="xs" :class="$style.triggerIcon" />
+				<font-awesome-icon
+					icon="bolt"
+					v-if="isTrigger"
+					size="xs"
+					:title="i18n.baseText('nodeCreator.nodeItem.triggerIconTitle')"
+					:class="$style.triggerIcon"
+				/>
+				<font-awesome-icon
+					icon="link"
+					v-if="isAi"
+					size="xs"
+					:title="i18n.baseText('nodeCreator.nodeItem.aiIconTitle')"
+					:class="$style.aiIcon"
+				/>
 				<n8n-tooltip
 					v-if="!!$slots.tooltip"
 					placement="top"
@@ -32,25 +68,6 @@
 		</button>
 	</div>
 </template>
-
-<script setup lang="ts">
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import N8nTooltip from '../N8nTooltip';
-
-export interface Props {
-	active?: boolean;
-	isTrigger?: boolean;
-	description?: string;
-	title: string;
-	showActionArrow?: boolean;
-}
-
-defineProps<Props>();
-
-defineEmits<{
-	(event: 'tooltipClick', $e: MouseEvent): void;
-}>();
-</script>
 
 <style lang="scss" module>
 .creatorNode {
@@ -104,6 +121,11 @@ defineEmits<{
 	line-height: 1rem;
 	font-weight: 400;
 	color: var(--node-creator-description-colos, var(--color-text-base));
+}
+
+.aiIcon {
+	margin-left: var(--spacing-3xs);
+	color: var(--color-secondary);
 }
 
 .triggerIcon {
