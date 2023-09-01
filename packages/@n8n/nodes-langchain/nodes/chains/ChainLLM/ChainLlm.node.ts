@@ -8,14 +8,10 @@ import {
 import { LLMChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import { PromptTemplate } from 'langchain';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 async function getChain(context: IExecuteFunctions, query: string) {
-	const llm = (await getAndValidateSupplyInput(
-		context,
-		'languageModel',
-		true,
-	)) as BaseLanguageModel;
+	const llm = (await context.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+
 	const prompt = PromptTemplate.fromTemplate(query);
 
 	const chain = new LLMChain({ llm, prompt });
@@ -44,8 +40,15 @@ export class ChainLlm implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel'],
-		inputNames: ['', 'Language Model'],
+		inputs: [
+			'main',
+			{
+				displayName: 'Language Model',
+				maxConnections: 1,
+				type: 'languageModel',
+				required: true,
+			},
+		],
 		outputs: ['main'],
 		credentials: [],
 		properties: [

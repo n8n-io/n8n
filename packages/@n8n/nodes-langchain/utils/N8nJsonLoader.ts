@@ -1,13 +1,8 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import type { CharacterTextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { getAndValidateSupplyInput } from './getAndValidateSupplyInput';
-
 
 export class N8nJsonLoader {
 	private context: IExecuteFunctions;
@@ -19,7 +14,8 @@ export class N8nJsonLoader {
 	async process(items?: INodeExecutionData[]): Promise<Document[]> {
 		const pointers = this.context.getNodeParameter('pointers', 0) as string;
 		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-		const textSplitter = (await getAndValidateSupplyInput(this.context, 'textSplitter')) as
+
+		const textSplitter = (await this.context.getInputConnectionData('textSplitter', 0)) as
 			| CharacterTextSplitter
 			| undefined;
 

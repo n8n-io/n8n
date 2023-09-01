@@ -6,7 +6,7 @@ import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE } from '@/constants';
 
-import type { ConnectionTypes, INodeTypeDescription } from 'n8n-workflow';
+import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -90,7 +90,18 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			nodeTypeData.inputs.forEach((inputName, i) => {
+			nodeTypeData.inputs.forEach((value, i) => {
+				let inputConfiguration: INodeInputConfiguration;
+				if (typeof value === 'string') {
+					inputConfiguration = {
+						type: value,
+					};
+				} else {
+					inputConfiguration = value;
+				}
+
+				let inputName: ConnectionTypes = inputConfiguration.type;
+
 				const rootCategoryInputName = inputName === 'main' ? 'main' : 'other';
 
 				// Increment the index for inputs with current name
@@ -125,7 +136,12 @@ export const nodeBase = defineComponent({
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, inputName, typeIndex),
 					anchor: anchorPosition,
-					maxConnections: -1,
+					// We potentially want to change that in the future to allow people to dynamically
+					// activate and deactivate connected nodes
+					maxConnections:
+						inputConfiguration.maxConnections === undefined
+							? -1
+							: inputConfiguration.maxConnections,
 					endpoint: 'Rectangle',
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
@@ -158,10 +174,14 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				) as Endpoint;
 				this.__addEndpointTestingData(endpoint, 'input', typeIndex);
-				if (nodeTypeData.inputNames?.[i]) {
+				if (inputConfiguration.displayName || nodeTypeData.inputNames?.[i]) {
 					// Apply input names if they got set
 					endpoint.addOverlay(
-						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[i], inputName),
+						NodeViewUtils.getInputNameOverlay(
+							inputConfiguration.displayName || nodeTypeData.inputNames[i],
+							inputName,
+							inputConfiguration.required,
+						),
 					);
 				}
 				if (!Array.isArray(endpoint)) {

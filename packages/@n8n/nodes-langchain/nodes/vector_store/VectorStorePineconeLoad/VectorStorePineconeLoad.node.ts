@@ -3,7 +3,6 @@ import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,8 +27,14 @@ export class VectorStorePineconeLoad implements INodeType {
 				required: true,
 			},
 		],
-		inputs: ['embedding'],
-		inputNames: ['Embedding'],
+		inputs: [
+			{
+				displayName: 'Embedding',
+				maxConnections: 1,
+				type: 'embedding',
+				required: true,
+			},
+		],
 		outputs: ['vectorStore'],
 		outputNames: ['Vector Store'],
 		properties: [
@@ -55,7 +60,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		const index = this.getNodeParameter('pineconeIndex', 0) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
-		const embeddings = (await getAndValidateSupplyInput(this, 'embedding', true)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
 
 		const client = new PineconeClient();
 		await client.init({

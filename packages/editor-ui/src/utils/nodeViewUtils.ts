@@ -265,7 +265,11 @@ export const getInputEndpointStyle = (
 	};
 };
 
-export const getInputNameOverlay = (labelText: string, inputName: string): OverlaySpec => ({
+export const getInputNameOverlay = (
+	labelText: string,
+	inputName: string,
+	required?: boolean,
+): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_INPUT_NAME_LABEL,
@@ -274,6 +278,9 @@ export const getInputNameOverlay = (labelText: string, inputName: string): Overl
 		create: (component: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
+			if (required) {
+				label.innerHTML += ` <strong style="color: var(--color-primary)">*</strong>`;
+			}
 			label.classList.add('node-input-endpoint-label');
 			if (inputName !== 'main') {
 				label.classList.add(`node-input-endpoint-label--data`);

@@ -1,8 +1,4 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	IBinaryData,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
@@ -12,7 +8,6 @@ import { DocxLoader } from 'langchain/document_loaders/fs/docx';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
-import { getAndValidateSupplyInput } from './getAndValidateSupplyInput';
 import { N8nEPubLoader } from './EpubLoader';
 
 const SUPPORTED_MIME_TYPES = {
@@ -105,9 +100,10 @@ export class N8nBinaryLoader {
 					);
 			}
 
-			const textSplitter = (await getAndValidateSupplyInput(this.context, 'textSplitter')) as
+			const textSplitter = (await this.context.getInputConnectionData('textSplitter', 0)) as
 				| TextSplitter
 				| undefined;
+
 			const loadedDoc = textSplitter
 				? await loader.loadAndSplit(textSplitter)
 				: await loader.load();

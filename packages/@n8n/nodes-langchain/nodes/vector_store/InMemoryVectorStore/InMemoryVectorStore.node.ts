@@ -24,7 +24,19 @@ export class InMemoryVectorStore implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['document', 'embedding'],
+		inputs: [
+			{
+				displayName: 'Document',
+				type: 'document',
+				required: false,
+			},
+			{
+				displayName: 'Embedding',
+				maxConnections: 1,
+				type: 'embedding',
+				required: false,
+			},
+		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['vectorRetriever'],
 		outputNames: ['Vector Retriever'],
@@ -32,10 +44,8 @@ export class InMemoryVectorStore implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const documentsNodes = (await this.getInputConnectionData('document', 0)) || [];
-		const documents = documentsNodes.flatMap((node) => node.response as Document);
-		const embeddingNodes = await this.getInputConnectionData('embedding', 0);
-		const embeddings = (embeddingNodes || [])[0]?.response as Embeddings;
+		const documents = (await this.getInputConnectionData('document', 0)) as Document[];
+		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
 

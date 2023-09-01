@@ -30,6 +30,7 @@ import type {
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeExecutionData,
+	INodeInputConfiguration,
 	IOAuth2Options,
 	IRunExecutionData,
 	ISourceData,
@@ -62,7 +63,6 @@ import type {
 	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
-	SupplyData,
 	ITaskData,
 	ExecutionError,
 } from 'n8n-workflow';
@@ -2675,8 +2675,27 @@ export function getExecuteFunctions(
 				itemIndex: number,
 				// TODO: Not implemented yet, and maybe also not needed
 				inputIndex?: number,
-			): Promise<SupplyData[]> {
-				const parentNodes = workflow.getParentNodes(this.getNode().name, inputName, 1);
+			): Promise<unknown> {
+				const node = this.getNode();
+				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				let inputConfiguration = nodeType.description.inputs.find((input) => {
+					if (typeof input === 'string') {
+						return input === inputName;
+					}
+					return input.type === inputName;
+				});
+
+				if (inputConfiguration === undefined) {
+					throw new Error(`The node "${node.name}" does not have an input of type "${inputName}"`);
+				}
+
+				if (typeof inputConfiguration === 'string') {
+					inputConfiguration = {
+						type: inputConfiguration,
+					} as INodeInputConfiguration;
+				}
+
+				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 				if (parentNodes.length === 0) {
 					return [];
 				}
@@ -2694,7 +2713,7 @@ export function getExecuteFunctions(
 
 						if (!nodeType.supplyData) {
 							throw new Error(
-								`The node "${connectedNode.name}" does not have a "supplyData method defined!"`,
+								`The node "${connectedNode.name}" does not have a "supplyData" method defined!`,
 							);
 						}
 
@@ -2798,7 +2817,25 @@ export function getExecuteFunctions(
 						}
 					});
 
-				return Promise.all(constParentNodes);
+				// Validate the inputs
+				const nodes = await Promise.all(constParentNodes);
+
+				if (inputConfiguration.required && nodes.length === 0) {
+					throw new NodeOperationError(node, `A ${inputName} processor node must be connected!`);
+				}
+				if (
+					inputConfiguration.maxConnections !== undefined &&
+					nodes.length > inputConfiguration.maxConnections
+				) {
+					throw new NodeOperationError(
+						node,
+						`Only ${inputConfiguration.maxConnections} ${inputName} processor nodes are/is allowed to be connected!`,
+					);
+				}
+
+				return inputConfiguration.maxConnections === 1
+					? (nodes || [])[0]?.response
+					: nodes.map((node) => node.response);
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {

@@ -14,7 +14,6 @@ import {
 } from 'langchain/prompts';
 import type { ChatOpenAI } from 'langchain/chat_models/openai';
 import { JsonOutputFunctionsParser } from 'langchain/output_parsers';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 function getPromptTemplate(prompt: string) {
 	return new ChatPromptTemplate({
@@ -46,8 +45,15 @@ export class ChainStructuredOutput implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel'],
-		inputNames: ['', 'Language Model'],
+		inputs: [
+			'main',
+			{
+				displayName: 'Language Model',
+				maxConnections: 1,
+				type: 'languageModel',
+				required: true,
+			},
+		],
 		outputs: ['main'],
 		credentials: [],
 		properties: [
@@ -91,7 +97,7 @@ export class ChainStructuredOutput implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Structured Output Chain');
-		const model = (await getAndValidateSupplyInput(this, 'languageModel', true)) as ChatOpenAI;
+		const model = (await this.getInputConnectionData('languageModel', 0)) as ChatOpenAI;
 
 		const outputParser = new JsonOutputFunctionsParser();
 

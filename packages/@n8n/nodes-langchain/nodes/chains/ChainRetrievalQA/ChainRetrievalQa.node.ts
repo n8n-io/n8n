@@ -8,7 +8,6 @@ import {
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseRetriever } from 'langchain/schema/retriever';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,10 +29,22 @@ export class ChainRetrievalQa implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel', 'vectorRetriever'],
-		inputNames: ['', 'Language Model', 'Vector Retriever'],
+		inputs: [
+			'main',
+			{
+				displayName: 'Language Model',
+				maxConnections: 1,
+				type: 'languageModel',
+				required: true,
+			},
+			{
+				displayName: 'Vector Retriever',
+				maxConnections: 1,
+				type: 'vectorRetriever',
+				required: true,
+			},
+		],
 		outputs: ['main'],
-		// outputNames: ['', 'Chain'],
 		credentials: [],
 		properties: [
 			{
@@ -67,15 +78,11 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Retrieval QA Chain');
 
-		const model = (await getAndValidateSupplyInput(
-			this,
-			'languageModel',
-			true,
-		)) as BaseLanguageModel;
-		const vectorRetriever = (await getAndValidateSupplyInput(
-			this,
+		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+
+		const vectorRetriever = (await this.getInputConnectionData(
 			'vectorRetriever',
-			true,
+			0,
 		)) as BaseRetriever;
 
 		const items = this.getInputData();

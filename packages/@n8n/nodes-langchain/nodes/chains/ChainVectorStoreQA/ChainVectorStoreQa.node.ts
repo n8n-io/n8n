@@ -8,7 +8,6 @@ import {
 import { VectorDBQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { VectorStore } from 'langchain/vectorstores/base';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class ChainVectorStoreQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,8 +30,21 @@ export class ChainVectorStoreQa implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel', 'vectorStore'],
-		inputNames: ['', 'Language Model', 'Vector Store'],
+		inputs: [
+			'main',
+			{
+				displayName: 'Language Model',
+				maxConnections: 1,
+				type: 'languageModel',
+				required: true,
+			},
+			{
+				displayName: 'Vector Store',
+				maxConnections: 1,
+				type: 'vectorStore',
+				required: true,
+			},
+		],
 		outputs: ['main'],
 		credentials: [],
 		properties: [
@@ -75,12 +87,9 @@ export class ChainVectorStoreQa implements INodeType {
 		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await getAndValidateSupplyInput(
-			this,
-			'languageModel',
-			true,
-		)) as BaseLanguageModel;
-		const vectorStore = (await getAndValidateSupplyInput(this, 'vectorStore', true)) as VectorStore;
+		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+
+		const vectorStore = (await this.getInputConnectionData('vectorStore', 0)) as VectorStore;
 
 		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
 		const items = this.getInputData();

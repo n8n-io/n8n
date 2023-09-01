@@ -2,7 +2,6 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import type { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { logWrapper } from '../../../utils/logWrapper';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class RetrieverVectorStore implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,7 +22,14 @@ export class RetrieverVectorStore implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['vectorStore'],
+		inputs: [
+			{
+				displayName: 'Vector Store',
+				maxConnections: 1,
+				type: 'vectorStore',
+				required: true,
+			},
+		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['vectorRetriever'],
 		outputNames: ['Vector Retriever'],
@@ -55,11 +61,7 @@ export class RetrieverVectorStore implements INodeType {
 		this.logger.verbose('Supplying data for Vector Store Retriever');
 
 		const topK = this.getNodeParameter('topK', 0, 4) as number;
-		const vectorStore = (await getAndValidateSupplyInput(
-			this,
-			'vectorStore',
-			true,
-		)) as PineconeStore;
+		const vectorStore = (await this.getInputConnectionData('vectorStore', 0)) as PineconeStore;
 
 		const retriever = vectorStore.asRetriever(topK);
 

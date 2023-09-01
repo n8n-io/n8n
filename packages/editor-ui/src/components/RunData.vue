@@ -698,7 +698,17 @@ export default defineComponent({
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		canPinData(): boolean {
+			// Only "main" inputs can pin data
+			const nonMainInputs = !!this.nodeType?.inputs.find((input) => {
+				if (typeof input === 'string') {
+					return input !== 'main';
+				}
+
+				return input.type !== 'main';
+			});
+
 			return (
+				nonMainInputs &&
 				!this.isPaneTypeInput &&
 				this.isPinDataNodeType &&
 				!(this.binaryData && this.binaryData.length > 0)

@@ -768,7 +768,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			itemIndex: number,
 			inputIndex?: number,
 			nodeNameOverride?: string,
-		): Promise<SupplyData[]>;
+		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		prepareOutputData(
 			outputData: INodeExecutionData[],
@@ -1267,7 +1267,7 @@ export namespace MultiPartFormData {
 
 export interface SupplyData {
 	metadata?: IDataObject;
-	response: any;
+	response: unknown;
 }
 
 export interface INodeType {
@@ -1493,13 +1493,18 @@ export type ConnectionTypes =
 	| 'vectorRetriever'
 	| 'vectorStore';
 
-
+export interface INodeInputConfiguration {
+	displayName?: string;
+	maxConnections?: number;
+	required?: boolean;
+	type: ConnectionTypes;
+}
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: ConnectionTypes[];
+	inputs: Array<ConnectionTypes | INodeInputConfiguration>;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
 	outputs: ConnectionTypes[];

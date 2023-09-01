@@ -9,7 +9,6 @@ import { PineconeClient } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export class VectorStorePineconeInsert implements INodeType {
@@ -35,8 +34,21 @@ export class VectorStorePineconeInsert implements INodeType {
 				required: true,
 			},
 		],
-		inputs: ['main', 'document', 'embedding'],
-		inputNames: ['', 'Document', 'Embedding'],
+		inputs: [
+			'main',
+			{
+				displayName: 'Document',
+				maxConnections: 1,
+				type: 'document',
+				required: true,
+			},
+			{
+				displayName: 'Embedding',
+				maxConnections: 1,
+				type: 'embedding',
+				required: true,
+			},
+		],
 		outputs: ['main'],
 		properties: [
 			{
@@ -72,10 +84,11 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const credentials = await this.getCredentials('pineconeApi');
 
-		const documentInput = (await getAndValidateSupplyInput(this, 'document', true)) as
+		const documentInput = (await this.getInputConnectionData('document', 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
-		const embeddings = (await getAndValidateSupplyInput(this, 'embedding', true)) as Embeddings;
+
+		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
 
 		const client = new PineconeClient();
 		await client.init({

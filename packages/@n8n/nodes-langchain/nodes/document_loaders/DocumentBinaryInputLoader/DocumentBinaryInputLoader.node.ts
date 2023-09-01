@@ -24,8 +24,14 @@ export class DocumentBinaryInputLoader implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['textSplitter'],
-		inputNames: ['Text Splitter'],
+		inputs: [
+			{
+				displayName: 'Text Splitter',
+				maxConnections: 1,
+				type: 'textSplitter',
+				required: true,
+			},
+		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['document'],
 		outputNames: ['Document'],

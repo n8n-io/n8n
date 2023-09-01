@@ -9,7 +9,6 @@ import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Tool } from 'langchain/tools';
 import type { BaseChatMemory } from 'langchain/memory';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 
 export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,8 +31,26 @@ export class ConversationalAgent implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['main', 'languageModel', 'memory', 'tool'],
-		inputNames: ['', 'Model', 'Memory', 'Tools'],
+		inputs: [
+			'main',
+			{
+				displayName: 'Language Model',
+				maxConnections: 1,
+				type: 'languageModel',
+				required: true,
+			},
+			{
+				displayName: 'Memory',
+				maxConnections: 1,
+				type: 'memory',
+				required: false,
+			},
+			{
+				displayName: 'Tools',
+				type: 'tool',
+				required: false,
+			},
+		],
 		outputs: ['main'],
 		credentials: [],
 		properties: [
@@ -81,13 +98,9 @@ export class ConversationalAgent implements INodeType {
 		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await getAndValidateSupplyInput(
-			this,
-			'languageModel',
-			true,
-		)) as BaseLanguageModel;
-		const memory = (await getAndValidateSupplyInput(this, 'memory', false)) as BaseChatMemory;
-		const tools = (await getAndValidateSupplyInput(this, 'tool', false, true)) as Tool[];
+		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+		const memory = (await this.getInputConnectionData('memory', 0)) as BaseChatMemory | undefined;
+		const tools = (await this.getInputConnectionData('tool', 0)) as Tool[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 			// Passing "chat-conversational-react-description" as the agent type

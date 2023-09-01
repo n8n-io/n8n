@@ -7,7 +7,6 @@ import {
 } from 'n8n-workflow';
 import { GithubRepoLoader } from 'langchain/document_loaders/web/github';
 import type { CharacterTextSplitter } from 'langchain/text_splitter';
-import { getAndValidateSupplyInput } from '../../../utils/getAndValidateSupplyInput';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class DocumentGithubLoader implements INodeType {
@@ -36,7 +35,13 @@ export class DocumentGithubLoader implements INodeType {
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['textSplitter'],
+		inputs: [
+			{
+				displayName: 'Text Splitter',
+				maxConnections: 1,
+				type: 'textSplitter',
+			},
+		],
 		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['document'],
@@ -90,7 +95,8 @@ export class DocumentGithubLoader implements INodeType {
 			recursive: boolean;
 			ignorePaths: string;
 		};
-		const textSplitter = (await getAndValidateSupplyInput(this, 'textSplitter', false)) as
+
+		const textSplitter = (await this.getInputConnectionData('textSplitter', 0)) as
 			| CharacterTextSplitter
 			| undefined;
 
