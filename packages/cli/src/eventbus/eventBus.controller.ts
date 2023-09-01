@@ -205,7 +205,7 @@ export class EventBusController {
 			}
 			if (result) {
 				await result.saveToDb();
-				await eventBus.tellWorkersToUpdateDestinations();
+				await eventBus.broadcastRestartEventbusAfterDestinationUpdate();
 				return {
 					...result.serialize(),
 					eventBusInstance: undefined,
@@ -229,7 +229,7 @@ export class EventBusController {
 	async deleteDestination(req: AuthenticatedRequest): Promise<DeleteResult | undefined> {
 		if (isWithIdString(req.query)) {
 			const result = await eventBus.removeDestination(req.query.id);
-			await eventBus.tellWorkersToUpdateDestinations();
+			await eventBus.broadcastRestartEventbusAfterDestinationUpdate();
 			return result;
 		} else {
 			throw new BadRequestError('Query is missing id');

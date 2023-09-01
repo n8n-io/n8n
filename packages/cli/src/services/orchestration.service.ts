@@ -20,19 +20,28 @@ import {
 export class OrchestrationService {
 	private initialized = false;
 
-	private uniqueInstanceId = '';
+	private _uniqueInstanceId = '';
 
-	private redisPublisher: RedisServicePubSubPublisher;
+	get uniqueInstanceId(): string {
+		return this._uniqueInstanceId;
+	}
 
-	private redisSubscriber: RedisServicePubSubSubscriber;
+	redisPublisher: RedisServicePubSubPublisher;
+
+	redisSubscriber: RedisServicePubSubSubscriber;
 
 	constructor(readonly redisService: RedisService) {}
 
 	async init(uniqueInstanceId: string) {
-		this.uniqueInstanceId = uniqueInstanceId;
+		this._uniqueInstanceId = uniqueInstanceId;
 		await this.initPublisher();
 		await this.initSubscriber();
 		this.initialized = true;
+	}
+
+	async shutdown() {
+		await this.redisPublisher?.destroy();
+		await this.redisSubscriber?.destroy();
 	}
 
 	private async initPublisher() {
@@ -56,50 +65,65 @@ export class OrchestrationService {
 				// Events are arriving through a pub/sub channel and are forwarded to the eventBus
 				// In the future, a stream should probably replace this implementation entirely
 				if (channel === EVENT_BUS_REDIS_CHANNEL) {
-					const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
-					if (eventData) {
-						const eventMessage = getEventMessageObjectByType(eventData);
-						if (eventMessage) {
-							await eventBus.send(eventMessage);
-						}
-					}
+					await this.handleEventBusMessage(messageString);
 				} else if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
-					// The back channel from the workers as a pub/sub channel
-					const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(messageString);
-					if (workerResponse) {
-						// TODO: Handle worker response
-						LoggerProxy.debug('Received worker response', workerResponse);
-					}
+					await this.handleWorkerResponseMessage(messageString);
 				} else if (channel === COMMAND_REDIS_CHANNEL) {
-					if (!messageString) return;
-					let message: RedisServiceCommandObject;
-					try {
-						message = jsonParse<RedisServiceCommandObject>(messageString);
-					} catch {
-						LoggerProxy.debug(
-							`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
-						);
-						return;
-					}
-					if (message) {
-						if (
-							message.senderId === this.uniqueInstanceId ||
-							(message.targets && !message.targets.includes(this.uniqueInstanceId))
-						) {
-							LoggerProxy.debug(
-								`Skipping command message ${message.command} because it's not for this instance.`,
-							);
-							return;
-						}
-						switch (message.command) {
-							case 'restartEventBus':
-								await eventBus.restart();
-								break;
-						}
-					}
+					await this.handleCommandMessage(messageString);
 				}
 			},
 		);
+	}
+
+	async handleWorkerResponseMessage(messageString: string) {
+		const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(messageString);
+		if (workerResponse) {
+			// TODO: Handle worker response
+			LoggerProxy.debug('Received worker response', workerResponse);
+		}
+		return workerResponse;
+	}
+
+	async handleEventBusMessage(messageString: string) {
+		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
+		if (eventData) {
+			const eventMessage = getEventMessageObjectByType(eventData);
+			if (eventMessage) {
+				await eventBus.send(eventMessage);
+			}
+		}
+		return eventData;
+	}
+
+	async handleCommandMessage(messageString: string) {
+		if (!messageString) return;
+		let message: RedisServiceCommandObject;
+		try {
+			message = jsonParse<RedisServiceCommandObject>(messageString);
+		} catch {
+			LoggerProxy.debug(
+				`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
+			);
+			return;
+		}
+		if (message) {
+			if (
+				message.senderId === this.uniqueInstanceId ||
+				(message.targets && !message.targets.includes(this.uniqueInstanceId))
+			) {
+				LoggerProxy.debug(
+					`Skipping command message ${message.command} because it's not for this instance.`,
+				);
+				return message;
+			}
+			switch (message.command) {
+				case 'restartEventBus':
+					await eventBus.restart();
+					break;
+			}
+			return message;
+		}
+		return;
 	}
 
 	async getWorkerStatus(id?: string) {

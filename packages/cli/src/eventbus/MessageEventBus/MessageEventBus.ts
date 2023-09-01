@@ -213,7 +213,7 @@ export class MessageEventBus extends EventEmitter {
 		return result;
 	}
 
-	async tellWorkersToUpdateDestinations() {
+	async broadcastRestartEventbusAfterDestinationUpdate() {
 		if (config.getEnv('executions.mode') === 'queue') {
 			await Container.get(OrchestrationService).restartEventBus();
 		}
