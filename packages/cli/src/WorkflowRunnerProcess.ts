@@ -99,6 +99,8 @@ class WorkflowRunnerProcess {
 	}
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
+		console.log('Running workflow...');
+
 		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
 
@@ -293,7 +295,7 @@ class WorkflowRunnerProcess {
 
 			return returnData!.data!.main;
 		};
-
+		console.log('Workflow Execution Data:', this.data.executionData);
 		if (this.data.executionData !== undefined) {
 			this.workflowExecute = new WorkflowExecute(
 				additionalData,
@@ -302,7 +304,7 @@ class WorkflowRunnerProcess {
 			);
 
 			const data = await this.workflowExecute.processRunExecutionData(this.workflow);
-
+			console.log('processRunExecutionData resultData:', data.data.resultData);
 			if (data.data.resultData.error) {
 				const { runData, error } = data.data.resultData;
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -317,19 +319,25 @@ class WorkflowRunnerProcess {
 				});
 
 				const { createLog } = await getIncidentHandlingFN();
-				await createLog(
-					{
-						errorMessage: error.message,
-						incidentTime: new Date(),
-					},
-					{
-						workflow_id: this.workflow.id,
-						error_node_id: errorNode?.node.id,
-						error_node_type: errorNode?.node.type,
-						error_message: error.message,
-					},
-					generateCreateCustomTicketSubjectFn(Object.values(this.workflow.nodes)),
-				);
+				console.log('Attemping to create log...');
+				try {
+					await createLog(
+						{
+							errorMessage: error?.message,
+							incidentTime: new Date(),
+						},
+						{
+							workflow_id: this.workflow?.id,
+							error_node_id: errorNode?.node.id,
+							error_node_type: errorNode?.node.type,
+							error_message: error?.message,
+						},
+						generateCreateCustomTicketSubjectFn(Object.values(this.workflow?.nodes)),
+					);
+				} catch (error) {
+					console.log('ERROR when attemping to create incident log:', error);
+					throw error;
+				}
 			}
 
 			return data;
