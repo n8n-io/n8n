@@ -252,7 +252,6 @@ import type {
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
-	INodeIssues,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
@@ -2390,6 +2389,7 @@ export default defineComponent({
 					}
 				}
 				this.dropPrevented = false;
+				void this.updateNodesInputIssues();
 			} catch (e) {
 				console.error(e);
 			}
@@ -2548,6 +2548,8 @@ export default defineComponent({
 					const removeCommand = new RemoveConnectionCommand(connectionInfo, this);
 					this.historyStore.pushCommandToUndo(removeCommand);
 				}
+
+				void this.updateNodesInputIssues();
 			} catch (e) {
 				console.error(e);
 			}
@@ -3471,7 +3473,6 @@ export default defineComponent({
 
 			// Add the node to the node-list
 			let nodeType: INodeTypeDescription | null;
-			let foundNodeIssues: INodeIssues | null;
 			nodes.forEach((node) => {
 				if (!node.id) {
 					node.id = uuid();
@@ -3517,12 +3518,6 @@ export default defineComponent({
 
 				// check and match credentials, apply new format if old is used
 				this.matchCredentials(node);
-
-				foundNodeIssues = this.getNodeIssues(nodeType, node);
-
-				if (foundNodeIssues !== null) {
-					node.issues = foundNodeIssues;
-				}
 
 				this.workflowsStore.addNode(node);
 				if (trackHistory) {
@@ -3570,6 +3565,10 @@ export default defineComponent({
 					}
 				}
 			}
+
+			// Add the node issues at the end as the node-connections are required
+			void this.refreshNodeIssues();
+
 			// Now it can draw again
 			this.instance?.setSuspendDrawing(false, true);
 		},

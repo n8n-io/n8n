@@ -1070,7 +1070,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		nodeIssues.push('Execution Error.');
 	}
 
-	const objectProperties = ['parameters', 'credentials'];
+	const objectProperties = ['parameters', 'credentials', 'input'];
 
 	let issueText: string;
 	let parameterName: string;

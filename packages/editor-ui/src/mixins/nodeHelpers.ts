@@ -19,6 +19,7 @@ import type {
 	INode,
 	INodePropertyOptions,
 	IDataObject,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -86,6 +87,24 @@ export const nodeHelpers = defineComponent({
 			return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
 		},
 
+		// Updates all the issues on all the nodes
+		refreshNodeIssues(): void {
+			const nodes = this.workflowsStore.allNodes;
+			let nodeType: INodeTypeDescription | null;
+			let foundNodeIssues: INodeIssues | null;
+
+			nodes.forEach((node) => {
+				if (node.disabled === true) {
+					return;
+				}
+				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				foundNodeIssues = this.getNodeIssues(nodeType, node);
+				if (foundNodeIssues !== null) {
+					node.issues = foundNodeIssues;
+				}
+			});
+		},
+
 		// Returns all the issues of the node
 		getNodeIssues(
 			nodeType: INodeTypeDescription | null,
@@ -125,6 +144,14 @@ export const nodeHelpers = defineComponent({
 					} else {
 						NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
 					}
+				}
+
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
+				if (nodeIssues === null) {
+					nodeIssues = nodeInputIssues;
+				} else {
+					NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
 				}
 			}
 
@@ -168,6 +195,25 @@ export const nodeHelpers = defineComponent({
 					],
 				},
 			};
+		},
+
+		updateNodesInputIssues() {
+			const nodes = this.workflowsStore.allNodes;
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+
+			for (const node of nodes) {
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) {
+					return;
+				}
+				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
+
+				this.workflowsStore.setNodeIssue({
+					node: node.name,
+					type: 'input',
+					value: nodeInputIssues && nodeInputIssues.input ? nodeInputIssues.input : null,
+				});
+			}
 		},
 
 		// Updates the execution issues.
@@ -242,6 +288,39 @@ export const nodeHelpers = defineComponent({
 				type: 'parameters',
 				value: newIssues,
 			});
+		},
+
+		// Returns all the input-issues of the node
+		getNodeInputIssues(
+			workflow: Workflow,
+			node: INodeUi,
+			nodeType?: INodeTypeDescription,
+		): INodeIssues | null {
+			const foundIssues: INodeIssueObjectProperty = {};
+
+			nodeType?.inputs?.forEach((input) => {
+				if (typeof input === 'string' || input.required !== true) {
+					return;
+				}
+
+				const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
+
+				if (parentNodes.length === 0) {
+					foundIssues[input.type] = [
+						this.$locale.baseText('nodeIssues.input.missing', {
+							interpolate: { inputName: input.displayName || input.type },
+						}),
+					];
+				}
+			});
+
+			if (Object.keys(foundIssues).length) {
+				return {
+					input: foundIssues,
+				};
+			}
+
+			return null;
 		},
 
 		// Returns all the credential-issues of the node
@@ -530,6 +609,7 @@ export const nodeHelpers = defineComponent({
 				this.workflowsStore.clearNodeExecutionData(node.name);
 				this.updateNodeParameterIssues(node);
 				this.updateNodeCredentialIssues(node);
+				this.updateNodesInputIssues();
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(
 						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),

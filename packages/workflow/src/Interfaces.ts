@@ -1339,7 +1339,7 @@ export interface INodeCredentialDescription {
 	testedBy?: ICredentialTestRequest | string; // Name of a function inside `loadOptions.credentialTest`
 }
 
-export type INodeIssueTypes = 'credentials' | 'execution' | 'parameters' | 'typeUnknown';
+export type INodeIssueTypes = 'credentials' | 'execution' | 'input' | 'parameters' | 'typeUnknown';
 
 export interface INodeIssueObjectProperty {
 	[key: string]: string[];
@@ -1354,6 +1354,7 @@ export interface INodeIssueData {
 export interface INodeIssues {
 	execution?: boolean;
 	credentials?: INodeIssueObjectProperty;
+	input?: INodeIssueObjectProperty;
 	parameters?: INodeIssueObjectProperty;
 	typeUnknown?: boolean;
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;

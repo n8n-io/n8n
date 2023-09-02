@@ -1657,6 +1657,7 @@
 	"nodeIssues.credentials.doNotExist.hint": "You can create credentials with the exact name and then they get auto-selected on refresh..",
 	"nodeIssues.credentials.notIdentified": "Credentials with name {name} exist for {type}.",
 	"nodeIssues.credentials.notIdentified.hint": "Credentials are not clearly identified. Please select the correct credentials.",
+	"nodeIssues.input.missing": "No node connected to required input \"{inputName}\"",
 	"ndv.trigger.moreInfo": "More info",
 	"ndv.trigger.copiedTestUrl": "Test URL copied to clipboard",
 	"ndv.trigger.webhookBasedNode.executionsHelp.inactive": "<b>While building your workflow</b>, click the 'listen' button, then go to {service} and make an event happen. This will trigger an execution, which will show up in this editor.<br /> <br /> <b>Once you're happy with your workflow</b>, <a data-key=\"activate\">activate</a> it. Then every time there's a matching event in {service}, the workflow will execute. These executions will show up in the <a data-key=\"executions\">executions list</a>, but not in the editor.",
