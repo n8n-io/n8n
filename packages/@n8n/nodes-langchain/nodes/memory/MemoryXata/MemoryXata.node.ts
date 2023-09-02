@@ -2,6 +2,7 @@
 import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { XataChatMessageHistory } from 'langchain/stores/message/xata';
+import { BufferMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -69,11 +70,15 @@ export class MemoryXata implements INodeType {
 			);
 		}
 
-		const memory = new XataChatMessageHistory({
-			table: table[1],
-			sessionId,
-			client: xataClient,
-			apiKey: credentials.apiKey as string,
+		const memory = new BufferMemory({
+			chatHistory: new XataChatMessageHistory({
+				table: table[1],
+				sessionId,
+				client: xataClient,
+				apiKey: credentials.apiKey as string,
+			}),
+			memoryKey: 'chat_history',
+			returnMessages: true,
 		});
 		return {
 			response: logWrapper(memory, this),
