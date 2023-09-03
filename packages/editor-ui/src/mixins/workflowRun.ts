@@ -195,9 +195,7 @@ export const workflowRun = defineComponent({
 					executedNode = options.triggerNode;
 				}
 
-				const isNewWorkflow = this.workflowsStore.isNewWorkflow;
-				const hasWebhookNode = this.workflowsStore.currentWorkflowHasWebhookNode;
-				if (isNewWorkflow && hasWebhookNode) {
+				if (this.workflowsStore.isNewWorkflow) {
 					await this.saveCurrentWorkflow();
 				}
 

@@ -14,8 +14,6 @@ import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { InstalledNodes } from '@db/entities/InstalledNodes';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
@@ -23,13 +21,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ICredentialsDb } from '@/Interfaces';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import type {
-	CollectionName,
-	CredentialPayload,
-	InstalledNodePayload,
-	InstalledPackagePayload,
-	PostgresSchemaSection,
-} from './types';
+import type { CollectionName, CredentialPayload, PostgresSchemaSection } from './types';
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
@@ -290,31 +282,6 @@ export async function createManyUsers(
 	);
 
 	return Db.collections.User.save(users);
-}
-
-// --------------------------------------
-// Installed nodes and packages creation
-// --------------------------------------
-
-export async function saveInstalledPackage(
-	installedPackagePayload: InstalledPackagePayload,
-): Promise<InstalledPackages> {
-	const newInstalledPackage = new InstalledPackages();
-
-	Object.assign(newInstalledPackage, installedPackagePayload);
-
-	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
-	return savedInstalledPackage;
-}
-
-export async function saveInstalledNode(
-	installedNodePayload: InstalledNodePayload,
-): Promise<InstalledNodes> {
-	const newInstalledNode = new InstalledNodes();
-
-	Object.assign(newInstalledNode, installedNodePayload);
-
-	return Db.collections.InstalledNodes.save(newInstalledNode);
 }
 
 export async function addApiKey(user: User): Promise<User> {

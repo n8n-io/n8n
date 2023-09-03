@@ -4170,9 +4170,8 @@ export default defineComponent({
 			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
 
 			if (workflowId !== null && !this.uiStore.stateIsDirty) {
-				const workflow: IWorkflowDb | undefined = await this.workflowsStore.fetchWorkflow(
-					workflowId,
-				);
+				const workflow: IWorkflowDb | undefined =
+					await this.workflowsStore.fetchWorkflow(workflowId);
 				if (workflow) {
 					this.titleSet(workflow.name, 'IDLE');
 					await this.openWorkflow(workflow);

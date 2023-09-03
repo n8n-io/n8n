@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '@db/types';
 const tableName = 'workflow_history';
 
 export class CreateWorkflowHistoryTable1692967111175 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column }, queryRunner }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
 				column('versionId').varchar(36).primary.notNull,
@@ -17,8 +17,7 @@ export class CreateWorkflowHistoryTable1692967111175 implements ReversibleMigrat
 				tableName: 'workflow_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			})
-			.execute(queryRunner);
+			});
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
