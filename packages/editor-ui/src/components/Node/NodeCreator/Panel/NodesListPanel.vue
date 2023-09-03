@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
-import { AI_NODE_CREATOR_VIEW, REGULAR_NODE_CREATOR_VIEW, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import {
+	AI_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -63,7 +67,7 @@ watch(
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
 			[AI_NODE_CREATOR_VIEW]: AIView,
-		}
+		};
 
 		const itemKey = selectedView;
 		const matchedView = views[itemKey];
@@ -71,7 +75,7 @@ watch(
 		if (!matchedView) {
 			console.warn(`No view found for ${itemKey}`);
 			return;
-		};
+		}
 		const view = matchedView(mergedNodes);
 
 		pushViewStack({
@@ -105,7 +109,11 @@ function onBackButton() {
 				data-test-id="nodes-list-header"
 			>
 				<div :class="$style.top">
-					<button :class="$style.backButton" @click="onBackButton" v-if="viewStacks.length > 1 && !activeViewStack.preventBack">
+					<button
+						:class="$style.backButton"
+						@click="onBackButton"
+						v-if="viewStacks.length > 1 && !activeViewStack.preventBack"
+					>
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
 					</button>
 					<n8n-node-icon

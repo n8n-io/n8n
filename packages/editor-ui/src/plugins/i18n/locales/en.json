@@ -977,6 +977,8 @@
 	"nodeView.showError.openWorkflow.title": "Problem opening workflow",
 	"nodeView.showError.stopExecution.title": "Problem stopping execution",
 	"nodeView.showError.stopWaitingForWebhook.title": "Problem deleting test webhook",
+	"nodeView.showError.nodeNodeCompatible.title": "Connection not possible",
+	"nodeView.showError.nodeNodeCompatible.message": "The node \"{sourceNodeName}\" can't be connected to the node \"{targetNodeName}\" because they are not compatible.",
 	"nodeView.showMessage.addNodeButton.message": "'{nodeTypeName}' is an unknown node type",
 	"nodeView.showMessage.addNodeButton.title": "Could not insert node",
 	"nodeView.showMessage.keyDown.title": "Workflow created",

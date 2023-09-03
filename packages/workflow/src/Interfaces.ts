@@ -1494,10 +1494,18 @@ export type ConnectionTypes =
 	| 'vectorRetriever'
 	| 'vectorStore';
 
+export interface INodeInputFilter {
+	// TODO: Later add more filter options like categories, subcatogries,
+	//       regex, allow to exclude certain nodes, ... ?
+	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
+	nodes: string[]; // Allowed nodes
+}
+
 export interface INodeInputConfiguration {
 	displayName?: string;
 	maxConnections?: number;
 	required?: boolean;
+	filter?: INodeInputFilter;
 	type: ConnectionTypes;
 }
 export interface INodeTypeDescription extends INodeTypeBaseDescription {

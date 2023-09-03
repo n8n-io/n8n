@@ -188,6 +188,7 @@ import type {
 	BeforeDropParams,
 	ConnectionDetachedParams,
 	ConnectionMovedParams,
+	ComponentParameters,
 } from '@jsplumb/core';
 import {
 	EVENT_CONNECTION,
@@ -2198,12 +2199,31 @@ export default defineComponent({
 			endpointUuid?: string;
 		}) {
 			const type = info.outputType || 'main';
+
+			let filter;
 			// Get the node and set it as active that new nodes
 			// which get created get automatically connected
 			// to it.
 			const sourceNode = this.workflowsStore.getNodeById(info.sourceId);
 			if (!sourceNode) {
 				return;
+			}
+
+			const nodeType = this.nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
+
+			if (nodeType) {
+				const filterFound = nodeType.inputs?.filter((input) => {
+					if (typeof input === 'string' || input.type !== info.outputType || !input.filter) {
+						// No filters defined or wrong connection type
+						return false;
+					}
+
+					return true;
+				}) as INodeInputConfiguration[];
+
+				if (filterFound.length) {
+					filter = filterFound[0].filter;
+				}
 			}
 
 			this.uiStore.lastSelectedNode = sourceNode.name;
@@ -2228,7 +2248,7 @@ export default defineComponent({
 			const isScopedConnection = type !== 'main' && SCOPED_ENDPOINT_TYPES.includes(type);
 
 			if (isScopedConnection && !isOutput) {
-				useViewStacks().gotoCompatibleConnectionView(type);
+				useViewStacks().gotoCompatibleConnectionView(type, filter);
 			}
 		},
 		onEventConnectionAbort(connection: Connection) {
@@ -2275,15 +2295,58 @@ export default defineComponent({
 		},
 		onInterceptBeforeDrop(info: BeforeDropParams) {
 			try {
-				const sourceInfo = info.connection.endpoints[0].parameters;
-				const targetInfo = info.dropEndpoint.parameters;
+				let sourceInfo: ComponentParameters;
+				let targetInfo: ComponentParameters;
+				if (info.connection.endpoints[0].parameters.connection === 'target') {
+					sourceInfo = info.dropEndpoint.parameters;
+					targetInfo = info.connection.endpoints[0].parameters;
+				} else {
+					sourceInfo = info.connection.endpoints[0].parameters;
+					targetInfo = info.dropEndpoint.parameters;
+				}
 
 				if (sourceInfo.type !== targetInfo.type) {
+					this.dropPrevented = true;
 					return false;
 				}
 
-				const sourceNodeName = this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name || '';
-				const targetNodeName = this.workflowsStore.getNodeById(targetInfo.nodeId)?.name || '';
+				const sourceNode = this.workflowsStore.getNodeById(sourceInfo.nodeId);
+				const targetNode = this.workflowsStore.getNodeById(targetInfo.nodeId);
+
+				const sourceNodeName = sourceNode?.name || '';
+				const targetNodeName = targetNode?.name || '';
+
+				if (sourceNode && targetNode) {
+					const targetNodeType = this.nodeTypesStore.getNodeType(
+						targetNode.type,
+						targetNode.typeVersion,
+					);
+
+					if (targetNodeType?.inputs?.length) {
+						for (const input of targetNodeType?.inputs || []) {
+							if (typeof input === 'string' || input.type !== targetInfo.type || !input.filter) {
+								// No filters defined or wrong connection type
+								continue;
+							}
+
+							if (input.filter.nodes.length) {
+								if (!input.filter.nodes.includes(sourceNode.type)) {
+									this.dropPrevented = true;
+									this.showToast({
+										title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
+										message: this.$locale.baseText(
+											'nodeView.showError.nodeNodeCompatible.message',
+											{ interpolate: { sourceNodeName, targetNodeName } },
+										),
+										type: 'error',
+										duration: 5000,
+									});
+									return false;
+								}
+							}
+						}
+					}
+				}
 
 				// check for duplicates
 				if (
@@ -2310,6 +2373,7 @@ export default defineComponent({
 			try {
 				if (info.sourceEndpoint.parameters.connection === 'target') {
 					// Allow that not "main" connections can also be dragged the other way around
+					// so switch them around if necessary
 					const tempEndpoint = info.sourceEndpoint;
 					info.sourceEndpoint = info.targetEndpoint;
 					info.targetEndpoint = tempEndpoint;
