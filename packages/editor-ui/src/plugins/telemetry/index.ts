@@ -9,9 +9,11 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
+import { useNDVStore } from '@/stores';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
+
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -109,17 +111,12 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
-			if (
-				route.meta &&
-				route.meta.telemetry &&
-				typeof route.meta.telemetry.getProperties === 'function'
-			) {
+			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
-			const category =
-				(route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName!, properties);
+			const category = route.meta?.telemetry?.pageCategory || 'Editor';
+			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -138,11 +135,11 @@ export class Telemetry {
 	trackAskAI(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().sessionId;
+			properties.ndv_session_id = useNDVStore().sessionId;
+
 			switch (event) {
 				case 'askAi.generationFinished':
 					this.track('Ai code generation finished', properties, { withPostHog: true });
-				case 'ask.generationClicked':
-					this.track('User clicked on generate code button', properties);
 				default:
 					break;
 			}
@@ -228,7 +225,14 @@ export class Telemetry {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
 					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
-						this.track('User toggled n8n reference option');
+						this.track(
+							'User toggled n8n reference option',
+							{
+								node: nodeType,
+								toValue: change.value,
+							},
+							{ withPostHog: true },
+						);
 					}
 					break;
 

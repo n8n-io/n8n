@@ -104,14 +104,6 @@ export class LdapSync {
 			role,
 		);
 
-		if (usersToDisable.length) {
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_update',
-				users: usersToDisable.length,
-				user_ids: usersToDisable,
-			});
-		}
-
 		Logger.debug('LDAP - Users processed', {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,

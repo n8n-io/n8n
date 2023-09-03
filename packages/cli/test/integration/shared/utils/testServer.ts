@@ -23,6 +23,7 @@ import { registerController } from '@/decorators';
 import {
 	AuthController,
 	LdapController,
+	MFAController,
 	MeController,
 	NodesController,
 	OwnerController,
@@ -49,8 +50,19 @@ import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
-import { JwtService } from '@/services/jwt.service';
+import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
+import { MfaService } from '@/Mfa/mfa.service';
+import { TOTPService } from '@/Mfa/totp.service';
+import { UserSettings } from 'n8n-core';
 import { MetricsService } from '@/services/metrics.service';
+import {
+	SettingsRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@/databases/repositories';
+import { JwtService } from '@/services/jwt.service';
+import { RoleService } from '@/services/role.service';
+import { UserService } from '@/services/user.service';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -179,11 +191,13 @@ export const setupTestServer = ({
 		}
 
 		if (functionEndpoints.length) {
+			const encryptionKey = await UserSettings.getEncryptionKey();
+			const repositories = Db.collections;
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
-			const jwtService = Container.get(JwtService);
-			const repositories = Db.collections;
+			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+			const userService = Container.get(UserService);
 
 			for (const group of functionEndpoints) {
 				switch (group) {
@@ -197,14 +211,11 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new AuthController({
-								config,
-								logger,
-								internalHooks,
-								repositories,
-							}),
+							new AuthController(config, logger, internalHooks, mfaService, userService),
 						);
 						break;
+					case 'mfa':
+						registerController(app, config, new MFAController(mfaService));
 					case 'ldap':
 						Container.get(License).isLdapEnabled = () => true;
 						await handleLdapInit();
@@ -233,55 +244,62 @@ export const setupTestServer = ({
 						registerController(
 							app,
 							config,
-							new MeController({
-								logger,
-								externalHooks,
-								internalHooks,
-							}),
+							new MeController(logger, externalHooks, internalHooks, userService),
 						);
 						break;
 					case 'passwordReset':
 						registerController(
 							app,
 							config,
-							new PasswordResetController({
+							new PasswordResetController(
 								config,
 								logger,
 								externalHooks,
 								internalHooks,
 								mailer,
-							}),
+								userService,
+								Container.get(JwtService),
+								mfaService,
+							),
 						);
 						break;
 					case 'owner':
 						registerController(
 							app,
 							config,
-							new OwnerController({
+							new OwnerController(
 								config,
 								logger,
 								internalHooks,
-								repositories,
-							}),
+								Container.get(SettingsRepository),
+								userService,
+							),
 						);
 						break;
 					case 'users':
 						registerController(
 							app,
 							config,
-							new UsersController({
+							new UsersController(
 								config,
-								mailer,
+								logger,
 								externalHooks,
 								internalHooks,
-								repositories,
-								activeWorkflowRunner: Container.get(ActiveWorkflowRunner),
-								logger,
-							}),
+								Container.get(SharedCredentialsRepository),
+								Container.get(SharedWorkflowRepository),
+								Container.get(ActiveWorkflowRunner),
+								mailer,
+								Container.get(JwtService),
+								Container.get(RoleService),
+								userService,
+							),
 						);
 						break;
 					case 'tags':
 						registerController(app, config, Container.get(TagsController));
+						break;
+					case 'externalSecrets':
+						registerController(app, config, Container.get(ExternalSecretsController));
 						break;
 				}
 			}

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
 import { WorkflowSelect } from './dtos/workflow.select.dto';
+import { UserSelect } from './dtos/user.select.dto';
 import * as ResponseHelper from '@/ResponseHelper';
 import { toError } from '@/utils';
 
@@ -16,6 +17,8 @@ export const selectListQueryMiddleware: RequestHandler = (req: ListQuery.Request
 
 	if (req.baseUrl.endsWith('workflows')) {
 		Select = WorkflowSelect;
+	} else if (req.baseUrl.endsWith('users')) {
+		Select = UserSelect;
 	} else {
 		return next();
 	}

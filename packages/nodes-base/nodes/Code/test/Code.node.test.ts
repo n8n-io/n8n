@@ -1,5 +1,5 @@
 import { anyNumber, mock } from 'jest-mock-extended';
-import { NodeVM } from 'vm2';
+import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { normalizeItems } from 'n8n-core';

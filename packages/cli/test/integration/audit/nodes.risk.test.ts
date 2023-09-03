@@ -1,7 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { audit } from '@/audit';
-import * as packageModel from '@/CommunityNodes/packageModel';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
@@ -9,10 +8,14 @@ import { toReportTitle } from '@/audit/utils';
 import { mockInstance } from '../shared/utils/';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
+import { CommunityPackageService } from '@/services/communityPackage.service';
+import Container from 'typedi';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
 mockInstance(NodeTypes);
+const communityPackageService = mockInstance(CommunityPackageService);
+Container.set(CommunityPackageService, communityPackageService);
 
 beforeAll(async () => {
 	await testDb.init();
@@ -24,9 +27,11 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	await testDb.terminate();
+	jest.resetAllMocks();
 });
 
 test('should report risky official nodes', async () => {
+	communityPackageService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 	const map = [...OFFICIAL_RISKY_NODE_TYPES].reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
@@ -71,6 +76,7 @@ test('should report risky official nodes', async () => {
 });
 
 test('should not report non-risky official nodes', async () => {
+	communityPackageService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await audit(['nodes']);
@@ -85,7 +91,7 @@ test('should not report non-risky official nodes', async () => {
 });
 
 test('should report community nodes', async () => {
-	jest.spyOn(packageModel, 'getAllInstalledPackages').mockResolvedValueOnce(MOCK_PACKAGE);
+	communityPackageService.getAllInstalledPackages.mockResolvedValue(MOCK_PACKAGE);
 
 	const testAudit = await audit(['nodes']);
 
