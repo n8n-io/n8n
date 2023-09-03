@@ -143,7 +143,7 @@
 					v-touch:tap="executeNode"
 					class="option"
 					:title="$locale.baseText('node.executeNode')"
-					v-if="!workflowRunning"
+					v-if="!workflowRunning && !isConfigNode"
 					data-test-id="execute-node-button"
 				>
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
