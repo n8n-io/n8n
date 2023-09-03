@@ -28,6 +28,7 @@ import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
+import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -133,7 +134,12 @@ export class Start extends BaseCommand {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 
-			//finally shut down Event Bus
+			// Shut down License manager to unclaim any floating entitlements
+			console.log(`Shutting down License manager`);
+			await Container.get(License).shutdown();
+			console.log(`License manager shut down`);
+
+			// Finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
