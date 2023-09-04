@@ -92,7 +92,6 @@ describe('Orchestration Service', () => {
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
-		console.log(response, os.uniqueInstanceId);
 		expect(response!.senderId).toEqual(os.uniqueInstanceId);
 		expect(eventBus.restart).not.toHaveBeenCalled();
 		jest.spyOn(eventBus, 'restart').mockReset();

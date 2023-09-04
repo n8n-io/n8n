@@ -73,11 +73,15 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	jest.resetAllMocks();
+	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').resetAllMocks();
+	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').resetAllMocks();
+	jest.mock('../../../src/eventbus/MessageEventBus/MessageEventBus').resetAllMocks();
+	jest.mock('ioredis').resetAllMocks();
+	// jest.resetAllMocks();
 });
 
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests
-test.skip('worker initializes all its components', async () => {
+test('worker initializes all its components', async () => {
 	const worker = new Worker([], config);
 
 	jest.spyOn(worker, 'init');
@@ -121,4 +125,6 @@ test.skip('worker initializes all its components', async () => {
 	expect(worker.redisSubscriber.messageHandlers.size).toBeGreaterThan(0);
 
 	expect(worker.initQueue).toHaveBeenCalled();
+
+	jest.spyOn(worker, 'initBinaryManager').mockReset();
 });
