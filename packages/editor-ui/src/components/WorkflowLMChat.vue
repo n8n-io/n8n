@@ -15,14 +15,6 @@
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
-				<div class="ai-wrapper">
-					<run-data-ai v-if="node" :node="node" />
-					<div v-else class="no-node-connected">
-						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-							$locale.baseText('ndv.input.noOutputData.title')
-						}}</n8n-text>
-					</div>
-				</div>
 				<div class="messages ignore-key-press" ref="messagesContainer">
 					<div :class="['message', message.sender]" v-for="message in messages">
 						<div :class="['content', message.sender]">
@@ -65,6 +57,14 @@
 								</div>
 							</div>
 						</div>
+					</div>
+				</div>
+				<div class="logs">
+					<run-data-ai v-if="node" :node="node" />
+					<div v-else class="no-node-connected">
+						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+							$locale.baseText('chat.window.noExecution')
+						}}</n8n-text>
 					</div>
 				</div>
 			</div>
@@ -423,19 +423,23 @@ export default defineComponent({
 	height: 100%;
 	min-height: 400px;
 
-	.ai-wrapper {
+	.logs {
+		background-color: var(--color-background-base);
+		border: 1px solid #e0e0e0;
+		border-radius: 4px;
 		height: 100%;
-		width: 100%;
-		margin-left: -1em;
 		overflow-y: auto;
+		width: 100%;
 	}
 	.messages {
+		background-color: var(--color-background-base);
 		border: 1px solid #e0e0e0;
 		border-radius: 4px;
 		height: 100%;
 		width: 100%;
 		overflow: hidden auto;
 		padding-top: 1.5em;
+		margin-right: 1em;
 
 		.message {
 			float: left;
