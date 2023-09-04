@@ -12,7 +12,6 @@ export const properties: INodeProperties[] = [
 		description: 'Comma-separated list of email addresses of recipients',
 		type: 'string',
 		default: '',
-		required: true,
 	},
 ];
 

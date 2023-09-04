@@ -5,9 +5,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
-import { messageRLC } from '../../descriptions';
+import { folderRLC, messageRLC } from '../../descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
-import { folderRLC } from '../../../../../Google/Drive/v2/actions/common.descriptions';
 
 export const properties: INodeProperties[] = [
 	messageRLC,

@@ -45,7 +45,7 @@ export async function execute(
 	const displayName = this.getNodeParameter('displayName', index) as string;
 
 	const folderId = decodeOutlookId(
-		this.getNodeParameter('folderId', index, '', {
+		this.getNodeParameter('options.folderId', index, '', {
 			extractValue: true,
 		}) as string,
 	);
