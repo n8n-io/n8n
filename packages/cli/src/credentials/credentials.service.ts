@@ -9,7 +9,7 @@ import type {
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { In, Like } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -21,7 +21,7 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { User } from '@db/entities/User';
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -37,33 +37,70 @@ export class CredentialsService {
 		});
 	}
 
-	static async getMany(user: User, options?: { disableGlobalRole: boolean }) {
-		type Select = Array<keyof ICredentialsDb>;
+	private static toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+		const findManyOptions: FindManyOptions<CredentialsEntity> = {};
 
-		const select: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
+		type Select = Array<keyof CredentialsEntity>;
 
-		const relations = ['shared', 'shared.role', 'shared.user'];
+		const defaultRelations = ['shared', 'shared.role', 'shared.user'];
+		const defaultSelect: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
-		const returnAll = user.globalRole.name === 'owner' && options?.disableGlobalRole !== true;
+		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
 
-		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
-			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
+		const { filter, select, take, skip } = listQueryOptions;
 
-		if (returnAll) {
-			const credentials = await Db.collections.Credentials.find({ select, relations });
-
-			return credentials.map(addOwnedByAndSharedWith);
+		if (typeof filter?.name === 'string' && filter?.name !== '') {
+			filter.name = Like(`%${filter.name}%`);
 		}
 
-		const ids = await CredentialsService.getAccessibleCredentials(user.id);
+		if (typeof filter?.type === 'string' && filter?.type !== '') {
+			filter.type = Like(`%${filter.type}%`);
+		}
+
+		if (filter) findManyOptions.where = filter;
+		if (select) findManyOptions.select = select;
+		if (take) findManyOptions.take = take;
+		if (skip) findManyOptions.skip = skip;
+
+		if (take && select && !select?.id) {
+			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+		}
+
+		if (!findManyOptions.select) {
+			findManyOptions.select = defaultSelect;
+			findManyOptions.relations = defaultRelations;
+		}
+
+		return findManyOptions;
+	}
+
+	private static addOwnedByAndSharedWith(credentials: CredentialsEntity[]) {
+		return credentials.map((c) => Container.get(OwnershipService).addOwnedByAndSharedWith(c));
+	}
+
+	static async getMany(
+		user: User,
+		options: { listQueryOptions?: ListQuery.Options; onlyOwn?: boolean } = {},
+	) {
+		const findManyOptions = this.toFindManyOptions(options.listQueryOptions);
+
+		const returnAll = user.globalRole.name === 'owner' && !options.onlyOwn;
+		const isDefaultSelect = !options.listQueryOptions?.select;
+
+		if (returnAll) {
+			const credentials = await Db.collections.Credentials.find(findManyOptions);
+
+			return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
+		}
+
+		const ids = await this.getAccessibleCredentials(user.id);
 
 		const credentials = await Db.collections.Credentials.find({
-			select,
-			relations,
-			where: { id: In(ids) },
+			...findManyOptions,
+			where: { ...findManyOptions.where, id: In(ids) }, // only accessible credentials
 		});
 
-		return credentials.map(addOwnedByAndSharedWith);
+		return isDefaultSelect ? this.addOwnedByAndSharedWith(credentials) : credentials;
 	}
 
 	/**
