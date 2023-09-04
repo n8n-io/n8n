@@ -17,7 +17,6 @@ import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
-import type { Credentials } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
