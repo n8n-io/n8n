@@ -22,7 +22,9 @@ beforeAll(async () => {
 	mockInstance(ExternalSecretsManager);
 	mockInstance(BinaryDataManager);
 	mockInstance(MessageEventBus);
+});
 
+beforeEach(async () => {
 	Queue.prototype.getBullObjectInstance = jest.fn().mockImplementation(() => ({
 		pause: jest.fn(),
 		process: jest.fn(),
@@ -72,12 +74,15 @@ beforeAll(async () => {
 	appConfig.set('executions.mode', 'queue');
 });
 
+afterEach(async () => {
+	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
+	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
+	jest.mock('../../../src/eventbus/MessageEventBus/MessageEventBus').restoreAllMocks();
+	jest.mock('ioredis').restoreAllMocks();
+});
+
 afterAll(async () => {
-	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').resetAllMocks();
-	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').resetAllMocks();
-	jest.mock('../../../src/eventbus/MessageEventBus/MessageEventBus').resetAllMocks();
-	jest.mock('ioredis').resetAllMocks();
-	// jest.resetAllMocks();
+	jest.restoreAllMocks();
 });
 
 // eslint-disable-next-line n8n-local-rules/no-skipped-tests
@@ -126,5 +131,5 @@ test('worker initializes all its components', async () => {
 
 	expect(worker.initQueue).toHaveBeenCalled();
 
-	jest.spyOn(worker, 'initBinaryManager').mockReset();
+	jest.restoreAllMocks();
 });
