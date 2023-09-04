@@ -28,6 +28,7 @@ import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
+import { License } from '@/License';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -98,6 +99,10 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
+			// Shut down License manager to unclaim any floating entitlements
+			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+			await Container.get(License).shutdown();
+
 			await Container.get(InternalHooks).onN8nStop();
 
 			const skipWebhookDeregistration = config.getEnv(
@@ -133,7 +138,7 @@ export class Start extends BaseCommand {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 
-			//finally shut down Event Bus
+			// Finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
