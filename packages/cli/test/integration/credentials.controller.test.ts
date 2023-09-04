@@ -69,7 +69,7 @@ describe('GET /credentials', () => {
 	});
 
 	describe('filter', () => {
-		test('should filter crcredentials by field: name', async () => {
+		test('should filter credentials by field: name - full match', async () => {
 			const role = await testDb.getCredentialOwnerRole();
 			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
 
@@ -94,7 +94,34 @@ describe('GET /credentials', () => {
 			expect(_response.body.data).toHaveLength(0);
 		});
 
-		test('should filter credentials by field: type', async () => {
+		test('should filter credentials by field: name - partial match', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+
+			const partialName = savedCred.name.slice(3);
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query(`filter={ "name": "${partialName}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [returnedCred] = response.body.data;
+
+			expect(returnedCred.name).toBe(savedCred.name);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('filter={ "name": "Non-Existing Credential" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter credentials by field: type - full match', async () => {
 			const role = await testDb.getCredentialOwnerRole();
 
 			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
@@ -103,6 +130,34 @@ describe('GET /credentials', () => {
 				.authAgentFor(owner)
 				.get('/credentials')
 				.query(`filter={ "type": "${savedCred.type}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [returnedCred] = response.body.data;
+
+			expect(returnedCred.type).toBe(savedCred.type);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query('filter={ "type": "Non-Existing Credential" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter credentials by field: type - partial match', async () => {
+			const role = await testDb.getCredentialOwnerRole();
+
+			const savedCred = await testDb.saveCredential(payload(), { user: owner, role });
+
+			const partialType = savedCred.type.slice(3);
+
+			const response: GetAllResponse = await testServer
+				.authAgentFor(owner)
+				.get('/credentials')
+				.query(`filter={ "type": "${partialType}" }`)
 				.expect(200);
 
 			expect(response.body.data).toHaveLength(1);

@@ -9,7 +9,7 @@ import type {
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
-import { In } from 'typeorm';
+import { In, Like } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -49,7 +49,16 @@ export class CredentialsService {
 
 		const { filter, select, take, skip } = listQueryOptions;
 
+		if (typeof filter?.name === 'string' && filter?.name !== '') {
+			filter.name = Like(`%${filter.name}%`);
+		}
+
+		if (typeof filter?.type === 'string' && filter?.type !== '') {
+			filter.type = Like(`%${filter.type}%`);
+		}
+
 		if (filter) findManyOptions.where = filter;
+
 		if (select) findManyOptions.select = select;
 		if (take) findManyOptions.take = take;
 		if (skip) findManyOptions.skip = skip;
