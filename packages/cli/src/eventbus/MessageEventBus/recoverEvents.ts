@@ -1,5 +1,5 @@
 import type { IRun, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import { NodeOperationError, WorkflowOperationError, sleep } from 'n8n-workflow';
 import type { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
 import type { DateTime } from 'luxon';
 import { Push } from '@/push';
@@ -192,11 +192,10 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 			const push = Container.get(Push);
 			// wait for UI to be back up and send the execution data
-			push.once('editorUiConnected', function handleUiBackUp() {
+			push.once('editorUiConnected', async () => {
 				// add a small timeout to make sure the UI is back up
-				setTimeout(() => {
-					push.send('executionRecovered', { executionId });
-				}, 1000);
+				await sleep(1000);
+				push.broadcast('executionRecovered', { executionId });
 			});
 		}
 		return executionData;

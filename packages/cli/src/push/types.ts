@@ -8,4 +8,4 @@ export type PushRequest = Request<{}, {}, {}, { sessionId: string }>;
 export type SSEPushRequest = PushRequest & { ws: undefined };
 export type WebSocketPushRequest = PushRequest & { ws: WebSocket };
 
-export type PushResponse = Response & { req: PushRequest };
+export type PushResponse = Response & { req: PushRequest; flush: () => void };

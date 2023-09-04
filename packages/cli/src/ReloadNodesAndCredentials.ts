@@ -36,7 +36,7 @@ export const reloadNodesAndCredentials = async (
 			await loadNodesAndCredentials.postProcessLoaders();
 			await loadNodesAndCredentials.generateTypesForFrontend();
 			nodeTypes.applySpecialNodeParameters();
-			push.send('nodeDescriptionUpdated', undefined);
+			push.broadcast('nodeDescriptionUpdated');
 		}, 100);
 
 		const toWatch = loader.isLazyLoaded

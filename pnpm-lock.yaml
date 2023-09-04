@@ -317,6 +317,9 @@ importers:
       json-diff:
         specifier: ^1.0.6
         version: 1.0.6
+      json-stream-stringify:
+        specifier: ^3.1.0
+        version: 3.1.0
       jsonschema:
         specifier: ^1.4.1
         version: 1.4.1
@@ -431,9 +434,6 @@ importers:
       sqlite3:
         specifier: ^5.1.6
         version: 5.1.6
-      sse-channel:
-        specifier: ^4.0.0
-        version: 4.0.0
       sshpk:
         specifier: ^1.17.0
         version: 1.17.0
@@ -15297,6 +15297,11 @@ packages:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
     dev: true
 
+  /json-stream-stringify@3.1.0:
+    resolution: {integrity: sha512-ilynhoPlWa29XqgWJTD8V3bOF8k4Ybm3U9Oc7o/CG8qvFMGUzPlh9P4mOj9Ss3VtisA6N2OYevCWa14VRpJtQQ==}
+    engines: {node: '>=7.10.1'}
+    dev: false
+
   /json-stringify-safe@5.0.1:
     resolution: {integrity: sha512-ZClg6AaYvamvYEE82d3Iyd3vSSIjQ+odgjaTzRuO3s7toCdFKczob2i0zCh7JE8kWn17yvAWhUVxvqGwUalsRA==}
     dev: true
@@ -19840,10 +19845,6 @@ packages:
   /sqlstring@2.3.3:
     resolution: {integrity: sha512-qC9iz2FlN7DQl3+wjwn3802RTyjCx7sDvfQEXchwa6CWOx07/WVfh91gBmQ9fahw8snwGEWU3xGzOt4tFyHLxg==}
     engines: {node: '>= 0.6'}
-    dev: false
-
-  /sse-channel@4.0.0:
-    resolution: {integrity: sha512-I539Tc0gyDTQ2QCSg4v78Flxo/UbqR9x7JoyPcqaPtwo+qzeOw/fF+aPSbk0xTvBQAAAZk7Dlkc8K1bum5GUnw==}
     dev: false
 
   /ssh2-sftp-client@7.2.3:

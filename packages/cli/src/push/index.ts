@@ -21,18 +21,23 @@ export class Push extends EventEmitter {
 	private backend = useWebSockets ? new WebSocketPush() : new SSEPush();
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
+		const { sessionId } = req.query;
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(req.query.sessionId, req.ws);
+			(this.backend as WebSocketPush).add(sessionId, req.ws);
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(req.query.sessionId, { req, res });
+			(this.backend as SSEPush).add(sessionId, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
 		}
-		this.emit('editorUiConnected', req.query.sessionId);
+		this.emit('editorUiConnected', sessionId);
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
-		this.backend.send(type, data, sessionId);
+	send<D>(type: IPushDataType, data: D, sessionId: string) {
+		return this.backend.send(type, data, sessionId);
+	}
+
+	broadcast<D>(type: IPushDataType, data?: D) {
+		return this.backend.broadcast(type, data);
 	}
 }
 
