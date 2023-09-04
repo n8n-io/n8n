@@ -2697,7 +2697,7 @@ export function getExecuteFunctions(
 
 				const parentNodes = workflow.getParentNodes(node.name, inputName, 1);
 				if (parentNodes.length === 0) {
-					return [];
+					return inputConfiguration.maxConnections === 1 ? undefined : [];
 				}
 
 				const constParentNodes = parentNodes
