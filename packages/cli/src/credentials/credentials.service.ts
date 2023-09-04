@@ -58,18 +58,18 @@ export class CredentialsService {
 		}
 
 		if (filter) findManyOptions.where = filter;
-
 		if (select) findManyOptions.select = select;
 		if (take) findManyOptions.take = take;
 		if (skip) findManyOptions.skip = skip;
-
-		if (take && !select) findManyOptions.relations = defaultRelations;
 
 		if (take && select && !select?.id) {
 			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
 		}
 
-		if (!findManyOptions.select) findManyOptions.select = defaultSelect;
+		if (!findManyOptions.select) {
+			findManyOptions.select = defaultSelect;
+			findManyOptions.relations = defaultRelations;
+		}
 
 		return findManyOptions;
 	}
