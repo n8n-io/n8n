@@ -566,9 +566,9 @@ export default defineComponent({
 	},
 	methods: {
 		onCallerIdsInput(str: string) {
-			this.workflowSettings.callerIds = /^[0-9,\s]+$/.test(str)
+			this.workflowSettings.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
 				? str
-				: str.replace(/[^0-9,\s]/g, '');
+				: str.replace(/[^a-zA-Z0-9,\s]/g, '');
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
