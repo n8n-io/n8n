@@ -56,7 +56,7 @@ export const schema = {
 			maxQueryExecutionTime: {
 				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
 				format: Number,
-				default: 1000,
+				default: 0, // 0 disables the slow-query log
 				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
 			},
 		},
