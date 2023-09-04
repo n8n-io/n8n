@@ -31,10 +31,5 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 	dropNotNull: (tableName: string, columnName: string) =>
 		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
 
-	addNotNull: (tableName: string, columnName: string) =>
-		new AddNotNull(tablePrefix, tableName, columnName, queryRunner),
-	dropNotNull: (tableName: string, columnName: string) =>
-		new DropNotNull(tablePrefix, tableName, columnName, queryRunner),
-
 	/* eslint-enable */
 });

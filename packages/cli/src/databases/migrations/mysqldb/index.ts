@@ -46,7 +46,7 @@ import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
-import { DisallowOrphanExecutions1693554410387 } from './1693554410387-DisallowOrphanExecutions';
+import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,

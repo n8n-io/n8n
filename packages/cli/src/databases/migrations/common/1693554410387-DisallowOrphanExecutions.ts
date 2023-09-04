@@ -1,8 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class DisallowOrphanExecutions1693554410387 implements ReversibleMigration {
-	transaction = false as const;
-
 	/**
 	 * Ensure all executions point to a workflow.
 	 */
