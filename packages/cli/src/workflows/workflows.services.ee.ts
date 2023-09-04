@@ -16,6 +16,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 import type { Credentials } from '@/requests';
 
 export class EEWorkflowsService extends WorkflowsService {
@@ -106,9 +107,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		currentUser: User,
 	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await CredentialsService.getMany(currentUser, {
-			disableGlobalRole: true,
-		});
+		const userCredentials = await CredentialsService.getMany(currentUser, { onlyOwn: true });
 		const credentialIdsUsedByWorkflow = new Set<string>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -151,7 +150,7 @@ export class EEWorkflowsService extends WorkflowsService {
 
 	static validateCredentialPermissionsToUser(
 		workflow: WorkflowEntity,
-		allowedCredentials: Credentials.WithOwnedByAndSharedWith[],
+		allowedCredentials: CredentialsEntity[],
 	) {
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
