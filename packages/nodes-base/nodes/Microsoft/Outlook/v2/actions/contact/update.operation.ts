@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { prepareContactFields } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
 import { contactFields, contactRLC } from '../../descriptions';

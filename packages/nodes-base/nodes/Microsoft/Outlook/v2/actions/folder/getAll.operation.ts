@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 import { updateDisplayOptions } from '@utils/utilities';
 import { folderFields, folderRLC, returnAllOrLimit } from '../../descriptions';

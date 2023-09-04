@@ -1,9 +1,4 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { createMessage, decodeOutlookId } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';

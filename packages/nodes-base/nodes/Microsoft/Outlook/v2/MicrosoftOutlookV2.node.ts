@@ -2,7 +2,6 @@
 
 import type {
 	IExecuteFunctions,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
