@@ -51,6 +51,7 @@
     "axios": "^0.21.1",
     "codemirror-lang-html-n8n": "^1.0.0",
     "codemirror-lang-n8n-expression": "^0.2.0",
+    "@lezer/common": "^1.0.4",
     "copy-to-clipboard": "^3.3.3",
     "dateformat": "^3.0.3",
     "esprima-next": "5.8.4",
