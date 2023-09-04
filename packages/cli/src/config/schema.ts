@@ -913,12 +913,6 @@ export const schema = {
 			env: 'N8N_BINARY_DATA_TTL',
 			doc: 'TTL for binary data of unsaved executions in minutes',
 		},
-		persistedBinaryDataTTL: {
-			format: Number,
-			default: 1440,
-			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
-			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
-		},
 	},
 
 	deployment: {
