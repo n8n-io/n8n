@@ -688,7 +688,9 @@ export default defineComponent({
 							interpolate: {
 								defaultValue: this.defaultValues.saveExecutionProgress
 									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save')
-									: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.doNotSave'),
+									: this.$locale.baseText(
+											'workflowSettings.saveExecutionProgressOptions.doNotSave',
+									  ),
 							},
 						},
 					),
