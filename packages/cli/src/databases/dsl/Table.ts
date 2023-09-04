@@ -6,7 +6,11 @@ import { Column } from './Column';
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
 
-	constructor(protected tableName: string, protected prefix: string, queryRunner: QueryRunner) {
+	constructor(
+		protected tableName: string,
+		protected prefix: string,
+		queryRunner: QueryRunner,
+	) {
 		super((resolve) => {
 			void this.execute(queryRunner).then(resolve);
 		});
@@ -115,9 +119,9 @@ export class DropColumns extends TableOperation {
 
 export class AddNotNull extends TableOperation {
 	constructor(
+		prefix: string,
 		tableName: string,
 		protected columnName: string,
-		prefix: string,
 		queryRunner: QueryRunner,
 	) {
 		super(tableName, prefix, queryRunner);
@@ -136,9 +140,9 @@ export class AddNotNull extends TableOperation {
 
 export class DropNotNull extends TableOperation {
 	constructor(
+		prefix: string,
 		tableName: string,
 		protected columnName: string,
-		prefix: string,
 		queryRunner: QueryRunner,
 	) {
 		super(tableName, prefix, queryRunner);
