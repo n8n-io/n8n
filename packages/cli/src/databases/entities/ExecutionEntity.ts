@@ -43,9 +43,6 @@ export class ExecutionEntity {
 	status: ExecutionStatus;
 
 	@Column(datetimeColumnType)
-	createdAt: Date;
-
-	@Column(datetimeColumnType)
 	startedAt: Date;
 
 	@Index()
