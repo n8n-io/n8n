@@ -711,7 +711,7 @@ export default defineComponent({
 					interpolate: {
 						defaultValue: this.defaultValues.saveManualExecutions
 							? this.$locale.baseText('workflowSettings.saveManualOptions.save')
-							: this.$locale.baseText('workflowSettings.saveManualOptions.soNotSave'),
+							: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 					},
 				}),
 			});
