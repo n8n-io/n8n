@@ -1251,9 +1251,8 @@ export class Server extends AbstractServer {
 							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
-							findOptions,
-						);
+						const executions =
+							await Container.get(ExecutionRepository).findMultipleExecutions(findOptions);
 
 						if (!executions.length) return [];
 

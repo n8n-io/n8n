@@ -9,6 +9,7 @@ import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
+import { useNDVStore } from '@/stores';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -134,9 +135,11 @@ export class Telemetry {
 	trackAskAI(event: string, properties: IDataObject = {}) {
 		if (this.rudderStack) {
 			properties.session_id = useRootStore().sessionId;
+			properties.ndv_session_id = useNDVStore().sessionId;
+
 			switch (event) {
-				case 'ask.generationClicked':
-					this.track('User clicked on generate code button', properties, { withPostHog: true });
+				case 'askAi.generationFinished':
+					this.track('Ai code generation finished', properties, { withPostHog: true });
 				default:
 					break;
 			}
@@ -222,7 +225,14 @@ export class Telemetry {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
 					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
-						this.track('User toggled n8n reference option');
+						this.track(
+							'User toggled n8n reference option',
+							{
+								node: nodeType,
+								toValue: change.value,
+							},
+							{ withPostHog: true },
+						);
 					}
 					break;
 

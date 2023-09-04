@@ -3,7 +3,6 @@ import get from 'lodash/get';
 import { Request } from 'express';
 import type { INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { Authorized, Post, RestController } from '@/decorators';
-import { getNodeTranslationPath } from '@/TranslationHelpers';
 import { Config } from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 
@@ -35,7 +34,7 @@ export class NodeTypesController {
 			nodeTypes: INodeTypeDescription[],
 		) => {
 			const { description, sourcePath } = this.nodeTypes.getWithSourcePath(name, version);
-			const translationPath = await getNodeTranslationPath({
+			const translationPath = await this.nodeTypes.getNodeTranslationPath({
 				nodeSourcePath: sourcePath,
 				longNodeType: description.name,
 				locale: defaultLocale,

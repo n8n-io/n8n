@@ -99,10 +99,10 @@ export default defineComponent({
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+			return !!this.nodeType?.group.includes('schedule');
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
@@ -129,9 +129,7 @@ export default defineComponent({
 		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		disabledHint(): string {
@@ -171,7 +169,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
 
-			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.mockManualExecution)) {
+			if (this.isPollingTypeNode || this.nodeType?.mockManualExecution) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
@@ -221,6 +219,7 @@ export default defineComponent({
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
+						session_id: this.ndvStore.sessionId,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);

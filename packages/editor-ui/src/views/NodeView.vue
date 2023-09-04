@@ -680,6 +680,7 @@ export default defineComponent({
 				node_type: node ? node.type : null,
 				workflow_id: this.workflowsStore.workflowId,
 				source: 'canvas',
+				session_id: this.ndvStore.sessionId,
 			};
 			this.$telemetry.track('User clicked execute node button', telemetryPayload);
 			void this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
@@ -3890,9 +3891,8 @@ export default defineComponent({
 			await Promise.all([this.loadCredentials(), this.loadVariables(), this.tagsStore.fetchAll()]);
 
 			if (workflowId !== null && !this.uiStore.stateIsDirty) {
-				const workflow: IWorkflowDb | undefined = await this.workflowsStore.fetchWorkflow(
-					workflowId,
-				);
+				const workflow: IWorkflowDb | undefined =
+					await this.workflowsStore.fetchWorkflow(workflowId);
 				if (workflow) {
 					this.titleSet(workflow.name, 'IDLE');
 					await this.openWorkflow(workflow);
