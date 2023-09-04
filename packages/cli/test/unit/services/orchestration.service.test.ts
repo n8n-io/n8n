@@ -7,6 +7,8 @@ import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisSer
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import { eventBus } from '@/eventbus';
 import * as EventHelpers from '@/eventbus/EventMessageClasses/Helpers';
+import { RedisService } from '@/services/redis.service';
+import { mockInstance } from '../../integration/shared/utils';
 
 const os = Container.get(OrchestrationService);
 
@@ -34,6 +36,7 @@ const eventBusMessage = new EventMessageWorkflow({
 
 describe('Orchestration Service', () => {
 	beforeAll(async () => {
+		mockInstance(RedisService);
 		LoggerProxy.init(getLogger());
 		jest.mock('../../../src/services/redis/RedisServicePubSubPublisher', () => {
 			return jest.fn().mockImplementation(() => {
@@ -41,6 +44,7 @@ describe('Orchestration Service', () => {
 					init: jest.fn(),
 					publishToEventLog: jest.fn(),
 					publishToWorkerChannel: jest.fn(),
+					destroy: jest.fn(),
 				};
 			});
 		});
@@ -48,6 +52,7 @@ describe('Orchestration Service', () => {
 			return jest.fn().mockImplementation(() => {
 				return {
 					subscribeToCommandChannel: jest.fn(),
+					destroy: jest.fn(),
 				};
 			});
 		});
@@ -55,8 +60,8 @@ describe('Orchestration Service', () => {
 	});
 
 	afterAll(async () => {
-		jest.mock('ioredis').restoreAllMocks();
-		jest.restoreAllMocks();
+		jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
+		jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
 	});
 
 	test('should initialize', async () => {

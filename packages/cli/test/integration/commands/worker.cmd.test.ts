@@ -2,7 +2,6 @@ import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
 import { default as appConfig } from '@/config';
-import { Queue } from '@/Queue';
 import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
 import { getLogger } from '@/Logger';
@@ -17,6 +16,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+import { RedisService } from '@/services/redis.service';
 
 const config: Config.IConfig = new Config.Config({ root: __dirname });
 
@@ -32,17 +32,10 @@ beforeAll(async () => {
 	mockInstance(LoadNodesAndCredentials);
 	mockInstance(CredentialTypes);
 	mockInstance(NodeTypes);
+	mockInstance(RedisService);
 });
 
 beforeEach(async () => {
-	Queue.prototype.getBullObjectInstance = jest.fn().mockImplementation(() => ({
-		pause: jest.fn(),
-		process: jest.fn(),
-		on: jest.fn(),
-		client: () => {
-			ping: jest.fn();
-		},
-	}));
 	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher', () => {
 		return jest.fn().mockImplementation(() => {
 			return {
@@ -115,7 +108,6 @@ test('worker initializes all its components', async () => {
 	expect(worker.uniqueInstanceId).toBeDefined();
 	expect(worker.uniqueInstanceId).toContain('worker');
 	expect(worker.uniqueInstanceId.length).toBeGreaterThan(15);
-	expect(Queue.prototype.getBullObjectInstance).toHaveBeenCalled();
 	expect(worker.initLicense).toHaveBeenCalled();
 	expect(worker.initBinaryManager).toHaveBeenCalled();
 	expect(worker.initExternalHooks).toHaveBeenCalled();
