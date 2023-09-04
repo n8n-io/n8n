@@ -15,67 +15,58 @@
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
-				<el-row>
-					<el-col :span="12">
-						<div class="ai-wrapper">
-							<run-data-ai v-if="node" :node="node" />
-							<div v-else>
-								<div class="no-node-connected">
-									<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-										$locale.baseText('ndv.input.noOutputData.title')
-									}}</n8n-text>
-								</div>
-							</div>
-						</div>
-					</el-col>
-					<el-col :span="12" class="ignore-key-press">
-						<div class="messages" ref="messagesContainer">
-							<div :class="['message', message.sender]" v-for="message in messages">
-								<div :class="['content', message.sender]">
-									{{ message.text }}
+				<div class="ai-wrapper">
+					<run-data-ai v-if="node" :node="node" />
+					<div v-else class="no-node-connected">
+						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+							$locale.baseText('ndv.input.noOutputData.title')
+						}}</n8n-text>
+					</div>
+				</div>
+				<div class="messages ignore-key-press" ref="messagesContainer">
+					<div :class="['message', message.sender]" v-for="message in messages">
+						<div :class="['content', message.sender]">
+							{{ message.text }}
 
-									<div class="message-options no-select-on-click">
-										<n8n-info-tip
-											type="tooltip"
-											theme="info-light"
-											tooltipPlacement="right"
-											v-if="message.sender === 'bot'"
-										>
-											<div v-if="message.executionId">
-												<n8n-text :bold="true" size="small">
-													<span @click.stop="displayExecution(message.executionId)">
-														{{
-															$locale.baseText('chat.window.chat.chatMessageOptions.executionId')
-														}}: <a href="#" class="link">{{ message.executionId }}</a>
-													</span>
-												</n8n-text>
-											</div>
-										</n8n-info-tip>
-
-										<div
-											@click="repostMessage(message)"
-											class="option"
-											:title="$locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
-											data-test-id="repost-message-button"
-											v-if="message.sender === 'user'"
-										>
-											<font-awesome-icon icon="redo" />
-										</div>
-										<div
-											@click="reuseMessage(message)"
-											class="option"
-											:title="$locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
-											data-test-id="reuse-message-button"
-											v-if="message.sender === 'user'"
-										>
-											<font-awesome-icon icon="copy" />
-										</div>
+							<div class="message-options no-select-on-click">
+								<n8n-info-tip
+									type="tooltip"
+									theme="info-light"
+									tooltipPlacement="right"
+									v-if="message.sender === 'bot'"
+								>
+									<div v-if="message.executionId">
+										<n8n-text :bold="true" size="small">
+											<span @click.stop="displayExecution(message.executionId)">
+												{{ $locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
+												<a href="#" class="link">{{ message.executionId }}</a>
+											</span>
+										</n8n-text>
 									</div>
+								</n8n-info-tip>
+
+								<div
+									@click="repostMessage(message)"
+									class="option"
+									:title="$locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
+									data-test-id="repost-message-button"
+									v-if="message.sender === 'user'"
+								>
+									<font-awesome-icon icon="redo" />
+								</div>
+								<div
+									@click="reuseMessage(message)"
+									class="option"
+									:title="$locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
+									data-test-id="reuse-message-button"
+									v-if="message.sender === 'user'"
+								>
+									<font-awesome-icon icon="copy" />
 								</div>
 							</div>
 						</div>
-					</el-col>
-				</el-row>
+					</div>
+				</div>
 			</div>
 		</template>
 		<template #footer>
@@ -123,8 +114,8 @@ import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import { INode, INodeType, ITaskData } from 'n8n-workflow';
-import { INodeUi } from '@/Interface';
+import type { INode, INodeType, ITaskData } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
 
@@ -186,7 +177,7 @@ export default defineComponent({
 			const workflow = this.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.id, executionId: executionId },
+				params: { name: workflow.id, executionId },
 			});
 			window.open(route.href, '_blank');
 		},
@@ -419,19 +410,30 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .no-node-connected {
-	position: absolute;
-	top: calc(50% - 100px);
-	left: calc(50% - 100px);
-	width: 200px;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
 }
 .workflow-lm-chat {
 	color: $custom-font-black;
 	font-size: var(--font-size-s);
+	display: flex;
+	height: 100%;
+	min-height: 400px;
 
+	.ai-wrapper {
+		height: 100%;
+		width: 100%;
+		margin-left: -1em;
+		overflow-y: auto;
+	}
 	.messages {
 		border: 1px solid #e0e0e0;
 		border-radius: 4px;
-		height: 400px;
+		height: 100%;
+		width: 100%;
 		overflow: hidden auto;
 		padding-top: 1.5em;
 

@@ -1,6 +1,6 @@
 <template>
-	<div :class="$style.aiDisplay">
-		<div v-for="(data, index) in aiData.aiRun" v-if="aiData">
+	<div v-if="aiData">
+		<div v-for="(data, index) in aiData.aiRun" :key="`${data.node}__${data.runIndex}__index`">
 			<RunDataAiContent :inputData="getReferencedData(data)" :contentIndex="index" />
 		</div>
 	</div>
@@ -13,14 +13,14 @@ import { mapStores } from 'pinia';
 import type { ITaskAIRunMetadata, ITaskDataConnections, ITaskMetadata } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import type { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
 
 const RunDataAiContent = defineAsyncComponent(
 	async () => import('@/components/RunDataAiContent.vue'),
 );
 
 export default defineComponent({
-	name: 'run-data-json',
+	name: 'run-data-ai',
 	mixins: [],
 	components: {
 		RunDataAiContent,
@@ -49,7 +49,7 @@ export default defineComponent({
 		getReferencedData(reference: ITaskAIRunMetadata): IAiData | undefined {
 			const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(reference.node);
 
-			if (!resultData || !resultData[reference.runIndex]) {
+			if (!resultData?.[reference.runIndex]) {
 				return;
 			}
 
@@ -91,13 +91,3 @@ export default defineComponent({
 	},
 });
 </script>
-
-<style lang="scss" module>
-.aiDisplay {
-	height: 100%;
-	overflow-x: hidden;
-	overflow-y: auto;
-	position: absolute;
-	width: 100%;
-}
-</style>
