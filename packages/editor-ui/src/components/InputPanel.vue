@@ -10,7 +10,7 @@
 		:executingMessage="$locale.baseText('ndv.input.executingPrevious')"
 		:sessionId="sessionId"
 		:overrideOutputs="connectedCurrentNodeOutputs"
-		:mappingEnabled="!readOnly"
+		:mappingEnabled="isMappingEnabled"
 		:distanceFromActive="currentNodeDepth"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
@@ -201,6 +201,22 @@ export default defineComponent({
 
 			return !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
+		isActiveNodeConfig(): boolean {
+			if (
+				!this.currentNodeName &&
+				this.activeNodeType &&
+				(this.activeNodeType.inputs.length === 0 ||
+					this.activeNodeType.inputs.find((inputName) => inputName !== 'main')) &&
+				this.activeNodeType.outputs.find((outputName) => outputName !== 'main')
+			) {
+				return true;
+			}
+
+			return false;
+		},
+		isMappingEnabled(): boolean {
+			return !this.readOnly && !this.isActiveNodeConfig;
+		},
 		isExecutingPrevious(): boolean {
 			if (!this.workflowRunning) {
 				return false;
@@ -233,13 +249,7 @@ export default defineComponent({
 			return this.ndvStore.activeNode;
 		},
 		currentNode(): INodeUi | null {
-			if (
-				!this.currentNodeName &&
-				this.activeNodeType &&
-				(this.activeNodeType.inputs.length === 0 ||
-					this.activeNodeType.inputs.find((inputName) => inputName !== 'main')) &&
-				this.activeNodeType.outputs.find((outputName) => outputName !== 'main')
-			) {
+			if (this.isActiveNodeConfig) {
 				// For config nodes we want to return the active node to make everyhing
 				// work correctly as they normally do not have any inputs and the input
 				// data does get set manually and is only for debugging
