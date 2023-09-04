@@ -1,5 +1,5 @@
 import type { TableForeignKeyOptions, TableIndexOptions } from 'typeorm';
-import { Table, QueryRunner } from 'typeorm';
+import { Table, QueryRunner, TableColumn } from 'typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
 
@@ -31,8 +31,8 @@ export class CreateTable extends TableOperation {
 
 	get withTimestamps() {
 		this.columns.push(
-			new Column('createdAt').timestamp(3).notNull.default('NOW()'),
-			new Column('updatedAt').timestamp(3).notNull.default('NOW()'),
+			new Column('createdAt').timestamp().notNull.default('NOW()'),
+			new Column('updatedAt').timestamp().notNull.default('NOW()'),
 		);
 		return this;
 	}
@@ -78,5 +78,41 @@ export class DropTable extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName: name, prefix } = this;
 		return queryRunner.dropTable(`${prefix}${name}`, true);
+	}
+}
+
+export class AddColumns extends TableOperation {
+	constructor(
+		tableName: string,
+		protected columns: Column[],
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { driver } = queryRunner.connection;
+		const { tableName, prefix, columns } = this;
+		return queryRunner.addColumns(
+			`${prefix}${tableName}`,
+			columns.map((c) => new TableColumn(c.toOptions(driver))),
+		);
+	}
+}
+
+export class DropColumns extends TableOperation {
+	constructor(
+		tableName: string,
+		protected columnNames: string[],
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix, columnNames } = this;
+		return queryRunner.dropColumns(`${prefix}${tableName}`, columnNames);
 	}
 }

@@ -27,6 +27,7 @@ import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -160,6 +161,16 @@ export namespace ListQuery {
 
 		export type WithOwnership = BaseFields & OwnedByField;
 	}
+}
+
+export namespace Credentials {
+	type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+
+	type OwnedByField = { ownedBy: SlimUser | null };
+
+	type SharedWithField = { sharedWith: SlimUser[] };
+
+	export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
 }
 
 export function hasSharing(

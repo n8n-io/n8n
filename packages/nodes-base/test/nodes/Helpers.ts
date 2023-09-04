@@ -223,7 +223,6 @@ export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'de
 		availableModes: mode,
 		localStoragePath: temporaryDir,
 		binaryDataTTL: 1,
-		persistedBinaryDataTTL: 1,
 	});
 	return temporaryDir;
 }

@@ -62,7 +62,7 @@ export class PersonalSettingsPage extends BasePage {
 			this.getters.enableMfaButton().click();
 			mfaSetupModal.getters.copySecretToClipboardButton().realClick();
 			cy.readClipboard().then((secret) => {
-				const token = generateOTPToken(secret)
+				const token = generateOTPToken(secret);
 
 				mfaSetupModal.getters.tokenInput().type(token);
 				mfaSetupModal.getters.downloadRecoveryCodesButton().click();
