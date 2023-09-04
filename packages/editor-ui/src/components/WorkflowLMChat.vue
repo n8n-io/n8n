@@ -1,15 +1,29 @@
 <template>
 	<Modal
 		:name="WORKFLOW_LM_CHAT_MODAL_KEY"
-		width="65%"
+		width="80%"
 		maxHeight="80%"
-		:title="`Chat Window(${connectedNode?.name || 'No Chat Node'})`"
+		:title="
+			$locale.baseText('chat.window.title', {
+				interpolate: {
+					nodeName: connectedNode?.name || $locale.baseText('chat.window.noChatNode'),
+				},
+			})
+		"
 		:eventBus="modalBus"
 		:scrollable="false"
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
-				<div class="messages" ref="messagesContainer">
+				<div class="ai-wrapper">
+					<run-data-ai v-if="node" :node="node" />
+					<div v-else class="no-node-connected">
+						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+							$locale.baseText('ndv.input.noOutputData.title')
+						}}</n8n-text>
+					</div>
+				</div>
+				<div class="messages ignore-key-press" ref="messagesContainer">
 					<div :class="['message', message.sender]" v-for="message in messages">
 						<div :class="['content', message.sender]">
 							{{ message.text }}
@@ -24,7 +38,8 @@
 									<div v-if="message.executionId">
 										<n8n-text :bold="true" size="small">
 											<span @click.stop="displayExecution(message.executionId)">
-												Execution ID: <a href="#" class="link">{{ message.executionId }}</a>
+												{{ $locale.baseText('chat.window.chat.chatMessageOptions.executionId') }}:
+												<a href="#" class="link">{{ message.executionId }}</a>
 											</span>
 										</n8n-text>
 									</div>
@@ -33,7 +48,7 @@
 								<div
 									@click="repostMessage(message)"
 									class="option"
-									title="Repost Message"
+									:title="$locale.baseText('chat.window.chat.chatMessageOptions.repostMessage')"
 									data-test-id="repost-message-button"
 									v-if="message.sender === 'user'"
 								>
@@ -42,7 +57,7 @@
 								<div
 									@click="reuseMessage(message)"
 									class="option"
-									title="Reuse Message"
+									:title="$locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage')"
 									data-test-id="reuse-message-button"
 									v-if="message.sender === 'user'"
 								>
@@ -61,14 +76,14 @@
 					class="message-input"
 					type="textarea"
 					ref="inputField"
-					placeholder="Type in message"
+					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
 					@keydown="updated"
 				/>
 				<n8n-button
 					@click.stop="sendChatMessage(currentMessage)"
 					class="send-button"
 					:loading="isLoading"
-					label="Send"
+					:label="$locale.baseText('chat.window.chat.sendButtonText')"
 					size="large"
 					icon="comment"
 					type="primary"
@@ -80,7 +95,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 
 import { useToast } from '@/composables';
@@ -99,8 +114,10 @@ import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import { INodeType, ITaskData } from 'n8n-workflow';
-import { INodeUi } from '@/Interface';
+import type { INode, INodeType, ITaskData } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+
+const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
 
 interface ChatMessage {
 	text: string;
@@ -119,13 +136,12 @@ interface LangchainMessage {
 // TODO:
 // - display additional information like execution time, tokens used, ...
 // - display errors better
-// - persist messages in memory & load them again (load from model memory?)
-
 export default defineComponent({
 	name: 'WorkflowLMChat',
 	mixins: [workflowRun],
 	components: {
 		Modal,
+		RunDataAi,
 	},
 	setup(props) {
 		return {
@@ -136,11 +152,12 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			connectedNode: null as INodeUi | null,
 			currentMessage: '',
 			messages: [] as ChatMessage[],
 			modalBus: createEventBus(),
+			node: null as INodeUi | null,
 			WORKFLOW_LM_CHAT_MODAL_KEY,
-			connectedNode: null as INodeUi | null,
 		};
 	},
 
@@ -153,13 +170,14 @@ export default defineComponent({
 	async mounted() {
 		this.setConnectedNode();
 		this.messages = this.getChatMessages();
+		this.setNode();
 	},
 	methods: {
 		displayExecution(executionId: string) {
 			const workflow = this.getCurrentWorkflow();
 			const route = this.$router.resolve({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.id, executionId: executionId },
+				params: { name: workflow.id, executionId },
 			});
 			window.open(route.href, '_blank');
 		},
@@ -197,6 +215,7 @@ export default defineComponent({
 				});
 			}
 		},
+
 		setConnectedNode() {
 			const workflow = this.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
@@ -267,13 +286,48 @@ export default defineComponent({
 				};
 			});
 		},
-		async startWorkflowWithMessage(message: string) {
+
+		setNode(): void {
+			const triggerNode = this.getTriggerNode();
+			if (!triggerNode) {
+				return;
+			}
+
+			const workflow = this.getCurrentWorkflow();
+			const childNodes = workflow.getChildNodes(triggerNode.name);
+
+			for (const childNode of childNodes) {
+				// Look for the first connected node with metadata
+				// TODO: Allow later users to change that in the UI
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(childNode);
+
+				if (!resultData && !Array.isArray(resultData)) {
+					continue;
+				}
+
+				if (resultData[resultData.length - 1].metadata) {
+					this.node = this.workflowsStore.getNodeByName(childNode);
+					break;
+				}
+			}
+		},
+
+		getTriggerNode(): INode | null {
 			const workflow = this.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
 				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
 			);
 
 			if (!triggerNode.length) {
+				return null;
+			}
+
+			return triggerNode[0];
+		},
+		async startWorkflowWithMessage(message: string) {
+			const triggerNode = this.getTriggerNode();
+
+			if (!triggerNode) {
 				this.showError(
 					new Error('Chat Trigger Node could not be found!'),
 					'Trigger Node not found',
@@ -300,7 +354,7 @@ export default defineComponent({
 			};
 
 			const response = await this.runWorkflow({
-				triggerNode: triggerNode[0].name,
+				triggerNode: triggerNode.name,
 				nodeData,
 				source: 'RunData.ManualChatMessage',
 			});
@@ -337,6 +391,10 @@ export default defineComponent({
 						sender: 'bot',
 						executionId,
 					} as ChatMessage);
+
+					this.$nextTick(() => {
+						that.setNode();
+					});
 				}
 			}, 500);
 		},
@@ -351,14 +409,31 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+.no-node-connected {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
 .workflow-lm-chat {
 	color: $custom-font-black;
 	font-size: var(--font-size-s);
+	display: flex;
+	height: 100%;
+	min-height: 400px;
 
+	.ai-wrapper {
+		height: 100%;
+		width: 100%;
+		margin-left: -1em;
+		overflow-y: auto;
+	}
 	.messages {
 		border: 1px solid #e0e0e0;
 		border-radius: 4px;
-		height: 400px;
+		height: 100%;
+		width: 100%;
 		overflow: hidden auto;
 		padding-top: 1.5em;
 

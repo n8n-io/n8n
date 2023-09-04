@@ -770,10 +770,7 @@ export default defineComponent({
 		hasRunError(): boolean {
 			return Boolean(
 				this.node &&
-					this.workflowRunData &&
-					this.workflowRunData[this.node.name] &&
-					this.workflowRunData[this.node.name][this.runIndex] &&
-					this.workflowRunData[this.node.name][this.runIndex].error,
+					this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error,
 			);
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -784,7 +781,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -812,7 +809,7 @@ export default defineComponent({
 
 			if (runData[this.node.name][this.runIndex]) {
 				const taskData = runData[this.node.name][this.runIndex].data;
-				if (taskData && taskData.main) {
+				if (taskData?.main) {
 					return taskData.main.length - 1;
 				}
 			}
@@ -901,11 +898,10 @@ export default defineComponent({
 		},
 		currentOutputIndex(): number {
 			if (
-				this.overrideOutputs &&
-				this.overrideOutputs.length &&
+				this.overrideOutputs?.length &&
 				!this.overrideOutputs.includes(this.outputIndex)
 			) {
-				return this.overrideOutputs[0] as number;
+				return this.overrideOutputs[0] ;
 			}
 
 			return this.outputIndex;
@@ -1396,7 +1392,7 @@ export default defineComponent({
 			}
 
 			const nodeType = this.nodeType;
-			if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
+			if (!nodeType?.outputNames || nodeType.outputNames.length <= outputIndex) {
 				return outputIndex + 1;
 			}
 
@@ -1549,6 +1545,7 @@ export default defineComponent({
 
 .dataContainer {
 	position: relative;
+	overflow-y: auto;
 	height: 100%;
 
 	&:hover {
@@ -1598,7 +1595,7 @@ export default defineComponent({
 	align-items: center;
 	bottom: 0;
 	padding: 5px;
-	overflow: auto;
+	overflow-y: hidden;
 }
 
 .pageSizeSelector {
