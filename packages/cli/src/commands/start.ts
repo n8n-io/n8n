@@ -99,6 +99,10 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
+			// Shut down License manager to unclaim any floating entitlements
+			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+			await Container.get(License).shutdown();
+
 			await Container.get(InternalHooks).onN8nStop();
 
 			const skipWebhookDeregistration = config.getEnv(
@@ -134,13 +138,8 @@ export class Start extends BaseCommand {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 
-			// Shut down Event Bus
+			// Finally shut down Event Bus
 			await eventBus.close();
-
-			// Finally shut down License manager to unclaim any floating entitlements.
-			// Note: In case of above shutdown activities taking too long, the next line might not get executed.
-			// This is fine, as all entitlements will still be claimed on the next startup, which is the desired behavior in most cases.
-			await Container.get(License).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
