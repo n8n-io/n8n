@@ -41,7 +41,7 @@ export class Column {
 		return this;
 	}
 
-	timestamp(msPrecision?: number) {
+	timestamp(msPrecision = 3) {
 		this.type = 'timestamp';
 		this.length = msPrecision ?? 'auto';
 		return this;

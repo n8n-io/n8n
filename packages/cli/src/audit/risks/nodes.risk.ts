@@ -2,7 +2,7 @@ import * as path from 'path';
 import glob from 'fast-glob';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { getNodeTypes } from '@/audit/utils';
-import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
+import { CommunityPackageService } from '@/services/communityPackage.service';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
 	ENV_VARS_DOCS_URL,
@@ -15,7 +15,7 @@ import type { Risk } from '@/audit/types';
 import { Container } from 'typedi';
 
 async function getCommunityNodeDetails() {
-	const installedPackages = await getAllInstalledPackages();
+	const installedPackages = await Container.get(CommunityPackageService).getAllInstalledPackages();
 
 	return installedPackages.reduce<Risk.CommunityNodeDetails[]>((acc, pkg) => {
 		pkg.installedNodes.forEach((node) =>
