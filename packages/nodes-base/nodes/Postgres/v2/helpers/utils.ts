@@ -458,3 +458,16 @@ export function checkItemAgainstSchema(
 
 	return item;
 }
+
+export const configureTableSchemaUpdater = (initialSchema: string, initialTable: string) => {
+	let currentSchema = initialSchema;
+	let currentTable = initialTable;
+	return async (db: PgpDatabase, tableSchema: ColumnInfo[], schema: string, table: string) => {
+		if (currentSchema !== schema || currentTable !== table) {
+			currentSchema = schema;
+			currentTable = table;
+			tableSchema = await getTableSchema(db, schema, table);
+		}
+		return tableSchema;
+	};
+};
