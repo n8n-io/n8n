@@ -4,7 +4,7 @@ import type { Server } from 'http';
 import express from 'express';
 import compression from 'compression';
 import isbot from 'isbot';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
