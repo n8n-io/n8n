@@ -38,10 +38,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	const displayName = this.getNodeParameter('displayName', index) as string;
 
 	const folderId = decodeOutlookId(

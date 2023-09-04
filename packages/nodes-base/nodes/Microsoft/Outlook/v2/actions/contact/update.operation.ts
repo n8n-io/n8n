@@ -30,10 +30,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const contactId = this.getNodeParameter('contactId', index, undefined, {
 		extractValue: true,

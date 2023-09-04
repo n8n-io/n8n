@@ -203,11 +203,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number, items: INodeExecutionData[]) {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const subject = this.getNodeParameter('subject', index) as string;
 	const bodyContent = this.getNodeParameter('bodyContent', index, '') as string;

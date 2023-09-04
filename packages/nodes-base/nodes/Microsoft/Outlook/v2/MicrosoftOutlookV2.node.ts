@@ -24,7 +24,7 @@ export class MicrosoftOutlookV2 implements INodeType {
 
 	methods = { loadOptions, listSearch };
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions) {
 		return router.call(this);
 	}
 }

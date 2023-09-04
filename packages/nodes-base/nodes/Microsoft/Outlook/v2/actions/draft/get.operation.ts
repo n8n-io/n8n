@@ -80,10 +80,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	let responseData;
 	const qs: IDataObject = {};
 

@@ -55,10 +55,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	const qs: IDataObject = {};
 
 	const contactId = this.getNodeParameter('contactId', index, undefined, {

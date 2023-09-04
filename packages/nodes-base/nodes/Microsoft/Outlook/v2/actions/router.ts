@@ -11,7 +11,7 @@ import * as folderMessage from './folderMessage';
 import * as message from './message';
 import * as messageAttachment from './messageAttachment';
 
-export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function router(this: IExecuteFunctions) {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 
@@ -70,7 +70,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			//NodeApiError would be missing the itemIndex, add it
+			//NodeApiError will be missing the itemIndex, add it
 			if (error instanceof NodeApiError && error?.context?.itemIndex === undefined) {
 				if (error.context === undefined) {
 					error.context = {};
@@ -80,5 +80,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw error;
 		}
 	}
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

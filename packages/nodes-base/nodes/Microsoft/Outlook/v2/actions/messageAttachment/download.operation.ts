@@ -25,11 +25,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number, items: INodeExecutionData[]) {
 	const messageId = this.getNodeParameter('messageId', index, undefined, {
 		extractValue: true,
 	}) as string;

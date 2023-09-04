@@ -143,7 +143,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 		},
 	};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
@@ -1130,7 +1130,7 @@ export class MicrosoftOutlookV1 implements INodeType {
 			(resource === 'message' && operation === 'getMime') ||
 			(resource === 'messageAttachment' && operation === 'download')
 		) {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			return [this.helpers.returnJsonArray(returnData)];
 		}

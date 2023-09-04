@@ -89,10 +89,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	const updateFields = this.getNodeParameter('updateFields', index);
 
 	const calendarId = this.getNodeParameter('calendarId', index, undefined, {

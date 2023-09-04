@@ -184,10 +184,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	const draftId = this.getNodeParameter('draftId', index, undefined, {
 		extractValue: true,
 	}) as string;

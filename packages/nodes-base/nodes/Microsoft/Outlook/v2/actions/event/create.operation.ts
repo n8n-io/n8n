@@ -220,10 +220,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions, index: number) {
 	let additionalFields = this.getNodeParameter('additionalFields', index);
 
 	additionalFields = Object.keys(additionalFields).reduce((acc: IDataObject, key: string) => {
