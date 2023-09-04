@@ -43,6 +43,7 @@ import { RemoveResetPasswordColumns1690000000030 } from './1690000000030-RemoveR
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { AddMfaColumns1690000000030 } from './1690000000040-AddMfaColumns';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
+import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftDelete';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -89,6 +90,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowNameIndex1691088862123,
 	AddMfaColumns1690000000030,
 	CreateWorkflowHistoryTable1692967111175,
+	ExecutionSoftDelete1693491613982,
 ];
 
 export { sqliteMigrations };
