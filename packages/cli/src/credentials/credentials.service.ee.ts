@@ -6,7 +6,6 @@ import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
 import { UserService } from '@/services/user.service';
 import { CredentialsService } from './credentials.service';
-import type { CredentialWithSharings } from './credentials.types';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 
@@ -92,28 +91,5 @@ export class EECredentialsService extends CredentialsService {
 			);
 
 		return transaction.save(newSharedCredentials);
-	}
-
-	static addOwnerAndSharings(
-		credential: CredentialsEntity & CredentialWithSharings,
-	): CredentialsEntity & CredentialWithSharings {
-		credential.ownedBy = null;
-		credential.sharedWith = [];
-
-		credential.shared?.forEach(({ user, role }) => {
-			const { id, email, firstName, lastName } = user;
-
-			if (role.name === 'owner') {
-				credential.ownedBy = { id, email, firstName, lastName };
-				return;
-			}
-
-			credential.sharedWith?.push({ id, email, firstName, lastName });
-		});
-
-		// @ts-ignore
-		delete credential.shared;
-
-		return credential;
 	}
 }
