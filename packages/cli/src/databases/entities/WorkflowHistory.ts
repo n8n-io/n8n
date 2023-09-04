@@ -6,10 +6,10 @@ import { WorkflowEntity } from './WorkflowEntity';
 
 @Entity()
 export class WorkflowHistory {
-	@PrimaryColumn({ length: 36 })
+	@PrimaryColumn()
 	versionId: string;
 
-	@Column({ length: 36 })
+	@Column()
 	workflowId: string;
 
 	@Column(jsonColumnType)
@@ -18,7 +18,7 @@ export class WorkflowHistory {
 	@Column(jsonColumnType)
 	connections: IConnections;
 
-	@Column({ length: 255 })
+	@Column()
 	authors: string;
 
 	@ManyToOne('WorkflowEntity', {
