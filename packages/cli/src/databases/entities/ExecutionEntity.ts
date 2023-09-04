@@ -49,6 +49,9 @@ export class ExecutionEntity {
 	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
+	@Column(datetimeColumnType)
+	deletedAt: Date;
+
 	@Column({ nullable: true })
 	workflowId: string;
 
