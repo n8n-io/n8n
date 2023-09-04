@@ -1,3 +1,4 @@
+import { pipeline } from 'stream/promises';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,10 +6,22 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
-import type { JSON2SheetOpts, Sheet2JSONOpts, WorkBook, WritingOptions } from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
+import type {
+	JSON2SheetOpts,
+	Sheet2JSONOpts,
+	WorkBook,
+	WritingOptions,
+	ParsingOptions,
+} from 'xlsx';
+import {
+	read as xlsxRead,
+	readFile as xlsxReadFile,
+	utils as xlsxUtils,
+	write as xlsxWrite,
+} from 'xlsx';
+import { parse as createCSVParser } from 'csv-parse';
 
 /**
  * Flattens an object with deep data
@@ -91,6 +104,54 @@ export class SpreadsheetFile implements INodeType {
 				placeholder: '',
 				description:
 					'Name of the binary property from which to read the binary data of the spreadsheet file',
+			},
+			{
+				displayName: 'File Format',
+				name: 'fileFormat',
+				type: 'options',
+				options: [
+					{
+						name: 'Autodetect',
+						value: 'autodetect',
+					},
+					{
+						name: 'CSV',
+						value: 'csv',
+						description: 'Comma-separated values',
+					},
+					{
+						name: 'HTML',
+						value: 'html',
+						description: 'HTML Table',
+					},
+					{
+						name: 'ODS',
+						value: 'ods',
+						description: 'OpenDocument Spreadsheet',
+					},
+					{
+						name: 'RTF',
+						value: 'rtf',
+						description: 'Rich Text Format',
+					},
+					{
+						name: 'XLS',
+						value: 'xls',
+						description: 'Excel',
+					},
+					{
+						name: 'XLSX',
+						value: 'xlsx',
+						description: 'Excel',
+					},
+				],
+				default: 'autodetect',
+				displayOptions: {
+					show: {
+						operation: ['fromFile'],
+					},
+				},
+				description: 'The format of the binary data to read from',
 			},
 
 			// ----------------------------------
@@ -296,68 +357,102 @@ export class SpreadsheetFile implements INodeType {
 			// Read data from spreadsheet file to workflow
 			for (let i = 0; i < items.length; i++) {
 				try {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const options = this.getNodeParameter('options', i, {});
+					let fileFormat = this.getNodeParameter('fileFormat', i, {});
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-					this.helpers.assertBinaryData(i, binaryPropertyName);
-					// Read the binary spreadsheet data
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-					let workbook;
-					if (options.readAsString === true) {
-						workbook = xlsxRead(binaryDataBuffer.toString(), {
-							type: 'string',
-							raw: options.rawData as boolean,
+					let rows: unknown[] = [];
+
+					if (
+						fileFormat === 'autodetect' &&
+						(binaryData.mimeType === 'text/csv' ||
+							(binaryData.mimeType === 'text/plain' && binaryData.fileExtension === 'csv'))
+					) {
+						fileFormat = 'csv';
+					}
+
+					if (fileFormat === 'csv') {
+						const parser = createCSVParser({
+							columns: options.headerRow !== false,
+							onRecord: (record) => {
+								rows.push(record);
+							},
 						});
+						if (binaryData.id) {
+							const stream = this.helpers.getBinaryStream(binaryData.id);
+							await pipeline(stream, parser);
+						} else {
+							parser.write(binaryData.data, BINARY_ENCODING);
+						}
 					} else {
-						workbook = xlsxRead(binaryDataBuffer, { raw: options.rawData as boolean });
-					}
+						let workbook: WorkBook;
+						const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+						if (options.readAsString) xlsxOptions.type = 'string';
 
-					if (workbook.SheetNames.length === 0) {
-						throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', {
-							itemIndex: i,
-						});
-					}
-
-					let sheetName = workbook.SheetNames[0];
-					if (options.sheetName) {
-						if (!workbook.SheetNames.includes(options.sheetName as string)) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Spreadsheet does not contain sheet called "${options.sheetName}"!`,
-								{ itemIndex: i },
+						if (binaryData.id) {
+							const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+							workbook = xlsxReadFile(binaryPath, xlsxOptions);
+						} else {
+							const binaryDataBuffer = binaryData.data;
+							workbook = xlsxRead(
+								options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
+								xlsxOptions,
 							);
 						}
-						sheetName = options.sheetName as string;
-					}
 
-					// Convert it to json
-					const sheetToJsonOptions: Sheet2JSONOpts = {};
-					if (options.range) {
-						if (isNaN(options.range as number)) {
-							sheetToJsonOptions.range = options.range;
-						} else {
-							sheetToJsonOptions.range = parseInt(options.range as string, 10);
+						if (workbook.SheetNames.length === 0) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Spreadsheet does not have any sheets!',
+								{
+									itemIndex: i,
+								},
+							);
 						}
-					}
 
-					if (options.includeEmptyCells) {
-						sheetToJsonOptions.defval = '';
-					}
-					if (options.headerRow === false) {
-						sheetToJsonOptions.header = 1; // Consider the first row as a data row
-					}
+						let sheetName = workbook.SheetNames[0];
+						if (options.sheetName) {
+							if (!workbook.SheetNames.includes(options.sheetName as string)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Spreadsheet does not contain sheet called "${options.sheetName}"!`,
+									{ itemIndex: i },
+								);
+							}
+							sheetName = options.sheetName as string;
+						}
 
-					const sheetJson = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+						// Convert it to json
+						const sheetToJsonOptions: Sheet2JSONOpts = {};
+						if (options.range) {
+							if (isNaN(options.range as number)) {
+								sheetToJsonOptions.range = options.range;
+							} else {
+								sheetToJsonOptions.range = parseInt(options.range as string, 10);
+							}
+						}
 
-					// Check if data could be found in file
-					if (sheetJson.length === 0) {
-						continue;
+						if (options.includeEmptyCells) {
+							sheetToJsonOptions.defval = '';
+						}
+
+						if (options.headerRow === false) {
+							sheetToJsonOptions.header = 1; // Consider the first row as a data row
+						}
+
+						rows = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+
+						// Check if data could be found in file
+						if (rows.length === 0) {
+							continue;
+						}
 					}
 
 					// Add all the found data columns to the workflow data
 					if (options.headerRow === false) {
 						// Data was returned as an array - https://github.com/SheetJS/sheetjs#json
-						for (const rowData of sheetJson) {
+						for (const rowData of rows) {
 							newItems.push({
 								json: {
 									row: rowData,
@@ -368,7 +463,7 @@ export class SpreadsheetFile implements INodeType {
 							} as INodeExecutionData);
 						}
 					} else {
-						for (const rowData of sheetJson) {
+						for (const rowData of rows) {
 							newItems.push({
 								json: rowData,
 								pairedItem: {
