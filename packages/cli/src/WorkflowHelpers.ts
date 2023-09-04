@@ -40,7 +40,7 @@ import type { RoleNames } from '@db/entities/Role';
 import { RoleService } from './services/role.service';
 import { ExecutionRepository, RoleRepository } from './databases/repositories';
 import { VariablesService } from './environments/variables/variables.service';
-import type { Credentials } from './requests';
+import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -539,7 +539,7 @@ export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCred
 export function validateWorkflowCredentialUsage(
 	newWorkflowVersion: WorkflowEntity,
 	previousWorkflowVersion: WorkflowEntity,
-	credentialsUserHasAccessTo: Credentials.WithOwnedByAndSharedWith[],
+	credentialsUserHasAccessTo: CredentialsEntity[],
 ) {
 	/**
 	 * We only need to check nodes that use credentials the current user cannot access,
