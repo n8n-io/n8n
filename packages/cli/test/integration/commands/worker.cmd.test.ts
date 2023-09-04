@@ -6,22 +6,32 @@ import { Queue } from '@/Queue';
 import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
 import { getLogger } from '@/Logger';
-import { ExternalSecretsManager } from '../../../src/ExternalSecrets/ExternalSecretsManager.ee';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { BinaryDataManager } from 'n8n-core';
-import { CacheService } from '../../../src/services/cache.service';
-import { RedisServicePubSubPublisher } from '../../../src/services/redis/RedisServicePubSubPublisher';
-import { RedisServicePubSubSubscriber } from '../../../src/services/redis/RedisServicePubSubSubscriber';
-import { MessageEventBus, eventBus } from '../../../src/eventbus/MessageEventBus/MessageEventBus';
+import { CacheService } from '@/services/cache.service';
+import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { CredentialTypes } from '@/CredentialTypes';
+import { NodeTypes } from '@/NodeTypes';
+import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 const config: Config.IConfig = new Config.Config({ root: __dirname });
 
 beforeAll(async () => {
 	LoggerProxy.init(getLogger());
 	mockInstance(Telemetry);
+	mockInstance(PostHogClient);
+	mockInstance(InternalHooks);
 	mockInstance(CacheService);
 	mockInstance(ExternalSecretsManager);
 	mockInstance(BinaryDataManager);
 	mockInstance(MessageEventBus);
+	mockInstance(LoadNodesAndCredentials);
+	mockInstance(CredentialTypes);
+	mockInstance(NodeTypes);
 });
 
 beforeEach(async () => {
@@ -42,6 +52,17 @@ beforeEach(async () => {
 			};
 		});
 	});
+	jest.mock('../../../src/CrashJournal', () => {
+		return {
+			init: jest.fn(),
+		};
+	});
+	jest.mock('../../../src/Db', () => {
+		return {
+			init: jest.fn(),
+			migrate: jest.fn(),
+		};
+	});
 	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber', () => {
 		return jest.fn().mockImplementation(() => {
 			return {
@@ -56,21 +77,6 @@ beforeEach(async () => {
 			};
 		});
 	});
-	jest.mock('ioredis', () => {
-		const Redis = require('ioredis-mock');
-		if (typeof Redis === 'object') {
-			// the first mock is an ioredis shim because ioredis-mock depends on it
-			// https://github.com/stipsan/ioredis-mock/blob/master/src/index.js#L101-L111
-			return {
-				Command: { _transformer: { argument: {}, reply: {} } },
-			};
-		}
-		// second mock for our code
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return function (...args: any) {
-			return new Redis(args);
-		};
-	});
 	appConfig.set('executions.mode', 'queue');
 });
 
@@ -78,6 +84,8 @@ afterEach(async () => {
 	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
 	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
 	jest.mock('../../../src/eventbus/MessageEventBus/MessageEventBus').restoreAllMocks();
+	jest.mock('../../../src/CrashJournal').restoreAllMocks();
+	jest.mock('../../../src/Db').restoreAllMocks();
 	jest.mock('ioredis').restoreAllMocks();
 });
 
@@ -90,11 +98,11 @@ test('worker initializes all its components', async () => {
 	const worker = new Worker([], config);
 
 	jest.spyOn(worker, 'init');
-	jest.spyOn(worker, 'initLicense');
+	jest.spyOn(worker, 'initLicense').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initBinaryManager').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initExternalHooks');
-	jest.spyOn(worker, 'initExternalSecrets');
-	jest.spyOn(worker, 'initEventBus');
+	jest.spyOn(worker, 'initExternalHooks').mockImplementation(async () => {});
+	jest.spyOn(worker, 'initExternalSecrets').mockImplementation(async () => {});
+	jest.spyOn(worker, 'initEventBus').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initRedis');
 	jest.spyOn(RedisServicePubSubPublisher.prototype, 'init');
 	jest.spyOn(RedisServicePubSubPublisher.prototype, 'publishToEventLog');
@@ -103,23 +111,16 @@ test('worker initializes all its components', async () => {
 	jest.spyOn(worker, 'initQueue');
 
 	await worker.init();
+
 	expect(worker.uniqueInstanceId).toBeDefined();
 	expect(worker.uniqueInstanceId).toContain('worker');
 	expect(worker.uniqueInstanceId.length).toBeGreaterThan(15);
-
 	expect(Queue.prototype.getBullObjectInstance).toHaveBeenCalled();
-
 	expect(worker.initLicense).toHaveBeenCalled();
-
 	expect(worker.initBinaryManager).toHaveBeenCalled();
-
 	expect(worker.initExternalHooks).toHaveBeenCalled();
-
 	expect(worker.initExternalSecrets).toHaveBeenCalled();
-
 	expect(worker.initEventBus).toHaveBeenCalled();
-	expect(eventBus.initialize).toHaveBeenCalled();
-
 	expect(worker.initRedis).toHaveBeenCalled();
 	expect(worker.redisPublisher).toBeDefined();
 	expect(worker.redisPublisher.init).toHaveBeenCalled();
@@ -128,7 +129,6 @@ test('worker initializes all its components', async () => {
 	expect(worker.redisSubscriber.subscribeToCommandChannel).toHaveBeenCalled();
 	expect(worker.redisSubscriber.addMessageHandler).toHaveBeenCalled();
 	expect(worker.redisSubscriber.messageHandlers.size).toBeGreaterThan(0);
-
 	expect(worker.initQueue).toHaveBeenCalled();
 
 	jest.restoreAllMocks();

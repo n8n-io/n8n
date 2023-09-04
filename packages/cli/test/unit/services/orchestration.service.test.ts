@@ -35,21 +35,21 @@ const eventBusMessage = new EventMessageWorkflow({
 describe('Orchestration Service', () => {
 	beforeAll(async () => {
 		LoggerProxy.init(getLogger());
-		await os.init('test-orchestration-service');
-		jest.mock('ioredis', () => {
-			const Redis = require('ioredis-mock');
-			if (typeof Redis === 'object') {
-				// the first mock is an ioredis shim because ioredis-mock depends on it
-				// https://github.com/stipsan/ioredis-mock/blob/master/src/index.js#L101-L111
+		jest.mock('../../../src/services/redis/RedisServicePubSubPublisher', () => {
+			return jest.fn().mockImplementation(() => {
 				return {
-					Command: { _transformer: { argument: {}, reply: {} } },
+					init: jest.fn(),
+					publishToEventLog: jest.fn(),
+					publishToWorkerChannel: jest.fn(),
 				};
-			}
-			// second mock for our code
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			return function (...args: any) {
-				return new Redis(args);
-			};
+			});
+		});
+		jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber', () => {
+			return jest.fn().mockImplementation(() => {
+				return {
+					subscribeToCommandChannel: jest.fn(),
+				};
+			});
 		});
 		setDefaultConfig();
 	});
@@ -57,6 +57,13 @@ describe('Orchestration Service', () => {
 	afterAll(async () => {
 		jest.mock('ioredis').restoreAllMocks();
 		jest.restoreAllMocks();
+	});
+
+	test('should initialize', async () => {
+		await os.init('test-orchestration-service');
+		expect(os.redisPublisher).toBeDefined();
+		expect(os.redisSubscriber).toBeDefined();
+		expect(os.uniqueInstanceId).toBeDefined();
 	});
 
 	test('should handle worker responses', async () => {
