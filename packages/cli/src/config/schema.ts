@@ -1124,6 +1124,12 @@ export const schema = {
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
 			},
 		},
+		crashRecoveryMode: {
+			doc: 'Should n8n try to recover execution details after a crash, or just mark pending executions as crashed',
+			format: ['simple', 'extensive'] as const,
+			default: 'extensive',
+			env: 'N8N_EVENTBUS_RECOVERY_MODE',
+		},
 	},
 
 	redis: {
