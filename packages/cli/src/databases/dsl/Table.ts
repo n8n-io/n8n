@@ -7,8 +7,8 @@ abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
 
 	constructor(protected tableName: string, protected prefix: string, queryRunner: QueryRunner) {
-		super((resolve) => {
-			void this.execute(queryRunner).then(resolve);
+		super((resolve, reject) => {
+			void this.execute(queryRunner).then(resolve).catch(reject);
 		});
 	}
 }
