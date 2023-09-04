@@ -109,7 +109,7 @@ export class License {
 			return;
 		}
 
-		//await this.manager.shutdown();
+		await this.manager.shutdown();
 	}
 
 	isFeatureEnabled(feature: BooleanLicenseFeature) {

@@ -134,13 +134,13 @@ export class Start extends BaseCommand {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 
-			// Shut down License manager to unclaim any floating entitlements
-			console.log(`Shutting down License manager`);
-			await Container.get(License).shutdown();
-			console.log(`License manager shut down`);
-
-			// Finally shut down Event Bus
+			// Shut down Event Bus
 			await eventBus.close();
+
+			// Finally shut down License manager to unclaim any floating entitlements.
+			// Note: In case of above shutdown activities taking too long, the next line might not get executed.
+			// This is fine, as all entitlements will still be claimed on the next startup, which is the desired behavior in most cases.
+			await Container.get(License).shutdown();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
 		}
