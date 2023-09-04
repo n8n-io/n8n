@@ -6,11 +6,7 @@ import { Column } from './Column';
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
 
-	constructor(
-		protected tableName: string,
-		protected prefix: string,
-		queryRunner: QueryRunner,
-	) {
+	constructor(protected tableName: string, protected prefix: string, queryRunner: QueryRunner) {
 		super((resolve) => {
 			void this.execute(queryRunner).then(resolve);
 		});
@@ -114,5 +110,47 @@ export class DropColumns extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { tableName, prefix, columnNames } = this;
 		return queryRunner.dropColumns(`${prefix}${tableName}`, columnNames);
+	}
+}
+
+export class AddNotNull extends TableOperation {
+	constructor(
+		tableName: string,
+		protected columnName: string,
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix, columnName } = this;
+		const table = await queryRunner.getTable(`${prefix}${tableName}`);
+		if (!table) throw new Error(`No table found with the name ${tableName}`);
+		const oldColumn = table.findColumnByName(columnName)!;
+		const newColumn = oldColumn.clone();
+		newColumn.isNullable = false;
+		return queryRunner.changeColumn(table, oldColumn, newColumn);
+	}
+}
+
+export class DropNotNull extends TableOperation {
+	constructor(
+		tableName: string,
+		protected columnName: string,
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, prefix, columnName } = this;
+		const table = await queryRunner.getTable(`${prefix}${tableName}`);
+		if (!table) throw new Error(`No table found with the name ${tableName}`);
+		const oldColumn = table.findColumnByName(columnName)!;
+		const newColumn = oldColumn.clone();
+		newColumn.isNullable = true;
+		return queryRunner.changeColumn(table, oldColumn, newColumn);
 	}
 }
