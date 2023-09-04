@@ -126,18 +126,15 @@ export class MessageEventBus extends EventEmitter {
 					LoggerProxy.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
 				}
 			}
-			if (this.logWriter?.isRecoveryProcessRunning()) {
+
+			const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
+			if (recoveryAlreadyAttempted || config.getEnv('eventBus.crashRecoveryMode') === 'simple') {
+				await Container.get(ExecutionRepository).markAsCrashed(unfinishedExecutionIds);
 				// if we end up here, it means that the previous recovery process did not finish
 				// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
 				// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
-				LoggerProxy.warn('Skipping recover process since it previously failed.');
-				for (const executionId of unfinishedExecutionIds) {
-					LoggerProxy.info(`Setting status of execution ${executionId} to crashed`);
-					await Container.get(ExecutionRepository).updateExistingExecution(executionId, {
-						status: 'crashed',
-						stoppedAt: new Date(),
-					});
-				}
+				if (recoveryAlreadyAttempted)
+					LoggerProxy.warn('Skipped recovery process since it previously failed.');
 			} else {
 				// start actual recovery process and write recovery process flag file
 				this.logWriter?.startRecoveryProcess();
