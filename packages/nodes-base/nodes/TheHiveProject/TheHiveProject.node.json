@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.theHive",
+	"node": "n8n-nodes-base.theHiveProject",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development"],
