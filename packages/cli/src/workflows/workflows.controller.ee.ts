@@ -12,7 +12,7 @@ import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
-import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
+import { CredentialsService } from '../credentials/credentials.service';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 import { In } from 'typeorm';
@@ -151,7 +151,7 @@ EEWorkflowController.post(
 		// This is a new workflow, so we simply check if the user has access to
 		// all used workflows
 
-		const allCredentials = await EECredentials.getAll(req.user);
+		const allCredentials = await CredentialsService.getMany(req.user);
 
 		try {
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
