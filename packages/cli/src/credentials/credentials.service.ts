@@ -24,6 +24,7 @@ import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 import { RoleService } from '@/services/role.service';
+import { OwnershipService } from '@/services/ownership.service';
 
 export class CredentialsService {
 	static async get(
@@ -36,48 +37,58 @@ export class CredentialsService {
 		});
 	}
 
-	static async getAll(
-		user: User,
-		options?: { relations?: string[]; roles?: string[]; disableGlobalRole?: boolean },
-	): Promise<ICredentialsDb[]> {
-		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
-			'id',
-			'name',
-			'type',
-			'nodesAccess',
-			'createdAt',
-			'updatedAt',
-		];
+	static async getMany(user: User, options?: { disableGlobalRole: boolean }) {
+		type Select = Array<keyof ICredentialsDb>;
 
-		// if instance owner, return all credentials
+		const select: Select = ['id', 'name', 'type', 'nodesAccess', 'createdAt', 'updatedAt'];
 
-		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
-			return Db.collections.Credentials.find({
-				select: SELECT_FIELDS,
-				relations: options?.relations,
-			});
+		const relations = ['shared', 'shared.role', 'shared.user'];
+
+		const returnAll = user.globalRole.name === 'owner' && options?.disableGlobalRole !== true;
+
+		const addOwnedByAndSharedWith = (c: CredentialsEntity) =>
+			Container.get(OwnershipService).addOwnedByAndSharedWith(c);
+
+		if (returnAll) {
+			const credentials = await Db.collections.Credentials.find({ select, relations });
+
+			return credentials.map(addOwnedByAndSharedWith);
 		}
 
-		// if member, return credentials owned by or shared with member
-		const userSharings = await Db.collections.SharedCredentials.find({
-			where: {
-				userId: user.id,
-				...(options?.roles?.length ? { role: { name: In(options.roles) } } : {}),
-			},
-			relations: options?.roles?.length ? ['role'] : [],
+		const ids = await CredentialsService.getAccessibleCredentials(user.id);
+
+		const credentials = await Db.collections.Credentials.find({
+			select,
+			relations,
+			where: { id: In(ids) },
 		});
 
-		return Db.collections.Credentials.find({
-			select: SELECT_FIELDS,
-			relations: options?.relations,
-			where: {
-				id: In(userSharings.map((x) => x.credentialsId)),
-			},
-		});
+		return credentials.map(addOwnedByAndSharedWith);
 	}
 
-	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
-		return Db.collections.Credentials.find(filter);
+	/**
+	 * Get the IDs of all credentials owned by or shared with a user.
+	 */
+	private static async getAccessibleCredentials(userId: string) {
+		const sharings = await Db.collections.SharedCredentials.find({
+			relations: ['role'],
+			where: {
+				userId,
+				role: { name: In(['owner', 'user']), scope: 'credential' },
+			},
+		});
+
+		return sharings.map((s) => s.credentialsId);
+	}
+
+	static async getManyByIds(ids: string[], { withSharings } = { withSharings: false }) {
+		const options: FindManyOptions<CredentialsEntity> = { where: { id: In(ids) } };
+
+		if (withSharings) {
+			options.relations = ['shared', 'shared.user', 'shared.role'];
+		}
+
+		return Db.collections.Credentials.find(options);
 	}
 
 	/**

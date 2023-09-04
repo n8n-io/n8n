@@ -5,7 +5,7 @@ import * as Db from '@/Db';
 import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { Credentials } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
@@ -59,9 +59,9 @@ describe('GET /credentials', () => {
 		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: CredentialsEntity) => {
+		response.body.data.forEach((credential: Credentials.WithOwnedByAndSharedWith) => {
 			validateMainCredentialData(credential);
-			expect(credential.data).toBeUndefined();
+			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
 		});
 	});
@@ -532,14 +532,25 @@ describe('GET /credentials/:id', () => {
 	});
 });
 
-function validateMainCredentialData(credential: CredentialsEntity) {
-	expect(typeof credential.name).toBe('string');
-	expect(typeof credential.type).toBe('string');
-	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
-	// @ts-ignore
-	expect(credential.ownedBy).toBeUndefined();
-	// @ts-ignore
-	expect(credential.sharedWith).toBeUndefined();
+function validateMainCredentialData(credential: Credentials.WithOwnedByAndSharedWith) {
+	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+
+	expect(typeof name).toBe('string');
+	expect(typeof type).toBe('string');
+	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
+
+	if (sharedWith) {
+		expect(Array.isArray(sharedWith)).toBe(true);
+	}
+
+	if (ownedBy) {
+		const { id, email, firstName, lastName } = ownedBy;
+
+		expect(typeof id).toBe('string');
+		expect(typeof email).toBe('string');
+		expect(typeof firstName).toBe('string');
+		expect(typeof lastName).toBe('string');
+	}
 }
 
 const INVALID_PAYLOADS = [
