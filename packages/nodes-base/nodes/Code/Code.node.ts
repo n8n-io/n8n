@@ -142,7 +142,7 @@ export class Code implements INodeType {
 				standardizeOutput(item.json);
 			}
 
-			return this.prepareOutputData(items);
+			return [items];
 		}
 
 		// ----------------------------------
@@ -172,6 +172,6 @@ export class Code implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
