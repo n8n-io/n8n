@@ -47,7 +47,7 @@ export async function getMappingColumns(
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
 
-	const { db } = await configurePostgres(credentials);
+	const { db, sshClient } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -88,5 +88,10 @@ export async function getMappingColumns(
 		return { fields };
 	} catch (error) {
 		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		await db.$pool.end();
 	}
 }
