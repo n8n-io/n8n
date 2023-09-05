@@ -3100,8 +3100,18 @@ export default defineComponent({
 				targetInputIndex,
 			);
 
+			const sourceNodeType = this.nodeTypesStore.getNodeType(
+				sourceNode.type,
+				sourceNode.typeVersion,
+			);
+			const sourceNodeOutput = sourceNodeType?.outputs[sourceOutputIndex];
+			const sourceNodeOutputName =
+				typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
+			const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
+
 			// @ts-ignore
 			const connections = this.instance?.getConnections({
+				scope,
 				source: sourceId,
 				target: targetId,
 			}) as Connection[];
@@ -3215,6 +3225,8 @@ export default defineComponent({
 									parseInt(targetInputIndex, 10),
 									connectionType as ConnectionTypes,
 								);
+
+								console.log(sourceNodeName, targetNodeName, connection);
 
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];

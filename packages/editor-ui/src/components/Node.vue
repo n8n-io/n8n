@@ -1007,6 +1007,7 @@ export default defineComponent({
 	path:not(.jtk-connector-outline) {
 		stroke: var(--color-success-light);
 	}
+	path[jtk-overlay-id='reverse-arrow'],
 	path[jtk-overlay-id='endpoint-arrow'],
 	path[jtk-overlay-id='midpoint-arrow'] {
 		fill: var(--color-success-light);
