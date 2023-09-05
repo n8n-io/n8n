@@ -51,6 +51,9 @@ export class ChainStructuredOutput implements INodeType {
 				displayName: 'Language Model',
 				maxConnections: 1,
 				type: 'languageModel',
+				filter: {
+					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
+				},
 				required: true,
 			},
 		],
