@@ -7,7 +7,7 @@ export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SerpAPI',
 		name: 'toolSerpApi',
-		icon: 'file:google.svg',
+		icon: 'file:serpApi.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Search in Google using SerpAPI',

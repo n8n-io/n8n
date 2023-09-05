@@ -26,7 +26,7 @@ import {
 	AI_SUBCATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables';
-import { SimplifiedNodeType } from '@/Interface';
+import type { SimplifiedNodeType } from '@/Interface';
 
 interface NodeViewItem {
 	key: string;
@@ -79,14 +79,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
 					icon: 'file-import',
-				},
-			},
-			{
-				key: AI_CATEGORY_DOCUMENT_LOADERS,
-				type: 'subcategory',
-				properties: {
-					title: AI_CATEGORY_DOCUMENT_LOADERS,
-					icon: 'stream',
 				},
 			},
 			{
@@ -223,15 +215,16 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 	};
 
 	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if(hasAINodes) view.items.push({
-		key: AI_NODE_CREATOR_VIEW,
-		type: 'view',
-		properties: {
-			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-			icon: 'robot',
-			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-		},
-	});
+	if (hasAINodes)
+		view.items.push({
+			key: AI_NODE_CREATOR_VIEW,
+			type: 'view',
+			properties: {
+				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+				icon: 'robot',
+				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+			},
+		});
 
 	return view;
 }
@@ -295,20 +288,21 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 					icon: 'bolt',
 					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
 				},
-			}
+			},
 		],
 	};
 
 	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if (hasAINodes) view.items.push({
-		key: AI_NODE_CREATOR_VIEW,
-		type: 'view',
-		properties: {
-			title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-			icon: 'robot',
-			description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-		},
-	});
+	if (hasAINodes)
+		view.items.push({
+			key: AI_NODE_CREATOR_VIEW,
+			type: 'view',
+			properties: {
+				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+				icon: 'robot',
+				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+			},
+		});
 
 	return view;
 }
