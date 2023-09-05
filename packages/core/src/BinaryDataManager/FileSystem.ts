@@ -21,7 +21,6 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	async init() {
 		await this.assertFolder(this.storagePath);
-		await this.assertFolder(this.getBinaryDataMetaPath());
 	}
 
 	async getFileSize(identifier: string): Promise<number> {
@@ -105,10 +104,6 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	private generateFileName(prefix: string): string {
 		return [prefix, uuid()].join('');
-	}
-
-	private getBinaryDataMetaPath() {
-		return path.join(this.storagePath, 'meta');
 	}
 
 	private async deleteFromLocalStorage(identifier: string) {
