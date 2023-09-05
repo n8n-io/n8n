@@ -1,6 +1,11 @@
 import { Container } from 'typedi';
-import type { INode, IPinData } from 'n8n-workflow';
-import { NodeApiError, LoggerProxy, Workflow } from 'n8n-workflow';
+import type { IDataObject, INode, IPinData } from 'n8n-workflow';
+import {
+	NodeApiError,
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy,
+	Workflow,
+} from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
@@ -27,7 +32,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { isStringArray } from '@/utils';
+import { isStringArray, isWorkflowIdValid } from '@/utils';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -475,5 +480,41 @@ export class WorkflowsService {
 			})
 			.where('id = :id', { id })
 			.execute();
+	}
+
+	/**
+	 * Saves the static data if it changed
+	 */
+	static async saveStaticData(workflow: Workflow): Promise<void> {
+		if (workflow.staticData.__dataChanged === true) {
+			// Static data of workflow changed and so has to be saved
+			if (isWorkflowIdValid(workflow.id)) {
+				// Workflow is saved so update in database
+				try {
+					// eslint-disable-next-line @typescript-eslint/no-use-before-define
+					await WorkflowsService.saveStaticDataById(workflow.id!, workflow.staticData);
+					workflow.staticData.__dataChanged = false;
+				} catch (error) {
+					ErrorReporter.error(error);
+					LoggerProxy.error(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+						`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
+						{ workflowId: workflow.id },
+					);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Saves the given static data on workflow
+	 *
+	 * @param {(string)} workflowId The id of the workflow to save data on
+	 * @param {IDataObject} newStaticData The static data to save
+	 */
+	static async saveStaticDataById(workflowId: string, newStaticData: IDataObject): Promise<void> {
+		await Db.collections.Workflow.update(workflowId, {
+			staticData: newStaticData,
+		});
 	}
 }
