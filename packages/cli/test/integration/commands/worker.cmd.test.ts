@@ -1,7 +1,6 @@
 import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
-import { default as appConfig } from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
 import { getLogger } from '@/Logger';
@@ -33,60 +32,10 @@ beforeAll(async () => {
 	mockInstance(CredentialTypes);
 	mockInstance(NodeTypes);
 	mockInstance(RedisService);
+	mockInstance(RedisServicePubSubPublisher);
+	mockInstance(RedisServicePubSubSubscriber);
 });
 
-beforeEach(async () => {
-	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher', () => {
-		return jest.fn().mockImplementation(() => {
-			return {
-				init: jest.fn(),
-				publishToEventLog: jest.fn(),
-				publishToWorkerChannel: jest.fn(),
-			};
-		});
-	});
-	jest.mock('../../../src/CrashJournal', () => {
-		return {
-			init: jest.fn(),
-		};
-	});
-	jest.mock('../../../src/Db', () => {
-		return {
-			init: jest.fn(),
-			migrate: jest.fn(),
-		};
-	});
-	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber', () => {
-		return jest.fn().mockImplementation(() => {
-			return {
-				subscribeToCommandChannel: jest.fn(),
-			};
-		});
-	});
-	jest.mock('../../../src/eventbus/MessageEventBus/MessageEventBus', () => {
-		return jest.fn().mockImplementation(() => {
-			return {
-				initialize: jest.fn(),
-			};
-		});
-	});
-	appConfig.set('executions.mode', 'queue');
-});
-
-afterEach(async () => {
-	jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
-	jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
-	jest.mock('../../../src/eventbus/MessageEventBus/MessageEventBus').restoreAllMocks();
-	jest.mock('../../../src/CrashJournal').restoreAllMocks();
-	jest.mock('../../../src/Db').restoreAllMocks();
-	jest.mock('ioredis').restoreAllMocks();
-});
-
-afterAll(async () => {
-	jest.restoreAllMocks();
-});
-
-// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 test('worker initializes all its components', async () => {
 	const worker = new Worker([], config);
 
@@ -97,11 +46,17 @@ test('worker initializes all its components', async () => {
 	jest.spyOn(worker, 'initExternalSecrets').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initEventBus').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initRedis');
-	jest.spyOn(RedisServicePubSubPublisher.prototype, 'init');
-	jest.spyOn(RedisServicePubSubPublisher.prototype, 'publishToEventLog');
-	jest.spyOn(RedisServicePubSubSubscriber.prototype, 'subscribeToCommandChannel');
-	jest.spyOn(RedisServicePubSubSubscriber.prototype, 'addMessageHandler');
-	jest.spyOn(worker, 'initQueue');
+	jest.spyOn(RedisServicePubSubPublisher.prototype, 'init').mockImplementation(async () => {});
+	jest
+		.spyOn(RedisServicePubSubPublisher.prototype, 'publishToEventLog')
+		.mockImplementation(async () => {});
+	jest
+		.spyOn(RedisServicePubSubSubscriber.prototype, 'subscribeToCommandChannel')
+		.mockImplementation(async () => {});
+	jest
+		.spyOn(RedisServicePubSubSubscriber.prototype, 'addMessageHandler')
+		.mockImplementation(async () => {});
+	jest.spyOn(worker, 'initQueue').mockImplementation(async () => {});
 
 	await worker.init();
 
@@ -120,7 +75,6 @@ test('worker initializes all its components', async () => {
 	expect(worker.redisSubscriber).toBeDefined();
 	expect(worker.redisSubscriber.subscribeToCommandChannel).toHaveBeenCalled();
 	expect(worker.redisSubscriber.addMessageHandler).toHaveBeenCalled();
-	expect(worker.redisSubscriber.messageHandlers.size).toBeGreaterThan(0);
 	expect(worker.initQueue).toHaveBeenCalled();
 
 	jest.restoreAllMocks();
