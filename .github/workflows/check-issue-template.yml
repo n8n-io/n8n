@@ -10,6 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run Check Issue Template
-        uses: n8n-io/GH-actions-playground@v1
+        uses: n8n-io/validate-issue-template-content@v1
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
