@@ -14,6 +14,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { STORES, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 
+import { nextTick } from 'vue';
+
 let rootStore: ReturnType<typeof useRootStore>;
 let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -72,12 +74,13 @@ describe('WorkflowSettingsVue', () => {
 		server.shutdown();
 	});
 
-	it.only('should render correctly', () => {
+	it.only('should render correctly', async () => {
 		const wrapper = renderComponent({
 			props: {
 				data: workflowDataUpdate,
 			},
 		});
+		await nextTick();
 		expect(wrapper.getByTestId('workflow-settings-dialog')).toBeVisible();
 	});
 
