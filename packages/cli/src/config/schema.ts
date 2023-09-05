@@ -56,7 +56,7 @@ export const schema = {
 			maxQueryExecutionTime: {
 				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
 				format: Number,
-				default: 1000,
+				default: 0, // 0 disables the slow-query log
 				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
 			},
 		},
@@ -1111,6 +1111,12 @@ export const schema = {
 				default: 'n8nEventLog',
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
 			},
+		},
+		crashRecoveryMode: {
+			doc: 'Should n8n try to recover execution details after a crash, or just mark pending executions as crashed',
+			format: ['simple', 'extensive'] as const,
+			default: 'extensive',
+			env: 'N8N_EVENTBUS_RECOVERY_MODE',
 		},
 	},
 
