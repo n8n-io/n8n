@@ -126,7 +126,8 @@ export const parseJsonParameter = (
 			try {
 				recoveredData = jsonData
 					.replace(/'/g, '"') // Replace single quotes with double quotes
-					.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":'); // Wrap keys in double quotes
+					.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Wrap keys in double quotes
+					.replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
 				returnData = jsonParse<IDataObject>(recoveredData);
 			} catch (err) {
 				const description =
@@ -174,8 +175,11 @@ export const validateEntry = (
 		if (ignoreErrors) {
 			validationResult.newValue = entry[entry.type];
 		} else {
-			throw new NodeOperationError(node, validationResult.errorMessage as string, {
+			const message = `${validationResult.errorMessage} [item ${itemIndex}]`;
+			const description = `To fix the error try to change the type for the field "${name}" or activate the option “Ignore Type Conversion Errors” to apply a less strict type validation`;
+			throw new NodeOperationError(node, message, {
 				itemIndex,
+				description,
 			});
 		}
 	}

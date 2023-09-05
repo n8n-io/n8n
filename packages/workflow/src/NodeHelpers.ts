@@ -1104,7 +1104,7 @@ export const validateFieldType = (
 	options?: INodePropertyOptions[],
 ): ValidationResult => {
 	if (value === null || value === undefined) return { valid: true };
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'.`;
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
 	switch (type.toLowerCase()) {
 		case 'number': {
 			try {
@@ -1192,12 +1192,16 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		return value.toLowerCase() === 'true';
 	}
 
-	const num = Number(value);
-	if (num === 0) {
-		return false;
-	} else if (num === 1) {
-		return true;
+	// If value is not a empty string, try to parse it to a number
+	if (!(typeof value === 'string' && value.trim() === '')) {
+		const num = Number(value);
+		if (num === 0) {
+			return false;
+		} else if (num === 1) {
+			return true;
+		}
 	}
+
 	throw new Error(`Could not parse '${String(value)}' to boolean.`);
 };
 
@@ -1240,10 +1244,14 @@ export const tryToParseArray = (value: unknown): unknown[] => {
 		if (typeof value === 'object' && Array.isArray(value)) {
 			return value;
 		}
-		if (typeof value === 'string' && !value.includes('[') && !value.includes(']')) {
-			value = `[${value}]`;
+
+		let parsed;
+		try {
+			parsed = JSON.parse(String(value));
+		} catch (e) {
+			parsed = JSON.parse(String(value).replace(/'/g, '"'));
 		}
-		const parsed = JSON.parse(String(value));
+
 		if (!Array.isArray(parsed)) {
 			throw new Error(`The value "${String(value)}" is not a valid array.`);
 		}
