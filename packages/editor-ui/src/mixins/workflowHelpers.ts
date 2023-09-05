@@ -65,6 +65,47 @@ import { useUsersStore } from '@/stores/users.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
 
+export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
+	const nodeType = useNodeTypesStore().getNodeType(node.type);
+	if (nodeType) {
+		if (
+			nodeType.inputs.length === 0 ||
+			!!nodeType.inputs.find((input) => {
+				if (typeof input === 'string') {
+					return input !== 'main';
+				}
+				return input.type !== 'main';
+			})
+		) {
+			// Get the first node which is connected to a non-main output
+			const nonMainNodesConnected = nodeType.outputs?.reduce((acc, outputName) => {
+				const parentNodes = workflow.getChildNodes(node.name, outputName);
+				if (parentNodes.length > 0) {
+					acc.push(...parentNodes);
+				}
+				return acc;
+			}, [] as string[]);
+
+			if (nonMainNodesConnected.length) {
+				const returnNode = workflow.getNode(nonMainNodesConnected[0]);
+				if (returnNode === null) {
+					// This should theoretically never happen as the node is connected
+					// but who knows and it makes TS happy
+					throw new Error(
+						`The node "${nonMainNodesConnected[0]}" which is a connection of "${node.name}" could not be found!`,
+					);
+				}
+
+				// The chain of non-main nodes is potentially not finished yet so
+				// keep on going
+				return getParentMainInputNode(workflow, returnNode);
+			}
+		}
+	}
+
+	return node;
+}
+
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: {
@@ -78,9 +119,15 @@ export function resolveParameter(
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const inputName = 'main';
-	const activeNode = useNDVStore().activeNode;
+	let activeNode = useNDVStore().activeNode;
 
 	const workflow = getCurrentWorkflow();
+
+	// Should actually just do that for incoming data and not things like parameters
+	if (activeNode) {
+		activeNode = getParentMainInputNode(workflow, activeNode);
+	}
+
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
