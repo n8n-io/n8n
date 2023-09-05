@@ -374,13 +374,11 @@ import {
 
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import {
-	useWorkflowsStore,
-	useSettingsStore,
-	useRootStore,
-	useWorkflowsEEStore,
-	useUsersStore,
-} from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
