@@ -63,5 +63,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		await pool.end();
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }
