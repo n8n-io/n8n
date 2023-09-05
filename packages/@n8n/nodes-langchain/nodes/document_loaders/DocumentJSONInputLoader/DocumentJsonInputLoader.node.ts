@@ -24,7 +24,13 @@ export class DocumentJsonInputLoader implements INodeType {
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: ['textSplitter'],
+		inputs: [
+			{
+				displayName: 'Text Splitter',
+				maxConnections: 1,
+				type: 'textSplitter',
+			},
+		],
 		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['document'],
