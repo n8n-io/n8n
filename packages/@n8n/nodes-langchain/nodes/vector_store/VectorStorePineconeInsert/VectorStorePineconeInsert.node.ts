@@ -65,11 +65,11 @@ export class VectorStorePineconeInsert implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Clear Index',
-				name: 'clearIndex',
+				displayName: 'Clear Namespace',
+				name: 'clearNamespace',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to clear the index before inserting new data',
+				description: 'Whether to clear the namespace before inserting new data',
 			},
 		],
 	};
@@ -80,7 +80,7 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const namespace = this.getNodeParameter('pineconeNamespace', 0) as string;
 		const index = this.getNodeParameter('pineconeIndex', 0) as string;
-		const clearIndex = this.getNodeParameter('clearIndex', 0) as boolean;
+		const clearNamespace = this.getNodeParameter('clearNamespace', 0) as boolean;
 
 		const credentials = await this.getCredentials('pineconeApi');
 
@@ -98,7 +98,7 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const pineconeIndex = client.Index(index);
 
-		if (namespace && clearIndex) {
+		if (namespace && clearNamespace) {
 			await pineconeIndex.delete1({ deleteAll: true, namespace });
 		}
 
