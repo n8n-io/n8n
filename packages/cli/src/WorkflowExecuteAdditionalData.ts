@@ -39,7 +39,6 @@ import {
 import pick from 'lodash/pick';
 import { Container } from 'typedi';
 import config from '@/config';
-import * as Db from '@/Db';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -471,7 +470,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
-						await Container.get(ExecutionRepository).softDeleteExecution(this.executionId);
+						await Container.get(ExecutionRepository).softDelete(this.executionId);
 
 						return;
 					}
@@ -509,7 +508,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.executionId,
 								this.retryOf,
 							);
-							await Container.get(ExecutionRepository).softDeleteExecution(this.executionId);
+							await Container.get(ExecutionRepository).softDelete(this.executionId);
 
 							return;
 						}

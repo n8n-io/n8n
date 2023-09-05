@@ -1,11 +1,6 @@
 import type express from 'express';
 
-import {
-	getExecutions,
-	getExecutionInWorkflows,
-	deleteExecution,
-	getExecutionsCount,
-} from './executions.service';
+import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
@@ -13,6 +8,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ExecutionRepository } from '@/databases/repositories';
 
 export = {
 	deleteExecution: [
@@ -31,11 +27,11 @@ export = {
 			// look for the execution on the workflow the user owns
 			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, false);
 
-			if (!execution) {
+			if (!execution?.id) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await deleteExecution(execution);
+			await Container.get(ExecutionRepository).softDelete(execution.id);
 
 			execution.id = id;
 

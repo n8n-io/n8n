@@ -367,14 +367,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async softDeleteExecution(executionId: string) {
-		await this.update({ id: executionId }, { deletedAt: Date.now() });
-	}
-
-	async softDeleteExecutions(executionIds: string[]) {
-		await this.update({ id: In(executionIds) }, { deletedAt: Date.now() });
-	}
-
 	async deleteExecutionsByFilter(
 		filters: IGetExecutionsQueryFilter | undefined,
 		accessibleWorkflowIds: string[],
@@ -418,12 +410,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
 			const batch = executionIds.splice(0, PRUNING_BATCH_SIZE);
-			await this.softDeleteExecutions(batch);
+			await this.softDelete(batch);
 		} while (executionIds.length > 0);
 	}
 
 	private async pruneBySoftDeleting() {
-		Logger.verbose('Pruning execution data from database');
+		Logger.verbose('Pruning (soft-deleting) execution data from database');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
@@ -457,10 +449,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				take: PRUNING_BATCH_SIZE,
 			})
 		).map(({ id }) => id);
-		await this.softDeleteExecutions(executionIds);
+		await this.softDelete(executionIds);
 
 		if (executionIds.length === PRUNING_BATCH_SIZE) {
-			setTimeout(async () => this.pruneBySoftDeleting(), 1000);
+			setTimeout(async () => this.pruneBySoftDeleting(), TIME.SECOND);
 		}
 	}
 
