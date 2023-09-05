@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { DataSource, In, IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
@@ -118,6 +118,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			(queryParams.relations as string[]).push('executionData');
 		}
 
+		if (queryParams.where && !Array.isArray(queryParams.where)) {
+			queryParams.where.deletedAt = IsNull();
+		}
+
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
@@ -182,6 +186,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			where: {
 				id,
 				...options?.where,
+				deletedAt: IsNull(),
 			},
 		};
 		if (options?.includeData) {
@@ -340,7 +345,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.limit(limit)
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			.orderBy({ 'execution.id': 'DESC' })
-			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
+			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds })
+			.andWhere('execution.deletedAt IS NULL');
 
 		if (excludedExecutionIds.length > 0) {
 			query.andWhere('execution.id NOT IN (:...excludedExecutionIds)', { excludedExecutionIds });
