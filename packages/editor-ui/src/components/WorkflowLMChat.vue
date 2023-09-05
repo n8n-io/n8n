@@ -202,7 +202,7 @@ export default defineComponent({
 
 			this.currentMessage = '';
 
-			this.startWorkflowWithMessage(message);
+			await this.startWorkflowWithMessage(message);
 
 			// Scroll to bottom
 			const containerRef = this.$refs.messagesContainer as HTMLElement | undefined;
@@ -344,7 +344,7 @@ export default defineComponent({
 
 			return triggerNode[0];
 		},
-		async startWorkflowWithMessage(message: string) {
+		async startWorkflowWithMessage(message: string): Promise<void> {
 			const triggerNode = this.getTriggerNode();
 
 			if (!triggerNode) {
@@ -397,13 +397,18 @@ export default defineComponent({
 
 					const lastNodeExecuted =
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
-					let responseMessage = get(
+					const responseData = get(
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						`[${lastNodeExecuted}][0].data.main[0][0].json.output`,
-					) as string | undefined;
+						`[${lastNodeExecuted}][0].data.main[0][0].json`,
+					) as object & { output?: string };
 
-					if (!responseMessage) {
+					let responseMessage: string;
+					if (responseData.output !== undefined) {
+						responseMessage = responseData.output;
+					} else if (Object.keys(responseData).length === 0) {
 						responseMessage = '<NO RESPONSE FOUND>';
+					} else {
+						responseMessage = JSON.stringify(responseData, null, 2);
 					}
 
 					this.messages.push({
@@ -468,6 +473,7 @@ export default defineComponent({
 
 			.content {
 				border-radius: 10px;
+				line-height: 1.5;
 				margin: 0.5em 1em;
 				max-width: 75%;
 				padding: 1em;
