@@ -77,7 +77,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 
 		if (config.getEnv('executions.pruneData')) {
-			setInterval(async () => this.pruneOlderExecutions(), TIME.HOUR);
+			setInterval(async () => this.pruneBySoftDeleting(), TIME.HOUR);
 		}
 
 		setInterval(async () => this.deleteSoftDeletedExecutions(), 15 * TIME.MINUTE);
@@ -422,7 +422,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} while (executionIds.length > 0);
 	}
 
-	private async pruneOlderExecutions() {
+	private async pruneBySoftDeleting() {
 		Logger.verbose('Pruning execution data from database');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
@@ -460,7 +460,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.softDeleteExecutions(executionIds);
 
 		if (executionIds.length === PRUNING_BATCH_SIZE) {
-			setTimeout(async () => this.pruneOlderExecutions(), 1000);
+			setTimeout(async () => this.pruneBySoftDeleting(), 1000);
 		}
 	}
 
