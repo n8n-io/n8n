@@ -340,6 +340,10 @@ export class WorkflowRunner {
 					data.executionData,
 				);
 				workflowExecution = workflowExecute.processRunExecutionData(workflow);
+				console.log(
+					'processRunExecutionData in WorkflowRunner:',
+					(await workflowExecution).data.resultData,
+				);
 			} else if (
 				data.runData === undefined ||
 				data.startNodes === undefined ||
