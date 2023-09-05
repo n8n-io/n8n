@@ -10,9 +10,10 @@ import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsDb } from '@/Interfaces';
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { listQueryMiddleware } from '@/middlewares';
 
 export const credentialsController = express.Router();
 
@@ -35,8 +36,9 @@ credentialsController.use('/', EECredentialsController);
  */
 credentialsController.get(
 	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll) => {
-		return CredentialsService.getMany(req.user);
+	listQueryMiddleware,
+	ResponseHelper.send(async (req: ListQuery.Request) => {
+		return CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
 	}),
 );
 
