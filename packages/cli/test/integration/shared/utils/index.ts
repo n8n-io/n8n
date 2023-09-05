@@ -11,7 +11,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	ITriggerFunctions,
-	ITriggerResponse,
 	TriggerTime,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
