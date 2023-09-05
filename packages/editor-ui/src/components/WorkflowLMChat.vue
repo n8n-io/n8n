@@ -270,14 +270,34 @@ export default defineComponent({
 
 			if (!memoryConnection) return [];
 
-			const memoryOutputData = this.workflowsStore
-				?.getWorkflowResultDataByNodeName(memoryConnection.node)
-				?.map(
-					(data): { action: string; chatHistory: unknown[] } => get(data, 'data.memory.0.0.json')!,
-				)
-				?.find((data) => (data?.action === 'chatHistory' ? data : undefined));
+			const nodeResultData = this.workflowsStore?.getWorkflowResultDataByNodeName(
+				memoryConnection.node,
+			);
 
-			const chatHistory = (memoryOutputData?.chatHistory ?? []) as LangchainMessage[];
+			let memoryOutputData = nodeResultData
+				?.map(
+					(
+						data,
+					): {
+						action: string;
+						chatHistory?: unknown[];
+						response?: {
+							chat_history?: unknown[];
+						};
+					} => get(data, 'data.memory.0.0.json')!,
+				)
+				?.find((data) =>
+					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
+				);
+
+			let chatHistory: LangchainMessage[];
+			if (memoryOutputData?.chatHistory) {
+				chatHistory = memoryOutputData?.chatHistory as LangchainMessage[];
+			} else if (memoryOutputData?.response) {
+				chatHistory = memoryOutputData?.response.chat_history as LangchainMessage[];
+			} else {
+				return [];
+			}
 
 			return chatHistory.map((message) => {
 				return {
