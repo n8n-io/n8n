@@ -530,7 +530,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await WorkflowHelpers.saveStaticDataById(
+							await WorkflowsService.saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -722,7 +722,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await WorkflowHelpers.saveStaticDataById(
+							await WorkflowsService.saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
