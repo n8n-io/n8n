@@ -64,6 +64,7 @@ import {
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
+import { executionsController } from '@/executions/executions.controller';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -93,7 +94,14 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
+	const ROUTER_GROUP = [
+		'credentials',
+		'workflows',
+		'publicApi',
+		'license',
+		'variables',
+		'executions',
+	];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -176,6 +184,7 @@ export const setupTestServer = ({
 				workflows: { controller: workflowsController, path: 'workflows' },
 				license: { controller: licenseController, path: 'license' },
 				variables: { controller: variablesController, path: 'variables' },
+				executions: { controller: executionsController, path: 'executions' },
 			};
 
 			if (enablePublicAPI) {

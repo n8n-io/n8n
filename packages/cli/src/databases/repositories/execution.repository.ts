@@ -83,6 +83,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
 	}
 
+	setDeletionBatchSize(size: number) {
+		this.deletionBatchSize = size;
+	}
+
+	getDeletionBatchSize() {
+		return this.deletionBatchSize;
+	}
+
 	async findMultipleExecutions(
 		queryParams: FindManyOptions<ExecutionEntity>,
 		options?: {
@@ -420,19 +428,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} while (executionIds.length > 0);
 	}
 
-	private async pruneBySoftDeleting() {
-		Logger.verbose('Pruning (soft-deleting) execution data from database');
+	/**
+	 * Return the timestamp up to which executions should be pruned.
+	 */
+	pruningLimit() {
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // hours
 
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
-		const maxCount = config.getEnv('executions.pruneDataMaxCount');
-
-		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
 		const date = new Date();
 		date.setHours(date.getHours() - maxAge);
 
+		return date;
+	}
+
+	async pruneBySoftDeleting() {
+		Logger.verbose('Pruning (soft-deleting) execution data from database');
+
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+
 		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
+			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(this.pruningLimit())) },
 		];
 
 		if (maxCount > 0) {

@@ -168,6 +168,8 @@ describe('DELETE /executions/:id', () => {
 		expect(stoppedAt).not.toBeNull();
 		expect(workflowId).toBe(execution.workflowId);
 		expect(waitTill).toBeNull();
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
 	});
 });
 
