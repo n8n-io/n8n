@@ -449,6 +449,7 @@ export const workflowHelpers = defineComponent({
 		resolveRequiredParameters,
 		getCurrentWorkflow,
 		getNodes,
+		getParentMainInputNode,
 		getWorkflow,
 		getNodeTypes,
 		connectionInputData,
