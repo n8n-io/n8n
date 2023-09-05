@@ -708,7 +708,7 @@ export default defineComponent({
 			});
 
 			return (
-				nonMainInputs &&
+				!nonMainInputs &&
 				!this.isPaneTypeInput &&
 				this.isPinDataNodeType &&
 				!(this.binaryData && this.binaryData.length > 0)
@@ -768,10 +768,7 @@ export default defineComponent({
 			return Boolean(this.subworkflowExecutionError);
 		},
 		hasRunError(): boolean {
-			return Boolean(
-				this.node &&
-					this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error,
-			);
+			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -897,11 +894,8 @@ export default defineComponent({
 			return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
 		},
 		currentOutputIndex(): number {
-			if (
-				this.overrideOutputs?.length &&
-				!this.overrideOutputs.includes(this.outputIndex)
-			) {
-				return this.overrideOutputs[0] ;
+			if (this.overrideOutputs?.length && !this.overrideOutputs.includes(this.outputIndex)) {
+				return this.overrideOutputs[0];
 			}
 
 			return this.outputIndex;
