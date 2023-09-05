@@ -485,6 +485,6 @@ export class CoinGecko implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

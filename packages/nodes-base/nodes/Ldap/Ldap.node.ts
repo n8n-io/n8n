@@ -399,6 +399,6 @@ export class Ldap implements INodeType {
 		if (nodeDebug) {
 			Logger.info(`[${this.getNode().type} | ${this.getNode().name}] - Finished`);
 		}
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

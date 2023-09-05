@@ -1636,6 +1636,6 @@ export class ClickUp implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
