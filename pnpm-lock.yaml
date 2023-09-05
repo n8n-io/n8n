@@ -1287,8 +1287,8 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n/tournament':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: ^1.0.2
+        version: 1.0.2
       '@n8n_io/riot-tmpl':
         specifier: ^4.0.0
         version: 4.0.0
@@ -4647,8 +4647,8 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@n8n/tournament@1.0.0:
-    resolution: {integrity: sha512-jzMQfl8FAS8GHGTXKaZRCRk1dQbtjAODL17BKBojjCtGgBLHCNQlGhmU2p7ypgvWUeR19NrKW0YqD23iq8eYaQ==}
+  /@n8n/tournament@1.0.2:
+    resolution: {integrity: sha512-fTpi7F8ra5flGSVfRzohPyG7czAAKCZPlLjdKdwbLJivLoI/Ekhgodov1jfVSCVFVbwQ06gRQRxLEDzl2jl8ig==}
     engines: {node: '>=18.10', pnpm: '>=8.6'}
     dependencies:
       '@n8n_io/riot-tmpl': 4.0.1
