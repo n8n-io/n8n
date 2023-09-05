@@ -1,6 +1,5 @@
 import { Service } from 'typedi';
 import { snakeCase } from 'change-case';
-import { BinaryDataManager } from 'n8n-core';
 import type {
 	AuthenticationMethod,
 	ExecutionStatus,
@@ -460,8 +459,6 @@ export class InternalHooks implements IInternalHooksClass {
 						},
 				  }),
 		);
-
-		await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
 
 		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
 	}
@@ -964,14 +961,6 @@ export class InternalHooks implements IInternalHooksClass {
 		error: string;
 	}): Promise<void> {
 		return this.telemetry.track('Ldap general sync finished', data);
-	}
-
-	async onLdapUsersDisabled(data: {
-		reason: 'ldap_update' | 'ldap_feature_deactivated';
-		users: number;
-		user_ids: string[];
-	}): Promise<void> {
-		return this.telemetry.track('Ldap users disabled', data);
 	}
 
 	async onUserUpdatedLdapSettings(data: {
