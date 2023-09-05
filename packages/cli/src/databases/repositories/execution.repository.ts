@@ -25,6 +25,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
+import { TIME } from '@/constants';
 
 const PRUNING_BATCH_SIZE = 100;
 
@@ -76,10 +77,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 
 		if (config.getEnv('executions.pruneData')) {
-			setInterval(async () => this.pruneOlderExecutions(), 60 * 60 * 1000); // Every hour
+			setInterval(async () => this.pruneOlderExecutions(), TIME.HOUR);
 		}
 
-		setInterval(async () => this.deleteSoftDeletedExecutions(), 15 * 60 * 1000); // Every 15 minutes
+		setInterval(async () => this.deleteSoftDeletedExecutions(), 15 * TIME.MINUTE);
 	}
 
 	async findMultipleExecutions(
