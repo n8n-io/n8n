@@ -38,23 +38,57 @@ export class LmChatOpenAi implements INodeType {
 			baseURL: 'https://api.openai.com',
 		},
 		properties: [
-			// TODO: Check if I can get that one automatically
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				noDataExpression: true,
-				// TODO: Load that list dynamically
-				options: [
-					{
-						name: 'GTP 3.5 Turbo',
-						value: 'gpt-3.5-turbo',
+				description:
+					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/v1/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'data',
+										},
+									},
+									{
+										type: 'filter',
+										properties: {
+											pass: "={{ $responseItem.id.startsWith('gpt-') }}",
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.id}}',
+											value: '={{$responseItem.id}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
 					},
-					{
-						name: 'DaVinci-003',
-						value: 'text-davinci-003',
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
 					},
-				],
+				},
 				default: 'gpt-3.5-turbo',
 			},
 			{
