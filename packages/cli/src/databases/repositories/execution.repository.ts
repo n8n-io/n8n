@@ -27,8 +27,6 @@ import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { TIME } from '@/constants';
 
-const PRUNING_BATCH_SIZE = 100;
-
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
 	filters?: IGetExecutionsQueryFilter,
@@ -70,6 +68,8 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
+	private deletionBatchSize = 100;
+
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
@@ -409,7 +409,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionIds = executions.map(({ id }) => id);
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = executionIds.splice(0, PRUNING_BATCH_SIZE);
+			const batch = executionIds.splice(0, this.deletionBatchSize);
 			await this.softDelete(batch);
 		} while (executionIds.length > 0);
 	}
@@ -446,12 +446,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			await this.find({
 				select: ['id'],
 				where: toPrune,
-				take: PRUNING_BATCH_SIZE,
+				take: this.deletionBatchSize,
 			})
 		).map(({ id }) => id);
 		await this.softDelete(executionIds);
 
-		if (executionIds.length === PRUNING_BATCH_SIZE) {
+		if (executionIds.length === this.deletionBatchSize) {
 			setTimeout(async () => this.pruneBySoftDeleting(), TIME.SECOND);
 		}
 	}
@@ -470,7 +470,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				where: {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
 				},
-				take: PRUNING_BATCH_SIZE,
+				take: this.deletionBatchSize,
 			})
 		).map(({ id }) => id);
 
@@ -480,7 +480,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// Actually delete these executions
 		await this.delete({ id: In(executionIds) });
 
-		if (executionIds.length === PRUNING_BATCH_SIZE) {
+		if (executionIds.length === this.deletionBatchSize) {
 			setTimeout(async () => this.hardDelete(), 1000);
 		}
 	}
