@@ -842,6 +842,10 @@ export default defineComponent({
 				height: 25px;
 			}
 		}
+		.node-info-icon {
+			bottom: 0px !important;
+			right: 1px !important;
+		}
 	}
 
 	&--configurable {
