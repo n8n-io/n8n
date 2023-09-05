@@ -23,7 +23,12 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import type { IExecutionDb, IWorkflowErrorData, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type {
+	ICredentialsDb,
+	IExecutionDb,
+	IWorkflowErrorData,
+	IWorkflowExecutionDataProcess,
+} from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -39,7 +44,6 @@ import type { RoleNames } from '@db/entities/Role';
 import { RoleService } from './services/role.service';
 import { ExecutionRepository, RoleRepository } from './databases/repositories';
 import { VariablesService } from './environments/variables/variables.service';
-import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -499,7 +503,7 @@ export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCred
 export function validateWorkflowCredentialUsage(
 	newWorkflowVersion: WorkflowEntity,
 	previousWorkflowVersion: WorkflowEntity,
-	credentialsUserHasAccessTo: CredentialsEntity[],
+	credentialsUserHasAccessTo: ICredentialsDb[],
 ) {
 	/**
 	 * We only need to check nodes that use credentials the current user cannot access,
