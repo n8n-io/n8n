@@ -68,6 +68,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 
 	async duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string> {
 		const newBinaryDataId = this.generateFileName(prefix);
+
 		await fs.copyFile(
 			this.resolveStoragePath(binaryDataId),
 			this.resolveStoragePath(newBinaryDataId),
