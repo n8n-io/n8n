@@ -448,6 +448,6 @@ export class MicrosoftSql implements INodeType {
 		);
 
 		returnItems.push(...executionData);
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

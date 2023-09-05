@@ -422,6 +422,6 @@ export class MySqlV1 implements INodeType {
 
 		await connection.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

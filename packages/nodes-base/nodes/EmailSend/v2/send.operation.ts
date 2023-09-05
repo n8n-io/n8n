@@ -267,5 +267,5 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

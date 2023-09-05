@@ -1,6 +1,7 @@
 import set from 'lodash/set';
 
 import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypeData,
@@ -8,8 +9,6 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-
-import type { IExecuteFunctions } from '@/Interfaces';
 
 export const predefinedNodesTypes: INodeTypeData = {
 	'n8n-nodes-base.if': {
@@ -241,7 +240,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 					},
 				],
 			},
-			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+			async execute(this: IExecuteFunctions) {
 				const returnDataTrue: INodeExecutionData[] = [];
 				const returnDataFalse: INodeExecutionData[] = [];
 
@@ -415,9 +414,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 					},
 				],
 			},
-			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				// const itemsInput2 = this.getInputData(1);
-
+			async execute(this: IExecuteFunctions) {
 				const returnData: INodeExecutionData[] = [];
 
 				const mode = this.getNodeParameter('mode', 0) as string;
@@ -461,9 +458,8 @@ export const predefinedNodesTypes: INodeTypeData = {
 				outputs: ['main'],
 				properties: [],
 			},
-			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				const items = this.getInputData();
-				return this.prepareOutputData(items);
+			async execute(this: IExecuteFunctions) {
+				return [this.getInputData()];
 			},
 		},
 	},
@@ -507,7 +503,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 					},
 				],
 			},
-			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+			async execute(this: IExecuteFunctions) {
 				const items = this.getInputData();
 				const returnData: INodeExecutionData[] = [];
 
@@ -522,7 +518,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 					returnData.push(newItem);
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			},
 		},
 	},
@@ -646,7 +642,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 					},
 				],
 			},
-			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+			async execute(this: IExecuteFunctions) {
 				const items = this.getInputData();
 
 				if (items.length === 0) {
@@ -714,7 +710,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 					returnData.push(newItem);
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			},
 		},
 	},
@@ -736,9 +732,7 @@ export const predefinedNodesTypes: INodeTypeData = {
 				properties: [],
 			},
 			async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-				const items = this.getInputData();
-
-				return this.prepareOutputData(items);
+				return [this.getInputData()];
 			},
 		},
 	},

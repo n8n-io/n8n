@@ -330,6 +330,6 @@ export class TimescaleDb implements INodeType {
 		// Close the connection
 		pgp.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

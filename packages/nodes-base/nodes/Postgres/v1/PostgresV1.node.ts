@@ -422,6 +422,6 @@ export class PostgresV1 implements INodeType {
 		// Close the connection
 		pgp.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

@@ -251,6 +251,6 @@ export class Snowflake implements INodeType {
 		}
 
 		await destroy(connection);
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
