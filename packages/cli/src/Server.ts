@@ -132,6 +132,7 @@ import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
+import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
@@ -508,6 +509,7 @@ export class Server extends AbstractServer {
 
 		const controllers: object[] = [
 			new EventBusController(),
+			new EventBusControllerEE(),
 			new AuthController(config, logger, internalHooks, mfaService, userService, postHog),
 			new OwnerController(
 				config,
