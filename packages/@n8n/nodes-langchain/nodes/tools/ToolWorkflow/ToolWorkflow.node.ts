@@ -17,7 +17,7 @@ export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Workflow Tool',
 		name: 'toolWorkflow',
-		icon: 'fa:screwdriver',
+		icon: 'fa:network-wired',
 		group: ['transform'],
 		version: 1,
 		description: 'Create a tool via a workflow',
@@ -42,7 +42,7 @@ export class ToolWorkflow implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'My Tool',
+				placeholder: 'My Color Tool',
 			},
 			{
 				displayName: 'Description',

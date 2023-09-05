@@ -18,7 +18,7 @@ export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Code Tool',
 		name: 'toolCode',
-		icon: 'fa:screwdriver',
+		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
 		description: 'Create a tool via code',
