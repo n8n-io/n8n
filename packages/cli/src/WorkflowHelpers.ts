@@ -33,7 +33,6 @@ import type { User } from '@db/entities/User';
 import omit from 'lodash/omit';
 // eslint-disable-next-line import/no-cycle
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { isWorkflowIdValid } from './utils';
 import { UserService } from './services/user.service';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { RoleNames } from '@db/entities/Role';
@@ -272,45 +271,6 @@ export async function executeErrorWorkflow(
 			{ workflowId: workflowErrorData.workflow.id },
 		);
 	}
-}
-
-/**
- * Saves the static data if it changed
- */
-export async function saveStaticData(workflow: Workflow): Promise<void> {
-	if (workflow.staticData.__dataChanged === true) {
-		// Static data of workflow changed and so has to be saved
-		if (isWorkflowIdValid(workflow.id)) {
-			// Workflow is saved so update in database
-			try {
-				// eslint-disable-next-line @typescript-eslint/no-use-before-define
-				await saveStaticDataById(workflow.id!, workflow.staticData);
-				workflow.staticData.__dataChanged = false;
-			} catch (error) {
-				ErrorReporter.error(error);
-				Logger.error(
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
-					{ workflowId: workflow.id },
-				);
-			}
-		}
-	}
-}
-
-/**
- * Saves the given static data on workflow
- *
- * @param {(string)} workflowId The id of the workflow to save data on
- * @param {IDataObject} newStaticData The static data to save
- */
-export async function saveStaticDataById(
-	workflowId: string,
-	newStaticData: IDataObject,
-): Promise<void> {
-	await Db.collections.Workflow.update(workflowId, {
-		staticData: newStaticData,
-	});
 }
 
 /**
