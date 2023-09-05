@@ -3104,7 +3104,7 @@ export default defineComponent({
 				sourceNode.type,
 				sourceNode.typeVersion,
 			);
-			const sourceNodeOutput = sourceNodeType?.outputs[sourceOutputIndex];
+			const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] || 'main';
 			const sourceNodeOutputName =
 				typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 			const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
