@@ -210,7 +210,8 @@ export class Worker extends BaseCommand {
 		Worker.runningJobs[job.id] = workflowRun;
 
 		// Wait till the execution is finished
-		await workflowRun;
+		const data = await workflowRun;
+		console.log('processRunExecutionData in worker.ts:', data.data.resultData);
 
 		delete Worker.runningJobs[job.id];
 

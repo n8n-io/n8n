@@ -267,6 +267,7 @@ class WorkflowRunnerProcess {
 				this.childExecutions[executionId] = executeWorkflowFunctionOutput;
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
+				console.log('processRunExecutionData in WorkflowRunnerProcess 1:', result.data.resultData);
 				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
 				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId,
@@ -304,7 +305,7 @@ class WorkflowRunnerProcess {
 			);
 
 			const data = await this.workflowExecute.processRunExecutionData(this.workflow);
-			console.log('processRunExecutionData resultData:', data.data.resultData);
+			console.log('processRunExecutionData in WorkflowRunnerProcess 2:', data.data.resultData);
 			if (data.data.resultData.error) {
 				const { runData, error } = data.data.resultData;
 				// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

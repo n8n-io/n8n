@@ -1042,6 +1042,7 @@ async function executeWorkflow(
 			};
 		}
 		data = await workflowExecute.processRunExecutionData(workflow);
+		console.log('processRunExecutionData in WorkflowExecuteAdditionalData:', data.data.resultData);
 	} catch (error) {
 		const fullRunData: IRun = {
 			data: {
