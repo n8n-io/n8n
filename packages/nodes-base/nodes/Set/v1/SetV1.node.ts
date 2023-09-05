@@ -145,7 +145,7 @@ export class SetV1 implements INodeType {
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 
@@ -222,6 +222,6 @@ export class SetV1 implements INodeType {
 			returnData.push(newItem);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

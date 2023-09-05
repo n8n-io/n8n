@@ -200,7 +200,7 @@ export class SetV2 implements INodeType {
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0) as Mode;
 		const duplicateItem = this.getNodeParameter('duplicateItem', 0, false) as boolean;
@@ -257,6 +257,6 @@ export class SetV2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

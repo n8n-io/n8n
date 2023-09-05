@@ -122,9 +122,19 @@ export const parseJsonParameter = (
 		try {
 			returnData = jsonParse<IDataObject>(jsonData);
 		} catch (error) {
-			throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
-				description: jsonData,
-			});
+			let recoveredData = '';
+			try {
+				recoveredData = jsonData
+					.replace(/'/g, '"') // Replace single quotes with double quotes
+					.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":'); // Wrap keys in double quotes
+				returnData = jsonParse<IDataObject>(recoveredData);
+			} catch (err) {
+				const description =
+					recoveredData === jsonData ? jsonData : `${recoveredData};\n Original input: ${jsonData}`;
+				throw new NodeOperationError(node, `The ${location} in item ${i} contains invalid JSON`, {
+					description,
+				});
+			}
 		}
 	} else {
 		returnData = jsonData;
