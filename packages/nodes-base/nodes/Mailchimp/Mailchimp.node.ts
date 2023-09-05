@@ -2197,6 +2197,6 @@ export class Mailchimp implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

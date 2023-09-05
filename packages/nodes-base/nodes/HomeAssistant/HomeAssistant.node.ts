@@ -459,9 +459,9 @@ export class HomeAssistant implements INodeType {
 		}
 
 		if (resource === 'cameraProxy' && operation === 'getScreenshot') {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

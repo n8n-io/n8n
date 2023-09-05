@@ -141,10 +141,10 @@ export class GoogleSheetsV1 implements INodeType {
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}
@@ -156,10 +156,10 @@ export class GoogleSheetsV1 implements INodeType {
 					await sheet.clearData(sheet.encodeRange(range));
 
 					const items = this.getInputData();
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}
@@ -245,10 +245,10 @@ export class GoogleSheetsV1 implements INodeType {
 					await sheet.spreadsheetBatchUpdate(requests);
 
 					const items = this.getInputData();
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}
@@ -420,10 +420,10 @@ export class GoogleSheetsV1 implements INodeType {
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-					return await this.prepareOutputData(items);
+					return [items];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						return this.prepareOutputData([{ json: { error: error.message } }]);
+						return [[{ json: { error: error.message } }]];
 					}
 					throw error;
 				}

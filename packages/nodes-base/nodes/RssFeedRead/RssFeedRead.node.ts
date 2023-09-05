@@ -109,7 +109,7 @@ export class RssFeedRead implements INodeType {
 			return [this.helpers.returnJsonArray(returnData)];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 			throw error;
 		}
