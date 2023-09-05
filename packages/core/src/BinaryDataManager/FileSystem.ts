@@ -19,7 +19,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		this.storagePath = config.localStoragePath;
 	}
 
-	async init(): Promise<void> {
+	async init() {
 		await this.assertFolder(this.storagePath);
 		await this.assertFolder(this.getBinaryDataMetaPath());
 	}
@@ -77,7 +77,6 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	}
 
 	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]> {
-		// TODO: switch over to new folder structure, and delete folders instead
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
 		const deletedIds = [];
