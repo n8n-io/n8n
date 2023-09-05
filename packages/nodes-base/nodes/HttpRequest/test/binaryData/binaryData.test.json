@@ -5,7 +5,11 @@
       "name": "When clicking \"Execute Workflow\"",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "parameters": {}
+      "parameters": {},
+      "position": [
+        580,
+        300
+      ]
     },
     {
       "name": "HTTP Request (v1)",
@@ -14,7 +18,11 @@
       "parameters": {
         "url": "https://dummy.domain/path/to/image.png",
         "responseFormat": "file"
-      }
+      },
+      "position": [
+        1020,
+        -100
+      ]
     },
     {
       "name": "HTTP Request (v2)",
@@ -24,7 +32,11 @@
         "url": "https://dummy.domain/path/to/image.png",
         "responseFormat": "file",
         "options": {}
-      }
+      },
+      "position": [
+        1020,
+        80
+      ]
     },
     {
       "name": "HTTP Request (v3)",
@@ -39,7 +51,11 @@
             }
           }
         }
-      }
+      },
+      "position": [
+        1020,
+        240
+      ]
     },
     {
       "name": "HTTP Request (v4)",
@@ -54,7 +70,11 @@
             }
           }
         }
-      }
+      },
+      "position": [
+        1020,
+        400
+      ]
     },
     {
       "name": "Follow Redirect",
@@ -69,7 +89,11 @@
             }
           }
         }
-      }
+      },
+      "position": [
+        1020,
+        560
+      ]
     },
     {
       "name": "Content Disposition",
@@ -84,7 +108,11 @@
             }
           }
         }
-      }
+      },
+      "position": [
+        1020,
+        720
+      ]
     }
   ],
   "pinData": {
