@@ -253,6 +253,7 @@ import type {
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
+	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	IPinData,
