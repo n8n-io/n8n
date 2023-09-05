@@ -140,6 +140,7 @@ import {
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getSecretsProxy } from './Secrets';
 import { getUserN8nFolderPath } from './UserSettings';
 
 axios.defaults.timeout = 300000;
@@ -724,7 +725,7 @@ export async function proxyRequestToAxios(
 					error: responseData,
 					response: pick(response, ['headers', 'status', 'statusText']),
 				});
-			} else if (error instanceof Error && error.message.includes('SSL routines')) {
+			} else if ('rejectUnauthorized' in configObject && error.code?.includes('CERT')) {
 				throw new NodeSSLError(error);
 			}
 		}
@@ -1687,6 +1688,7 @@ export function getAdditionalKeys(
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 	runExecutionData: IRunExecutionData | null,
+	options?: { secretsEnabled?: boolean },
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
@@ -1727,6 +1729,7 @@ export function getAdditionalKeys(
 				: undefined,
 		},
 		$vars: additionalData.variables,
+		$secrets: options?.secretsEnabled ? getSecretsProxy(additionalData) : undefined,
 
 		// deprecated
 		$executionId: executionId,
@@ -1862,6 +1865,7 @@ export async function getCredentials(
 	// }
 
 	const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
+		additionalData,
 		nodeCredentials,
 		type,
 		mode,

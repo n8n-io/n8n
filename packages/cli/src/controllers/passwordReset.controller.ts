@@ -13,13 +13,13 @@ import {
 	hashPassword,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
-import type { UserManagementMailer } from '@/UserManagement/email';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { Config } from '@/config';
+import { ILogger } from 'n8n-workflow';
+import { Config } from '@/config';
 import { PasswordResetRequest } from '@/requests';
-import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
@@ -30,44 +30,20 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { JwtPayload } from '@/services/jwt.service';
 import { JwtService } from '@/services/jwt.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class PasswordResetController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly externalHooks: IExternalHooksClass;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly mailer: UserManagementMailer;
-
-	private readonly jwtService: JwtService;
-
-	private readonly userService: UserService;
-
-	constructor({
-		config,
-		logger,
-		externalHooks,
-		internalHooks,
-		mailer,
-	}: {
-		config: Config;
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		mailer: UserManagementMailer;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.mailer = mailer;
-		this.jwtService = Container.get(JwtService);
-		this.userService = Container.get(UserService);
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly externalHooks: IExternalHooksClass,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly mailer: UserManagementMailer,
+		private readonly userService: UserService,
+		private readonly jwtService: JwtService,
+		private readonly mfaService: MfaService,
+	) {}
 
 	/**
 	 * Send a password reset email.
@@ -150,7 +126,11 @@ export class PasswordResetController {
 			},
 		);
 
-		const url = this.userService.generatePasswordResetUrl(baseUrl, resetPasswordToken);
+		const url = this.userService.generatePasswordResetUrl(
+			baseUrl,
+			resetPasswordToken,
+			user.mfaEnabled,
+		);
 
 		try {
 			await this.mailer.passwordReset({
@@ -233,7 +213,7 @@ export class PasswordResetController {
 	 */
 	@Post('/change-password')
 	async changePassword(req: PasswordResetRequest.NewPassword, res: Response) {
-		const { token: resetPasswordToken, password } = req.body;
+		const { token: resetPasswordToken, password, mfaToken } = req.body;
 
 		if (!resetPasswordToken || !password) {
 			this.logger.debug(
@@ -262,6 +242,16 @@ export class PasswordResetController {
 				},
 			);
 			throw new NotFoundError('');
+		}
+
+		if (user.mfaEnabled) {
+			if (!mfaToken) throw new BadRequestError('If MFA enabled, mfaToken is required.');
+
+			const { decryptedSecret: secret } = await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+			const validToken = this.mfaService.totp.verifySecret({ secret, token: mfaToken });
+
+			if (!validToken) throw new BadRequestError('Invalid MFA token.');
 		}
 
 		const passwordHash = await hashPassword(validPassword);

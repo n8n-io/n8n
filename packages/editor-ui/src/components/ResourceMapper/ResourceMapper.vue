@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveRequiredParameters } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
@@ -229,7 +229,10 @@ async function loadFieldsToMap(): Promise<void> {
 			name: props.node?.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveParameter(props.node.parameters) as INodeParameters,
+		currentNodeParameters: resolveRequiredParameters(
+			props.parameter,
+			props.node.parameters,
+		) as INodeParameters,
 		path: props.path,
 		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
 		credentials: props.node.credentials,

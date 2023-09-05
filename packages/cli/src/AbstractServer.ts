@@ -3,6 +3,9 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import express from 'express';
 import compression from 'compression';
+import isbot from 'isbot';
+import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -16,7 +19,6 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { RedisService } from '@/services/redis.service';
-import { jsonParse } from 'n8n-workflow';
 import { eventBus } from './eventbus';
 import type { AbstractEventMessageOptions } from './eventbus/EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from './eventbus/EventMessageClasses/Helpers';
@@ -269,6 +271,16 @@ export abstract class AbstractServer {
 				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
 			);
 		}
+
+		// Block bots from scanning the application
+		const checkIfBot = isbot.spawn(['bot']);
+		this.app.use((req, res, next) => {
+			const userAgent = req.headers['user-agent'];
+			if (!userAgent || checkIfBot(userAgent)) {
+				Logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
+				res.status(204).end();
+			} else next();
+		});
 
 		if (inDevelopment) {
 			this.setupDevMiddlewares();

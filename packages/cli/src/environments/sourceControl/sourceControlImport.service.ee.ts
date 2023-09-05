@@ -15,7 +15,6 @@ import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { Variables } from '@db/entities/Variables';
-import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -28,6 +27,7 @@ import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '../variables/variables.service';
 import { TagRepository } from '@/databases/repositories';
+import { UM_FIX_INSTRUCTION } from '@/constants';
 
 @Service()
 export class SourceControlImportService {

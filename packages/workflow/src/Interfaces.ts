@@ -225,6 +225,7 @@ export abstract class ICredentialsHelper {
 	): Promise<ICredentials>;
 
 	abstract getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
@@ -1080,6 +1081,7 @@ export interface INodePropertyTypeOptions {
 export interface ResourceMapperTypeOptions {
 	resourceMapperMethod: string;
 	mode: 'add' | 'update' | 'upsert';
+	valuesLabel?: string;
 	fieldWords?: { singular: string; plural: string };
 	addAllFields?: boolean;
 	noFieldsError?: string;
@@ -1783,6 +1785,7 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId: string;
 	variables: IDataObject;
+	secretsHelpers: SecretsHelpersBase;
 }
 
 export type WorkflowExecuteMode =
@@ -2193,6 +2196,7 @@ export interface IN8nUISettings {
 		variables: boolean;
 		sourceControl: boolean;
 		auditLogs: boolean;
+		externalSecrets: boolean;
 		showNonProdBanner: boolean;
 		debugInEditor: boolean;
 	};
@@ -2203,12 +2207,26 @@ export interface IN8nUISettings {
 	variables: {
 		limit: number;
 	};
+	mfa: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
 	ai: {
 		enabled: boolean;
 	};
+}
+
+export interface SecretsHelpersBase {
+	update(): Promise<void>;
+	waitForInit(): Promise<void>;
+
+	getSecret(provider: string, name: string): IDataObject | undefined;
+	hasSecret(provider: string, name: string): boolean;
+	hasProvider(provider: string): boolean;
+	listProviders(): string[];
+	listSecrets(provider: string): string[];
 }
 
 export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';
