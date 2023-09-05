@@ -868,7 +868,7 @@
 	"nodeCreator.aiPanel.aiNodes": "AI Nodes",
 	"nodeCreator.aiPanel.selectAiNode": "Select an Al Node to add to your workflow",
 	"nodeCreator.aiPanel.nodesForAi": "Nodes for integrating LangChain AI functionalities",
-	"nodeCreator.aiPanel.langchainAiNodes": "Langchain AI Nodes",
+	"nodeCreator.aiPanel.langchainAiNodes": "LangChain AI Nodes",
 	"nodeCreator.aiPanel.title": "When should this workflow run?",
 	"nodeCreator.aiPanel.scheduleTriggerDisplayName": "On a schedule",
 	"nodeCreator.aiPanel.scheduleTriggerDescription": "Runs the flow every day, hour, or custom interval",

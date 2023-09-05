@@ -126,7 +126,7 @@ interface ChatMessage {
 }
 
 // TODO: Add proper type
-interface LangchainMessage {
+interface LangChainMessage {
 	id: string[];
 	kwargs: {
 		content: string;
@@ -290,11 +290,11 @@ export default defineComponent({
 					['chatHistory', 'loadMemoryVariables'].includes(data?.action) ? data : undefined,
 				);
 
-			let chatHistory: LangchainMessage[];
+			let chatHistory: LangChainMessage[];
 			if (memoryOutputData?.chatHistory) {
-				chatHistory = memoryOutputData?.chatHistory as LangchainMessage[];
+				chatHistory = memoryOutputData?.chatHistory as LangChainMessage[];
 			} else if (memoryOutputData?.response) {
-				chatHistory = memoryOutputData?.response.chat_history as LangchainMessage[];
+				chatHistory = memoryOutputData?.response.chat_history as LangChainMessage[];
 			} else {
 				return [];
 			}
