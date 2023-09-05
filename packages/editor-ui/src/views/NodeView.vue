@@ -3226,8 +3226,6 @@ export default defineComponent({
 									connectionType as ConnectionTypes,
 								);
 
-								console.log(sourceNodeName, targetNodeName, connection);
-
 								if (connection) {
 									const output = outputMap[sourceOutputIndex][targetNodeName][targetInputIndex];
 
