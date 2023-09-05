@@ -372,6 +372,6 @@ export class MongoDb implements INodeType {
 
 		returnItems.push(...executionData);
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

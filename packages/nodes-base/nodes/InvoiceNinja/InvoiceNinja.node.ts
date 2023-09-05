@@ -1023,6 +1023,6 @@ export class InvoiceNinja implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

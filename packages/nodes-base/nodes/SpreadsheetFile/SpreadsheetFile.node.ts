@@ -393,7 +393,7 @@ export class SpreadsheetFile implements INodeType {
 				}
 			}
 
-			return this.prepareOutputData(newItems);
+			return [newItems];
 		} else if (operation === 'toFile') {
 			try {
 				// Write the workflow data to spreadsheet file
@@ -482,9 +482,7 @@ export class SpreadsheetFile implements INodeType {
 			}
 		} else {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([
-					{ json: { error: `The operation "${operation}" is not supported!` } },
-				]);
+				return [[{ json: { error: `The operation "${operation}" is not supported!` } }]];
 			} else {
 				throw new NodeOperationError(
 					this.getNode(),
@@ -492,6 +490,6 @@ export class SpreadsheetFile implements INodeType {
 				);
 			}
 		}
-		return this.prepareOutputData(newItems);
+		return [newItems];
 	}
 }
