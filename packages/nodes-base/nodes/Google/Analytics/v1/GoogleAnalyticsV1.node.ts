@@ -302,6 +302,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
