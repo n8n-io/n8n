@@ -2938,7 +2938,18 @@ export default defineComponent({
 				if (!sourceNode || !targetNode) {
 					return;
 				}
+
+				const sourceNodeType = this.nodeTypesStore.getNodeType(
+					sourceNode.type,
+					sourceNode.typeVersion,
+				);
+				const sourceNodeOutput = sourceNodeType?.outputs?.[connection[0].index] || 'main';
+				const sourceNodeOutputName =
+					typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
+				const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
+
 				const connections = this.instance?.getConnections({
+					scope,
 					source: sourceNode.id,
 					target: targetNode.id,
 				});
