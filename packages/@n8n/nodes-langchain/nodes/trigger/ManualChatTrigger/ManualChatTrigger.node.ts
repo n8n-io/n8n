@@ -9,7 +9,7 @@ export class ManualChatTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Manual Chat Trigger',
 		name: 'manualChatTrigger',
-		icon: 'fa:mouse-pointer',
+		icon: 'fa:comments',
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow on new manual chat message',

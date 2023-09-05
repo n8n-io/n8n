@@ -24,6 +24,7 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 } from '@/constants';
 import { useI18n } from '@/composables';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -127,6 +128,18 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
 					icon: 'project-diagram',
+				},
+			},
+			{
+				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				type: 'node',
+				// category: [CORE_NODES_CATEGORY],
+				properties: {
+					group: [],
+					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'Manual Chat Trigger',
+					description: 'Runs the flow on new manual chat message',
+					icon: 'fa:comments',
 				},
 			},
 		],
