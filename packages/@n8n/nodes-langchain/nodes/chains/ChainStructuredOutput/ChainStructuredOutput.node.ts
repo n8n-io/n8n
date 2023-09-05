@@ -75,7 +75,7 @@ export class ChainStructuredOutput implements INodeType {
 				displayName: 'Input Text',
 				name: 'inputText',
 				type: 'string',
-				default: '',
+				default: '={{ $json.input }}',
 				typeOptions: {
 					rows: 4,
 				},

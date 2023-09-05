@@ -75,7 +75,7 @@ export class ChainLlm implements INodeType {
 				displayName: 'Prompt',
 				name: 'prompt',
 				type: 'string',
-				default: '',
+				default: '={{ $json.input }}',
 			},
 		],
 	};

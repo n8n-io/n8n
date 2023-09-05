@@ -71,7 +71,7 @@ export class ChainVectorStoreQa implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				default: '',
+				default: '={{ $json.input }}',
 			},
 			{
 				displayName: 'Top K',
