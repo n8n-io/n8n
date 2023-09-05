@@ -252,19 +252,17 @@ describe('GET /credentials/schema/:credentialType', () => {
 	});
 
 	test('should retrieve credential type', async () => {
-		const response = await authOwnerAgent.get('/credentials/schema/githubApi');
+		const response = await authOwnerAgent.get('/credentials/schema/ftp');
 
 		const { additionalProperties, type, properties, required } = response.body;
 
 		expect(additionalProperties).toBe(false);
 		expect(type).toBe('object');
-		expect(properties.server).toBeDefined();
-		expect(properties.server.type).toBe('string');
-		expect(properties.user.type).toBeDefined();
-		expect(properties.user.type).toBe('string');
-		expect(properties.accessToken.type).toBeDefined();
-		expect(properties.accessToken.type).toBe('string');
-		expect(required).toEqual(expect.arrayContaining(['server', 'user', 'accessToken']));
+		expect(properties.host.type).toBe('string');
+		expect(properties.port.type).toBe('number');
+		expect(properties.username.type).toBe('string');
+		expect(properties.password.type).toBe('string');
+		expect(required).toEqual(expect.arrayContaining(['host', 'port']));
 		expect(response.statusCode).toBe(200);
 	});
 });
@@ -301,9 +299,9 @@ const INVALID_PAYLOADS = [
 	},
 	{
 		name: randomName(),
-		type: 'githubApi',
+		type: 'ftp',
 		data: {
-			server: randomName(),
+			username: randomName(),
 		},
 	},
 	{},
