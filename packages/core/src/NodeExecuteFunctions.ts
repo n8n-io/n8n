@@ -611,15 +611,15 @@ export function parseIncomingMessage(message: IncomingMessage) {
 		})();
 		message.contentType = contentType;
 		message.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
+	}
 
-		const contentDispositionHeader = message.headers['content-disposition'];
-		if (contentDispositionHeader?.length) {
-			const {
-				type,
-				parameters: { filename },
-			} = parseContentDisposition(contentDispositionHeader);
-			message.contentDisposition = { type, filename };
-		}
+	const contentDispositionHeader = message.headers['content-disposition'];
+	if (contentDispositionHeader?.length) {
+		const {
+			type,
+			parameters: { filename },
+		} = parseContentDisposition(contentDispositionHeader);
+		message.contentDisposition = { type, filename };
 	}
 }
 
