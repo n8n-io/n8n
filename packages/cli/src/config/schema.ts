@@ -399,6 +399,12 @@ export const schema = {
 					default: '',
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
+				tls: {
+					format: 'Boolean',
+					default: false,
+					env: 'QUEUE_BULL_REDIS_TLS',
+					doc: 'Enable TLS on Redis connections. Default: false',
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
