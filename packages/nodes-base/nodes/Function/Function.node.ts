@@ -224,6 +224,6 @@ return items;`,
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

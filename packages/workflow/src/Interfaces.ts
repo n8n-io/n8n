@@ -741,6 +741,9 @@ export interface FunctionsBase {
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
+
+	/** @deprecated */
+	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
 }
 
 type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
@@ -763,10 +766,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputData?: INodeExecutionData[],
 		): Promise<any>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
-		prepareOutputData(
-			outputData: INodeExecutionData[],
-			outputIndex?: number,
-		): Promise<INodeExecutionData[][]>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -890,10 +889,6 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	prepareOutputData(
-		outputData: INodeExecutionData[],
-		outputIndex?: number,
-	): Promise<INodeExecutionData[][]>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &

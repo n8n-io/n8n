@@ -523,6 +523,6 @@ export class GraphQL implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

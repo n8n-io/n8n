@@ -62,6 +62,6 @@ export class ReadBinaryFiles implements INodeType {
 			});
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

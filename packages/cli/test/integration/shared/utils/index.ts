@@ -109,10 +109,8 @@ export async function initNodeTypes() {
 					outputs: ['main'],
 					properties: [],
 				},
-				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-					const items = this.getInputData();
-
-					return this.prepareOutputData(items);
+				async execute(this: IExecuteFunctions) {
+					return [this.getInputData()];
 				},
 			},
 		},
@@ -151,7 +149,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+				async trigger(this: ITriggerFunctions) {
 					const triggerTimes = this.getNodeParameter('triggerTimes') as unknown as {
 						item: TriggerTime[];
 					};
@@ -312,7 +310,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions) {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -380,7 +378,7 @@ export async function initNodeTypes() {
 						returnData.push(newItem);
 					}
 
-					return this.prepareOutputData(returnData);
+					return [returnData];
 				},
 			},
 		},
