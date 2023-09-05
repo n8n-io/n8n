@@ -674,7 +674,7 @@ export class HttpRequestV2 implements INodeType {
 			} catch {}
 		}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: OptionsWithUri & { useStream?: boolean };
 		let setUiParameter: IDataObject;
 
 		const uiParameters: IDataObject = {
@@ -915,6 +915,7 @@ export class HttpRequestV2 implements INodeType {
 
 			if (responseFormat === 'file') {
 				requestOptions.encoding = null;
+				requestOptions.useStream = true;
 
 				if (options.bodyContentType !== 'raw') {
 					requestOptions.body = JSON.stringify(requestOptions.body);
@@ -927,6 +928,7 @@ export class HttpRequestV2 implements INodeType {
 				}
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}

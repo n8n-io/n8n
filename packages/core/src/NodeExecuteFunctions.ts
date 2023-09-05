@@ -1011,9 +1011,10 @@ async function prepareBinaryData(
 	if (binaryData instanceof IncomingMessage) {
 		if (!filePath) {
 			try {
+				const { responseUrl } = binaryData;
 				filePath =
 					binaryData.contentDisposition?.filename ??
-					new URL(binaryData.responseUrl).pathname.slice(1);
+					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
 			} catch {}
 		}
 		if (!mimeType) {

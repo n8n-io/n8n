@@ -634,7 +634,7 @@ export class HttpRequestV1 implements INodeType {
 			oAuth2Api = await this.getCredentials('oAuth2Api');
 		} catch {}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: OptionsWithUri & { useStream?: boolean };
 		let setUiParameter: IDataObject;
 
 		const uiParameters: IDataObject = {
@@ -875,6 +875,7 @@ export class HttpRequestV1 implements INodeType {
 
 			if (responseFormat === 'file') {
 				requestOptions.encoding = null;
+				requestOptions.useStream = true;
 
 				if (options.bodyContentType !== 'raw') {
 					requestOptions.body = JSON.stringify(requestOptions.body);
@@ -887,6 +888,7 @@ export class HttpRequestV1 implements INodeType {
 				}
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
