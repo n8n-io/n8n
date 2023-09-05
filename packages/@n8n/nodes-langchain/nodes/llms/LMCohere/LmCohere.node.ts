@@ -35,12 +35,41 @@ export class LmCohere implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Maximum Tokens',
-				name: 'maxTokens',
-				default: 20,
-				typeOptions: { minValue: 0 },
-				description: 'Maximum amount of tokens to use for the completion',
-				type: 'number',
+				displayName: 'Options',
+				name: 'options',
+				placeholder: 'Add Option',
+				description: 'Additional options to add',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Maximum Number of Tokens',
+						name: 'maxTokens',
+						default: 250,
+						description:
+							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
+						type: 'number',
+						typeOptions: {
+							maxValue: 32768,
+						},
+					},
+					{
+						displayName: 'Model',
+						name: 'model',
+						type: 'string',
+						description: 'The name of the model to use',
+						default: '',
+					},
+					{
+						displayName: 'Sampling Temperature',
+						name: 'temperature',
+						default: 0,
+						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+						description:
+							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+						type: 'number',
+					},
+				],
 			},
 		],
 	};
@@ -50,11 +79,11 @@ export class LmCohere implements INodeType {
 
 		const itemIndex = 0;
 
-		const maxTokens = this.getNodeParameter('maxTokens', itemIndex) as number;
+		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 
 		const model = new Cohere({
-			maxTokens,
 			apiKey: credentials.apiKey as string,
+			...options,
 		});
 
 		return {
