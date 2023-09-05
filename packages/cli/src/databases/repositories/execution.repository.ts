@@ -80,7 +80,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			setInterval(async () => this.pruneBySoftDeleting(), TIME.HOUR);
 		}
 
-		setInterval(async () => this.deleteSoftDeletedExecutions(), 15 * TIME.MINUTE);
+		setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
 	}
 
 	async findMultipleExecutions(
@@ -456,7 +456,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 	}
 
-	private async deleteSoftDeletedExecutions() {
+	/**
+	 * Permanently delete all soft-deleted executions and their binary data, in batches.
+	 */
+	private async hardDelete() {
 		// Find ids of all executions that were deleted over an hour ago
 		const date = new Date();
 		date.setHours(date.getHours() - 1);
@@ -478,7 +481,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.delete({ id: In(executionIds) });
 
 		if (executionIds.length === PRUNING_BATCH_SIZE) {
-			setTimeout(async () => this.deleteSoftDeletedExecutions(), 1000);
+			setTimeout(async () => this.hardDelete(), 1000);
 		}
 	}
 }
