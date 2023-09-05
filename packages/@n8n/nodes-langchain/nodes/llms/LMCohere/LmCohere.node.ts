@@ -2,6 +2,7 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
 import { Cohere } from 'langchain/llms/cohere';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,7 +58,7 @@ export class LmCohere implements INodeType {
 		});
 
 		return {
-			response: model,
+			response: logWrapper(model, this),
 		};
 	}
 }

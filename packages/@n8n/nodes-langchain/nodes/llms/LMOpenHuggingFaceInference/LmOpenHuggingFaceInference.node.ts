@@ -2,6 +2,7 @@
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 
 import { HuggingFaceInference } from 'langchain/llms/hf';
+import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -75,7 +76,7 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		});
 
 		return {
-			response: model,
+			response: logWrapper(model, this),
 		};
 	}
 }
