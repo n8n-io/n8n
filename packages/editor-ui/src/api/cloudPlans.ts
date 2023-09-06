@@ -10,5 +10,5 @@ export async function getCurrentUsage(context: IRestApiContext): Promise<Instanc
 }
 
 export async function getAdminPanelLoginCode(context: IRestApiContext) {
-	return get(context.baseUrl, '/admin/auth/login/code');
+	return get(context.baseUrl, '/admin/login/code');
 }

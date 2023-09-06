@@ -117,7 +117,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 	};
 
 	const getAutoLoginCode = async (): Promise<{ code: string }> => {
-		return getAdminPanelLoginCode({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
+		return getAdminPanelLoginCode(rootStore.getRestApiContext);
 	};
 
 	return {
