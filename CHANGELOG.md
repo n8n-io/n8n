@@ -1,3 +1,12 @@
+## [1.6.1](https://github.com/n8n-io/n8n/compare/n8n@1.6.0...n8n@1.6.1) (2023-09-06)
+
+
+### Bug Fixes
+
+* **Postgres Node:** Fix automatic column mapping ([#7121](https://github.com/n8n-io/n8n/issues/7121)) ([e7546cc](https://github.com/n8n-io/n8n/commit/e7546ccea059c27fee031a852785744dafdf1f88))
+
+
+
 # [1.6.0](https://github.com/n8n-io/n8n/compare/n8n@1.5.1...n8n@1.6.0) (2023-09-06)
 
 
