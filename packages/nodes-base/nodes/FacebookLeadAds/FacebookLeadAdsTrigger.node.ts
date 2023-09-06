@@ -1,13 +1,13 @@
 import { createHmac } from 'crypto';
-import type {
-	IDataObject,
-	IHookFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type IHookFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 import {
 	appWebhookSubscriptionCreate,
 	appWebhookSubscriptionDelete,
@@ -16,7 +16,7 @@ import {
 	installAppOnPage,
 } from './GenericFunctions';
 import { listSearch } from './methods';
-import type { FacebookFormLeadData, FacebookPageEvent } from './types';
+import type { FacebookForm, FacebookFormLeadData, FacebookPageEvent } from './types';
 
 export class FacebookLeadAdsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,11 +58,11 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				name: 'event',
 				type: 'options',
 				required: true,
-				default: 'leadAdded',
+				default: 'newLead',
 				options: [
 					{
 						name: 'New Lead',
-						value: 'leadAdded',
+						value: 'newLead',
 					},
 				],
 			},
@@ -114,6 +114,23 @@ export class FacebookLeadAdsTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Simplify Output',
+						name: 'simplifyOutput',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to return a simplified version of the webhook event instead of all fields',
+					},
+				],
+			},
 		],
 	};
 
@@ -125,27 +142,37 @@ export class FacebookLeadAdsTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const credential = await this.getCredentials('facebookLeadAdsOAuth2Api');
-				const appId = credential.clientId as string;
+				const credentials = await this.getCredentials('facebookLeadAdsOAuth2Api');
+				const appId = credentials.clientId as string;
 
 				const webhooks = await appWebhookSubscriptionList.call(this, appId);
 
-				return webhooks.some(
+				const subscription = webhooks.find(
 					(webhook) =>
 						webhook.object === 'page' &&
-						webhook.callback_url === webhookUrl &&
 						webhook.fields.find((field) => field.name === 'leadgen') &&
 						webhook.active,
 				);
+
+				if (!subscription) {
+					return false;
+				}
+
+				if (subscription?.callback_url !== webhookUrl) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The App ID ${appId} already has a callback url ${subscription?.callback_url}. Delete it or use another App ID before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
+					);
+				}
+
+				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const credential = await this.getCredentials('facebookLeadAdsOAuth2Api');
-				const appId = credential.clientId as string;
+				const credentials = await this.getCredentials('facebookLeadAdsOAuth2Api');
+				const appId = credentials.clientId as string;
 				const pageId = this.getNodeParameter('page', '', { extractValue: true }) as string;
-				const verifyToken = uuid();
-				const staticData = this.getWorkflowStaticData('node');
-				staticData.verifyToken = verifyToken;
+				const verifyToken = this.getNode().id;
 
 				await appWebhookSubscriptionCreate.call(this, appId, {
 					object: 'page',
@@ -160,8 +187,8 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const credential = await this.getCredentials('facebookLeadAdsOAuth2Api');
-				const appId = credential.clientId as string;
+				const credentials = await this.getCredentials('facebookLeadAdsOAuth2Api');
+				const appId = credentials.clientId as string;
 
 				await appWebhookSubscriptionDelete.call(this, appId, 'page');
 
@@ -182,9 +209,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
 			if (query['hub.challenge']) {
-				//compare hub.verify_token with the saved token
-				const staticData = this.getWorkflowStaticData('node');
-				if (staticData.verifyToken !== query['hub.verify_token']) {
+				if (this.getNode().id !== query['hub.verify_token']) {
 					return {};
 				}
 
@@ -213,17 +238,47 @@ export class FacebookLeadAdsTrigger implements INodeType {
 				.map((entry) =>
 					entry.changes
 						.filter((change) => change.field === 'leadgen' && change.value.form_id === formId)
-						.map((change) => ({ ...change.value, entry_id: entry.id })),
+						.map((change) => change.value),
 				)
 				.flat()
 				.map(async (event) => {
-					const leadFormData = (await facebookEntityDetail.call(
-						this,
-						event.leadgen_id,
-						'id,field_data,created_time',
-					)) as FacebookFormLeadData;
+					const [lead, form] = await Promise.all([
+						facebookEntityDetail.call(
+							this,
+							event.leadgen_id,
+							'field_data,created_time,ad_id,ad_name,adset_id,adset_name,form_id',
+						) as Promise<FacebookFormLeadData>,
+						facebookEntityDetail.call(
+							this,
+							event.form_id,
+							'id,name,locale,status,page,questions',
+						) as Promise<FacebookForm>,
+					]);
 
-					return { ...event, ...leadFormData };
+					const simplifyOutput = this.getNodeParameter('options.simplifyOutput', true) as boolean;
+
+					if (simplifyOutput) {
+						return {
+							id: lead.id,
+							data: lead.field_data.reduce(
+								(acc, field) => ({ ...acc, [field.name]: field.values[0] }),
+								{},
+							),
+							form: {
+								id: form.id,
+								name: form.name,
+								locale: form.locale,
+								status: form.status,
+								questions: form.questions,
+							},
+							ad: { id: lead.ad_id, name: lead.ad_name },
+							adset: { id: lead.adset_id, name: lead.adset_name },
+							page: form.page,
+							created_time: lead.created_time,
+						};
+					}
+
+					return { lead, form, event };
 				}),
 		);
 

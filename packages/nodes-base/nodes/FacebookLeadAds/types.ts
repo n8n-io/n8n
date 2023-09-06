@@ -46,9 +46,23 @@ export interface FacebookPageCategory {
 	name: string;
 }
 
+export interface FacebookFormQuestion {
+	id: string;
+	key: string;
+	label: string;
+	type: string;
+}
+
 export interface FacebookForm {
 	id: string;
 	name: string;
+	locale: string;
+	status: string;
+	page: {
+		id: string;
+		name: string;
+	};
+	questions: FacebookFormQuestion[];
 }
 
 export interface FacebookPageEvent {
@@ -75,8 +89,13 @@ export interface FacebookPageEventEntry {
 }
 
 export interface FacebookFormLeadData {
-	created_time: string;
 	id: string;
+	created_time: string;
+	ad_id: string;
+	ad_name: string;
+	adset_id: string;
+	adset_name: string;
+	form_id: string;
 	field_data: [
 		{
 			name: string;

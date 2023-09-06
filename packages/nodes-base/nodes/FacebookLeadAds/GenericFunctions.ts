@@ -76,14 +76,8 @@ export async function facebookAppApiRequest(
 	body?: { type: 'json'; payload: IDataObject } | { type: 'form'; payload: IDataObject },
 	qs: IDataObject = {},
 ): Promise<any> {
-	const staticData = this.getWorkflowStaticData('node');
-
-	if (!staticData.appAccessToken) {
-		const { access_token } = await appAccessTokenRead.call(this);
-		staticData.appAccessToken = access_token;
-	}
-
-	const appAccessToken = staticData.appAccessToken as string;
+	const tokenResponse = await appAccessTokenRead.call(this);
+	const appAccessToken = tokenResponse.access_token;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -174,14 +168,8 @@ export async function facebookPageApiRequest(
 	qs: IDataObject = {},
 ): Promise<any> {
 	const pageId = this.getNodeParameter('page', '', { extractValue: true }) as string;
-	const staticData = this.getWorkflowStaticData('node');
-
-	if (!staticData.pageAccessToken) {
-		const page = (await facebookEntityDetail.call(this, pageId)) as FacebookPage;
-		staticData.pageAccessToken = page.access_token;
-	}
-
-	const pageAccessToken = staticData.pageAccessToken as string;
+	const page = (await facebookEntityDetail.call(this, pageId)) as FacebookPage;
+	const pageAccessToken = page.access_token;
 	const options: OptionsWithUri = {
 		headers: {
 			accept: 'application/json',
@@ -227,6 +215,6 @@ export async function facebookFormList(
 		`/${pageId}/leadgen_forms`,
 		{},
 		{ cursor, fields: 'id,name' },
-	)) as FacebookPageListResponse;
+	)) as FacebookFormListResponse;
 	return response;
 }
