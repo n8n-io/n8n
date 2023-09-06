@@ -501,7 +501,7 @@ export class WorkflowRunner {
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 
-				const racingPromises: Array<Promise<JobResponse | object>> = [jobData];
+				const racingPromises: Array<Promise<JobResponse>> = [jobData];
 
 				let clearWatchdogInterval;
 				if (queueRecoveryInterval > 0) {
@@ -519,7 +519,7 @@ export class WorkflowRunner {
 					 ************************************************ */
 					let watchDogInterval: NodeJS.Timeout | undefined;
 
-					const watchDog: Promise<object> = new Promise((res) => {
+					const watchDog: Promise<JobResponse> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
 							const currentJob = await this.jobQueue.getJob(job.id);
 							// When null means job is finished (not found in queue)
@@ -540,8 +540,12 @@ export class WorkflowRunner {
 					};
 				}
 
+				let racingPromisesResult: JobResponse = {
+					success: false,
+				};
 				try {
-					await Promise.race(racingPromises);
+					racingPromisesResult = await Promise.race(racingPromises);
+					console.log('raceResult', racingPromisesResult);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}
@@ -564,25 +568,33 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
+				// TODO: reduce for queued mode
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
 					executionId,
 					{
-						includeData: true,
-						unflattenData: true,
+						includeData: false,
+						unflattenData: false,
 					},
 				);
 				if (!fullExecutionData) {
 					return reject(new Error(`Could not find execution with id "${executionId}"`));
 				}
-				const runData = {
-					data: fullExecutionData.data,
+
+				const runData: IRun = {
+					data: {},
 					finished: fullExecutionData.finished,
 					mode: fullExecutionData.mode,
 					startedAt: fullExecutionData.startedAt,
 					stoppedAt: fullExecutionData.stoppedAt,
 				} as IRun;
 
+				if (racingPromisesResult.success && racingPromisesResult.executionResponse) {
+					runData.data = racingPromisesResult.executionResponse.data;
+				}
+
+				// TODO: are there any promises in queue mode to resolve that require runData?
 				this.activeExecutions.remove(executionId, runData);
+
 				// Normally also static data should be supplied here but as it only used for sending
 				// data to editor-UI is not needed.
 				await hooks.executeHookFunctions('workflowExecuteAfter', [runData]);
@@ -596,7 +608,8 @@ export class WorkflowRunner {
 						workflowSettings.saveDataSuccessExecution ??
 						config.getEnv('executions.saveDataOnSuccess');
 
-					const workflowDidSucceed = !runData.data.resultData.error;
+					// const workflowDidSucceed = !runData.data.resultData.error;
+					const workflowDidSucceed = !racingPromisesResult.error;
 					if (
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')

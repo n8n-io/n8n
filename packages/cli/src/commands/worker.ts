@@ -6,7 +6,13 @@ import { Container } from 'typedi';
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
-import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	ExecutionStatus,
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+} from 'n8n-workflow';
 import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -32,6 +38,7 @@ import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSu
 import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 import { getWorkerCommandReceivedHandler } from './workerCommandHandler';
+import { WorkerLifecycleService } from './worker/WorkerLifecycle.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -57,6 +64,8 @@ export class Worker extends BaseCommand {
 	redisPublisher: RedisServicePubSubPublisher;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
+
+	workerLifecycle: WorkerLifecycleService;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -189,9 +198,16 @@ export class Worker extends BaseCommand {
 					error,
 					error.node,
 				);
-				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
+				// await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
+				await this.workerLifecycle.onWorkflowExecuteAfter({
+					executionData: {
+						...fullExecutionData,
+						data: failedExecution.data,
+					},
+					staticData,
+				});
 			}
-			return { success: true };
+			return { success: true, error: error as ExecutionError };
 		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
@@ -234,8 +250,15 @@ export class Worker extends BaseCommand {
 
 		delete Worker.runningJobs[job.id];
 
+		await this.workerLifecycle.onWorkflowExecuteAfter({
+			staticData,
+			executionData: fullExecutionData,
+		});
+		await this.workerLifecycle.onWorkflowPostExecute(fullExecutionData);
+
 		return {
 			success: true,
+			executionResponse: fullExecutionData,
 		};
 	}
 
@@ -252,12 +275,17 @@ export class Worker extends BaseCommand {
 		await this.initEventBus();
 		await this.initRedis();
 		await this.initQueue();
+		await this.initWorkerTelemetry();
 	}
 
 	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
 		});
+	}
+
+	async initWorkerTelemetry() {
+		this.workerLifecycle = Container.get(WorkerLifecycleService);
 	}
 
 	/**

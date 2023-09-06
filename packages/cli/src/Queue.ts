@@ -1,6 +1,6 @@
 import type Bull from 'bull';
 import { Service } from 'typedi';
-import { type IExecuteResponsePromiseData } from 'n8n-workflow';
+import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import {
@@ -11,6 +11,7 @@ import {
 } from './services/redis/RedisServiceHelper';
 import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
 import config from '@/config';
+import type { IExecutionResponse } from './Interfaces';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -23,6 +24,8 @@ export interface JobData {
 
 export interface JobResponse {
 	success: boolean;
+	executionResponse?: IExecutionResponse;
+	error?: ExecutionError;
 }
 
 export interface WebhookResponse {
