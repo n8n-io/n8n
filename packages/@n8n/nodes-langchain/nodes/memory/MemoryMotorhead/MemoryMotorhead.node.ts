@@ -38,6 +38,7 @@ export class MemoryMotorhead implements INodeType {
 				displayName: 'Session ID',
 				name: 'sessionId',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 		],
