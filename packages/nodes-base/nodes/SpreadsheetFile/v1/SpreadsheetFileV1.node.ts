@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	JSON2SheetOpts,
@@ -46,7 +46,7 @@ export class SpreadsheetFileV1 implements INodeType {
 						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {
-						const binaryDataBuffer = binaryData.data;
+						const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 						workbook = xlsxRead(
 							options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
 							xlsxOptions,

@@ -73,7 +73,7 @@ export class SpreadsheetFileV2 implements INodeType {
 							const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 							workbook = xlsxReadFile(binaryPath, xlsxOptions);
 						} else {
-							const binaryDataBuffer = binaryData.data;
+							const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 							workbook = xlsxRead(
 								options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
 								xlsxOptions,
