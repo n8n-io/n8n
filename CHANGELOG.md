@@ -1,3 +1,28 @@
+# [1.6.0](https://github.com/n8n-io/n8n/compare/n8n@1.5.1...n8n@1.6.0) (2023-09-06)
+
+
+### Bug Fixes
+
+* **core:** Add support for in-transit encryption (TLS) on Redis connections ([#7047](https://github.com/n8n-io/n8n/issues/7047)) ([a910757](https://github.com/n8n-io/n8n/commit/a910757cc5ac7e47f9e0ca6a57c8b624e269aaa4))
+* **core:** Disallow orphan executions ([#7069](https://github.com/n8n-io/n8n/issues/7069)) ([8a28e98](https://github.com/n8n-io/n8n/commit/8a28e98ec811952163c58feaad608ec14ffc9243))
+* **core:** Split event bus controller into community and ee ([#7107](https://github.com/n8n-io/n8n/issues/7107)) ([011ee2e](https://github.com/n8n-io/n8n/commit/011ee2e04b62e0182e9d6787064dea70654cb4ab))
+* **editor:** Standardize save text ([#7093](https://github.com/n8n-io/n8n/issues/7093)) ([58b3492](https://github.com/n8n-io/n8n/commit/58b3492b0dcf140920ec97ce6d50e91a6d3a01a6))
+* Ensure all new executions are saved ([#7061](https://github.com/n8n-io/n8n/issues/7061)) ([b8e06d2](https://github.com/n8n-io/n8n/commit/b8e06d245f5b8bc969d2eb29793e9d98a33e69a8))
+* Load remote resources even if expressions in non requried parameters resolve ([#6987](https://github.com/n8n-io/n8n/issues/6987)) ([8a8d4e8](https://github.com/n8n-io/n8n/commit/8a8d4e8bb32588e79c3fcda2317c491ade9b3637))
+* **Postgres Node:** Connection pool of the database object has been destroyed ([#7074](https://github.com/n8n-io/n8n/issues/7074)) ([9dd5f0e](https://github.com/n8n-io/n8n/commit/9dd5f0e579ccfd5144ddb547977f15b45dd7c9ce))
+* **Postgres Node:** Tunnel doesn't always close ([#7087](https://github.com/n8n-io/n8n/issues/7087)) ([58e55ba](https://github.com/n8n-io/n8n/commit/58e55ba6691dc73a9f475a1989dccb51144e1825))
+
+
+### Features
+
+* **core:** Add list query middleware to credentials ([#7041](https://github.com/n8n-io/n8n/issues/7041)) ([fd78021](https://github.com/n8n-io/n8n/commit/fd78021b68a261291d76811a2a01d7336577bca7))
+* **core:** Add support for floating licenses ([#7090](https://github.com/n8n-io/n8n/issues/7090)) ([e26553f](https://github.com/n8n-io/n8n/commit/e26553f1981d2788f4f2e1e5f5ce23ff8a4a7c8d))
+* **core:** Migration for soft deletions for executions ([#7088](https://github.com/n8n-io/n8n/issues/7088)) ([413e0bc](https://github.com/n8n-io/n8n/commit/413e0bccb4d0144e5bdcf9221762e3f2b4428194))
+* **HTTP Request Node:** Determine binary file name from content-disposition headers ([#7032](https://github.com/n8n-io/n8n/issues/7032)) ([273d091](https://github.com/n8n-io/n8n/commit/273d0913fe5f45c0fe074e6a788e475d5a1d50bd))
+* **TheHive Node:** Overhaul ([#6457](https://github.com/n8n-io/n8n/issues/6457)) ([73e782e](https://github.com/n8n-io/n8n/commit/73e782e2cf9d4b96d8b3748e74ad93570663e536))
+
+
+
 ## [1.5.1](https://github.com/n8n-io/n8n/compare/n8n@1.5.0...n8n@1.5.1) (2023-08-31)
 
 
