@@ -17,6 +17,7 @@ import type {
 	WritingOptions,
 	ParsingOptions,
 } from 'xlsx';
+
 import {
 	read as xlsxRead,
 	readFile as xlsxReadFile,
@@ -495,7 +496,7 @@ export class SpreadsheetFileV2 implements INodeType {
 						});
 						continue;
 					}
-					throw error;
+					throw new NodeOperationError(this.getNode(), error, { itemIndex: i });
 				}
 			}
 
