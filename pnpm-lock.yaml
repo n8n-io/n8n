@@ -1039,6 +1039,9 @@ importers:
       cron:
         specifier: ~1.7.2
         version: 1.7.2
+      csv-parse:
+        specifier: ^5.5.0
+        version: 5.5.0
       currency-codes:
         specifier: ^2.1.0
         version: 2.1.0
@@ -10591,6 +10594,10 @@ packages:
 
   /csstype@3.1.1:
     resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
+
+  /csv-parse@5.5.0:
+    resolution: {integrity: sha512-RxruSK3M4XgzcD7Trm2wEN+SJ26ChIb903+IWxNOcB5q4jT2Cs+hFr6QP39J05EohshRFEvyzEBoZ/466S2sbw==}
+    dev: false
 
   /curlconverter@3.21.0(chokidar@3.5.2):
     resolution: {integrity: sha512-DXCnp1A/Xa69FujksUfdvWQFAnIn/C+4Wuv8t+UVdZkF/lY5bzj98GGKOGme7V/ckSHDLxE29Xp76sJ5Cpsp5A==}
