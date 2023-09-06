@@ -1960,6 +1960,81 @@ const validateResourceMapperValue = (
 	return result;
 };
 
+const validateCollection = (
+	node: INode,
+	runIndex: number,
+	itemIndex: number,
+	propertyDescription: INodeProperties,
+	parameterPath: string[],
+	validationResult: ExtendedValidationResult,
+): ExtendedValidationResult => {
+	let nestedDescriptions: INodeProperties[] | undefined;
+
+	if (propertyDescription.type === 'fixedCollection') {
+		nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
+			(entry) => entry.name === parameterPath[1],
+		)?.values;
+	}
+
+	if (propertyDescription.type === 'collection') {
+		nestedDescriptions = propertyDescription.options as INodeProperties[];
+	}
+
+	if (!nestedDescriptions) {
+		return validationResult;
+	}
+
+	const validationMap: {
+		[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
+	} = {};
+
+	for (const prop of nestedDescriptions) {
+		if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
+
+		validationMap[prop.name] = {
+			type: prop.validateType,
+			displayName: prop.displayName,
+			options:
+				prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
+		};
+	}
+
+	if (!Object.keys(validationMap).length) {
+		return validationResult;
+	}
+
+	for (const value of Array.isArray(validationResult.newValue)
+		? (validationResult.newValue as IDataObject[])
+		: [validationResult.newValue as IDataObject]) {
+		for (const key of Object.keys(value)) {
+			if (!validationMap[key]) continue;
+
+			const fieldValidationResult = validateFieldType(
+				key,
+				value[key],
+				validationMap[key].type,
+				validationMap[key].options,
+			);
+
+			if (!fieldValidationResult.valid) {
+				throw new ExpressionError(
+					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+					{
+						description: fieldValidationResult.errorMessage,
+						runIndex,
+						itemIndex,
+						nodeCause: node.name,
+					},
+				);
+			}
+
+			value[key] = fieldValidationResult.newValue;
+		}
+	}
+
+	return validationResult;
+};
+
 const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
@@ -2003,71 +2078,14 @@ const validateValueAgainstSchema = (
 			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
 		);
 	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
-		let nestedDescriptions: INodeProperties[] | undefined;
-
-		if (propertyDescription.type === 'fixedCollection') {
-			nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
-				(entry) => entry.name === parameterPath[1],
-			)?.values;
-		}
-
-		if (propertyDescription.type === 'collection') {
-			nestedDescriptions = propertyDescription.options as INodeProperties[];
-		}
-
-		if (!nestedDescriptions) {
-			return parameterValue;
-		}
-
-		const validationMap: {
-			[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
-		} = {};
-
-		for (const prop of nestedDescriptions) {
-			if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
-
-			validationMap[prop.name] = {
-				type: prop.validateType,
-				displayName: prop.displayName,
-				options:
-					prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
-			};
-		}
-
-		if (!Object.keys(validationMap).length) {
-			return parameterValue;
-		}
-
-		for (const value of Array.isArray(validationResult.newValue)
-			? (validationResult.newValue as IDataObject[])
-			: [validationResult.newValue as IDataObject]) {
-			for (const key of Object.keys(value)) {
-				if (!validationMap[key]) continue;
-
-				const validationResult = validateFieldType(
-					key,
-					value[key],
-					validationMap[key].type,
-					validationMap[key].options,
-				);
-
-				if (!validationResult.valid) {
-					throw new ExpressionError(
-						`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
-						{
-							description: validationResult.errorMessage,
-							runIndex,
-							itemIndex,
-							nodeCause: node.name,
-						},
-					);
-				}
-
-				value[key] = validationResult.newValue;
-			}
-		}
-
-		return validationResult.newValue;
+		validationResult = validateCollection(
+			node,
+			runIndex,
+			itemIndex,
+			propertyDescription,
+			parameterPath,
+			validationResult,
+		);
 	}
 
 	if (!validationResult.valid) {
