@@ -15,6 +15,7 @@ export { TagRepository } from './tag.repository';
 export { UserRepository } from './user.repository';
 export { VariablesRepository } from './variables.repository';
 export { WebhookRepository } from './webhook.repository';
+export { WorkflowHistoryRepository } from './workflowHistory.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowStatisticsRepository } from './workflowStatistics.repository';
 export { WorkflowTagMappingRepository } from './workflowTagMapping.repository';
