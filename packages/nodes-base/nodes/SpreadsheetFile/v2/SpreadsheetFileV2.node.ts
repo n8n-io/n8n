@@ -25,33 +25,7 @@ import {
 	write as xlsxWrite,
 } from 'xlsx';
 import { parse as createCSVParser } from 'csv-parse';
-
-/**
- * Flattens an object with deep data
- *
- * @param {IDataObject} data The object to flatten
- */
-function flattenObject(data: IDataObject) {
-	const returnData: IDataObject = {};
-	for (const key1 of Object.keys(data)) {
-		if (data[key1] !== null && typeof data[key1] === 'object') {
-			if (data[key1] instanceof Date) {
-				returnData[key1] = data[key1]?.toString();
-				continue;
-			}
-			const flatObject = flattenObject(data[key1] as IDataObject);
-			for (const key2 in flatObject) {
-				if (flatObject[key2] === undefined) {
-					continue;
-				}
-				returnData[`${key1}.${key2}`] = flatObject[key2];
-			}
-		} else {
-			returnData[key1] = data[key1];
-		}
-	}
-	return returnData;
-}
+import { flattenObject } from '@utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Spreadsheet File',

@@ -12,34 +12,8 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { JSON2SheetOpts, Sheet2JSONOpts, WorkBook, WritingOptions } from 'xlsx';
 import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
 
-import { oldVersionNotice } from '../../../utils/descriptions';
-
-/**
- * Flattens an object with deep data
- *
- * @param {IDataObject} data The object to flatten
- */
-function flattenObject(data: IDataObject) {
-	const returnData: IDataObject = {};
-	for (const key1 of Object.keys(data)) {
-		if (data[key1] !== null && typeof data[key1] === 'object') {
-			if (data[key1] instanceof Date) {
-				returnData[key1] = data[key1]?.toString();
-				continue;
-			}
-			const flatObject = flattenObject(data[key1] as IDataObject);
-			for (const key2 in flatObject) {
-				if (flatObject[key2] === undefined) {
-					continue;
-				}
-				returnData[`${key1}.${key2}`] = flatObject[key2];
-			}
-		} else {
-			returnData[key1] = data[key1];
-		}
-	}
-	return returnData;
-}
+import { oldVersionNotice } from '@utils/descriptions';
+import { flattenObject } from '@utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Spreadsheet File',
