@@ -18,28 +18,12 @@ import {
 	write as xlsxWrite,
 } from 'xlsx';
 import { parse as createCSVParser } from 'csv-parse';
+
+import { versionDescription } from './VersionDescription';
 import { flattenObject } from '@utils/utilities';
-import {
-	baseDescription,
-	operationProperties,
-	fromFileProperties,
-	fromFileV2Properties,
-	toFileProperties,
-	optionsProperties,
-} from '../description';
 
 export class SpreadsheetFileV2 implements INodeType {
-	description = {
-		...baseDescription,
-		version: 2,
-		properties: [
-			...operationProperties,
-			...fromFileProperties,
-			...fromFileV2Properties,
-			...toFileProperties,
-			...optionsProperties,
-		],
-	};
+	description = versionDescription;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -89,7 +73,7 @@ export class SpreadsheetFileV2 implements INodeType {
 							const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 							workbook = xlsxReadFile(binaryPath, xlsxOptions);
 						} else {
-							const binaryDataBuffer = binaryData.data;
+							const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 							workbook = xlsxRead(
 								options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
 								xlsxOptions,

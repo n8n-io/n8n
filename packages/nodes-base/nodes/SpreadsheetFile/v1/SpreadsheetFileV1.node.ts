@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import type {
 	JSON2SheetOpts,
@@ -16,28 +16,11 @@ import {
 	write as xlsxWrite,
 } from 'xlsx';
 
-import { oldVersionNotice } from '@utils/descriptions';
+import { versionDescription } from './VersionDescription';
 import { flattenObject } from '@utils/utilities';
-import {
-	baseDescription,
-	operationProperties,
-	fromFileProperties,
-	toFileProperties,
-	optionsProperties,
-} from '../description';
 
 export class SpreadsheetFileV1 implements INodeType {
-	description = {
-		...baseDescription,
-		version: 1,
-		properties: [
-			oldVersionNotice,
-			...operationProperties,
-			...fromFileProperties,
-			...toFileProperties,
-			...optionsProperties,
-		],
-	};
+	description = versionDescription;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
@@ -63,7 +46,7 @@ export class SpreadsheetFileV1 implements INodeType {
 						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {
-						const binaryDataBuffer = binaryData.data;
+						const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 						workbook = xlsxRead(
 							options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
 							xlsxOptions,
