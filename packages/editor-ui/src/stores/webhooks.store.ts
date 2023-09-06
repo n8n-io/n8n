@@ -54,6 +54,7 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		},
 	},
 	actions: {
+		addSidebarMenuItems(_: IMenuItem[]) {},
 		setFakeDoorFeatures(fakeDoors: IFakeDoor[]): void {
 			useUIStore().fakeDoorFeatures = fakeDoors;
 		},
