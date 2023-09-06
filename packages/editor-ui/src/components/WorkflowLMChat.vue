@@ -397,18 +397,32 @@ export default defineComponent({
 
 					const lastNodeExecuted =
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
-					const responseData = get(
+
+					const nodeResponseDataArray = get(
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						`[${lastNodeExecuted}][0].data.main[0][0].json`,
-					) as object & { output?: string };
+						`[${lastNodeExecuted}]`,
+					) as ITaskData[];
+
+					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
 					let responseMessage: string;
-					if (responseData.output !== undefined) {
-						responseMessage = responseData.output;
-					} else if (Object.keys(responseData).length === 0) {
-						responseMessage = '<NO RESPONSE FOUND>';
+
+					if (get(nodeResponseData, ['error'])) {
+						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
 					} else {
-						responseMessage = JSON.stringify(responseData, null, 2);
+						const responseData = get(nodeResponseData, 'data.main[0][0].json');
+						if (responseData) {
+							const responseObj = responseData as object & { output?: string };
+							if (responseObj.output !== undefined) {
+								responseMessage = responseObj.output;
+							} else if (Object.keys(responseObj).length === 0) {
+								responseMessage = '<NO RESPONSE FOUND>';
+							} else {
+								responseMessage = JSON.stringify(responseObj, null, 2);
+							}
+						} else {
+							responseMessage = '<NO RESPONSE FOUND>';
+						}
 					}
 
 					this.messages.push({
