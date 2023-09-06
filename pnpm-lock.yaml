@@ -615,6 +615,9 @@ importers:
       mime-types:
         specifier: ^2.1.27
         version: 2.1.35
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../nodes-base
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
