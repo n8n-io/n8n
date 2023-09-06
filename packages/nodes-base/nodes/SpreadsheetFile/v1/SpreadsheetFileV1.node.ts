@@ -2,8 +2,19 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { JSON2SheetOpts, Sheet2JSONOpts, WorkBook, WritingOptions } from 'xlsx';
-import { read as xlsxRead, utils as xlsxUtils, write as xlsxWrite } from 'xlsx';
+import type {
+	JSON2SheetOpts,
+	ParsingOptions,
+	Sheet2JSONOpts,
+	WorkBook,
+	WritingOptions,
+} from 'xlsx';
+import {
+	read as xlsxRead,
+	readFile as xlsxReadFile,
+	utils as xlsxUtils,
+	write as xlsxWrite,
+} from 'xlsx';
 
 import { oldVersionNotice } from '@utils/descriptions';
 import { flattenObject } from '@utils/utilities';
@@ -41,18 +52,22 @@ export class SpreadsheetFileV1 implements INodeType {
 				try {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const options = this.getNodeParameter('options', i, {});
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-					this.helpers.assertBinaryData(i, binaryPropertyName);
 					// Read the binary spreadsheet data
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-					let workbook;
-					if (options.readAsString === true) {
-						workbook = xlsxRead(binaryDataBuffer.toString(), {
-							type: 'string',
-							raw: options.rawData as boolean,
-						});
+					let workbook: WorkBook;
+					const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+					if (options.readAsString) xlsxOptions.type = 'string';
+
+					if (binaryData.id) {
+						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {
-						workbook = xlsxRead(binaryDataBuffer, { raw: options.rawData as boolean });
+						const binaryDataBuffer = binaryData.data;
+						workbook = xlsxRead(
+							options.readAsString ? binaryDataBuffer.toString() : binaryDataBuffer,
+							xlsxOptions,
+						);
 					}
 
 					if (workbook.SheetNames.length === 0) {
