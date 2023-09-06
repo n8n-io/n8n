@@ -2229,7 +2229,7 @@ export default defineComponent({
 
 			this.uiStore.lastSelectedNode = sourceNode.name;
 			this.uiStore.lastSelectedNodeEndpointUuid =
-				info.endpointUuid ?? info.connection?.target.jtk.endpoint.uuid;
+				info.endpointUuid ?? info.connection?.target.jtk?.endpoint.uuid;
 			this.uiStore.lastSelectedNodeOutputIndex = info.index;
 			this.canvasStore.newNodeInsertPosition = null;
 
