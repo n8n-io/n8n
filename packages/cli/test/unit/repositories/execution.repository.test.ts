@@ -7,6 +7,9 @@ import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { TIME } from '@/constants';
+import { DateUtils } from 'typeorm/util/DateUtils';
+
+jest.mock('typeorm/util/DateUtils');
 
 const { objectContaining } = expect;
 
@@ -33,7 +36,7 @@ describe('ExecutionRepository', () => {
 		test('should soft-delete executions based on batch size', async () => {
 			config.set('executions.pruneDataMaxCount', 0); // disable path
 
-			executionRepository.setDeletionBatchSize(5);
+			executionRepository.deletionBatchSize = 5;
 
 			const find = jest.spyOn(ExecutionRepository.prototype, 'find');
 			entityManager.find.mockResolvedValueOnce([]);
@@ -41,7 +44,7 @@ describe('ExecutionRepository', () => {
 			await executionRepository.pruneBySoftDeleting();
 
 			expect(find.mock.calls[0][0]).toEqual(
-				objectContaining({ take: executionRepository.getDeletionBatchSize() }),
+				objectContaining({ take: executionRepository.deletionBatchSize }),
 			);
 		});
 
@@ -57,22 +60,25 @@ describe('ExecutionRepository', () => {
 
 			expect(find.mock.calls[0][0]).toEqual(objectContaining({ skip: maxCount }));
 		});
-	});
 
-	describe('pruningLimit()', () => {
 		test('should limit pruning based on EXECUTIONS_DATA_MAX_AGE', async () => {
-			config.set('executions.pruneDataMaxCount', 0); // disable path
-
 			const maxAge = 5; // hours
 
-			config.set('executions.pruneDataMaxAge', maxAge);
+			config.set('executions.pruneDataMaxCount', 0); // disable path
+			config.set('executions.pruneDataMaxAge', 5);
+
+			entityManager.find.mockResolvedValue([]);
+
+			const dateFormat = jest.spyOn(DateUtils, 'mixedDateToUtcDatetimeString');
 
 			const now = Date.now();
-			const limit = executionRepository.pruningLimit();
 
-			const difference = now - limit.valueOf();
+			await executionRepository.pruneBySoftDeleting();
 
-			expect(difference / TIME.HOUR).toBe(maxAge);
+			const argDate = dateFormat.mock.calls[0][0];
+			const difference = now - argDate.valueOf();
+
+			expect(Math.round(difference / TIME.HOUR)).toBe(maxAge);
 		});
 	});
 });

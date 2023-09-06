@@ -68,7 +68,7 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
-	private deletionBatchSize = 100;
+	deletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
@@ -81,14 +81,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
-	}
-
-	setDeletionBatchSize(size: number) {
-		this.deletionBatchSize = size;
-	}
-
-	getDeletionBatchSize() {
-		return this.deletionBatchSize;
 	}
 
 	async findMultipleExecutions(
@@ -428,26 +420,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} while (executionIds.length > 0);
 	}
 
-	/**
-	 * Return the timestamp up to which executions should be pruned.
-	 */
-	pruningLimit() {
-		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // hours
-
-		const date = new Date();
-		date.setHours(date.getHours() - maxAge);
-
-		return date;
-	}
-
 	async pruneBySoftDeleting() {
 		Logger.verbose('Pruning (soft-deleting) execution data from database');
 
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+
+		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
+		const date = new Date();
+		date.setHours(date.getHours() - maxAge);
 
 		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(this.pruningLimit())) },
+			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
 
 		if (maxCount > 0) {
