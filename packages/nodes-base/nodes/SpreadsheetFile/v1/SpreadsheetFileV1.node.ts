@@ -16,28 +16,11 @@ import {
 	write as xlsxWrite,
 } from 'xlsx';
 
-import { oldVersionNotice } from '@utils/descriptions';
+import { versionDescription } from './VersionDescription';
 import { flattenObject } from '@utils/utilities';
-import {
-	baseDescription,
-	operationProperties,
-	fromFileProperties,
-	toFileProperties,
-	optionsProperties,
-} from '../description';
 
 export class SpreadsheetFileV1 implements INodeType {
-	description = {
-		...baseDescription,
-		version: 1,
-		properties: [
-			oldVersionNotice,
-			...operationProperties,
-			...fromFileProperties,
-			...toFileProperties,
-			...optionsProperties,
-		],
-	};
+	description = versionDescription;
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
