@@ -49,7 +49,7 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast, useMessage } from '@/composables';
 
-import { isEqual } from 'lodash-es';
+import { get, isEqual } from 'lodash-es';
 
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
@@ -306,7 +306,7 @@ function connectionInputData(
 }
 
 function executeData(
-	parentNode: string[],
+	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
@@ -317,12 +317,10 @@ function executeData(
 		source: null,
 	} as IExecuteData;
 
-	if (parentNode.length) {
-		// Add the input data to be able to also resolve the short expression format
-		// which does not use the node name
-		const parentNodeName = parentNode[0];
-		const workflowsStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore();
 
+	// Find the parent node which has data
+	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
 			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
@@ -337,7 +335,6 @@ function executeData(
 		}
 
 		// populate `executeData` from `runData`
-
 		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
@@ -368,6 +365,7 @@ function executeData(
 					],
 				};
 			}
+			return executeData;
 		}
 	}
 
