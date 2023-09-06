@@ -43,6 +43,9 @@
     "@types/request-promise-native": "~1.0.15",
     "@types/uuid": "^8.3.2"
   },
+  "peerDependencies": {
+    "n8n-nodes-base": "workspace:*"
+  },
   "dependencies": {
     "axios": "^0.21.1",
     "@n8n/client-oauth2": "workspace:*",
