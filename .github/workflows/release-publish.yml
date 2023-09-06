@@ -39,7 +39,8 @@ jobs:
       - name: Publish to NPM
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
+          node scripts/trim-fe-packageJson.js
+          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
           npm dist-tag rm n8n rc
 
       - name: Create a Release on GitHub

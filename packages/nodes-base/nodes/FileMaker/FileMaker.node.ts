@@ -843,6 +843,6 @@ export class FileMaker implements INodeType {
 		}
 
 		await logout.call(this, token as string);
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

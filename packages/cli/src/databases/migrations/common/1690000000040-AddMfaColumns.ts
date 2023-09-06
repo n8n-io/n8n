@@ -1,35 +1,15 @@
 import type { MigrationContext, ReversibleMigration } from '@/databases/types';
-import { TableColumn } from 'typeorm';
 
 export class AddMfaColumns1690000000030 implements ReversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.addColumns(`${tablePrefix}user`, [
-			new TableColumn({
-				name: 'mfaEnabled',
-				type: 'boolean',
-				isNullable: false,
-				default: false,
-			}),
-			new TableColumn({
-				name: 'mfaSecret',
-				type: 'text',
-				isNullable: true,
-				default: null,
-			}),
-			new TableColumn({
-				name: 'mfaRecoveryCodes',
-				type: 'text',
-				isNullable: true,
-				default: null,
-			}),
+	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
+		await addColumns('user', [
+			column('mfaEnabled').bool.notNull.default(false),
+			column('mfaSecret').text,
+			column('mfaRecoveryCodes').text,
 		]);
 	}
 
-	async down({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.dropColumns(`${tablePrefix}user`, [
-			'mfaEnabled',
-			'mfaSecret',
-			'mfaRecoveryCodes',
-		]);
+	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
+		await dropColumns('user', ['mfaEnabled', 'mfaSecret', 'mfaRecoveryCodes']);
 	}
 }

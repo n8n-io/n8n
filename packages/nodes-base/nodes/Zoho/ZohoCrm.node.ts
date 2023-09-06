@@ -1331,6 +1331,6 @@ export class ZohoCrm implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

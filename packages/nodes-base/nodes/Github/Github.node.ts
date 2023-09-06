@@ -2269,7 +2269,7 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		} else {
 			// For all other ones simply return the unchanged items
 			return [items];

@@ -180,11 +180,6 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
 			await deleteAllLdapIdentities();
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_update',
-				users: ldapUsers.length,
-				user_ids: ldapUsers.map((user) => user.id),
-			});
 		}
 	}
 
@@ -200,17 +195,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
  * If it's the first run of this feature, all the default data is created in the database
  */
 export const handleLdapInit = async (): Promise<void> => {
-	if (!isLdapEnabled()) {
-		const ldapUsers = await getLdapUsers();
-		if (ldapUsers.length) {
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_feature_deactivated',
-				users: ldapUsers.length,
-				user_ids: ldapUsers.map((user) => user.id),
-			});
-		}
-		return;
-	}
+	if (!isLdapEnabled()) return;
 
 	const ldapConfig = await getLdapConfig();
 

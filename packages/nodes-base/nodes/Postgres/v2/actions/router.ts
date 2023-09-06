@@ -57,8 +57,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (sshClient) {
 			sshClient.end();
 		}
-		pgp.end();
+
+		await db.$pool.end();
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }
