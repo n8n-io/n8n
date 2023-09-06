@@ -68,15 +68,7 @@ import type { IPermissions } from '@/permissions';
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
 	if (nodeType) {
-		if (
-			nodeType.inputs.length === 0 ||
-			!!nodeType.inputs.find((input) => {
-				if (typeof input === 'string') {
-					return input !== 'main';
-				}
-				return input.type !== 'main';
-			})
-		) {
+		if (!!nodeType.outputs.find((output) => output !== 'main')) {
 			// Get the first node which is connected to a non-main output
 			const nonMainNodesConnected = nodeType.outputs?.reduce((acc, outputName) => {
 				const parentNodes = workflow.getChildNodes(node.name, outputName);
