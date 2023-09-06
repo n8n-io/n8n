@@ -1367,8 +1367,6 @@ export class Workflow {
 				),
 			};
 		}
-
-		return { data: null };
 	}
 }
 

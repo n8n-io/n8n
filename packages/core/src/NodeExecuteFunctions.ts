@@ -2287,6 +2287,8 @@ const getCommonWorkflowFunctions = (
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getTimezone: () => getTimezone(workflow, additionalData),
+
+	prepareOutputData: async (outputData) => [outputData],
 });
 
 const getRequestHelperFunctions = (
@@ -2899,7 +2901,6 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			prepareOutputData: NodeHelpers.prepareOutputData,
 			binaryToBuffer,
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
@@ -3367,7 +3368,6 @@ export function getExecuteWebhookFunctions(
 					getAdditionalKeys(additionalData, mode, null),
 				),
 			getWebhookName: () => webhookData.webhookDescription.name,
-			prepareOutputData: NodeHelpers.prepareOutputData,
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),

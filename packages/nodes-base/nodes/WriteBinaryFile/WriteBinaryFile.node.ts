@@ -128,6 +128,6 @@ export class WriteBinaryFile implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

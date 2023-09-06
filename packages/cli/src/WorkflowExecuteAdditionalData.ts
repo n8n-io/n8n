@@ -63,11 +63,11 @@ import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
-import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
 import { EventsService } from '@/services/events.service';
 import { SecretsHelper } from './SecretsHelpers';
 import { OwnershipService } from './services/ownership.service';
+import { ExecutionMetadataService } from './services/executionMetadata.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -251,22 +251,6 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			);
 		}
 	}
-}
-
-export async function saveExecutionMetadata(
-	executionId: string,
-	executionMetadata: Record<string, string>,
-): Promise<ExecutionMetadata[]> {
-	const metadataRows = [];
-	for (const [key, value] of Object.entries(executionMetadata)) {
-		metadataRows.push({
-			execution: { id: executionId },
-			key,
-			value,
-		});
-	}
-
-	return Db.collections.ExecutionMetadata.save(metadataRows);
 }
 
 /**
@@ -548,7 +532,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					if (!isManualMode && isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await WorkflowHelpers.saveStaticDataById(
+							await WorkflowsService.saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -665,7 +649,10 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 					try {
 						if (fullRunData.data.resultData.metadata) {
-							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+							await Container.get(ExecutionMetadataService).save(
+								this.executionId,
+								fullRunData.data.resultData.metadata,
+							);
 						}
 					} catch (e) {
 						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);
@@ -737,7 +724,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
-							await WorkflowHelpers.saveStaticDataById(
+							await WorkflowsService.saveStaticDataById(
 								this.workflowData.id as string,
 								newStaticData,
 							);
@@ -802,7 +789,10 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					try {
 						if (fullRunData.data.resultData.metadata) {
-							await saveExecutionMetadata(this.executionId, fullRunData.data.resultData.metadata);
+							await Container.get(ExecutionMetadataService).save(
+								this.executionId,
+								fullRunData.data.resultData.metadata,
+							);
 						}
 					} catch (e) {
 						Logger.error(`Failed to save metadata for execution ID ${this.executionId}`, e);

@@ -1,6 +1,6 @@
 import type { QueryRunner } from 'typeorm';
 import { Column } from './Column';
-import { AddColumns, CreateTable, DropColumns, DropTable } from './Table';
+import { AddColumns, AddNotNull, CreateTable, DropColumns, DropNotNull, DropTable } from './Table';
 import { CreateIndex, DropIndex } from './Indices';
 
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
@@ -21,10 +21,15 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		columnNames: string[],
 		isUnique = false,
 		customIndexName?: string,
-	) => new CreateIndex(tablePrefix, tableName, columnNames, isUnique, queryRunner, customIndexName),
+	) => new CreateIndex(tableName, columnNames, isUnique, tablePrefix, queryRunner, customIndexName),
 
 	dropIndex: (tableName: string, columnNames: string[], customIndexName?: string) =>
-		new DropIndex(tablePrefix, tableName, columnNames, queryRunner, customIndexName),
+		new DropIndex(tableName, columnNames, tablePrefix, queryRunner, customIndexName),
+
+	addNotNull: (tableName: string, columnName: string) =>
+		new AddNotNull(tableName, columnName, tablePrefix, queryRunner),
+	dropNotNull: (tableName: string, columnName: string) =>
+		new DropNotNull(tableName, columnName, tablePrefix, queryRunner),
 
 	/* eslint-enable */
 });

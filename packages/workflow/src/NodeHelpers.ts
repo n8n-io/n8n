@@ -15,7 +15,6 @@ import type {
 	IContextObject,
 	INode,
 	INodeCredentialDescription,
-	INodeExecutionData,
 	INodeIssueObjectProperty,
 	INodeIssues,
 	INodeParameterResourceLocator,
@@ -845,27 +844,6 @@ export function getNodeParameters(
 		}
 	}
 	return nodeParameters;
-}
-
-/**
- * Brings the output data in a format that can be returned from a node
- *
- * @param {number} [outputIndex=0]
- */
-export async function prepareOutputData(
-	outputData: INodeExecutionData[],
-	outputIndex = 0,
-): Promise<INodeExecutionData[][]> {
-	// TODO: Check if node has output with that index
-	const returnData = [];
-
-	for (let i = 0; i < outputIndex; i++) {
-		returnData.push([]);
-	}
-
-	returnData.push(outputData);
-
-	return returnData;
 }
 
 /**

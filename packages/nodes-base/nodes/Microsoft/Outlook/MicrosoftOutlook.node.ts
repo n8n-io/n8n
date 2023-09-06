@@ -1194,9 +1194,9 @@ export class MicrosoftOutlook implements INodeType {
 			(resource === 'message' && operation === 'getMime') ||
 			(resource === 'messageAttachment' && operation === 'download')
 		) {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }
