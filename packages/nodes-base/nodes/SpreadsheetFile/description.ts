@@ -1,20 +1,5 @@
 // eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
-import type { INodeTypeDescription, INodeProperties } from 'n8n-workflow';
-
-export const baseDescription: Omit<INodeTypeDescription, 'version' | 'properties'> = {
-	displayName: 'Spreadsheet File',
-	name: 'spreadsheetFile',
-	icon: 'fa:table',
-	group: ['transform'],
-	description: 'Reads and writes data from a spreadsheet file like CSV, XLS, ODS, etc',
-	defaultVersion: 2,
-	defaults: {
-		name: 'Spreadsheet File',
-		color: '#2244FF',
-	},
-	inputs: ['main'],
-	outputs: ['main'],
-};
+import type { INodeProperties } from 'n8n-workflow';
 
 export const operationProperties: INodeProperties[] = [
 	{

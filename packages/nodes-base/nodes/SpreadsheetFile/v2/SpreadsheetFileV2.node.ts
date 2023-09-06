@@ -1,6 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { pipeline } from 'stream/promises';
-import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import type {
@@ -19,11 +26,37 @@ import {
 } from 'xlsx';
 import { parse as createCSVParser } from 'csv-parse';
 
-import { versionDescription } from './VersionDescription';
+import {
+	operationProperties,
+	fromFileProperties,
+	toFileProperties,
+	optionsProperties,
+	fromFileV2Properties,
+} from '../description';
 import { flattenObject } from '@utils/utilities';
 
 export class SpreadsheetFileV2 implements INodeType {
-	description = versionDescription;
+	description: INodeTypeDescription;
+
+	constructor(baseDescription: INodeTypeBaseDescription) {
+		this.description = {
+			...baseDescription,
+			version: 2,
+			defaults: {
+				name: 'Spreadsheet File',
+				color: '#2244FF',
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				...operationProperties,
+				...fromFileProperties,
+				...fromFileV2Properties,
+				...toFileProperties,
+				...optionsProperties,
+			],
+		};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
