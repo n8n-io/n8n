@@ -2,6 +2,6 @@ import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repo
 import { Service } from 'typedi';
 
 @Service()
-export class WorkflowHistoryServices {
+export class WorkflowHistoryService {
 	constructor(private readonly workflowHistoryRepository: WorkflowHistoryRepository) {}
 }
