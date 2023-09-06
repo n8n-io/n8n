@@ -260,6 +260,16 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
 				},
 				{
+					id: 'admin',
+					icon: 'home',
+					label: this.$locale.baseText('mainSidebar.adminPanel'),
+					position: 'bottom',
+					available:
+						this.usersStore.currentUser !== null &&
+						this.settingsStore.isCloudDeployment &&
+						this.usersStore.currentUser.isOwner,
+				},
+				{
 					id: 'settings',
 					icon: 'cog',
 					label: this.$locale.baseText('settings'),
@@ -448,6 +458,15 @@ export default defineComponent({
 				case 'examples': {
 					this.trackHelpItemClick(key);
 					break;
+				}
+				case 'admin': {
+					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					try {
+						const { code } = await this.cloudPlanStore.getAutoLoginCode();
+						window.location.href = `https://${adminPanelHost}/login?code=${code}`;
+					} catch (e) {
+						window.location.href = `https://${adminPanelHost}`;
+					}
 				}
 				default:
 					break;

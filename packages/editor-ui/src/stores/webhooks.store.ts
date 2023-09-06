@@ -54,11 +54,6 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		},
 	},
 	actions: {
-		addSidebarMenuItems(menuItems: IMenuItem[]) {
-			const uiStore = useUIStore();
-			const updated = uiStore.sidebarMenuItems.concat(menuItems);
-			uiStore.sidebarMenuItems = updated;
-		},
 		setFakeDoorFeatures(fakeDoors: IFakeDoor[]): void {
 			useUIStore().fakeDoorFeatures = fakeDoors;
 		},

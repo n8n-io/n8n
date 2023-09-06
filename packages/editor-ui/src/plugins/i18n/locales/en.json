@@ -674,6 +674,7 @@
 	"mainSidebar.showMessage.stopExecution.title": "Execution stopped",
 	"mainSidebar.templates": "Templates",
 	"mainSidebar.workflows": "Workflows",
+	"mainSidebar.adminPanel": "Admin Panel",
 	"mainSidebar.workflows.readOnlyEnv.tooltip": "Protected mode is active, so no workflows changes are allowed. Change this in Settings, under 'Source Control'",
 	"mainSidebar.executions": "All executions",
 	"menuActions.duplicate": "Duplicate",

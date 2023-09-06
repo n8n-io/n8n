@@ -4,7 +4,7 @@ import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import { getCurrentPlan, getCurrentUsage, getAdminPanelLoginCode } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
 
@@ -116,6 +116,10 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		} catch {}
 	};
 
+	const getAutoLoginCode = async (): Promise<{ code: string }> => {
+		return getAdminPanelLoginCode({ baseUrl: rootStore.getBaseUrl, sessionId: '' });
+	};
+
 	return {
 		state,
 		getOwnerCurrentPlan,
@@ -129,5 +133,6 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		allExecutionsUsed,
 		reset,
 		checkForCloudPlanData,
+		getAutoLoginCode,
 	};
 });
