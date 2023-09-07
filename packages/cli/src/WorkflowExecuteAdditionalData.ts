@@ -781,9 +781,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					// For reasons(tm) the execution status is not updated correctly in the first update, so has to be written again (tbd)
 
-					await Container.get(ExecutionRepository).updateExistingExecution(this.executionId, {
-						status: fullExecutionData.status,
-					});
+					// await Container.get(ExecutionRepository).updateExistingExecution(this.executionId, {
+					// 	status: fullExecutionData.status,
+					// });
 
 					try {
 						if (fullRunData.data.resultData.metadata) {
@@ -1216,14 +1216,19 @@ export function getWorkflowHooksWorkerMain(
 	optionalParameters?: IWorkflowHooksOptionalParameters,
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
-	const hookFunctions = hookFunctionsPush();
-	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
-	for (const key of Object.keys(preExecuteFunctions)) {
-		if (hookFunctions[key] === undefined) {
-			hookFunctions[key] = [];
-		}
-		hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
-	}
+	const hookFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+
+	// TODO: why are workers pushing to frontend?
+	// TODO: simplifying this for now to just leave the bare minimum hooks
+
+	// const hookFunctions = hookFunctionsPush();
+	// const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	// for (const key of Object.keys(preExecuteFunctions)) {
+	// 	if (hookFunctions[key] === undefined) {
+	// 		hookFunctions[key] = [];
+	// 	}
+	// 	hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
+	// }
 
 	// When running with worker mode, main process executes
 	// Only workflowExecuteBefore + workflowExecuteAfter

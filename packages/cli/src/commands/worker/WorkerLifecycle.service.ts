@@ -25,6 +25,7 @@ import { ExecutionMetadataService } from '../../services/executionMetadata.servi
 import { isWorkflowIdValid } from '../../utils';
 import { WorkflowsService } from '../../workflows/workflows.services';
 import { EventsService } from '../../services/events.service';
+import { EventPayloadWorkflow } from '../../eventbus/EventMessageClasses/EventMessageWorkflow';
 
 @Service()
 export class WorkerLifecycleService {
@@ -104,9 +105,9 @@ export class WorkerLifecycleService {
 
 			// For reasons(tm) the execution status is not updated correctly in the first update, so has to be written again (tbd)
 
-			await Container.get(ExecutionRepository).updateExistingExecution(executionData.id, {
-				status: fullExecutionData.status,
-			});
+			// await Container.get(ExecutionRepository).updateExistingExecution(executionData.id, {
+			// 	status: fullExecutionData.status,
+			// });
 
 			try {
 				if (executionData.data.resultData.metadata) {
@@ -142,7 +143,7 @@ export class WorkerLifecycleService {
 		}
 	}
 
-	async onWorkflowPostExecute(
+	async sendPostExecuteEvents(
 		// executionId: string,
 		// workflow: IWorkflowBase,
 		// runData?: IRun,
@@ -153,12 +154,85 @@ export class WorkerLifecycleService {
 		if (!workflow.id) {
 			return;
 		}
-		const executionId = executionData.id;
-		const runData = executionData;
+		// TODO: send user id to worker
+		// if (userId) {
+		// 	properties.user_id = userId;
+		// }
 
+		const success = !!executionData.finished;
+		let errorMessage: string | undefined = undefined;
+		let errorNodeType: string | undefined = undefined;
+
+		if (!success && executionData.data.resultData.error) {
+			errorMessage = executionData.data.resultData.error.message;
+			let errorNodeName =
+				'node' in executionData.data.resultData.error
+					? executionData.data.resultData.error.node?.name
+					: undefined;
+			errorNodeType =
+				'node' in executionData.data.resultData.error
+					? executionData.data.resultData.error.node?.type
+					: undefined;
+
+			if (executionData.data.resultData.lastNodeExecuted) {
+				const lastNode = TelemetryHelpers.getNodeTypeForName(
+					workflow,
+					executionData.data.resultData.lastNodeExecuted,
+				);
+
+				if (lastNode !== undefined) {
+					errorNodeType = lastNode.type;
+					errorNodeName = lastNode.name;
+				}
+			}
+
+			// let userRole: 'owner' | 'sharee' | undefined = undefined;
+			// if (userId) {
+			// 	const role = await this.roleService.findRoleByUserAndWorkflow(userId, workflow.id);
+			// 	if (role) {
+			// 		userRole = role.name === 'owner' ? 'owner' : 'sharee';
+			// 	}
+			// }
+			const sharedPayload: EventPayloadWorkflow = {
+				executionId: executionData.id,
+				success,
+				// userId: telemetryProperties.user_id,
+				workflowId: workflow.id,
+				isManual: executionData.mode === 'manual',
+				workflowName: workflow.name,
+				metaData: executionData.data?.resultData?.metadata,
+			};
+			success
+				? void eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.success',
+						payload: sharedPayload,
+				  })
+				: void eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.failed',
+						payload: {
+							...sharedPayload,
+							lastNodeExecuted: executionData.data.resultData.lastNodeExecuted,
+							errorNodeType,
+							errorMessage,
+						},
+				  });
+		}
+	}
+
+	async sendPostExecuteTelemetry(
+		// executionId: string,
+		// workflow: IWorkflowBase,
+		// runData?: IRun,
+		// userId?: string,
+		executionData: IExecutionResponse,
+	): Promise<void> {
+		const workflow = executionData.workflowData;
+		if (!workflow.id) {
+			return;
+		}
 		const promises = [];
 
-		const properties: IExecutionTrackProperties = {
+		const telemetryProperties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
 			is_manual: false,
 			version_cli: N8N_VERSION,
@@ -170,64 +244,47 @@ export class WorkerLifecycleService {
 		// 	properties.user_id = userId;
 		// }
 
-		if (runData?.data.resultData.error?.message?.includes('canceled')) {
-			runData.status = 'canceled';
-		}
+		telemetryProperties.success = !!executionData.finished;
 
-		properties.success = !!runData?.finished;
+		telemetryProperties.execution_mode = executionData.mode;
+		telemetryProperties.is_manual = executionData.mode === 'manual';
 
-		let executionStatus: ExecutionStatus;
-		if (runData?.status === 'crashed') {
-			executionStatus = 'crashed';
-		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
-			executionStatus = 'waiting';
-		} else if (runData?.status === 'canceled') {
-			executionStatus = 'canceled';
-		} else {
-			executionStatus = properties.success ? 'success' : 'failed';
-		}
+		let nodeGraphResult: INodesGraphResult | null = null;
 
-		if (runData !== undefined) {
-			properties.execution_mode = runData.mode;
-			properties.is_manual = runData.mode === 'manual';
+		if (!telemetryProperties.success && executionData.data.resultData.error) {
+			telemetryProperties.error_message = executionData.data.resultData.error.message;
+			let errorNodeName =
+				'node' in executionData.data.resultData.error
+					? executionData.data.resultData.error.node?.name
+					: undefined;
+			telemetryProperties.error_node_type =
+				'node' in executionData.data.resultData.error
+					? executionData.data.resultData.error.node?.type
+					: undefined;
 
-			let nodeGraphResult: INodesGraphResult | null = null;
+			if (executionData.data.resultData.lastNodeExecuted) {
+				const lastNode = TelemetryHelpers.getNodeTypeForName(
+					workflow,
+					executionData.data.resultData.lastNodeExecuted,
+				);
 
-			if (!properties.success && runData?.data.resultData.error) {
-				properties.error_message = runData?.data.resultData.error.message;
-				let errorNodeName =
-					'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.name
-						: undefined;
-				properties.error_node_type =
-					'node' in runData?.data.resultData.error
-						? runData?.data.resultData.error.node?.type
-						: undefined;
-
-				if (runData.data.resultData.lastNodeExecuted) {
-					const lastNode = TelemetryHelpers.getNodeTypeForName(
-						workflow,
-						runData.data.resultData.lastNodeExecuted,
-					);
-
-					if (lastNode !== undefined) {
-						properties.error_node_type = lastNode.type;
-						errorNodeName = lastNode.name;
-					}
-				}
-
-				if (properties.is_manual) {
-					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-					properties.node_graph = nodeGraphResult.nodeGraph;
-					properties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
-
-					if (errorNodeName) {
-						properties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
-					}
+				if (lastNode !== undefined) {
+					telemetryProperties.error_node_type = lastNode.type;
+					errorNodeName = lastNode.name;
 				}
 			}
 
-			if (properties.is_manual) {
+			if (telemetryProperties.is_manual) {
+				nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
+				telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
+				telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+
+				if (errorNodeName) {
+					telemetryProperties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
+				}
+			}
+
+			if (telemetryProperties.is_manual) {
 				if (!nodeGraphResult) {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
@@ -243,12 +300,12 @@ export class WorkerLifecycleService {
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					// user_id: userId,
 					workflow_id: workflow.id,
-					status: executionStatus,
-					executionStatus: runData?.status ?? 'unknown',
-					error_message: properties.error_message as string,
-					error_node_type: properties.error_node_type,
-					node_graph_string: properties.node_graph_string as string,
-					error_node_id: properties.error_node_id as string,
+					status: executionData.status,
+					executionStatus: executionData.status,
+					error_message: telemetryProperties.error_message,
+					error_node_type: telemetryProperties.error_node_type,
+					node_graph_string: telemetryProperties.node_graph_string as string,
+					error_node_id: telemetryProperties.error_node_id as string,
 					webhook_domain: null,
 					// sharing_role: userRole,
 				};
@@ -258,20 +315,20 @@ export class WorkerLifecycleService {
 					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
 				}
 
-				if (runData.data.startData?.destinationNode) {
+				if (executionData.data.startData?.destinationNode) {
 					const telemetryPayload = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,
-							runData.data.startData?.destinationNode,
+							executionData.data.startData?.destinationNode,
 						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						node_id: nodeGraphResult.nameIndices[executionData.data.startData?.destinationNode],
 					};
 
 					promises.push(this.telemetry.track('Manual node exec finished', telemetryPayload));
 				} else {
 					nodeGraphResult.webhookNodeNames.forEach((name: string) => {
-						const execJson = runData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
+						const execJson = executionData.data.resultData.runData[name]?.[0]?.data?.main?.[0]?.[0]
 							?.json as { headers?: { origin?: string } };
 						if (execJson?.headers?.origin && execJson.headers.origin !== '') {
 							manualExecEventProperties.webhook_domain = pslGet(
@@ -287,38 +344,6 @@ export class WorkerLifecycleService {
 			}
 		}
 
-		promises.push(
-			properties.success
-				? eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.success',
-						payload: {
-							executionId,
-							success: properties.success,
-							userId: properties.user_id,
-							workflowId: properties.workflow_id,
-							isManual: properties.is_manual,
-							workflowName: workflow.name,
-							metaData: runData?.data?.resultData?.metadata,
-						},
-				  })
-				: eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.failed',
-						payload: {
-							executionId,
-							success: properties.success,
-							userId: properties.user_id,
-							workflowId: properties.workflow_id,
-							lastNodeExecuted: runData?.data.resultData.lastNodeExecuted,
-							errorNodeType: properties.error_node_type,
-							errorNodeId: properties.error_node_id?.toString(),
-							errorMessage: properties.error_message?.toString(),
-							isManual: properties.is_manual,
-							workflowName: workflow.name,
-							metaData: runData?.data?.resultData?.metadata,
-						},
-				  }),
-		);
-
-		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
+		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(telemetryProperties)]);
 	}
 }

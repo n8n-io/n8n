@@ -39,6 +39,7 @@ import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubS
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 import { getWorkerCommandReceivedHandler } from './workerCommandHandler';
 import { WorkerLifecycleService } from './worker/WorkerLifecycle.service';
+import { InternalHooks } from '../InternalHooks';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -113,7 +114,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
-		const { executionId, loadStaticData } = job.data;
+		const { executionId, loadStaticData, returnResults } = job.data;
 		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
 			executionId,
 			{
@@ -198,14 +199,14 @@ export class Worker extends BaseCommand {
 					error,
 					error.node,
 				);
-				// await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-				await this.workerLifecycle.onWorkflowExecuteAfter({
-					executionData: {
-						...fullExecutionData,
-						data: failedExecution.data,
-					},
-					staticData,
-				});
+				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
+				// await this.workerLifecycle.onWorkflowExecuteAfter({
+				// 	executionData: {
+				// 		...fullExecutionData,
+				// 		data: failedExecution.data,
+				// 	},
+				// 	staticData,
+				// });
 			}
 			return { success: true, error: error as ExecutionError };
 		}
@@ -250,15 +251,25 @@ export class Worker extends BaseCommand {
 
 		delete Worker.runningJobs[job.id];
 
-		await this.workerLifecycle.onWorkflowExecuteAfter({
-			staticData,
-			executionData: fullExecutionData,
-		});
-		await this.workerLifecycle.onWorkflowPostExecute(fullExecutionData);
+		// await this.workerLifecycle.onWorkflowExecuteAfter({
+		// 	staticData,
+		// 	executionData: fullExecutionData,
+		// });
+		await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [fullExecutionData]);
+
+		void Container.get(InternalHooks).onWorkflowPostExecute(
+			fullExecutionData.id,
+			fullExecutionData.workflowData,
+			fullExecutionData,
+		);
+
+		// send tracking and event log events, but don't wait for them
+		// void this.workerLifecycle.sendPostExecuteEvents(fullExecutionData);
+		// void this.workerLifecycle.sendPostExecuteTelemetry(fullExecutionData);
 
 		return {
 			success: true,
-			executionResponse: fullExecutionData,
+			executionResponse: returnResults ? fullExecutionData : undefined,
 		};
 	}
 
@@ -275,7 +286,7 @@ export class Worker extends BaseCommand {
 		await this.initEventBus();
 		await this.initRedis();
 		await this.initQueue();
-		await this.initWorkerTelemetry();
+		await this.initLifecycle();
 	}
 
 	async initEventBus() {
@@ -284,7 +295,7 @@ export class Worker extends BaseCommand {
 		});
 	}
 
-	async initWorkerTelemetry() {
+	async initLifecycle() {
 		this.workerLifecycle = Container.get(WorkerLifecycleService);
 	}
 

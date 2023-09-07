@@ -193,36 +193,38 @@ export class WorkflowRunner {
 
 		void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 
-		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
-
-		const externalHooks = Container.get(ExternalHooks);
-		postExecutePromise
-			.then(async (executionData) => {
-				void Container.get(InternalHooks).onWorkflowPostExecute(
-					executionId!,
-					data.workflowData,
-					executionData,
-					data.userId,
-				);
-			})
-			.catch((error) => {
-				ErrorReporter.error(error);
-				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
-			});
-
-		if (externalHooks.exists('workflow.postExecute')) {
+		// these calls are moved into the worker
+		if (executionsMode !== 'queue' || data.executionMode === 'manual') {
+			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+			const externalHooks = Container.get(ExternalHooks);
 			postExecutePromise
 				.then(async (executionData) => {
-					await externalHooks.run('workflow.postExecute', [
-						executionData,
+					void Container.get(InternalHooks).onWorkflowPostExecute(
+						executionId!,
 						data.workflowData,
-						executionId,
-					]);
+						executionData,
+						data.userId,
+					);
 				})
 				.catch((error) => {
 					ErrorReporter.error(error);
-					console.error('There was a problem running hook "workflow.postExecute"', error);
+					console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
 				});
+			// move into worker and anly
+			if (externalHooks.exists('workflow.postExecute')) {
+				postExecutePromise
+					.then(async (executionData) => {
+						await externalHooks.run('workflow.postExecute', [
+							executionData,
+							data.workflowData,
+							executionId,
+						]);
+					})
+					.catch((error) => {
+						ErrorReporter.error(error);
+						console.error('There was a problem running hook "workflow.postExecute"', error);
+					});
+			}
 		}
 
 		return executionId;
@@ -462,6 +464,12 @@ export class WorkflowRunner {
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
 			await hooks.executeHookFunctions('workflowExecuteBefore', []);
+
+			// NOTE: after removing the push related hooks, this is the only code that actually remains in the above hooks:
+			// await Container.get(ExternalHooks).run('workflow.preExecute', [
+			// 	data.workflowData,
+			// 	data.executionMode,
+			// ]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -544,7 +552,15 @@ export class WorkflowRunner {
 					success: false,
 				};
 				try {
+					console.log(
+						'getPostExecutePromiseCount',
+						this.activeExecutions.getPostExecutePromiseCount(executionId),
+					);
 					racingPromisesResult = await Promise.race(racingPromises);
+					console.log(
+						'getPostExecutePromiseCount',
+						this.activeExecutions.getPostExecutePromiseCount(executionId),
+					);
 					console.log('raceResult', racingPromisesResult);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
