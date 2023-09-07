@@ -1,113 +1,70 @@
 import validator from 'validator';
-import { In } from 'typeorm';
-import type { ILogger } from 'n8n-workflow';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import type { FindManyOptions } from 'typeorm';
+import { In, Not } from 'typeorm';
+import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Authorized, NoAuthRequired, Delete, Get, Post, RestController, Patch } from '@/decorators';
 import {
-	addInviteLinkToUser,
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
-	sanitizeUser,
 	validatePassword,
-	withFeatureFlags,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { Response } from 'express';
-import type { Config } from '@/config';
-import { UserRequest, UserSettingsUpdatePayload } from '@/requests';
-import type { UserManagementMailer } from '@/UserManagement/email';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IExternalHooksClass,
-	IInternalHooksClass,
-	ITelemetryUserDeletionData,
-} from '@/Interfaces';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
+import { UserManagementMailer } from '@/UserManagement/email';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { Config } from '@/config';
+import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser, ITelemetryUserDeletionData } from '@/Interfaces';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import type { PostHogClient } from '@/posthog';
-import { userManagementEnabledMiddleware } from '../middlewares/userManagementEnabled';
+import { PostHogClient } from '@/posthog';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import type {
-	RoleRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-	UserRepository,
-} from '@db/repositories';
-import { UserService } from '../user/user.service';
+import { SharedCredentialsRepository, SharedWorkflowRepository } from '@db/repositories';
 import { plainToInstance } from 'class-transformer';
+import { License } from '@/License';
+import { Container } from 'typedi';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { JwtService } from '@/services/jwt.service';
+import { RoleService } from '@/services/role.service';
+import { UserService } from '@/services/user.service';
+import { listQueryMiddleware } from '@/middlewares';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
-	private config: Config;
-
-	private logger: ILogger;
-
-	private externalHooks: IExternalHooksClass;
-
-	private internalHooks: IInternalHooksClass;
-
-	private userRepository: UserRepository;
-
-	private roleRepository: RoleRepository;
-
-	private sharedCredentialsRepository: SharedCredentialsRepository;
-
-	private sharedWorkflowRepository: SharedWorkflowRepository;
-
-	private activeWorkflowRunner: ActiveWorkflowRunner;
-
-	private mailer: UserManagementMailer;
-
-	private postHog?: PostHogClient;
-
-	constructor({
-		config,
-		logger,
-		externalHooks,
-		internalHooks,
-		repositories,
-		activeWorkflowRunner,
-		mailer,
-		postHog,
-	}: {
-		config: Config;
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<
-			IDatabaseCollections,
-			'User' | 'Role' | 'SharedCredentials' | 'SharedWorkflow'
-		>;
-		activeWorkflowRunner: ActiveWorkflowRunner;
-		mailer: UserManagementMailer;
-		postHog?: PostHogClient;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
-		this.roleRepository = repositories.Role;
-		this.sharedCredentialsRepository = repositories.SharedCredentials;
-		this.sharedWorkflowRepository = repositories.SharedWorkflow;
-		this.activeWorkflowRunner = activeWorkflowRunner;
-		this.mailer = mailer;
-		this.postHog = postHog;
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly externalHooks: IExternalHooksClass,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly mailer: UserManagementMailer,
+		private readonly jwtService: JwtService,
+		private readonly roleService: RoleService,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
-	@Post('/', { middlewares: [userManagementEnabledMiddleware] })
+	@Post('/')
 	async sendEmailInvites(req: UserRequest.Invite) {
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
 		if (isSamlLicensedAndEnabled()) {
 			this.logger.debug(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
@@ -115,6 +72,13 @@ export class UsersController {
 			throw new BadRequestError(
 				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
+		}
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
 		if (!this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
@@ -154,7 +118,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findGlobalMemberRole();
+		const role = await this.roleService.findGlobalMemberRole();
 
 		if (!role) {
 			this.logger.error(
@@ -164,8 +128,9 @@ export class UsersController {
 		}
 
 		// remove/exclude existing users from creation
-		const existingUsers = await this.userRepository.find({
+		const existingUsers = await this.userService.findMany({
 			where: { email: In(Object.keys(createUsers)) },
+			relations: ['globalRole'],
 		});
 		existingUsers.forEach((user) => {
 			if (user.password) {
@@ -181,7 +146,7 @@ export class UsersController {
 		this.logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
 
 		try {
-			await this.userRepository.manager.transaction(async (transactionManager) =>
+			await this.userService.getManager().transaction(async (transactionManager) =>
 				Promise.all(
 					usersToSetUp.map(async (email) => {
 						const newUser = Object.assign(new User(), {
@@ -302,7 +267,7 @@ export class UsersController {
 
 		const validPassword = validatePassword(password);
 
-		const users = await this.userRepository.find({
+		const users = await this.userService.findMany({
 			where: { id: In([inviterId, inviteeId]) },
 			relations: ['globalRole'],
 		});
@@ -332,7 +297,7 @@ export class UsersController {
 		invitee.lastName = lastName;
 		invitee.password = await hashPassword(validPassword);
 
-		const updatedUser = await this.userRepository.save(invitee);
+		const updatedUser = await this.userService.save(invitee);
 
 		await issueCookie(res, updatedUser);
 
@@ -341,32 +306,124 @@ export class UsersController {
 			was_disabled_ldap_user: false,
 		});
 
-		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
+		const publicInvitee = await this.userService.toPublic(invitee);
+
+		await this.externalHooks.run('user.profile.update', [invitee.email, publicInvitee]);
 		await this.externalHooks.run('user.password.update', [invitee.email, invitee.password]);
 
-		return withFeatureFlags(this.postHog, sanitizeUser(updatedUser));
+		return this.userService.toPublic(updatedUser, { posthog: this.postHog });
+	}
+
+	private async toFindManyOptions(listQueryOptions?: ListQuery.Options) {
+		const findManyOptions: FindManyOptions<User> = {};
+
+		if (!listQueryOptions) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+			return findManyOptions;
+		}
+
+		const { filter, select, take, skip } = listQueryOptions;
+
+		if (select) findManyOptions.select = select;
+		if (take) findManyOptions.take = take;
+		if (skip) findManyOptions.skip = skip;
+
+		if (take && !select) {
+			findManyOptions.relations = ['globalRole', 'authIdentities'];
+		}
+
+		if (take && select && !select?.id) {
+			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
+		}
+
+		if (filter) {
+			const { isOwner, ...otherFilters } = filter;
+
+			findManyOptions.where = otherFilters;
+
+			if (isOwner !== undefined) {
+				const ownerRole = await this.roleService.findGlobalOwnerRole();
+
+				findManyOptions.relations = ['globalRole'];
+				findManyOptions.where.globalRole = { id: isOwner ? ownerRole.id : Not(ownerRole.id) };
+			}
+		}
+
+		return findManyOptions;
+	}
+
+	removeSupplementaryFields(
+		publicUsers: Array<Partial<PublicUser>>,
+		listQueryOptions: ListQuery.Options,
+	) {
+		const { take, select, filter } = listQueryOptions;
+
+		// remove fields added to satisfy query
+
+		if (take && select && !select?.id) {
+			for (const user of publicUsers) delete user.id;
+		}
+
+		if (filter?.isOwner) {
+			for (const user of publicUsers) delete user.globalRole;
+		}
+
+		// remove computed fields (unselectable)
+
+		if (select) {
+			for (const user of publicUsers) {
+				delete user.isOwner;
+				delete user.isPending;
+				delete user.signInType;
+				delete user.hasRecoveryCodesLeft;
+			}
+		}
+
+		return publicUsers;
 	}
 
 	@Authorized('any')
-	@Get('/')
-	async listUsers(req: UserRequest.List) {
-		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
-		return users.map(
-			(user): PublicUser =>
-				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
+	@Get('/', { middlewares: listQueryMiddleware })
+	async listUsers(req: ListQuery.Request) {
+		const { listQueryOptions } = req;
+
+		const findManyOptions = await this.toFindManyOptions(listQueryOptions);
+
+		const users = await this.userService.findMany(findManyOptions);
+
+		const publicUsers: Array<Partial<PublicUser>> = await Promise.all(
+			users.map(async (u) => this.userService.toPublic(u, { withInviteUrl: true })),
 		);
+
+		return listQueryOptions
+			? this.removeSupplementaryFields(publicUsers, listQueryOptions)
+			: publicUsers;
 	}
 
 	@Authorized(['global', 'owner'])
 	@Get('/:id/password-reset-link')
 	async getUserPasswordResetLink(req: UserRequest.PasswordResetLink) {
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.userService.findOneOrFail({
 			where: { id: req.params.id },
 		});
 		if (!user) {
 			throw new NotFoundError('User not found');
 		}
-		const link = await UserService.generatePasswordResetUrl(user);
+
+		const resetPasswordToken = this.jwtService.signData(
+			{ sub: user.id },
+			{
+				expiresIn: '1d',
+			},
+		);
+
+		const baseUrl = getInstanceBaseUrl();
+
+		const link = this.userService.generatePasswordResetUrl(
+			baseUrl,
+			resetPasswordToken,
+			user.mfaEnabled,
+		);
 		return {
 			link,
 		};
@@ -379,9 +436,9 @@ export class UsersController {
 
 		const id = req.params.id;
 
-		await UserService.updateUserSettings(id, payload);
+		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.userService.findOneOrFail({
 			select: ['settings'],
 			where: { id },
 		});
@@ -412,8 +469,9 @@ export class UsersController {
 			);
 		}
 
-		const users = await this.userRepository.find({
+		const users = await this.userService.findMany({
 			where: { id: In([transferId, idToDelete]) },
+			relations: ['globalRole'],
 		});
 
 		if (!users.length || (transferId && users.length !== 2)) {
@@ -437,14 +495,14 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findWorkflowOwnerRole(),
-			this.roleRepository.findCredentialOwnerRole(),
+			this.roleService.findWorkflowOwnerRole(),
+			this.roleService.findCredentialOwnerRole(),
 		]);
 
 		if (transferId) {
 			const transferee = users.find((user) => user.id === transferId);
 
-			await this.userRepository.manager.transaction(async (transactionManager) => {
+			await this.userService.getManager().transaction(async (transactionManager) => {
 				// Get all workflow ids belonging to user to delete
 				const sharedWorkflowIds = await transactionManager
 					.getRepository(SharedWorkflow)
@@ -504,7 +562,7 @@ export class UsersController {
 				telemetryData,
 				publicApi: false,
 			});
-			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+			await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 			return { success: true };
 		}
 
@@ -519,7 +577,7 @@ export class UsersController {
 			}),
 		]);
 
-		await this.userRepository.manager.transaction(async (transactionManager) => {
+		await this.userService.getManager().transaction(async (transactionManager) => {
 			const ownedWorkflows = await Promise.all(
 				ownedSharedWorkflows.map(async ({ workflow }) => {
 					if (workflow.active) {
@@ -542,7 +600,7 @@ export class UsersController {
 			publicApi: false,
 		});
 
-		await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+		await this.externalHooks.run('user.deleted', [await this.userService.toPublic(userToDelete)]);
 		return { success: true };
 	}
 
@@ -552,13 +610,21 @@ export class UsersController {
 	@Post('/:id/reinvite')
 	async reinviteUser(req: UserRequest.Reinvite) {
 		const { id: idToReinvite } = req.params;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug(
+				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
+			);
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!isEmailSetUp()) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');
 			throw new InternalServerError('Email sending must be set up in order to invite other users');
 		}
 
-		const reinvitee = await this.userRepository.findOneBy({ id: idToReinvite });
+		const reinvitee = await this.userService.findOneBy({ id: idToReinvite });
 		if (!reinvitee) {
 			this.logger.debug(
 				'Request to reinvite a user failed because the ID of the reinvitee was not found in database',

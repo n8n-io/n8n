@@ -15,11 +15,11 @@
 						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
-						:name="credentialName"
+						:modelValue="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
 						:readonly="!credentialPermissions.updateName || !credentialType"
 						type="Credential"
-						@input="onNameEdit"
+						@update:modelValue="onNameEdit"
 						data-test-id="credential-name"
 					/>
 				</div>
@@ -28,7 +28,6 @@
 						v-if="currentCredential && credentialPermissions.delete"
 						:title="$locale.baseText('credentialEdit.credentialEdit.delete')"
 						icon="trash"
-						size="medium"
 						type="tertiary"
 						:disabled="isSaving"
 						:loading="isDeleting"
@@ -74,7 +73,7 @@
 						:mode="mode"
 						:selectedCredential="selectedCredential"
 						:showAuthTypeSelector="requiredCredentials"
-						@change="onDataChange"
+						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"
@@ -88,7 +87,7 @@
 						:credentialId="credentialId"
 						:credentialPermissions="credentialPermissions"
 						:modalBus="modalBus"
-						@change="onChangeSharedWith"
+						@update:modelValue="onChangeSharedWith"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
@@ -145,7 +144,7 @@ import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
 import type { IMenuItem } from 'n8n-design-system';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -158,6 +157,8 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 	isCredentialModalState,
+	isExpression,
+	isTestableExpression,
 } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 
@@ -305,7 +306,7 @@ export default defineComponent({
 
 			// If there is already selected type, use it
 			if (this.selectedCredential !== '') {
-				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential);
+				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential) ?? null;
 			} else if (this.requiredCredentials) {
 				// Otherwise, use credential type that corresponds to the first auth option in the node definition
 				const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
@@ -371,12 +372,13 @@ export default defineComponent({
 			}
 
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
-			const hasExpressions = Object.values(credentialData).reduce(
+			const hasUntestableExpressions = Object.values(credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
-					accu || (typeof value === 'string' && value.startsWith('=')),
+					accu ||
+					(typeof value === 'string' && isExpression(value) && !isTestableExpression(value)),
 				false,
 			);
-			if (hasExpressions) {
+			if (hasUntestableExpressions) {
 				return false;
 			}
 
@@ -446,8 +448,14 @@ export default defineComponent({
 					return false;
 				}
 
-				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
-					return false;
+				if (property.type === 'number') {
+					const isExpression =
+						typeof this.credentialData[property.name] === 'string' &&
+						this.credentialData[property.name].startsWith('=');
+
+					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+						return false;
+					}
 				}
 			}
 			return true;
@@ -551,6 +559,10 @@ export default defineComponent({
 		},
 		displayCredentialParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
+				return false;
+			}
+
+			if (parameter.displayOptions?.hideOnCloud && this.settingsStore.isCloudDeployment) {
 				return false;
 			}
 
@@ -668,8 +680,11 @@ export default defineComponent({
 			};
 			this.hasUnsavedChanges = true;
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		onDataChange({ name, value }: { name: string; value: any }) {
+			// skip update if new value matches the current
+			if (this.credentialData[name] === value) return;
+
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
@@ -829,12 +844,17 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
+					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				);
+
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
 					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
+					uses_external_secrets: usesExternalSecrets,
 				};
 
 				if (this.isOAuthType) {

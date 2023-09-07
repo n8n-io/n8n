@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsHexColor, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsHexColor, IsOptional, IsString } from 'class-validator';
 
 export class SourceControlPreferences {
 	constructor(preferences: Partial<SourceControlPreferences> | undefined = undefined) {
@@ -10,12 +10,6 @@ export class SourceControlPreferences {
 
 	@IsString()
 	repositoryUrl: string;
-
-	@IsString()
-	authorName: string;
-
-	@IsEmail()
-	authorEmail: string;
 
 	@IsString()
 	branchName = 'main';
@@ -45,8 +39,6 @@ export class SourceControlPreferences {
 		return new SourceControlPreferences({
 			connected: preferences.connected ?? defaultPreferences.connected,
 			repositoryUrl: preferences.repositoryUrl ?? defaultPreferences.repositoryUrl,
-			authorName: preferences.authorName ?? defaultPreferences.authorName,
-			authorEmail: preferences.authorEmail ?? defaultPreferences.authorEmail,
 			branchName: preferences.branchName ?? defaultPreferences.branchName,
 			branchReadOnly: preferences.branchReadOnly ?? defaultPreferences.branchReadOnly,
 			branchColor: preferences.branchColor ?? defaultPreferences.branchColor,

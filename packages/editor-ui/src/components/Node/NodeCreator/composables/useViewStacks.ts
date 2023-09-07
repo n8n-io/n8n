@@ -1,4 +1,4 @@
-import { computed, ref, set } from 'vue';
+import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import type { INodeCreateElement, NodeFilterType, SimplifiedNodeType } from '@/Interface';
@@ -167,7 +167,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		// For each key in the stack, update the matched stack
 		Object.keys(stack).forEach((key) => {
 			const typedKey = key as keyof ViewStack;
-			set(viewStacks.value[matchedIndex], key, stack[typedKey]);
+			viewStacks.value[matchedIndex] = {
+				...viewStacks.value[matchedIndex],
+				[key]: stack[typedKey],
+			};
 		});
 	}
 

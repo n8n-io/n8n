@@ -19,12 +19,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.5.3
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v2.2.4
-      - uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v2.4.0
+      - uses: actions/setup-node@v3.7.0
         with:
           node-version: 18.x
           cache: 'pnpm'
@@ -39,7 +39,8 @@ jobs:
       - name: Publish to NPM
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc
+          node scripts/trim-fe-packageJson.js
+          pnpm publish -r --publish-branch ${{github.event.pull_request.base.ref}} --access public --tag rc --no-git-checks
           npm dist-tag rm n8n rc
 
       - name: Create a Release on GitHub

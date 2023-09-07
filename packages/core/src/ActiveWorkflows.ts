@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable no-continue */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-restricted-syntax */
+
 import { CronJob } from 'cron';
 
 import type {
@@ -31,7 +29,6 @@ export class ActiveWorkflows {
 	 * @param {string} id The id of the workflow to check
 	 */
 	isActive(id: string): boolean {
-		// eslint-disable-next-line no-prototype-builtins
 		return this.workflowData.hasOwnProperty(id);
 	}
 
@@ -84,13 +81,12 @@ export class ActiveWorkflows {
 				);
 				if (triggerResponse !== undefined) {
 					// If a response was given save it
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
 					this.workflowData[id].triggerResponses!.push(triggerResponse);
 				}
 			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				throw new WorkflowActivationError(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 					`There was a problem activating the workflow: "${error.message}"`,
 					{ cause: error as Error, node: triggerNode },
 				);
@@ -102,7 +98,6 @@ export class ActiveWorkflows {
 			this.workflowData[id].pollResponses = [];
 			for (const pollNode of pollNodes) {
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 					this.workflowData[id].pollResponses!.push(
 						await this.activatePolling(
 							pollNode,
@@ -114,9 +109,8 @@ export class ActiveWorkflows {
 						),
 					);
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					throw new WorkflowActivationError(
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`There was a problem activating the workflow: "${error.message}"`,
 						{ cause: error as Error, node: pollNode },
 					);
@@ -147,7 +141,6 @@ export class ActiveWorkflows {
 		const cronTimes = (pollTimes.item || []).map(toCronExpression);
 		// The trigger function to execute when the cron-time got reached
 		const executeTrigger = async (testingTrigger = false) => {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Polling trigger initiated for workflow "${workflow.name}"`, {
 				workflowName: workflow.name,
 				workflowId: workflow.id,
@@ -177,7 +170,7 @@ export class ActiveWorkflows {
 
 		// Start the cron-jobs
 		const cronJobs: CronJob[] = [];
-		// eslint-disable-next-line @typescript-eslint/no-shadow
+
 		for (const cronTime of cronTimes) {
 			const cronTimeParts = cronTime.split(' ');
 			if (cronTimeParts.length > 0 && cronTimeParts[0].includes('*')) {
@@ -204,12 +197,13 @@ export class ActiveWorkflows {
 	 *
 	 * @param {string} id The id of the workflow to deactivate
 	 */
-	async remove(id: string): Promise<void> {
+	async remove(id: string): Promise<boolean> {
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
-			throw new Error(
+			Logger.warn(
 				`The workflow with the id "${id}" is currently not active and can so not be removed`,
 			);
+			return false;
 		}
 
 		const workflowData = this.workflowData[id];
@@ -221,7 +215,7 @@ export class ActiveWorkflows {
 						await triggerResponse.closeFunction();
 					} catch (error) {
 						Logger.error(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,
 							{
 								workflowId: id,
@@ -239,7 +233,7 @@ export class ActiveWorkflows {
 						await pollResponse.closeFunction();
 					} catch (error) {
 						Logger.error(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 							`There was a problem deactivating polling trigger of workflow "${id}": "${error.message}"`,
 							{
 								workflowId: id,
@@ -251,5 +245,7 @@ export class ActiveWorkflows {
 		}
 
 		delete this.workflowData[id];
+
+		return true;
 	}
 }

@@ -11,10 +11,7 @@ import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventB
 import EventEmitter from 'events';
 import config from '@/config';
 import * as Db from '@/Db';
-import {
-	messageEventBusDestinationFromDb,
-	incrementPrometheusMetric,
-} from '../MessageEventBusDestination/Helpers.ee';
+import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/MessageEventBusDestinationFromDb';
 import uniqby from 'lodash/uniqBy';
 import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import type { EventMessageAuditOptions } from '../EventMessageClasses/EventMessageAudit';
@@ -29,12 +26,21 @@ import {
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
+import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
+import Container from 'typedi';
+import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
+import { OrchestrationService } from '../../services/orchestration.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
 export interface MessageWithCallback {
 	msg: EventMessageTypes;
 	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void;
+}
+
+export interface MessageEventBusInitializeOptions {
+	skipRecoveryPass?: boolean;
+	workerId?: string;
 }
 
 export class MessageEventBus extends EventEmitter {
@@ -70,7 +76,7 @@ export class MessageEventBus extends EventEmitter {
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
-	async initialize() {
+	async initialize(options?: MessageEventBusInitializeOptions): Promise<void> {
 		if (this.isInitialized) {
 			return;
 		}
@@ -93,30 +99,75 @@ export class MessageEventBus extends EventEmitter {
 		}
 
 		LoggerProxy.debug('Initializing event writer');
-		this.logWriter = await MessageEventBusLogWriter.getInstance();
-
-		// unsent event check:
-		// - find unsent messages in current event log(s)
-		// - cycle event logs and start the logging to a fresh file
-		// - retry sending events
-		LoggerProxy.debug('Checking for unsent event messages');
-		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
-		LoggerProxy.debug(
-			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
-		);
-		this.logWriter?.startLogging();
-		await this.send(unsentAndUnfinished.unsentMessages);
-
-		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
-			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
-				await recoverExecutionDataFromEventLogMessages(
-					executionId,
-					unsentAndUnfinished.unfinishedExecutions[executionId],
-					true,
-				);
-			}
+		if (options?.workerId) {
+			// only add 'worker' to log file name since the ID changes on every start and we
+			// would not be able to recover the log files from the previous run not knowing it
+			const logBaseName = config.getEnv('eventBus.logWriter.logBaseName') + '-worker';
+			this.logWriter = await MessageEventBusLogWriter.getInstance({
+				logBaseName,
+			});
+		} else {
+			this.logWriter = await MessageEventBusLogWriter.getInstance();
 		}
 
+		if (!this.logWriter) {
+			LoggerProxy.warn('Could not initialize event writer');
+		}
+
+		if (options?.skipRecoveryPass) {
+			LoggerProxy.debug('Skipping unsent event check');
+		} else {
+			// unsent event check:
+			// - find unsent messages in current event log(s)
+			// - cycle event logs and start the logging to a fresh file
+			// - retry sending events
+			LoggerProxy.debug('Checking for unsent event messages');
+			const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
+			LoggerProxy.debug(
+				`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
+			);
+			this.logWriter?.startLogging();
+			await this.send(unsentAndUnfinished.unsentMessages);
+
+			const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+
+			if (unfinishedExecutionIds.length > 0) {
+				LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
+				LoggerProxy.info('This could be due to a crash of an active workflow or a restart of n8n.');
+				const activeWorkflows = await Container.get(WorkflowRepository).find({
+					where: { active: true },
+					select: ['id', 'name'],
+				});
+				if (activeWorkflows.length > 0) {
+					LoggerProxy.info('Currently active workflows:');
+					for (const workflowData of activeWorkflows) {
+						LoggerProxy.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+					}
+				}
+				const recoveryAlreadyAttempted = this.logWriter?.isRecoveryProcessRunning();
+				if (recoveryAlreadyAttempted || config.getEnv('eventBus.crashRecoveryMode') === 'simple') {
+					await Container.get(ExecutionRepository).markAsCrashed(unfinishedExecutionIds);
+					// if we end up here, it means that the previous recovery process did not finish
+					// a possible reason would be that recreating the workflow data itself caused e.g an OOM error
+					// in that case, we do not want to retry the recovery process, but rather mark the executions as crashed
+					if (recoveryAlreadyAttempted)
+						LoggerProxy.warn('Skipped recovery process since it previously failed.');
+				} else {
+					// start actual recovery process and write recovery process flag file
+					this.logWriter?.startRecoveryProcess();
+					for (const executionId of unfinishedExecutionIds) {
+						LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
+						await recoverExecutionDataFromEventLogMessages(
+							executionId,
+							unsentAndUnfinished.unfinishedExecutions[executionId],
+							true,
+						);
+					}
+				}
+				// remove the recovery process flag file
+				this.logWriter?.endRecoveryProcess();
+			}
+		}
 		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
 			if (this.pushIntervalTimer) {
@@ -158,6 +209,12 @@ export class MessageEventBus extends EventEmitter {
 		return result;
 	}
 
+	async broadcastRestartEventbusAfterDestinationUpdate() {
+		if (config.getEnv('executions.mode') === 'queue') {
+			await Container.get(OrchestrationService).restartEventBus();
+		}
+	}
+
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
@@ -178,7 +235,13 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
+		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
+	}
+
+	async restart() {
+		await this.close();
+		await this.initialize({ skipRecoveryPass: true });
 	}
 
 	async send(msgs: EventMessageTypes | EventMessageTypes[]) {
@@ -224,9 +287,7 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		if (config.getEnv('endpoints.metrics.enable')) {
-			await incrementPrometheusMetric(msg);
-		}
+		this.emit(METRICS_EVENT_NAME, msg);
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!

@@ -1,9 +1,9 @@
 <template>
 	<n8n-node-creator-node
 		:class="$style.subCategory"
-		:title="$locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`)"
+		:title="i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`)"
 		:isTrigger="false"
-		:description="$locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`)"
+		:description="i18n.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`)"
 		:showActionArrow="true"
 	>
 		<template #icon>
@@ -16,11 +16,14 @@
 import type { SubcategoryItemProps } from '@/Interface';
 import { camelCase } from 'lodash-es';
 import { computed } from 'vue';
+import { useI18n } from '@/composables';
+
 export interface Props {
 	item: SubcategoryItemProps;
 }
 
 const props = defineProps<Props>();
+const i18n = useI18n();
 const subcategoryName = computed(() => camelCase(props.item.subcategory || props.item.title));
 </script>
 

@@ -49,14 +49,16 @@
 								/>
 							</div>
 						</div>
-						<parameter-input-list
-							:parameters="property.values"
-							:nodeValues="nodeValues"
-							:path="getPropertyPath(property.name, index)"
-							:hideDelete="true"
-							:isReadOnly="isReadOnly"
-							@valueChanged="valueChanged"
-						/>
+						<Suspense>
+							<parameter-input-list
+								:parameters="property.values"
+								:nodeValues="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hideDelete="true"
+								:isReadOnly="isReadOnly"
+								@valueChanged="valueChanged"
+							/>
+						</Suspense>
 					</div>
 				</div>
 			</div>
@@ -96,7 +98,7 @@
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@change="optionSelected"
+					@update:modelValue="optionSelected"
 					filterable
 				>
 					<n8n-option
@@ -112,8 +114,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { Component, PropType } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
 
 import type {
@@ -125,6 +127,8 @@ import type {
 import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
+
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
 
 export default defineComponent({
 	name: 'FixedCollectionParameter',
@@ -151,7 +155,7 @@ export default defineComponent({
 		},
 	},
 	components: {
-		ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {
@@ -337,15 +341,13 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-::v-deep {
-	.button {
+.fixed-collection-parameter {
+	padding-left: var(--spacing-s);
+
+	:deep(.button) {
 		--button-background-color: var(--color-background-base);
 		--button-border-color: var(--color-foreground-base);
 	}
-}
-
-.fixed-collection-parameter {
-	padding-left: var(--spacing-s);
 }
 
 .fixed-collection-parameter-property {

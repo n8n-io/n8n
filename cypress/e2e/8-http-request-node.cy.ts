@@ -4,8 +4,8 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('HTTP Request node', () => {
-	before(() => {
-		cy.skipSetup();
+	beforeEach(() => {
+		workflowPage.actions.visit();
 	});
 
 	it('should make a request with a URL and receive a response', () => {

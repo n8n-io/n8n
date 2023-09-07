@@ -492,6 +492,6 @@ export class ConvertKit implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

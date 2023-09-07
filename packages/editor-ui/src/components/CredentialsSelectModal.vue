@@ -24,8 +24,8 @@
 					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					ref="select"
-					:value="selected"
-					@change="onSelect"
+					:modelValue="selected"
+					@update:modelValue="onSelect"
 					data-test-id="new-credential-type-select"
 				>
 					<template #prefix>
@@ -66,7 +66,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'CredentialsSelectModal',

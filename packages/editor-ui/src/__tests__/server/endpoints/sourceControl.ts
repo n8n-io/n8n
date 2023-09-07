@@ -9,14 +9,22 @@ export function routesForSourceControl(server: Server) {
 	const defaultSourceControlPreferences: SourceControlPreferences = {
 		branchName: '',
 		branches: [],
-		authorName: '',
-		authorEmail: '',
 		repositoryUrl: '',
 		branchReadOnly: false,
 		branchColor: '#1d6acb',
 		connected: false,
 		publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHEX+25m',
 	};
+
+	server.get(`${sourceControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
+		return new Response(
+			200,
+			{},
+			{
+				data: defaultSourceControlPreferences,
+			},
+		);
+	});
 
 	server.post(`${sourceControlApiRoot}/preferences`, (schema: AppSchema, request: Request) => {
 		const requestBody: Partial<SourceControlPreferences> = jsonParse(request.requestBody);

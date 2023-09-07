@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container" v-on="$listeners">
+	<div :class="$style.container" v-bind="$attrs" data-test-id="input-label">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
@@ -36,7 +36,7 @@
 			<div
 				v-if="$slots.options"
 				:class="{ [$style.options]: true, [$style.visible]: showOptions }"
-				data-test-id="parameter-input-options-container"
+				:data-test-id="`${inputName}-parameter-input-options-container`"
 			>
 				<slot name="options" />
 			</div>

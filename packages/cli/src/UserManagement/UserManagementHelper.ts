@@ -1,79 +1,37 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
+import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
-import type { Role } from '@db/entities/Role';
-import { RoleRepository } from '@db/repositories';
 import config from '@/config';
-import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { License } from '@/License';
-import type { PostHogClient } from '@/posthog';
-
-export async function getWorkflowOwner(workflowId: string): Promise<User> {
-	const workflowOwnerRole = await Container.get(RoleRepository).findWorkflowOwnerRole();
-
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
-		relations: ['user', 'user.globalRole'],
-	});
-
-	return sharedWorkflow.user;
-}
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
+import { RoleService } from '@/services/role.service';
 
 export function isEmailSetUp(): boolean {
 	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
 	const host = !!config.getEnv('userManagement.emails.smtp.host');
-	const user = !!config.getEnv('userManagement.emails.smtp.auth.user');
-	const pass = !!config.getEnv('userManagement.emails.smtp.auth.pass');
 
-	return smtp && host && user && pass;
-}
-
-export function isUserManagementEnabled(): boolean {
-	// This can be simplified but readability is more important here
-
-	if (config.getEnv('userManagement.isInstanceOwnerSetUp')) {
-		// Short circuit - if owner is set up, UM cannot be disabled.
-		// Users must reset their instance in order to do so.
-		return true;
-	}
-
-	// UM is disabled for desktop by default
-	if (config.getEnv('deployment.type').startsWith('desktop_')) {
-		return false;
-	}
-
-	return config.getEnv('userManagement.disabled') ? false : true;
+	return smtp && host;
 }
 
 export function isSharingEnabled(): boolean {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isSharingEnabled();
+	return Container.get(License).isSharingEnabled();
 }
 
-export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
-	return Container.get(RoleRepository)
-		.findRoleOrFail(scope, name)
-		.then((role) => role.id);
-}
+export async function getInstanceOwner() {
+	const globalOwnerRole = await Container.get(RoleService).findGlobalOwnerRole();
 
-export async function getInstanceOwner(): Promise<User> {
-	const ownerRoleId = await getRoleId('global', 'owner');
-
-	const owner = await Db.collections.User.findOneOrFail({
+	return Db.collections.User.findOneOrFail({
 		relations: ['globalRole'],
 		where: {
-			globalRoleId: ownerRoleId,
+			globalRoleId: globalOwnerRole.id,
 		},
 	});
-	return owner;
 }
 
 /**
@@ -125,67 +83,6 @@ export function validatePassword(password?: string): string {
 	return password;
 }
 
-/**
- * Remove sensitive properties from the user to return to the client.
- */
-export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const {
-		password,
-		resetPasswordToken,
-		resetPasswordTokenExpiration,
-		updatedAt,
-		apiKey,
-		authIdentities,
-		...rest
-	} = user;
-	if (withoutKeys) {
-		withoutKeys.forEach((key) => {
-			// @ts-ignore
-			delete rest[key];
-		});
-	}
-	const sanitizedUser: PublicUser = {
-		...rest,
-		signInType: 'email',
-	};
-	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
-	if (ldapIdentity) {
-		sanitizedUser.signInType = 'ldap';
-	}
-	return sanitizedUser;
-}
-
-export async function withFeatureFlags(
-	postHog: PostHogClient | undefined,
-	user: CurrentUser,
-): Promise<CurrentUser> {
-	if (!postHog) {
-		return user;
-	}
-
-	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
-	// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
-	const timeoutPromise = new Promise<CurrentUser>((resolve) => {
-		setTimeout(() => {
-			resolve(user);
-		}, 1500);
-	});
-
-	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
-		user.featureFlags = await postHog.getFeatureFlags(user);
-		resolve(user);
-	});
-
-	return Promise.race([fetchPromise, timeoutPromise]);
-}
-
-export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
-	if (user.isPending) {
-		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
-	}
-	return user;
-}
-
 export async function getUserById(userId: string): Promise<User> {
 	const user = await Db.collections.User.findOneOrFail({
 		where: { id: userId },
@@ -222,7 +119,6 @@ export function rightDiff<T1, T2>(
 ): T2[] {
 	// create map { itemKey => true } for fast lookup for diff
 	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
-		// eslint-disable-next-line no-param-reassign
 		map[keyExtractor1(item)] = true;
 		return map;
 	}, {});

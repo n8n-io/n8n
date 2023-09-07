@@ -52,8 +52,13 @@ export const getStatus = async (context: IRestApiContext): Promise<SourceControl
 
 export const getAggregatedStatus = async (
 	context: IRestApiContext,
+	options: {
+		direction: 'push' | 'pull';
+		preferLocalVersion: boolean;
+		verbose: boolean;
+	} = { direction: 'push', preferLocalVersion: true, verbose: false },
 ): Promise<SourceControlAggregatedFile[]> => {
-	return makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/get-status`);
+	return makeRestApiRequest(context, 'GET', `${sourceControlApiRoot}/get-status`, options);
 };
 
 export const disconnect = async (

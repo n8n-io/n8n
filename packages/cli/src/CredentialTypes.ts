@@ -26,16 +26,13 @@ export class CredentialTypes implements ICredentialTypes {
 	 * Returns all parent types of the given credential type
 	 */
 	getParentTypes(typeName: string): string[] {
-		const credentialType = this.getByName(typeName);
-		if (credentialType?.extends === undefined) return [];
-
-		const types: string[] = [];
-		credentialType.extends.forEach((type: string) => {
-			types.push(type);
-			types.push(...this.getParentTypes(type));
-		});
-
-		return types;
+		const extendsArr = this.knownCredentials[typeName]?.extends ?? [];
+		if (extendsArr.length) {
+			extendsArr.forEach((type) => {
+				extendsArr.push(...this.getParentTypes(type));
+			});
+		}
+		return extendsArr;
 	}
 
 	private getCredential(type: string): LoadedClass<ICredentialType> {

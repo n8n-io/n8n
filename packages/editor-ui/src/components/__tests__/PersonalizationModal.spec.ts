@@ -1,19 +1,23 @@
-import { PiniaVuePlugin } from 'pinia';
-import { createLocalVue, mount } from '@vue/test-utils';
 import PersonalizationModal from '@/components/PersonalizationModal.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { PERSONALIZATION_MODAL_KEY } from '@/constants';
+import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import { retry } from '@/__tests__/utils';
+import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent } from '@testing-library/vue';
 
-describe('PersonalizationModal.vue', () => {
-	const pinia = createTestingPinia({
+const renderComponent = createComponentRenderer(PersonalizationModal, {
+	props: {
+		teleported: false,
+		appendToBody: false,
+	},
+	pinia: createTestingPinia({
 		initialState: {
-			ui: {
+			[STORES.UI]: {
 				modals: {
 					[PERSONALIZATION_MODAL_KEY]: { open: true },
 				},
 			},
-			settings: {
+			[STORES.SETTINGS]: {
 				settings: {
 					templates: {
 						host: '',
@@ -21,41 +25,39 @@ describe('PersonalizationModal.vue', () => {
 				},
 			},
 		},
-	});
-	const localVue = createLocalVue();
-	localVue.use(PiniaVuePlugin);
+	}),
+});
 
+describe('PersonalizationModal.vue', () => {
 	it('should render correctly', async () => {
-		const wrapper = mount(PersonalizationModal, {
-			localVue,
-			pinia,
-		});
+		const wrapper = renderComponent();
 
-		await retry(() => expect(wrapper.find('.modal-content').exists()).toBe(true));
+		await retry(() =>
+			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
+		);
 
-		expect(wrapper.findAll('.n8n-select').length).toEqual(5);
-		expect(wrapper.html()).toMatchSnapshot();
+		expect(wrapper.container.querySelectorAll('.n8n-select').length).toEqual(5);
 	});
 
 	it('should display new option when role is "Devops", "Engineering", "IT", or "Sales and marketing"', async () => {
-		const wrapper = mount(PersonalizationModal, {
-			localVue,
-			pinia,
-		});
+		const wrapper = renderComponent();
 
-		await retry(() => expect(wrapper.find('.modal-content').exists()).toBe(true));
+		await retry(() =>
+			expect(wrapper.container.querySelector('.modal-content')).toBeInTheDocument(),
+		);
 
 		for (const index of [3, 4, 5, 6]) {
-			await wrapper.find('.n8n-select[name="role"]').trigger('click');
-			await wrapper
-				.find('.n8n-select[name="role"]')
-				.findAll('.el-select-dropdown__item')
-				.at(index)
-				.trigger('click');
+			const select = wrapper.container.querySelectorAll('.n8n-select')[1]!;
+
+			await fireEvent.click(select);
+
+			const item = select.querySelectorAll('.el-select-dropdown__item')[index];
+
+			await fireEvent.click(item);
 
 			await retry(() => {
-				expect(wrapper.findAll('.n8n-select').length).toEqual(6);
-				expect(wrapper.find('.n8n-select[name^="automationGoal"]').exists()).toBe(true);
+				expect(wrapper.container.querySelectorAll('.n8n-select').length).toEqual(6);
+				expect(wrapper.container.querySelector('[name^="automationGoal"]')).toBeInTheDocument();
 			});
 		}
 	});

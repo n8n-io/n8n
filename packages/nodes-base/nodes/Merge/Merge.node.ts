@@ -20,6 +20,7 @@ export class Merge extends VersionedNodeType {
 			1: new MergeV1(baseDescription),
 			2: new MergeV2(baseDescription),
 			2.1: new MergeV2(baseDescription),
+			2.2: new MergeV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

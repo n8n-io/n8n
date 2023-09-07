@@ -31,9 +31,9 @@
 				</div>
 				<div :class="$style.search">
 					<n8n-input
-						:value="search"
+						:modelValue="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
-						@input="onSearchInput"
+						@update:modelValue="onSearchInput"
 						@blur="trackSearch"
 						clearable
 					>
@@ -48,7 +48,6 @@
 								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
 							</n8n-heading>
 						</div>
-
 						<CollectionsCarousel
 							:collections="collections"
 							:loading="loadingCollections"
@@ -98,6 +97,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { useTemplatesStore } from '@/stores/templates.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useToast } from '@/composables';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {
 	search_string: string;
@@ -135,7 +135,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore),
+		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
 		totalWorkflows(): number {
 			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
 		},
@@ -148,9 +148,6 @@ export default defineComponent({
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
 				return null;
-			}
-			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
-				return this.$locale.baseText('templates.endResult');
 			}
 			if (
 				!this.loadingCollections &&
@@ -423,11 +420,11 @@ export default defineComponent({
 .filters {
 	width: 200px;
 	margin-bottom: var(--spacing-xl);
+	margin-right: var(--spacing-2xl);
 }
 
 .search {
 	width: 100%;
-	padding-left: var(--spacing-2xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);

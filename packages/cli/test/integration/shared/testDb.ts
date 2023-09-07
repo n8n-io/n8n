@@ -14,26 +14,24 @@ import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { InstalledNodes } from '@db/entities/InstalledNodes';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { RoleRepository } from '@db/repositories';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { ICredentialsDb } from '@/Interfaces';
-
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import type {
-	CollectionName,
-	CredentialPayload,
-	InstalledNodePayload,
-	InstalledPackagePayload,
-	PostgresSchemaSection,
-} from './types';
-import type { ExecutionData } from '@/databases/entities/ExecutionData';
-import { generateNanoId } from '@/databases/utils/generators';
+import type { CollectionName, CredentialPayload, PostgresSchemaSection } from './types';
+import type { ExecutionData } from '@db/entities/ExecutionData';
+import { generateNanoId } from '@db/utils/generators';
+import { RoleService } from '@/services/role.service';
+import { VariablesService } from '@/environments/variables/variables.service';
+import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
+import { separate } from '@/utils';
+
+import { randomPassword } from '@/Ldap/helpers';
+import { TOTPService } from '@/Mfa/totp.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -92,7 +90,7 @@ export async function init() {
 		await Db.init(getDBOptions('postgres', testDbName));
 	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
-		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
+		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
 		await bootstrapMysql.destroy();
 
 		await Db.init(getDBOptions('mysql', testDbName));
@@ -112,7 +110,14 @@ export async function terminate() {
  * Truncate specific DB tables in a test DB.
  */
 export async function truncate(collections: CollectionName[]) {
-	for (const collection of collections) {
+	const [tag, rest] = separate(collections, (c) => c === 'Tag');
+
+	if (tag) {
+		await Container.get(TagRepository).delete({});
+		await Container.get(WorkflowTagMappingRepository).delete({});
+	}
+
+	for (const collection of rest) {
 		await Db.collections[collection].delete({});
 	}
 }
@@ -150,7 +155,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleRepository).findCredentialUserRole();
+	const role = await Container.get(RoleService).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
@@ -181,6 +186,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
+		globalRole,
 		...rest,
 	};
 
@@ -193,8 +199,47 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 	return user;
 }
 
+export async function createUserWithMfaEnabled(
+	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
+) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	const email = randomEmail();
+	const password = randomPassword();
+
+	const toptService = new TOTPService();
+
+	const secret = toptService.generateSecret();
+
+	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
+
+	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
+
+	const { encryptedSecret, encryptedRecoveryCodes } = mfaService.encryptSecretAndRecoveryCodes(
+		secret,
+		recoveryCodes,
+	);
+
+	return {
+		user: await createUser({
+			mfaEnabled: true,
+			password,
+			email,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
+		}),
+		rawPassword: password,
+		rawSecret: secret,
+		rawRecoveryCodes: recoveryCodes,
+	};
+}
+
 export async function createOwner() {
 	return createUser({ globalRole: await getGlobalOwnerRole() });
+}
+
+export async function createMember() {
+	return createUser({ globalRole: await getGlobalMemberRole() });
 }
 
 export async function createUserShell(globalRole: Role): Promise<User> {
@@ -218,7 +263,6 @@ export async function createManyUsers(
 	amount: number,
 	attributes: Partial<User> = {},
 ): Promise<User[]> {
-	// eslint-disable-next-line prefer-const
 	let { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	if (!globalRole) {
 		globalRole = await getGlobalMemberRole();
@@ -240,31 +284,6 @@ export async function createManyUsers(
 	return Db.collections.User.save(users);
 }
 
-// --------------------------------------
-// Installed nodes and packages creation
-// --------------------------------------
-
-export async function saveInstalledPackage(
-	installedPackagePayload: InstalledPackagePayload,
-): Promise<InstalledPackages> {
-	const newInstalledPackage = new InstalledPackages();
-
-	Object.assign(newInstalledPackage, installedPackagePayload);
-
-	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
-	return savedInstalledPackage;
-}
-
-export async function saveInstalledNode(
-	installedNodePayload: InstalledNodePayload,
-): Promise<InstalledNodes> {
-	const newInstalledNode = new InstalledNodes();
-
-	Object.assign(newInstalledNode, installedNodePayload);
-
-	return Db.collections.InstalledNodes.save(newInstalledNode);
-}
-
 export async function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
 	return Db.collections.User.save(user);
@@ -275,23 +294,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Container.get(RoleRepository).findGlobalOwnerRoleOrFail();
+	return Container.get(RoleService).findGlobalOwnerRole();
 }
 
 export async function getGlobalMemberRole() {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	return Container.get(RoleService).findGlobalMemberRole();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
+	return Container.get(RoleService).findWorkflowOwnerRole();
 }
 
 export async function getWorkflowEditorRole() {
-	return Container.get(RoleRepository).findWorkflowEditorRoleOrFail();
+	return Container.get(RoleService).findWorkflowEditorRole();
 }
 
 export async function getCredentialOwnerRole() {
-	return Container.get(RoleRepository).findCredentialOwnerRoleOrFail();
+	return Container.get(RoleService).findCredentialOwnerRole();
 }
 
 export async function getAllRoles() {
@@ -380,14 +399,24 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 //          Tags
 // ----------------------------------
 
-export async function createTag(attributes: Partial<TagEntity> = {}) {
+export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: WorkflowEntity) {
 	const { name } = attributes;
 
-	return Db.collections.Tag.save({
+	const tag = await Container.get(TagRepository).save({
 		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
 	});
+
+	if (workflow) {
+		const mappingRepository = Container.get(WorkflowTagMappingRepository);
+
+		const mapping = mappingRepository.create({ tagId: tag.id, workflowId: workflow.id });
+
+		await mappingRepository.save(mapping);
+	}
+
+	return tag;
 }
 
 // ----------------------------------
@@ -411,7 +440,7 @@ export async function createManyWorkflows(
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
 	const { active, name, nodes, connections } = attributes;
 
-	const workflowEntity = new WorkflowEntity({
+	const workflowEntity = Db.collections.Workflow.create({
 		active: active ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
@@ -514,11 +543,13 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 // ----------------------------------
 
 export async function createVariable(key: string, value: string) {
-	return Db.collections.Variables.save({
+	const result = await Db.collections.Variables.save({
 		id: generateNanoId(),
 		key,
 		value,
 	});
+	await Container.get(VariablesService).updateCache();
+	return result;
 }
 
 export async function getVariableByKey(key: string) {
@@ -570,13 +601,12 @@ const baseOptions = (type: TestDBType) => ({
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapDBOptions = (type: TestDBType) =>
-	({
-		type,
-		name: type,
-		database: type,
-		...baseOptions(type),
-	} as const);
+export const getBootstrapDBOptions = (type: TestDBType) => ({
+	type,
+	name: type,
+	database: type,
+	...baseOptions(type),
+});
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,

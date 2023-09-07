@@ -29,7 +29,6 @@ type Aggregation = {
 
 type Aggregations = Aggregation[];
 
-// eslint-disable-next-line no-restricted-syntax
 const AggregationDisplayNames = {
 	append: 'appended_',
 	average: 'average_',
@@ -592,7 +591,7 @@ export async function execute(
 				item: index,
 			})),
 		};
-		return this.prepareOutputData([executionData]);
+		return [[executionData]];
 	} else {
 		if (!fieldsToSplitBy.length) {
 			const { pairedItems, ...json } = aggregationResult;
@@ -602,7 +601,7 @@ export async function execute(
 					item: index,
 				})),
 			};
-			return this.prepareOutputData([executionData]);
+			return [[executionData]];
 		}
 		const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
 		const executionData = returnData.map((item) => {
@@ -614,6 +613,6 @@ export async function execute(
 				})),
 			};
 		});
-		return this.prepareOutputData(executionData);
+		return [executionData];
 	}
 }

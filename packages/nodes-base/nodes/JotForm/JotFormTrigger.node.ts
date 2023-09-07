@@ -1,5 +1,3 @@
-import * as formidable from 'formidable';
-
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -9,6 +7,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	MultiPartFormData,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
@@ -132,7 +131,6 @@ export class JotFormTrigger implements INodeType {
 				const endpoint = `/form/${formId}/webhooks`;
 				const body: IDataObject = {
 					webhookURL: webhookUrl,
-					//webhookURL: 'https://en0xsizp3qyt7f.x.pipedream.net/',
 				};
 				const { content } = await jotformApiRequest.call(this, 'POST', endpoint, body);
 				webhookData.webhookId = Object.keys(content as IDataObject)[0];
@@ -158,71 +156,65 @@ export class JotFormTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const req = this.getRequestObject();
+		const req = this.getRequestObject() as MultiPartFormData.Request;
 		const formId = this.getNodeParameter('form') as string;
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 		const onlyAnswers = this.getNodeParameter('onlyAnswers', false) as boolean;
 
-		const form = new formidable.IncomingForm({});
+		const { data } = req.body;
 
-		return new Promise((resolve, _reject) => {
-			form.parse(req, async (err, data, _files) => {
-				const rawRequest = jsonParse<any>(data.rawRequest as string);
-				data.rawRequest = rawRequest;
+		const rawRequest = jsonParse<any>(data.rawRequest as string);
+		data.rawRequest = rawRequest;
 
-				let returnData: IDataObject;
-				if (!resolveData) {
-					if (onlyAnswers) {
-						returnData = data.rawRequest as unknown as IDataObject;
-					} else {
-						returnData = data;
-					}
+		let returnData: IDataObject;
+		if (!resolveData) {
+			if (onlyAnswers) {
+				returnData = data.rawRequest as unknown as IDataObject;
+			} else {
+				returnData = data;
+			}
 
-					resolve({
-						workflowData: [this.helpers.returnJsonArray(returnData)],
-					});
-				}
+			return {
+				workflowData: [this.helpers.returnJsonArray(returnData)],
+			};
+		}
 
-				// Resolve the data by requesting the information via API
-				const endpoint = `/form/${formId}/questions`;
-				const responseData = await jotformApiRequest.call(this, 'GET', endpoint, {});
+		// Resolve the data by requesting the information via API
+		const endpoint = `/form/${formId}/questions`;
+		const responseData = await jotformApiRequest.call(this, 'GET', endpoint, {});
 
-				// Create a dictionary to resolve the keys
-				const questionNames: IDataObject = {};
-				for (const question of Object.values<IQuestionData>(
-					responseData.content as IQuestionData[],
-				)) {
-					questionNames[question.name] = question.text;
-				}
+		// Create a dictionary to resolve the keys
+		const questionNames: IDataObject = {};
+		for (const question of Object.values<IQuestionData>(responseData.content as IQuestionData[])) {
+			questionNames[question.name] = question.text;
+		}
 
-				// Resolve the keys
-				let questionKey: string;
-				const questionsData: IDataObject = {};
-				for (const key of Object.keys(rawRequest as IDataObject)) {
-					if (!key.includes('_')) {
-						continue;
-					}
+		// Resolve the keys
+		let questionKey: string;
+		const questionsData: IDataObject = {};
+		for (const key of Object.keys(rawRequest as IDataObject)) {
+			if (!key.includes('_')) {
+				continue;
+			}
 
-					questionKey = key.split('_').slice(1).join('_');
-					if (questionNames[questionKey] === undefined) {
-						continue;
-					}
+			questionKey = key.split('_').slice(1).join('_');
+			if (questionNames[questionKey] === undefined) {
+				continue;
+			}
 
-					questionsData[questionNames[questionKey] as string] = rawRequest[key];
-				}
+			questionsData[questionNames[questionKey] as string] = rawRequest[key];
+		}
 
-				if (onlyAnswers) {
-					returnData = questionsData as unknown as IDataObject;
-				} else {
-					// @ts-ignore
-					data.rawRequest = questionsData;
-					returnData = data;
-				}
+		if (onlyAnswers) {
+			returnData = questionsData as unknown as IDataObject;
+		} else {
+			// @ts-ignore
+			data.rawRequest = questionsData;
+			returnData = data;
+		}
 
-				resolve({
-					workflowData: [this.helpers.returnJsonArray(returnData)],
-				});
-			});
-		});
+		return {
+			workflowData: [this.helpers.returnJsonArray(returnData)],
+		};
 	}
 }

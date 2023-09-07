@@ -7,13 +7,13 @@
 			:class="$style.pinnedDataCallout"
 		>
 			{{ $locale.baseText('runData.pindata.thisDataIsPinned') }}
-			<span class="ml-4xs" v-if="!isReadOnlyRoute">
+			<span class="ml-4xs" v-if="!isReadOnlyRoute && !readOnlyEnv">
 				<n8n-link
 					theme="secondary"
 					size="small"
 					underline
 					bold
-					@click="onTogglePinData({ source: 'banner-link' })"
+					@click.stop="onTogglePinData({ source: 'banner-link' })"
 				>
 					{{ $locale.baseText('runData.pindata.unpin') }}
 				</n8n-link>
@@ -53,13 +53,13 @@
 						((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) &&
 						!editMode.enabled
 					"
-					:value="displayMode"
+					:modelValue="displayMode"
 					:options="buttons"
-					@input="onDisplayModeChange"
 					data-test-id="ndv-run-data-display-mode"
+					@update:modelValue="onDisplayModeChange"
 				/>
 				<n8n-icon-button
-					v-if="canPinData && !isReadOnlyRoute"
+					v-if="canPinData && !isReadOnlyRoute && !readOnlyEnv"
 					v-show="!editMode.enabled"
 					:title="$locale.baseText('runData.editOutput')"
 					:circle="false"
@@ -74,8 +74,11 @@
 					placement="bottom-end"
 					v-if="canPinData && jsonData && jsonData.length > 0"
 					v-show="!editMode.enabled"
-					:value="pinDataDiscoveryTooltipVisible"
-					:manual="isControlledPinDataTooltip"
+					:visible="
+						isControlledPinDataTooltip
+							? isControlledPinDataTooltip && pinDataDiscoveryTooltipVisible
+							: undefined
+					"
 				>
 					<template #content v-if="!isControlledPinDataTooltip">
 						<div :class="$style.tooltipContainer">
@@ -100,7 +103,10 @@
 						:active="hasPinData"
 						icon="thumbtack"
 						:disabled="
-							editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnlyRoute
+							editMode.enabled ||
+							(inputData.length === 0 && !hasPinData) ||
+							isReadOnlyRoute ||
+							readOnlyEnv
 						"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
 						data-test-id="ndv-pin-data"
@@ -131,10 +137,10 @@
 		>
 			<n8n-select
 				size="small"
-				:value="runIndex"
-				@input="onRunIndexChange"
+				:modelValue="runIndex"
+				@update:modelValue="onRunIndexChange"
 				@click.stop
-				popper-append-to-body
+				teleported
 			>
 				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option
@@ -145,20 +151,17 @@
 				></n8n-option>
 			</n8n-select>
 
-			<n8n-tooltip
-				placement="right"
-				v-if="canLinkRuns"
-				:content="$locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint')"
-			>
+			<n8n-tooltip placement="right" v-if="canLinkRuns">
+				<template #content>
+					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
+				</template>
 				<n8n-icon-button
-					v-if="linkedRuns"
-					icon="unlink"
+					:icon="linkedRuns ? 'unlink' : 'link'"
 					text
 					type="tertiary"
 					size="small"
-					@click="unlinkRun"
+					@click="toggleLinkRuns"
 				/>
-				<n8n-icon-button v-else icon="link" text type="tertiary" size="small" @click="linkRun" />
 			</n8n-tooltip>
 
 			<slot name="run-info"></slot>
@@ -169,7 +172,11 @@
 			:class="$style.tabs"
 			data-test-id="branches"
 		>
-			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
+			<n8n-tabs
+				:modelValue="currentOutputIndex"
+				:options="branches"
+				@update:modelValue="onBranchChange"
+			/>
 		</div>
 
 		<div
@@ -193,9 +200,9 @@
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
 				<div :class="[$style.editModeBody, 'ignore-key-press']">
 					<code-node-editor
-						:value="editMode.value"
+						:modelValue="editMode.value"
 						language="json"
-						@valueChanged="ndvStore.setOutputPanelEditModeValue($event)"
+						@update:modelValue="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style.editModeFooter">
@@ -277,6 +284,12 @@
 					:label="$locale.baseText('ndv.output.tooMuchData.showDataAnyway')"
 					@click="showTooMuchData"
 				/>
+
+				<n8n-button
+					size="small"
+					:label="$locale.baseText('runData.downloadBinaryData')"
+					@click="downloadJsonData()"
+				/>
 			</div>
 
 			<div
@@ -297,49 +310,51 @@
 				</n8n-text>
 			</div>
 
-			<run-data-table
-				v-else-if="hasNodeRun && displayMode === 'table'"
-				:node="node"
-				:inputData="inputData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:runIndex="runIndex"
-				:pageOffset="currentPageOffset"
-				:totalRuns="maxRunIndex"
-				:hasDefaultHoverState="paneType === 'input'"
-				@mounted="$emit('tableMounted', $event)"
-				@activeRowChanged="onItemHover"
-				@displayModeChange="onDisplayModeChange"
-			/>
+			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
+				<run-data-table
+					:node="node"
+					:inputData="inputData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:runIndex="runIndex"
+					:pageOffset="currentPageOffset"
+					:totalRuns="maxRunIndex"
+					:hasDefaultHoverState="paneType === 'input'"
+					@mounted="$emit('tableMounted', $event)"
+					@activeRowChanged="onItemHover"
+					@displayModeChange="onDisplayModeChange"
+				/>
+			</Suspense>
 
-			<run-data-json
-				v-else-if="hasNodeRun && displayMode === 'json'"
-				:paneType="paneType"
-				:editMode="editMode"
-				:sessioId="sessionId"
-				:node="node"
-				:inputData="inputData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:runIndex="runIndex"
-				:totalRuns="maxRunIndex"
-			/>
+			<Suspense v-else-if="hasNodeRun && displayMode === 'json'">
+				<run-data-json
+					:paneType="paneType"
+					:editMode="editMode"
+					:sessioId="sessionId"
+					:node="node"
+					:inputData="inputData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:runIndex="runIndex"
+					:totalRuns="maxRunIndex"
+				/>
+			</Suspense>
 
-			<run-data-html
-				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
-				:inputData="inputData"
-			/>
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
+				<run-data-html :inputData="inputData" />
+			</Suspense>
 
-			<run-data-schema
-				v-else-if="hasNodeRun && isSchemaView"
-				:data="jsonData"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
-				:node="node"
-				:paneType="paneType"
-				:runIndex="runIndex"
-				:totalRuns="maxRunIndex"
-			/>
+			<Suspense v-else-if="hasNodeRun && isSchemaView">
+				<run-data-schema
+					:data="jsonData"
+					:mappingEnabled="mappingEnabled"
+					:distanceFromActive="distanceFromActive"
+					:node="node"
+					:paneType="paneType"
+					:runIndex="runIndex"
+					:totalRuns="maxRunIndex"
+				/>
+			</Suspense>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 				<n8n-text align="center" tag="div">{{
@@ -443,17 +458,22 @@
 			<el-pagination
 				background
 				:hide-on-single-page="true"
-				:current-page.sync="currentPage"
+				:current-page="currentPage"
 				:pager-count="5"
 				:page-size="pageSize"
 				layout="prev, pager, next"
-				@current-change="onCurrentPageChange"
+				@update:current-page="onCurrentPageChange"
 				:total="dataCount"
 			>
 			</el-pagination>
 
 			<div :class="$style.pageSizeSelector">
-				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
+				<n8n-select
+					size="mini"
+					:modelValue="pageSize"
+					@update:modelValue="onPageSizeChange"
+					teleported
+				>
 					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option v-for="size in pageSizes" :key="size" :label="size" :value="size">
 					</n8n-option>
@@ -466,7 +486,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
@@ -516,10 +536,10 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
 
-const RunDataTable = async () => import('@/components/RunDataTable.vue');
-const RunDataJson = async () => import('@/components/RunDataJson.vue');
-const RunDataSchema = async () => import('@/components/RunDataSchema.vue');
-const RunDataHtml = async () => import('@/components/RunDataHtml.vue');
+const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
+const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
+const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
+const RunDataHtml = defineAsyncComponent(async () => import('@/components/RunDataHtml.vue'));
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -626,7 +646,7 @@ export default defineComponent({
 
 		if (this.paneType === 'output') this.setDisplayMode();
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.hidePinDataDiscoveryTooltip();
 		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
 		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);
@@ -889,6 +909,9 @@ export default defineComponent({
 		isPaneTypeOutput(): boolean {
 			return this.paneType === 'output';
 		},
+		readOnlyEnv(): boolean {
+			return this.sourceControlStore.preferences.branchReadOnly;
+		},
 	},
 	methods: {
 		onItemHover(itemIndex: number | null) {
@@ -1117,13 +1140,17 @@ export default defineComponent({
 				type: 'showTooMuchData',
 			});
 		},
+		toggleLinkRuns() {
+			this.linkedRuns ? this.unlinkRun() : this.linkRun();
+		},
 		linkRun() {
 			this.$emit('linkRun');
 		},
 		unlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onCurrentPageChange() {
+		onCurrentPageChange(value) {
+			this.currentPage = value;
 			this.$telemetry.track('User changed ndv page', {
 				node_type: this.activeNode?.type,
 				workflow_id: this.workflowsStore.workflowId,
@@ -1268,6 +1295,14 @@ export default defineComponent({
 				const blob = await fetch(bufferString).then(async (d) => d.blob());
 				saveAs(blob, fileName);
 			}
+		},
+		async downloadJsonData() {
+			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+
+			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
+			const blob = new Blob([JSON.stringify(inputData, null, 2)], { type: 'application/json' });
+
+			saveAs(blob, `${fileName}.json`);
 		},
 		displayBinaryData(index: number, key: string) {
 			this.binaryDataDisplayVisible = true;

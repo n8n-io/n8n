@@ -1,4 +1,3 @@
-import type { Application } from 'express';
 import validator from 'validator';
 import type { SuperAgentTest } from 'supertest';
 
@@ -13,30 +12,26 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
-let app: Application;
+const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
+
 let globalOwnerRole: Role;
 let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'] });
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
-	config.set('userManagement.isInstanceOwnerSetUp', false);
 	ownerShell = await testDb.createUserShell(globalOwnerRole);
-	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
+	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 });
 
 afterEach(async () => {
 	await testDb.truncate(['User']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 describe('POST /owner/setup', () => {
@@ -60,7 +55,6 @@ describe('POST /owner/setup', () => {
 			personalizationAnswers,
 			globalRole,
 			password,
-			resetPasswordToken,
 			isPending,
 			apiKey,
 		} = response.body.data;
@@ -72,7 +66,6 @@ describe('POST /owner/setup', () => {
 		expect(personalizationAnswers).toBeNull();
 		expect(password).toBeUndefined();
 		expect(isPending).toBe(false);
-		expect(resetPasswordToken).toBeUndefined();
 		expect(globalRole.name).toBe('owner');
 		expect(globalRole.scope).toBe('global');
 		expect(apiKey).toBeUndefined();
@@ -159,29 +152,9 @@ describe('POST /owner/setup', () => {
 	];
 
 	test('should fail with invalid inputs', async () => {
-		const authOwnerAgent = authOwnerShellAgent;
-
-		await Promise.all(
-			INVALID_POST_OWNER_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/owner/setup').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}),
-		);
-	});
-});
-
-describe('POST /owner/skip-setup', () => {
-	test('should persist skipping setup to the DB', async () => {
-		const response = await authOwnerShellAgent.post('/owner/skip-setup').send();
-
-		expect(response.statusCode).toBe(200);
-
-		const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
-		expect(skipConfig).toBe(true);
-
-		const { value } = await Db.collections.Settings.findOneByOrFail({
-			key: 'userManagement.skipInstanceOwnerSetup',
-		});
-		expect(value).toBe('true');
+		for (const invalidPayload of INVALID_POST_OWNER_PAYLOADS) {
+			const response = await authOwnerShellAgent.post('/owner/setup').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}
 	});
 });

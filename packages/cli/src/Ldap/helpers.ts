@@ -10,9 +10,7 @@ import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { RoleRepository } from '@db/repositories';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
-import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
 
 import {
@@ -33,13 +31,13 @@ import {
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
 import { InternalServerError } from '../ResponseHelper';
+import { RoleService } from '@/services/role.service';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
-export const isLdapEnabled = (): boolean => {
-	const license = Container.get(License);
-	return isUserManagementEnabled() && license.isLdapEnabled();
+export const isLdapEnabled = () => {
+	return Container.get(License).isLdapEnabled();
 };
 
 /**
@@ -94,7 +92,7 @@ export const randomPassword = (): string => {
  * Return the user role to be assigned to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
-	return Container.get(RoleRepository).findGlobalMemberRoleOrFail();
+	return Container.get(RoleService).findGlobalMemberRole();
 };
 
 /**
@@ -182,11 +180,6 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
 			await deleteAllLdapIdentities();
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_update',
-				users: ldapUsers.length,
-				user_ids: ldapUsers.map((user) => user.id),
-			});
 		}
 	}
 
@@ -202,24 +195,14 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
  * If it's the first run of this feature, all the default data is created in the database
  */
 export const handleLdapInit = async (): Promise<void> => {
-	if (!isLdapEnabled()) {
-		const ldapUsers = await getLdapUsers();
-		if (ldapUsers.length) {
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_feature_deactivated',
-				users: ldapUsers.length,
-				user_ids: ldapUsers.map((user) => user.id),
-			});
-		}
-		return;
-	}
+	if (!isLdapEnabled()) return;
 
 	const ldapConfig = await getLdapConfig();
 
 	try {
 		await setGlobalLdapConfigVariables(ldapConfig);
 	} catch (error) {
-		Logger.error(
+		Logger.warn(
 			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			error,

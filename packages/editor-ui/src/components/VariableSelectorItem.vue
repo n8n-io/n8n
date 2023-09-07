@@ -41,6 +41,7 @@
 					:key="option.key"
 					:extendAll="extendAll"
 					:allowParentSelect="option.allowParentSelect"
+					:redactValues="redactValues"
 					class="sub-level"
 					@itemSelected="forwardItemSelected"
 				></variable-selector-item>
@@ -51,7 +52,7 @@
 				{{ item.name }}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value ph-no-capture">
+			<div :class="{ 'ph-no-capture': redactValues, 'item-value': true }">
 				{{ item.value !== undefined ? item.value : $locale.baseText('variableSelectorItem.empty') }}
 			</div>
 		</div>
@@ -66,7 +67,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 export default defineComponent({
 	name: 'VariableSelectorItem',
 	mixins: [externalHooks],
-	props: ['allowParentSelect', 'extendAll', 'item'],
+	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
 	mounted() {
 		if (this.extended) return;
 

@@ -11,7 +11,7 @@ anything to everything.
 
 ## Demo
 
-[:tv: A short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok) that goes over key concepts of
+[:tv: A short video (< 5 min)](https://www.youtube.com/watch?v=1MwSoB0gnM4) that goes over key concepts of
 creating workflows in n8n.
 
 ## Available integrations
@@ -36,7 +36,8 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
   [how to run n8n in **Docker**](https://docs.n8n.io/hosting/installation/docker/)
 
 ## Start
-You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed. 
+
+You can try n8n without installing it using npx. You must have [Node.js](https://nodejs.org/en/) installed.
 From the terminal, run:
 
 `npx n8n`

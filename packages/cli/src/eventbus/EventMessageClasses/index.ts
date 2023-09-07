@@ -9,6 +9,7 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.failed',
 	'n8n.workflow.crashed',
 ] as const;
+export const eventNamesGeneric = ['n8n.worker.started', 'n8n.worker.stopped'] as const;
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export const eventNamesAudit = [
 	'n8n.audit.user.login.success',
@@ -37,14 +38,21 @@ export const eventNamesAudit = [
 export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 export type EventNamesNodeType = (typeof eventNamesNode)[number];
+export type EventNamesGenericType = (typeof eventNamesGeneric)[number];
 
 export type EventNamesTypes =
 	| EventNamesAuditType
 	| EventNamesWorkflowType
 	| EventNamesNodeType
+	| EventNamesGenericType
 	| 'n8n.destination.test';
 
-export const eventNamesAll = [...eventNamesAudit, ...eventNamesWorkflow, ...eventNamesNode];
+export const eventNamesAll = [
+	...eventNamesAudit,
+	...eventNamesWorkflow,
+	...eventNamesNode,
+	...eventNamesGeneric,
+];
 
 export type EventMessageTypes =
 	| EventMessageGeneric
