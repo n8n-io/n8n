@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 import { constructExecutionMetaData } from 'n8n-core';
 import get from 'lodash/get';
-import { composeReturnItem } from '../../v2/helpers/utils';
+import { composeReturnItem, parseJsonParameter } from '../../v2/helpers/utils';
 import type { SetNodeOptions } from '../../v2/helpers/interfaces';
 
 export const node: INode = {
@@ -129,6 +129,51 @@ describe('test Set2, composeReturnItem', () => {
 			},
 			pairedItem: {
 				item: 0,
+			},
+		});
+	});
+});
+
+describe('test Set2, parseJsonParameter', () => {
+	it('should parse valid JSON string', () => {
+		const result = parseJsonParameter('{"foo": "bar"}', node, 0, 'test');
+
+		expect(result).toEqual({
+			foo: 'bar',
+		});
+	});
+
+	it('should tolerate single quotes in string', () => {
+		const result = parseJsonParameter("{'foo': 'bar'}", node, 0, 'test');
+
+		expect(result).toEqual({
+			foo: 'bar',
+		});
+	});
+
+	it('should tolerate unquoted keys', () => {
+		const result = parseJsonParameter("{foo: 'bar'}", node, 0, 'test');
+
+		expect(result).toEqual({
+			foo: 'bar',
+		});
+	});
+
+	it('should tolerate trailing comma', () => {
+		const result = parseJsonParameter('{"foo": "bar"},', node, 0, 'test');
+
+		expect(result).toEqual({
+			foo: 'bar',
+		});
+	});
+
+	it('should tolerate trailing commas in objects', () => {
+		const result = parseJsonParameter("{foo: 'bar', baz: {'foo': 'bar',}, }", node, 0, 'test');
+
+		expect(result).toEqual({
+			foo: 'bar',
+			baz: {
+				foo: 'bar',
 			},
 		});
 	});
