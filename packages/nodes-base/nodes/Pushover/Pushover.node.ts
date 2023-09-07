@@ -342,9 +342,7 @@ export class Pushover implements INodeType {
 								body.attachment = {
 									value: dataBuffer,
 									options: {
-										filename:
-											binaryData.fileName ?? `${binaryPropertyName}.${binaryData.fileExtension}`,
-										contentType: binaryData.mimeType,
+										filename: binaryData.fileName,
 									},
 								};
 
