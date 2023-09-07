@@ -1,12 +1,13 @@
 import {
-	CODE_NODE_NAME, HTTP_REQUEST_NODE_NAME,
+	CODE_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
-	SCHEDULE_TRIGGER_NODE_NAME, SET_NODE_NAME,
+	SCHEDULE_TRIGGER_NODE_NAME,
+	SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { getVisibleDropdown, getVisibleSelect } from '../utils';
+import { getVisibleSelect } from '../utils';
 import { WorkflowExecutionsTab } from "../pages";
 
 const NEW_WORKFLOW_NAME = 'Something else';
