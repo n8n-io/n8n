@@ -62,6 +62,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
+import { WorkflowsService } from './workflows/workflows.services';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -359,7 +360,7 @@ export async function executeWebhook(
 		}
 
 		// Save static data if it changed
-		await WorkflowHelpers.saveStaticData(workflow);
+		await WorkflowsService.saveStaticData(workflow);
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: executionId,

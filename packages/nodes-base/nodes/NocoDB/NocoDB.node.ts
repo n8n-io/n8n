@@ -456,7 +456,7 @@ export class NocoDB implements INodeType {
 					}
 				}
 
-				return this.prepareOutputData(returnData as INodeExecutionData[]);
+				return [returnData as INodeExecutionData[]];
 			}
 
 			if (operation === 'get') {
@@ -534,7 +534,7 @@ export class NocoDB implements INodeType {
 						throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
 					}
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			}
 
 			if (operation === 'update') {

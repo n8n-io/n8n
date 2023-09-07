@@ -521,6 +521,6 @@ export class GoogleContacts implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

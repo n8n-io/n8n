@@ -1298,6 +1298,6 @@ export class AwsSes implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

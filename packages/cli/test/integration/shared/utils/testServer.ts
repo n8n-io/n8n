@@ -43,6 +43,7 @@ import { Push } from '@/push';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
+import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { License } from '@/License';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 
@@ -206,6 +207,7 @@ export const setupTestServer = ({
 						break;
 					case 'eventBus':
 						registerController(app, config, new EventBusController());
+						registerController(app, config, new EventBusControllerEE());
 						break;
 					case 'auth':
 						registerController(

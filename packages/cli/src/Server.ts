@@ -132,6 +132,7 @@ import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
+import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { licenseController } from './license/license.controller';
 import { Push, setupPushServer, setupPushHandler } from '@/push';
@@ -176,6 +177,7 @@ import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
+import { OrchestrationController } from './controllers/orchestration.controller';
 
 const exec = promisify(callbackExec);
 
@@ -511,6 +513,7 @@ export class Server extends AbstractServer {
 
 		const controllers: object[] = [
 			new EventBusController(),
+			new EventBusControllerEE(),
 			new AuthController(config, logger, internalHooks, mfaService, userService, postHog),
 			new OwnerController(
 				config,
@@ -552,6 +555,7 @@ export class Server extends AbstractServer {
 			Container.get(SourceControlController),
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
+			Container.get(OrchestrationController),
 		];
 
 		if (isLdapEnabled()) {

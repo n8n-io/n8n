@@ -506,6 +506,6 @@ export class Pushbullet implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -198,7 +198,7 @@ export async function execute(
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
-	const nodeVersion = nodeOptions.typeVersion as number;
+	const nodeVersion = nodeOptions.nodeVersion as number;
 
 	let schema = this.getNodeParameter('schema', 0, undefined, {
 		extractValue: true,

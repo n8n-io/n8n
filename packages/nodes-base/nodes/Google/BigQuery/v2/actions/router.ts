@@ -23,5 +23,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }
