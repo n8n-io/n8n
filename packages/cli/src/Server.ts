@@ -344,7 +344,9 @@ export class Server extends AbstractServer {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
 		}
 
+		console.log('Server.start');
 		await super.start();
+		console.log('Server.started');
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
@@ -391,6 +393,7 @@ export class Server extends AbstractServer {
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
 		};
 
+		console.log('initEvents');
 		// Set up event handling
 		initEvents();
 
@@ -406,6 +409,7 @@ export class Server extends AbstractServer {
 		}).then(async (workflow) =>
 			Container.get(InternalHooks).onServerStarted(diagnosticInfo, workflow?.createdAt),
 		);
+		console.log('Server.start finished');
 	}
 
 	/**
@@ -1193,9 +1197,8 @@ export class Server extends AbstractServer {
 							Object.assign(findOptions.where, { workflowId: In(sharedWorkflowIds) });
 						}
 
-						const executions = await Container.get(ExecutionRepository).findMultipleExecutions(
-							findOptions,
-						);
+						const executions =
+							await Container.get(ExecutionRepository).findMultipleExecutions(findOptions);
 
 						if (!executions.length) return [];
 

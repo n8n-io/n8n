@@ -101,6 +101,13 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		})) as IWorkflowDb[];
 
+		console.log('Active Workflows found', workflowsData.length);
+
+		console.log(
+			'Clearing webhooks',
+			config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown'),
+		);
+
 		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.

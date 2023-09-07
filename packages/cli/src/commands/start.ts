@@ -330,8 +330,10 @@ export class Start extends BaseCommand {
 			);
 		}
 
+		console.log('starting server');
 		await this.server.start();
 
+		console.log('activeWorkflowRunner.init');
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
 

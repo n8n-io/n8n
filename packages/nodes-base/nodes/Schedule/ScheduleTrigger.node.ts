@@ -412,6 +412,7 @@ export class ScheduleTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const id = this.getWorkflow().id;
 		const rule = this.getNodeParameter('rule', []) as IDataObject;
 		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
@@ -424,6 +425,7 @@ export class ScheduleTrigger implements INodeType {
 		if (!staticData.recurrencyRules) {
 			staticData.recurrencyRules = [];
 		}
+
 		const executeTrigger = async (recurency: IRecurencyRule) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
@@ -489,6 +491,7 @@ export class ScheduleTrigger implements INodeType {
 					async () => executeTrigger({ activated: false } as IRecurencyRule),
 					intervalValue,
 				) as NodeJS.Timeout;
+				console.log('Timer setup', id, intervalObj[Symbol.toPrimitive]());
 				intervalArr.push(intervalObj);
 			}
 
@@ -628,10 +631,12 @@ export class ScheduleTrigger implements INodeType {
 		}
 
 		async function closeFunction() {
+			console.log('ScheduleTrigger closeFunction called', id);
 			for (const cronJob of cronJobs) {
 				cronJob.stop();
 			}
 			for (const entry of intervalArr) {
+				console.log('Timer removed', id, entry[Symbol.toPrimitive]());
 				clearInterval(entry);
 			}
 		}

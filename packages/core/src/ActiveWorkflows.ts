@@ -205,6 +205,7 @@ export class ActiveWorkflows {
 	 * @param {string} id The id of the workflow to deactivate
 	 */
 	async remove(id: string): Promise<void> {
+		console.log('ActiveWorkflows.remove called', id);
 		if (!this.isActive(id)) {
 			// Workflow is currently not registered
 			throw new Error(
@@ -216,10 +217,16 @@ export class ActiveWorkflows {
 
 		if (workflowData.triggerResponses) {
 			for (const triggerResponse of workflowData.triggerResponses) {
+				console.log(
+					'invoking triggerResponse.closeFunction',
+					id,
+					'closeFunction' in triggerResponse,
+				);
 				if (triggerResponse.closeFunction) {
 					try {
 						await triggerResponse.closeFunction();
 					} catch (error) {
+						console.log('Failed to remove', error, id);
 						Logger.error(
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
 							`There was a problem deactivating trigger of workflow "${id}": "${error.message}"`,

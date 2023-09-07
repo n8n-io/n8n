@@ -240,6 +240,7 @@ export class WorkflowsService {
 
 		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
+		console.log('updating', workflowId, shared.workflow.active);
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
 			// changed and so the changes would not take effect
@@ -317,6 +318,7 @@ export class WorkflowsService {
 		await Container.get(ExternalHooks).run('workflow.afterUpdate', [updatedWorkflow]);
 		void Container.get(InternalHooks).onWorkflowSaved(user, updatedWorkflow, false);
 
+		console.log('activating', workflowId, updatedWorkflow.active);
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {

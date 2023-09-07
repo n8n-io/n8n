@@ -421,9 +421,13 @@ export abstract class AbstractServer {
 	}
 
 	async start(): Promise<void> {
+		console.log(1);
 		await this.setupErrorHandlers();
+		console.log(2);
 		this.setupPushServer();
+		console.log(3);
 		await this.setupCommonMiddlewares();
+		console.log(4);
 		if (inDevelopment) {
 			this.setupDevMiddlewares();
 		}

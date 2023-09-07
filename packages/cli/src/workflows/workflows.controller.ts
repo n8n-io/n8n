@@ -236,6 +236,7 @@ workflowsController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
+		console.log('updating workflow', workflowId);
 		const updatedWorkflow = await WorkflowsService.update(
 			req.user,
 			updateData,

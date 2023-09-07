@@ -227,6 +227,7 @@ EEWorkflowController.patch(
 
 		const safeWorkflow = await EEWorkflows.preventTampering(updateData, workflowId, req.user);
 
+		console.log('updating workflow.ee', workflowId);
 		const updatedWorkflow = await EEWorkflows.update(
 			req.user,
 			safeWorkflow,
