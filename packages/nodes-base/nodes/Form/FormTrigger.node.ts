@@ -8,14 +8,14 @@ import type {
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Form Trigger',
+		displayName: 'n8n Form Trigger',
 		name: 'formTrigger',
-		icon: 'file:../Webhook/webhook.svg',
+		icon: 'file:form.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts a workflow when Form events occur',
+		description: 'Runs the flow when an n8n generated webform is submitted',
 		defaults: {
-			name: 'Form Trigger',
+			name: 'n8n Form Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
