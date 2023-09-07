@@ -1452,8 +1452,6 @@ export class HttpRequestV3 implements INodeType {
 
 			response = response.value;
 
-			const url = this.getNodeParameter('url', itemIndex) as string;
-
 			let responseFormat = this.getNodeParameter(
 				'options.response.response.responseFormat',
 				0,
@@ -1525,8 +1523,7 @@ export class HttpRequestV3 implements INodeType {
 					Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
 				}
 
-				const fileName = url.split('/').pop();
-
+				let binaryData: Buffer | Readable;
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullResponseProperties) {
@@ -1537,19 +1534,12 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					newItem.json = returnItem;
-
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body as Buffer | Readable,
-						fileName,
-					);
+					binaryData = response!.body;
 				} else {
 					newItem.json = items[itemIndex].json;
-
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response! as Buffer | Readable,
-						fileName,
-					);
+					binaryData = response;
 				}
+				newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
 
 				returnItems.push(newItem);
 			} else if (responseFormat === 'text') {

@@ -1,9 +1,8 @@
-import { parse as parseContentDisposition } from 'content-disposition';
-import { parse as parseContentType } from 'content-type';
 import getRawBody from 'raw-body';
 import type { Request, RequestHandler } from 'express';
 import { parse as parseQueryString } from 'querystring';
 import { Parser as XmlParser } from 'xml2js';
+import { parseIncomingMessage } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import config from '@/config';
 import { UnprocessableRequestError } from '@/ResponseHelper';
@@ -17,26 +16,7 @@ const xmlParser = new XmlParser({
 
 const payloadSizeMax = config.getEnv('endpoints.payloadSizeMax');
 export const rawBodyReader: RequestHandler = async (req, res, next) => {
-	if ('content-type' in req.headers) {
-		const { type: contentType, parameters } = (() => {
-			try {
-				return parseContentType(req);
-			} catch {
-				return { type: undefined, parameters: undefined };
-			}
-		})();
-		req.contentType = contentType;
-		req.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
-
-		const contentDispositionHeader = req.headers['content-disposition'];
-		if (contentDispositionHeader?.length) {
-			const {
-				type,
-				parameters: { filename },
-			} = parseContentDisposition(contentDispositionHeader);
-			req.contentDisposition = { type, filename };
-		}
-	}
+	parseIncomingMessage(req);
 
 	req.readRawBody = async () => {
 		if (!req.rawBody) {
