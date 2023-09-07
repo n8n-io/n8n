@@ -115,7 +115,7 @@ export class ChainStructuredOutput implements INodeType {
 			try {
 				jsonParse(schema);
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Error whinl parsing JSON Schema.');
+				throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 			}
 			const functionCallingModel = model.bind({
 				functions: [
