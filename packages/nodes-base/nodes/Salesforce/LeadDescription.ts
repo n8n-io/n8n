@@ -233,7 +233,7 @@ export const leadFields: INodeProperties[] = [
 				name: 'fax',
 				type: 'number',
 				default: '',
-				description: 'Fax number of the lead.',
+				description: 'Fax number of the lead',
 			},
 			{
 				displayName: 'First Name',
