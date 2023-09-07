@@ -158,10 +158,10 @@ export class FacebookLeadAdsTrigger implements INodeType {
 					return false;
 				}
 
-				if (subscription?.callback_url !== webhookUrl) {
+				if (subscription.callback_url !== webhookUrl) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`The App ID ${appId} already has a callback url ${subscription?.callback_url}. Delete it or use another App ID before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
+						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
 					);
 				}
 
@@ -204,6 +204,7 @@ export class FacebookLeadAdsTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
 		const credentials = await this.getCredentials('facebookLeadAdsOAuth2Api');
+		const pageId = this.getNodeParameter('page', '', { extractValue: true }) as string;
 		const formId = this.getNodeParameter('form', '', { extractValue: true }) as string;
 
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
@@ -237,7 +238,12 @@ export class FacebookLeadAdsTrigger implements INodeType {
 			bodyData.entry
 				.map((entry) =>
 					entry.changes
-						.filter((change) => change.field === 'leadgen' && change.value.form_id === formId)
+						.filter(
+							(change) =>
+								change.field === 'leadgen' &&
+								change.value.page_id === pageId &&
+								change.value.form_id === formId,
+						)
 						.map((change) => change.value),
 				)
 				.flat()

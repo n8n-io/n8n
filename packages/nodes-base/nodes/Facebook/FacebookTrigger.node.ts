@@ -1,15 +1,16 @@
+import { createHmac } from 'crypto';
 import type {
-	IHookFunctions,
-	IWebhookFunctions,
 	IDataObject,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -17,7 +18,7 @@ import { snakeCase } from 'change-case';
 
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import type { FacebookEvent, FacebookWebhookSubscription } from './types';
 
 export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -177,18 +178,27 @@ export class FacebookTrigger implements INodeType {
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
 
-				const { data } = await facebookApiRequest.call(this, 'GET', `/${appId}/subscriptions`, {});
+				const { data } = (await facebookApiRequest.call(
+					this,
+					'GET',
+					`/${appId}/subscriptions`,
+					{},
+				)) as { data: FacebookWebhookSubscription[] };
 
-				for (const webhook of data) {
-					if (
-						webhook.target === webhookUrl &&
-						webhook.object === object &&
-						webhook.status === true
-					) {
-						return true;
-					}
+				const subscription = data.find((webhook) => webhook.object === object && webhook.status);
+
+				if (!subscription) {
+					return false;
 				}
-				return false;
+
+				if (subscription.callback_url !== webhookUrl) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
+					);
+				}
+
+				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
@@ -243,11 +253,13 @@ export class FacebookTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData();
+		const bodyData = this.getBodyData() as unknown as FacebookEvent;
 		const query = this.getQueryData() as IDataObject;
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
+		const object = this.getNodeParameter('object') as string;
+		const fields = this.getNodeParameter('fields') as string[];
 		const credentials = await this.getCredentials('facebookGraphAppApi');
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
@@ -275,8 +287,20 @@ export class FacebookTrigger implements INodeType {
 			}
 		}
 
+		if (bodyData.object !== object) {
+			return {};
+		}
+
+		const events = bodyData.entry.map((entry) =>
+			entry.changes.filter((change) => fields.includes(change.field)),
+		);
+
+		if (events.length === 0) {
+			return {};
+		}
+
 		return {
-			workflowData: [this.helpers.returnJsonArray(bodyData.entry as IDataObject[])],
+			workflowData: [this.helpers.returnJsonArray(events as unknown as IDataObject[])],
 		};
 	}
 }
