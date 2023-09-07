@@ -24,6 +24,7 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 						UserSettings.getUserN8nFolderPath(),
 						config.getEnv('database.sqlite.database'),
 					),
+					enableWAL: config.getEnv('database.sqlite.enableWAL'),
 			  }
 			: {
 					database: config.getEnv(`database.${configDBType}.database`),
