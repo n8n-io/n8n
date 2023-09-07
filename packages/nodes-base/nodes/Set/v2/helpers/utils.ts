@@ -43,7 +43,7 @@ const configureFieldHelper = (dotNotation?: boolean) => {
 	}
 };
 
-export function prepareItem(
+export function composeReturnItem(
 	this: IExecuteFunctions,
 	itemIndex: number,
 	inputItem: INodeExecutionData,

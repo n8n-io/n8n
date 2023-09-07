@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { parseJsonParameter, prepareItem, resolveRawData } from './helpers/utils';
+import { parseJsonParameter, composeReturnItem, resolveRawData } from './helpers/utils';
 import type { SetNodeOptions } from './helpers/interfaces';
 import { updateDisplayOptions } from '../../../utils/utilities';
 
@@ -56,7 +56,7 @@ export async function execute(
 			);
 		}
 
-		return prepareItem.call(this, i, item, newData, options);
+		return composeReturnItem.call(this, i, item, newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
 			return { json: { error: (error as Error).message } };
