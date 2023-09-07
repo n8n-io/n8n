@@ -395,11 +395,30 @@ function executeData(
 					[inputName]: workflowRunData[currentNode][runIndex].source,
 				};
 			} else {
+				const workflow = getCurrentWorkflow();
+
+				let previousNodeOutput: number | undefined;
+				// As the node can be connected through either of the outputs find the correct one
+				// and set it to make pairedItem work on not executed nodes
+				if (workflow.connectionsByDestinationNode[currentNode].main) {
+					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
+						currentNode
+					].main) {
+						for (const connection of mainConnections) {
+							if (connection.type === 'main' && connection.node === parentNodeName) {
+								previousNodeOutput = connection.index;
+								break mainConnections;
+							}
+						}
+					}
+				}
+
 				// The current node did not get executed in UI yet so build data manually
 				executeData.source = {
 					[inputName]: [
 						{
 							previousNode: parentNodeName,
+							previousNodeOutput,
 						},
 					],
 				};
