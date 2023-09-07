@@ -7,14 +7,30 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import type { BaseChatMemory } from 'langchain/memory';
-import type { SerializedConstructor } from 'langchain/dist/load/serializable';
+import type { BaseMessage } from 'langchain/schema';
 
-function simplifyMessage(message: SerializedConstructor) {
-	return {
-		sender: message.id[message.id.length - 1],
-		text: message.kwargs.content,
-	};
+function simplifyMessages(messages: BaseMessage[]) {
+	const chunkedMessages = [];
+	for (let i = 0; i < messages.length; i += 2) {
+		chunkedMessages.push([messages[i], messages[i + 1]]);
+	}
+
+	const transformedMessages = chunkedMessages.map((exchange) => {
+		const simplified = {
+			[exchange[0]._getType()]: exchange[0].content,
+		};
+
+		if (exchange[1]) {
+			simplified[exchange[1]._getType()] = exchange[1].content;
+		}
+
+		return {
+			json: simplified,
+		};
+	});
+	return transformedMessages;
 }
+
 export class MemoryChatRetriever implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Chat Messages Retriever',
@@ -63,12 +79,13 @@ export class MemoryChatRetriever implements INodeType {
 
 		const messages = await memory?.chatHistory.getMessages();
 
+		if (simplifyOutput && messages) {
+			return this.prepareOutputData(simplifyMessages(messages));
+		}
+
 		const serializedMessages =
 			messages?.map((message) => {
 				const serializedMessage = message.toJSON();
-				if (simplifyOutput)
-					return { json: simplifyMessage(serializedMessage as SerializedConstructor) };
-
 				return { json: serializedMessage as unknown as IDataObject };
 			}) ?? [];
 
