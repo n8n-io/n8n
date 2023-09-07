@@ -94,7 +94,7 @@ export class ChainLlm implements INodeType {
 		}
 		// Run for each item
 		for (let i = 0; i < items.length; i++) {
-			const prompt = this.getNodeParameter('query', i) as string;
+			const prompt = this.getNodeParameter('prompt', i) as string;
 			const response = await getChain(this, prompt);
 
 			returnData.push({ json: { response } });
