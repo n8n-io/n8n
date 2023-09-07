@@ -2027,7 +2027,6 @@ const validateCollection = (
 					},
 				);
 			}
-
 			value[key] = fieldValidationResult.newValue;
 		}
 	}
@@ -2035,7 +2034,7 @@ const validateCollection = (
 	return validationResult;
 };
 
-const validateValueAgainstSchema = (
+export const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
 	parameterValue: string | number | boolean | object | null | undefined,
@@ -2172,7 +2171,7 @@ export function getNodeParameter(
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
-	// Validate parameter value if it has a schema defined
+	// Validate parameter value if it has a schema defined(RMC) or validateType defined
 	returnData = validateValueAgainstSchema(
 		node,
 		nodeType,
