@@ -103,12 +103,12 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
-	protected async initBinaryManager() {
+	async initBinaryManager() {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
 	}
 
-	protected async initExternalHooks() {
+	async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
 	}
