@@ -34,7 +34,6 @@ export class MemoryChatRetriever implements INodeType {
 				required: true,
 			},
 		],
-		inputNames: ['', 'Memory'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main'],
 		properties: [],
