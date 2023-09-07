@@ -4,13 +4,12 @@ import { Container } from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CurrentUser, PublicUser, WhereClause } from '@/Interfaces';
+import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import config from '@/config';
 import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
-import type { PostHogClient } from '@/posthog';
 import { RoleService } from '@/services/role.service';
 
 export function isEmailSetUp(): boolean {
@@ -82,64 +81,6 @@ export function validatePassword(password?: string): string {
 	}
 
 	return password;
-}
-
-/**
- * Remove sensitive properties from the user to return to the client.
- */
-export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
-	const { password, updatedAt, apiKey, authIdentities, mfaSecret, mfaRecoveryCodes, ...rest } =
-		user;
-	if (withoutKeys) {
-		withoutKeys.forEach((key) => {
-			// @ts-ignore
-			delete rest[key];
-		});
-	}
-
-	const sanitizedUser: PublicUser = {
-		...rest,
-		signInType: 'email',
-		hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
-	};
-
-	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
-	if (ldapIdentity) {
-		sanitizedUser.signInType = 'ldap';
-	}
-
-	return sanitizedUser;
-}
-
-export async function withFeatureFlags(
-	postHog: PostHogClient | undefined,
-	user: CurrentUser,
-): Promise<CurrentUser> {
-	if (!postHog) {
-		return user;
-	}
-
-	// native PostHog implementation has default 10s timeout and 3 retries.. which cannot be updated without affecting other functionality
-	// https://github.com/PostHog/posthog-js-lite/blob/a182de80a433fb0ffa6859c10fb28084d0f825c2/posthog-core/src/index.ts#L67
-	const timeoutPromise = new Promise<CurrentUser>((resolve) => {
-		setTimeout(() => {
-			resolve(user);
-		}, 1500);
-	});
-
-	const fetchPromise = new Promise<CurrentUser>(async (resolve) => {
-		user.featureFlags = await postHog.getFeatureFlags(user);
-		resolve(user);
-	});
-
-	return Promise.race([fetchPromise, timeoutPromise]);
-}
-
-export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
-	if (user.isPending) {
-		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
-	}
-	return user;
 }
 
 export async function getUserById(userId: string): Promise<User> {

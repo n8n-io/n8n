@@ -1,5 +1,5 @@
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -224,6 +224,6 @@ return items;`,
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

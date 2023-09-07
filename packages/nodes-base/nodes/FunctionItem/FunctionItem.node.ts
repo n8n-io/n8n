@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import type { NodeVMOptions } from 'vm2';
-import { NodeVM } from 'vm2';
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
 import type {
 	IExecuteFunctions,
 	IBinaryKeyData,
@@ -240,6 +240,6 @@ return item;`,
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

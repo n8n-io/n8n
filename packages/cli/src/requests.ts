@@ -27,6 +27,7 @@ import type { User } from '@db/entities/User';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -162,6 +163,16 @@ export namespace ListQuery {
 	}
 }
 
+export namespace Credentials {
+	type SlimUser = Pick<IUser, 'id' | 'email' | 'firstName' | 'lastName'>;
+
+	type OwnedByField = { ownedBy: SlimUser | null };
+
+	type SharedWithField = { sharedWith: SlimUser[] };
+
+	export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
+}
+
 export function hasSharing(
 	workflows: ListQuery.Workflow.Plain[] | ListQuery.Workflow.WithSharing[],
 ): workflows is ListQuery.Workflow.WithSharing[] {
@@ -280,8 +291,6 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
-	export type List = AuthenticatedRequest;
-
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
 	export type ResolveSignUp = AuthlessRequest<
@@ -525,4 +534,13 @@ export declare namespace ExternalSecretsRequest {
 	>;
 
 	type UpdateProvider = AuthenticatedRequest<{ provider: string }>;
+}
+
+// ----------------------------------
+//           /orchestration
+// ----------------------------------
+//
+export declare namespace OrchestrationRequest {
+	type GetAll = AuthenticatedRequest;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 }

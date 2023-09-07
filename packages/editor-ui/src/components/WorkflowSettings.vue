@@ -687,19 +687,21 @@ export default defineComponent({
 						{
 							interpolate: {
 								defaultValue: this.defaultValues.saveExecutionProgress
-									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes')
-									: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save')
+									: this.$locale.baseText(
+											'workflowSettings.saveExecutionProgressOptions.doNotSave',
+									  ),
 							},
 						},
 					),
 				},
 				{
 					key: true,
-					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes'),
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save'),
 				},
 				{
 					key: false,
-					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.doNotSave'),
 				},
 			]);
 		},
@@ -710,18 +712,18 @@ export default defineComponent({
 				value: this.$locale.baseText('workflowSettings.saveManualOptions.defaultSave', {
 					interpolate: {
 						defaultValue: this.defaultValues.saveManualExecutions
-							? this.$locale.baseText('workflowSettings.saveManualOptions.yes')
-							: this.$locale.baseText('workflowSettings.saveManualOptions.no'),
+							? this.$locale.baseText('workflowSettings.saveManualOptions.save')
+							: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 					},
 				}),
 			});
 			this.saveManualOptions.push({
 				key: true,
-				value: this.$locale.baseText('workflowSettings.saveManualOptions.yes'),
+				value: this.$locale.baseText('workflowSettings.saveManualOptions.save'),
 			});
 			this.saveManualOptions.push({
 				key: false,
-				value: this.$locale.baseText('workflowSettings.saveManualOptions.no'),
+				value: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 			});
 		},
 

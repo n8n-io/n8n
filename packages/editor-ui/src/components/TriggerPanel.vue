@@ -29,6 +29,7 @@
 						@copy="onTestLinkCopied"
 					></CopyInput>
 					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"
@@ -49,6 +50,7 @@
 						</n8n-text>
 					</div>
 					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"
@@ -72,6 +74,7 @@
 					</div>
 
 					<NodeExecuteButton
+						data-test-id="trigger-execute-button"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"

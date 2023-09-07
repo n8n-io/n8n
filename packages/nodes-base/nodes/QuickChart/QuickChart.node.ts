@@ -416,17 +416,19 @@ export class QuickChart implements INodeType {
 
 		const filePath = `${uuid()}.${this.getNodeParameter('chartOptions.format', 0) as string}`;
 
-		return this.prepareOutputData([
-			{
-				binary: {
-					[output]: await this.helpers.prepareBinaryData(
-						response.body as Buffer,
-						filePath,
-						mimeType,
-					),
+		return [
+			[
+				{
+					binary: {
+						[output]: await this.helpers.prepareBinaryData(
+							response.body as Buffer,
+							filePath,
+							mimeType,
+						),
+					},
+					json: { chart },
 				},
-				json: { chart },
-			},
-		]);
+			],
+		];
 	}
 }
