@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions, IGetNodeParameterOptions, INode } from 'n8n-workflow';
 import { constructExecutionMetaData } from 'n8n-core';
 import get from 'lodash/get';
-import { composeReturnItem, parseJsonParameter } from '../../v2/helpers/utils';
+import { composeReturnItem, parseJsonParameter, validateEntry } from '../../v2/helpers/utils';
 import type { SetNodeOptions } from '../../v2/helpers/interfaces';
 
 export const node: INode = {
@@ -175,6 +175,73 @@ describe('test Set2, parseJsonParameter', () => {
 			baz: {
 				foo: 'bar',
 			},
+		});
+	});
+});
+
+describe('test Set2, validateEntry', () => {
+	it('should convert number to string', () => {
+		const result = validateEntry(
+			{ name: 'foo', type: 'stringValue', stringValue: 42 as unknown as string },
+			node,
+			0,
+		);
+
+		expect(result).toEqual({
+			name: 'foo',
+			value: '42',
+		});
+	});
+
+	it('should convert array to string', () => {
+		const result = validateEntry(
+			{ name: 'foo', type: 'stringValue', stringValue: [1, 2, 3] as unknown as string },
+			node,
+			0,
+		);
+
+		expect(result).toEqual({
+			name: 'foo',
+			value: '[1,2,3]',
+		});
+	});
+
+	it('should convert object to string', () => {
+		const result = validateEntry(
+			{ name: 'foo', type: 'stringValue', stringValue: { foo: 'bar' } as unknown as string },
+			node,
+			0,
+		);
+
+		expect(result).toEqual({
+			name: 'foo',
+			value: '{"foo":"bar"}',
+		});
+	});
+
+	it('should convert boolean to string', () => {
+		const result = validateEntry(
+			{ name: 'foo', type: 'stringValue', stringValue: true as unknown as string },
+			node,
+			0,
+		);
+
+		expect(result).toEqual({
+			name: 'foo',
+			value: 'true',
+		});
+	});
+
+	it('should convert undefined to string', () => {
+		const result = validateEntry(
+			{ name: 'foo', type: 'stringValue', stringValue: undefined as unknown as string },
+			node,
+			0,
+		);
+
+		expect(result).toEqual({
+			name: 'foo',
+			value: 'undefined',
 		});
 	});
 });
