@@ -54,12 +54,14 @@ export class MemoryMotorhead implements INodeType {
 
 		const memory = new MotorheadMemory({
 			sessionId,
-			url: credentials.host as string,
+			url: `${credentials.host as string}/motorhead`,
 			clientId: credentials.clientId as string,
 			apiKey: credentials.apiKey as string,
 			memoryKey: 'chat_history',
 			returnMessages: true,
 		});
+
+		await memory.init();
 
 		return {
 			response: logWrapper(memory, this),

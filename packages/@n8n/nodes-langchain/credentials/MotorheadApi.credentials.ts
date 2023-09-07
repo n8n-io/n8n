@@ -18,7 +18,7 @@ export class MotorheadApi implements ICredentialType {
 			name: 'host',
 			required: true,
 			type: 'string',
-			default: '',
+			default: 'https://api.getmetal.io/v1',
 		},
 		{
 			displayName: 'API Key',
@@ -48,7 +48,7 @@ export class MotorheadApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.host}}',
+			baseURL: '={{$credentials.host}}/keys/current',
 		},
 	};
 }
