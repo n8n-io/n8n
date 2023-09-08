@@ -56,9 +56,8 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
-				fullExecutionData,
-			);
+			const executionResult =
+				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 			executionId = executionResult.id;
 			if (executionId === undefined) {
 				throw new Error('There was an issue assigning an execution id to the execution');
@@ -187,7 +186,6 @@ export class ActiveExecutions {
 	 * @param {string} executionId The id of the execution to wait for
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
-		console.log(new Error().stack);
 		// Create the promise which will be resolved when the execution finished
 		const waitPromise = await createDeferredPromise<IRun | undefined>();
 

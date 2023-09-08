@@ -31,6 +31,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import config from '@/config';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
+	IExecutionResponse,
 	IProcessMessageDataHook,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
@@ -552,16 +553,7 @@ export class WorkflowRunner {
 					success: false,
 				};
 				try {
-					console.log(
-						'getPostExecutePromiseCount',
-						this.activeExecutions.getPostExecutePromiseCount(executionId),
-					);
 					racingPromisesResult = await Promise.race(racingPromises);
-					console.log(
-						'getPostExecutePromiseCount',
-						this.activeExecutions.getPostExecutePromiseCount(executionId),
-					);
-					console.log('raceResult', racingPromisesResult);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}
@@ -584,12 +576,25 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				// TODO: reduce for queued mode
+				// only pull execution data from the Db when it is needed
+				const executionHasPostExecutionPromises =
+					this.activeExecutions.getPostExecutePromiseCount(executionId) > 0;
+
+				if (executionHasPostExecutionPromises) {
+					Logger.debug(
+						`Reading execution data for execution ${executionId} from db for PostExecutionPromise.`,
+					);
+				} else {
+					Logger.debug(
+						`Skipping execution data for execution ${executionId} since there are no PostExecutionPromise.`,
+					);
+				}
+
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
 					executionId,
 					{
-						includeData: false,
-						unflattenData: false,
+						includeData: executionHasPostExecutionPromises,
+						unflattenData: executionHasPostExecutionPromises,
 					},
 				);
 				if (!fullExecutionData) {
@@ -604,11 +609,15 @@ export class WorkflowRunner {
 					stoppedAt: fullExecutionData.stoppedAt,
 				} as IRun;
 
-				if (racingPromisesResult.success && racingPromisesResult.executionResponse) {
-					runData.data = racingPromisesResult.executionResponse.data;
+				if (executionHasPostExecutionPromises) {
+					runData.data = (fullExecutionData as IExecutionResponse).data;
 				}
 
-				// TODO: are there any promises in queue mode to resolve that require runData?
+				// NOTE: for future use, a manual return value via Redis could be used here
+				// if (racingPromisesResult.success && racingPromisesResult.executionResponse) {
+				// 	runData.data = racingPromisesResult.executionResponse.data;
+				// }
+
 				this.activeExecutions.remove(executionId, runData);
 
 				// Normally also static data should be supplied here but as it only used for sending

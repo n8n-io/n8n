@@ -565,7 +565,6 @@ export async function executeWebhook(
 			) as Promise<IExecutionDb | undefined>;
 			executePromise
 				.then(async (data) => {
-					console.log('executePromise', data);
 					if (data === undefined) {
 						if (!didSendResponse) {
 							responseCallback(null, {

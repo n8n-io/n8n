@@ -38,7 +38,6 @@ import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSu
 import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 import { getWorkerCommandReceivedHandler } from './workerCommandHandler';
-import { WorkerLifecycleService } from './worker/WorkerLifecycle.service';
 import { InternalHooks } from '../InternalHooks';
 
 export class Worker extends BaseCommand {
@@ -66,7 +65,7 @@ export class Worker extends BaseCommand {
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
-	workerLifecycle: WorkerLifecycleService;
+	internalHooks: InternalHooks;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -251,21 +250,15 @@ export class Worker extends BaseCommand {
 
 		delete Worker.runningJobs[job.id];
 
-		// await this.workerLifecycle.onWorkflowExecuteAfter({
-		// 	staticData,
-		// 	executionData: fullExecutionData,
-		// });
-		await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [fullExecutionData]);
+		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
+		// already!
 
-		void Container.get(InternalHooks).onWorkflowPostExecute(
+		// send tracking and event log events, but don't wait for them
+		void this.internalHooks.onWorkflowPostExecute(
 			fullExecutionData.id,
 			fullExecutionData.workflowData,
 			fullExecutionData,
 		);
-
-		// send tracking and event log events, but don't wait for them
-		// void this.workerLifecycle.sendPostExecuteEvents(fullExecutionData);
-		// void this.workerLifecycle.sendPostExecuteTelemetry(fullExecutionData);
 
 		return {
 			success: true,
@@ -286,17 +279,13 @@ export class Worker extends BaseCommand {
 		await this.initEventBus();
 		await this.initRedis();
 		await this.initQueue();
-		await this.initLifecycle();
+		this.internalHooks = Container.get(InternalHooks);
 	}
 
 	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
 		});
-	}
-
-	async initLifecycle() {
-		this.workerLifecycle = Container.get(WorkerLifecycleService);
 	}
 
 	/**
