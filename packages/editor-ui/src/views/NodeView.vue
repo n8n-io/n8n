@@ -614,9 +614,7 @@ export default defineComponent({
 		},
 		triggerNodes(): INodeUi[] {
 			return this.nodes.filter(
-				(node) =>
-					node.type === START_NODE_TYPE ||
-					(this.nodeTypesStore.isTriggerNode(node.type) && node.type !== NODE_TRIGGER_CHAT_BUTTON),
+				(node) => node.type === START_NODE_TYPE || this.nodeTypesStore.isTriggerNode(node.type),
 			);
 		},
 		containsTrigger(): boolean {
