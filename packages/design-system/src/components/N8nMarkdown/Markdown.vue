@@ -327,6 +327,8 @@ export default defineComponent({
 
 	img {
 		object-fit: contain;
+		margin-top: var(--spacing-xs);
+		margin-bottom: var(--spacing-2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;

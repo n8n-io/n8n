@@ -179,19 +179,19 @@
 	);
 
 	// Color Alternate D
-	--prim-color-alt-d-h: 43;
-	--prim-color-alt-d-s: 75%;
-	--prim-color-alt-d-l: 80%;
+	--prim-color-alt-d-h: 46;
+	--prim-color-alt-d-s: 100%;
+	--prim-color-alt-d-l: 92%;
 
 	--prim-color-alt-d: hsl(
 		var(--prim-color-alt-d-h),
 		var(--prim-color-alt-d-s),
 		var(--prim-color-alt-d-l)
 	);
-	--prim-color-alt-d-tint-100: hsl(
+	--prim-color-alt-d-shade-150: hsl(
 		var(--prim-color-alt-d-h),
 		var(--prim-color-alt-d-s),
-		calc(var(--prim-color-alt-d-l) + 10%)
+		calc(var(--prim-color-alt-d-l) - 15%)
 	);
 
 	// Color Alternate E
