@@ -154,6 +154,13 @@
 	--color-button-secondary-loading-border: var(--prim-gray-320);
 	--color-button-secondary-loading-background: var(--prim-gray-0);
 
+	// Execution card
+	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
+	--execution-card-border-error: var(--prim-color-alt-c-tint-250);
+	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
+	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
+	--execution-card-border-unknown: var(--prim-gray-120);
+
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	// ! REMOVE THIS
