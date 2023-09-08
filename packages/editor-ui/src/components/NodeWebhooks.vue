@@ -29,7 +29,7 @@
 				</div>
 
 				<n8n-tooltip
-					v-for="(webhook, index) in webhooksNode"
+					v-for="(webhook, index) in webhooksNode.filter((webhook) => !webhook.hidden)"
 					:key="index"
 					class="item"
 					:content="baseText.clickToCopy"

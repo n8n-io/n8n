@@ -22,20 +22,20 @@ export class FormTrigger implements INodeType {
 		webhooks: [
 			{
 				name: 'setup',
-				// name: 'displayForm',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: '={{$parameter.path}}',
-				isFullPath: true,
+				path: 'n8n-form',
+				hidden: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: '={{$parameter.path}}',
-				isFullPath: true,
+				path: 'n8n-form',
 			},
 		],
+		eventTriggerDescription: 'Waiting for you to submit the form',
+		activationMessage: 'You can now make calls to your production Form URL.',
 		triggerPanel: {
 			header: 'Pull in a test form submission',
 			executionsHelp: {
@@ -49,237 +49,113 @@ export class FormTrigger implements INodeType {
 		},
 		properties: [
 			{
-				displayName: 'Path',
-				name: 'path',
+				displayName: 'Form Title',
+				name: 'formTitle',
 				type: 'string',
-				default: 'forms/my-form',
-				placeholder: 'webhook',
-				required: true,
-			},
-			{
-				displayName: 'Page Title',
-				type: 'string',
-				default: 'Test Form',
-				name: 'pageTitle',
-			},
-			{
-				displayName: 'Page Description',
-				type: 'string',
-				default: 'Fill out the form below and we will get back to you.',
-				name: 'pageDescription',
-			},
-			{
-				displayName: 'Form Type',
-				name: 'formType',
-				type: 'options',
-				options: [
-					{
-						name: 'Custom Form HTML',
-						value: 'customHTML',
-						description: 'Use your own HTML for the form body',
-					},
-					{
-						name: 'Form Builder',
-						value: 'formBuilder',
-						description: 'Use a simple form builder',
-					},
-				],
-				default: 'formBuilder',
-			},
-			{
-				displayName: 'Form HTML',
-				name: 'formHTML',
-				description: 'HTML to use for your form body',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
-				displayOptions: {
-					show: {
-						formType: ['customHTML'],
-					},
-				},
+				placeholder: 'e.g. Contact us',
+				required: true,
+				description: 'Shown at the top of the form',
 			},
 			{
-				displayName: 'Fields',
-				name: 'fields',
-				placeholder: 'Add Fields',
-				description: 'Form Fields',
+				displayName: 'Form Description',
+				name: 'formDescription',
+				type: 'string',
+				default: '',
+				placeholder: "e.g. We'll get back to you soon",
+				description:
+					'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form.',
+			},
+			{
+				displayName: 'Form Fields',
+				name: 'formFields',
+				placeholder: 'Add Form Field',
 				type: 'fixedCollection',
+				default: { values: [{ label: '', fieldType: 'string' }] },
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
 				},
-				displayOptions: {
-					show: {
-						formType: ['formBuilder'],
-					},
-				},
-				default: {},
 				options: [
 					{
-						name: 'item',
-						displayName: 'Item',
+						displayName: 'Values',
+						name: 'values',
 						values: [
 							{
-								displayName: 'Label',
-								name: 'label',
+								displayName: 'Field Label',
+								name: 'fieldLabel',
 								type: 'string',
 								default: '',
-								description: 'Label for the input item',
+								description: 'Label appears above the input field',
+								required: true,
 							},
 							{
-								displayName: 'Name or ID',
-								name: 'name',
-								type: 'string',
-								default: '',
-								description: 'Name to use for the input item',
-							},
-							{
-								displayName: 'Input Type',
-								name: 'inputType',
+								displayName: 'Field Type',
+								name: 'fieldType',
 								type: 'options',
 								default: 'text',
-								description: 'Input type for the field',
+								description: 'Field name appears for users, guiding their input',
 								options: [
+									{
+										name: 'String',
+										value: 'text',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+									},
 									{
 										name: 'Date',
 										value: 'date',
 									},
 									{
-										name: 'Email',
-										value: 'email',
+										name: 'Dropdown List',
+										value: 'dropdown',
 									},
-									{
-										name: 'Hidden',
-										value: 'hidden',
+								],
+								required: true,
+							},
+							{
+								displayName: 'Field Options',
+								name: 'fieldOptions',
+								placeholder: 'Add Field Option',
+								description: 'List of options that can be selected from the dropdown',
+								type: 'fixedCollection',
+								default: { values: [{ option: '' }] },
+								required: true,
+								displayOptions: {
+									show: {
+										fieldType: ['dropdown'],
 									},
+								},
+								typeOptions: {
+									multipleValues: true,
+									sortable: true,
+								},
+								options: [
 									{
-										name: 'Password',
-										value: 'password',
-									},
-									{
-										name: 'Text',
-										value: 'text',
+										displayName: 'Values',
+										name: 'values',
+										values: [
+											{
+												displayName: 'Option',
+												name: 'option',
+												type: 'string',
+												default: '',
+											},
+										],
 									},
 								],
 							},
 							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Default value to use',
-								displayOptions: {
-									show: {
-										inputType: ['hidden', 'text', 'email'],
-									},
-								},
-							},
-							{
-								displayName: 'Placeholder',
-								name: 'placeholder',
-								type: 'string',
-								default: '',
-								description: 'Placeholder value to use',
-								displayOptions: {
-									show: {
-										inputType: ['text', 'email'],
-									},
-								},
-							},
-							{
-								displayName: 'Required',
-								name: 'required',
+								displayName: 'Required Field',
+								name: 'requiredField',
 								type: 'boolean',
 								default: false,
-								description: 'Whether the field is required or not',
-							},
-							{
-								displayName: 'Read-Only',
-								name: 'readOnly',
-								type: 'boolean',
-								default: false,
-								description: 'Whether the field is read-only or not',
+								description:
+									'Whether to require the user to enter a value for this field before submitting the form',
 							},
 						],
-					},
-				],
-			},
-			// Optional Settings
-			{
-				displayName: 'Options',
-				type: 'collection',
-				name: 'options',
-				default: {},
-				options: [
-					{
-						displayName: 'Bootstrap URL',
-						name: 'bootstrap',
-						default: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css',
-						type: 'string',
-						description: 'URL for Bootstrap CSS',
-					},
-					{
-						displayName: 'CSS File',
-						name: 'cssFile',
-						default: 'https://joffcom.github.io/style.css',
-						type: 'string',
-						description:
-							'URL for custom CSS, For an example see "https://joffcom.github.io/style.css"',
-					},
-					{
-						displayName: 'Form ID',
-						name: 'formId',
-						default: 'n8n-form',
-						type: 'string',
-						description: 'Form ID to use',
-					},
-					{
-						displayName: 'Form Name',
-						name: 'formName',
-						default: 'n8n-form',
-						type: 'string',
-						description: 'Form Name to use',
-					},
-					{
-						displayName: 'Javascript',
-						name: 'javascript',
-						default: `$(document).on('submit','#n8n-form',function(e){
-	$.post('#', $('#n8n-form').serialize(), function(result) {
-		var resp = jQuery.parseJSON(result);
-		if (resp.status === 'ok') {
-			$("#status").attr('class', 'alert alert-success');
-			$("#status").show();
-			$('#status-text').text('Form has been submitted.');
-		} else {
-			$("#status").attr('class', 'alert alert-danger');
-			$("#status").show();
-			$('#status-text').text('Something went wrong.');
-		}
-	});
-return false;
-});`,
-						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
-						description: 'Javascript to use for form submission',
-					},
-					{
-						displayName: 'jQuery',
-						name: 'jQuery',
-						default: 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js',
-						type: 'string',
-						description: 'URL for jQuery javascript',
-					},
-					{
-						displayName: 'Submit Button Label',
-						name: 'submitLabel',
-						default: 'Submit',
-						type: 'string',
-						description: 'Text to use for the submit button',
 					},
 				],
 			},
@@ -289,42 +165,38 @@ return false;
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
 
+		//Show the form on GET request
 		if (webhookName === 'setup') {
-			const options = this.getNodeParameter('options', 0) as IDataObject;
-			const submitLabel = options.submitLabel ? options.submitLabel : 'Submit';
-			const cssFile = options.cssFile ? options.cssFile : 'https://joffcom.github.io/style.css';
-			const pageTitle = this.getNodeParameter('pageTitle', 0) as string;
-			const pageDescription = this.getNodeParameter('pageDescription', 0) as string;
-			const formType = this.getNodeParameter('formType', 0) as string;
+			const formFields = this.getNodeParameter('formFields.values', []) as unknown as IDataObject[];
 
 			let htmlFields = '';
 
-			if (formType === 'customHTML') {
-				htmlFields = this.getNodeParameter('formHTML', 0) as string;
-			} else {
-				// HTML Fields
-				const formFields = this.getNodeParameter('fields.item', 0) as unknown as IDataObject[];
+			for (const field of formFields) {
+				const { fieldLabel, fieldType, requiredField } = field;
 
-				for (const field of formFields) {
-					const valAttr = typeof field.value !== 'undefined' ? ` value="${field.value}"` : '';
+				const required = requiredField ? 'required' : '';
 
-					const placeholderAttr =
-						typeof field.placeholder !== 'undefined' ? ` placeholder="${field.placeholder}"` : '';
-					const reqAttr = field.required ? ' required' : '';
-					const readOnlyAttr = field.readOnly ? ' readonly' : '';
+				htmlFields += '<div class="form-group">';
 
-					htmlFields += '<div class="form-group">';
-					// No label for hidden fields
-					if (field.inputType !== 'hidden') {
-						htmlFields += `<label for="${field.name}">${field.label}</label>`;
+				if (fieldType === 'dropdown') {
+					const fieldOptions = ((field.fieldOptions as IDataObject).values as IDataObject[]) || [];
+
+					htmlFields += `<label for="${fieldLabel}">${fieldLabel}</label>`;
+					htmlFields += `<select id="${fieldLabel}" name="${fieldLabel}" ${required}>`;
+					for (const entry of fieldOptions) {
+						htmlFields += `<option value="${entry.option}">${entry.option}</option>`;
 					}
-					htmlFields += `<input type="${field.inputType}" class="form-control" id="${field.name}" name="${field.name}"${placeholderAttr}${valAttr}${reqAttr}${readOnlyAttr}/>`;
-
-					htmlFields += '</div>';
+					htmlFields += '</select>';
+				} else {
+					htmlFields += `<label for="${fieldLabel}">${fieldLabel}</label>`;
+					htmlFields += `<input type="${fieldType}" class="form-control" id="${fieldLabel}" name="${fieldLabel}" ${required}/>`;
 				}
+
+				htmlFields += '</div>';
 			}
 
-			const defaultJS = `$(document).on('submit','#n8n-form',function(e){
+			// const cssFile = 'https://joffcom.github.io/style.css';
+			const javascript = `$(document).on('submit','#n8n-form',function(e){
 	$.post('#', $('#n8n-form').serialize(), function(result) {
 		var resp = jQuery.parseJSON(result);
 		if (resp.status === 'ok') {
@@ -340,22 +212,19 @@ return false;
 	return false;
 });`;
 
-			const javascript = options.javascript ? options.javascript : defaultJS;
-			const formName = options.formName ? options.formName : 'n8n-form';
-			const formId = options.formId ? options.formId : 'n8n-form';
-			const jQuery = options.jQuery
-				? options.jQuery
-				: 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js';
-			const bootstrapCss = options.bootstrap
-				? options.bootstrap
-				: 'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css';
+			const formName = 'n8n-form';
+			const formId = 'n8n-form';
+			const jQuery = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js';
+			const bootstrapCss =
+				'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css';
 
-			const res = this.getResponseObject();
+			const formTitle = this.getNodeParameter('formTitle', '') as string;
+			const formDescription = this.getNodeParameter('formDescription', '') as string;
+
 			const testForm = `<html>
 			<head>
-				<title>${pageTitle}</title>
+				<title>${formTitle}</title>
 				<link rel="stylesheet" href="${bootstrapCss}" crossorigin="anonymous">
-				<link rel="stylesheet" href="${cssFile}" crossorigin="anonymous">
 
 				<script src="${jQuery}" type="text/javascript"></script>
 				<script type="text/javascript">
@@ -369,14 +238,14 @@ return false;
             <p id="status-text" class="status-text"></p>
           </div>
 							<div class="form">
-								<h1>${pageTitle}</h1>
-								<p>${pageDescription}</p>
+								<h1>${formTitle}</h1>
+								<p>${formDescription}</p>
 								<form action='#' method='POST' name='${formName}' id='${formId}'>
 									<div class="item">
 										${htmlFields}
 									</div>
 									<div class="btn-block">
-										<button type="submit">${submitLabel}</button>
+										<button type="submit">Submit</button>
 									</div>
 								</form>
 							</div>
@@ -384,6 +253,8 @@ return false;
 					</div>
 				</body>
 			</html>`;
+
+			const res = this.getResponseObject();
 			res.status(200).send(testForm).end();
 			return {
 				noWebhookResponse: true,
@@ -391,6 +262,10 @@ return false;
 		}
 
 		const bodyData = this.getBodyData();
+
+		const formUrlType = this.getMode() === 'manual' ? 'test' : 'production';
+
+		bodyData['form url'] = formUrlType;
 
 		return {
 			webhookResponse: '{"status": "ok"}',
