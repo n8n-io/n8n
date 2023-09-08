@@ -55,6 +55,7 @@ export function getRedisStandardClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
+	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
 	LoggerProxy.debug(
 		`Initialising Redis client${redisType ? ` of type ${redisType}` : ''} connection with host: ${
 			host ?? 'localhost'
@@ -101,6 +102,7 @@ export function getRedisClusterClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
+	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
 	LoggerProxy.debug(
 		`Initialising Redis cluster${
 			redisType ? ` of type ${redisType}` : ''

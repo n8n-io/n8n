@@ -164,6 +164,12 @@ export const schema = {
 				default: 'database.sqlite',
 				env: 'DB_SQLITE_DATABASE',
 			},
+			enableWAL: {
+				doc: 'Enable SQLite WAL mode',
+				format: Boolean,
+				default: false,
+				env: 'DB_SQLITE_ENABLE_WAL',
+			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
 				format: Boolean,
@@ -398,6 +404,12 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
+				},
+				tls: {
+					format: 'Boolean',
+					default: false,
+					env: 'QUEUE_BULL_REDIS_TLS',
+					doc: 'Enable TLS on Redis connections. Default: false',
 				},
 			},
 			queueRecoveryInterval: {

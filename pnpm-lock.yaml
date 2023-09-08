@@ -254,12 +254,6 @@ importers:
       connect-history-api-fallback:
         specifier: ^1.6.0
         version: 1.6.0
-      content-disposition:
-        specifier: ^0.5.4
-        version: 0.5.4
-      content-type:
-        specifier: ^1.0.4
-        version: 1.0.4
       convict:
         specifier: ^6.2.4
         version: 6.2.4
@@ -495,12 +489,6 @@ importers:
       '@types/connect-history-api-fallback':
         specifier: ^1.3.1
         version: 1.3.5
-      '@types/content-disposition':
-        specifier: ^0.5.5
-        version: 0.5.5
-      '@types/content-type':
-        specifier: ^1.1.5
-        version: 1.1.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -591,6 +579,12 @@ importers:
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
+      content-disposition:
+        specifier: ^0.5.4
+        version: 0.5.4
+      content-type:
+        specifier: ^1.0.4
+        version: 1.0.4
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -615,6 +609,9 @@ importers:
       mime-types:
         specifier: ^2.1.27
         version: 2.1.35
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../nodes-base
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -637,6 +634,12 @@ importers:
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
+      '@types/content-disposition':
+        specifier: ^0.5.5
+        version: 0.5.5
+      '@types/content-type':
+        specifier: ^1.1.5
+        version: 1.1.5
       '@types/cron':
         specifier: ~1.7.1
         version: 1.7.3
@@ -1013,8 +1016,8 @@ importers:
         specifier: 1.0.6
         version: 1.0.6
       '@n8n/vm2':
-        specifier: ^3.9.19
-        version: 3.9.19
+        specifier: ^3.9.20
+        version: 3.9.20
       amqplib:
         specifier: ^0.10.3
         version: 0.10.3
@@ -1036,6 +1039,9 @@ importers:
       cron:
         specifier: ~1.7.2
         version: 1.7.2
+      csv-parse:
+        specifier: ^5.5.0
+        version: 5.5.0
       currency-codes:
         specifier: ^2.1.0
         version: 2.1.0
@@ -4644,8 +4650,8 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@n8n/vm2@3.9.19:
-    resolution: {integrity: sha512-KmrkVqri7VG+GQ2JbJ2/2gyEmVkysxzoJUF+zdtqBZLU8GN9UDwAnjzUOUgpD0dCRd1SUVLqwM4GpjOeca4XZw==}
+  /@n8n/vm2@3.9.20:
+    resolution: {integrity: sha512-qk2oJYkuFRVSTxoro4obX/sv/wT1pViZjHh/isjOvFB93D52QIg3TCjMPsHOfHTmkxCKJffjLrUvjIwvWzSMCQ==}
     engines: {node: '>=18.10', pnpm: '>=8.6.12'}
     hasBin: true
     dependencies:
@@ -6759,7 +6765,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.8
+      vue-component-type-helpers: 1.8.10
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -8424,7 +8430,7 @@ packages:
   /acorn-globals@7.0.1:
     resolution: {integrity: sha512-umOSDSDrfHbTNPuNpC2NSnnA3LUrqpevPb4T9jRx4MagXNS0rs+gwiTcAvqCRmsD6utzsrzNt+ebm00SNWiC3Q==}
     dependencies:
-      acorn: 8.8.1
+      acorn: 8.10.0
       acorn-walk: 8.2.0
     dev: true
 
@@ -10588,6 +10594,10 @@ packages:
 
   /csstype@3.1.1:
     resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
+
+  /csv-parse@5.5.0:
+    resolution: {integrity: sha512-RxruSK3M4XgzcD7Trm2wEN+SJ26ChIb903+IWxNOcB5q4jT2Cs+hFr6QP39J05EohshRFEvyzEBoZ/466S2sbw==}
+    dev: false
 
   /curlconverter@3.21.0(chokidar@3.5.2):
     resolution: {integrity: sha512-DXCnp1A/Xa69FujksUfdvWQFAnIn/C+4Wuv8t+UVdZkF/lY5bzj98GGKOGme7V/ckSHDLxE29Xp76sJ5Cpsp5A==}
@@ -21734,12 +21744,12 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.4:
-    resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
+  /vue-component-type-helpers@1.8.10:
+    resolution: {integrity: sha512-FJtmfw2Gn6eQ8kAVNEhw9nYIzWmVQJjdyQRtJXZ7tgXh/FoZhQnZ2KyxR+NuF9U4iZLBvSspeetIpnP9yxxyMw==}
     dev: true
 
-  /vue-component-type-helpers@1.8.8:
-    resolution: {integrity: sha512-Ohv9HQY92nSbpReC6WhY0X4YkOszHzwUHaaN/lev5tHQLM1AEw+LrLeB2bIGIyKGDU7ZVrncXcv/oBny4rjbYg==}
+  /vue-component-type-helpers@1.8.4:
+    resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.3.4):
