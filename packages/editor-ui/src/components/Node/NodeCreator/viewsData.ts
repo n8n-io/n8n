@@ -59,6 +59,17 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			{
+				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				type: 'node',
+				properties: {
+					group: [],
+					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'Manual Chat Trigger',
+					description: 'Runs the flow on new manual chat message',
+					icon: 'fa:comments',
+				},
+			},
+			{
 				key: AI_CATEGORY_AGENTS,
 				type: 'subcategory',
 				properties: {
@@ -128,18 +139,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
 					icon: 'project-diagram',
-				},
-			},
-			{
-				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-				type: 'node',
-				// category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-					displayName: 'Manual Chat Trigger',
-					description: 'Runs the flow on new manual chat message',
-					icon: 'fa:comments',
 				},
 			},
 		],
