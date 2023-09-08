@@ -35,19 +35,6 @@ export class RetrieverVectorStore implements INodeType {
 		outputNames: ['Vector Retriever'],
 		properties: [
 			{
-				displayName: 'Retriever Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Retriever Description',
-				name: 'description',
-				type: 'string',
-				default: '',
-				typeOptions: { rows: 5 },
-			},
-			{
 				displayName: 'Top K',
 				name: 'topK',
 				type: 'number',
