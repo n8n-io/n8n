@@ -107,6 +107,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -121,6 +122,7 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
@@ -149,6 +151,7 @@ export class Expression {
 			executeData,
 			-1,
 			selfData,
+			contextNodeName,
 		);
 		const data = dataProxy.getDataProxy();
 
@@ -478,6 +481,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	getParameterValue(
 		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
@@ -491,6 +495,7 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
 		const isComplexParameter = (value: NodeParameterValueType) => {
@@ -516,6 +521,7 @@ export class Expression {
 					executeData,
 					returnObjectAsString,
 					selfData,
+					contextNodeName,
 				);
 			}
 
@@ -533,6 +539,7 @@ export class Expression {
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		};
 
@@ -552,6 +559,7 @@ export class Expression {
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		}
 

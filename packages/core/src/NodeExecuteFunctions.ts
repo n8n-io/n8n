@@ -2047,6 +2047,9 @@ export function getNodeParameter(
 			timezone,
 			additionalKeys,
 			executeData,
+			false,
+			{},
+			options?.contextNode?.name,
 		);
 		cleanupParameterData(returnData);
 	} catch (e) {
@@ -2740,7 +2743,7 @@ export function getExecuteFunctions(
 								getAdditionalKeys(additionalData, mode, runExecutionData),
 								executeData,
 								fallbackValue,
-								options,
+								{ ...(options || {}), contextNode: node },
 							) as any;
 						};
 
