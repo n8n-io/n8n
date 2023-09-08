@@ -188,11 +188,11 @@ export class WorkflowRunner {
 			);
 		} else if (executionsProcess === 'main') {
 			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
+			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
+			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		}
-
-		void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 
 		// these calls are moved into the worker
 		if (executionsMode !== 'queue' || data.executionMode === 'manual') {

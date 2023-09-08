@@ -30,6 +30,7 @@ import type { ExecutionMetadata } from '@db/entities/ExecutionMetadata';
 import { ExecutionRepository } from '@db/repositories';
 import { RoleService } from './services/role.service';
 import type { EventPayloadWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
+import { determineFinalExecutionStatus } from './executionLifecycleHooks/shared/sharedHookFunctions';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -241,21 +242,33 @@ export class InternalHooks implements IInternalHooksClass {
 
 	async onWorkflowBeforeExecute(
 		executionId: string,
-		data: IWorkflowExecutionDataProcess,
+		data: IWorkflowExecutionDataProcess | IWorkflowBase,
 	): Promise<void> {
+		let payload: EventPayloadWorkflow;
+		if ('executionData' in data) {
+			payload = {
+				executionId,
+				userId: data.userId ?? undefined,
+				workflowId: data.workflowData.id?.toString(),
+				isManual: data.executionMode === 'manual',
+				workflowName: data.workflowData.name,
+			};
+		} else {
+			payload = {
+				executionId,
+				userId: undefined,
+				workflowId: (data as IWorkflowBase).id?.toString(),
+				isManual: false,
+				workflowName: (data as IWorkflowBase).name,
+			};
+		}
 		void Promise.all([
 			this.executionRepository.updateExistingExecution(executionId, {
 				status: 'running',
 			}),
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.started',
-				payload: {
-					executionId,
-					userId: data.userId,
-					workflowId: data.workflowData.id?.toString(),
-					isManual: data.executionMode === 'manual',
-					workflowName: data.workflowData.name,
-				},
+				payload,
 			}),
 		]);
 	}
@@ -318,7 +331,10 @@ export class InternalHooks implements IInternalHooksClass {
 
 		telemetryProperties.success = !!runData?.finished;
 
-		const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
+		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
+		const executionStatus: ExecutionStatus = runData
+			? determineFinalExecutionStatus(runData)
+			: 'unknown';
 
 		if (runData !== undefined) {
 			telemetryProperties.execution_mode = runData.mode;
@@ -429,7 +445,6 @@ export class InternalHooks implements IInternalHooksClass {
 			workflowName: workflow.name,
 			metaData: runData?.data?.resultData?.metadata,
 		};
-
 		promises.push(
 			telemetryProperties.success
 				? eventBus.sendWorkflowEvent({

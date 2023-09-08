@@ -38,7 +38,6 @@ import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSu
 import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 import { getWorkerCommandReceivedHandler } from './workerCommandHandler';
-import { InternalHooks } from '../InternalHooks';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -64,8 +63,6 @@ export class Worker extends BaseCommand {
 	redisPublisher: RedisServicePubSubPublisher;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
-
-	internalHooks: InternalHooks;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -186,7 +183,9 @@ export class Worker extends BaseCommand {
 			fullExecutionData.mode,
 			job.data.executionId,
 			fullExecutionData.workflowData,
-			{ retryOf: fullExecutionData.retryOf as string },
+			{
+				retryOf: fullExecutionData.retryOf as string,
+			},
 		);
 
 		try {
@@ -199,13 +198,6 @@ export class Worker extends BaseCommand {
 					error.node,
 				);
 				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-				// await this.workerLifecycle.onWorkflowExecuteAfter({
-				// 	executionData: {
-				// 		...fullExecutionData,
-				// 		data: failedExecution.data,
-				// 	},
-				// 	staticData,
-				// });
 			}
 			return { success: true, error: error as ExecutionError };
 		}
@@ -253,13 +245,6 @@ export class Worker extends BaseCommand {
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
 		// already!
 
-		// send tracking and event log events, but don't wait for them
-		void this.internalHooks.onWorkflowPostExecute(
-			fullExecutionData.id,
-			fullExecutionData.workflowData,
-			fullExecutionData,
-		);
-
 		return {
 			success: true,
 			executionResponse: returnResults ? fullExecutionData : undefined,
@@ -279,13 +264,22 @@ export class Worker extends BaseCommand {
 		await this.initEventBus();
 		await this.initRedis();
 		await this.initQueue();
-		this.internalHooks = Container.get(InternalHooks);
 	}
 
 	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
+			replicateToRedisEventLogFunction: undefined,
 		});
+		// NOTE: this alternative would cause the event bus running on the worker
+		// to replicate events to the event log in redis, which would then be
+		// picked up by the main process and written to its log file
+		// await eventBus.initialize({
+		// 	workerId: this.uniqueInstanceId,
+		// 	replicateToRedisEventLogFunction: async (event) => {
+		// 		await this.redisPublisher.publishToEventLog(event);
+		// 	},
+		// });
 	}
 
 	/**

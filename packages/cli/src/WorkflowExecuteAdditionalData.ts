@@ -653,11 +653,24 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  *
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
+	const internalHooks = Container.get(InternalHooks);
 	const eventsService = Container.get(EventsService);
 	return {
-		nodeExecuteBefore: [],
-		nodeExecuteAfter: [],
-		workflowExecuteBefore: [],
+		nodeExecuteBefore: [
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				void internalHooks.onNodeBeforeExecute(this.executionId, this.workflowData, nodeName);
+			},
+		],
+		nodeExecuteAfter: [
+			async function (this: WorkflowHooks, nodeName: string): Promise<void> {
+				void internalHooks.onNodePostExecute(this.executionId, this.workflowData, nodeName);
+			},
+		],
+		workflowExecuteBefore: [
+			async function (workflow: Workflow, data: IRunExecutionData): Promise<void> {
+				void internalHooks.onWorkflowBeforeExecute(this.executionId, this.workflowData);
+			},
+		],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -727,6 +740,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				} finally {
 					eventsService.emit('workflowExecutionCompleted', this.workflowData, fullRunData);
 				}
+			},
+			async function (
+				this: WorkflowHooks,
+				fullRunData: IRun,
+				newStaticData: IDataObject,
+			): Promise<void> {
+				// send tracking and event log events, but don't wait for them
+				void internalHooks.onWorkflowPostExecute(this.executionId, this.workflowData, fullRunData);
 			},
 		],
 		nodeFetchedData: [
