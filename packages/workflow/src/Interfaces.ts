@@ -571,7 +571,7 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 }
 
 export interface IGetNodeParameterOptions {
-	connectedNode?: INode;
+	contextNode?: INode;
 	extractValue?: boolean;
 }
 
