@@ -4,14 +4,10 @@
 			class="clickable headline"
 			:class="{ expanded: !isMinimized }"
 			@click="isMinimized = !isMinimized"
-			:title="
-				isMinimized
-					? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls')
-					: $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')
-			"
+			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 		>
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
+			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
@@ -21,9 +17,9 @@
 							<n8n-radio-buttons
 								v-model="showUrlFor"
 								:options="[
-									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test' },
+									{ label: baseText.testUrl, value: 'test' },
 									{
-										label: this.$locale.baseText('nodeWebhooks.productionUrl'),
+										label: baseText.productionUrl,
 										value: 'production',
 									},
 								]"
@@ -36,11 +32,11 @@
 					v-for="(webhook, index) in webhooksNode"
 					:key="index"
 					class="item"
-					:content="$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls')"
+					:content="baseText.clickToCopy"
 					placement="left"
 				>
 					<div class="webhook-wrapper">
-						<div class="http-field">
+						<div v-if="showHttpLabel" class="http-field">
 							<div class="http-method">
 								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
@@ -61,7 +57,7 @@
 import { defineComponent } from 'vue';
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -80,7 +76,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
+			isMinimized: this.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name),
 			showUrlFor: 'test',
 		};
 	},
@@ -94,6 +90,38 @@ export default defineComponent({
 				(webhookData) => webhookData.restartWebhook !== true,
 			);
 		},
+		showHttpLabel(): boolean {
+			return this.nodeType.name !== FORM_TRIGGER_NODE_TYPE;
+		},
+		baseText() {
+			const nodeType = this.nodeType.name;
+			switch (nodeType) {
+				case FORM_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: 'Form URLs',
+						clickToDisplay: 'Click to display Form URL',
+						clickToHide: 'Click to hide Form URL',
+						clickToCopy: 'Click to copy Form URL',
+						testUrl: 'Test URL',
+						productionUrl: 'Production URL',
+						copyTitle: 'Form URL copied',
+						copyMessage:
+							"Form submissions made via this URL will trigger the workflow when it's activated",
+					};
+
+				default:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls'),
+						clickToDisplay: this.$locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls'),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+						copyMessage: undefined,
+					};
+			}
+		},
 	},
 	methods: {
 		copyWebhookUrl(webhookData: IWebhookDescription): void {
@@ -101,7 +129,8 @@ export default defineComponent({
 			this.copyToClipboard(webhookUrl);
 
 			this.showMessage({
-				title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+				title: this.baseText.copyTitle,
+				message: this.baseText.copyMessage,
 				type: 'success',
 			});
 			this.$telemetry.track('User copied webhook URL', {
@@ -118,7 +147,7 @@ export default defineComponent({
 	},
 	watch: {
 		node() {
-			this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
+			this.isMinimized = !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
 		},
 	},
 });

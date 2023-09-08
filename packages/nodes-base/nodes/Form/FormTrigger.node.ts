@@ -36,6 +36,17 @@ export class FormTrigger implements INodeType {
 				isFullPath: true,
 			},
 		],
+		triggerPanel: {
+			header: 'Pull in a test form submission',
+			executionsHelp: {
+				inactive:
+					"Form Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'listen' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
+				active:
+					"Form Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'listen' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
+			},
+			activationHint:
+				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new form submissions created via the Production URL',
+		},
 		properties: [
 			{
 				displayName: 'Path',

@@ -157,6 +157,8 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
+export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE];
+
 // Node creator
 export const NODE_CREATOR_OPEN_SOURCES: Record<
 	Uppercase<NodeCreatorOpenSource>,
