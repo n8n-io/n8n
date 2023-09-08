@@ -2178,7 +2178,7 @@ export function getWebhookDescription(
 }
 
 // TODO: Change options to an object
-const addExecutionDataFunctions = (
+const addExecutionDataFunctions = async (
 	type: 'input' | 'output',
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
@@ -2187,7 +2187,7 @@ const addExecutionDataFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
-) => {
+): Promise<void> => {
 	if (connectionType === 'main') {
 		throw new Error(`Setting the ${type} is not supported for the main connection!`);
 	}
@@ -2767,7 +2767,7 @@ export function getExecuteFunctions(
 								);
 							} catch (error) {
 								// Display the error on the node which is causing it
-								addExecutionDataFunctions(
+								await addExecutionDataFunctions(
 									'input',
 									connectedNode.name,
 									error,
@@ -2799,7 +2799,7 @@ export function getExecuteFunctions(
 							}
 
 							// Display the error on the node which is causing it
-							addExecutionDataFunctions(
+							await addExecutionDataFunctions(
 								'input',
 								connectedNode.name,
 								error,
@@ -2941,11 +2941,11 @@ export function getExecuteFunctions(
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 
-			async addInputData(
+			addInputData(
 				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionError,
-			): Promise<void> {
-				return addExecutionDataFunctions(
+			): void {
+				addExecutionDataFunctions(
 					'input',
 					this.getNode().name,
 					data,
@@ -2954,13 +2954,19 @@ export function getExecuteFunctions(
 					additionalData,
 					node.name,
 					runIndex,
-				);
+				).catch((error) => {
+					Logger.warn(
+						`There was a problem logging input data of node "${this.getNode().name}": ${
+							error.message
+						}`,
+					);
+				});
 			},
-			async addOutputData(
+			addOutputData(
 				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionError,
-			): Promise<void> {
-				return addExecutionDataFunctions(
+			): void {
+				addExecutionDataFunctions(
 					'output',
 					this.getNode().name,
 					data,
@@ -2969,7 +2975,13 @@ export function getExecuteFunctions(
 					additionalData,
 					node.name,
 					runIndex,
-				);
+				).catch((error) => {
+					Logger.warn(
+						`There was a problem logging output data of node "${this.getNode().name}": ${
+							error.message
+						}`,
+					);
+				});
 			},
 			helpers: {
 				createDeferredPromise,
