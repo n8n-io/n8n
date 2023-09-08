@@ -61,10 +61,12 @@
 	// Canvas
 	--color-canvas-dot: var(--prim-gray-120);
 	--color-canvas-background: var(--prim-gray-10);
+	--color-canvas-node-background: var(--prim-gray-0);
 
 	// Sticky
 	--color-sticky-default-background: var(--prim-color-alt-d);
 	--color-sticky-default-border: var(--prim-color-alt-d-shade-150);
+	--color-sticky-font: var(--prim-gray-740);
 
 	// Expressions
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
@@ -154,12 +156,27 @@
 	--color-button-secondary-loading-border: var(--prim-gray-320);
 	--color-button-secondary-loading-background: var(--prim-gray-0);
 
+	// Table
+	--table-header-background: var(--color-background-base);
+	--table-row-background: var(--color-background-xlight);
+	--table-row-even-background: var(--color-background-light);
+	--table-row-hover-background: var(--color-primary-tint-3);
+
+	// Notification
+	--notification-background: var(--color-background-xlight);
+
 	// Execution card
 	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
 	--execution-card-border-error: var(--prim-color-alt-c-tint-250);
 	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
 	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
 	--execution-card-border-unknown: var(--prim-gray-120);
+
+	// NDV
+	--run-data-background: var(--color-background-base);
+
+	// Notice
+	--notice-color-font: var(--color-text-base);
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
