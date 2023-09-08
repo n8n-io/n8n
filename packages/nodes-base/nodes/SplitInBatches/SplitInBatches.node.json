@@ -22,7 +22,7 @@
 			}
 		]
 	},
-	"alias": ["Loop"],
+	"alias": ["Loop", "concatenate"],
 	"subcategories": {
 		"Core Nodes": ["Flow"]
 	}
