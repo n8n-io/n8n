@@ -46,6 +46,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
+				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@update:modelValue="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
@@ -366,6 +367,7 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
@@ -411,6 +413,10 @@ export default defineComponent({
 		TextEdit,
 	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},
@@ -735,7 +741,7 @@ export default defineComponent({
 						issues.parameters[this.parameter.name] = [issue];
 					}
 				}
-			} else if (this.remoteParameterOptionsLoadingIssues !== null) {
+			} else if (this.remoteParameterOptionsLoadingIssues !== null && !this.isValueExpression) {
 				if (issues.parameters === undefined) {
 					issues.parameters = {};
 				}
@@ -882,7 +888,8 @@ export default defineComponent({
 			if (
 				this.node === null ||
 				this.hasRemoteMethod === false ||
-				this.remoteParameterOptionsLoading
+				this.remoteParameterOptionsLoading ||
+				!this.parameter
 			) {
 				return;
 			}
@@ -894,7 +901,8 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveParameter(
+				const resolvedNodeParameters = this.resolveRequiredParameters(
+					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;
 				const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;

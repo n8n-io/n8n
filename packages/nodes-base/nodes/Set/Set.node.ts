@@ -212,6 +212,6 @@ export class Set implements INodeType {
 			returnData.push(newItem);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -44,6 +44,7 @@ export {
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';
+export * as ExpressionParser from './Extensions/ExpressionParser';
 export { NativeMethods } from './NativeMethods';
 
 export type { DocMetadata, NativeDoc } from './Extensions';
@@ -56,5 +57,11 @@ declare module 'http' {
 		rawBody: Buffer;
 		readRawBody(): Promise<void>;
 		_body: boolean;
+
+		// This gets added by the `follow-redirects` package
+		responseUrl?: string;
+
+		// This is added to response objects for all outgoing requests
+		req?: ClientRequest;
 	}
 }

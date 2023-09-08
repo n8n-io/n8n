@@ -56,7 +56,7 @@ export const schema = {
 			maxQueryExecutionTime: {
 				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
 				format: Number,
-				default: 1000,
+				default: 0, // 0 disables the slow-query log
 				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
 			},
 		},
@@ -163,6 +163,12 @@ export const schema = {
 				format: String,
 				default: 'database.sqlite',
 				env: 'DB_SQLITE_DATABASE',
+			},
+			enableWAL: {
+				doc: 'Enable SQLite WAL mode',
+				format: Boolean,
+				default: false,
+				env: 'DB_SQLITE_ENABLE_WAL',
 			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
@@ -398,6 +404,12 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
+				},
+				tls: {
+					format: 'Boolean',
+					default: false,
+					env: 'QUEUE_BULL_REDIS_TLS',
+					doc: 'Enable TLS on Redis connections. Default: false',
 				},
 			},
 			queueRecoveryInterval: {
@@ -762,7 +774,7 @@ export const schema = {
 	externalFrontendHooksUrls: {
 		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
-		default: 'https://public.n8n.cloud/posthog-hooks.js',
+		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
@@ -913,12 +925,6 @@ export const schema = {
 			env: 'N8N_BINARY_DATA_TTL',
 			doc: 'TTL for binary data of unsaved executions in minutes',
 		},
-		persistedBinaryDataTTL: {
-			format: Number,
-			default: 1440,
-			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
-			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
-		},
 	},
 
 	deployment: {
@@ -926,6 +932,15 @@ export const schema = {
 			format: String,
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	mfa: {
+		enabled: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to enable MFA feature in instance.',
+			env: 'N8N_MFA_ENABLED',
 		},
 	},
 
@@ -1121,6 +1136,12 @@ export const schema = {
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
 			},
 		},
+		crashRecoveryMode: {
+			doc: 'Should n8n try to recover execution details after a crash, or just mark pending executions as crashed',
+			format: ['simple', 'extensive'] as const,
+			default: 'extensive',
+			env: 'N8N_EVENTBUS_RECOVERY_MODE',
+		},
 	},
 
 	redis: {
@@ -1172,6 +1193,15 @@ export const schema = {
 				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_REDIS_TTL',
 			},
+		},
+	},
+
+	ai: {
+		enabled: {
+			doc: 'Whether AI features are enabled',
+			format: Boolean,
+			default: false,
+			env: 'N8N_AI_ENABLED',
 		},
 	},
 };

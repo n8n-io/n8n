@@ -79,6 +79,29 @@
 				</n8n-text>
 			</div>
 			<div>
+				<n8n-button
+					size="large"
+					:type="debugButtonData.type"
+					:class="{
+						[$style.debugLink]: true,
+						[$style.secondary]: debugButtonData.type === 'secondary',
+					}"
+				>
+					<router-link
+						:to="{
+							name: VIEWS.EXECUTION_DEBUG,
+							params: {
+								name: activeExecution.workflowId,
+								executionId: activeExecution.id,
+							},
+						}"
+					>
+						<span @click="handleDebugLinkClick" data-test-id="execution-debug-button">{{
+							debugButtonData.text
+						}}</span>
+					</router-link>
+				</n8n-button>
+
 				<el-dropdown
 					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
@@ -128,13 +151,12 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-
-import { useMessage } from '@/composables';
+import { ElDropdown } from 'element-plus';
+import { useExecutionDebugging, useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import type { IExecutionUIData } from '@/mixins/executionsHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { MODAL_CONFIRM, VIEWS } from '@/constants';
-import { ElDropdown } from 'element-plus';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
 
@@ -153,6 +175,7 @@ export default defineComponent({
 	setup() {
 		return {
 			...useMessage(),
+			...useExecutionDebugging(),
 		};
 	},
 	computed: {
@@ -161,6 +184,17 @@ export default defineComponent({
 		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
+		},
+		debugButtonData(): Record<string, string> {
+			return this.activeExecution?.status === 'success'
+				? {
+						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
+						type: 'secondary',
+				  }
+				: {
+						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
+						type: 'primary',
+				  };
 		},
 	},
 	methods: {
@@ -212,8 +246,14 @@ export default defineComponent({
 	width: 100%;
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
+
+	> div:last-child {
+		display: flex;
+		align-items: center;
+	}
 
 	& * {
 		pointer-events: all;
@@ -253,5 +293,22 @@ export default defineComponent({
 	width: 200px;
 	margin-top: var(--spacing-l);
 	text-align: center;
+}
+
+.debugLink {
+	padding: 0;
+	margin-right: var(--spacing-xs);
+
+	&.secondary {
+		a span {
+			color: var(--color-primary-shade-1);
+		}
+	}
+
+	a span {
+		display: block;
+		padding: var(--spacing-xs) var(--spacing-m);
+		color: var(--color-text-xlight);
+	}
 }
 </style>

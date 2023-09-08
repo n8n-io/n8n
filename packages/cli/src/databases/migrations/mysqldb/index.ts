@@ -44,6 +44,10 @@ import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionD
 import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
+import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
+import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
+import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -91,4 +95,8 @@ export const mysqlMigrations: Migration[] = [
 	RemoveSkipOwnerSetup1681134145997,
 	RemoveResetPasswordColumns1690000000030,
 	CreateWorkflowNameIndex1691088862123,
+	AddMfaColumns1690000000030,
+	CreateWorkflowHistoryTable1692967111175,
+	DisallowOrphanExecutions1693554410387,
+	ExecutionSoftDelete1693491613982,
 ];

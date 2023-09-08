@@ -225,6 +225,7 @@ export abstract class ICredentialsHelper {
 	): Promise<ICredentials>;
 
 	abstract getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
@@ -740,6 +741,9 @@ export interface FunctionsBase {
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
+
+	/** @deprecated */
+	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
 }
 
 type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
@@ -762,10 +766,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputData?: INodeExecutionData[],
 		): Promise<any>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
-		prepareOutputData(
-			outputData: INodeExecutionData[],
-			outputIndex?: number,
-		): Promise<INodeExecutionData[][]>;
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
@@ -889,10 +889,6 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	getRequestObject(): express.Request;
 	getResponseObject(): express.Response;
 	getWebhookName(): string;
-	prepareOutputData(
-		outputData: INodeExecutionData[],
-		outputIndex?: number,
-	): Promise<INodeExecutionData[][]>;
 	nodeHelpers: NodeHelperFunctions;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
@@ -1077,6 +1073,7 @@ export interface INodePropertyTypeOptions {
 export interface ResourceMapperTypeOptions {
 	resourceMapperMethod: string;
 	mode: 'add' | 'update' | 'upsert';
+	valuesLabel?: string;
 	fieldWords?: { singular: string; plural: string };
 	addAllFields?: boolean;
 	noFieldsError?: string;
@@ -1775,6 +1772,7 @@ export interface IWorkflowExecuteAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId: string;
 	variables: IDataObject;
+	secretsHelpers: SecretsHelpersBase;
 }
 
 export type WorkflowExecuteMode =
@@ -2185,6 +2183,8 @@ export interface IN8nUISettings {
 		variables: boolean;
 		sourceControl: boolean;
 		auditLogs: boolean;
+		externalSecrets: boolean;
+		showNonProdBanner: boolean;
 		debugInEditor: boolean;
 	};
 	hideUsagePage: boolean;
@@ -2194,9 +2194,26 @@ export interface IN8nUISettings {
 	variables: {
 		limit: number;
 	};
+	mfa: {
+		enabled: boolean;
+	};
 	banners: {
 		dismissed: string[];
 	};
+	ai: {
+		enabled: boolean;
+	};
 }
 
-export type Banners = 'V1' | 'TRIAL_OVER' | 'TRIAL';
+export interface SecretsHelpersBase {
+	update(): Promise<void>;
+	waitForInit(): Promise<void>;
+
+	getSecret(provider: string, name: string): IDataObject | undefined;
+	hasSecret(provider: string, name: string): boolean;
+	hasProvider(provider: string): boolean;
+	listProviders(): string[];
+	listSecrets(provider: string): string[];
+}
+
+export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';

@@ -223,7 +223,7 @@ export const keysToLowercase = <T>(headers: T) => {
  * @returns The formatted private key.
  */
 export function formatPrivateKey(privateKey: string): string {
-	if (/\n/.test(privateKey)) {
+	if (!privateKey || /\n/.test(privateKey)) {
 		return privateKey;
 	}
 	let formattedPrivateKey = '';
@@ -263,4 +263,31 @@ export function getResolvables(expression: string) {
 	}
 
 	return resolvables;
+}
+
+/**
+ * Flattens an object with deep data
+ *
+ * @param {IDataObject} data The object to flatten
+ */
+export function flattenObject(data: IDataObject) {
+	const returnData: IDataObject = {};
+	for (const key1 of Object.keys(data)) {
+		if (data[key1] !== null && typeof data[key1] === 'object') {
+			if (data[key1] instanceof Date) {
+				returnData[key1] = data[key1]?.toString();
+				continue;
+			}
+			const flatObject = flattenObject(data[key1] as IDataObject);
+			for (const key2 in flatObject) {
+				if (flatObject[key2] === undefined) {
+					continue;
+				}
+				returnData[`${key1}.${key2}`] = flatObject[key2];
+			}
+		} else {
+			returnData[key1] = data[key1];
+		}
+	}
+	return returnData;
 }

@@ -8,9 +8,12 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { SLACK_NODE_TYPE } from '@/constants';
+import { usePostHog } from '@/stores/posthog.store';
+import { useNDVStore } from '@/stores';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
+
 	private previousPath: string;
 
 	private get rudderStack() {
@@ -79,7 +82,11 @@ export class Telemetry {
 		}
 	}
 
-	track(event: string, properties?: ITelemetryTrackProperties) {
+	track(
+		event: string,
+		properties?: ITelemetryTrackProperties,
+		{ withPostHog } = { withPostHog: false },
+	) {
 		if (!this.rudderStack) return;
 
 		const updatedProperties = {
@@ -88,6 +95,10 @@ export class Telemetry {
 		};
 
 		this.rudderStack.track(event, updatedProperties);
+
+		if (withPostHog) {
+			usePostHog().capture(event, updatedProperties);
+		}
 	}
 
 	page(route: Route) {
@@ -100,17 +111,12 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: { [key: string]: string } = {};
-			if (
-				route.meta &&
-				route.meta.telemetry &&
-				typeof route.meta.telemetry.getProperties === 'function'
-			) {
+			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 
-			const category =
-				(route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
-			this.rudderStack.page(category, pageName!, properties);
+			const category = route.meta?.telemetry?.pageCategory || 'Editor';
+			this.rudderStack.page(category, pageName, properties);
 		} else {
 			this.pageEventQueue.push({
 				route,
@@ -124,6 +130,20 @@ export class Telemetry {
 		queue.forEach(({ route }) => {
 			this.page(route);
 		});
+	}
+
+	trackAskAI(event: string, properties: IDataObject = {}) {
+		if (this.rudderStack) {
+			properties.session_id = useRootStore().sessionId;
+			properties.ndv_session_id = useNDVStore().sessionId;
+
+			switch (event) {
+				case 'askAi.generationFinished':
+					this.track('Ai code generation finished', properties, { withPostHog: true });
+				default:
+					break;
+			}
+		}
 	}
 
 	trackNodesPanel(event: string, properties: IDataObject = {}) {
@@ -187,7 +207,7 @@ export class Telemetry {
 					this.track('User viewed node category', properties);
 					break;
 				case 'nodeView.addNodeButton':
-					this.track('User added node to workflow canvas', properties);
+					this.track('User added node to workflow canvas', properties, { withPostHog: true });
 					break;
 				case 'nodeView.addSticky':
 					this.track('User inserted workflow note', properties);
@@ -204,8 +224,15 @@ export class Telemetry {
 		if (this.rudderStack) {
 			switch (nodeType) {
 				case SLACK_NODE_TYPE:
-					if (change.name === 'parameters.includeLinkToWorkflow') {
-						this.track('User toggled n8n reference option');
+					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
+						this.track(
+							'User toggled n8n reference option',
+							{
+								node: nodeType,
+								toValue: change.value,
+							},
+							{ withPostHog: true },
+						);
 					}
 					break;
 

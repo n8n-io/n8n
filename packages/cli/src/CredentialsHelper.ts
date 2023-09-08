@@ -31,6 +31,8 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+	ICredentialTestFunctions,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -53,6 +55,9 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { Container } from 'typedi';
+import { isObjectLiteral } from './utils';
+
+const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
 const mockNode = {
 	name: '',
@@ -338,6 +343,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 */
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
@@ -352,12 +358,18 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return decryptedDataOriginal;
 		}
 
+		await additionalData?.secretsHelpers?.waitForInit();
+
+		const canUseSecrets = await this.credentialOwnedByOwner(nodeCredentials);
+
 		return this.applyDefaultsAndOverwrites(
+			additionalData,
 			decryptedDataOriginal,
 			type,
 			mode,
 			defaultTimezone,
 			expressionResolveValues,
+			canUseSecrets,
 		);
 	}
 
@@ -365,11 +377,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Applies credential default data and overwrites
 	 */
 	applyDefaultsAndOverwrites(
+		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
 		defaultTimezone: string,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		canUseSecrets?: boolean,
 	): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
@@ -391,6 +405,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
+		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null, {
+			secretsEnabled: canUseSecrets,
+		});
+
 		if (expressionResolveValues) {
 			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
 
@@ -404,7 +422,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.connectionInputData,
 					mode,
 					timezone,
-					{},
+					additionalKeys,
 					undefined,
 					false,
 					decryptedData,
@@ -427,7 +445,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				decryptedData as INodeParameters,
 				mode,
 				defaultTimezone,
-				{},
+				additionalKeys,
 				undefined,
 				undefined,
 				decryptedData,
@@ -466,6 +484,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
+	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
+		const oauthTokenData = credentialsDecrypted?.data?.oauthTokenData;
+
+		if (!isObjectLiteral(oauthTokenData)) return false;
+
+		return 'access_token' in oauthTokenData;
+	}
+
 	private getCredentialTestFunction(
 		credentialType: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
@@ -496,6 +522,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
+					if (
+						name === credentialType &&
+						this.credentialTypes.getParentTypes(name).includes('oAuth2Api')
+					) {
+						return async function oauth2CredTest(
+							this: ICredentialTestFunctions,
+							cred: ICredentialsDecrypted,
+						): Promise<INodeCredentialTestResult> {
+							return CredentialsHelper.hasAccessToken(cred)
+								? {
+										status: 'OK',
+										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
+								  }
+								: {
+										status: 'Error',
+										message: OAUTH2_CREDENTIAL_TEST_FAILED,
+								  };
+						};
+					}
+
 					if (name === credentialType && !!testedBy) {
 						if (typeof testedBy === 'string') {
 							if (node instanceof VersionedNodeType) {
@@ -541,10 +587,24 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (credentialsDecrypted.data) {
-			credentialsDecrypted.data = CredentialsOverwrites().applyOverwrite(
-				credentialType,
-				credentialsDecrypted.data,
-			);
+			try {
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+				credentialsDecrypted.data = this.applyDefaultsAndOverwrites(
+					additionalData,
+					credentialsDecrypted.data,
+					credentialType,
+					'internal' as WorkflowExecuteMode,
+					additionalData.timezone,
+					undefined,
+					user.isOwner,
+				);
+			} catch (error) {
+				Logger.debug('Credential test failed', error);
+				return {
+					status: 'Error',
+					message: error.message.toString(),
+				};
+			}
 		}
 
 		if (typeof credentialTestFunction === 'function') {
@@ -726,6 +786,36 @@ export class CredentialsHelper extends ICredentialsHelper {
 			status: 'OK',
 			message: 'Connection successful!',
 		};
+	}
+
+	async credentialOwnedByOwner(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
+		if (!nodeCredential.id) {
+			return false;
+		}
+
+		const credential = await Db.collections.SharedCredentials.findOne({
+			where: {
+				role: {
+					scope: 'credential',
+					name: 'owner',
+				},
+				user: {
+					globalRole: {
+						scope: 'global',
+						name: 'owner',
+					},
+				},
+				credentials: {
+					id: nodeCredential.id,
+				},
+			},
+		});
+
+		if (!credential) {
+			return false;
+		}
+
+		return true;
 	}
 }
 

@@ -26,7 +26,6 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
-export const ASK_AI_MODAL_KEY = 'askAi';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -46,9 +45,12 @@ export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
+export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
+export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -68,12 +70,14 @@ export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/built
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;
 export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
+export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
+export const COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/manual-install/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
@@ -179,7 +183,6 @@ export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
 export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
-export const ASK_AI_WAITLIST_URL = 'https://n8n-community.typeform.com/to/odKU4oDR';
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -347,6 +350,7 @@ export const enum VIEWS {
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
+	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
@@ -374,9 +378,11 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
+	MFA_VIEW = 'MfaView',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -445,7 +451,9 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	SourceControl = 'sourceControl',
+	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
+	DebugInEditor = 'debugInEditor',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -525,14 +533,22 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const TEMPLATES_EXPERIMENT = {
-	name: '008_template_variants',
+export const ASK_AI_EXPERIMENT = {
+	name: '011_ask_AI',
 	control: 'control',
-	variant: 'variant',
-	variantIds: ['1932', '1930', '1931', '1933', '1750', '1748', '1435'],
+	gpt3: 'gpt3',
+	gpt4: 'gpt4',
 };
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATES_EXPERIMENT.name];
+export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name];
+
+export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
+
+export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+
+export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+
+export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
@@ -564,3 +580,8 @@ export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
 
 // A path that does not exist so that nothing is selected by default
 export const nonExistingJsonPath = '_!^&*';
+
+// Ask AI
+export const ASK_AI_MAX_PROMPT_LENGTH = 600;
+export const ASK_AI_MIN_PROMPT_LENGTH = 15;
+export const ASK_AI_LOADING_DURATION_MS = 12000;

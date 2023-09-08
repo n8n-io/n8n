@@ -39,7 +39,6 @@ export interface IBinaryDataConfig {
 	availableModes: string;
 	localStoragePath: string;
 	binaryDataTTL: number;
-	persistedBinaryDataTTL: number;
 }
 
 export interface IBinaryDataManager {
@@ -57,7 +56,6 @@ export interface IBinaryDataManager {
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 	deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]>;
-	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
 }
 
 export namespace n8n {
