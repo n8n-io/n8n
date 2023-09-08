@@ -26,10 +26,19 @@
 
 	@include utils-user-select(none);
 
+	// Solution for a inside button
+	& a {
+		color: $button-font-color unquote($important);
+	}
+
 	&:hover {
 		color: $button-hover-font-color unquote($important);
 		border-color: $button-hover-border-color unquote($important);
 		background-color: $button-hover-background-color unquote($important);
+
+		& a {
+			color: $button-hover-font-color unquote($important);
+		}
 	}
 
 	&:active,
@@ -38,6 +47,10 @@
 		border-color: $button-active-border-color unquote($important);
 		background-color: $button-active-background-color unquote($important);
 		outline: none;
+
+		& a {
+			color: $button-active-font-color unquote($important);
+		}
 	}
 
 	&:focus {
@@ -45,6 +58,10 @@
 		border-color: $button-focus-border-color unquote($important);
 		background-color: $button-focus-background-color unquote($important);
 		outline: $focus-outline-width solid $button-focus-outline-color unquote($important);
+
+		& a {
+			color: $button-focus-font-color unquote($important);
+		}
 	}
 
 	&.disabled {
@@ -55,6 +72,10 @@
 			color: $button-disabled-font-color;
 			border-color: $button-disabled-border-color;
 			background-color: $button-disabled-background-color;
+
+			& a {
+				color: $button-disabled-font-color;
+			}
 		}
 	}
 
@@ -66,6 +87,10 @@
 			color: $button-loading-font-color;
 			border-color: $button-loading-border-color;
 			background-color: $button-loading-background-color;
+
+			& a {
+				color: $button-loading-font-color;
+			}
 		}
 	}
 
