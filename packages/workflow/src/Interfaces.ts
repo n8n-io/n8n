@@ -779,8 +779,14 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
 		// TODO: Make this one then only available in the new config one
-		addInputData(connectionType: ConnectionTypes, data: INodeExecutionData[][]): void;
-		addOutputData(connectionType: ConnectionTypes, data: INodeExecutionData[][]): void;
+		addInputData(
+			connectionType: ConnectionTypes,
+			data: INodeExecutionData[][] | ExecutionError,
+		): void;
+		addOutputData(
+			connectionType: ConnectionTypes,
+			data: INodeExecutionData[][] | ExecutionError,
+		): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
