@@ -16,7 +16,7 @@ import type { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
 import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
 import type { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
-import type { BaseLLM } from 'langchain/llms/base';
+import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatMemory } from 'langchain/memory';
 import type { MemoryVariables } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
@@ -101,7 +101,7 @@ export function logWrapper(
 			}
 
 			// ========== BaseChatModel ==========
-			if (originalInstance instanceof BaseChatModel) {
+			if (originalInstance instanceof BaseLLM || originalInstance instanceof BaseChatModel) {
 				if (prop === '_generate' && '_generate' in target) {
 					return async (
 						messages: BaseMessage[] & string[],
