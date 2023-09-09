@@ -91,7 +91,9 @@ export class ChainStructuredOutput implements INodeType {
 				description: 'JSON Schema to structure the output',
 				default: '',
 				typeOptions: {
-					rows: 4,
+					rows: 10,
+					editor: 'json',
+					editorLanguage: 'json',
 				},
 				required: true,
 			},
