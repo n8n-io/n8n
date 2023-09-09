@@ -117,6 +117,7 @@ export const enum EndpointType {
 	Main = 'main',
 	Tool = 'tool',
 	Memory = 'memory',
+	OutputParser = 'outputParser',
 	LanguageModel = 'languageModel',
 	VectorRetriever = 'vectorRetriever',
 	VectorStore = 'vectorStore',
@@ -1138,7 +1139,10 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW | typeof AI_NODE_CREATOR_VIEW;
+export type NodeFilterType =
+	| typeof REGULAR_NODE_CREATOR_VIEW
+	| typeof TRIGGER_NODE_CREATOR_VIEW
+	| typeof AI_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''

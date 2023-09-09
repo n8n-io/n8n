@@ -19,6 +19,7 @@ import {
 	AI_CATEGORY_DOCUMENT_LOADERS,
 	AI_CATEGORY_LANGUAGE_MODELS,
 	AI_CATEGORY_MEMORY,
+	AI_CATEGORY_OUTPUTPARSER,
 	AI_CATEGORY_RETRIEVERS,
 	AI_CATEGORY_TEXT_SPLITTERS,
 	AI_CATEGORY_TOOLS,
@@ -107,6 +108,14 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_MEMORY,
 					icon: 'brain',
+				},
+			},
+			{
+				key: AI_CATEGORY_OUTPUTPARSER,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_OUTPUTPARSER,
+					icon: 'list',
 				},
 			},
 			{

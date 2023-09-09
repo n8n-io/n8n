@@ -13,6 +13,7 @@ import {
 	faArrowDown,
 	faAt,
 	faBan,
+	faBars,
 	faBolt,
 	faBook,
 	faBoxOpen,
@@ -169,6 +170,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faArrowDown);
 		addIcon(faAt);
 		addIcon(faBan);
+		addIcon(faBars);
 		addIcon(faBolt);
 		addIcon(faBook);
 		addIcon(faBoxOpen);

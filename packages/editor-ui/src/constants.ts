@@ -95,6 +95,7 @@ export const SCOPED_ENDPOINT_TYPES = [
 	EndpointType.Chain,
 	EndpointType.Tool,
 	EndpointType.Memory,
+	EndpointType.OutputParser,
 	EndpointType.LanguageModel,
 	EndpointType.VectorRetriever,
 	EndpointType.VectorStore,
@@ -210,6 +211,7 @@ export const AI_CATEGORY_AGENTS = 'Agents';
 export const AI_CATEGORY_CHAINS = 'Chains';
 export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
 export const AI_CATEGORY_MEMORY = 'Memory';
+export const AI_CATEGORY_OUTPUTPARSER = 'Output Parsers';
 export const AI_CATEGORY_TOOLS = 'Tools';
 export const AI_CATEGORY_VECTOR_STORES = 'Vector Stores';
 export const AI_CATEGORY_RETRIEVERS = 'Retrievers';

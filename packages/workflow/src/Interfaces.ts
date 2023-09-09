@@ -1492,6 +1492,7 @@ export type ConnectionTypes =
 	| 'languageModel'
 	| 'main'
 	| 'memory'
+	| 'outputParser'
 	| 'tool'
 	| 'textSplitter'
 	| 'vectorRetriever'

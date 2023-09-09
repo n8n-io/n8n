@@ -9,6 +9,9 @@ import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Tool } from 'langchain/tools';
 import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseOutputParser } from 'langchain/schema/output_parser';
+import { PromptTemplate } from 'langchain/prompts';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 
 export class ConversationalAgent implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,6 +54,11 @@ export class ConversationalAgent implements INodeType {
 			{
 				displayName: 'Tools',
 				type: 'tool',
+				required: false,
+			},
+			{
+				displayName: 'Output Parser',
+				type: 'outputParser',
 				required: false,
 			},
 		],
@@ -104,6 +112,10 @@ export class ConversationalAgent implements INodeType {
 		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
 		const memory = (await this.getInputConnectionData('memory', 0)) as BaseChatMemory | undefined;
 		const tools = (await this.getInputConnectionData('tool', 0)) as Tool[];
+		const outputParsers = (await this.getInputConnectionData(
+			'outputParser',
+			0,
+		)) as BaseOutputParser[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 			// Passing "chat-conversational-react-description" as the agent type
@@ -117,22 +129,45 @@ export class ConversationalAgent implements INodeType {
 			},
 		});
 
-		const items = this.getInputData();
-
 		const returnData: INodeExecutionData[] = [];
 
-		if (runMode === 'runOnceForAllItems') {
-			const input = this.getNodeParameter('text', 0) as string;
-			const response = await agentExecutor.call({ input });
+		let outputParser: BaseOutputParser | undefined;
+		let prompt: PromptTemplate | undefined;
+		if (outputParsers.length) {
+			if (outputParsers.length === 1) {
+				outputParser = outputParsers[0];
+			} else {
+				outputParser = new CombiningOutputParser(...outputParsers);
+			}
+			const formatInstructions = outputParser.getFormatInstructions();
 
-			return this.prepareOutputData([{ json: response }]);
+			prompt = new PromptTemplate({
+				template: '{input}\n{formatInstructions}',
+				inputVariables: ['input'],
+				partialVariables: { formatInstructions },
+			});
+		}
+
+		const items = this.getInputData();
+
+		let itemCount = items.length;
+		if (runMode === 'runOnceForAllItems') {
+			itemCount = 1;
 		}
 
 		// Run for each item
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			const input = this.getNodeParameter('text', itemIndex) as string;
+		for (let itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+			let input = this.getNodeParameter('text', itemIndex) as string;
 
-			const response = await agentExecutor.call({ input });
+			if (prompt) {
+				input = (await prompt.invoke({ input })).value;
+			}
+
+			let response = await agentExecutor.call({ input, outputParsers });
+
+			if (outputParser) {
+				response = { output: await outputParser.parse(response.output as string) };
+			}
 
 			returnData.push({ json: response });
 		}

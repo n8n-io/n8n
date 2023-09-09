@@ -381,6 +381,9 @@ export const nodeBase = defineComponent({
 				memory: {
 					endpoint: createAddInputEndpointSpec('--color-primary-tint-1'),
 				},
+				outputParser: {
+					endpoint: createAddInputEndpointSpec('--color-primary-tint-2'),
+				},
 				tool: {
 					endpoint: createAddInputEndpointSpec('--color-danger'),
 				},
@@ -447,6 +450,18 @@ export const nodeBase = defineComponent({
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						CONNECTOR_COLOR['memory'],
+						connectionType,
+					),
+				},
+				outputParser: {
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						CONNECTOR_COLOR['outputParser'],
+						connectionType,
+					),
+					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						CONNECTOR_COLOR['outputParser'],
 						connectionType,
 					),
 				},

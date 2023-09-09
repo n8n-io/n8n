@@ -60,6 +60,8 @@
       "dist/nodes/memory/MemoryMotorhead/MemoryMotorhead.node.js",
       "dist/nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.js",
       "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
+      "dist/nodes/output_parser/OutputParserAutofixing/OutputParserAutofixing.node.js",
+      "dist/nodes/output_parser/OutputParserItemList/OutputParserItemList.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterRecursiveCharacterTextSplitter/TextSplitterRecursiveCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",

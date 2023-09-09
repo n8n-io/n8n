@@ -5,19 +5,47 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { LLMChain } from 'langchain/chains';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
-import { PromptTemplate } from 'langchain';
+import type { BaseLanguageModel } from 'langchain/base_language';
+import { PromptTemplate } from 'langchain/prompts';
+import type { BaseOutputParser } from 'langchain/schema/output_parser';
+import { CombiningOutputParser } from 'langchain/output_parsers';
 
-async function getChain(context: IExecuteFunctions, query: string) {
+async function getChain(context: IExecuteFunctions, query: string): Promise<string[]> {
 	const llm = (await context.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+	const outputParsers = (await context.getInputConnectionData(
+		'outputParser',
+		0,
+	)) as BaseOutputParser[];
 
-	const prompt = PromptTemplate.fromTemplate(query);
+	let prompt: PromptTemplate;
 
-	const chain = new LLMChain({ llm, prompt });
-	const response = await chain.call({ query });
+	let outputParser: BaseOutputParser | undefined;
+	if (outputParsers.length) {
+		if (outputParsers.length === 1) {
+			outputParser = outputParsers[0];
+		} else {
+			outputParser = new CombiningOutputParser(...outputParsers);
+		}
+		const formatInstructions = outputParser.getFormatInstructions();
 
-	return response;
+		prompt = new PromptTemplate({
+			template: query + '\n{formatInstructions}',
+			inputVariables: [],
+			partialVariables: { formatInstructions },
+		});
+	} else {
+		prompt = PromptTemplate.fromTemplate(query);
+	}
+
+	let chain = prompt.pipe(llm);
+
+	if (outputParser) {
+		chain = chain.pipe(outputParser);
+	}
+
+	const response = (await chain.invoke({ query })) as string | string[];
+
+	return Array.isArray(response) ? response : [response];
 }
 
 export class ChainLlm implements INodeType {
@@ -47,6 +75,11 @@ export class ChainLlm implements INodeType {
 				maxConnections: 1,
 				type: 'languageModel',
 				required: true,
+			},
+			{
+				displayName: 'Output Parser',
+				type: 'outputParser',
+				required: false,
 			},
 		],
 		outputs: ['main'],
@@ -86,19 +119,27 @@ export class ChainLlm implements INodeType {
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
 		const returnData: INodeExecutionData[] = [];
+
+		let itemCount = items.length;
 		if (runMode === 'runOnceForAllItems') {
-			const prompt = this.getNodeParameter('prompt', 0) as string;
-			const response = await getChain(this, prompt);
-
-			return this.prepareOutputData([{ json: { response } }]);
+			itemCount = 1;
 		}
-		// Run for each item
-		for (let i = 0; i < items.length; i++) {
+
+		for (let i = 0; i < itemCount; i++) {
 			const prompt = this.getNodeParameter('prompt', i) as string;
-			const response = await getChain(this, prompt);
+			const responses = await getChain(this, prompt);
 
-			returnData.push({ json: { response } });
+			responses.forEach((text) => {
+				returnData.push({
+					json: {
+						response: {
+							text: typeof text === 'string' ? text.trim() : text,
+						},
+					},
+				});
+			});
 		}
-		return this.prepareOutputData(returnData);
+
+		return [returnData];
 	}
 }

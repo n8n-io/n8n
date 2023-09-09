@@ -124,6 +124,7 @@ export const CONNECTOR_COLOR: {
 	languageModel: '--color-primary',
 	main: '--color-foreground-xdark',
 	memory: '--color-primary-tint-1',
+	outputParser: '--color-primary-tint-2',
 	textSplitter: '--color-secondary-tint-2',
 	tool: '--color-danger',
 	vectorRetriever: '--color-avatar-accent-2',

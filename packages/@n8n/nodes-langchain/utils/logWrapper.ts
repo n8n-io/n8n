@@ -14,12 +14,13 @@ import type { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { VectorStore } from 'langchain/vectorstores/base';
 import type { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
-import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
+import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
 import type { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatMemory } from 'langchain/memory';
 import type { MemoryVariables } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
+import { BaseOutputParser, FormatInstructionsOptions } from 'langchain/schema/output_parser';
 
 export function logWrapper(
 	originalInstance:
@@ -28,6 +29,7 @@ export function logWrapper(
 		| BaseChatMemory
 		| BaseLLM
 		| BaseChatMessageHistory
+		| BaseOutputParser
 		| Embeddings
 		| Document[]
 		| Document
@@ -111,6 +113,31 @@ export function logWrapper(
 						executeFunctions.addInputData('languageModel', [[{ json: { messages, options } }]]);
 						const response = (await target[prop](messages, options, runManager)) as ChatResult;
 						executeFunctions.addOutputData('languageModel', [[{ json: { response } }]]);
+						return response;
+					};
+				}
+			}
+
+			// ========== BaseOutputParser ==========
+			if (originalInstance instanceof BaseOutputParser) {
+				if (prop === 'getFormatInstructions' && 'getFormatInstructions' in target) {
+					return (options?: FormatInstructionsOptions): string => {
+						executeFunctions.addInputData('outputParser', [
+							[{ json: { action: 'getFormatInstructions' } }],
+						]);
+						const response = target[prop](options);
+						executeFunctions.addOutputData('outputParser', [
+							[{ json: { action: 'getFormatInstructions', response } }],
+						]);
+						return response;
+					};
+				} else if (prop === 'parse' && 'parse' in target) {
+					return async (text: string): Promise<any> => {
+						executeFunctions.addInputData('outputParser', [[{ json: { action: 'parse', text } }]]);
+						const response = (await target[prop](text)) as object;
+						executeFunctions.addOutputData('outputParser', [
+							[{ json: { action: 'parse', response } }],
+						]);
 						return response;
 					};
 				}
