@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -814,7 +814,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
-    "@n8n/vm2": "^3.9.19",
+    "@n8n/vm2": "^3.9.20",
     "amqplib": "^0.10.3",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
@@ -822,6 +822,7 @@
     "cheerio": "1.0.0-rc.6",
     "chokidar": "3.5.2",
     "cron": "~1.7.2",
+    "csv-parse": "^5.5.0",
     "currency-codes": "^2.1.0",
     "eventsource": "^2.0.2",
     "fast-glob": "^3.2.5",

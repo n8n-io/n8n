@@ -339,12 +339,6 @@ importers:
       connect-history-api-fallback:
         specifier: ^1.6.0
         version: 1.6.0
-      content-disposition:
-        specifier: ^0.5.4
-        version: 0.5.4
-      content-type:
-        specifier: ^1.0.4
-        version: 1.0.4
       convict:
         specifier: ^6.2.4
         version: 6.2.4
@@ -580,12 +574,6 @@ importers:
       '@types/connect-history-api-fallback':
         specifier: ^1.3.1
         version: 1.3.5
-      '@types/content-disposition':
-        specifier: ^0.5.5
-        version: 0.5.5
-      '@types/content-type':
-        specifier: ^1.1.5
-        version: 1.1.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -676,6 +664,12 @@ importers:
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
+      content-disposition:
+        specifier: ^0.5.4
+        version: 0.5.4
+      content-type:
+        specifier: ^1.0.4
+        version: 1.0.4
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -725,6 +719,12 @@ importers:
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
+      '@types/content-disposition':
+        specifier: ^0.5.5
+        version: 0.5.5
+      '@types/content-type':
+        specifier: ^1.1.5
+        version: 1.1.5
       '@types/cron':
         specifier: ~1.7.1
         version: 1.7.3
@@ -1110,8 +1110,8 @@ importers:
         specifier: 1.0.6
         version: 1.0.6
       '@n8n/vm2':
-        specifier: ^3.9.19
-        version: 3.9.19
+        specifier: ^3.9.20
+        version: 3.9.20
       amqplib:
         specifier: ^0.10.3
         version: 0.10.3
@@ -1133,6 +1133,9 @@ importers:
       cron:
         specifier: ~1.7.2
         version: 1.7.2
+      csv-parse:
+        specifier: ^5.5.0
+        version: 5.5.0
       currency-codes:
         specifier: ^2.1.0
         version: 2.1.0
@@ -5832,8 +5835,8 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@n8n/vm2@3.9.19:
-    resolution: {integrity: sha512-KmrkVqri7VG+GQ2JbJ2/2gyEmVkysxzoJUF+zdtqBZLU8GN9UDwAnjzUOUgpD0dCRd1SUVLqwM4GpjOeca4XZw==}
+  /@n8n/vm2@3.9.20:
+    resolution: {integrity: sha512-qk2oJYkuFRVSTxoro4obX/sv/wT1pViZjHh/isjOvFB93D52QIg3TCjMPsHOfHTmkxCKJffjLrUvjIwvWzSMCQ==}
     engines: {node: '>=18.10', pnpm: '>=8.6.12'}
     hasBin: true
     dependencies:
@@ -12368,6 +12371,10 @@ packages:
 
   /csstype@3.1.1:
     resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
+
+  /csv-parse@5.5.0:
+    resolution: {integrity: sha512-RxruSK3M4XgzcD7Trm2wEN+SJ26ChIb903+IWxNOcB5q4jT2Cs+hFr6QP39J05EohshRFEvyzEBoZ/466S2sbw==}
+    dev: false
 
   /curlconverter@3.21.0(chokidar@3.5.2):
     resolution: {integrity: sha512-DXCnp1A/Xa69FujksUfdvWQFAnIn/C+4Wuv8t+UVdZkF/lY5bzj98GGKOGme7V/ckSHDLxE29Xp76sJ5Cpsp5A==}
