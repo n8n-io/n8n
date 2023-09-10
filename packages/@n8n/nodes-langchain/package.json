@@ -43,6 +43,7 @@
     ],
     "nodes": [
       "dist/nodes/agents/ConversationalAgent/ConversationalAgent.node.js",
+      "dist/nodes/agents/SqlAgent/SqlAgent.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.js",
       "dist/nodes/chains/ChainVectorStoreQA/ChainVectorStoreQa.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
@@ -100,6 +101,12 @@
 		"mammoth": "^1.6.0",
 		"n8n-nodes-base": "workspace:*",
 		"n8n-workflow": "*",
-		"pdf-parse": "^1.1.1"
+		"pdf-parse": "^1.1.1",
+		"@types/temp": "^0.9.1",
+		"mssql": "^8.1.2",
+		"pg": "^8.11.3",
+		"sqlite3": "^5.1.6",
+		"temp": "^0.9.4",
+		"typeorm": "^0.3.17"
 	}
 }
