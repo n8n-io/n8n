@@ -288,7 +288,7 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -511,7 +511,7 @@ export class Mailchimp implements INodeType {
 								},
 								required: true,
 								description:
-									'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -587,7 +587,7 @@ export class Mailchimp implements INodeType {
 								name: 'categoryId',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getGroupCategories',
 									loadOptionsDependsOn: ['list'],
@@ -646,7 +646,7 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -683,7 +683,7 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -749,7 +749,7 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -900,7 +900,7 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -988,7 +988,7 @@ export class Mailchimp implements INodeType {
 										name: 'categoryId',
 										type: 'options',
 										description:
-											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getGroupCategories',
 											loadOptionsDependsOn: ['list'],
@@ -1053,7 +1053,7 @@ export class Mailchimp implements INodeType {
 										},
 										required: true,
 										description:
-											'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+											'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 										default: '',
 									},
 									{
@@ -1252,7 +1252,7 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
@@ -1327,14 +1327,14 @@ export class Mailchimp implements INodeType {
 				options: [],
 				required: true,
 				description:
-					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Group Category Name or ID',
 				name: 'groupCategory',
 				type: 'options',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroupCategories',
 					loadOptionsDependsOn: ['list'],
@@ -1450,7 +1450,7 @@ export class Mailchimp implements INodeType {
 						},
 						default: [],
 						description:
-							'A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Names or IDs',
@@ -1468,7 +1468,7 @@ export class Mailchimp implements INodeType {
 							'campaigns.settings.title',
 						],
 						description:
-							'A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'List Name or ID',
@@ -1479,7 +1479,7 @@ export class Mailchimp implements INodeType {
 						},
 						default: '',
 						description:
-							'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Since Create Time',

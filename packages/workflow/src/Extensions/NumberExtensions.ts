@@ -45,7 +45,7 @@ ceil.doc = {
 	description: 'Rounds up a number to a whole number.',
 	returnType: 'number',
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-ceil',
+		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-ceil',
 };
 
 floor.doc = {
@@ -53,7 +53,7 @@ floor.doc = {
 	description: 'Rounds down a number to a whole number.',
 	returnType: 'number',
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-floor',
+		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-floor',
 };
 
 isEven.doc = {
@@ -61,7 +61,7 @@ isEven.doc = {
 	description: 'Returns true if the number is even. Only works on whole numbers.',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-isEven',
+		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-isEven',
 };
 
 isOdd.doc = {
@@ -69,7 +69,7 @@ isOdd.doc = {
 	description: 'Returns true if the number is odd. Only works on whole numbers.',
 	returnType: 'boolean',
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-isOdd',
+		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-isOdd',
 };
 
 format.doc = {
@@ -82,7 +82,7 @@ format.doc = {
 		{ name: 'options?', type: 'FormatOptions' },
 	],
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-format',
+		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-format',
 };
 
 round.doc = {
@@ -92,7 +92,7 @@ round.doc = {
 	returnType: 'number',
 	args: [{ name: 'decimalPlaces?', type: 'number' }],
 	docURL:
-		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/numbers/#number-round',
+		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-round',
 };
 
 export const numberExtensions: ExtensionMap = {

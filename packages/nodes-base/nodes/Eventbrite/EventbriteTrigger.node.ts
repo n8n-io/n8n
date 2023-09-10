@@ -83,7 +83,7 @@ export class EventbriteTrigger implements INodeType {
 				},
 				default: '',
 				description:
-					'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Name or ID',
@@ -96,7 +96,7 @@ export class EventbriteTrigger implements INodeType {
 				},
 				default: '',
 				description:
-					'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Actions',

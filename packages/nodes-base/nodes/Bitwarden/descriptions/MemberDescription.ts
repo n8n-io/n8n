@@ -176,7 +176,7 @@ export const memberFields: INodeProperties[] = [
 				name: 'collections',
 				type: 'multiOptions',
 				description:
-					'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -236,7 +236,7 @@ export const memberFields: INodeProperties[] = [
 				name: 'collections',
 				type: 'multiOptions',
 				description:
-					'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',

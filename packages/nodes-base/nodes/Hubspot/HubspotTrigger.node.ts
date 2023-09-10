@@ -160,7 +160,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['contact.propertyChange'],
 									loadOptionsMethod: 'getContactProperties',
@@ -178,7 +178,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['company.propertyChange'],
 									loadOptionsMethod: 'getCompanyProperties',
@@ -196,7 +196,7 @@ export class HubspotTrigger implements INodeType {
 								name: 'property',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsDependsOn: ['deal.propertyChange'],
 									loadOptionsMethod: 'getDealProperties',

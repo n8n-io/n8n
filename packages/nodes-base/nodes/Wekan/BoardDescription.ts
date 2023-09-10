@@ -79,7 +79,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The user ID in Wekan. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -237,7 +237,7 @@ export const boardFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The ID of the user that boards are attached. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

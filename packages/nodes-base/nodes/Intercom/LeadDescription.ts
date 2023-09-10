@@ -310,7 +310,7 @@ export const leadFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',

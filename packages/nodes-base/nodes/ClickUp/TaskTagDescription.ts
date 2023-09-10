@@ -88,7 +88,7 @@ export const taskTagFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'Only used when the parameter is set to custom_task_ids=true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Only used when the parameter is set to custom_task_ids=true. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

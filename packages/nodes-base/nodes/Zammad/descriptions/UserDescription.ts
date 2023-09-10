@@ -91,7 +91,7 @@ export const userDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'User to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'User to update. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -106,7 +106,7 @@ export const userDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'User to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'User to delete. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -121,7 +121,7 @@ export const userDescription: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		description:
-			'User to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'User to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
@@ -216,7 +216,7 @@ export const userDescription: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -261,7 +261,7 @@ export const userDescription: INodeProperties[] = [
 				name: 'organization',
 				type: 'options',
 				description:
-					'Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'loadOrganizations',
@@ -389,7 +389,7 @@ export const userDescription: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -448,7 +448,7 @@ export const userDescription: INodeProperties[] = [
 				name: 'organization',
 				type: 'options',
 				description:
-					'Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Name of the organization to assign to the user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'loadOrganizationNames',
@@ -587,7 +587,7 @@ export const userDescription: INodeProperties[] = [
 								name: 'sort_by',
 								type: 'options',
 								description:
-									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'loadUserFields',
 								},

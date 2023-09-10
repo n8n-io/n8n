@@ -1154,7 +1154,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'searchChannel',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				placeholder: 'Select a channel...',
 				typeOptions: {

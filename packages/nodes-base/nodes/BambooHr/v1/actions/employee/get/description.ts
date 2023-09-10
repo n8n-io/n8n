@@ -36,7 +36,7 @@ export const employeeGetDescription: EmployeeProperties = [
 				},
 				default: ['all'],
 				description:
-					'Set of fields to get from employee data. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Set of fields to get from employee data. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 		],
 	},

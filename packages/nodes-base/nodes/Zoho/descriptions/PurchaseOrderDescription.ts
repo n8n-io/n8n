@@ -112,7 +112,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 			loadOptionsMethod: 'getVendors',
 		},
 		description:
-			'ID of the vendor associated with the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'ID of the vendor associated with the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				resource: ['purchaseOrder'],
@@ -299,7 +299,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
 				description:
-					'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
@@ -512,7 +512,7 @@ export const purchaseOrderFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPurchaseOrderStatus',
 				},
 				description:
-					'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Status of the purchase order. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sub Total',
