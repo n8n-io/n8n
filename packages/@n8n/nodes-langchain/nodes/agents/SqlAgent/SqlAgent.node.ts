@@ -79,14 +79,9 @@ export class SqlAgent implements INodeType {
 				displayName: 'Data Source',
 				name: 'dataSource',
 				type: 'options',
-				default: 'SQLite',
+				default: 'sqlite',
 				description: 'SQL database to connect to',
 				options: [
-					{
-						name: 'SQLite',
-						value: 'sqlite',
-						description: 'Use SQLite by connecting a database file as binary input',
-					},
 					{
 						name: 'MySQL',
 						value: 'mysql',
@@ -96,6 +91,11 @@ export class SqlAgent implements INodeType {
 						name: 'Postgres',
 						value: 'postgres',
 						description: 'Connect to a Postgres database',
+					},
+					{
+						name: 'SQLite',
+						value: 'sqlite',
+						description: 'Use SQLite by connecting a database file as binary input',
 					},
 				],
 			},
@@ -117,14 +117,6 @@ export class SqlAgent implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Included Tables',
-						name: 'includedTables',
-						type: 'string',
-						default: '',
-						description:
-							'Comma-separated list of tables to include in the database. If empty, all tables are included.',
-					},
-					{
 						displayName: 'Ignored Tables',
 						name: 'ignoredTables',
 						type: 'string',
@@ -141,11 +133,12 @@ export class SqlAgent implements INodeType {
 						default: 3,
 					},
 					{
-						displayName: 'Top K',
-						name: 'topK',
-						type: 'number',
-						default: 10,
-						description: 'Number of top results agent should return',
+						displayName: 'Included Tables',
+						name: 'includedTables',
+						type: 'string',
+						default: '',
+						description:
+							'Comma-separated list of tables to include in the database. If empty, all tables are included.',
 					},
 					{
 						displayName: 'Prefix Prompt',
@@ -158,14 +151,21 @@ export class SqlAgent implements INodeType {
 						},
 					},
 					{
-						displayName: 'Sufix Prompt',
+						displayName: 'Suffix Prompt',
 						name: 'suffixPrompt',
 						type: 'string',
 						default: SQL_SUFFIX,
-						description: 'Sufix prompt to use for the agent',
+						description: 'Suffix prompt to use for the agent',
 						typeOptions: {
 							rows: 4,
 						},
+					},
+					{
+						displayName: 'Top K',
+						name: 'topK',
+						type: 'number',
+						default: 10,
+						description: 'Number of top results agent should return',
 					},
 				],
 			},
@@ -197,7 +197,7 @@ export class SqlAgent implements INodeType {
 				if (!item.binary) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'No binary data found, please connect a binary  to the input if you want to use SQLite as data source',
+						'No binary data found, please connect a binary to the input if you want to use SQLite as data source',
 					);
 				}
 
