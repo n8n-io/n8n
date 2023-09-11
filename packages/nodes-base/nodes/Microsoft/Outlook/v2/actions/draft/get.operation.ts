@@ -92,6 +92,11 @@ export async function execute(this: IExecuteFunctions, index: number) {
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
+
+		if (options.downloadAttachments) {
+			fields.push('hasAttachments');
+		}
+
 		qs.$select = fields.join(',');
 	}
 
