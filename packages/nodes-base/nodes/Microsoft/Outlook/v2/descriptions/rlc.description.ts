@@ -216,7 +216,7 @@ export const attachmentRLC: INodeProperties = {
 			placeholder: 'Select a attachment...',
 			typeOptions: {
 				searchListMethod: 'searchAttachments',
-				searchable: true,
+				searchable: false,
 			},
 		},
 		{

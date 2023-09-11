@@ -59,7 +59,8 @@ export const properties: INodeProperties[] = [
 				name: 'emailAddress',
 				type: 'string',
 				default: '',
-				description: 'Comma-separated list of email addresses to filter the contacts',
+				description:
+					'If contacts that you want to retrieve have multiple email addresses, you can enter them separated by commas',
 			},
 		],
 	},

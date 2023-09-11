@@ -245,7 +245,6 @@ export async function searchFolders(
 
 export async function searchAttachments(
 	this: ILoadOptionsFunctions,
-	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	let response: IDataObject = {};
@@ -265,14 +264,9 @@ export async function searchAttachments(
 		);
 	} else {
 		const qs: IDataObject = {
-			// $select: 'id,subject,bodyPreview',
+			$select: 'id,name',
 			$top: 100,
 		};
-
-		if (filter) {
-			const filterValue = encodeURI(filter);
-			qs.$filter = `contains(${'name'}, '${filterValue}')`;
-		}
 
 		response = await microsoftApiRequest.call(
 			this,
