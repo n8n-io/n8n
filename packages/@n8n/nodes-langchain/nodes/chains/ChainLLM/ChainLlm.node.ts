@@ -1,8 +1,9 @@
-import {
-	type IExecuteFunctions,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from 'langchain/base_language';
@@ -10,7 +11,7 @@ import { PromptTemplate } from 'langchain/prompts';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 
-async function getChain(context: IExecuteFunctions, query: string): Promise<string[]> {
+async function getChain(context: IExecuteFunctions, query: string): Promise<unknown[]> {
 	const llm = (await context.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
 	const outputParsers = (await context.getInputConnectionData(
 		'outputParser',
@@ -129,13 +130,30 @@ export class ChainLlm implements INodeType {
 			const prompt = this.getNodeParameter('prompt', i) as string;
 			const responses = await getChain(this, prompt);
 
-			responses.forEach((text) => {
-				returnData.push({
-					json: {
+			responses.forEach((response) => {
+				let data: IDataObject;
+				if (typeof response === 'string') {
+					data = {
 						response: {
-							text: typeof text === 'string' ? text.trim() : text,
+							text: response.trim(),
 						},
-					},
+					};
+				} else if (Array.isArray(response)) {
+					data = {
+						data: response,
+					};
+				} else if (response instanceof Object) {
+					data = response as IDataObject;
+				} else {
+					data = {
+						response: {
+							text: response,
+						},
+					};
+				}
+
+				returnData.push({
+					json: data,
 				});
 			});
 		}

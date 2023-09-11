@@ -1,8 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
-import type { N8nBinaryLoader } from './N8nBinaryLoader';
-import { N8nJsonLoader } from './N8nJsonLoader';
-
 import { Tool } from 'langchain/tools';
 import type { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
 import { BaseChatMessageHistory } from 'langchain/schema';
@@ -20,7 +17,10 @@ import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatMemory } from 'langchain/memory';
 import type { MemoryVariables } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
-import { BaseOutputParser, FormatInstructionsOptions } from 'langchain/schema/output_parser';
+import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
+import { BaseOutputParser } from 'langchain/schema/output_parser';
+import { N8nJsonLoader } from './N8nJsonLoader';
+import type { N8nBinaryLoader } from './N8nBinaryLoader';
 
 export function logWrapper(
 	originalInstance:

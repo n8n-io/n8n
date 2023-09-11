@@ -63,6 +63,7 @@
       "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
       "dist/nodes/output_parser/OutputParserAutofixing/OutputParserAutofixing.node.js",
       "dist/nodes/output_parser/OutputParserItemList/OutputParserItemList.node.js",
+      "dist/nodes/output_parser/OutputParserStructured/OutputParserStructured.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterRecursiveCharacterTextSplitter/TextSplitterRecursiveCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
@@ -82,6 +83,7 @@
   "devDependencies": {
     "@types/express": "^4.17.6",
     "@types/html-to-text": "^9.0.1",
+    "@types/json-schema": "^7.0.12",
     "@types/request-promise-native": "~1.0.15",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
     "gulp": "^4.0.2",
@@ -97,6 +99,7 @@
     "cohere-ai": "^6.2.2",
     "html-to-text": "^9.0.5",
     "ignore": "^5.2.4",
+    "json-schema-to-zod": "^1.1.1",
     "langchain": "^0.0.136",
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
@@ -107,6 +110,7 @@
     "pg": "^8.11.3",
     "sqlite3": "^5.1.6",
     "temp": "^0.9.4",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.17",
+    "zod": "^3.22.2"
   }
 }
