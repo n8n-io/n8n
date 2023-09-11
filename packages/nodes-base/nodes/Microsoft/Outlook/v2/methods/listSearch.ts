@@ -28,8 +28,7 @@ async function search(
 
 		if (filter) {
 			const filterValue = encodeURI(filter);
-			// qs.$filter = `startsWith(${nameProperty}, '${filterValue}')`;
-			qs.$search = `"${filterValue}"`;
+			qs.$filter = `contains(${nameProperty}, '${filterValue}')`;
 		}
 
 		response = await microsoftApiRequest.call(this, 'GET', resource, undefined, qs);
@@ -85,6 +84,11 @@ export async function searchDrafts(
 			$filter: 'isDraft eq true',
 		};
 
+		if (filter) {
+			const filterValue = encodeURI(filter);
+			qs.$filter += ` AND contains(${'subject'}, '${filterValue}')`;
+		}
+
 		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
 	}
 
@@ -124,7 +128,7 @@ export async function searchMessages(
 
 		if (filter) {
 			const filterValue = encodeURI(filter);
-			qs.$search = `"subject:${filterValue}"`;
+			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
 		response = await microsoftApiRequest.call(this, 'GET', '/messages', undefined, qs);
@@ -170,7 +174,7 @@ export async function searchEvents(
 
 		if (filter) {
 			const filterValue = encodeURI(filter);
-			qs.$filter = `startsWith(subject, '${filterValue}')`;
+			qs.$filter = `contains(${'subject'}, '${filterValue}')`;
 		}
 
 		response = await microsoftApiRequest.call(
@@ -267,7 +271,7 @@ export async function searchAttachments(
 
 		if (filter) {
 			const filterValue = encodeURI(filter);
-			qs.$filter = `startsWith(name, '${filterValue}')`;
+			qs.$filter = `contains(${'name'}, '${filterValue}')`;
 		}
 
 		response = await microsoftApiRequest.call(

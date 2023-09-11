@@ -14,7 +14,7 @@ export const calendarRLC: INodeProperties = {
 			placeholder: 'Select a calendar...',
 			typeOptions: {
 				searchListMethod: 'searchCalendars',
-				searchable: false,
+				searchable: true,
 			},
 		},
 		{
@@ -66,7 +66,7 @@ export const draftRLC: INodeProperties = {
 			placeholder: 'Select a draft...',
 			typeOptions: {
 				searchListMethod: 'searchDrafts',
-				searchable: false,
+				searchable: true,
 			},
 		},
 		{
