@@ -1211,7 +1211,7 @@ export class ZohoCrm implements INodeType {
 						const body: IDataObject = {
 							Account_Name: { id: this.getNodeParameter('accountId', i) },
 							Subject: this.getNodeParameter('subject', i),
-							Product_Details: adjustProductDetails(productDetails),
+							Product_Details: adjustProductDetails(productDetails, 'upsert'),
 						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
