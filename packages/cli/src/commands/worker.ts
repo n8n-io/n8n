@@ -37,7 +37,7 @@ import { eventBus } from '../eventbus';
 import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
 import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
-import { getWorkerCommandReceivedHandler } from './workerCommandHandler';
+import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
