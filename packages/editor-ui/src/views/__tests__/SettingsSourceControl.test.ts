@@ -135,20 +135,22 @@ describe('SettingsSourceControl', () => {
 		});
 
 		test.each([
-			['git@github.com:user/repository.git'],
-			['git@github.enterprise.com:org-name/repo-name.git'],
-			['git@192.168.1.101:2222:user/repo.git'],
-			['git@github.com:user/repo.git/path/to/subdir'],
+			['git@github.com:user/repository.git', true],
+			['git@github.enterprise.com:org-name/repo-name.git', true],
+			['git@192.168.1.101:2222:user/repo.git', true],
+			['git@github.com:user/repo.git/path/to/subdir', true],
 			// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
-			['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git'],
-			['git@github.com:org/suborg/repo.git'],
-			['git@github.com:user-name/repo-name.git'],
-			['git@github.com:user_name/repo_name.git'],
-			['git@github.com:user/repository'],
-			['git@github.enterprise.com:org-name/repo-name'],
-			['git@192.168.1.101:2222:user/repo'],
-			['git@ssh.dev.azure.com:v3/KenangaDigital/Wealthtech/workflows'],
-		])('%s', async (url: string) => {
+			['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git', true],
+			['git@github.com:org/suborg/repo.git', true],
+			['git@github.com:user-name/repo-name.git', true],
+			['git@github.com:user_name/repo_name.git', true],
+			['git@github.com:user/repository', true],
+			['git@github.enterprise.com:org-name/repo-name', true],
+			['git@192.168.1.101:2222:user/repo', true],
+			['git@ssh.dev.azure.com:v3/KenangaDigital/Wealthtech/workflows', true],
+			['http://github.com/user/repository', false],
+			['https://github.com/user/repository', false],
+		])('%s', async (url: string, isValid: boolean) => {
 			await nextTick();
 			const { container, queryByText } = renderComponent({
 				pinia,
@@ -162,7 +164,13 @@ describe('SettingsSourceControl', () => {
 			await userEvent.type(repoUrlInput, url);
 			await userEvent.tab();
 
-			expect(queryByText('The Git repository URL is not valid')).not.toBeInTheDocument();
+			const inputError = expect(queryByText('The Git repository URL is not valid'));
+
+			if (isValid) {
+				inputError.not.toBeInTheDocument();
+			} else {
+				inputError.toBeInTheDocument();
+			}
 		});
 	});
 });
