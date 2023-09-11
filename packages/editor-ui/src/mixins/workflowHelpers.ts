@@ -30,6 +30,7 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type {
@@ -62,6 +63,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
 
@@ -200,6 +202,10 @@ export function resolveParameter(
 		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
 	}
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
+
+	ExpressionEvaluatorProxy.setEvaluator(
+		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+	);
 
 	return workflow.expression.getParameterValue(
 		parameter,

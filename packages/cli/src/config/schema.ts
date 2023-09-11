@@ -1204,4 +1204,19 @@ export const schema = {
 			env: 'N8N_AI_ENABLED',
 		},
 	},
+
+	expression: {
+		evaluator: {
+			doc: 'Expression evaluator to use',
+			format: ['tmpl', 'tournament'] as const,
+			default: 'tmpl',
+			env: 'N8N_EXPRESSION_EVALUATOR',
+		},
+		reportDifference: {
+			doc: 'Expression evaluator to use',
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+		},
+	},
 };
