@@ -118,17 +118,17 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 export const CONNECTOR_COLOR: {
 	[K in ConnectionTypes]: string;
 } = {
-	chain: '--color-json-string',
-	document: '--color-success-light',
-	embedding: '--color-json-default',
-	languageModel: '--color-primary',
-	main: '--color-foreground-xdark',
-	memory: '--color-primary-tint-1',
-	outputParser: '--color-primary-tint-2',
-	textSplitter: '--color-secondary-tint-2',
-	tool: '--color-danger',
-	vectorRetriever: '--color-avatar-accent-2',
-	vectorStore: '--color-json-null',
+	chain: '--node-type-chain-color',
+	document: '--node-type-document-color',
+	embedding: '--node-type-embedding-color',
+	languageModel: '--node-type-languageModel-color',
+	main: '--node-type-main-color',
+	memory: '--node-type-memory-color',
+	outputParser: '--node-type-outputParser-color',
+	textSplitter: '--node-type-textSplitter-color',
+	tool: '--node-type-tool-color',
+	vectorRetriever: '--node-type-vectorRetriever-color',
+	vectorStore: '--node-type-vectorStore-color',
 };
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [

@@ -18,7 +18,7 @@ export class N8nAddInputEndpoint extends EndpointRepresentation<ComputedN8nAddIn
 		super(endpoint, params);
 
 		this.params = params;
-		this.params.size = params.size || 24;
+		this.params.size = params.size || 18;
 		this.params.color = params.color || '--color-foreground-xdark';
 
 		this.unbindEvents();
@@ -55,7 +55,7 @@ export const N8nAddInputEndpointHandler: EndpointHandler<
 		const x = anchorPoint.curX - ep.params.size / 2;
 		const y = anchorPoint.curY - ep.params.size / 2;
 		const w = ep.params.size;
-		const h = ep.params.size;
+		const h = ep.params.size * 4;
 
 		ep.x = x;
 		ep.y = y;

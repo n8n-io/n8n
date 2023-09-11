@@ -1156,25 +1156,36 @@ export default defineComponent({
 	}
 }
 
+.diamond-output-endpoint {
+	transform: rotate(45deg);
+}
+
 .add-input-endpoint {
 	&:not(.jtk-endpoint-connected) {
 		cursor: pointer;
 	}
 
+	.add-input-endpoint-diamond {
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-line {
+		fill: var(--svg-color, var(--color-primary));
+	}
+
 	.add-input-endpoint-plus-rectangle {
 		fill: var(--color-foreground-xlight);
-		stroke: var(--color-foreground-xdark);
+		stroke: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-plus-icon {
 		stroke: none;
-		fill: var(--color-foreground-xdark);
+		fill: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-connected-rectangle {
 		fill: var(--color-foreground-xdark);
 		stroke: var(--color-foreground-xdark);
-		display: none;
 	}
 
 	&.rect-input-endpoint-hover {
@@ -1188,16 +1199,8 @@ export default defineComponent({
 	}
 
 	&.jtk-endpoint-connected {
-		.add-input-endpoint-plus-rectangle {
+		.add-input-endpoint-unconnected {
 			display: none;
-		}
-
-		.add-input-endpoint-plus-icon {
-			display: none;
-		}
-
-		.add-input-endpoint-connected-rectangle {
-			display: initial;
 		}
 
 		&.rect-input-endpoint-hover {
