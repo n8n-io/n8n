@@ -6,6 +6,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { createFormPage } from './templates';
+
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Form Trigger',
@@ -164,6 +166,7 @@ export class FormTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
+		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 
 		//Show the form on GET request
 		if (webhookName === 'setup') {
@@ -195,67 +198,13 @@ export class FormTrigger implements INodeType {
 				htmlFields += '</div>';
 			}
 
-			// const cssFile = 'https://joffcom.github.io/style.css';
-			const javascript = `$(document).on('submit','#n8n-form',function(e){
-	$.post('#', $('#n8n-form').serialize(), function(result) {
-		var resp = jQuery.parseJSON(result);
-		if (resp.status === 'ok') {
-			$("#status").attr('class', 'alert alert-success');
-			$("#status").show();
-			$('#status-text').text('Form has been submitted.');
-		} else {
-		$("#status").attr('class', 'alert alert-danger');
-		$("#status").show();
-		$('#status-text').text('Something went wrong.');
-		}
-	});
-	return false;
-});`;
-
-			const formName = 'n8n-form';
-			const formId = 'n8n-form';
-			const jQuery = 'https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js';
-			const bootstrapCss =
-				'https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css';
-
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
 
-			const testForm = `<html>
-			<head>
-				<title>${formTitle}</title>
-				<link rel="stylesheet" href="${bootstrapCss}" crossorigin="anonymous">
-
-				<script src="${jQuery}" type="text/javascript"></script>
-				<script type="text/javascript">
-					${javascript}
-				</script>
-				</head>
-				<body>
-					<div class="container">
-						<div class="page">
-						<div id="status" style="display: none" class="alert alert-danger">
-            <p id="status-text" class="status-text"></p>
-          </div>
-							<div class="form">
-								<h1>${formTitle}</h1>
-								<p>${formDescription}</p>
-								<form action='#' method='POST' name='${formName}' id='${formId}'>
-									<div class="item">
-										${htmlFields}
-									</div>
-									<div class="btn-block">
-										<button type="submit">Submit</button>
-									</div>
-								</form>
-							</div>
-						</div>
-					</div>
-				</body>
-			</html>`;
+			const formPage = createFormPage(formTitle, formDescription, mode === 'test');
 
 			const res = this.getResponseObject();
-			res.status(200).send(testForm).end();
+			res.status(200).send(formPage).end();
 			return {
 				noWebhookResponse: true,
 			};
@@ -263,12 +212,10 @@ export class FormTrigger implements INodeType {
 
 		const bodyData = this.getBodyData();
 
-		const formUrlType = this.getMode() === 'manual' ? 'test' : 'production';
-
-		bodyData['form url'] = formUrlType;
+		bodyData['form url'] = mode;
 
 		return {
-			webhookResponse: '{"status": "ok"}',
+			webhookResponse: '<html><body>Form has been submitted.</body></html>', //TODO construct a proper response page
 			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
