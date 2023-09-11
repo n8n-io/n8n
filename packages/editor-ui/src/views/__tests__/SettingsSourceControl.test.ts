@@ -147,7 +147,7 @@ describe('SettingsSourceControl', () => {
 			['git@github.com:user/repository', true],
 			['git@github.enterprise.com:org-name/repo-name', true],
 			['git@192.168.1.101:2222:user/repo', true],
-			['git@ssh.dev.azure.com:v3/KenangaDigital/Wealthtech/workflows', true],
+			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
 			['http://github.com/user/repository', false],
 			['https://github.com/user/repository', false],
 		])('%s', async (url: string, isValid: boolean) => {
