@@ -166,6 +166,9 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 
 	connectionState.connected = true;
 
+	/**
+	 * @important Do not add to these collections. Inject the repository as a dependency instead.
+	 */
 	collections.AuthIdentity = Container.get(AuthIdentityRepository);
 	collections.AuthProviderSyncHistory = Container.get(AuthProviderSyncHistoryRepository);
 	collections.EventDestinations = Container.get(EventDestinationsRepository);

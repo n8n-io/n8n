@@ -23,11 +23,11 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 		if (!this.redisClient) {
 			await this.init();
 		}
-		await this.redisClient?.subscribe(channel, (error, count: number) => {
+		await this.redisClient?.subscribe(channel, (error, _count: number) => {
 			if (error) {
 				Logger.error(`Error subscribing to channel ${channel}`);
 			} else {
-				Logger.debug(`Subscribed ${count.toString()} to eventlog channel`);
+				Logger.debug(`Subscribed Redis PubSub client to channel: ${channel}`);
 			}
 		});
 	}
