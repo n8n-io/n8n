@@ -1325,6 +1325,6 @@ export class EditImage implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

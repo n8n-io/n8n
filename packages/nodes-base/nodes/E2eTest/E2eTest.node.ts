@@ -202,6 +202,6 @@ export class E2eTest implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

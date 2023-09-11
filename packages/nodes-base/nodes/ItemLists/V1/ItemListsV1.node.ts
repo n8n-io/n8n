@@ -920,7 +920,7 @@ return 0;`,
 					}
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			} else if (operation === 'aggregateItems') {
 				const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
@@ -1060,7 +1060,7 @@ return 0;`,
 
 					returnData.push(newItem);
 
-					return this.prepareOutputData(returnData);
+					return [returnData];
 				} else {
 					let newItems: IDataObject[] = items.map((item) => item.json);
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
@@ -1096,9 +1096,7 @@ return 0;`,
 						}, [] as IDataObject[]);
 					}
 
-					const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
-
-					return this.prepareOutputData([output]);
+					return [[{ json: { [destinationFieldName]: newItems } }]];
 				}
 			} else if (operation === 'removeDuplicates') {
 				const compare = this.getNodeParameter('compare', 0) as string;
@@ -1245,7 +1243,7 @@ return 0;`,
 				}
 
 				// return the filtered items
-				return this.prepareOutputData(data);
+				return [data];
 			} else if (operation === 'sort') {
 				let newItems = [...items];
 				const type = this.getNodeParameter('type', 0) as string;
@@ -1257,7 +1255,7 @@ return 0;`,
 
 				if (type === 'random') {
 					shuffleArray(newItems);
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (type === 'simple') {
@@ -1369,14 +1367,14 @@ return 0;`,
 				} else {
 					newItems = sortByCode.call(this, newItems);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'limit') {
 				let newItems = items;
 				const maxItems = this.getNodeParameter('maxItems', 0) as number;
 				const keep = this.getNodeParameter('keep', 0) as string;
 
 				if (maxItems > items.length) {
-					return this.prepareOutputData(newItems);
+					return [newItems];
 				}
 
 				if (keep === 'firstItems') {
@@ -1384,7 +1382,7 @@ return 0;`,
 				} else {
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
-				return this.prepareOutputData(newItems);
+				return [newItems];
 			} else if (operation === 'summarize') {
 				return summarize.execute.call(this, items);
 			} else {

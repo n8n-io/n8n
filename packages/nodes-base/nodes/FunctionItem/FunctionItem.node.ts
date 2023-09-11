@@ -240,6 +240,6 @@ return item;`,
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

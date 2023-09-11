@@ -104,6 +104,14 @@ export class License {
 		await this.manager.renew();
 	}
 
+	async shutdown() {
+		if (!this.manager) {
+			return;
+		}
+
+		await this.manager.shutdown();
+	}
+
 	isFeatureEnabled(feature: BooleanLicenseFeature) {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}

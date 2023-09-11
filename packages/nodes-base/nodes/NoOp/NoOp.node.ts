@@ -25,6 +25,6 @@ export class NoOp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }
