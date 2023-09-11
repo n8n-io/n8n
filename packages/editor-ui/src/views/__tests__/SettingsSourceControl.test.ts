@@ -128,4 +128,41 @@ describe('SettingsSourceControl', () => {
 			expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument(),
 		);
 	}, 10000);
+
+	describe('should test repo URLs', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		});
+
+		test.each([
+			['git@github.com:user/repository.git'],
+			['git@github.enterprise.com:org-name/repo-name.git'],
+			['git@192.168.1.101:2222:user/repo.git'],
+			['git@github.com:user/repo.git/path/to/subdir'],
+			// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
+			['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git'],
+			['git@github.com:org/suborg/repo.git'],
+			['git@github.com:user-name/repo-name.git'],
+			['git@github.com:user_name/repo_name.git'],
+			['git@github.com:user/repository'],
+			['git@github.enterprise.com:org-name/repo-name'],
+			['git@192.168.1.101:2222:user/repo'],
+			['git@ssh.dev.azure.com:v3/KenangaDigital/Wealthtech/workflows'],
+		])('%s', async (url: string) => {
+			await nextTick();
+			const { container, queryByText } = renderComponent({
+				pinia,
+			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+			await userEvent.click(repoUrlInput);
+			await userEvent.type(repoUrlInput, url);
+			await userEvent.tab();
+
+			expect(queryByText('The Git repository URL is not valid')).not.toBeInTheDocument();
+		});
+	});
 });
