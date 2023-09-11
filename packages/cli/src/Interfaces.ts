@@ -86,6 +86,10 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
+/**
+ * @important Do not add to these collections. Inject the repository as a dependency instead.
+ */
+
 /* eslint-disable @typescript-eslint/naming-convention */
 export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	AuthIdentity: AuthIdentityRepository;

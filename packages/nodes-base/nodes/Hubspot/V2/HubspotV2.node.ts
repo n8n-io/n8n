@@ -3034,6 +3034,6 @@ export class HubspotV2 implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

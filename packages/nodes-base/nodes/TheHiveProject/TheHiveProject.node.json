@@ -7,12 +7,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/theHive"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/thehive5/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive5/"
 			}
 		]
 	}
