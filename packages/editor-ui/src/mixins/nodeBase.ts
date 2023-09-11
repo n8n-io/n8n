@@ -22,7 +22,8 @@ import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 	type: 'N8nAddInput',
 	options: {
-		size: 24,
+		width: 24,
+		height: 72,
 		color,
 	},
 });

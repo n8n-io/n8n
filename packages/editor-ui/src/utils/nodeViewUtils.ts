@@ -280,11 +280,11 @@ export const getInputNameOverlay = (
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			if (required) {
-				label.innerHTML += ` <strong style="color: var(--color-primary)">*</strong>`;
+				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
 			if (inputName !== 'main') {
-				label.classList.add(`node-input-endpoint-label--data`);
+				label.classList.add('node-input-endpoint-label--data');
 			}
 			return label;
 		},

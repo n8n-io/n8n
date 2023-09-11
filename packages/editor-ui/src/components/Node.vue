@@ -1231,7 +1231,7 @@ export default defineComponent({
 
 	&--data {
 		text-align: center;
-		margin-top: calc(var(--spacing-m) * -1);
+		margin-top: calc(var(--spacing-l) * -1);
 		margin-left: 0;
 	}
 }
@@ -1246,7 +1246,7 @@ export default defineComponent({
 
 	&--data {
 		text-align: center;
-		margin-top: calc(var(--spacing-m) * -1);
+		margin-top: calc(var(--spacing-5xs) * -1);
 		margin-left: 0;
 	}
 }
