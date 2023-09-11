@@ -290,7 +290,11 @@ export default defineComponent({
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isConfigNode(): boolean {
-			return this.nodeTypesStore.isConfigNode(this.data?.type || '');
+			return this.nodeTypesStore.isConfigNode(
+				this.getCurrentWorkflow(),
+				this.data,
+				this.data?.type || '',
+			);
 		},
 		isConfigurableNode(): boolean {
 			return this.nodeTypesStore.isConfigurableNode(this.data?.type || '');
@@ -321,8 +325,8 @@ export default defineComponent({
 				executing: this.isExecuting,
 			};
 
-			if (this.nodeType?.outputs.length) {
-				const otherOutputs = this.nodeType.outputs.filter((outputName) => outputName !== 'main');
+			if (this.outputs.length) {
+				const otherOutputs = this.outputs.filter((outputName) => outputName !== 'main');
 				if (otherOutputs.length) {
 					classes[`node-other`] = true;
 				}
@@ -371,7 +375,7 @@ export default defineComponent({
 				this.data.disabled &&
 				this.nodeType &&
 				this.nodeType.inputs.length === 1 &&
-				this.nodeType.outputs.length === 1
+				this.outputs.length === 1
 			);
 		},
 		nodePosition(): object {
@@ -459,7 +463,7 @@ export default defineComponent({
 			);
 		},
 		shiftOutputCount(): boolean {
-			return !!(this.nodeType && this.nodeType.outputs.length > 2);
+			return !!(this.nodeType && this.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip(): boolean {
 			return (

@@ -1520,7 +1520,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	inputs: Array<ConnectionTypes | INodeInputConfiguration>;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: ConnectionTypes[];
+	outputs: ConnectionTypes[] | string;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];

@@ -6,7 +6,12 @@ import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE } from '@/constants';
 
-import type { ConnectionTypes, INodeInputConfiguration, INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	type ConnectionTypes,
+	type INodeInputConfiguration,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -39,6 +44,11 @@ export const nodeBase = defineComponent({
 				// Shouldn't affect anything
 			}
 		}
+	},
+	data() {
+		return {
+			outputs: [] as ConnectionTypes[],
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useUIStore, useCanvasStore, useWorkflowsStore, useHistoryStore),
@@ -216,10 +226,14 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData);
+			this.outputs = outputs;
+
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
 
-			nodeTypeData.outputs.forEach((outputName, i) => {
+			outputs.forEach((outputName, i) => {
 				const rootCategoryOutputName = outputName === 'main' ? 'main' : 'other';
 
 				// Increment the index for outputs with current name
@@ -238,7 +252,7 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryOutputName];
 				const typeIndex = typeIndexData[outputName];
 
-				const outputsOfSameRootType = nodeTypeData.outputs.filter((output) =>
+				const outputsOfSameRootType = outputs.filter((output) =>
 					outputName === 'main' ? output === 'main' : output !== 'main',
 				);
 
@@ -311,8 +325,8 @@ export const nodeBase = defineComponent({
 							options: {
 								dimensions: 24,
 								connectedEndpoint: endpoint,
-								showOutputLabel: nodeTypeData.outputs.length === 1,
-								size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+								showOutputLabel: outputs.length === 1,
+								size: outputs.length >= 3 ? 'small' : 'medium',
 								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},

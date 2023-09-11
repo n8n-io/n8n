@@ -36,6 +36,8 @@ import type {
 	INodePropertyOptions,
 	ResourceMapperValue,
 	ValidationResult,
+	ConnectionTypes,
+	INodeTypeDescription,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
@@ -1002,6 +1004,29 @@ export function getNodeWebhookUrl(
 		path = path.slice(1);
 	}
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
+}
+
+export function getNodeOutputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): ConnectionTypes[] {
+	if (Array.isArray(nodeTypeData.outputs)) {
+		return nodeTypeData.outputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.outputs,
+			'internal',
+			'',
+			{},
+		) as ConnectionTypes[];
+	} catch (e) {
+		throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+	}
 }
 
 /**
