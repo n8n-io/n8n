@@ -175,7 +175,7 @@ export const adjustProductDetails = (productDetails: ProductDetails, operation?:
 		};
 
 		if (operation === 'upsert') {
-			return adjustedProduct;
+			return { ...adjustedProduct, ...omit('id', p) };
 		} else {
 			return { ...adjustedProduct, ...omit('product', p) };
 		}
