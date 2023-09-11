@@ -1,5 +1,4 @@
 import type {
-	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookFunctions,
@@ -7,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { createFormPage } from './templates';
+import type { FormField } from './interfaces';
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -170,38 +170,11 @@ export class FormTrigger implements INodeType {
 
 		//Show the form on GET request
 		if (webhookName === 'setup') {
-			const formFields = this.getNodeParameter('formFields.values', []) as unknown as IDataObject[];
-
-			let htmlFields = '';
-
-			for (const field of formFields) {
-				const { fieldLabel, fieldType, requiredField } = field;
-
-				const required = requiredField ? 'required' : '';
-
-				htmlFields += '<div class="form-group">';
-
-				if (fieldType === 'dropdown') {
-					const fieldOptions = ((field.fieldOptions as IDataObject).values as IDataObject[]) || [];
-
-					htmlFields += `<label for="${fieldLabel}">${fieldLabel}</label>`;
-					htmlFields += `<select id="${fieldLabel}" name="${fieldLabel}" ${required}>`;
-					for (const entry of fieldOptions) {
-						htmlFields += `<option value="${entry.option}">${entry.option}</option>`;
-					}
-					htmlFields += '</select>';
-				} else {
-					htmlFields += `<label for="${fieldLabel}">${fieldLabel}</label>`;
-					htmlFields += `<input type="${fieldType}" class="form-control" id="${fieldLabel}" name="${fieldLabel}" ${required}/>`;
-				}
-
-				htmlFields += '</div>';
-			}
-
+			const formFields = this.getNodeParameter('formFields.values', []) as FormField[];
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
 
-			const formPage = createFormPage(formTitle, formDescription, mode === 'test');
+			const formPage = createFormPage(formTitle, formDescription, formFields, mode === 'test');
 
 			const res = this.getResponseObject();
 			res.status(200).send(formPage).end();

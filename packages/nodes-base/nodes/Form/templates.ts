@@ -1,3 +1,5 @@
+import type { FormField } from './interfaces';
+
 const styles = `
 *,
 ::after,
@@ -189,7 +191,50 @@ const testNotice = `
 </div>
 `;
 
-export const createFormPage = (formTitle: string, formDescription: string, testRun: boolean) => {
+const prepareFormGroups = (formFields: FormField[]) => {
+	let formInputs = '';
+
+	for (const field of formFields) {
+		const { fieldLabel, fieldType, requiredField } = field;
+
+		const required = requiredField ? 'required' : '';
+
+		formInputs += '<div class="form-group">';
+
+		if (fieldType === 'dropdown') {
+			const fieldOptions = field.fieldOptions?.values ?? [];
+
+			formInputs += `<label class="form-label" for="${fieldLabel}">${fieldLabel}</label>`;
+			formInputs += `<select class="form-input" id="${fieldLabel}" name="${fieldLabel}" ${required}>`;
+			formInputs += '<option value="" disabled selected>Select an option</option>';
+			for (const entry of fieldOptions) {
+				formInputs += `<option value="${entry.option}">${entry.option}</option>`;
+			}
+			formInputs += '</select>';
+		} else {
+			formInputs += `<label class="form-label" for="${fieldLabel}">${fieldLabel}</label>`;
+			formInputs += `<input class="form-input" type="${fieldType}" id="${fieldLabel}" name="${fieldLabel}" ${required}/>`;
+		}
+
+		if (requiredField) {
+			formInputs += `
+			<p class="error-${fieldLabel} error-hidden">
+				${fieldLabel} cannot be empty
+			</p>`;
+		}
+
+		formInputs += '</div>';
+	}
+
+	return formInputs;
+};
+
+export const createFormPage = (
+	formTitle: string,
+	formDescription: string,
+	formFields: FormField[],
+	testRun: boolean,
+) => {
 	return `
 	<!DOCTYPE html>
 	<html lang="en">
@@ -220,33 +265,7 @@ export const createFormPage = (formTitle: string, formDescription: string, testR
 		</div>
 
 		<div class="item">
-			<div class="form-group">
-				<label class="form-label" for="form-title-1">Form Title 1</label>
-				<input type="text" class="form-input" id="form-title-1" name="form-title-1">
-				<p class="error-form-title-1 error-hidden">
-					First Name cannot be empty
-				</p>
-			</div>
-
-			<div class="form-group">
-				<label class="form-label" for="form-title-2">Form Title 2</label>
-				<input type="text" class="form-input" id="form-title-2" name="form-title-2">
-				<p class="error-form-title-2 error-hidden">
-					First Name cannot be empty
-				</p>
-			</div>
-
-			<div class="form-group">
-				<label class="form-label" for="form-title-3">Form Title 3</label>
-				<select class="form-input" id="form-title-3" name="form-title-3">
-					<option value="" disabled selected>Select an option</option>
-					<option value="Option 1">Option 1</option>
-					<option value="Option 2">Option 2</option>
-				</select>
-				<p class="error-form-title-3 error-hidden">
-					First Name cannot be empty
-				</p>
-			</div>
+			${prepareFormGroups(formFields)}
 		</div>
 
 		<button id="submit-btn" type="submit">Submit form</button>
