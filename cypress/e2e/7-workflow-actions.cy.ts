@@ -254,7 +254,7 @@ describe('Workflow Actions', () => {
 		});
 	});
 
-	it.only('should keep endpoint click working when switching between execution and editor tab', () => {
+	it('should keep endpoint click working when switching between execution and editor tab', () => {
 		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
 		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
 
