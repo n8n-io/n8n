@@ -142,7 +142,7 @@ export const properties: INodeProperties[] = [
 						value: 'High',
 					},
 				],
-				default: 'Low',
+				default: 'Normal',
 			},
 			{
 				displayName: 'Message Type',

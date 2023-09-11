@@ -76,7 +76,6 @@ export const properties: INodeProperties[] = [
 				displayName: 'Importance',
 				name: 'importance',
 				type: 'options',
-				default: 'low',
 				options: [
 					{
 						name: 'Low',
@@ -91,6 +90,7 @@ export const properties: INodeProperties[] = [
 						value: 'high',
 					},
 				],
+				default: 'normal',
 			},
 			{
 				displayName: 'Is All Day',

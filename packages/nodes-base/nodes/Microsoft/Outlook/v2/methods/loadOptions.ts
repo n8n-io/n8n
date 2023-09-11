@@ -1,23 +1,6 @@
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 import { getSubfolders, microsoftApiRequestAllItems } from '../transport';
 
-export async function getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const categories = await microsoftApiRequestAllItems.call(
-		this,
-		'value',
-		'GET',
-		'/outlook/masterCategories',
-	);
-	for (const category of categories) {
-		returnData.push({
-			name: category.displayName as string,
-			value: category.id as string,
-		});
-	}
-	return returnData;
-}
-
 export async function getCategoriesNames(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {

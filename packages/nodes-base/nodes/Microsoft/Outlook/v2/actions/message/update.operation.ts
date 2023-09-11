@@ -28,7 +28,7 @@ export const properties: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getCategories',
+					loadOptionsMethod: 'getCategoriesNames',
 				},
 				default: [],
 			},
@@ -91,7 +91,7 @@ export const properties: INodeProperties[] = [
 						value: 'High',
 					},
 				],
-				default: 'Low',
+				default: 'Normal',
 			},
 			{
 				displayName: 'Is Read',
@@ -178,7 +178,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 	const updateFields = this.getNodeParameter('updateFields', index);
 
 	const folderId = decodeOutlookId(
-		this.getNodeParameter('folderId', index, '', {
+		this.getNodeParameter('updateFields.folderId', index, '', {
 			extractValue: true,
 		}) as string,
 	);

@@ -28,7 +28,7 @@ export const properties: INodeProperties[] = [
 				description:
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsMethod: 'getCategories',
+					loadOptionsMethod: 'getCategoriesNames',
 				},
 				default: [],
 			},
@@ -100,7 +100,7 @@ export const properties: INodeProperties[] = [
 						value: 'High',
 					},
 				],
-				default: 'Low',
+				default: 'Normal',
 			},
 			{
 				displayName: 'Is Read',
