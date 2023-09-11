@@ -389,14 +389,76 @@ export class Worker extends BaseCommand {
 		});
 	}
 
-	async setupHealthMonitor() {
-		const port = config.getEnv('queue.health.port');
+	async listenExpressServer(app: express.Application, ports: number | number[]) {
+		const safePorts = Array.isArray(ports) ? ports : [ports];
+
+		const server = http.createServer(app);
+
+		server.on('error', (error: Error & { code: string }) => {
+			if (error.code === 'EADDRINUSE') {
+				const portsOrPort = `port${safePorts.length > 1 ? 's' : ''} ${safePorts.join(', ')}`;
+				this.logger.error(
+					`n8n's ${portsOrPort} ${safePorts.join(', ')} ${
+						safePorts.length > 1 ? 'are' : 'is'
+					}  already in use. Do you have the n8n main process running on that ${portsOrPort}?`,
+				);
+				process.exit(1);
+			}
+		});
+
+		for (const port of safePorts) {
+			await new Promise<void>((resolve) => server.listen(port, () => resolve()));
+		}
+	}
+
+	async setupExpressServer() {
+		const isHealthEnpointActive = config.getEnv('queue.health.active');
+		const isMetricsEnpointActive = config.getEnv('queue.metrics.active');
+
+		const healthPort = config.getEnv('queue.health.port');
+		const metricsPort = config.getEnv('queue.health.port');
 
 		const app = express();
 		app.disable('x-powered-by');
 
-		const server = http.createServer(app);
+		if (isHealthEnpointActive) {
+			this.logger.debug(`\nHealth Check route is enabled on port ${healthPort}`);
+			await this.setupHealthMonitor(app);
+		}
 
+		if (isMetricsEnpointActive) {
+			this.logger.debug(`\nMetrics route is enabled on port ${metricsPort}`);
+			await this.setupMetricsMonitor(app);
+		}
+
+		// Case both port are equal, default case
+		if (healthPort === metricsPort) {
+			const port = healthPort;
+
+			await this.listenExpressServer(app, port);
+			this.logger.info(`\nn8n worker health & metrics check via, port ${port}`);
+		} else {
+			if (isHealthEnpointActive) {
+				await this.listenExpressServer(app, healthPort);
+				this.logger.info(`\nn8n worker health check via, port ${healthPort}`);
+			}
+
+			if (isMetricsEnpointActive) {
+				await this.listenExpressServer(app, metricsPort);
+				this.logger.info(`\nn8n worker metrics via, port ${metricsPort}`);
+			}
+		}
+
+		await this.externalHooks.run('worker.ready');
+	}
+
+	async setupMetricsMonitor(app: express.Application) {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { MetricsService } = await import('@/services/metrics.service');
+		await Container.get(MetricsService).configureMetrics(app);
+	}
+
+	async setupHealthMonitor(app: express.Application) {
 		app.get(
 			'/healthz',
 
@@ -471,19 +533,6 @@ export class Worker extends BaseCommand {
 				},
 			);
 		}
-
-		server.on('error', (error: Error & { code: string }) => {
-			if (error.code === 'EADDRINUSE') {
-				this.logger.error(
-					`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
-				);
-				process.exit(1);
-			}
-		});
-
-		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
-		await this.externalHooks.run('worker.ready');
-		this.logger.info(`\nn8n worker health check via, port ${port}`);
 	}
 
 	async run() {
@@ -495,8 +544,8 @@ export class Worker extends BaseCommand {
 		this.logger.info(` * Concurrency: ${flags.concurrency}`);
 		this.logger.info('');
 
-		if (config.getEnv('queue.health.active')) {
-			await this.setupHealthMonitor();
+		if (config.getEnv('queue.health.active') || config.getEnv('queue.metrics.active')) {
+			await this.setupExpressServer();
 		}
 
 		// Make sure that the process does not close
