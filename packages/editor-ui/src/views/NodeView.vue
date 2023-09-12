@@ -335,15 +335,13 @@ import {
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import {
-	CONNECTOR_COLOR,
-	CONNECTOR_PAINT_STYLE_DATA,
 	getConnectionPaintStyleData,
 	OVERLAY_ENDPOINT_ARROW_ID,
 	OVERLAY_REVERSE_ARROW_ID,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { SCOPED_ENDPOINT_TYPES } from '@/constants';
-import { EndpointType } from '@/Interface';
+import type { EndpointType } from '@/Interface';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2401,16 +2399,6 @@ export default defineComponent({
 
 				NodeViewUtils.resetConnection(info.connection);
 				NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
-
-				// console.log(
-				// 	info,
-				// 	info.connection.parameters.type,
-				// 	CONNECTOR_COLOR[info.connection.parameters.type],
-				// );
-				//
-				// info.connection.paintStyle.stroke = `var(${
-				// 	CONNECTOR_COLOR[info.connection.parameters.type]
-				// })`;
 
 				const connectionData: [IConnection, IConnection] = [
 					{

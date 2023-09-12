@@ -842,6 +842,7 @@ export default defineComponent({
 				height: 25px;
 			}
 		}
+
 		.node-info-icon {
 			bottom: 0px !important;
 			right: 1px !important;
@@ -849,14 +850,31 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		width: 250px;
+		$configurable-node-width: 250px;
+		$configurable-node-icon-offset: 40px;
+		$configurable-node-icon-size: 30px;
+
+		width: $configurable-node-width;
 
 		.node-description {
-			top: 105px;
-			left: unset;
+			top: calc(50%);
+			transform: translateY(-50%);
+			left: calc($configurable-node-icon-offset + $configurable-node-icon-size + var(--spacing-s));
+			text-align: left;
+			overflow: auto;
+			white-space: normal;
+			min-width: unset;
+			max-width: calc(
+				$configurable-node-width - $configurable-node-icon-offset - $configurable-node-icon-size - 2 *
+					var(--spacing-s)
+			);
 		}
 
 		.node-default {
+			.node-icon {
+				left: $configurable-node-icon-offset;
+			}
+
 			.node-options {
 				left: 65px;
 				height: 25px;
