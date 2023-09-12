@@ -2489,8 +2489,6 @@ export default defineComponent({
 			}
 		},
 		bindCanvasEvents() {
-			this.toggleEndpointEventListeners(true);
-
 			this.instance.bind(EVENT_CONNECTION_ABORT, this.onEventConnectionAbort);
 
 			this.instance.bind(INTERCEPT_BEFORE_DROP, this.onInterceptBeforeDrop);
@@ -2533,19 +2531,16 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_ABORT, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
-
-			this.toggleEndpointEventListeners(false);
 		},
-		toggleEndpointEventListeners(bind = true) {
-			const elements = this.instance.getManagedElements();
-			for (const element of Object.values(elements)) {
-				const endpoints = element.endpoints;
-				for (const endpoint of endpoints || []) {
-					const endpointInstance = endpoint?.endpoint;
-					if (endpointInstance && endpointInstance.type === N8nPlusEndpointType) {
-						if (bind) {
-							(endpointInstance as N8nPlusEndpoint).bindEvents();
-						} else {
+		unbindEndpointEventListeners(bind = true) {
+			if (this.instance) {
+				// Get all the endpoints and unbind the events
+				const elements = this.instance.getManagedElements();
+				for (const element of Object.values(elements)) {
+					const endpoints = element.endpoints;
+					for (const endpoint of endpoints || []) {
+						const endpointInstance = endpoint?.endpoint;
+						if (endpointInstance && endpointInstance.type === N8nPlusEndpointType) {
 							(endpointInstance as N8nPlusEndpoint).unbindEvents();
 						}
 					}
@@ -3583,6 +3578,7 @@ export default defineComponent({
 			this.nodeCreatorStore.setShowScrim(false);
 
 			// Reset nodes
+			this.unbindEndpointEventListeners();
 			this.deleteEveryEndpoint();
 
 			// Make sure that if there is a waiting test-webhook that it gets removed
