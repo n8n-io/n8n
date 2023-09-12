@@ -201,7 +201,7 @@ export abstract class AbstractServer {
 		const checkIfBot = isbot.spawn(['bot']);
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
-			if (!userAgent || checkIfBot(userAgent)) {
+			if (userAgent && checkIfBot(userAgent)) {
 				Logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
 				res.status(204).end();
 			} else next();
