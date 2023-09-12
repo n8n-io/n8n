@@ -88,7 +88,7 @@ format.doc = {
 round.doc = {
 	name: 'round',
 	description:
-		'Returns the value of a number rounded to the nearest whole number. Defaults to 0 decimal places if no argument is given.',
+		'Returns the value of a number rounded to the nearest whole number, unless a decimal place is specified. Defaults to 0 decimal places if no argument is given.',
 	returnType: 'number',
 	args: [{ name: 'decimalPlaces?', type: 'number' }],
 	docURL:
