@@ -1,25 +1,20 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { ICredentialDataDecryptedObject, IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { createHash } from 'crypto';
 
 export async function getAuthorization(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	credentials?: ICredentialDataDecryptedObject,
 ): Promise<string> {
 	if (credentials === undefined) {
@@ -49,12 +44,7 @@ export async function getAuthorization(
 }
 
 export async function taigaApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 	body = {},
@@ -114,7 +104,8 @@ export async function taigaApiRequestAllItems(
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		uri = responseData.headers['x-pagination-next'];
-		if (query.limit && returnData.length >= query.limit) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 	} while (

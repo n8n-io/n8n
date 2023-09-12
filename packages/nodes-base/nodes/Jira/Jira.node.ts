@@ -1,10 +1,10 @@
-import mergeWith from 'lodash.mergewith';
-
-import type { IExecuteFunctions } from 'n8n-core';
+import type { Readable } from 'stream';
+import mergeWith from 'lodash/mergeWith';
 
 import type {
 	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchItems,
@@ -13,7 +13,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import {
 	filterSortSearchListItems,
@@ -133,7 +133,7 @@ export class Jira implements INodeType {
 
 	methods = {
 		listSearch: {
-			// Get all the projects to display them to user so that he can
+			// Get all the projects to display them to user so that they can
 			// select them easily
 			async getProjects(
 				this: ILoadOptionsFunctions,
@@ -172,7 +172,7 @@ export class Jira implements INodeType {
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
 
-			// Get all the issue types to display them to user so that he can
+			// Get all the issue types to display them to user so that they can
 			// select them easily
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
@@ -203,7 +203,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
@@ -232,7 +232,7 @@ export class Jira implements INodeType {
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
 
-			// Get all the priorities to display them to user so that he can
+			// Get all the priorities to display them to user so that they can
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -262,7 +262,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the transitions (status) to display them to user so that he can
+			// Get all the transitions (status) to display them to user so that they can
 			// select them easily
 			async getTransitions(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -294,7 +294,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -340,7 +340,7 @@ export class Jira implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -370,7 +370,7 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
@@ -399,7 +399,7 @@ export class Jira implements INodeType {
 					});
 			},
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -429,7 +429,7 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the components to display them to user so that he can
+			// Get all the components to display them to user so that they can
 			// select them easily
 			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -793,7 +793,6 @@ export class Jira implements INodeType {
 							);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(simplifyIssueOutput(responseData)),
 							{ itemData: { item: i } },
 						);
@@ -1055,24 +1054,13 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
+					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-					if (items[i].binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-							itemIndex: i,
-						});
-					}
-
-					const item = items[i].binary as IBinaryKeyData;
-
-					const binaryData = item[binaryPropertyName];
-					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-
-					if (binaryData === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Item has no binary property called "${binaryPropertyName}"`,
-							{ itemIndex: i },
-						);
+					let uploadData: Buffer | Readable;
+					if (binaryData.id) {
+						uploadData = this.helpers.getBinaryStream(binaryData.id);
+					} else {
+						uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 					}
 
 					responseData = await jiraSoftwareCloudApiRequest.call(
@@ -1085,7 +1073,7 @@ export class Jira implements INodeType {
 						{
 							formData: {
 								file: {
-									value: binaryDataBuffer,
+									value: uploadData,
 									options: {
 										filename: binaryData.fileName,
 									},
@@ -1154,7 +1142,7 @@ export class Jira implements INodeType {
 							{},
 							{},
 							attachment?.json.content as string,
-							{ json: false, encoding: null },
+							{ json: false, encoding: null, useStream: true },
 						);
 
 						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
@@ -1205,7 +1193,7 @@ export class Jira implements INodeType {
 							{},
 							{},
 							attachment.json.content as string,
-							{ json: false, encoding: null },
+							{ json: false, encoding: null, useStream: true },
 						);
 						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
 							await this.helpers.prepareBinaryData(
@@ -1511,6 +1499,6 @@ export class Jira implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

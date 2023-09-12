@@ -1,7 +1,7 @@
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	JsonObject,
@@ -9,7 +9,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function pushoverApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	path: string,
 

@@ -20,6 +20,7 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -84,15 +85,13 @@ export class GoogleSheetsTrigger implements INodeType {
 						type: 'string',
 						extractValue: {
 							type: 'regex',
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex:
-										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 									errorMessage: 'Not a valid Google Drive File URL',
 								},
 							},
@@ -419,7 +418,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 
 			const googleSheet = new GoogleSheet(documentId, this);
-			const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
+			const sheetName: string = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 			const options = this.getNodeParameter('options') as IDataObject;
 
 			const previousRevision = workflowStaticData.lastRevision as number;
@@ -511,7 +510,7 @@ export class GoogleSheetsTrigger implements INodeType {
 					(await apiRequest.call(
 						this,
 						'GET',
-						`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
+						`/v4/spreadsheets/${documentId}/values/${encodeURIComponent(sheetName)}!${keyRange}`,
 					)) as IDataObject
 				).values as string[][]) || [[]];
 
@@ -597,7 +596,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				const previousRevisionSheetData =
 					sheetBinaryToArrayOfArrays(
 						previousRevisionBinaryData,
-						sheetName as string,
+						sheetName,
 						rangeDefinition === 'specifyRangeA1' ? range : undefined,
 					) || [];
 

@@ -1,9 +1,9 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	INodeListSearchItems,
 	INodeListSearchResult,
 	IPollFunctions,
@@ -14,7 +14,7 @@ import { NodeApiError } from 'n8n-workflow';
 import moment from 'moment-timezone';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 

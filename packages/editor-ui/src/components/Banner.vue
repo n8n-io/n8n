@@ -1,5 +1,5 @@
 <template>
-	<el-tag :type="theme" size="medium" :disable-transitions="true" :class="$style.container">
+	<el-tag :type="theme" :disable-transitions="true" :class="$style.container">
 		<font-awesome-icon
 			:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
 			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
@@ -36,9 +36,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Banner',
 	data() {
 		return {

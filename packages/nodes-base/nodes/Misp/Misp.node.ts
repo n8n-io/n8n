@@ -1,6 +1,6 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -754,6 +754,6 @@ export class Misp implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -100,17 +100,21 @@ export abstract class DirectoryLoader {
 				this.fixIconPath(versionNode.description, filePath);
 			}
 
+			for (const version of Object.values(tempNode.nodeVersions)) {
+				this.addLoadOptionsMethods(version);
+			}
+
 			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: currentVersionNode, filePath, isCustom });
 			nodeVersion = tempNode.currentVersion;
 
 			if (currentVersionNode.hasOwnProperty('executeSingle')) {
-				Logger.warn(
-					`"executeSingle" will get deprecated soon. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
-					{ filePath },
+				throw new Error(
+					`"executeSingle" has been removed. Please update the code of node "${this.packageName}.${nodeName}" to use "execute" instead!`,
 				);
 			}
 		} else {
+			this.addLoadOptionsMethods(tempNode);
 			// Short renaming to avoid type issues
 
 			nodeVersion = Array.isArray(tempNode.description.version)
@@ -163,6 +167,7 @@ export abstract class DirectoryLoader {
 		this.known.credentials[tempCredential.name] = {
 			className: credentialName,
 			sourcePath: filePath,
+			extends: tempCredential.extends,
 		};
 
 		this.credentialTypes[tempCredential.name] = {
@@ -233,7 +238,7 @@ export abstract class DirectoryLoader {
 			}
 
 			node.description.codex = codex;
-		} catch (_) {
+		} catch {
 			Logger.debug(`No codex available for: ${filePath.split('/').pop() ?? ''}`);
 
 			if (isCustom) {
@@ -241,6 +246,12 @@ export abstract class DirectoryLoader {
 					categories: [CUSTOM_NODES_CATEGORY],
 				};
 			}
+		}
+	}
+
+	private addLoadOptionsMethods(node: INodeType) {
+		if (node?.methods?.loadOptions) {
+			node.description.__loadOptionsMethods = Object.keys(node.methods.loadOptions);
 		}
 	}
 
@@ -360,7 +371,9 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 			if (this.includeNodes.length) {
 				const allowedNodes: typeof this.known.nodes = {};
 				for (const nodeName of this.includeNodes) {
-					allowedNodes[nodeName] = this.known.nodes[nodeName];
+					if (nodeName in this.known.nodes) {
+						allowedNodes[nodeName] = this.known.nodes[nodeName];
+					}
 				}
 				this.known.nodes = allowedNodes;
 

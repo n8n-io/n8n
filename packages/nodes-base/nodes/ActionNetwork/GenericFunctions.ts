@@ -1,11 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
-import flow from 'lodash.flow';
-import omit from 'lodash.omit';
+import flow from 'lodash/flow';
+import omit from 'lodash/omit';
 
 import type {
 	AllFieldsUi,

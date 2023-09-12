@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -1131,11 +1130,11 @@ export class Nasa implements INodeType {
 		}
 
 		if (resource === 'earthImagery' && operation === 'get') {
-			return this.prepareOutputData(items);
+			return [items];
 		} else if (resource === 'astronomyPictureOfTheDay' && operation === 'get' && download) {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

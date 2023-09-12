@@ -1,13 +1,7 @@
 <template>
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
-			<n8n-heading
-				tag="h2"
-				bold
-				class="ph-no-capture"
-				:class="$style.cardHeading"
-				data-test-id="workflow-card-name"
-			>
+			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
@@ -27,7 +21,7 @@
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
-						@click="onClickTag"
+						@click:tag="onClickTag"
 						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
 					/>
@@ -54,6 +48,7 @@
 					:actions="actions"
 					theme="dark"
 					@action="onAction"
+					@click.stop
 					data-test-id="workflow-card-actions"
 				/>
 			</div>
@@ -62,25 +57,28 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { IWorkflowDb, IUser, ITag } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { IWorkflowDb, IUser, ITag } from '@/Interface';
 import {
 	DUPLICATE_MODAL_KEY,
 	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import { useToast, useMessage } from '@/composables';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import dateformat from 'dateformat';
-import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import Vue from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import TimeAgo from '@/components/TimeAgo.vue';
+
+type ActivatorRef = InstanceType<typeof WorkflowActivator>;
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -89,13 +87,20 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default defineComponent({
 	data() {
 		return {
 			EnterpriseEditionFeature,
 		};
 	},
+	setup() {
+		return {
+			...useToast(),
+			...useMessage(),
+		};
+	},
 	components: {
+		TimeAgo,
 		WorkflowActivator,
 	},
 	props: {
@@ -115,7 +120,7 @@ export default mixins(showMessage, restApi).extend({
 				versionId: '',
 			}),
 		},
-		readonly: {
+		readOnly: {
 			type: Boolean,
 			default: false,
 		},
@@ -129,7 +134,7 @@ export default mixins(showMessage, restApi).extend({
 			return getWorkflowPermissions(this.currentUser, this.data);
 		},
 		actions(): Array<{ label: string; value: string }> {
-			return [
+			const actions = [
 				{
 					label: this.$locale.baseText('workflows.item.open'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
@@ -138,20 +143,23 @@ export default mixins(showMessage, restApi).extend({
 					label: this.$locale.baseText('workflows.item.share'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
 				},
-				{
+			];
+
+			if (!this.readOnly) {
+				actions.push({
 					label: this.$locale.baseText('workflows.item.duplicate'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
-				},
-			].concat(
-				this.workflowPermissions.delete
-					? [
-							{
-								label: this.$locale.baseText('workflows.item.delete'),
-								value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-							},
-					  ]
-					: [],
-			);
+				});
+			}
+
+			if (this.workflowPermissions.delete && !this.readOnly) {
+				actions.push({
+					label: this.$locale.baseText('workflows.item.delete'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+				});
+			}
+
+			return actions;
 		},
 		formattedCreatedAtDate(): string {
 			const currentYear = new Date().getFullYear();
@@ -165,7 +173,7 @@ export default mixins(showMessage, restApi).extend({
 	methods: {
 		async onClick(event?: PointerEvent) {
 			if (event) {
-				if ((this.$refs.activator as Vue)?.$el.contains(event.target as HTMLElement)) {
+				if ((this.$refs.activator as ActivatorRef)?.$el.contains(event.target as HTMLElement)) {
 					return;
 				}
 
@@ -180,7 +188,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 			}
 
-			this.$router.push({
+			await this.$router.push({
 				name: VIEWS.WORKFLOW,
 				params: { name: this.data.id },
 			});
@@ -217,33 +225,35 @@ export default mixins(showMessage, restApi).extend({
 					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
-				const deleteConfirmed = await this.confirmMessage(
+				const deleteConfirmed = await this.confirm(
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
 						interpolate: { workflowName: this.data.name },
 					}),
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
-					'warning',
-					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.confirmButtonText'),
-					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.cancelButtonText'),
+					{
+						type: 'warning',
+						confirmButtonText: this.$locale.baseText(
+							'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+						),
+						cancelButtonText: this.$locale.baseText(
+							'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+						),
+					},
 				);
 
-				if (deleteConfirmed === false) {
+				if (deleteConfirmed !== MODAL_CONFIRM) {
 					return;
 				}
 
 				try {
-					await this.restApi().deleteWorkflow(this.data.id);
-					this.workflowsStore.deleteWorkflow(this.data.id);
+					await this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('mainSidebar.showError.stopExecution.title'),
-					);
+					this.showError(error, this.$locale.baseText('generic.deleteWorkflowError'));
 					return;
 				}
 
 				// Reset tab title since workflow is deleted.
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('mainSidebar.showMessage.handleSelect1.title'),
 					type: 'success',
 				});

@@ -16,13 +16,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import sanitizeHtml from 'sanitize-html';
 import N8nText from '../../components/N8nText';
 import Locale from '../../mixins/locale';
 import { uid } from '../../utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-notice',
 	directives: {},
 	mixins: [Locale],

@@ -1,13 +1,11 @@
-import type { IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { googleApiRequest } from './GenericFunctions';
 
 import { utils as xlsxUtils } from 'xlsx';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export interface ISheetOptions {
 	scope: string[];
@@ -401,7 +399,7 @@ export class GoogleSheet {
 			if (itemKey === undefined || itemKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					const _data = await this.appendSheetData(
+					await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
@@ -417,7 +415,7 @@ export class GoogleSheet {
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					const _data = await this.appendSheetData(
+					await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,

@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -230,7 +229,7 @@ export class QuickBase implements INodeType {
 					);
 				}
 
-				return this.prepareOutputData(items);
+				return [items];
 			}
 		}
 
@@ -639,6 +638,6 @@ export class QuickBase implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

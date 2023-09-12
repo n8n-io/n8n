@@ -1,8 +1,15 @@
 import type { ContainerOptions, EventContext, Message, ReceiverOptions } from 'rhea';
 import { create_container } from 'rhea';
 
-import type { ITriggerFunctions } from 'n8n-core';
-import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import type {
+	ITriggerFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	ITriggerResponse,
+	IDeferredPromise,
+	IRun,
+} from 'n8n-workflow';
 import { deepCopy, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
@@ -96,6 +103,13 @@ export class AmqpTrigger implements INodeType {
 						description: 'Whether to return only the body property',
 					},
 					{
+						displayName: 'Parallel Processing',
+						name: 'parallelProcessing',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to process messages in parallel',
+					},
+					{
 						displayName: 'Reconnect',
 						name: 'reconnect',
 						type: 'boolean',
@@ -128,6 +142,7 @@ export class AmqpTrigger implements INodeType {
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
+		const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true) as boolean;
 		const pullMessagesNumber = (options.pullMessagesNumber as number) || 100;
 		const containerId = options.containerId as string;
 		const containerReconnect = (options.reconnect as boolean) || true;
@@ -151,7 +166,7 @@ export class AmqpTrigger implements INodeType {
 			context.receiver?.add_credit(pullMessagesNumber);
 		});
 
-		container.on('message', (context: EventContext) => {
+		container.on('message', async (context: EventContext) => {
 			// No message in the context
 			if (!context.message) {
 				return;
@@ -190,12 +205,24 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
-			this.emit([this.helpers.returnJsonArray([data as any])]);
+			let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+			if (!parallelProcessing) {
+				responsePromise = await this.helpers.createDeferredPromise();
+			}
+			if (responsePromise) {
+				this.emit([this.helpers.returnJsonArray([data as any])], undefined, responsePromise);
+				await responsePromise.promise();
+			} else {
+				this.emit([this.helpers.returnJsonArray([data as any])]);
+			}
 
 			if (!context.receiver?.has_credit()) {
-				setTimeout(() => {
-					context.receiver?.add_credit(pullMessagesNumber);
-				}, (options.sleepTime as number) || 10);
+				setTimeout(
+					() => {
+						context.receiver?.add_credit(pullMessagesNumber);
+					},
+					(options.sleepTime as number) || 10,
+				);
 			}
 		});
 

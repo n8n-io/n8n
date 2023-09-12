@@ -16,19 +16,13 @@
 </template>
 
 <script lang="ts">
-import { XYPosition } from '@/Interface';
-import { useNDVStore } from '@/stores/ndv';
+import type { XYPosition } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-// @ts-ignore
-import Teleport from 'vue2-teleport';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'draggable',
-	components: {
-		Teleport,
-	},
 	props: {
 		disabled: {
 			type: Boolean,
@@ -103,6 +97,12 @@ export default Vue.extend({
 
 			window.addEventListener('mousemove', this.onDrag);
 			window.addEventListener('mouseup', this.onDragEnd);
+
+			// blur so that any focused inputs update value
+			const activeElement = document.activeElement as HTMLElement;
+			if (activeElement) {
+				activeElement.blur();
+			}
 		},
 		onDrag(e: MouseEvent) {
 			e.preventDefault();

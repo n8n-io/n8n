@@ -54,8 +54,8 @@ The most important directories:
 
 ## Development setup
 
-If you want to change or extend n8n you have to make sure that all needed
-dependencies are installed and the packages get linked correctly. Here a short guide on how that can be done:
+If you want to change or extend n8n you have to make sure that all the needed
+dependencies are installed and the packages get linked correctly. Here's a short guide on how that can be done:
 
 ### Requirements
 
@@ -65,11 +65,11 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 7.18 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 8.7 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 
-n8n is split up in different modules which are all in a single mono repository.
+n8n is split up into different modules which are all in a single mono repository.
 To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
 This automatically sets up file-links between modules which depend on each other.
 
@@ -113,24 +113,24 @@ No additional packages required.
 
 > **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
 
-Now that everything n8n requires to run is installed the actual n8n code can be
+Now that everything n8n requires to run is installed, the actual n8n code can be
 checked out and set up:
 
-1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository
+1. [Fork](https://guides.github.com/activities/forking/#fork) the n8n repository.
 
-2. Clone your forked repository
+2. Clone your forked repository:
 
    ```
    git clone https://github.com/<your_github_username>/n8n.git
    ```
 
-3. Go into repository folder
+3. Go into repository folder:
 
    ```
    cd n8n
    ```
 
-4. Add the original n8n repository as `upstream` to your forked repository
+4. Add the original n8n repository as `upstream` to your forked repository:
 
    ```
    git remote add upstream https://github.com/n8n-io/n8n.git
@@ -172,13 +172,13 @@ automatically build your code, restart the backend and refresh the frontend
    pnpm dev
    ```
 1. Hack, hack, hack
-1. Check if everything still runs in production mode
+1. Check if everything still runs in production mode:
    ```
    pnpm build
    pnpm start
    ```
 1. Create tests
-1. Run all [tests](#test-suite)
+1. Run all [tests](#test-suite):
    ```
    pnpm test
    ```
@@ -198,7 +198,7 @@ tests of all packages.
 
 ## Releasing
 
-To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then
+To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/actions/workflows/release-create-pr.yml) with the SemVer release type, and select a branch to cut this release from. This workflow will then:
 
 1. Bump versions of packages that have changed or have dependencies that have changed
 2. Update the Changelog
@@ -206,7 +206,7 @@ To start a release, trigger [this workflow](https://github.com/n8n-io/n8n/action
 4. Create a new pull-request to track any further changes that need to be included in this release
 
 Once ready to release, simply merge the pull-request.
-This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will
+This triggers [another workflow](https://github.com/n8n-io/n8n/actions/workflows/release-publish.yml), that will:
 
 1. Build and publish the packages that have a new version in this release
 2. Create a new tag, and GitHub release from squashed release commit
@@ -226,4 +226,4 @@ That we do not have any potential problems later it is sadly necessary to sign a
 
 We used the most simple one that exists. It is from [Indie Open Source](https://indieopensource.com/forms/cla) which uses plain English and is literally only a few lines long.
 
-A bot will automatically comment on the pull request once it got opened asking for the agreement to be signed. Before it did not get signed it is sadly not possible to merge it in.
+Once a pull request is opened, an automated bot will promptly leave a comment requesting the agreement to be signed. The pull request can only be merged once the signature is obtained.

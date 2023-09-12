@@ -1,16 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type {
 	IBinaryKeyData,
 	IDataObject,
 	IDisplayOptions,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
 	IPollFunctions,
@@ -47,12 +43,7 @@ const apiVersion: { [key: number]: string } = {
 };
 
 export async function notionApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 
@@ -109,7 +100,8 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData.has_more !== false);
@@ -882,7 +874,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 				},
@@ -905,7 +897,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -922,7 +914,7 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -945,7 +937,7 @@ export function getSearchFilters(resource: string) {
 			type: 'notice',
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],
@@ -959,7 +951,7 @@ export function getSearchFilters(resource: string) {
 			type: 'string',
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],

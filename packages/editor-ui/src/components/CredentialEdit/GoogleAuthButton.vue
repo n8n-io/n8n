@@ -8,7 +8,7 @@
 </template>
 
 <script lang="ts" setup>
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 const { baseUrl } = useRootStore();
 const googleAuthButtons = {

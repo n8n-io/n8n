@@ -1,13 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
-	IBinaryKeyData,
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { awsApiRequestREST, keysTPascalCase } from './GenericFunctions';
 
@@ -104,7 +101,7 @@ export class AwsRekognition implements INodeType {
 						resource: ['image'],
 					},
 				},
-				description: 'Whether the image to analize should be taken from binary field',
+				description: 'Whether the image to analyze should be taken from binary field',
 			},
 			{
 				displayName: 'Binary Property',
@@ -364,9 +361,9 @@ export class AwsRekognition implements INodeType {
 							action = 'RekognitionService.DetectFaces';
 
 							// TODO: Add a later point make it possible to activate via option.
-							//       If activated add an index to each of the found faces/tages/...
+							//       If activated add an index to each of the found faces/tags/...
 							//       to not loose the reference to the image it got found on if
-							//       multilpe ones got supplied.
+							//       multiple ones got supplied.
 							// property = 'FaceDetails';
 
 							if (additionalFields.attributes) {
@@ -392,82 +389,62 @@ export class AwsRekognition implements INodeType {
 
 						if (type === 'detectText') {
 							action = 'RekognitionService.DetectText';
-
-							body.Filters = {};
-
-							const box =
-								((additionalFields.regionsOfInterestUi as IDataObject)
-									?.regionsOfInterestValues as IDataObject[]) || [];
-
-							if (box.length !== 0) {
-								//@ts-ignore
-								body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
-									return { BoundingBox: keysTPascalCase(entry) };
-								});
-							}
-
-							const wordFilter = (additionalFields.wordFilterUi as IDataObject) || {};
-							if (Object.keys(wordFilter).length !== 0) {
-								//@ts-ignore
-								body.Filters.WordFilter = keysTPascalCase(wordFilter);
-							}
-
-							const binaryData = this.getNodeParameter('binaryData', 0);
-
-							if (binaryData) {
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
-
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-
-								if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`Item has no binary property called "${binaryPropertyName}"`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryPropertyData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-
-								Object.assign(body, {
-									Image: {
-										Bytes: binaryPropertyData.data,
-									},
-								});
-							} else {
-								const bucket = this.getNodeParameter('bucket', i) as string;
-
-								const name = this.getNodeParameter('name', i) as string;
-
-								Object.assign(body, {
-									Image: {
-										S3Object: {
-											Bucket: bucket,
-											Name: name,
-										},
-									},
-								});
-
-								if (additionalFields.version) {
-									//@ts-ignore
-									body.Image.S3Object.Version = additionalFields.version as string;
-								}
-							}
-
-							responseData = await awsApiRequestREST.call(
-								this,
-								'rekognition',
-								'POST',
-								'',
-								JSON.stringify(body),
-								{},
-								{ 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' },
-							);
 						}
+						body.Filters = {};
+
+						const box =
+							((additionalFields.regionsOfInterestUi as IDataObject)
+								?.regionsOfInterestValues as IDataObject[]) || [];
+
+						if (box.length !== 0) {
+							//@ts-ignore
+							body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
+								return { BoundingBox: keysTPascalCase(entry) };
+							});
+						}
+
+						const wordFilter = (additionalFields.wordFilterUi as IDataObject) || {};
+						if (Object.keys(wordFilter).length !== 0) {
+							//@ts-ignore
+							body.Filters.WordFilter = keysTPascalCase(wordFilter);
+						}
+
+						const isBinaryData = this.getNodeParameter('binaryData', i);
+						if (isBinaryData) {
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryPropertyData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							Object.assign(body, {
+								Image: {
+									Bytes: binaryPropertyData.data,
+								},
+							});
+						} else {
+							const bucket = this.getNodeParameter('bucket', i) as string;
+							const name = this.getNodeParameter('name', i) as string;
+
+							Object.assign(body, {
+								Image: {
+									S3Object: {
+										Bucket: bucket,
+										Name: name,
+									},
+								},
+							});
+
+							if (additionalFields.version) {
+								//@ts-ignore
+								body.Image.S3Object.Version = additionalFields.version as string;
+							}
+						}
+						responseData = await awsApiRequestREST.call(
+							this,
+							'rekognition',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{},
+							{ 'X-Amz-Target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 					}
 				}
 

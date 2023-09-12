@@ -1,13 +1,14 @@
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 /**
  * Make an API request to Asana

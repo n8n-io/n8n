@@ -6,16 +6,17 @@ import { sign } from 'aws4';
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { ICredentialDataDecryptedObject, IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 function getEndpointForService(
 	service: string,

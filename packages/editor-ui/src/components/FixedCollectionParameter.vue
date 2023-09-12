@@ -49,14 +49,16 @@
 								/>
 							</div>
 						</div>
-						<parameter-input-list
-							:parameters="property.values"
-							:nodeValues="nodeValues"
-							:path="getPropertyPath(property.name, index)"
-							:hideDelete="true"
-							:isReadOnly="isReadOnly"
-							@valueChanged="valueChanged"
-						/>
+						<Suspense>
+							<parameter-input-list
+								:parameters="property.values"
+								:nodeValues="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hideDelete="true"
+								:isReadOnly="isReadOnly"
+								@valueChanged="valueChanged"
+							/>
+						</Suspense>
 					</div>
 				</div>
 			</div>
@@ -96,7 +98,7 @@
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@change="optionSelected"
+					@update:modelValue="optionSelected"
 					filterable
 				>
 					<n8n-option
@@ -112,21 +114,23 @@
 </template>
 
 <script lang="ts">
-import Vue, { Component, PropType } from 'vue';
-import { IUpdateInformation } from '@/Interface';
+import { defineAsyncComponent, defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
 
-import {
+import type {
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValue,
-	deepCopy,
-	isINodePropertyCollectionList,
 } from 'n8n-workflow';
+import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
 
-export default Vue.extend({
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+
+export default defineComponent({
 	name: 'FixedCollectionParameter',
 	props: {
 		nodeValues: {
@@ -151,7 +155,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {
@@ -337,15 +341,13 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
-::v-deep {
-	.button {
+.fixed-collection-parameter {
+	padding-left: var(--spacing-s);
+
+	:deep(.button) {
 		--button-background-color: var(--color-background-base);
 		--button-border-color: var(--color-foreground-base);
 	}
-}
-
-.fixed-collection-parameter {
-	padding-left: var(--spacing-s);
 }
 
 .fixed-collection-parameter-property {

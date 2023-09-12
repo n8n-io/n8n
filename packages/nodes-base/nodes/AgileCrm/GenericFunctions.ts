@@ -1,13 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { IContactUpdate } from './ContactInterface';
@@ -15,7 +14,7 @@ import type { IContactUpdate } from './ContactInterface';
 import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: any = {},
@@ -95,7 +94,7 @@ export async function agileCrmApiRequestAllItems(
 }
 
 export async function agileCrmApiRequestUpdate(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method = 'PUT',
 	endpoint?: string,
 	body: any = {},

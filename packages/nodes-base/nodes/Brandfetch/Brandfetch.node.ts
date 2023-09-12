@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -286,7 +285,7 @@ export class Brandfetch implements INodeType {
 
 		if (operation === 'logo' && this.getNodeParameter('download', 0)) {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			return [responseData];
 		}

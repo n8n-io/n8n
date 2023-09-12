@@ -1,13 +1,18 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IHookFunctions,
+	IWebhookFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import type { IMessage } from './MessageInterface';
 import type { IStream } from './StreamInterface';
 import type { IUser } from './UserInterface';
-
-import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
 
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -21,7 +26,7 @@ export async function zulipApiRequest(
 ) {
 	const credentials = await this.getCredentials('zulipApi');
 
-	const endpoint = `${credentials.url}/api/v1`;
+	const endpoint = `${credentials.url.toString().replace(new RegExp('/$'), '')}/api/v1`;
 
 	let options: OptionsWithUri = {
 		auth: {

@@ -1,6 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeProperties,
@@ -8,7 +8,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import gm from 'gm';
 import { file } from 'tmp-promise';
 import { parse as pathParse } from 'path';
@@ -1030,6 +1030,7 @@ export class EditImage implements INodeType {
 					rotate: ['backgroundColor', 'rotate'],
 					shear: ['degreesX', 'degreesY'],
 					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					transparent: ['color'],
 				};
 
 				let operations: IDataObject[] = [];
@@ -1058,20 +1059,7 @@ export class EditImage implements INodeType {
 
 				if (operations[0].operation !== 'create') {
 					// "create" generates a new image so does not require any incoming data.
-					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), 'Item does not contain any binary data.', {
-							itemIndex,
-						});
-					}
-
-					if (item.binary[dataPropertyName] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`Item does not contain any binary data with the name "${dataPropertyName}".`,
-							{ itemIndex },
-						);
-					}
-
+					this.helpers.assertBinaryData(itemIndex, dataPropertyName);
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 						itemIndex,
 						dataPropertyName,
@@ -1120,23 +1108,17 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
-							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
-						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
-							throw new NodeOperationError(
-								this.getNode(),
-								`Item does not contain any binary data with the name "${operationData.dataPropertyNameComposite}".`,
-								{ itemIndex },
-							);
-						}
+						const binaryPropertyName = operationData.dataPropertyNameComposite as string;
+						this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+							itemIndex,
+							binaryPropertyName,
+						);
 
 						const { fd, path, cleanup } = await file();
 						cleanupFunctions.push(cleanup);
-						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
-							itemIndex,
-							operationData.dataPropertyNameComposite as string,
-						);
 						await fsWriteFileAsync(fd, binaryDataBuffer);
 
 						if (operations[0].operation === 'create') {
@@ -1301,7 +1283,6 @@ export class EditImage implements INodeType {
 					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
-							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
@@ -1344,6 +1325,6 @@ export class EditImage implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -5,7 +5,6 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import validator from 'validator';
-import { middleware as openapiValidatorMiddleware } from 'express-openapi-validator';
 import YAML from 'yamljs';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -16,6 +15,7 @@ import * as Db from '@/Db';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { License } from '@/License';
 
 async function createApiRouter(
 	version: string,
@@ -54,10 +54,11 @@ async function createApiRouter(
 		res.sendFile(openApiSpecPath);
 	});
 
+	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
-		openapiValidatorMiddleware({
+		openApiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
@@ -151,3 +152,12 @@ export const loadPublicApiVersions = async (
 		apiLatestVersion: Number(versions.pop()?.charAt(1)) ?? 1,
 	};
 };
+
+function isApiEnabledByLicense(): boolean {
+	const license = Container.get(License);
+	return !license.isAPIDisabled();
+}
+
+export function isApiEnabled(): boolean {
+	return !config.get('publicApi.disabled') && isApiEnabledByLicense();
+}

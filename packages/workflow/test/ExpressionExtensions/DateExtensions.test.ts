@@ -16,6 +16,10 @@ describe('Data Transformation Functions', () => {
 
 		test('.beginningOf("week") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}')).toEqual(
+				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }),
+			);
+
+			expect(evaluate('={{ new Date(2023, 0, 20).beginningOf("week") }}')).toEqual(
 				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }).toJSDate(),
 			);
 		});
@@ -49,6 +53,9 @@ describe('Data Transformation Functions', () => {
 
 		test('.endOfMonth() should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}')).toEqual(
+				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }),
+			);
+			expect(evaluate('={{ new Date(2023, 0, 16).endOfMonth() }}')).toEqual(
 				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }).toJSDate(),
 			);
 		});
@@ -60,7 +67,6 @@ describe('Data Transformation Functions', () => {
 		test('.extract() should extract week for no args', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 20).extract() }}')).toEqual(3);
 		});
-
 
 		test('.format("yyyy LLL dd") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.local(2023, 1, 16).format("yyyy LLL dd") }}')).toEqual(
@@ -74,27 +80,29 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.inBetween() should work on string and Date', () => {
-			expect(evaluate(`={{ $now.isBetween('2023-06-23'.toDate(), '2023-06-23') }}`)).toBeDefined();
+			expect(evaluate("={{ $now.isBetween('2023-06-23'.toDate(), '2023-06-23') }}")).toBeDefined();
 		});
 
 		test('.inBetween() should work on string and DateTime', () => {
-			expect(evaluate(`={{ $now.isBetween($now, '2023-06-23') }}`)).toBeDefined();
+			expect(evaluate("={{ $now.isBetween($now, '2023-06-23') }}")).toBeDefined();
 		});
 
 		test('.inBetween() should not work for invalid strings', () => {
-			expect(evaluate(`={{ $now.isBetween($now, 'invalid') }}`)).toBeUndefined();
+			expect(evaluate("={{ $now.isBetween($now, 'invalid') }}")).toBeUndefined();
 		});
 
 		test('.inBetween() should not work for numbers', () => {
-			expect(evaluate(`={{ $now.isBetween($now, 1) }}`)).toBeUndefined();
+			expect(evaluate('={{ $now.isBetween($now, 1) }}')).toBeUndefined();
 		});
 
 		test('.inBetween() should not work for a single argument', () => {
-			expect(() => evaluate(`={{ $now.isBetween($now) }}`)).toThrow();
+			expect(() => evaluate('={{ $now.isBetween($now) }}')).toThrow();
 		});
 
 		test('.inBetween() should not work for a more than two arguments', () => {
-			expect(() => evaluate(`={{ $now.isBetween($now, '2023-06-23', '2023-09-21'.toDate()) }}`)).toThrow();
+			expect(() =>
+				evaluate("={{ $now.isBetween($now, '2023-06-23', '2023-09-21'.toDate()) }}"),
+			).toThrow();
 		});
 	});
 });

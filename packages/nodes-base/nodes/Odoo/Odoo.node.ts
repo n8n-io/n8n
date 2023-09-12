@@ -1,7 +1,7 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -765,6 +765,6 @@ export class Odoo implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,22 +1,12 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
+import type { MigrationContext, IrreversibleMigration } from '@db/types';
 
-export class UpdateRunningExecutionStatus1677236788851 implements MigrationInterface {
-	name = 'UpdateRunningExecutionStatus1677236788851';
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class UpdateRunningExecutionStatus1677236788851 implements IrreversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`UPDATE \`${tablePrefix}execution_entity\` SET status='failed' WHERE status = 'running' AND finished=0 AND \`stoppedAt\` IS NOT NULL;`,
 		);
 		await queryRunner.query(
 			`UPDATE \`${tablePrefix}execution_entity\` SET status='success' WHERE status = 'running' AND finished=1 AND \`stoppedAt\` IS NOT NULL;`,
 		);
-
-		logMigrationEnd(this.name);
 	}
-
-	public async down(queryRunner: QueryRunner): Promise<void> {}
 }

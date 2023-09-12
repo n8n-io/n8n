@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -269,6 +269,6 @@ export class Flow implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

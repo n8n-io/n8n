@@ -56,7 +56,7 @@
 					:displayOptions="true"
 					:hideLabel="true"
 					:path="getPath(index)"
-					@valueChanged="valueChanged"
+					@update="valueChanged"
 					inputSize="small"
 					:isReadOnly="isReadOnly"
 				/>
@@ -84,15 +84,17 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import { IUpdateInformation } from '@/Interface';
-import { deepCopy, INodeParameters, INodeProperties } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { get } from 'lodash-es';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'MultipleParameter',
 	components: {
 		CollectionParameter,
@@ -207,6 +209,32 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
+.duplicate-parameter {
+	:deep(.button) {
+		--button-background-color: var(--color-background-base);
+		--button-border-color: var(--color-foreground-base);
+	}
+
+	:deep(.duplicate-parameter-item) {
+		position: relative;
+
+		.multi > .delete-item {
+			top: 0.1em;
+		}
+	}
+
+	:deep(.duplicate-parameter-input-item) {
+		margin: 0.5em 0 0.25em 2em;
+	}
+
+	:deep(.duplicate-parameter-item + .duplicate-parameter-item) {
+		.collection-parameter-wrapper {
+			border-top: 1px dashed #999;
+			margin-top: var(--spacing-xs);
+		}
+	}
+}
+
 .duplicate-parameter-item {
 	~ .add-item-wrapper {
 		margin-top: var(--spacing-xs);
@@ -228,31 +256,6 @@ export default Vue.extend({
 	}
 }
 
-::v-deep {
-	.button {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
-	}
-
-	.duplicate-parameter-item {
-		position: relative;
-
-		.multi > .delete-item {
-			top: 0.1em;
-		}
-	}
-
-	.duplicate-parameter-input-item {
-		margin: 0.5em 0 0.25em 2em;
-	}
-
-	.duplicate-parameter-item + .duplicate-parameter-item {
-		.collection-parameter-wrapper {
-			border-top: 1px dashed #999;
-			margin-top: var(--spacing-xs);
-		}
-	}
-}
 .no-items-exist {
 	margin: var(--spacing-xs) 0;
 }

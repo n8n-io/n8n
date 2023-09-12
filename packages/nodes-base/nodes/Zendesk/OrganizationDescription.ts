@@ -94,7 +94,7 @@ export const organizationFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Details obout the organization, such as the address',
+				description: 'Details about the organization, such as the address',
 			},
 			{
 				displayName: 'Domain Names',
@@ -192,7 +192,7 @@ export const organizationFields: INodeProperties[] = [
 				name: 'details',
 				type: 'string',
 				default: '',
-				description: 'Details obout the organization, such as the address',
+				description: 'Details about the organization, such as the address',
 			},
 			{
 				displayName: 'Domain Names',

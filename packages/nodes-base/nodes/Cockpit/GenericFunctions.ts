@@ -1,10 +1,14 @@
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -41,7 +45,7 @@ export async function cockpitApiRequest(
 }
 
 export function createDataFromParameters(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
 ): IDataObject {
 	const dataFieldsAreJson = this.getNodeParameter('jsonDataFields', itemIndex) as boolean;

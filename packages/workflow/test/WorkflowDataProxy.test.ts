@@ -1,7 +1,8 @@
-import { IConnections, IExecuteData, INode, IRunExecutionData } from '@/Interfaces';
+import type { IConnections, IExecuteData, INode, IRunExecutionData } from '@/Interfaces';
 import { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import * as Helpers from './Helpers';
+import { ExpressionError } from '@/ExpressionError';
 
 describe('WorkflowDataProxy', () => {
 	describe('test data proxy', () => {
@@ -37,11 +38,19 @@ describe('WorkflowDataProxy', () => {
 				position: [460, 200],
 			},
 			{
-				name: 'End',
+				name: 'Set',
 				type: 'test.set',
 				parameters: {},
 				typeVersion: 1,
 				id: 'uuid-4',
+				position: [640, 200],
+			},
+			{
+				name: 'End',
+				type: 'test.set',
+				parameters: {},
+				typeVersion: 1,
+				id: 'uuid-5',
 				position: [640, 200],
 			},
 		];
@@ -234,7 +243,7 @@ describe('WorkflowDataProxy', () => {
 			data: runExecutionData.resultData.runData[nameLastNode][0].data!,
 			node: nodes.find((node) => node.name === nameLastNode) as INode,
 			source: {
-				main: runExecutionData.resultData.runData[nameLastNode][0].source!,
+				main: runExecutionData.resultData.runData[nameLastNode][0].source,
 			},
 		};
 
@@ -280,6 +289,14 @@ describe('WorkflowDataProxy', () => {
 
 		test('test $("NodeName").params', () => {
 			expect(proxy.$('Rename').params).toEqual({ value1: 'data', value2: 'initialName' });
+		});
+
+		test('$("NodeName")', () => {
+			expect(() => proxy.$('doNotExist')).toThrowError(ExpressionError);
+		});
+
+		test('$("NodeName")', () => {
+			expect(() => proxy.$('Set')).toThrowError(ExpressionError);
 		});
 
 		test('test $input.all()', () => {

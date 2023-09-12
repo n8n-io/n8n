@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -461,7 +460,7 @@ export class ApiTemplateIo implements INodeType {
 				}
 
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		} else if (resource === 'pdf') {
@@ -550,7 +549,7 @@ export class ApiTemplateIo implements INodeType {
 					}
 				}
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		}

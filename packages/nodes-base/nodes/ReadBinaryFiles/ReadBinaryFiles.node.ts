@@ -1,5 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+
 import glob from 'fast-glob';
 
 export class ReadBinaryFiles implements INodeType {
@@ -57,6 +62,6 @@ export class ReadBinaryFiles implements INodeType {
 			});
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

@@ -11,70 +11,13 @@
 		</div>
 		<div :class="$style.controls">
 			<el-checkbox
-				v-model="autoRefresh"
-				@change="onAutoRefreshToggle"
+				:modelValue="autoRefresh"
+				@update:modelValue="$emit('update:autoRefresh', $event)"
 				data-test-id="auto-refresh-checkbox"
 			>
 				{{ $locale.baseText('executionsList.autoRefresh') }}
 			</el-checkbox>
-			<n8n-popover trigger="click">
-				<template #reference>
-					<div :class="$style.filterButton">
-						<n8n-button
-							icon="filter"
-							type="tertiary"
-							size="medium"
-							:active="statusFilterApplied"
-							data-test-id="executions-filter-button"
-						>
-							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
-							{{ $locale.baseText('executionsList.filters') }}
-						</n8n-button>
-					</div>
-				</template>
-				<div :class="$style['filters-dropdown']">
-					<div class="mb-s">
-						<n8n-input-label
-							:label="$locale.baseText('executions.ExecutionStatus')"
-							:bold="false"
-							size="small"
-							color="text-base"
-							class="mb-3xs"
-						/>
-						<n8n-select
-							v-model="filter.status"
-							size="small"
-							ref="typeInput"
-							:class="$style['type-input']"
-							:placeholder="$locale.baseText('generic.any')"
-							data-test-id="execution-status-select"
-							@change="onFilterChange"
-						>
-							<n8n-option
-								v-for="item in executionStatuses"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id"
-								:data-test-id="`execution-status-${item.id}`"
-							>
-							</n8n-option>
-						</n8n-select>
-					</div>
-					<div :class="[$style.filterMessage, 'mt-s']" v-if="statusFilterApplied">
-						<n8n-link @click="resetFilters">
-							{{ $locale.baseText('generic.reset') }}
-						</n8n-link>
-					</div>
-				</div>
-			</n8n-popover>
-		</div>
-		<div v-show="statusFilterApplied" class="mb-xs">
-			<n8n-info-tip :bold="false">
-				{{ $locale.baseText('generic.filtersApplied') }}
-				<n8n-link @click="resetFilters" size="small">
-					{{ $locale.baseText('generic.resetAllFilters') }}
-				</n8n-link>
-			</n8n-info-tip>
+			<execution-filter popover-placement="left-start" @filterChanged="onFilterChanged" />
 		</div>
 		<div
 			:class="$style.executionList"
@@ -82,28 +25,32 @@
 			data-test-id="current-executions-list"
 			@scroll="loadMore(20)"
 		>
-			<div v-if="loading" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			<div v-if="loading" class="mr-l">
+				<n8n-loading variant="rect" />
 			</div>
-			<div v-if="executions.length === 0 && statusFilterApplied" :class="$style.noResultsContainer">
+			<div v-if="!loading && executions.length === 0" :class="$style.noResultsContainer">
 				<n8n-text color="text-base" size="medium" align="center">
 					{{ $locale.baseText('executionsLandingPage.noResults') }}
 				</n8n-text>
 			</div>
 			<execution-card
-				v-else
+				v-else-if="temporaryExecution"
+				:execution="temporaryExecution"
+				:ref="`execution-${temporaryExecution.id}`"
+				:data-test-id="`execution-details-${temporaryExecution.id}`"
+				:showGap="true"
+				@retryExecution="onRetryExecution"
+			/>
+			<execution-card
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
 				:ref="`execution-${execution.id}`"
 				:data-test-id="`execution-details-${execution.id}`"
-				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
-				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+				<n8n-loading variant="p" :rows="1" />
 			</div>
 		</div>
 		<div :class="$style.infoAccordion">
@@ -115,22 +62,31 @@
 <script lang="ts">
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
+import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { VIEWS } from '@/constants';
-import { IExecutionsSummary } from '@/Interface';
-import { Route } from 'vue-router';
-import Vue from 'vue';
-import { PropType } from 'vue';
+import type { IExecutionsSummary } from 'n8n-workflow';
+import type { Route } from 'vue-router';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { ExecutionFilterType } from '@/Interface';
 
-export default Vue.extend({
+type ExecutionCardRef = InstanceType<typeof ExecutionCard>;
+
+export default defineComponent({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
 		ExecutionsInfoAccordion,
+		ExecutionFilter,
 	},
 	props: {
+		autoRefresh: {
+			type: Boolean,
+			default: false,
+		},
 		executions: {
 			type: Array as PropType<IExecutionsSummary[]>,
 			required: true,
@@ -143,30 +99,19 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		temporaryExecution: {
+			type: Object as PropType<IExecutionsSummary>,
+			default: null,
+		},
 	},
 	data() {
 		return {
 			VIEWS,
-			filter: {
-				status: '',
-			},
-			autoRefresh: false,
-			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			filter: {} as ExecutionFilterType,
 		};
 	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		statusFilterApplied(): boolean {
-			return this.filter.status !== '';
-		},
-		executionStatuses(): Array<{ id: string; name: string }> {
-			return [
-				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
-				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
-				{ id: 'success', name: this.$locale.baseText('executionsList.success') },
-				{ id: 'waiting', name: this.$locale.baseText('executionsList.waiting') },
-			];
-		},
 	},
 	watch: {
 		$route(to: Route, from: Route) {
@@ -181,28 +126,19 @@ export default Vue.extend({
 		},
 	},
 	mounted() {
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
-		if (this.autoRefresh) {
-			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
-		}
 		// On larger screens, we need to load more then first page of executions
 		// for the scroll bar to appear and infinite scrolling is enabled
 		this.checkListSize();
 		this.scrollToActiveCard();
 	},
-	beforeDestroy() {
-		if (this.autoRefreshInterval) {
-			clearInterval(this.autoRefreshInterval);
-			this.autoRefreshInterval = undefined;
-		}
-	},
 	methods: {
 		loadMore(limit = 20): void {
 			if (!this.loading) {
-				const executionsList = this.$refs.executionList as HTMLElement;
-				if (executionsList) {
+				const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
+				if (executionsListRef) {
 					const diff =
-						executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
+						executionsListRef.offsetHeight -
+						(executionsListRef.scrollHeight - executionsListRef.scrollTop);
 					if (diff > -10 && diff < 10) {
 						this.$emit('loadMore', limit);
 					}
@@ -215,44 +151,23 @@ export default Vue.extend({
 		onRefresh(): void {
 			this.$emit('refresh');
 		},
-		onFilterChange(): void {
-			this.$emit('filterUpdated', this.prepareFilter());
+		onFilterChanged(filter: ExecutionFilterType) {
+			this.$emit('filterUpdated', filter);
 		},
 		reloadExecutions(): void {
 			this.$emit('reloadExecutions');
 		},
-		onAutoRefreshToggle(): void {
-			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
-			if (this.autoRefreshInterval) {
-				// Clear any previously existing intervals (if any - there shouldn't)
-				clearInterval(this.autoRefreshInterval);
-				this.autoRefreshInterval = undefined;
-			}
-			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
-			}
-		},
-		async resetFilters(): Promise<void> {
-			this.filter.status = '';
-			this.$emit('filterUpdated', this.prepareFilter());
-		},
-		prepareFilter(): object {
-			return {
-				finished: this.filter.status !== 'running',
-				status: this.filter.status,
-			};
-		},
 		checkListSize(): void {
-			const sidebarContainer = this.$refs.container as HTMLElement;
-			const currentExecutionCard = this.$refs[
+			const sidebarContainerRef = this.$refs.container as HTMLElement | undefined;
+			const currentExecutionCardRefs = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as Vue[];
+			] as ExecutionCardRef[] | undefined;
 
 			// Find out how many execution card can fit into list
 			// and load more if needed
-			if (sidebarContainer && currentExecutionCard?.length) {
-				const cardElement = currentExecutionCard[0].$el as HTMLElement;
-				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
+			if (sidebarContainerRef && currentExecutionCardRefs?.length) {
+				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
+				const listCapacity = Math.ceil(sidebarContainerRef.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
 					this.$emit('loadMore', listCapacity - this.executions.length);
@@ -260,21 +175,21 @@ export default Vue.extend({
 			}
 		},
 		scrollToActiveCard(): void {
-			const executionsList = this.$refs.executionList as HTMLElement;
-			const currentExecutionCard = this.$refs[
+			const executionsListRef = this.$refs.executionList as HTMLElement | undefined;
+			const currentExecutionCardRefs = this.$refs[
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
-			] as Vue[];
+			] as ExecutionCardRef[] | undefined;
 
 			if (
-				executionsList &&
-				currentExecutionCard?.length &&
+				executionsListRef &&
+				currentExecutionCardRefs?.length &&
 				this.workflowsStore.activeWorkflowExecution
 			) {
-				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const cardElement = currentExecutionCardRefs[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
-				if (cardRect.top > executionsList.offsetHeight) {
-					executionsList.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
+				if (cardRect.top > executionsListRef.offsetHeight) {
+					executionsListRef.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
 				}
 			}
 		},
@@ -304,7 +219,7 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-right: var(--spacing-l);
+	padding-right: var(--spacing-m);
 
 	button {
 		display: flex;
@@ -351,5 +266,14 @@ export default Vue.extend({
 	width: 100%;
 	margin-top: var(--spacing-2xl);
 	text-align: center;
+}
+</style>
+
+<style lang="scss" scoped>
+.executions-sidebar {
+	:deep(.el-skeleton__item) {
+		height: 60px;
+		border-radius: 0;
+	}
 }
 </style>

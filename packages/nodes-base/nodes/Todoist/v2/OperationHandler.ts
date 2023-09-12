@@ -42,7 +42,7 @@ export interface Command {
 	};
 }
 
-export enum CommandType {
+export const enum CommandType {
 	ITEM_MOVE = 'item_move',
 	ITEM_ADD = 'item_add',
 	ITEM_UPDATE = 'item_update',
@@ -147,6 +147,9 @@ export class GetAllHandler implements OperationHandler {
 
 		if (filters.projectId) {
 			qs.project_id = filters.projectId as string;
+		}
+		if (filters.sectionId) {
+			qs.section_id = filters.sectionId as string;
 		}
 		if (filters.labelId) {
 			qs.label = filters.labelId as string;

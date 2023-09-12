@@ -1,16 +1,11 @@
 import { EnableNodeToggleCommand } from './../models/history';
-import { useHistoryStore } from '@/stores/history';
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-} from '@/constants';
+import { useHistoryStore } from '@/stores/history.store';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
-import {
+import type {
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
-	NodeHelpers,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
@@ -24,29 +19,29 @@ import {
 	INodePropertyOptions,
 	IDataObject,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
-import {
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
 
-import { restApi } from '@/mixins/restApi';
-
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
 import { isObjectLiteral } from '@/utils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { defineComponent } from 'vue';
 
-export const nodeHelpers = mixins(restApi).extend({
+export const nodeHelpers = defineComponent({
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -54,6 +49,8 @@ export const nodeHelpers = mixins(restApi).extend({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
+			useUsersStore,
+			useRootStore,
 		),
 	},
 	methods: {
@@ -129,7 +126,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				}
 			}
 
-			if (this.hasNodeExecutionIssues(node) === true && !ignoreIssues.includes('execution')) {
+			if (this.hasNodeExecutionIssues(node) && !ignoreIssues.includes('execution')) {
 				if (nodeIssues === null) {
 					nodeIssues = {};
 				}
@@ -184,6 +181,14 @@ export const nodeHelpers = mixins(restApi).extend({
 			}
 		},
 
+		updateNodeCredentialIssuesByName(name: string): void {
+			const node = this.workflowsStore.getNodeByName(name);
+
+			if (node) {
+				this.updateNodeCredentialIssues(node);
+			}
+		},
+
 		// Updates the credential-issues of the node
 		updateNodeCredentialIssues(node: INodeUi): void {
 			const fullNodeIssues: INodeIssues | null = this.getNodeCredentialIssues(node);
@@ -198,6 +203,14 @@ export const nodeHelpers = mixins(restApi).extend({
 				type: 'credentials',
 				value: newIssues,
 			});
+		},
+
+		updateNodeParameterIssuesByName(name: string): void {
+			const node = this.workflowsStore.getNodeByName(name);
+
+			if (node) {
+				this.updateNodeParameterIssues(node);
+			}
 		},
 
 		// Updates the parameter-issues of the node
@@ -248,7 +261,7 @@ export const nodeHelpers = mixins(restApi).extend({
 			const foundIssues: INodeIssueObjectProperty = {};
 
 			let userCredentials: ICredentialsResponse[] | null;
-			let credentialType: ICredentialType | null;
+			let credentialType: ICredentialType | undefined;
 			let credentialDisplayName: string;
 			let selectedCredentials: INodeCredentialsDetails;
 
@@ -261,7 +274,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				selectedCredsAreUnusable(node, genericAuthType)
 			) {
 				const credential = this.credentialsStore.getCredentialTypeByName(genericAuthType);
-				return this.reportUnsetCredential(credential);
+				return credential ? this.reportUnsetCredential(credential) : null;
 			}
 
 			if (
@@ -274,7 +287,7 @@ export const nodeHelpers = mixins(restApi).extend({
 
 				if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
 					const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
-					return this.reportUnsetCredential(credential);
+					return credential ? this.reportUnsetCredential(credential) : null;
 				}
 			}
 
@@ -285,7 +298,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				selectedCredsAreUnusable(node, nodeCredentialType)
 			) {
 				const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
-				return this.reportUnsetCredential(credential);
+				return credential ? this.reportUnsetCredential(credential) : null;
 			}
 
 			for (const credentialTypeDescription of nodeType.credentials) {
@@ -304,7 +317,7 @@ export const nodeHelpers = mixins(restApi).extend({
 					credentialDisplayName = credentialType.displayName;
 				}
 
-				if (!node.credentials || !node.credentials?.[credentialTypeDescription.name]) {
+				if (!node.credentials?.[credentialTypeDescription.name]) {
 					// Credentials are not set
 					if (credentialTypeDescription.required) {
 						foundIssues[credentialTypeDescription.name] = [
@@ -315,9 +328,7 @@ export const nodeHelpers = mixins(restApi).extend({
 					}
 				} else {
 					// If they are set check if the value is valid
-					selectedCredentials = node.credentials[
-						credentialTypeDescription.name
-					] as INodeCredentialsDetails;
+					selectedCredentials = node.credentials[credentialTypeDescription.name];
 					if (typeof selectedCredentials === 'string') {
 						selectedCredentials = {
 							id: null,
@@ -361,9 +372,11 @@ export const nodeHelpers = mixins(restApi).extend({
 					}
 
 					if (nameMatches.length === 0) {
+						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
-						if (!isCredentialUsedInWorkflow) {
+
+						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
@@ -410,16 +423,14 @@ export const nodeHelpers = mixins(restApi).extend({
 				return [];
 			}
 			const executionData = this.workflowsStore.getWorkflowExecution.data;
-			if (!executionData || !executionData.resultData) {
+			if (!executionData?.resultData) {
 				// unknown status
 				return [];
 			}
 			const runData = executionData.resultData.runData;
 
 			if (
-				runData === null ||
-				runData[node.name] === undefined ||
-				!runData[node.name][runIndex].data ||
+				!runData?.[node.name]?.[runIndex].data ||
 				runData[node.name][runIndex].data === undefined
 			) {
 				return [];
@@ -458,12 +469,7 @@ export const nodeHelpers = mixins(restApi).extend({
 
 			const runData: IRunData | null = workflowRunData;
 
-			if (
-				runData === null ||
-				!runData[node] ||
-				!runData[node][runIndex] ||
-				!runData[node][runIndex].data
-			) {
+			if (!runData?.[node]?.[runIndex]?.data) {
 				return [];
 			}
 
@@ -524,12 +530,19 @@ export const nodeHelpers = mixins(restApi).extend({
 			}
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
-				return workflow.expression.getSimpleParameterValue(
-					data as INode,
-					nodeType.subtitle,
-					'internal',
-					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-				) as string | undefined;
+				try {
+					return workflow.expression.getSimpleParameterValue(
+						data as INode,
+						nodeType.subtitle,
+						'internal',
+						this.rootStore.timezone,
+						{},
+						undefined,
+						PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					) as string | undefined;
+				} catch (e) {
+					return undefined;
+				}
 			}
 
 			if (data.parameters.operation !== undefined) {

@@ -1,6 +1,6 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeListSearchResult,
@@ -917,6 +917,6 @@ export class Trello implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

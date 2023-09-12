@@ -1,16 +1,16 @@
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
-import { deepCopy, LoggerProxy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
 import type { CredentialRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
-import type { CredentialWithSharings } from './credentials.types';
+import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
@@ -26,32 +26,10 @@ EECredentialsController.use((req, res, next) => {
 });
 
 /**
- * GET /credentials
- */
-EECredentialsController.get(
-	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<CredentialWithSharings[]> => {
-		try {
-			const allCredentials = await EECredentials.getAll(req.user, {
-				relations: ['shared', 'shared.role', 'shared.user'],
-			});
-
-			// eslint-disable-next-line @typescript-eslint/unbound-method
-			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) =>
-				EECredentials.addOwnerAndSharings(credential),
-			);
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error as Error);
-			throw error;
-		}
-	}),
-);
-
-/**
  * GET /credentials/:id
  */
 EECredentialsController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
@@ -60,7 +38,7 @@ EECredentialsController.get(
 		let credential = (await EECredentials.get(
 			{ id: credentialId },
 			{ relations: ['shared', 'shared.role', 'shared.user'] },
-		)) as CredentialsEntity & CredentialWithSharings;
+		)) as CredentialsEntity;
 
 		if (!credential) {
 			throw new ResponseHelper.NotFoundError(
@@ -74,7 +52,7 @@ EECredentialsController.get(
 			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
-		credential = EECredentials.addOwnerAndSharings(credential);
+		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
 
 		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
 			const { data: _, ...rest } = credential;

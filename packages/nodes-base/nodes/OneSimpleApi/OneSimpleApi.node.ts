@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -874,7 +873,7 @@ export class OneSimpleApi implements INodeType {
 		}
 
 		if (download) {
-			return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+			return [returnData as unknown as INodeExecutionData[]];
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

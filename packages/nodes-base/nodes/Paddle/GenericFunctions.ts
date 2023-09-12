@@ -1,23 +1,17 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	JsonObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { JsonObject, IDataObject } from 'n8n-workflow';
+	IDataObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function paddleApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
 	method: string,
 

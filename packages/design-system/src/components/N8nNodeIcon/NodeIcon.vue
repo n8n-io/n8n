@@ -7,14 +7,14 @@
 				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
-			v-on="$listeners"
+			v-bind="$attrs"
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
 			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style.icon">
 					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
-					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+					<font-awesome-icon v-else :icon="name" :class="$style.iconFa" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-node-icon',
 	components: {
 		N8nTooltip,
@@ -78,12 +78,13 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		iconStyleData(): object {
+		iconStyleData(): Record<string, string> {
 			if (!this.size) {
 				return {
 					color: this.color || '',
 				};
 			}
+
 			return {
 				color: this.color || '',
 				width: `${this.size}px`,
@@ -92,7 +93,11 @@ export default Vue.extend({
 				'line-height': `${this.size}px`,
 			};
 		},
-		fontStyleData(): object {
+		fontStyleData(): Record<string, string> {
+			if (!this.size) {
+				return {};
+			}
+
 			return {
 				'max-width': `${this.size}px`,
 			};
@@ -121,7 +126,16 @@ export default Vue.extend({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	pointer-events: none;
+
+	svg {
+		max-width: 100%;
+		max-height: 100%;
+	}
+
+	img,
+	svg {
+		pointer-events: none;
+	}
 }
 .nodeIconPlaceholder {
 	text-align: center;

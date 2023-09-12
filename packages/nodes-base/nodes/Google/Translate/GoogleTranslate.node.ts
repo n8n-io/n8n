@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -213,6 +212,6 @@ export class GoogleTranslate implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(responseData);
+		return [responseData];
 	}
 }

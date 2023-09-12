@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -315,7 +315,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the survey's collectors to display them to user so that he can
+			// Get all the survey's collectors to display them to user so that they can
 			// select them easily
 			async getCollectors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const surveyId = this.getCurrentNodeParameter('surveyId');
@@ -337,7 +337,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 				return returnData;
 			},
 
-			// Get all the surveys to display them to user so that he can
+			// Get all the surveys to display them to user so that they can
 			// select them easily
 			async getSurveys(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -459,7 +459,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 

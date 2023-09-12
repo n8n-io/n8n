@@ -1,5 +1,5 @@
 <template>
-	<Card :loading="loading" :title="collection.name" @click="onClick">
+	<Card :loading="loading" :title="collection.name">
 		<template #footer>
 			<n8n-text size="small" color="text-light">
 				{{ collection.workflows.length }}
@@ -11,13 +11,14 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import Card from '@/components/CollectionWorkflowCard.vue';
-import mixins from 'vue-typed-mixins';
 import NodeList from '@/components/NodeList.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'CollectionCard',
+	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,
@@ -29,11 +30,6 @@ export default mixins(genericHelpers).extend({
 	components: {
 		Card,
 		NodeList,
-	},
-	methods: {
-		onClick(e: MouseEvent) {
-			this.$emit('click', e);
-		},
 	},
 });
 </script>

@@ -1,6 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -68,5 +66,5 @@ export async function get(this: IExecuteFunctions, index: number) {
 		),
 	};
 
-	return this.prepareOutputData(newItem as unknown as INodeExecutionData[]);
+	return [newItem as unknown as INodeExecutionData[]];
 }

@@ -1,7 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -1081,6 +1080,38 @@ export class Gitlab implements INodeType {
 				default: 1,
 				description: 'Page of results to display',
 			},
+			{
+				displayName: 'Additional Parameters',
+				name: 'additionalParameters',
+				placeholder: 'Add Parameter',
+				description: 'Additional fields to add',
+				type: 'collection',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['file'],
+						operation: ['list'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Reference',
+						name: 'ref',
+						type: 'string',
+						default: '',
+						placeholder: 'main',
+						description:
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
+					},
+					{
+						displayName: 'Recursive',
+						name: 'recursive',
+						type: 'boolean',
+						default: false,
+						description: 'Whether or not to get a recursive file tree. Default is false.',
+					},
+				],
+			},
 
 			// ----------------------------------
 			//         file:get
@@ -1135,9 +1166,9 @@ export class Gitlab implements INodeType {
 						name: 'reference',
 						type: 'string',
 						default: '',
-						placeholder: 'master',
+						placeholder: 'main',
 						description:
-							'The name of the commit/branch/tag. Default: the repository’s default branch (usually master).',
+							'The name of the commit/branch/tag. Default: the repository’s default branch (usually main).',
 					},
 				],
 			},
@@ -1288,22 +1319,22 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		let _credentials;
+		// let _credentials;
 
-		const authenticationMethod = this.getNodeParameter('authentication', 0);
+		// const authenticationMethod = this.getNodeParameter('authentication', 0);
 
-		try {
-			if (authenticationMethod === 'accessToken') {
-				_credentials = await this.getCredentials('gitlabApi');
-			} else {
-				_credentials = await this.getCredentials('gitlabOAuth2Api');
-			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				return [this.helpers.returnJsonArray([{ error: error.message }])];
-			}
-			throw new NodeOperationError(this.getNode(), error as Error);
-		}
+		// try {
+		// 	if (authenticationMethod === 'accessToken') {
+		// 		_credentials = await this.getCredentials('gitlabApi');
+		// 	} else {
+		// 		_credentials = await this.getCredentials('gitlabOAuth2Api');
+		// 	}
+		// } catch (error) {
+		// 	if (this.continueOnFail()) {
+		// 		return [this.helpers.returnJsonArray([{ error: error.message }])];
+		// 	}
+		// 	throw new NodeOperationError(this.getNode(), error as Error);
+		// }
 
 		// Operations which overwrite the returned data
 		const overwriteDataOperations = [
@@ -1572,28 +1603,12 @@ export class Gitlab implements INodeType {
 						}
 
 						if (this.getNodeParameter('binaryData', i)) {
-							// Is binary file to upload
-							const item = items[i];
-
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
-							}
-
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-
-							if (item.binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`Item has no binary property called "${binaryPropertyName}"`,
-									{ itemIndex: i },
-								);
-							}
-
 							// Currently internally n8n uses base64 and also GitLab expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
-							body.content = item.binary[binaryPropertyName].data;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+							// TODO: Does this work with filesystem mode
+							body.content = binaryData.data;
 							body.encoding = 'base64';
 						} else {
 							// Is text file
@@ -1652,7 +1667,8 @@ export class Gitlab implements INodeType {
 						requestMethod = 'GET';
 
 						const filePath = this.getNodeParameter('filePath', i);
-						qs = this.getNodeParameter('additionalFields', i, {});
+
+						qs = this.getNodeParameter('additionalParameters', i, {}) as IDataObject;
 						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
@@ -1750,10 +1766,10 @@ export class Gitlab implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		} else {
 			// For all other ones simply return the unchanged items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 	}
 }

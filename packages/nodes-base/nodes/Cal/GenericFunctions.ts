@@ -1,7 +1,7 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,

@@ -1,15 +1,16 @@
+import { Container } from 'typedi';
 import { Not } from 'typeorm';
 import * as Db from '@/Db';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { User } from '@db/entities/User';
 import { BaseCommand } from '../BaseCommand';
+import { RoleService } from '@/services/role.service';
 
 const defaultUserProps = {
 	firstName: null,
 	lastName: null,
 	email: null,
 	password: null,
-	resetPasswordToken: null,
 };
 
 export class Reset extends BaseCommand {
@@ -20,15 +21,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'workflow',
-		});
-
-		const ownerCredentialRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		const ownerWorkflowRole = await Container.get(RoleService).findWorkflowOwnerRole();
+		const ownerCredentialRole = await Container.get(RoleService).findCredentialOwnerRole();
 
 		await Db.collections.SharedWorkflow.update(
 			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
@@ -44,10 +38,10 @@ export class Reset extends BaseCommand {
 		await Db.collections.User.save(Object.assign(owner, defaultUserProps));
 
 		const danglingCredentials: CredentialsEntity[] =
-			(await Db.collections.Credentials.createQueryBuilder('credentials')
+			await Db.collections.Credentials.createQueryBuilder('credentials')
 				.leftJoinAndSelect('credentials.shared', 'shared')
 				.where('shared.credentialsId is null')
-				.getMany()) as CredentialsEntity[];
+				.getMany();
 		const newSharedCredentials = danglingCredentials.map((credentials) =>
 			Db.collections.SharedCredentials.create({
 				credentials,
@@ -61,19 +55,12 @@ export class Reset extends BaseCommand {
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: 'false' },
 		);
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: 'false' },
-		);
 
 		this.logger.info('Successfully reset the database to default user state.');
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role.findOneByOrFail({
-			name: 'owner',
-			scope: 'global',
-		});
+		const globalRole = await Container.get(RoleService).findGlobalOwnerRole();
 
 		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
 

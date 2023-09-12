@@ -1,11 +1,12 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
+	IHttpRequestOptions,
+	INodeExecutionData,
+} from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import type { IRequestBody } from './types';

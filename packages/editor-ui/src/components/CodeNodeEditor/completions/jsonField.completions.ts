@@ -1,14 +1,13 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { escape, toVariableOption } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
-import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
 import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
 
-export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const jsonFieldCompletions = defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 	},
@@ -220,7 +219,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 					return input.main[0][0].node;
 				}
-			} catch (_) {
+			} catch {
 				return null;
 			}
 		},
@@ -291,7 +290,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 					}
 
 					return nodePinData[itemIndex].json;
-				} catch (_) {}
+				} catch {}
 			}
 
 			const runData: IRunData | null = this.workflowsStore.getWorkflowRunData;
@@ -309,7 +308,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				}
 
 				return nodeRunData[0].data!.main[0]![itemIndex].json;
-			} catch (_) {
+			} catch {
 				return null;
 			}
 		},

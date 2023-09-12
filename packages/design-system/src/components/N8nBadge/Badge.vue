@@ -9,14 +9,17 @@
 <script lang="ts">
 import N8nText from '../N8nText';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	props: {
 		theme: {
 			type: String,
 			default: 'default',
-			validator: (value: string) => ['default', 'primary', 'secondary', 'tertiary'].includes(value),
+			validator: (value: string) =>
+				['default', 'success', 'warning', 'danger', 'primary', 'secondary', 'tertiary'].includes(
+					value,
+				),
 		},
 		size: {
 			type: String,
@@ -47,6 +50,27 @@ export default Vue.extend({
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-light);
 	border-color: var(--color-text-light);
+}
+
+.success {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-success);
+	border-color: var(--color-success);
+}
+
+.warning {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-warning);
+	border-color: var(--color-warning);
+}
+
+.danger {
+	composes: badge;
+	border-radius: var(--border-radius-base);
+	color: var(--color-danger);
+	border-color: var(--color-danger);
 }
 
 .primary {

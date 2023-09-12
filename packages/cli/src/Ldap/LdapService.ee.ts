@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import type { Entry as LdapUser, ClientOptions } from 'ldapts';
 import { Client } from 'ldapts';
 import type { LdapConfig } from './types';
@@ -82,7 +81,7 @@ export class LdapService {
 			await this.client.unbind();
 			return searchEntries;
 		}
-		return Promise.resolve([]);
+		return [];
 	}
 
 	/**

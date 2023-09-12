@@ -1,5 +1,5 @@
 import N8nActionDropdown from './ActionDropdown.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/ActionDropdown',
@@ -8,8 +8,8 @@ export default {
 		placement: {
 			control: {
 				type: 'select',
-				options: ['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'],
 			},
+			options: ['top', 'top-end', 'top-start', 'bottom', 'bottom-end', 'bottom-start'],
 		},
 		activatorIcon: {
 			control: {
@@ -19,18 +19,19 @@ export default {
 		trigger: {
 			control: {
 				type: 'select',
-				options: ['click', 'hover'],
 			},
+			options: ['click', 'hover'],
 		},
 	},
 };
 
 const template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nActionDropdown,
 	},
-	template: '<n8n-action-dropdown v-bind="$props" />',
+	template: '<n8n-action-dropdown v-bind="args" />',
 });
 
 export const defaultActionDropdown = template.bind({});

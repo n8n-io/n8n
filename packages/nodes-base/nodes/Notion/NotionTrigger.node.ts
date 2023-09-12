@@ -1,6 +1,5 @@
-import type { IPollFunctions } from 'n8n-core';
-
 import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,7 +13,6 @@ import { getDatabases } from './SearchFunctions';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
@@ -23,7 +21,7 @@ export class NotionTrigger implements INodeType {
 		description: 'Starts the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
-			name: 'Notion Trigger (Beta)',
+			name: 'Notion Trigger',
 		},
 		credentials: [
 			{

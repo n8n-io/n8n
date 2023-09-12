@@ -1,12 +1,8 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type {
-	IDataObject,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
 	JsonObject,
@@ -14,7 +10,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function uprocApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	body: any = {},
 	qs: IDataObject = {},

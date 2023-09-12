@@ -1,11 +1,14 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 
-import flow from 'lodash.flow';
+import flow from 'lodash/flow';
 
 import type { Zammad } from './types';
 

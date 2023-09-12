@@ -36,17 +36,15 @@
 					tooltipPlacement="right"
 					v-if="hasNodeRun && staleData"
 				>
-					<template>
-						<span
-							v-html="
-								$locale.baseText(
-									hasPinData
-										? 'ndv.output.staleDataWarning.pinData'
-										: 'ndv.output.staleDataWarning.regular',
-								)
-							"
-						></span>
-					</template>
+					<span
+						v-html="
+							$locale.baseText(
+								hasPinData
+									? 'ndv.output.staleDataWarning.pinData'
+									: 'ndv.output.staleDataWarning.regular',
+							)
+						"
+					></span>
 				</n8n-info-tip>
 			</div>
 		</template>
@@ -80,7 +78,7 @@
 			</n8n-text>
 		</template>
 
-		<template #recovered-artifical-output-data>
+		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
@@ -98,23 +96,23 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, INodeUi } from '@/Interface';
-import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import Vue from 'vue';
-import RunData, { EnterEditModeArgs } from './RunData.vue';
+import { defineComponent } from 'vue';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { pinData } from '@/mixins/pinData';
-import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = InstanceType<typeof RunData>;
 
-export default mixins(pinData).extend({
+export default defineComponent({
 	name: 'OutputPanel',
+	mixins: [pinData],
 	components: { RunData, RunInfo },
 	props: {
 		runIndex: {
@@ -242,8 +240,9 @@ export default mixins(pinData).extend({
 	},
 	methods: {
 		insertTestData() {
-			if (this.$refs.runData) {
-				(this.$refs.runData as RunDataRef).enterEditMode({
+			const runDataRef = this.$refs.runData as RunDataRef | undefined;
+			if (runDataRef) {
+				runDataRef.enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 

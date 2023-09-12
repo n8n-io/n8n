@@ -1,12 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { JsonObject, IDataObject } from 'n8n-workflow';
+import type {
+	JsonObject,
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function phantombusterApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
 

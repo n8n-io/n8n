@@ -1,6 +1,5 @@
 import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export interface RundeckCredentials {
@@ -50,7 +49,7 @@ export class RundeckApi {
 		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
-	async executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
+	async executeJob(jobId: string, args: IDataObject[], filter?: string): Promise<IDataObject> {
 		let params = '';
 
 		if (args) {
@@ -63,7 +62,12 @@ export class RundeckApi {
 			argString: params,
 		};
 
-		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
+		const query: IDataObject = {};
+		if (filter) {
+			query.filter = filter;
+		}
+
+		return this.request('POST', `/api/14/job/${jobId}/run`, body, query);
 	}
 
 	async getJobMetadata(jobId: string): Promise<IDataObject> {

@@ -19,8 +19,8 @@
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
-				:value="workflowActive"
-				@change="activeChanged"
+				:modelValue="workflowActive"
+				@update:modelValue="activeChanged"
 				:title="
 					workflowActive
 						? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -50,22 +50,27 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import { workflowActivate } from '@/mixins/workflowActivate';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { mapStores } from 'pinia';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
 import { getActivatableTriggerNodes } from '@/utils';
 
-export default mixins(showMessage, workflowActivate).extend({
+export default defineComponent({
 	name: 'WorkflowActivator',
 	props: ['workflowActive', 'workflowId'],
+	mixins: [workflowActivate],
+	setup(props) {
+		return {
+			...useToast(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
+			...workflowActivate.setup?.(props),
+		};
+	},
 	computed: {
 		...mapStores(useUIStore, useWorkflowsStore),
-		getStateIsDirty(): boolean {
-			return this.uiStore.stateIsDirty;
-		},
 		nodesIssuesExist(): boolean {
 			return this.workflowsStore.nodesIssuesExist;
 		},
@@ -100,12 +105,12 @@ export default mixins(showMessage, workflowActivate).extend({
 	},
 	methods: {
 		async activeChanged(newActiveState: boolean) {
-			return await this.updateWorkflowActivation(this.workflowId, newActiveState);
+			return this.updateWorkflowActivation(this.workflowId, newActiveState);
 		},
 		async displayActivationError() {
 			let errorMessage: string;
 			try {
-				const errorData = await this.restApi().getActivationError(this.workflowId);
+				const errorData = await this.workflowsStore.getActivationError(this.workflowId);
 
 				if (errorData === undefined) {
 					errorMessage = this.$locale.baseText(
@@ -123,11 +128,12 @@ export default mixins(showMessage, workflowActivate).extend({
 				);
 			}
 
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('workflowActivator.showMessage.displayActivationError.title'),
 				message: errorMessage,
 				type: 'warning',
 				duration: 0,
+				dangerouslyUseHTMLString: true,
 			});
 		},
 	},
@@ -149,15 +155,15 @@ export default mixins(showMessage, workflowActivate).extend({
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
+
+	:deep(.el-loading-spinner) {
+		margin-top: -10px;
+	}
 }
 
 .could-not-be-started {
 	display: inline-block;
 	color: #ff4949;
 	margin-left: 0.5em;
-}
-
-::v-deep .el-loading-spinner {
-	margin-top: -10px;
 }
 </style>

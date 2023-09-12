@@ -10,25 +10,20 @@ export async function getUploadFormData(
 	if (!mediaPropertyName)
 		throw new NodeOperationError(this.getNode(), 'Parameter "mediaPropertyName" is not defined');
 
-	const { binary: binaryData } = this.getInputData();
-	if (!binaryData) throw new NodeOperationError(this.getNode(), 'Binary data missing in input');
-
-	const binaryFile = binaryData[mediaPropertyName];
-	if (binaryFile === undefined)
-		throw new NodeOperationError(this.getNode(), 'Could not find file in node input data');
+	const binaryData = this.helpers.assertBinaryData(mediaPropertyName);
 
 	const mediaFileName = (this.getNodeParameter('additionalFields') as IDataObject).mediaFileName as
 		| string
 		| undefined;
 
-	const fileName = mediaFileName || binaryFile.fileName;
+	const fileName = mediaFileName || binaryData.fileName;
 	if (!fileName)
 		throw new NodeOperationError(this.getNode(), 'No file name given for media upload.');
 
 	const buffer = await this.helpers.getBinaryDataBuffer(mediaPropertyName);
 
 	const formData = new FormData();
-	formData.append('file', buffer, { contentType: binaryFile.mimeType, filename: fileName });
+	formData.append('file', buffer, { contentType: binaryData.mimeType, filename: fileName });
 	formData.append('messaging_product', 'whatsapp');
 
 	return { fileName, formData };

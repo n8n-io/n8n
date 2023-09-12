@@ -1,15 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	ITriggerFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function togglApiRequest(
@@ -18,7 +17,6 @@ export async function togglApiRequest(
 		| IPollFunctions
 		| IHookFunctions
 		| IExecuteFunctions
-		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions,
 	method: string,
 	resource: string,

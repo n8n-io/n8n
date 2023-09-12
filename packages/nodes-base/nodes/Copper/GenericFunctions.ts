@@ -3,18 +3,18 @@ import { createHash } from 'crypto';
 import type { OptionsWithUri } from 'request';
 
 import type {
+	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import type { ICredentialDataDecryptedObject, IDataObject, JsonObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import flow from 'lodash.flow';
-import omit from 'lodash.omit';
+import flow from 'lodash/flow';
+import omit from 'lodash/omit';
 
 import type {
 	AddressFixedCollection,
@@ -27,12 +27,7 @@ import type {
  * Make an authenticated API request to Copper.
  */
 export async function copperApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 	body: IDataObject = {},

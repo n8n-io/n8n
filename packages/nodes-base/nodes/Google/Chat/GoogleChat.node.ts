@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -110,7 +109,7 @@ export class GoogleChat implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the spaces to display them to user so that he can
+			// Get all the spaces to display them to user so that they can
 			// select them easily
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -560,10 +559,10 @@ export class GoogleChat implements INodeType {
 
 		if (operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

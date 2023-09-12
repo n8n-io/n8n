@@ -1,6 +1,11 @@
 import FormData from 'form-data';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import type { Readable } from 'stream';
+import {
+	BINARY_ENCODING,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
 const metagenerationFilters: INodeProperties[] = [
@@ -140,41 +145,36 @@ export const objectOperations: INodeProperties[] = [
 
 								// Populate request body
 								const body = new FormData();
-								const item = this.getInputData();
 								body.append('metadata', JSON.stringify(metadata), {
 									contentType: 'application/json',
 								});
 
 								// Determine content and content type
-								let content: string | Buffer;
+								let content: string | Buffer | Readable;
 								let contentType: string;
+								let contentLength: number;
 								if (useBinary) {
 									const binaryPropertyName = this.getNodeParameter(
 										'createBinaryPropertyName',
 									) as string;
-									if (!item.binary) {
-										throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-											itemIndex: this.getItemIndex(),
-										});
-									}
-									if (item.binary[binaryPropertyName] === undefined) {
-										throw new NodeOperationError(
-											this.getNode(),
-											`Item has no binary property called "${binaryPropertyName}"`,
-											{ itemIndex: this.getItemIndex() },
-										);
-									}
 
-									const binaryData = item.binary[binaryPropertyName];
-
-									// Decode from base64 for upload
-									content = Buffer.from(binaryData.data, 'base64');
-									contentType = binaryData.mimeType;
+									const binaryData = this.helpers.assertBinaryData(binaryPropertyName);
+									if (binaryData.id) {
+										content = this.helpers.getBinaryStream(binaryData.id);
+										const binaryMetadata = await this.helpers.getBinaryMetadata(binaryData.id);
+										contentType = binaryMetadata.mimeType ?? 'application/octet-stream';
+										contentLength = binaryMetadata.fileSize;
+									} else {
+										content = Buffer.from(binaryData.data, BINARY_ENCODING);
+										contentType = binaryData.mimeType;
+										contentLength = content.length;
+									}
 								} else {
 									content = this.getNodeParameter('createContent') as string;
 									contentType = 'text/plain';
+									contentLength = content.length;
 								}
-								body.append('file', content, { contentType });
+								body.append('file', content, { contentType, knownLength: contentLength });
 
 								// Set the headers
 								if (!requestOptions.headers) requestOptions.headers = {};
@@ -184,7 +184,7 @@ export const objectOperations: INodeProperties[] = [
 								] = `multipart/related; boundary=${body.getBoundary()}`;
 
 								// Return the request data
-								requestOptions.body = body.getBuffer();
+								requestOptions.body = body;
 								return requestOptions;
 							},
 						],

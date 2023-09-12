@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -521,7 +520,7 @@ export class SecurityScorecard implements INodeType {
 		}
 		// Handle file download output data differently
 		if (resource === 'report' && operation === 'download') {
-			return this.prepareOutputData(items);
+			return [items];
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

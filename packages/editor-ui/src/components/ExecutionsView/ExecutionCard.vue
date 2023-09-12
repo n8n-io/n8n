@@ -6,13 +6,14 @@
 			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
+			[$style.showGap]: showGap,
 		}"
 	>
 		<router-link
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { workflowId: currentWorkflow, executionId: execution.id },
+				params: { name: currentWorkflow, executionId: execution.id },
 			}"
 			:data-test-execution-status="executionUIDetails.name"
 		>
@@ -29,6 +30,7 @@
 					<n8n-text :class="$style.statusLabel" size="small">{{
 						executionUIDetails.label
 					}}</n8n-text>
+					{{ ' ' }}
 					<n8n-text
 						v-if="executionUIDetails.name === 'running'"
 						:color="isActive ? 'text-dark' : 'text-base'"
@@ -38,9 +40,7 @@
 						<execution-time :start-time="execution.startedAt" />
 					</n8n-text>
 					<n8n-text
-						v-else-if="
-							executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'
-						"
+						v-else-if="executionUIDetails.runningTime !== ''"
 						:color="isActive ? 'text-dark' : 'text-base'"
 						size="small"
 					>
@@ -82,16 +82,16 @@
 </template>
 
 <script lang="ts">
-import { IExecutionsSummary } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import { defineComponent } from 'vue';
+import type { IExecutionsSummary } from '@/Interface';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
-import { showMessage } from '@/mixins/showMessage';
-import { restApi } from '@/mixins/restApi';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
-export default mixins(executionHelpers, showMessage, restApi).extend({
+export default defineComponent({
 	name: 'execution-card',
+	mixins: [executionHelpers],
 	components: {
 		ExecutionTime,
 	},
@@ -106,6 +106,10 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 			required: true,
 		},
 		highlight: {
+			type: Boolean,
+			default: false,
+		},
+		showGap: {
 			type: Boolean,
 			default: false,
 		},
@@ -141,6 +145,7 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 <style module lang="scss">
 .executionCard {
 	display: flex;
+	flex-direction: column;
 	padding-right: var(--spacing-m);
 
 	&.active {
@@ -233,7 +238,7 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 
 .icons {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
 }
 
 .icon {
@@ -252,6 +257,12 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 
 	& + & {
 		margin-left: var(--spacing-2xs);
+	}
+}
+.showGap {
+	margin-bottom: var(--spacing-2xs);
+	.executionLink {
+		border-bottom: 1px solid var(--color-foreground-dark);
 	}
 }
 </style>

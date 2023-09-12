@@ -1,23 +1,23 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { INodeUi, Schema } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
-import { useNDVStore } from '@/stores/ndv';
-import { useWebhooksStore } from '@/stores/webhooks';
-import { runExternalHook } from '@/mixins/externalHooks';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { telemetry } from '@/plugins/telemetry';
-import { IDataObject } from 'n8n-workflow';
-import { getSchema, isEmpty, mergeDeep } from '@/utils';
+import type { IDataObject } from 'n8n-workflow';
+import { isEmpty, runExternalHook } from '@/utils';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
-
+import { useDataSchema } from '@/composables';
 type Props = {
 	data: IDataObject[];
 	mappingEnabled: boolean;
 	distanceFromActive: number;
 	runIndex: number;
 	totalRuns: number;
+	paneType: 'input' | 'output';
 	node: INodeUi | null;
 };
 
@@ -28,15 +28,11 @@ const props = withDefaults(defineProps<Props>(), {
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
 const webhooksStore = useWebhooksStore();
+const { getSchemaForExecutionData } = useDataSchema();
 
-const schema = computed<Schema>(() => {
-	const [head, ...tail] = props.data;
-	return getSchema(mergeDeep([head, ...tail, head]));
-});
+const schema = computed(() => getSchemaForExecutionData(props.data));
 
-const isDataEmpty = computed(() => {
-	return isEmpty(props.data);
-});
+const isDataEmpty = computed(() => isEmpty(props.data));
 
 const onDragStart = (el: HTMLElement) => {
 	if (el && el.dataset?.path) {
@@ -63,7 +59,7 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+		void runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
@@ -86,20 +82,19 @@ const onDragEnd = (el: HTMLElement) => {
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-			<template>
-				<div :class="$style.schema">
-					<run-data-schema-item
-						:schema="schema"
-						:level="0"
-						:parent="null"
-						:subKey="`${schema.type}-0-0`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
-						:node="node"
-					/>
-				</div>
-			</template>
+			<div :class="$style.schema">
+				<run-data-schema-item
+					:schema="schema"
+					:level="0"
+					:parent="null"
+					:paneType="paneType"
+					:subKey="`${schema.type}-0-0`"
+					:mappingEnabled="mappingEnabled"
+					:draggingPath="draggingPath"
+					:distanceFromActive="distanceFromActive"
+					:node="node"
+				/>
+			</div>
 		</draggable>
 	</div>
 </template>

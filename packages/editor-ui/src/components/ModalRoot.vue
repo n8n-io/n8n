@@ -12,11 +12,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { useUIStore } from '@/stores/ui';
+import { defineComponent } from 'vue';
+import { useUIStore } from '@/stores/ui.store';
 import { mapStores } from 'pinia';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ModalRoot',
 	props: {
 		name: {

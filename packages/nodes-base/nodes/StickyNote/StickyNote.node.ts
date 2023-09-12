@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class StickyNote implements INodeType {
 	description: INodeTypeDescription = {
@@ -45,6 +49,6 @@ export class StickyNote implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

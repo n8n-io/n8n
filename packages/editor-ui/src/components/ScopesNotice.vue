@@ -3,11 +3,11 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { useCredentialsStore } from '@/stores/credentials.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ScopesNotice',
 	props: ['activeCredentialType', 'scopes'],
 	computed: {
@@ -35,10 +35,12 @@ export default Vue.extend({
 			const oauth1Api = this.$locale.baseText('generic.oauth1Api');
 			const oauth2Api = this.$locale.baseText('generic.oauth2Api');
 
-			return this.credentialsStore
-				.getCredentialTypeByName(this.activeCredentialType)
-				.displayName.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
-				.trim();
+			return (
+				this.credentialsStore
+					.getCredentialTypeByName(this.activeCredentialType)
+					?.displayName.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
+					.trim() || ''
+			);
 		},
 	},
 });

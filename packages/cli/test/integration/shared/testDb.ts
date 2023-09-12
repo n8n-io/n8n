@@ -1,9 +1,7 @@
 import { UserSettings } from 'n8n-core';
-import {
-	DataSource as Connection,
-	DataSourceOptions as ConnectionOptions,
-	Repository,
-} from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
+import { DataSource as Connection } from 'typeorm';
+import { Container } from 'typedi';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -14,27 +12,41 @@ import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { InstalledNodes } from '@db/entities/InstalledNodes';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ICredentialsDb } from '@/Interfaces';
-
+import type { ICredentialsDb } from '@/Interfaces';
 import { DB_INITIALIZATION_TIMEOUT } from './constants';
 import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { getPostgresSchemaSection } from './utils';
-import type {
-	CollectionName,
-	CredentialPayload,
-	InstalledNodePayload,
-	InstalledPackagePayload,
-} from './types';
+import type { CollectionName, CredentialPayload, PostgresSchemaSection } from './types';
+import type { ExecutionData } from '@db/entities/ExecutionData';
+import { generateNanoId } from '@db/utils/generators';
+import { RoleService } from '@/services/role.service';
+import { VariablesService } from '@/environments/variables/variables.service';
+import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
+import { separate } from '@/utils';
+
+import { randomPassword } from '@/Ldap/helpers';
+import { TOTPService } from '@/Mfa/totp.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 export type TestDBType = 'postgres' | 'mysql';
+
+export const testDbPrefix = 'n8n_test_';
+
+export function getPostgresSchemaSection(
+	schema = config.getSchema(),
+): PostgresSchemaSection | null {
+	for (const [key, value] of Object.entries(schema)) {
+		if (key === 'postgresdb') {
+			return value._cvtProperties;
+		}
+	}
+	return null;
+}
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
@@ -42,14 +54,12 @@ export type TestDBType = 'postgres' | 'mysql';
 export async function init() {
 	jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 	const dbType = config.getEnv('database.type');
-	const testDbName = `n8n_test_${randomString(6, 10)}_${Date.now()}`;
+	const testDbName = `${testDbPrefix}${randomString(6, 10)}_${Date.now()}`;
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
-		return Db.init(getSqliteOptions({ name: testDbName }));
-	}
-
-	if (dbType === 'postgresdb') {
+		await Db.init(getSqliteOptions({ name: testDbName }));
+	} else if (dbType === 'postgresdb') {
 		let bootstrapPostgres;
 		const pgOptions = getBootstrapDBOptions('postgres');
 
@@ -77,35 +87,38 @@ export async function init() {
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
 
-		return Db.init(getDBOptions('postgres', testDbName));
-	}
-
-	if (dbType === 'mysqldb') {
+		await Db.init(getDBOptions('postgres', testDbName));
+	} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
-		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
+		await bootstrapMysql.query(`CREATE DATABASE ${testDbName} DEFAULT CHARACTER SET utf8mb4`);
 		await bootstrapMysql.destroy();
 
-		return Db.init(getDBOptions('mysql', testDbName));
+		await Db.init(getDBOptions('mysql', testDbName));
 	}
 
-	throw new Error(`Unrecognized DB type: ${dbType}`);
+	await Db.migrate();
 }
 
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
 export async function terminate() {
-	const connection = Db.getConnection();
-	if (connection.isInitialized) await connection.destroy();
+	await Db.close();
 }
 
 /**
  * Truncate specific DB tables in a test DB.
  */
 export async function truncate(collections: CollectionName[]) {
-	for (const collection of collections) {
-		const repository: Repository<any> = Db.collections[collection];
-		await repository.delete({});
+	const [tag, rest] = separate(collections, (c) => c === 'Tag');
+
+	if (tag) {
+		await Container.get(TagRepository).delete({});
+		await Container.get(WorkflowTagMappingRepository).delete({});
+	}
+
+	for (const collection of rest) {
+		await Db.collections[collection].delete({});
 	}
 }
 
@@ -142,7 +155,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOneBy({ scope: 'credential', name: 'user' });
+	const role = await Container.get(RoleService).findCredentialUserRole();
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			userId: user.id,
@@ -172,7 +185,8 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
-		globalRole: globalRole ?? (await getGlobalMemberRole()),
+		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
+		globalRole,
 		...rest,
 	};
 
@@ -185,8 +199,47 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 	return user;
 }
 
+export async function createUserWithMfaEnabled(
+	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
+) {
+	const encryptionKey = await UserSettings.getEncryptionKey();
+
+	const email = randomEmail();
+	const password = randomPassword();
+
+	const toptService = new TOTPService();
+
+	const secret = toptService.generateSecret();
+
+	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
+
+	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
+
+	const { encryptedSecret, encryptedRecoveryCodes } = mfaService.encryptSecretAndRecoveryCodes(
+		secret,
+		recoveryCodes,
+	);
+
+	return {
+		user: await createUser({
+			mfaEnabled: true,
+			password,
+			email,
+			mfaSecret: encryptedSecret,
+			mfaRecoveryCodes: encryptedRecoveryCodes,
+		}),
+		rawPassword: password,
+		rawSecret: secret,
+		rawRecoveryCodes: recoveryCodes,
+	};
+}
+
 export async function createOwner() {
 	return createUser({ globalRole: await getGlobalOwnerRole() });
+}
+
+export async function createMember() {
+	return createUser({ globalRole: await getGlobalMemberRole() });
 }
 
 export async function createUserShell(globalRole: Role): Promise<User> {
@@ -231,31 +284,6 @@ export async function createManyUsers(
 	return Db.collections.User.save(users);
 }
 
-// --------------------------------------
-// Installed nodes and packages creation
-// --------------------------------------
-
-export async function saveInstalledPackage(
-	installedPackagePayload: InstalledPackagePayload,
-): Promise<InstalledPackages> {
-	const newInstalledPackage = new InstalledPackages();
-
-	Object.assign(newInstalledPackage, installedPackagePayload);
-
-	const savedInstalledPackage = await Db.collections.InstalledPackages.save(newInstalledPackage);
-	return savedInstalledPackage;
-}
-
-export async function saveInstalledNode(
-	installedNodePayload: InstalledNodePayload,
-): Promise<InstalledNodes> {
-	const newInstalledNode = new InstalledNodes();
-
-	Object.assign(newInstalledNode, installedNodePayload);
-
-	return Db.collections.InstalledNodes.save(newInstalledNode);
-}
-
 export async function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
 	return Db.collections.User.save(user);
@@ -266,38 +294,23 @@ export async function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export async function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
+	return Container.get(RoleService).findGlobalOwnerRole();
 }
 
 export async function getGlobalMemberRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'member',
-		scope: 'global',
-	});
+	return Container.get(RoleService).findGlobalMemberRole();
 }
 
 export async function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	return Container.get(RoleService).findWorkflowOwnerRole();
 }
 
 export async function getWorkflowEditorRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'editor',
-		scope: 'workflow',
-	});
+	return Container.get(RoleService).findWorkflowEditorRole();
 }
 
 export async function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	return Container.get(RoleService).findCredentialOwnerRole();
 }
 
 export async function getAllRoles() {
@@ -336,17 +349,26 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(attributes: Partial<ExecutionEntity>, workflow: WorkflowEntity) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
+async function createExecution(
+	attributes: Partial<ExecutionEntity & ExecutionData>,
+	workflow: WorkflowEntity,
+) {
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
 
 	const execution = await Db.collections.Execution.save({
-		data: data ?? '[]',
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
+		...(workflow !== undefined && { workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
+		status,
+	});
+
+	await Db.collections.ExecutionData.save({
+		data: data ?? '[]',
+		workflowData: workflow ?? {},
+		executionId: execution.id,
 	});
 
 	return execution;
@@ -356,34 +378,45 @@ async function createExecution(attributes: Partial<ExecutionEntity>, workflow: W
  * Store a successful execution in the DB and assign it to a workflow.
  */
 export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: true }, workflow);
+	return createExecution({ finished: true, status: 'success' }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, stoppedAt: new Date() }, workflow);
+	return createExecution({ finished: false, stoppedAt: new Date(), status: 'failed' }, workflow);
 }
 
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return createExecution({ finished: false, waitTill: new Date() }, workflow);
+	return createExecution({ finished: false, waitTill: new Date(), status: 'waiting' }, workflow);
 }
 
 // ----------------------------------
 //          Tags
 // ----------------------------------
 
-export async function createTag(attributes: Partial<TagEntity> = {}) {
+export async function createTag(attributes: Partial<TagEntity> = {}, workflow?: WorkflowEntity) {
 	const { name } = attributes;
 
-	return Db.collections.Tag.save({
+	const tag = await Container.get(TagRepository).save({
+		id: generateNanoId(),
 		name: name ?? randomName(),
 		...attributes,
 	});
+
+	if (workflow) {
+		const mappingRepository = Container.get(WorkflowTagMappingRepository);
+
+		const mapping = mappingRepository.create({ tagId: tag.id, workflowId: workflow.id });
+
+		await mappingRepository.save(mapping);
+	}
+
+	return tag;
 }
 
 // ----------------------------------
@@ -407,7 +440,7 @@ export async function createManyWorkflows(
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
 	const { active, name, nodes, connections } = attributes;
 
-	const workflow = await Db.collections.Workflow.save({
+	const workflowEntity = Db.collections.Workflow.create({
 		active: active ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
@@ -423,6 +456,8 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		connections: connections ?? {},
 		...attributes,
 	});
+
+	const workflow = await Db.collections.Workflow.save(workflowEntity);
 
 	if (user) {
 		await Db.collections.SharedWorkflow.save({
@@ -489,6 +524,10 @@ export async function createWorkflowWithTrigger(
 	return workflow;
 }
 
+export async function getAllWorkflows() {
+	return Db.collections.Workflow.find();
+}
+
 // ----------------------------------
 //        workflow sharing
 // ----------------------------------
@@ -500,6 +539,36 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 }
 
 // ----------------------------------
+//             variables
+// ----------------------------------
+
+export async function createVariable(key: string, value: string) {
+	const result = await Db.collections.Variables.save({
+		id: generateNanoId(),
+		key,
+		value,
+	});
+	await Container.get(VariablesService).updateCache();
+	return result;
+}
+
+export async function getVariableByKey(key: string) {
+	return Db.collections.Variables.findOne({
+		where: {
+			key,
+		},
+	});
+}
+
+export async function getVariableById(id: string) {
+	return Db.collections.Variables.findOne({
+		where: {
+			id,
+		},
+	});
+}
+
+// ----------------------------------
 //        connection options
 // ----------------------------------
 
@@ -507,16 +576,17 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
  * Generate options for an in-memory sqlite database connection,
  * one per test suite run.
  */
-export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
+const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
 		name,
 		type: 'sqlite',
 		database: ':memory:',
-		entityPrefix: '',
+		entityPrefix: config.getEnv('database.tablePrefix'),
 		dropSchema: true,
 		migrations: sqliteMigrations,
 		migrationsTableName: 'migrations',
 		migrationsRun: false,
+		enableWAL: config.getEnv('database.sqlite.enableWAL'),
 	};
 };
 
@@ -525,19 +595,19 @@ const baseOptions = (type: TestDBType) => ({
 	port: config.getEnv(`database.${type}db.port`),
 	username: config.getEnv(`database.${type}db.user`),
 	password: config.getEnv(`database.${type}db.password`),
+	entityPrefix: config.getEnv('database.tablePrefix'),
 	schema: type === 'postgres' ? config.getEnv('database.postgresdb.schema') : undefined,
 });
 
 /**
  * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapDBOptions = (type: TestDBType) =>
-	({
-		type,
-		name: type,
-		database: type,
-		...baseOptions(type),
-	} as const);
+export const getBootstrapDBOptions = (type: TestDBType) => ({
+	type,
+	name: type,
+	database: type,
+	...baseOptions(type),
+});
 
 const getDBOptions = (type: TestDBType, name: string) => ({
 	type,

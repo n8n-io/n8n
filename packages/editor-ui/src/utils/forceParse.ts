@@ -1,4 +1,4 @@
-import { EditorView } from '@codemirror/view';
+import type { EditorView } from '@codemirror/view';
 
 /**
  * Simulate user action to force parser to catch up during scroll.

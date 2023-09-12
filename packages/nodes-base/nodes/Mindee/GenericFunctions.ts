@@ -1,12 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function mindeeApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
 	body: any = {},
@@ -101,6 +104,20 @@ export function cleanData(document: IDataObject) {
 			newData.currency = data.currency;
 			//@ts-ignore
 			newData.locale = data.value;
+		} else if (key === 'line_items') {
+			const lineItems: IDataObject[] = [];
+			for (const lineItem of data as IDataObject[]) {
+				lineItems.push({
+					description: lineItem.description,
+					product_code: lineItem.product_code,
+					quantity: lineItem.quantity,
+					tax_amount: lineItem.tax_amount,
+					tax_rate: lineItem.tax_rate,
+					total_amount: lineItem.total_amount,
+					unit_price: lineItem.unit_price,
+				});
+			}
+			newData[key] = lineItems;
 		} else {
 			newData[key] =
 				//@ts-ignore

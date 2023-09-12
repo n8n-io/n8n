@@ -1,6 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	IDataObject,
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -79,6 +79,14 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v17.0',
+						value: 'v17.0',
+					},
+					{
+						name: 'v16.0',
+						value: 'v16.0',
 					},
 					{
 						name: 'v15.0',
@@ -367,13 +375,6 @@ export class FacebookGraphApi implements INodeType {
 
 			const sendBinaryData = this.getNodeParameter('sendBinaryData', itemIndex, false) as boolean;
 			if (sendBinaryData) {
-				const item = items[itemIndex];
-				if (item.binary === undefined) {
-					throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-						itemIndex,
-					});
-				}
-
 				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex);
 
 				let propertyName = 'file';
@@ -384,16 +385,7 @@ export class FacebookGraphApi implements INodeType {
 					binaryPropertyName = binaryPropertyNameParts[1];
 				}
 
-				if (item.binary[binaryPropertyName] === undefined) {
-					throw new NodeOperationError(
-						this.getNode(),
-						`Item has no binary property called "${binaryPropertyName}"`,
-						{ itemIndex },
-					);
-				}
-
-				const binaryProperty = item.binary[binaryPropertyName];
-
+				const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 					itemIndex,
 					binaryPropertyName,
@@ -402,8 +394,8 @@ export class FacebookGraphApi implements INodeType {
 					[propertyName]: {
 						value: binaryDataBuffer,
 						options: {
-							filename: binaryProperty.fileName,
-							contentType: binaryProperty.mimeType,
+							filename: binaryData.fileName,
+							contentType: binaryData.mimeType,
 						},
 					},
 				};

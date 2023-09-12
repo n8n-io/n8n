@@ -1,11 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, IHookFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	IHookFunctions,
+} from 'n8n-workflow';
 
 export async function mailjetApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
 

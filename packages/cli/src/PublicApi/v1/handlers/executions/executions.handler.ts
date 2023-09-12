@@ -23,7 +23,7 @@ export = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
 			// user does not have workflows hence no executions
-			// or the execution he is trying to access belongs to a workflow he does not own
+			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -37,7 +37,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id);
+			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionIds([execution.id!]);
 
 			await deleteExecution(execution);
 
@@ -52,7 +52,7 @@ export = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
 			// user does not have workflows hence no executions
-			// or the execution he is trying to access belongs to a workflow he does not own
+			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -90,8 +90,8 @@ export = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
 			// user does not have workflows hence no executions
-			// or the execution he is trying to access belongs to a workflow he does not own
-			if (!sharedWorkflowsIds.length) {
+			// or the execution they are trying to access belongs to a workflow they do not own
+			if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
@@ -105,13 +105,13 @@ export = {
 				limit,
 				lastId,
 				includeData,
-				...(workflowId && { workflowIds: [workflowId] }),
+				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
 				excludedExecutionsIds: runningExecutionsIds,
 			};
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
+			const newLastId = !executions.length ? '0' : (executions.slice(-1)[0].id as string);
 
 			filters.lastId = newLastId;
 

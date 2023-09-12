@@ -17,9 +17,9 @@
 				<div
 					:class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']"
 					@click="addStickyNote"
+					data-test-id="add-sticky-button"
 				>
 					<n8n-icon-button
-						size="medium"
 						type="tertiary"
 						:icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')"
@@ -27,25 +27,36 @@
 				</div>
 			</div>
 		</div>
-		<node-creator
-			:active="createNodeActive"
-			@nodeTypeSelected="nodeTypeSelected"
-			@closeNodeCreator="closeNodeCreator"
-		/>
+		<Suspense>
+			<NodeCreator
+				:active="createNodeActive"
+				@nodeTypeSelected="nodeTypeSelected"
+				@closeNodeCreator="closeNodeCreator"
+			/>
+		</Suspense>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
-import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE } from '@/constants';
+import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
+	NODE_CREATOR_OPEN_SOURCES,
+	STICKY_NODE_TYPE,
+} from '@/constants';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+const NodeCreator = defineAsyncComponent(
+	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+);
+
+export default defineComponent({
 	name: 'node-creation',
 	components: {
-		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+		NodeCreator,
 	},
 	props: {
 		nodeViewScale: {
@@ -94,7 +105,10 @@ export default Vue.extend({
 			document.addEventListener('mousemove', moveCallback, false);
 		},
 		openNodeCreator() {
-			this.$emit('toggleNodeCreator', { source: 'add_node_button', createNodeActive: true });
+			this.$emit('toggleNodeCreator', {
+				source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+				createNodeActive: true,
+			});
 		},
 		addStickyNote() {
 			if (document.activeElement) {
@@ -130,7 +144,7 @@ export default Vue.extend({
 
 <style lang="scss" module>
 .nodeButtonsWrapper {
-	position: fixed;
+	position: absolute;
 	width: 150px;
 	height: 200px;
 	top: 0;
@@ -155,9 +169,9 @@ export default Vue.extend({
 }
 
 .nodeCreatorButton {
-	position: fixed;
+	position: absolute;
 	text-align: center;
-	top: calc(#{$header-height} + var(--spacing-s));
+	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
 

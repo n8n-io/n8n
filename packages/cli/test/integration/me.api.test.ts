@@ -1,10 +1,9 @@
-import express from 'express';
+import type { SuperAgentTest } from 'supertest';
 import { IsNull } from 'typeorm';
 import validator from 'validator';
-
-import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomApiKey,
@@ -14,36 +13,33 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent } from './shared/types';
-import * as utils from './shared/utils';
+import * as utils from './shared/utils/';
 
-let app: express.Application;
+const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
+
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['me'] });
-
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
-
-	authAgent = utils.createAuthAgent(app);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 });
 
-afterAll(async () => {
-	await testDb.terminate();
-});
-
 describe('Owner shell', () => {
-	test('PATCH /me should succeed with valid inputs', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
+	let ownerShell: User;
+	let authOwnerShellAgent: SuperAgentTest;
 
+	beforeEach(async () => {
+		ownerShell = await testDb.createUserShell(globalOwnerRole);
+		await testDb.addApiKey(ownerShell);
+		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
+	});
+
+	test('PATCH /me should succeed with valid inputs', async () => {
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerShellAgent.patch('/me').send(validPayload);
 
@@ -57,7 +53,6 @@ describe('Owner shell', () => {
 				personalizationAnswers,
 				globalRole,
 				password,
-				resetPasswordToken,
 				isPending,
 				apiKey,
 			} = response.body.data;
@@ -68,7 +63,6 @@ describe('Owner shell', () => {
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');
@@ -83,9 +77,6 @@ describe('Owner shell', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
-
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerShellAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
@@ -98,9 +89,6 @@ describe('Owner shell', () => {
 	});
 
 	test('PATCH /me/password should fail for shell', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
-
 		const validPasswordPayload = {
 			currentPassword: randomValidPassword(),
 			newPassword: randomValidPassword(),
@@ -108,31 +96,26 @@ describe('Owner shell', () => {
 
 		const validPayloads = [validPasswordPayload, ...INVALID_PASSWORD_PAYLOADS];
 
-		await Promise.all(
-			validPayloads.map(async (payload) => {
-				const response = await authOwnerShellAgent.patch('/me/password').send(payload);
-				expect([400, 500].includes(response.statusCode)).toBe(true);
+		for (const payload of validPayloads) {
+			const response = await authOwnerShellAgent.patch('/me/password').send(payload);
+			expect([400, 500].includes(response.statusCode)).toBe(true);
 
-				const storedMember = await Db.collections.User.findOneByOrFail({});
+			const storedMember = await Db.collections.User.findOneByOrFail({});
 
-				if (payload.newPassword) {
-					expect(storedMember.password).not.toBe(payload.newPassword);
-				}
+			if (payload.newPassword) {
+				expect(storedMember.password).not.toBe(payload.newPassword);
+			}
 
-				if (payload.currentPassword) {
-					expect(storedMember.password).not.toBe(payload.currentPassword);
-				}
-			}),
-		);
+			if (payload.currentPassword) {
+				expect(storedMember.password).not.toBe(payload.currentPassword);
+			}
+		}
 
 		const storedOwnerShell = await Db.collections.User.findOneByOrFail({});
 		expect(storedOwnerShell.password).toBeNull();
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-		const authOwnerShellAgent = authAgent(ownerShell);
-
 		const validPayloads = [SURVEY, {}];
 
 		for (const validPayload of validPayloads) {
@@ -150,9 +133,7 @@ describe('Owner shell', () => {
 	});
 
 	test('POST /me/api-key should create an api key', async () => {
-		const ownerShell = await testDb.createUserShell(globalOwnerRole);
-
-		const response = await authAgent(ownerShell).post('/me/api-key');
+		const response = await authOwnerShellAgent.post('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toBeDefined();
@@ -166,20 +147,14 @@ describe('Owner shell', () => {
 	});
 
 	test('GET /me/api-key should fetch the api key', async () => {
-		let ownerShell = await testDb.createUserShell(globalOwnerRole);
-		ownerShell = await testDb.addApiKey(ownerShell);
-
-		const response = await authAgent(ownerShell).get('/me/api-key');
+		const response = await authOwnerShellAgent.get('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toEqual(ownerShell.apiKey);
 	});
 
 	test('DELETE /me/api-key should fetch the api key', async () => {
-		let ownerShell = await testDb.createUserShell(globalOwnerRole);
-		ownerShell = await testDb.addApiKey(ownerShell);
-
-		const response = await authAgent(ownerShell).delete('/me/api-key');
+		const response = await authOwnerShellAgent.delete('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 
@@ -192,19 +167,22 @@ describe('Owner shell', () => {
 });
 
 describe('Member', () => {
-	beforeEach(async () => {
-		config.set('userManagement.isInstanceOwnerSetUp', true);
+	const memberPassword = randomValidPassword();
+	let member: User;
+	let authMemberAgent: SuperAgentTest;
 
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: JSON.stringify(true) },
-		);
+	beforeEach(async () => {
+		member = await testDb.createUser({
+			password: memberPassword,
+			globalRole: globalMemberRole,
+			apiKey: randomApiKey(),
+		});
+		authMemberAgent = testServer.authAgentFor(member);
+
+		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const authMemberAgent = authAgent(member);
-
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(validPayload);
 
@@ -218,7 +196,6 @@ describe('Member', () => {
 				personalizationAnswers,
 				globalRole,
 				password,
-				resetPasswordToken,
 				isPending,
 				apiKey,
 			} = response.body.data;
@@ -229,7 +206,6 @@ describe('Member', () => {
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('member');
 			expect(globalRole.scope).toBe('global');
@@ -244,9 +220,6 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me should fail with invalid inputs', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const authMemberAgent = authAgent(member);
-
 		for (const invalidPayload of INVALID_PATCH_ME_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
@@ -259,18 +232,12 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me/password should succeed with valid inputs', async () => {
-		const memberPassword = randomValidPassword();
-		const member = await testDb.createUser({
-			password: memberPassword,
-			globalRole: globalMemberRole,
-		});
-
 		const validPayload = {
 			currentPassword: memberPassword,
 			newPassword: randomValidPassword(),
 		};
 
-		const response = await authAgent(member).patch('/me/password').send(validPayload);
+		const response = await authMemberAgent.patch('/me/password').send(validPayload);
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
@@ -280,9 +247,6 @@ describe('Member', () => {
 	});
 
 	test('PATCH /me/password should fail with invalid inputs', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const authMemberAgent = authAgent(member);
-
 		for (const payload of INVALID_PASSWORD_PAYLOADS) {
 			const response = await authMemberAgent.patch('/me/password').send(payload);
 			expect([400, 500].includes(response.statusCode)).toBe(true);
@@ -299,9 +263,6 @@ describe('Member', () => {
 	});
 
 	test('POST /me/survey should succeed with valid inputs', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const authMemberAgent = authAgent(member);
-
 		const validPayloads = [SURVEY, {}];
 
 		for (const validPayload of validPayloads) {
@@ -318,12 +279,7 @@ describe('Member', () => {
 	});
 
 	test('POST /me/api-key should create an api key', async () => {
-		const member = await testDb.createUser({
-			globalRole: globalMemberRole,
-			apiKey: randomApiKey(),
-		});
-
-		const response = await authAgent(member).post('/me/api-key');
+		const response = await testServer.authAgentFor(member).post('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toBeDefined();
@@ -335,24 +291,14 @@ describe('Member', () => {
 	});
 
 	test('GET /me/api-key should fetch the api key', async () => {
-		const member = await testDb.createUser({
-			globalRole: globalMemberRole,
-			apiKey: randomApiKey(),
-		});
-
-		const response = await authAgent(member).get('/me/api-key');
+		const response = await testServer.authAgentFor(member).get('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.apiKey).toEqual(member.apiKey);
 	});
 
 	test('DELETE /me/api-key should fetch the api key', async () => {
-		const member = await testDb.createUser({
-			globalRole: globalMemberRole,
-			apiKey: randomApiKey(),
-		});
-
-		const response = await authAgent(member).delete('/me/api-key');
+		const response = await testServer.authAgentFor(member).delete('/me/api-key');
 
 		expect(response.statusCode).toBe(200);
 
@@ -364,12 +310,12 @@ describe('Member', () => {
 
 describe('Owner', () => {
 	beforeEach(async () => {
-		config.set('userManagement.isInstanceOwnerSetUp', true);
+		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-		const authOwnerAgent = authAgent(owner);
+		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {
 			const response = await authOwnerAgent.patch('/me').send(validPayload);
@@ -384,7 +330,6 @@ describe('Owner', () => {
 				personalizationAnswers,
 				globalRole,
 				password,
-				resetPasswordToken,
 				isPending,
 				apiKey,
 			} = response.body.data;
@@ -395,7 +340,6 @@ describe('Owner', () => {
 			expect(lastName).toBe(validPayload.lastName);
 			expect(personalizationAnswers).toBeNull();
 			expect(password).toBeUndefined();
-			expect(resetPasswordToken).toBeUndefined();
 			expect(isPending).toBe(false);
 			expect(globalRole.name).toBe('owner');
 			expect(globalRole.scope).toBe('global');

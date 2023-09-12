@@ -17,12 +17,11 @@
 				/>
 				<TagsDropdown
 					v-if="settingsStore.areTagsEnabled"
+					v-model="currentTagIds"
 					:createEnabled="true"
-					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
 					@blur="onTagsBlur"
 					@esc="onTagsEsc"
-					@update="onTagsUpdate"
 					:placeholder="$locale.baseText('duplicateWorkflowDialog.chooseOrCreateATag')"
 					ref="dropdown"
 				/>
@@ -49,26 +48,32 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
-
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 import TagsDropdown from '@/components/TagsDropdown.vue';
-import Modal from './Modal.vue';
-import { restApi } from '@/mixins/restApi';
-import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { IWorkflowDataUpdate } from '@/Interface';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
-import { useUsersStore } from '@/stores/users';
+import Modal from '@/components/Modal.vue';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IWorkflowDataUpdate } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import { useUsersStore } from '@/stores/users.store';
+import { createEventBus } from 'n8n-design-system/utils';
+import { useCredentialsStore } from '@/stores';
 
-export default mixins(showMessage, workflowHelpers, restApi).extend({
-	components: { TagsDropdown, Modal },
+export default defineComponent({
 	name: 'DuplicateWorkflow',
+	mixins: [workflowHelpers],
+	components: { TagsDropdown, Modal },
 	props: ['modalName', 'isActive', 'data'],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		const currentTagIds = this.data.tags;
 
@@ -76,23 +81,32 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			name: '',
 			currentTagIds,
 			isSaving: false,
-			modalBus: new Vue(),
-			dropdownBus: new Vue(),
+			modalBus: createEventBus(),
+			dropdownBus: createEventBus(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			prevTagIds: currentTagIds,
 		};
 	},
 	async mounted() {
 		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
-		this.$nextTick(() => this.focusOnNameInput());
+		await this.$nextTick();
+		this.focusOnNameInput();
 	},
 	computed: {
-		...mapStores(useUsersStore, useSettingsStore, useWorkflowsStore),
+		...mapStores(useCredentialsStore, useUsersStore, useSettingsStore, useWorkflowsStore),
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(
-				this.usersStore.currentUser,
-				this.workflowsStore.getWorkflowById(this.data.id),
-			);
+			const isEmptyWorkflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			const isCurrentWorkflowEmpty =
+				this.workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+
+			// If the workflow to be duplicated is empty and the current workflow is also empty
+			// we need to use the current workflow to get the permissions
+			const currentWorkflow =
+				isEmptyWorkflow && isCurrentWorkflowEmpty
+					? this.workflowsStore.workflow
+					: this.workflowsStore.getWorkflowById(this.data.id);
+
+			return getWorkflowPermissions(this.usersStore.currentUser, currentWorkflow);
 		},
 	},
 	watch: {
@@ -104,12 +118,12 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 	},
 	methods: {
 		focusOnSelect() {
-			this.dropdownBus.$emit('focus');
+			this.dropdownBus.emit('focus');
 		},
 		focusOnNameInput() {
-			const input = this.$refs.nameInput as HTMLElement;
-			if (input && input.focus) {
-				input.focus();
+			const inputRef = this.$refs.nameInput as HTMLElement | undefined;
+			if (inputRef && inputRef.focus) {
+				inputRef.focus();
 			}
 		},
 		onTagsBlur() {
@@ -119,13 +133,10 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			// revert last changes
 			this.currentTagIds = this.prevTagIds;
 		},
-		onTagsUpdate(tagIds: string[]) {
-			this.currentTagIds = tagIds;
-		},
 		async save(): Promise<void> {
 			const name = this.name.trim();
 			if (!name) {
-				this.$showMessage({
+				this.showMessage({
 					title: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.title'),
 					message: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.message'),
 					type: 'error',
@@ -142,7 +153,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 					const { createdAt, updatedAt, usedCredentials, ...workflow } =
-						await this.restApi().getWorkflow(this.data.id);
+						await this.workflowsStore.fetchWorkflow(this.data.id);
 					workflowToUpdate = workflow;
 
 					this.removeForeignCredentialsFromWorkflow(
@@ -172,12 +183,12 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 				if (error.httpStatusCode === 403) {
 					error.message = this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.message');
 
-					this.$showError(
+					this.showError(
 						error,
 						this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.title'),
 					);
 				} else {
-					this.$showError(
+					this.showError(
 						error,
 						this.$locale.baseText('duplicateWorkflowDialog.errors.generic.title'),
 					);
@@ -187,7 +198,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			}
 		},
 		closeDialog(): void {
-			this.modalBus.$emit('close');
+			this.modalBus.emit('close');
 		},
 	},
 });

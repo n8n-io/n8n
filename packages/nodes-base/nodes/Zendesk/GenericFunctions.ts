@@ -1,13 +1,11 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 function getUri(resource: string, subdomain: string) {
 	if (resource.includes('webhooks')) {
@@ -18,7 +16,7 @@ function getUri(resource: string, subdomain: string) {
 }
 
 export async function zendeskApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -81,7 +79,8 @@ export async function zendeskApiRequestAllItems(
 		responseData = await zendeskApiRequest.call(this, method, resource, body, query, uri);
 		uri = responseData.next_page;
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData.next_page !== undefined && responseData.next_page !== null);

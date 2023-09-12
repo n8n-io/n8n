@@ -6,13 +6,13 @@
 		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+		<n8n-button class="mt-l" type="tertiary" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div
-			:class="{ [$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }"
+			:class="$style.executionDetails"
 			v-if="activeExecution"
 			:data-test-id="`execution-preview-details-${executionId}`"
 		>
@@ -33,6 +33,7 @@
 				>
 					{{ executionUIDetails.label }}
 				</n8n-text>
+				{{ ' ' }}
 				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
@@ -78,6 +79,29 @@
 				</n8n-text>
 			</div>
 			<div>
+				<n8n-button
+					size="large"
+					:type="debugButtonData.type"
+					:class="{
+						[$style.debugLink]: true,
+						[$style.secondary]: debugButtonData.type === 'secondary',
+					}"
+				>
+					<router-link
+						:to="{
+							name: VIEWS.EXECUTION_DEBUG,
+							params: {
+								name: activeExecution.workflowId,
+								executionId: activeExecution.id,
+							},
+						}"
+					>
+						<span @click="handleDebugLinkClick" data-test-id="execution-debug-button">{{
+							debugButtonData.text
+						}}</span>
+					</router-link>
+				</n8n-button>
+
 				<el-dropdown
 					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
@@ -126,19 +150,19 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { restApi } from '@/mixins/restApi';
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { ElDropdown } from 'element-plus';
+import { useExecutionDebugging, useMessage } from '@/composables';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
-import { VIEWS } from '@/constants';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { Dropdown as ElDropdown } from 'element-ui';
-import { IAbstractEventMessage } from 'n8n-workflow';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
+import { MODAL_CONFIRM, VIEWS } from '@/constants';
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+type RetryDropdownRef = InstanceType<typeof ElDropdown> & { hide: () => void };
+
+export default defineComponent({
 	name: 'execution-preview',
+	mixins: [executionHelpers],
 	components: {
 		ElDropdown,
 		WorkflowPreview,
@@ -148,28 +172,45 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 			VIEWS,
 		};
 	},
+	setup() {
+		return {
+			...useMessage(),
+			...useExecutionDebugging(),
+		};
+	},
 	computed: {
-		...mapStores(useUIStore),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
-		},
-		sidebarCollapsed(): boolean {
-			return this.uiStore.sidebarMenuCollapsed;
 		},
 		executionMode(): string {
 			return this.activeExecution?.mode || '';
 		},
+		debugButtonData(): Record<string, string> {
+			return this.activeExecution?.status === 'success'
+				? {
+						text: this.$locale.baseText('executionsList.debug.button.copyToEditor'),
+						type: 'secondary',
+				  }
+				: {
+						text: this.$locale.baseText('executionsList.debug.button.debugInEditor'),
+						type: 'primary',
+				  };
+		},
 	},
 	methods: {
 		async onDeleteExecution(): Promise<void> {
-			const deleteConfirmed = await this.confirmMessage(
+			const deleteConfirmed = await this.confirm(
 				this.$locale.baseText('executionDetails.confirmMessage.message'),
 				this.$locale.baseText('executionDetails.confirmMessage.headline'),
-				'warning',
-				this.$locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
-				'',
+				{
+					type: 'warning',
+					confirmButtonText: this.$locale.baseText(
+						'executionDetails.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: '',
+				},
 			);
-			if (!deleteConfirmed) {
+			if (deleteConfirmed !== MODAL_CONFIRM) {
 				return;
 			}
 			this.$emit('deleteCurrentExecution');
@@ -182,9 +223,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
-			const retryDropdown = this.$refs.retryDropdown as (Vue & { hide: () => void }) | undefined;
-			if (retryDropdown && event.relatedTarget === null) {
-				retryDropdown.hide();
+			const retryDropdownRef = this.$refs.retryDropdown as RetryDropdownRef | undefined;
+			if (retryDropdownRef && event.relatedTarget === null) {
+				retryDropdownRef.handleClose();
 			}
 		},
 	},
@@ -193,7 +234,8 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 
 <style module lang="scss">
 .previewContainer {
-	height: calc(100% - $header-height);
+	position: relative;
+	height: 100%;
 	overflow: hidden;
 }
 
@@ -201,18 +243,20 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	position: absolute;
 	padding: var(--spacing-m);
 	padding-right: var(--spacing-xl);
-	width: calc(100% - 510px);
+	width: 100%;
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
 
-	& * {
-		pointer-events: all;
+	> div:last-child {
+		display: flex;
+		align-items: center;
 	}
 
-	&.sidebarCollapsed {
-		width: calc(100% - 375px);
+	& * {
+		pointer-events: all;
 	}
 }
 
@@ -249,5 +293,22 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	width: 200px;
 	margin-top: var(--spacing-l);
 	text-align: center;
+}
+
+.debugLink {
+	padding: 0;
+	margin-right: var(--spacing-xs);
+
+	&.secondary {
+		a span {
+			color: var(--color-primary-shade-1);
+		}
+	}
+
+	a span {
+		display: block;
+		padding: var(--spacing-xs) var(--spacing-m);
+		color: var(--color-text-xlight);
+	}
 }
 </style>

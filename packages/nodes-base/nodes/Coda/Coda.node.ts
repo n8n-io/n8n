@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -79,7 +79,7 @@ export class Coda implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available docs to display them to user so that he can
+			// Get all the available docs to display them to user so that they can
 			// select them easily
 			async getDocs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -95,7 +95,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available tables to display them to user so that he can
+			// Get all the available tables to display them to user so that they can
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -119,7 +119,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available columns to display them to user so that he can
+			// Get all the available columns to display them to user so that they can
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -144,7 +144,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available views to display them to user so that he can
+			// Get all the available views to display them to user so that they can
 			// select them easily
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -166,7 +166,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available formulas to display them to user so that he can
+			// Get all the available formulas to display them to user so that they can
 			// select them easily
 			async getFormulas(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +188,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available view rows to display them to user so that he can
+			// Get all the available view rows to display them to user so that they can
 			// select them easily
 			async getViewRows(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -211,7 +211,7 @@ export class Coda implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available view columns to display them to user so that he can
+			// Get all the available view columns to display them to user so that they can
 			// select them easily
 			async getViewColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -359,7 +359,7 @@ export class Coda implements INodeType {
 					}
 				}
 
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
@@ -411,7 +411,6 @@ export class Coda implements INodeType {
 					return [this.helpers.returnJsonArray(responseData as IDataObject[])];
 				} else {
 					for (const item of responseData) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						returnData.push({
 							id: item.id,
 							...item.values,
@@ -536,7 +535,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
 		if (resource === 'formula') {
@@ -565,7 +564,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listFormulas
 			if (operation === 'getAll') {
@@ -598,7 +597,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
 		if (resource === 'control') {
@@ -627,7 +626,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listControls
 			if (operation === 'getAll') {
@@ -660,7 +659,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 		}
 		if (resource === 'view') {
@@ -677,7 +676,7 @@ export class Coda implements INodeType {
 					);
 					returnData.push(...executionData);
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/listViews
 			if (operation === 'getAll') {
@@ -710,7 +709,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			if (operation === 'getAllViewRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
@@ -758,7 +757,6 @@ export class Coda implements INodeType {
 					return [this.helpers.returnJsonArray(responseData as IDataObject[])];
 				} else {
 					for (const item of responseData) {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 						returnData.push({
 							id: item.id,
 							...item.values,
@@ -793,7 +791,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/pushViewButton
 			if (operation === 'pushViewButton') {
@@ -822,7 +820,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			if (operation === 'getAllViewColumns') {
 				for (let i = 0; i < items.length; i++) {
@@ -855,7 +853,7 @@ export class Coda implements INodeType {
 						throw error;
 					}
 				}
-				return this.prepareOutputData(returnData);
+				return [returnData];
 			}
 			//https://coda.io/developers/apis/v1beta1#operation/updateViewRow
 			if (operation === 'updateViewRow') {

@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -66,7 +65,7 @@ export class Automizy implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -363,6 +362,6 @@ export class Automizy implements INodeType {
 
 		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

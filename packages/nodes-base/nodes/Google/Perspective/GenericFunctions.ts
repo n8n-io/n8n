@@ -1,8 +1,6 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(

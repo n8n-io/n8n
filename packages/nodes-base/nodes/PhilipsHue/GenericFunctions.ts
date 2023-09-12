@@ -1,8 +1,11 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { JsonObject, IDataObject } from 'n8n-workflow';
+import type {
+	JsonObject,
+	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function philipsHueApiRequest(

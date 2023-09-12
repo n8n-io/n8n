@@ -1,9 +1,17 @@
 <template>
 	<div :class="$style.actionsGroup">
-		<el-dropdown trigger="click" @command="handleCopyClick">
+		<n8n-icon-button
+			v-if="noSelection"
+			:title="i18n.baseText('runData.copyToClipboard')"
+			icon="copy"
+			type="tertiary"
+			:circle="false"
+			@click="handleCopyClick({ command: 'value' })"
+		/>
+		<el-dropdown v-else trigger="click" @command="handleCopyClick">
 			<span class="el-dropdown-link">
 				<n8n-icon-button
-					:title="$locale.baseText('runData.copyToClipboard')"
+					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="copy"
 					type="tertiary"
 					:circle="false"
@@ -12,13 +20,13 @@
 			<template #dropdown>
 				<el-dropdown-menu>
 					<el-dropdown-item :command="{ command: 'value' }">
-						{{ $locale.baseText('runData.copyValue') }}
+						{{ i18n.baseText('runData.copyValue') }}
 					</el-dropdown-item>
 					<el-dropdown-item :command="{ command: 'itemPath' }" divided>
-						{{ $locale.baseText('runData.copyItemPath') }}
+						{{ i18n.baseText('runData.copyItemPath') }}
 					</el-dropdown-item>
 					<el-dropdown-item :command="{ command: 'parameterPath' }">
-						{{ $locale.baseText('runData.copyParameterPath') }}
+						{{ i18n.baseText('runData.copyParameterPath') }}
 					</el-dropdown-item>
 				</el-dropdown-menu>
 			</template>
@@ -27,30 +35,31 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import jp from 'jsonpath';
-import { INodeUi } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useI18n, useToast } from '@/composables';
+import { nonExistingJsonPath } from '@/constants';
 
 type JsonPathData = {
 	path: string;
 	startPath: string;
 };
 
-// A path that does not exist so that nothing is selected by default
-const nonExistingJsonPath = '_!^&*';
-
-export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
+export default defineComponent({
 	name: 'run-data-json-actions',
+	mixins: [genericHelpers, nodeHelpers, pinData, copyPaste],
+
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -82,20 +91,30 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			required: true,
 		},
 	},
+	setup() {
+		const i18n = useI18n();
+
+		return {
+			i18n,
+			...useToast(),
+		};
+	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+		noSelection() {
+			return this.selectedJsonPath === nonExistingJsonPath;
+		},
 		normalisedJsonPath(): string {
-			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;
-			return isNotSelected ? '[""]' : this.selectedJsonPath;
+			return this.noSelection ? '[""]' : this.selectedJsonPath;
 		},
 	},
 	methods: {
 		getJsonValue(): string {
 			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
-			if (this.selectedJsonPath === nonExistingJsonPath) {
+			if (this.noSelection) {
 				if (this.hasPinData) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
@@ -142,8 +161,8 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 			if (commandData.command === 'value') {
 				value = this.getJsonValue();
 
-				this.$showToast({
-					title: this.$locale.baseText('runData.copyValue.toast'),
+				this.showToast({
+					title: this.i18n.baseText('runData.copyValue.toast'),
 					message: '',
 					type: 'success',
 					duration: 2000,
@@ -156,8 +175,8 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 					startPath = jsonItemPath.startPath;
 					path = jsonItemPath.path;
 
-					this.$showToast({
-						title: this.$locale.baseText('runData.copyItemPath.toast'),
+					this.showToast({
+						title: this.i18n.baseText('runData.copyItemPath.toast'),
 						message: '',
 						type: 'success',
 						duration: 2000,
@@ -167,8 +186,8 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 					startPath = jsonParameterPath.startPath;
 					path = jsonParameterPath.path;
 
-					this.$showToast({
-						title: this.$locale.baseText('runData.copyParameterPath.toast'),
+					this.showToast({
+						title: this.i18n.baseText('runData.copyParameterPath.toast'),
 						message: '',
 						type: 'success',
 						duration: 2000,
@@ -194,7 +213,7 @@ export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 				copy_type: copyType,
 				workflow_id: this.workflowsStore.workflowId,
 				pane: this.paneType,
-				in_execution_log: this.isReadOnly,
+				in_execution_log: this.isReadOnlyRoute,
 			});
 
 			this.copyToClipboard(value);

@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { buildBinAPIURL, transformBinReponse } from './GenericFunctions';
+import { buildBinAPIURL, transformBinResponse } from './GenericFunctions';
 
 // Operations for the `Bin` resource:
 export const binOperations: INodeProperties[] = [
@@ -25,7 +25,7 @@ export const binOperations: INodeProperties[] = [
 						url: '/developers/postbin/api/bin',
 					},
 					output: {
-						postReceive: [transformBinReponse],
+						postReceive: [transformBinResponse],
 					},
 				},
 				action: 'Create a bin',
@@ -39,7 +39,7 @@ export const binOperations: INodeProperties[] = [
 						method: 'GET',
 					},
 					output: {
-						postReceive: [transformBinReponse],
+						postReceive: [transformBinResponse],
 					},
 					send: {
 						preSend: [

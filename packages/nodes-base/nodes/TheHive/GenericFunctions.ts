@@ -1,8 +1,11 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+} from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import moment from 'moment';

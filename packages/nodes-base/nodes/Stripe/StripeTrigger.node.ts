@@ -1,8 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
 	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -35,7 +35,7 @@ export class StripeTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
@@ -502,6 +502,11 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs when a PaymentIntent has been successfully fulfilled.',
 					},
 					{
+						name: 'Payment Intent.requires_action',
+						value: 'payment_intent.requires_action',
+						description: 'Occurs when a PaymentIntent requires an action.',
+					},
+					{
 						name: 'Payment Method.attached',
 						value: 'payment_method.attached',
 						description: 'Occurs whenever a new payment method is attached to a customer.',
@@ -908,7 +913,7 @@ export class StripeTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 					delete webhookData.webhookSecret;

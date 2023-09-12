@@ -1,0 +1,212 @@
+{
+	"name": "do not error on missing keys",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "c7c0cf66-790a-4da7-81c8-ba9e4bbcec9a",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [720, 300]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {id: 1},\n  {id: 2},\n  {id: 3},\n  {id: 4},\n];"
+			},
+			"id": "cec18624-ced0-4de1-8987-d4b184b136b9",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1020, 200]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n];"
+			},
+			"id": "754d549c-82ce-4625-ba2b-6f8edcbf715e",
+			"name": "Code1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1020, 400]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "idd",
+							"field2": "idd"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "1b3660a2-a490-4524-a8ac-cd42fa2b340b",
+			"name": "Compare Datasets",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.2,
+			"position": [1300, 420]
+		},
+		{
+			"parameters": {
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "idd",
+							"field2": "idd"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "17e9b83b-828c-41a0-a7ba-e33cc66d37ad",
+			"name": "Any skipped",
+			"type": "n8n-nodes-base.compareDatasets",
+			"typeVersion": 2.1,
+			"position": [1300, 180],
+			"continueOnFail": true
+		},
+		{
+			"parameters": {},
+			"id": "551ed574-607a-4d98-9b06-350df92c805e",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1540, 200]
+		},
+		{
+			"parameters": {},
+			"id": "00e75760-d88e-413c-b276-c759db72411f",
+			"name": "No Operation, do nothing1",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1540, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			}
+		],
+		"No Operation, do nothing1": [
+			{
+				"json": {
+					"id": 1
+				}
+			},
+			{
+				"json": {
+					"id": 2
+				}
+			},
+			{
+				"json": {
+					"id": 3
+				}
+			},
+			{
+				"json": {
+					"id": 4
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Code1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Any skipped",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code1": {
+			"main": [
+				[
+					{
+						"node": "Compare Datasets",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Any skipped",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Any skipped": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Compare Datasets": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "11347bae-96af-4b28-80d7-fe272a165790",
+	"id": "8",
+	"meta": {
+		"instanceId": "6ebec4953fe56f1c009e7c3b107578b375137523af057073c0b5da17350651bd"
+	},
+	"tags": []
+}
