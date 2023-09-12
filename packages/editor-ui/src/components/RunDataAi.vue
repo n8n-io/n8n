@@ -1,15 +1,14 @@
 <template>
 	<div v-if="aiData" class="data-ai">
 		Log tree
-		<el-tree-v2 :data="[executionTree]" :props="{ label: 'node' }">
+		<el-tree-v2 :data="executionTree" :props="{ label: 'node' }">
 			<template #default="{ node, data }">
 				<div
 					class="node-item"
 					:class="{ [`depth-${data.depth}`]: true, 'has-children': data.children.length > 0 }"
 					:style="{ '--item-depth': data.depth }"
 				>
-					<node-icon :nodeType="getNodeType(data.node)" />
-					<!-- <span class="prefix" :class="{ 'is-leaf': node.isLeaf }">{{ data.depth }}</span> -->
+					<!-- <node-icon :nodeType="getNodeType(data.node)" /> -->
 					<span>{{ node.label }}</span>
 				</div>
 			</template>
@@ -62,17 +61,27 @@
 	}
 }
 .el-tree-node__content {
-	margin-left: 8px;
+	margin-left: 24px;
 }
 </style>
 <script lang="ts" setup>
 import { computed, watch, ref } from 'vue';
-import type { ITaskAIRunMetadata, ITaskDataConnections, ITaskMetadata } from 'n8n-workflow';
+import type { ITaskAIRunMetadata, ITaskDataConnections } from 'n8n-workflow';
 import type { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
-import { ElTreeV2 } from 'element-plus';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
-import NodeIcon from '@/components/NodeIcon.vue';
-import type { ITaskData } from 'n8n-workflow';
+
+interface TreeNode {
+	node: string;
+	id: string;
+	children: TreeNode[];
+	depth: number;
+}
+
+interface AIResult {
+	node: string;
+	runIndex: number;
+	data: IAiData | undefined;
+}
 
 const props = defineProps<{
 	node: INodeUi;
@@ -80,26 +89,58 @@ const props = defineProps<{
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 
-const executionTree = ref({});
+const executionTree = ref([] as TreeNode[]);
 
-const aiData = computed<ITaskMetadata | undefined>(() => {
+const aiData = computed<AIResult[] | undefined>(() => {
 	const resultData = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
 
 	if (!resultData || !Array.isArray(resultData)) {
 		return;
 	}
 
-	return resultData[resultData.length - 1].metadata;
+	const aiRun = resultData[resultData.length - 1].metadata?.aiRun;
+	if (!Array.isArray(aiRun)) {
+		return;
+	}
+	// Extend the aiRun with the data and sort by adding execution time + startTime and comparing them
+	const aiRunWithData = aiRun.flatMap((run) =>
+		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
+	);
+
+	aiRunWithData.sort((a, b) => {
+		const aTime = a.data?.metadata?.startTime || 0;
+		const bTime = b.data?.metadata?.startTime || 0;
+		return aTime - bTime;
+	});
+	console.log('🚀 ~ file: RunDataAi.vue:103 ~ aiRunWithData ~ aiRunWithData:', aiRunWithData);
+
+	return aiRunWithData;
 });
+function spreadTreeLeafs(tree: TreeNode) {
+	if (!tree) {
+		return [];
+	}
+	const leafs: TreeNode[] = [];
+	function spreadFunction(node: TreeNode) {
+		const nodeAiData = aiData.value?.filter((data) => data.node === node.node);
 
-interface TreeNode {
-	node: string;
-	id: string;
-	children: TreeNode[];
-	depth: number;
-	resultData: ITaskData[] | null;
+		const extendedNode = (nodeAiData ?? []).map((data) => ({
+			...node,
+			aiData: data,
+		}));
+		console.log('🚀 ~ file: RunDataAi.vue:131 ~ extendedNode ~ extendedNode:', extendedNode);
+		leafs.push(...extendedNode);
+		node.children.forEach((child) => spreadFunction(child));
+	}
+	spreadFunction(tree);
+	leafs.sort((a, b) => {
+		const aTime = a.aiData.data.metadata.startTime || 0;
+		const bTime = b.aiData.data.metadata.startTime || 0;
+		return aTime - bTime;
+	});
+	console.log('🚀 ~ file: RunDataAi.vue:141 ~ leafs.sort ~ leafs:', leafs);
+	return leafs;
 }
-
 function getNodeType(nodeName: string) {
 	const node = workflowsStore.getNodeByName(nodeName);
 	// const workflow = workflowsStore.getCurrentWorkflow();
@@ -113,14 +154,12 @@ function getNodeType(nodeName: string) {
 function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode {
 	const workflow = workflowsStore.getCurrentWorkflow();
 	const connections = workflow.connectionsByDestinationNode[nodeName];
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
 
 	if (!connections) {
 		return {
 			node: nodeName,
 			id: nodeName,
 			depth: currentDepth,
-			resultData,
 			children: [],
 		};
 	}
@@ -138,7 +177,6 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode {
 
 	return {
 		node: nodeName,
-		resultData,
 		children,
 		depth: currentDepth,
 		id: nodeName,
@@ -150,21 +188,26 @@ function buildExecutionTree() {
 
 	const tree = getTreeNodeData(rootNode.name, 0);
 
-	executionTree.value = tree;
-	console.log('🚀 ~ file: RunDataAi.vue:72 ~ buildExecutionTree ~ tree:', tree);
+	executionTree.value = spreadTreeLeafs(tree);
+	console.log('🚀 ~ file: RunDataAi.vue:72 ~ buildExecutionTree ~ tree:', executionTree.value);
 }
 
-function getReferencedData(reference: ITaskAIRunMetadata): IAiData | undefined {
+function getReferencedData(
+	reference: ITaskAIRunMetadata,
+	withInput: boolean,
+	withOutput: boolean,
+): IAiDataContent[] {
 	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
+	console.log('🚀 ~ file: RunDataAi.vue:159 ~ getReferencedData ~ resultData:', resultData);
 
 	if (!resultData?.[reference.runIndex]) {
-		return;
+		return [];
 	}
 
 	const taskData = resultData[reference.runIndex];
 
 	if (!taskData) {
-		return;
+		return [];
 	}
 
 	const returnData: IAiDataContent[] = [];
@@ -187,20 +230,21 @@ function getReferencedData(reference: ITaskAIRunMetadata): IAiData | undefined {
 		});
 	}
 
-	addFunction(taskData.inputOverride, 'input');
-	addFunction(taskData.data, 'output');
+	if (withInput) {
+		addFunction(taskData.inputOverride, 'input');
+	}
+	if (withOutput) {
+		addFunction(taskData.data, 'output');
+	}
 
-	return {
-		data: returnData,
-		node: reference.node,
-		runIndex: reference.runIndex,
-	};
+	return returnData;
 }
 watch(
 	() => aiData.value,
 	() => {
-		console.log('AI Data changed');
+		console.log('AI Data changed', aiData.value);
 		buildExecutionTree();
+		// getReferencedData(refData);
 	},
 	{
 		immediate: true,
