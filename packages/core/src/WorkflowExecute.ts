@@ -1372,84 +1372,84 @@ export class WorkflowExecute {
 		return fullRunData;
 	}
 
-	private async storeFullDataInElasticSearch(
-		executionId: string,
-		workflowId: string,
-		fullRunData: IRun,
-	) {
-		const client = new ElasticSearchCoreClient();
-		await client.addDocument(executionId, workflowId, fullRunData.data.resultData.runData);
-	}
+	// private async storeFullDataInElasticSearch(
+	// 	executionId: string,
+	// 	workflowId: string,
+	// 	fullRunData: IRun,
+	// ) {
+	// 	const client = new ElasticSearchCoreClient();
+	// 	await client.addDocument(executionId, workflowId, fullRunData.data.resultData.runData);
+	// }
 
-	private async storeFullDataInS3(
-		workflowId: string | undefined,
-		executionId: string,
-		executionError: ExecutionError | undefined,
-		fullRunData: IRun,
-	) {
-		// The n8n hierarchy is:
-		// - bucket's name - environment
-		// -- Date
-		// --- status (succeeded / failed)
-		// --- document name is the execution id
+	// private async storeFullDataInS3(
+	// 	workflowId: string | undefined,
+	// 	executionId: string,
+	// 	executionError: ExecutionError | undefined,
+	// 	fullRunData: IRun,
+	// ) {
+	// 	// The n8n hierarchy is:
+	// 	// - bucket's name - environment
+	// 	// -- Date
+	// 	// --- status (succeeded / failed)
+	// 	// --- document name is the execution id
 
-		const s3_configuration = process.env.AWS_S3_EXECUTIONS_BUCKET;
-		if (!s3_configuration) {
-			// We don't store anything in s3 if env is not configured
-			return;
-		}
+	// 	const s3_configuration = process.env.AWS_S3_EXECUTIONS_BUCKET;
+	// 	if (!s3_configuration) {
+	// 		// We don't store anything in s3 if env is not configured
+	// 		return;
+	// 	}
 
-		// aws s3 url should look like this
-		// https://aws.amazon.com/?accessKeyId=yourAccessKey&secretAccessKey=yourSecretKey&region=yourRegion&bucketName=YourBucket
-		const awsUrl = new URL(s3_configuration);
-		workflowId = workflowId ?? 'unknownWorkflowId';
+	// 	// aws s3 url should look like this
+	// 	// https://aws.amazon.com/?accessKeyId=yourAccessKey&secretAccessKey=yourSecretKey&region=yourRegion&bucketName=YourBucket
+	// 	const awsUrl = new URL(s3_configuration);
+	// 	workflowId = workflowId ?? 'unknownWorkflowId';
 
-		const accessKeyId: string | undefined = awsUrl.searchParams.get('accessKeyId') || undefined;
-		const bucket: string | undefined = awsUrl.searchParams.get('bucket') || undefined;
-		const secretAccessKey: string | undefined =
-			awsUrl.searchParams.get('secretAccessKey') || undefined;
-		const region: string | undefined = awsUrl.searchParams.get('region') || undefined;
+	// 	const accessKeyId: string | undefined = awsUrl.searchParams.get('accessKeyId') || undefined;
+	// 	const bucket: string | undefined = awsUrl.searchParams.get('bucket') || undefined;
+	// 	const secretAccessKey: string | undefined =
+	// 		awsUrl.searchParams.get('secretAccessKey') || undefined;
+	// 	const region: string | undefined = awsUrl.searchParams.get('region') || undefined;
 
-		// Validate s3 url
-		if (!accessKeyId || !bucket || !secretAccessKey || !region) {
-			Logger.error(
-				`AWS S3: Malformed url, could not insert execution ${executionId} to bucket:${bucket}`,
-			);
-			return;
-		}
+	// 	// Validate s3 url
+	// 	if (!accessKeyId || !bucket || !secretAccessKey || !region) {
+	// 		Logger.error(
+	// 			`AWS S3: Malformed url, could not insert execution ${executionId} to bucket:${bucket}`,
+	// 		);
+	// 		return;
+	// 	}
 
-		const s3: S3Client = new S3Client({
-			region,
-			credentials: {
-				accessKeyId,
-				secretAccessKey,
-			},
-		});
+	// 	const s3: S3Client = new S3Client({
+	// 		region,
+	// 		credentials: {
+	// 			accessKeyId,
+	// 			secretAccessKey,
+	// 		},
+	// 	});
 
-		// get today's date and format it as YYYY-MM-DD
-		const today = new Date();
-		const formattedDate = today.toLocaleDateString('en-CA');
+	// 	// get today's date and format it as YYYY-MM-DD
+	// 	const today = new Date();
+	// 	const formattedDate = today.toLocaleDateString('en-CA');
 
-		// Determine if status is successful
-		const status: string = executionError ? 'failed' : 'succeeded';
+	// 	// Determine if status is successful
+	// 	const status: string = executionError ? 'failed' : 'succeeded';
 
-		const pathAndKey = `${formattedDate}/${workflowId}/${status}/${executionId}`;
+	// 	const pathAndKey = `${formattedDate}/${workflowId}/${status}/${executionId}`;
 
-		const uploadParams: PutObjectCommandInput = {
-			Bucket: bucket,
-			Key: pathAndKey,
-			Body: JSON.stringify(fullRunData),
-		};
+	// 	const uploadParams: PutObjectCommandInput = {
+	// 		Bucket: bucket,
+	// 		Key: pathAndKey,
+	// 		Body: JSON.stringify(fullRunData),
+	// 	};
 
-		try {
-			await s3.send(new PutObjectCommand(uploadParams));
-			Logger.debug(
-				`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
-			);
-		} catch {
-			Logger.error(
-				`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
-			);
-		}
-	}
+	// 	try {
+	// 		await s3.send(new PutObjectCommand(uploadParams));
+	// 		Logger.debug(
+	// 			`AWS S3: Added Execution:${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+	// 		);
+	// 	} catch {
+	// 		Logger.error(
+	// 			`AWS S3: Could not insert execution ${executionId} to bucket:${bucket} with this location ${pathAndKey}`,
+	// 		);
+	// 	}
+	// }
 }
