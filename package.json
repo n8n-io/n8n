@@ -25,7 +25,7 @@
     "test": "turbo run test",
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker --concurrency=50",
+    "worker": "./packages/cli/bin/n8n worker --concurrency=200",
     "cypress:install": "cypress install",
     "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
     "test:e2e:ui": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first start-server-and-test start http://localhost:5678/favicon.ico 'cypress open'",

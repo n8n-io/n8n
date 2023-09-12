@@ -32,7 +32,7 @@ export class Worker extends BaseCommand {
 	static flags = {
 		help: flags.help({ char: 'h' }),
 		concurrency: flags.integer({
-			default: 50,
+			default: 200,
 			description: 'How many jobs can run in parallel.',
 		}),
 	};

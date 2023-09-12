@@ -1348,15 +1348,15 @@ export class WorkflowExecute {
 			}
 		}
 
-		const executionId: string =
-			this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
-		await this.storeFullDataInElasticSearch(executionId, workflow.id || '', fullRunData); // Store in Elastic
-		await this.storeFullDataInS3(
-			workflow.id,
-			executionId,
-			fullRunData.data.resultData.error,
-			fullRunData,
-		);
+		// const executionId: string =
+		// 	this.additionalData.executionId ?? 'unknown_execution' + Date.now().toString();
+		// // await this.storeFullDataInElasticSearch(executionId, workflow.id || '', fullRunData); // Store in Elastic
+		// // await this.storeFullDataInS3(
+		// // 	workflow.id,
+		// // 	executionId,
+		// // 	fullRunData.data.resultData.error,
+		// // 	fullRunData,
+		// // );
 		return fullRunData;
 	}
 
