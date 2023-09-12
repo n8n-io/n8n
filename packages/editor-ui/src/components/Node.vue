@@ -1175,33 +1175,51 @@ export default defineComponent({
 }
 
 .diamond-output-endpoint {
+	--diamond-output-endpoint--transition-duration: 0.15s;
+
+	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
 	transform: rotate(45deg);
 }
 
 .add-input-endpoint {
+	--add-input-endpoint--transition-duration: 0.15s;
+
 	&:not(.jtk-endpoint-connected) {
 		cursor: pointer;
 	}
 
+	.add-input-endpoint-default {
+		transition: transform var(--add-input-endpoint--transition-duration) ease;
+	}
+
 	.add-input-endpoint-diamond {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-line {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-plus-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--color-foreground-xlight);
 		stroke: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-plus-icon {
 		stroke: none;
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-connected-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--color-foreground-xdark);
 		stroke: var(--color-foreground-xdark);
 	}

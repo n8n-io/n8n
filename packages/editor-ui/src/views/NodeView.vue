@@ -335,7 +335,7 @@ import {
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import {
-	getConnectionPaintStyleData,
+	getConnectorPaintStyleData,
 	OVERLAY_ENDPOINT_ARROW_ID,
 	OVERLAY_REVERSE_ARROW_ID,
 } from '@/utils/nodeViewUtils';
@@ -598,6 +598,13 @@ export default defineComponent({
 				// Makes sure that nothing gets selected while select or move is active
 				returnClasses.push('do-not-select');
 			}
+
+			if (this.connectionDragScope) {
+				returnClasses.push(
+					`connection-drag-scope-active connection-drag-scope-active-${this.connectionDragScope}`,
+				);
+			}
+
 			return returnClasses;
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -656,6 +663,7 @@ export default defineComponent({
 			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
+			connectionDragScope: '',
 			renamingActive: false,
 			showStickyButton: false,
 			isExecutionPreview: false,
@@ -2455,7 +2463,7 @@ export default defineComponent({
 						reverseArrow?.setVisible(false);
 					} else {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(getConnectionPaintStyleData(info.connection));
+						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
 						endpointArrow?.setVisible(false);
 						reverseArrow?.setVisible(false);
 					}
@@ -2688,12 +2696,16 @@ export default defineComponent({
 					NodeViewUtils.resetConnectionAfterPull(connection);
 					window.removeEventListener('mousemove', onMouseMove);
 					window.removeEventListener('mouseup', onMouseUp);
+
+					this.connectionDragScope = '';
 				};
 
 				window.addEventListener('mousemove', onMouseMove);
 				window.addEventListener('touchmove', onMouseMove);
 				window.addEventListener('mouseup', onMouseUp);
 				window.addEventListener('touchend', onMouseMove);
+
+				this.connectionDragScope = connection.parameters.type;
 			} catch (e) {
 				console.error(e);
 			}
@@ -4465,6 +4477,34 @@ export default defineComponent({
 </style>
 
 <style lang="scss">
+.node-view-wrapper {
+	&.connection-drag-scope-active {
+		--drag-scope-active-disabled-color: var(--color-foreground-dark);
+
+		@each $node-type in $supplemental-node-types {
+			&:not(.connection-drag-scope-active-#{$node-type}) {
+				.diamond-output-endpoint,
+				.jtk-connector,
+				.add-input-endpoint {
+					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+				}
+			}
+
+			&.connection-drag-scope-active-#{$node-type} {
+				.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
+					transform: scale(1.375) rotate(45deg);
+				}
+
+				.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
+					.add-input-endpoint-default {
+						transform: translate(-4px, -4px) scale(1.375);
+					}
+				}
+			}
+		}
+	}
+}
+
 .drop-add-node-label {
 	color: var(--color-text-dark);
 	font-weight: 600;

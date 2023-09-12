@@ -116,3 +116,7 @@ $version-card-box-shadow-color: hsla(
 	var(--color-background-dark-l),
 	0.07
 );
+
+// supplemental node types
+$supplemental-node-types: chain document embedding languageModel memory outputParser tool textSplitter vectorRetriever vectorStore;
+

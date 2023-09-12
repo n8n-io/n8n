@@ -91,7 +91,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 };
 
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark'),
+	stroke: getStyleTokenValue('--color-foreground-dark', true),
 	strokeWidth: 2,
 	outlineWidth: 12,
 	outlineStroke: 'transparent',
@@ -99,17 +99,17 @@ export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 
 export const CONNECTOR_PAINT_STYLE_PULL: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-foreground-xdark'),
+	stroke: getStyleTokenValue('--color-foreground-xdark', true),
 };
 
 export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-primary'),
+	stroke: getStyleTokenValue('--color-primary', true),
 };
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-foreground-dark'),
+	stroke: getStyleTokenValue('--color-foreground-dark', true),
 	dashstyle: '2 2',
 };
 
@@ -129,19 +129,28 @@ export const CONNECTOR_COLOR: {
 	vectorStore: '--node-type-vectorStore-color',
 };
 
-export const getConnectionPaintStyleDefault = (connection: Connection): PaintStyle => {
+export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
 	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
 	return {
-		...CONNECTOR_PAINT_STYLE_DEFAULT,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor) } : {}),
+		...CONNECTOR_PAINT_STYLE_PULL,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connection.parameters.type === 'main' ? {} : { dashstyle: '2 2' }),
 	};
 };
 
-export const getConnectionPaintStyleData = (connection: Connection): PaintStyle => {
+export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
+	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	return {
+		...CONNECTOR_PAINT_STYLE_DEFAULT,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+	};
+};
+
+export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
 	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor) } : {}),
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
 	};
 };
 
@@ -311,7 +320,7 @@ export const getOutputEndpointStyle = (
 	connectionType: ConnectionTypes = 'main',
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-	fill: getStyleTokenValue(color),
+	fill: getStyleTokenValue(color, true),
 	outlineStroke: 'none',
 });
 
@@ -731,7 +740,7 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
-	connection.setPaintStyle(getConnectionPaintStyleDefault(connection));
+	connection.setPaintStyle(getConnectorPaintStyleDefault(connection));
 };
 
 export const recoveredConnection = (connection: Connection) => {
@@ -854,7 +863,7 @@ export const showPullConnectionState = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PULL);
+		connection.setPaintStyle(getConnectorPaintStylePull(connection));
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 	}
 };
@@ -863,7 +872,7 @@ export const resetConnectionAfterPull = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(getConnectionPaintStyleDefault(connection));
+		connection.setPaintStyle(getConnectorPaintStyleDefault(connection));
 	}
 };
 
