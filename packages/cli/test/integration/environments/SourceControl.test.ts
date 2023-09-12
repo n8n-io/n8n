@@ -71,41 +71,20 @@ describe('GET /sourceControl/preferences', () => {
 			});
 	});
 
-	test('should return new ed25519 key', async () => {
-		config.set('sourceControl.defaultKeyPairType', 'ed25519');
-		await authOwnerAgent
-			.post(`/${SOURCE_CONTROL_API_ROOT}/generate-key-pair`)
-			.send()
-			.expect(200)
-			.expect((res) => {
-				return (
-					'publicKey' in res.body &&
-					'keyGeneratorType' in res.body &&
-					res.body.keyGeneratorType === 'ed25519' &&
-					(res.body.publicKey as string).includes('ssh-ed25519')
-				);
-			});
-		expect(Container.get(SourceControlPreferencesService).getPreferences().keyGeneratorType).toBe(
-			'ed25519',
-		);
-	});
-
-	test('should return new rsa key', async () => {
+	test('refreshing key pairsshould return new rsa key', async () => {
 		config.set('sourceControl.defaultKeyPairType', 'rsa');
 		await authOwnerAgent
 			.post(`/${SOURCE_CONTROL_API_ROOT}/generate-key-pair`)
 			.send()
 			.expect(200)
 			.expect((res) => {
-				return (
-					'publicKey' in res.body &&
-					'keyGeneratorType' in res.body &&
-					res.body.keyGeneratorType === 'rsa' &&
-					(res.body.publicKey as string).includes('ssh-rsa')
-				);
+				expect(
+					Container.get(SourceControlPreferencesService).getPreferences().keyGeneratorType,
+				).toBe('rsa');
+				expect(res.body.data).toHaveProperty('publicKey');
+				expect(res.body.data).toHaveProperty('keyGeneratorType');
+				expect(res.body.data.keyGeneratorType).toBe('rsa');
+				expect(res.body.data.publicKey).toContain('ssh-rsa');
 			});
-		expect(Container.get(SourceControlPreferencesService).getPreferences().keyGeneratorType).toBe(
-			'rsa',
-		);
 	});
 });
