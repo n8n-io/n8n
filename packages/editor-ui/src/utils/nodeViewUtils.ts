@@ -108,10 +108,8 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 };
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
 	stroke: getStyleTokenValue('--color-foreground-dark'),
-	strokeWidth: 2,
-	outlineWidth: 12,
-	outlineStroke: 'transparent',
 	dashstyle: '2 2',
 };
 
@@ -130,6 +128,20 @@ export const CONNECTOR_COLOR: {
 	vectorRetriever: '--node-type-vectorRetriever-color',
 	vectorStore: '--node-type-vectorStore-color',
 };
+
+export const getConnectionPaintStyleDefault = (connection: Connection): PaintStyle => ({
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue(
+		CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes] || '--color-foreground-dark',
+	),
+});
+
+export const getConnectionPaintStyleData = (connection: Connection): PaintStyle => ({
+	...CONNECTOR_PAINT_STYLE_DATA,
+	stroke: getStyleTokenValue(
+		CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes] || '--color-foreground-dark',
+	),
+});
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	{
@@ -717,7 +729,7 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
-	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+	connection.setPaintStyle(getConnectionPaintStyleDefault(connection));
 };
 
 export const recoveredConnection = (connection: Connection) => {
@@ -849,7 +861,7 @@ export const resetConnectionAfterPull = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+		connection.setPaintStyle(getConnectionPaintStyleDefault(connection));
 	}
 };
 

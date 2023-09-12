@@ -334,7 +334,12 @@ import {
 } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { CONNECTOR_PAINT_STYLE_DATA, OVERLAY_REVERSE_ARROW_ID } from '@/utils/nodeViewUtils';
+import {
+	CONNECTOR_COLOR,
+	CONNECTOR_PAINT_STYLE_DATA,
+	getConnectionPaintStyleData,
+	OVERLAY_REVERSE_ARROW_ID,
+} from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { SCOPED_ENDPOINT_TYPES } from '@/constants';
 import { EndpointType } from '@/Interface';
@@ -2396,6 +2401,16 @@ export default defineComponent({
 				NodeViewUtils.resetConnection(info.connection);
 				NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
 
+				// console.log(
+				// 	info,
+				// 	info.connection.parameters.type,
+				// 	CONNECTOR_COLOR[info.connection.parameters.type],
+				// );
+				//
+				// info.connection.paintStyle.stroke = `var(${
+				// 	CONNECTOR_COLOR[info.connection.parameters.type]
+				// })`;
+
 				const connectionData: [IConnection, IConnection] = [
 					{
 						node: sourceNodeName,
@@ -2447,7 +2462,7 @@ export default defineComponent({
 						arrow?.setVisible(false);
 					} else {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DATA);
+						info.connection.setPaintStyle(getConnectionPaintStyleData(info.connection));
 						arrow?.setVisible(true);
 					}
 				}
