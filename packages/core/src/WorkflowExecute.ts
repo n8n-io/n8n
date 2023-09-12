@@ -40,8 +40,8 @@ import type {
 import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
-import { ElasticSearchCoreClient } from './elasticSearchCore';
-import { S3Client, PutObjectCommand, PutObjectCommandInput } from '@aws-sdk/client-s3';
+// import { ElasticSearchCoreClient } from './elasticSearchCore';
+// import { S3Client, PutObjectCommand, PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
