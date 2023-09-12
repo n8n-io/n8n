@@ -338,6 +338,7 @@ import {
 	CONNECTOR_COLOR,
 	CONNECTOR_PAINT_STYLE_DATA,
 	getConnectionPaintStyleData,
+	OVERLAY_ENDPOINT_ARROW_ID,
 	OVERLAY_REVERSE_ARROW_ID,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
@@ -2456,14 +2457,19 @@ export default defineComponent({
 						);
 					}, 0);
 
-					const arrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
+					const endpointArrow = NodeViewUtils.getOverlay(
+						info.connection,
+						OVERLAY_ENDPOINT_ARROW_ID,
+					);
+					const reverseArrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
 					if (sourceInfo.type === 'main') {
 						// For some reason the arrow is visible by default, so hide it
-						arrow?.setVisible(false);
+						reverseArrow?.setVisible(false);
 					} else {
 						// Not "main" connections get a different connection style
 						info.connection.setPaintStyle(getConnectionPaintStyleData(info.connection));
-						arrow?.setVisible(true);
+						endpointArrow?.setVisible(false);
+						reverseArrow?.setVisible(false);
 					}
 				}
 				this.dropPrevented = false;

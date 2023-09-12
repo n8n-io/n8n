@@ -129,19 +129,21 @@ export const CONNECTOR_COLOR: {
 	vectorStore: '--node-type-vectorStore-color',
 };
 
-export const getConnectionPaintStyleDefault = (connection: Connection): PaintStyle => ({
-	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue(
-		CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes] || '--color-foreground-dark',
-	),
-});
+export const getConnectionPaintStyleDefault = (connection: Connection): PaintStyle => {
+	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	return {
+		...CONNECTOR_PAINT_STYLE_DEFAULT,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor) } : {}),
+	};
+};
 
-export const getConnectionPaintStyleData = (connection: Connection): PaintStyle => ({
-	...CONNECTOR_PAINT_STYLE_DATA,
-	stroke: getStyleTokenValue(
-		CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes] || '--color-foreground-dark',
-	),
-});
+export const getConnectionPaintStyleData = (connection: Connection): PaintStyle => {
+	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	return {
+		...CONNECTOR_PAINT_STYLE_DATA,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor) } : {}),
+	};
+};
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	{
