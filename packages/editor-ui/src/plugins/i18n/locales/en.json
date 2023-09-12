@@ -695,6 +695,7 @@
 	"ndv.execute.fixPrevious": "Fix previous node first",
 	"ndv.execute.listenForEvent": "Listen For Event",
 	"ndv.execute.listenForTestEvent": "Listen For Test Event",
+	"ndv.execute.testStep": "Test Step",
 	"ndv.execute.stopListening": "Stop Listening",
 	"ndv.execute.nodeIsDisabled": "Enable node to execute",
 	"ndv.execute.requiredFieldsMissing": "Complete required fields first",
