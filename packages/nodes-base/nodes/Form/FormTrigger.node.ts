@@ -1,11 +1,12 @@
 import type {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { createFormPage } from './templates';
+import { createPage } from './templates';
 import type { FormField } from './interfaces';
 
 export class FormTrigger implements INodeType {
@@ -166,6 +167,7 @@ export class FormTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
+
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 
 		//Show the form on GET request
@@ -174,22 +176,29 @@ export class FormTrigger implements INodeType {
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
 
-			const formPage = createFormPage(formTitle, formDescription, formFields, mode === 'test');
+			const page = createPage(formTitle, formDescription, formFields, mode === 'test');
 
 			const res = this.getResponseObject();
-			res.status(200).send(formPage).end();
+			res.status(200).send(page).end();
 			return {
 				noWebhookResponse: true,
 			};
 		}
 
-		const bodyData = this.getBodyData();
+		const bodyData = (this.getBodyData().data as IDataObject) ?? {};
 
-		bodyData['form url'] = mode;
+		const returnData: IDataObject = {};
+		returnData['form url'] = mode;
+
+		Object.keys(bodyData).map((key) => {
+			const value = bodyData[key];
+			const escapedKey = key.replace(/___/g, ' ');
+			returnData[escapedKey] = value;
+		});
 
 		return {
-			webhookResponse: '<html><body>Form has been submitted.</body></html>', //TODO construct a proper response page
-			workflowData: [this.helpers.returnJsonArray(bodyData)],
+			webhookResponse: { status: 200 },
+			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}
 }
