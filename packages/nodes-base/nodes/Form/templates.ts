@@ -196,13 +196,16 @@ const testNotice = `
 </div>
 `;
 
-const automatedWith = `
-<div class="n8n-link">
-<a href="https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger&utm_campaign=12345" target="_blank">
-	Form automated with <img src="https://n8n.io/favicon.ico" alt="n8n logo"> <strong>n8n</strong>
-</a>
-</div>
-`;
+const automatedWith = (instanceId?: string) => {
+	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
+	return `
+	<div class="n8n-link">
+	<a href="https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}" target="_blank">
+		Form automated with <img src="https://n8n.io/favicon.ico" alt="n8n logo"> <strong>n8n</strong>
+	</a>
+	</div>
+	`;
+};
 
 const submittedTestMessage = (testRun: boolean) => {
 	return `
@@ -300,6 +303,7 @@ export const createPage = (
 	formDescription: string,
 	formFields: FormField[],
 	testRun: boolean,
+	instanceId?: string,
 ) => {
 	const { formHtml, variables, validationCases } = prepareFormGroups(formFields);
 	const form = createForm(formTitle, formDescription, formHtml);
@@ -320,7 +324,7 @@ export const createPage = (
 					${testRun ? testNotice : ''}
 					${form}
 					${submittedTestMessage(testRun)}
-					${automatedWith}
+					${automatedWith(instanceId)}
 				</section>
 			</div>
 			<script>

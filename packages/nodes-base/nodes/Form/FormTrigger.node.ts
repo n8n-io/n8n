@@ -167,7 +167,6 @@ export class FormTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
-
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 
 		//Show the form on GET request
@@ -175,8 +174,9 @@ export class FormTrigger implements INodeType {
 			const formFields = this.getNodeParameter('formFields.values', []) as FormField[];
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
+			const instanceId = await this.getInstanceId();
 
-			const page = createPage(formTitle, formDescription, formFields, mode === 'test');
+			const page = createPage(formTitle, formDescription, formFields, mode === 'test', instanceId);
 
 			const res = this.getResponseObject();
 			res.status(200).send(page).end();
