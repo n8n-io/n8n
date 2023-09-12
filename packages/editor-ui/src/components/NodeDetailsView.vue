@@ -620,6 +620,19 @@ export default defineComponent({
 				return;
 			}
 
+			if (
+				typeof this.activeNodeType.outputs === 'string' ||
+				typeof this.activeNodeType.inputs === 'string'
+			) {
+				// TODO: We should keep track of if it actually changed and only do if required
+				// Whenever a node with custom inputs and outputs gets closed redraw it in case
+				// they changed
+				const nodeName = this.activeNode.name;
+				setTimeout(() => {
+					this.$emit('redrawNode', nodeName);
+				}, 1);
+			}
+
 			if (this.outputPanelEditMode.enabled) {
 				const shouldPinDataBeforeClosing = await this.confirm(
 					'',

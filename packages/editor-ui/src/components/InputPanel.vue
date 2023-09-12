@@ -208,22 +208,24 @@ export default defineComponent({
 			return !!this.focusedMappableInput && !this.isUserOnboarded;
 		},
 		isActiveNodeConfig(): boolean {
+			let inputs = this.activeNodeType?.inputs ?? [];
 			let outputs = this.activeNodeType?.outputs ?? [];
 			if (this.activeNode !== null && this.currentWorkflow !== null) {
 				const node = this.currentWorkflow.getNode(this.activeNode.name);
-				outputs = NodeHelpers.getNodeOutputs(this.currentWorkflow, node, this.activeNodeType);
+				inputs = NodeHelpers.getNodeInputs(this.currentWorkflow, node!, this.activeNodeType!);
+				outputs = NodeHelpers.getNodeOutputs(this.currentWorkflow, node!, this.activeNodeType!);
 			} else {
 				// If we can not figure out the node type we set no outputs
+				if (!Array.isArray(inputs)) {
+					inputs = [] as ConnectionTypes[];
+				}
 				if (!Array.isArray(outputs)) {
 					outputs = [] as ConnectionTypes[];
 				}
 			}
 
 			if (
-				!this.currentNodeName &&
-				this.activeNodeType &&
-				(this.activeNodeType.inputs.length === 0 ||
-					this.activeNodeType.inputs.find((inputName) => inputName !== 'main')) &&
+				(inputs.length === 0 || inputs.find((inputName) => inputName !== 'main')) &&
 				outputs.find((outputName) => outputName !== 'main')
 			) {
 				return true;

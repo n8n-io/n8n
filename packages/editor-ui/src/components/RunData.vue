@@ -510,6 +510,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type {
 	IExecutionResponse,
@@ -699,7 +700,16 @@ export default defineComponent({
 		},
 		canPinData(): boolean {
 			// Only "main" inputs can pin data
-			const nonMainInputs = !!this.nodeType?.inputs.find((input) => {
+
+			if (!this.node) {
+				return false;
+			}
+
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const workflowNode = workflow.getNode(this.node.name);
+			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+
+			const nonMainInputs = !!inputs.find((input) => {
 				if (typeof input === 'string') {
 					return input !== 'main';
 				}

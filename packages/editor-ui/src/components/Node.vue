@@ -293,11 +293,15 @@ export default defineComponent({
 			return this.nodeTypesStore.isConfigNode(
 				this.getCurrentWorkflow(),
 				this.data,
-				this.data?.type || '',
+				this.data?.type ?? '',
 			);
 		},
 		isConfigurableNode(): boolean {
-			return this.nodeTypesStore.isConfigurableNode(this.data?.type || '');
+			return this.nodeTypesStore.isConfigurableNode(
+				this.getCurrentWorkflow(),
+				this.data,
+				this.data?.type ?? '',
+			);
 		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
@@ -371,12 +375,7 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(
-				this.data.disabled &&
-				this.nodeType &&
-				this.nodeType.inputs.length === 1 &&
-				this.outputs.length === 1
-			);
+			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
 		},
 		nodePosition(): object {
 			const returnStyles: {

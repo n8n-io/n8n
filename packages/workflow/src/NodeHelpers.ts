@@ -38,6 +38,8 @@ import type {
 	ValidationResult,
 	ConnectionTypes,
 	INodeTypeDescription,
+	INodeOutputConfiguration,
+	INodeInputConfiguration,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
@@ -1006,24 +1008,47 @@ export function getNodeWebhookUrl(
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
+export function getNodeInputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeInputConfiguration> {
+	if (Array.isArray(nodeTypeData.inputs)) {
+		return nodeTypeData.inputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return (workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.inputs,
+			'internal',
+			'',
+			{},
+		) || []) as ConnectionTypes[];
+	} catch (e) {
+		throw new Error(`Could not calculate inputs dynamically for node "${node.name}"`);
+	}
+}
+
 export function getNodeOutputs(
 	workflow: Workflow,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
-): ConnectionTypes[] {
+): Array<ConnectionTypes | INodeOutputConfiguration> {
 	if (Array.isArray(nodeTypeData.outputs)) {
 		return nodeTypeData.outputs;
 	}
 
 	// Calculate the outputs dynamically
 	try {
-		return workflow.expression.getSimpleParameterValue(
+		return (workflow.expression.getSimpleParameterValue(
 			node,
 			nodeTypeData.outputs,
 			'internal',
 			'',
 			{},
-		) as ConnectionTypes[];
+		) || []) as ConnectionTypes[];
 	} catch (e) {
 		throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
 	}

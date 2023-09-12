@@ -2,12 +2,13 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { INodeUi } from '@/Interface';
+import type { INodeUi, EndpointType } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE } from '@/constants';
 
-import {
-	NodeHelpers,
+import { NodeHelpers } from 'n8n-workflow';
+import type {
+	INodeOutputConfiguration,
 	type ConnectionTypes,
 	type INodeInputConfiguration,
 	type INodeTypeDescription,
@@ -21,7 +22,6 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
-import { EndpointType } from '@/Interface';
 import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
 
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
@@ -47,7 +47,8 @@ export const nodeBase = defineComponent({
 	},
 	data() {
 		return {
-			outputs: [] as ConnectionTypes[],
+			inputs: [] as Array<ConnectionTypes | INodeInputConfiguration>,
+			outputs: [] as Array<ConnectionTypes | INodeOutputConfiguration>,
 		};
 	},
 	computed: {
@@ -100,7 +101,11 @@ export const nodeBase = defineComponent({
 				[key: string]: number;
 			} = {};
 
-			nodeTypeData.inputs.forEach((value, i) => {
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const inputs = NodeHelpers.getNodeInputs(workflow, this.data, nodeTypeData) || [];
+			this.inputs = inputs;
+
+			inputs.forEach((value, i) => {
 				let inputConfiguration: INodeInputConfiguration;
 				if (typeof value === 'string') {
 					inputConfiguration = {
@@ -110,7 +115,7 @@ export const nodeBase = defineComponent({
 					inputConfiguration = value;
 				}
 
-				let inputName: ConnectionTypes = inputConfiguration.type;
+				const inputName: ConnectionTypes = inputConfiguration.type;
 
 				const rootCategoryInputName = inputName === 'main' ? 'main' : 'other';
 
@@ -130,7 +135,7 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryInputName];
 				const typeIndex = typeIndexData[inputName];
 
-				const inputsOfSameRootType = nodeTypeData.inputs.filter((input) =>
+				const inputsOfSameRootType = inputs.filter((input) =>
 					inputName === 'main' ? input === 'main' : input !== 'main',
 				);
 
@@ -165,7 +170,7 @@ export const nodeBase = defineComponent({
 					),
 					scope,
 					source: inputName !== 'main',
-					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
+					target: !this.isReadOnly && inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
 						connection: 'target',
 						nodeId: this.nodeId,
@@ -214,7 +219,7 @@ export const nodeBase = defineComponent({
 				// 	this.instance.makeTarget(this.nodeId, newEndpointData);
 				// }
 			});
-			if (nodeTypeData.inputs.length === 0) {
+			if (inputs.length === 0) {
 				this.instance.manage(this.$refs[this.data.name] as Element);
 			}
 		},
@@ -227,13 +232,24 @@ export const nodeBase = defineComponent({
 			} = {};
 
 			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData);
+			const outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData) || [];
 			this.outputs = outputs;
 
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
 
-			outputs.forEach((outputName, i) => {
+			outputs.forEach((value, i) => {
+				let outputConfiguration: INodeOutputConfiguration;
+				if (typeof value === 'string') {
+					outputConfiguration = {
+						type: value,
+					};
+				} else {
+					outputConfiguration = value;
+				}
+
+				const outputName: ConnectionTypes = outputConfiguration.type;
+
 				const rootCategoryOutputName = outputName === 'main' ? 'main' : 'other';
 
 				// Increment the index for outputs with current name
@@ -297,10 +313,10 @@ export const nodeBase = defineComponent({
 					newEndpointData,
 				);
 				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
-				if (nodeTypeData.outputNames?.[i]) {
+				if (outputConfiguration.displayName || nodeTypeData.outputNames?.[i]) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
-						nodeTypeData.outputNames[i],
+						outputConfiguration.displayName || nodeTypeData.outputNames[i],
 						outputName,
 					);
 					endpoint.addOverlay(overlaySpec);

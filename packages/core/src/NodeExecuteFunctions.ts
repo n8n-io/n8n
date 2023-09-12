@@ -2707,7 +2707,10 @@ export function getExecuteFunctions(
 			): Promise<unknown> {
 				const node = this.getNode();
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-				let inputConfiguration = nodeType.description.inputs.find((input) => {
+
+				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+
+				let inputConfiguration = inputs.find((input) => {
 					if (typeof input === 'string') {
 						return input === inputName;
 					}

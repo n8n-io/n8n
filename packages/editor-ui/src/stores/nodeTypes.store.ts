@@ -18,11 +18,13 @@ import type {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchResult,
+	INodeOutputConfiguration,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ResourceMapperFields,
+	Workflow,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
@@ -85,11 +87,11 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			};
 		},
 		isConfigurableNode() {
-			return (nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
 				const nodeType = this.getNodeType(nodeTypeName);
-				return nodeType?.inputs
-					? nodeType?.inputs.filter((input) => input !== 'main').length > 0
-					: false;
+				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+
+				return inputs ? inputs.filter((input) => input !== 'main').length > 0 : false;
 			};
 		},
 		isTriggerNode() {
@@ -119,12 +121,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			const nodesByOutputType = this.visibleNodeTypes.reduce(
 				(acc, node) => {
 					const outputTypes = node.outputs;
-					outputTypes.forEach((outputType: ConnectionTypes) => {
-						if (!acc[outputType]) {
-							acc[outputType] = [];
-						}
-						acc[outputType].push(node.name);
-					});
+					if (Array.isArray(outputTypes)) {
+						outputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						});
+					}
 
 					return acc;
 				},

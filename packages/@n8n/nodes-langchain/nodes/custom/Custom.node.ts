@@ -10,7 +10,7 @@ export class Custom implements INodeType {
 		// icon: 'file:wikipedia.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Search in Wikipedia',
+		description: 'Custom LangChain Node',
 		defaults: {
 			name: 'Custom',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
@@ -23,29 +23,26 @@ export class Custom implements INodeType {
 			// },
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [],
-
-		// TODO: This should be an expression
+		inputs: '={{ $parameter.inputs ? $parameter.inputs.input : [] }}',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: '={{ ["memory"] }}',
-		outputNames: [],
+		outputs: '={{ $parameter.outputs ? $parameter.outputs.output : [] }}',
 		properties: [
 			{
-				displayName: 'Outputs',
-				name: 'Outputs',
-				placeholder: 'Add Output',
+				displayName: 'Inputs',
+				name: 'inputs',
+				placeholder: 'Add Input',
 				type: 'fixedCollection',
 				noDataExpression: true,
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
 				},
-				description: 'The output to add',
+				description: 'The input to add',
 				default: {},
 				options: [
 					{
-						name: 'string',
-						displayName: 'String',
+						name: 'input',
+						displayName: 'Input',
 						values: [
 							{
 								displayName: 'Display Name',
@@ -58,8 +55,60 @@ export class Custom implements INodeType {
 								description: 'The name to display',
 							},
 							{
-								displayName: 'Name',
-								name: 'name',
+								displayName: 'Type',
+								name: 'type',
+								// TODO: Should not be a string, rather options
+								type: 'string',
+								noDataExpression: true,
+								default: '',
+								required: true,
+								placeholder: 'memory',
+								description: 'The name of the input',
+							},
+							{
+								displayName: 'Required',
+								name: 'required',
+								type: 'boolean',
+								noDataExpression: true,
+								default: false,
+								required: true,
+								description: 'Whether the input needs a connection',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Outputs',
+				name: 'outputs',
+				placeholder: 'Add Output',
+				type: 'fixedCollection',
+				noDataExpression: true,
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				description: 'The output to add',
+				default: {},
+				options: [
+					{
+						name: 'output',
+						displayName: 'Output',
+						values: [
+							{
+								displayName: 'Display Name',
+								name: 'displayName',
+								type: 'string',
+								noDataExpression: true,
+								default: '',
+								required: true,
+								placeholder: 'Memory',
+								description: 'The name to display',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								// TODO: Should not be a string, rather options
 								type: 'string',
 								noDataExpression: true,
 								default: '',

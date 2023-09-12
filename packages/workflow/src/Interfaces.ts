@@ -1512,15 +1512,22 @@ export interface INodeInputConfiguration {
 	filter?: INodeInputFilter;
 	type: ConnectionTypes;
 }
+
+export interface INodeOutputConfiguration {
+	displayName?: string;
+	required?: boolean;
+	type: ConnectionTypes;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration>;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: ConnectionTypes[] | string;
+	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
