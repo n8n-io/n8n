@@ -14,12 +14,18 @@ export class BinaryDataManager {
 		[key: string]: IBinaryDataManager;
 	} = {};
 
-	private binaryDataMode = 'default';
+	/**
+	 * Mode for storing binary data:
+	 * - `default` (in memory)
+	 * - `filesystem` (on disk)
+	 * - `object` (S3)
+	 */
+	private mode = 'default';
 
 	private availableModes: string[] = [];
 
 	async init(config: IBinaryDataConfig, mainManager = false) {
-		this.binaryDataMode = config.mode;
+		this.mode = config.mode;
 		this.availableModes = config.availableModes.split(',');
 		this.managers = {};
 
@@ -37,14 +43,14 @@ export class BinaryDataManager {
 		executionId: string,
 	): Promise<IBinaryData> {
 		// If a manager handles this binary, copy over the binary file and return its reference id.
-		const manager = this.managers[this.binaryDataMode];
+		const manager = this.managers[this.mode];
 		if (manager) {
 			const identifier = await manager.copyBinaryFile(filePath, executionId);
 			// Add data manager reference id.
 			binaryData.id = this.generateBinaryId(identifier);
 
 			// Prevent preserving data in memory if handled by a data manager.
-			binaryData.data = this.binaryDataMode;
+			binaryData.data = this.mode;
 
 			const fileSize = await manager.getFileSize(identifier);
 			binaryData.fileSize = prettyBytes(fileSize);
@@ -69,7 +75,7 @@ export class BinaryDataManager {
 		executionId: string,
 	): Promise<IBinaryData> {
 		// If a manager handles this binary, return the binary data with its reference id.
-		const manager = this.managers[this.binaryDataMode];
+		const manager = this.managers[this.mode];
 		if (manager) {
 			const identifier = await manager.storeBinaryData(input, executionId);
 
@@ -77,7 +83,7 @@ export class BinaryDataManager {
 			binaryData.id = this.generateBinaryId(identifier);
 
 			// Prevent preserving data in memory if handled by a data manager.
-			binaryData.data = this.binaryDataMode;
+			binaryData.data = this.mode;
 
 			const fileSize = await manager.getFileSize(identifier);
 			binaryData.fileSize = prettyBytes(fileSize);
@@ -141,8 +147,8 @@ export class BinaryDataManager {
 	}
 
 	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<void> {
-		if (this.managers[this.binaryDataMode]) {
-			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionIds(executionIds);
+		if (this.managers[this.mode]) {
+			await this.managers[this.mode].deleteBinaryDataByExecutionIds(executionIds);
 		}
 	}
 
@@ -150,7 +156,7 @@ export class BinaryDataManager {
 		inputData: Array<INodeExecutionData[] | null>,
 		executionId: string,
 	): Promise<INodeExecutionData[][]> {
-		if (inputData && this.managers[this.binaryDataMode]) {
+		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
 				async (executionDataArray) => {
 					if (executionDataArray) {
@@ -176,7 +182,7 @@ export class BinaryDataManager {
 	}
 
 	private generateBinaryId(filename: string) {
-		return `${this.binaryDataMode}:${filename}`;
+		return `${this.mode}:${filename}`;
 	}
 
 	private splitBinaryModeFileId(fileId: string): { mode: string; id: string } {
@@ -188,7 +194,7 @@ export class BinaryDataManager {
 		executionData: INodeExecutionData,
 		executionId: string,
 	): Promise<INodeExecutionData> {
-		const binaryManager = this.managers[this.binaryDataMode];
+		const binaryManager = this.managers[this.mode];
 
 		if (executionData.binary) {
 			const binaryDataKeys = Object.keys(executionData.binary);
