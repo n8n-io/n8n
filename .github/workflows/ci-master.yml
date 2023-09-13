@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - reusable-unit-test-workflow
 
 jobs:
   install-and-build:
