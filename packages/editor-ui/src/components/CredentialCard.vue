@@ -1,24 +1,26 @@
 <template>
-	<n8n-card :class="$style['card-link']" @click="onClick">
+	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #prepend>
 			<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
 		</template>
 		<template #header>
-			<n8n-heading tag="h2" bold :class="$style['card-heading']">
+			<n8n-heading tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
-		<n8n-text color="text-light" size="small">
-			<span v-if="credentialType">{{ credentialType.displayName }} | </span>
-			<span v-show="data"
-				>{{ $locale.baseText('credentials.item.updated') }} <time-ago :date="data.updatedAt" /> |
-			</span>
-			<span v-show="data"
-				>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
-			</span>
-		</n8n-text>
+		<div :class="$style.cardDescription">
+			<n8n-text color="text-light" size="small">
+				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
+				<span v-show="data"
+					>{{ $locale.baseText('credentials.item.updated') }} <time-ago :date="data.updatedAt" /> |
+				</span>
+				<span v-show="data"
+					>{{ $locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
+				</span>
+			</n8n-text>
+		</div>
 		<template #append>
-			<div :class="$style['card-actions']">
+			<div :class="$style.cardActions" ref="cardActions">
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="credentialPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('credentials.item.owner') }}
@@ -128,7 +130,14 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick() {
+		async onClick(event: Event) {
+			if (
+				this.$refs.cardActions === event.target ||
+				this.$refs.cardActions?.contains(event.target)
+			) {
+				return;
+			}
+
 			this.uiStore.openExistingCredential(this.data.id);
 		},
 		async onAction(action: string) {
@@ -162,23 +171,36 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.card-link {
+.cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
+	padding: 0 0 0 var(--spacing-s);
+	align-items: stretch;
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
 
-.card-heading {
+.cardHeading {
 	font-size: var(--font-size-s);
+	padding: var(--spacing-s) 0 0;
 }
 
-.card-actions {
+.cardDescription {
+	min-height: 19px;
+	display: flex;
+	align-items: center;
+	padding: 0 0 var(--spacing-s);
+}
+
+.cardActions {
 	display: flex;
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing-s) 0 0;
+	cursor: default;
 }
 </style>
