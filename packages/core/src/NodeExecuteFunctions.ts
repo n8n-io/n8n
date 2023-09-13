@@ -138,6 +138,7 @@ import {
 } from './WorkflowExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
 import { getUserN8nFolderPath } from './UserSettings';
+import Container from 'typedi';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -864,21 +865,21 @@ async function httpRequest(
 }
 
 export function getBinaryPath(binaryDataId: string): string {
-	return BinaryDataManager.getInstance().getBinaryPath(binaryDataId);
+	return Container.get(BinaryDataManager).getBinaryPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
 export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
-	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+	return Container.get(BinaryDataManager).getBinaryMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
-	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+	return Container.get(BinaryDataManager).getBinaryStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -915,7 +916,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataManager).getBinaryDataBuffer(binaryData);
 }
 
 /**
@@ -931,7 +932,7 @@ export async function setBinaryDataBuffer(
 	binaryData: Buffer | Readable,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
+	return Container.get(BinaryDataManager).storeBinaryData(data, binaryData, executionId);
 }
 
 export async function copyBinaryFile(
@@ -984,7 +985,7 @@ export async function copyBinaryFile(
 		returnData.fileName = path.parse(filePath).base;
 	}
 
-	return BinaryDataManager.getInstance().copyBinaryFile(returnData, filePath, executionId);
+	return Container.get(BinaryDataManager).copyBinaryFile(returnData, filePath, executionId);
 }
 
 /**
@@ -2563,7 +2564,7 @@ export function getExecuteFunctions(
 						parentWorkflowSettings: workflow.settings,
 					})
 					.then(async (result) =>
-						BinaryDataManager.getInstance().duplicateBinaryData(
+						Container.get(BinaryDataManager).duplicateBinaryData(
 							result,
 							additionalData.executionId!,
 						),

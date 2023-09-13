@@ -105,7 +105,7 @@ export abstract class BaseCommand extends Command {
 
 	protected async initBinaryManager() {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig, true);
+		await Container.get(BinaryDataManager).init(binaryDataConfig, true);
 	}
 
 	protected async initExternalHooks() {

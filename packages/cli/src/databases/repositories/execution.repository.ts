@@ -81,6 +81,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly binaryDataManager: BinaryDataManager,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
@@ -489,8 +490,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id }) => id);
 
-		const binaryDataManager = BinaryDataManager.getInstance();
-		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
+		await this.binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
 		// Actually delete these executions
 		await this.delete({ id: In(executionIds) });
