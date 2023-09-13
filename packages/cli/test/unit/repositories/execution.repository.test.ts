@@ -13,6 +13,14 @@ jest.mock('typeorm/util/DateUtils');
 
 const { objectContaining } = expect;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const qb: any = {
+	update: jest.fn().mockReturnThis(),
+	set: jest.fn().mockReturnThis(),
+	where: jest.fn().mockReturnThis(),
+	execute: jest.fn().mockReturnThis(),
+};
+
 describe('ExecutionRepository', () => {
 	const entityManager = mockInstance(EntityManager);
 	const dataSource = mockInstance(DataSource, { manager: entityManager });
@@ -33,21 +41,6 @@ describe('ExecutionRepository', () => {
 	});
 
 	describe('pruneBySoftDeleting()', () => {
-		test('should soft-delete executions based on batch size', async () => {
-			config.set('executions.pruneDataMaxCount', 0); // disable prune-by-count path
-
-			executionRepository.deletionBatchSize = 5;
-
-			const find = jest.spyOn(ExecutionRepository.prototype, 'find');
-			entityManager.find.mockResolvedValueOnce([]);
-
-			await executionRepository.pruneBySoftDeleting();
-
-			expect(find.mock.calls[0][0]).toEqual(
-				objectContaining({ take: executionRepository.deletionBatchSize }),
-			);
-		});
-
 		test('should limit pruning based on EXECUTIONS_DATA_PRUNE_MAX_COUNT', async () => {
 			const maxCount = 1;
 
@@ -55,6 +48,8 @@ describe('ExecutionRepository', () => {
 
 			const find = jest.spyOn(ExecutionRepository.prototype, 'find');
 			entityManager.find.mockResolvedValue([]);
+
+			jest.spyOn(ExecutionRepository.prototype, 'createQueryBuilder').mockReturnValueOnce(qb);
 
 			await executionRepository.pruneBySoftDeleting();
 
@@ -68,6 +63,8 @@ describe('ExecutionRepository', () => {
 			config.set('executions.pruneDataMaxAge', 5);
 
 			entityManager.find.mockResolvedValue([]);
+
+			jest.spyOn(ExecutionRepository.prototype, 'createQueryBuilder').mockReturnValueOnce(qb);
 
 			const dateFormat = jest.spyOn(DateUtils, 'mixedDateToUtcDatetimeString');
 
