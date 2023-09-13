@@ -1,7 +1,6 @@
 name: Runs unit tests for a given ref
 
 on:
-  pull_request:
   workflow_dispatch:
     inputs:
       ref:
@@ -34,12 +33,12 @@ jobs:
           else
             BRANCH_NAME="${{ inputs.ref }}"
           fi
-          echo "branch=$BRANCH_NAME >> $GITHUB_OUTPUT"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
   unit-test:
     name: Unit tests
     needs: prepare
     uses: ./.github/workflows/units-tests-reusable.yml
     with:
-      branch: ${{ needs.prepare.outputs.branch }}
+      ref: ${{ needs.prepare.outputs.branch }}
       nodeVersion: ${{ inputs.nodeVersion }}
