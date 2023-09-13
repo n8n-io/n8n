@@ -90,8 +90,8 @@ const properties: INodeProperties[] = [
 					{
 						displayName: 'Value',
 						name: 'numberValue',
-						type: 'number',
-						default: 0,
+						type: 'string',
+						default: '',
 						displayOptions: {
 							show: {
 								type: ['numberValue'],
