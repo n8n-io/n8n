@@ -98,27 +98,25 @@ export class BinaryDataService {
 	getAsStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		if (this.clients[mode]) {
-			return this.clients[mode].getAsStream(id, chunkSize);
-		}
+		const client = this.clients[mode];
+
+		if (client) return client.getAsStream(id, chunkSize);
 
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async getBinaryDataBuffer(binaryData: IBinaryData) {
-		if (binaryData.id) {
-			return this.retrieveBinaryDataByIdentifier(binaryData.id);
-		}
+		if (binaryData.id) return this.retrieveBinaryDataByIdentifier(binaryData.id);
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
+	async retrieveBinaryDataByIdentifier(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		if (this.clients[mode]) {
-			return this.clients[mode].getAsBuffer(id);
-		}
+		const client = this.clients[mode];
+
+		if (client) return client.getAsBuffer(id);
 
 		throw new Error('Storage mode used to store binary data not available');
 	}
@@ -126,27 +124,27 @@ export class BinaryDataService {
 	getPath(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		if (this.clients[mode]) {
-			return this.clients[mode].getPath(id);
-		}
+		const client = this.clients[mode];
+
+		if (client) return client.getPath(id);
 
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async getMetadata(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
-		if (this.clients[mode]) {
-			return this.clients[mode].getMetadata(id);
-		}
+
+		const client = this.clients[mode];
+
+		if (client) return client.getMetadata(id);
 
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
 		const client = this.clients[this.mode];
-		if (client) {
-			await client.deleteManyByExecutionIds(executionIds);
-		}
+
+		if (client) await client.deleteManyByExecutionIds(executionIds);
 	}
 
 	async duplicateBinaryData(inputData: Array<INodeExecutionData[] | null>, executionId: string) {
