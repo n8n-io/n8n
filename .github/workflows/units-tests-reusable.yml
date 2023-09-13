@@ -8,11 +8,6 @@ on:
         description: 'GitHub branch to test.'
         required: false
         type: string
-      user:
-        description: 'User who kicked this off.'
-        required: false
-        type: string
-        default: 'schedule'
       nodeVersion:
         description: 'Version of node to use.'
         required: false
@@ -27,10 +22,26 @@ on:
         description: 'PR number to run tests for.'
         required: false
         type: number
-    outputs:
-      tests_passed:
-        description: 'True if all E2E tests passed, otherwise false'
-        value: ${{ jobs.check_testing_matrix.outputs.all_tests_passed }}
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        type: string
+      nodeVersion:
+        description: 'Version of node to use.'
+        required: false
+        type: string
+        default: '18.x'
+      cacheKey:
+        description: 'Cache key for modules and build artifacts.'
+        required: false
+        default: ''
+        type: string
+      prNumber:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
 
 jobs:
   unit-test:
