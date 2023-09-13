@@ -1,8 +1,5 @@
-import { readFileSync, readdirSync, mkdtempSync } from 'fs';
-import path from 'path';
-import { tmpdir } from 'os';
-import { isEmpty } from 'lodash';
-import { get } from 'lodash';
+import { mkdtempSync, readFileSync, readdirSync } from 'fs';
+import { get, isEmpty } from 'lodash';
 import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
 import type {
 	CredentialLoadingDetails,
@@ -33,6 +30,8 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { tmpdir } from 'os';
+import path from 'path';
 import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
@@ -82,8 +81,8 @@ class CredentialType implements ICredentialTypes {
 		return this.credentialTypes[credentialType].type;
 	}
 
-	getNodeTypesToTestWith(type: string): string[] {
-		return knownCredentials[type]?.nodesToTestWith ?? [];
+	getSupportedNodes(type: string): string[] {
+		return knownCredentials[type]?.supportedNodes ?? [];
 	}
 
 	getParentTypes(typeName: string): string[] {

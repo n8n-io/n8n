@@ -1,13 +1,13 @@
 import type {
-	NodeCreateElement,
 	ActionCreateElement,
-	SubcategorizedNodeTypes,
-	SimplifiedNodeType,
 	INodeCreateElement,
+	NodeCreateElement,
+	SimplifiedNodeType,
+	SubcategorizedNodeTypes,
 } from '@/Interface';
 import { CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
-import { v4 as uuidv4 } from 'uuid';
 import { sublimeSearch } from '@/utils';
+import { v4 as uuidv4 } from 'uuid';
 
 export function transformNodeType(
 	node: SimplifiedNodeType,

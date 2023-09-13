@@ -10,9 +10,12 @@
 
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
+import uniqBy from 'lodash/uniqBy';
 
 import type {
+	FieldType,
 	IContextObject,
+	IHttpRequestMethods,
 	INode,
 	INodeCredentialDescription,
 	INodeIssueObjectProperty,
@@ -23,25 +26,23 @@ import type {
 	INodePropertyCollection,
 	INodePropertyMode,
 	INodePropertyModeValidation,
+	INodePropertyOptions,
 	INodePropertyRegexValidation,
 	INodeType,
-	IVersionedNodeType,
 	IParameterDependencies,
 	IRunExecutionData,
+	IVersionedNodeType,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	IHttpRequestMethods,
-	FieldType,
-	INodePropertyOptions,
 	ResourceMapperValue,
 	ValidationResult,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
-import type { Workflow } from './Workflow';
 import { DateTime } from 'luxon';
+import type { Workflow } from './Workflow';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -1603,4 +1604,19 @@ export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType):
 		});
 	}
 	return [object];
+}
+
+export function getCredentialsForNode(
+	object: IVersionedNodeType | INodeType,
+): INodeCredentialDescription[] {
+	if ('nodeVersions' in object) {
+		return uniqBy(
+			Object.values(object.nodeVersions).flatMap(
+				(version) => version.description.credentials ?? [],
+			),
+			'name',
+		);
+	}
+
+	return object.description.credentials ?? [];
 }

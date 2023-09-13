@@ -171,6 +171,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const CORE_VARIANT_NODES_CATEGORY = 'Core Variant Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';

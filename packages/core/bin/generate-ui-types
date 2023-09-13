@@ -29,6 +29,57 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	return refs;
 }
 
+function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, httpNode, version) {
+	return Object.values(credentialTypes)
+		.filter((credential) => 'httpRequestNodeVariant' in credential.type)
+		.map((credential) => {
+			const credentialType = credential.type;
+			const hasSupportedNodes = knownCredentials[credential.name]?.supportedNodes?.length > 0;
+			const httpIcon = httpNode.description.icon;
+			const nodeName = credentialType.displayName.replace(/ API$/, '');
+			const httpNodeClone = new httpNode.constructor().getNodeType(4.1);
+			const { apiDocsUrl, apiBaseUrl } = credentialType.httpRequestNodeVariant;
+
+			httpNodeClone.hidden = hasSupportedNodes;
+			httpNodeClone.description.codex = httpNode.description.codex;
+			httpNodeClone.description.credentials = [{ name: credentialType.name, required: true }];
+			httpNodeClone.description.name = `${httpNode.description.name}:${credentialType.name}`;
+			httpNodeClone.description.displayName = nodeName;
+			httpNodeClone.description.icon = credentialType.icon;
+			httpNodeClone.description.iconUrl = credentialType.iconUrl;
+			httpNodeClone.description.badgeIcon = httpIcon;
+			httpNodeClone.description.defaults.name = `${nodeName} HTTP Request`;
+			httpNodeClone.description.description = 'Make raw HTTP request';
+			httpNodeClone.description.codex.categories = ['Core Variant Nodes'];
+			httpNodeClone.description.codex.alias = [];
+			httpNodeClone.description.codex.subcategories = {
+				'Core Variant Nodes': ['Http'],
+			};
+			httpNodeClone.description.properties = [
+				{
+					displayName: `Use the <a target="_blank" href="${apiDocsUrl}">${nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a ${nodeName} credential below.`,
+					name: 'httpVariantWarning',
+					type: 'notice',
+				},
+			].concat(
+				httpNodeClone.description.properties.map((prop) => {
+					switch (prop.name) {
+						case 'authentication':
+							return { ...prop, type: 'hidden', default: 'predefinedCredentialType' };
+						case 'nodeCredentialType':
+							return { ...prop, type: 'hidden', default: credentialType.name };
+						case 'nodeCredentialType':
+							return { ...prop, default: apiBaseUrl, placeholder: `e.g. ${apiBaseUrl}` };
+						default:
+							return prop;
+					}
+				}),
+			);
+
+			return httpNodeClone.description;
+		});
+}
+
 (async () => {
 	const loader = new PackageDirectoryLoader(packageDir);
 	await loader.loadAll();
@@ -36,6 +87,7 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
 
 	const loaderNodeTypes = Object.values(loader.nodeTypes);
+	const knownCredentials = loader.known.credentials;
 
 	const definedMethods = loaderNodeTypes.reduce((acc, cur) => {
 		NodeHelpers.getVersionedNodeTypeAll(cur.type).forEach((type) => {
@@ -56,19 +108,27 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 		return acc;
 	}, {});
 
+	const httpRequestNodeType = loader.nodeTypes['n8n-nodes-base.httpRequest'].type;
+	const httpVariantNodes = generateHttpRequestVariantNodes(
+		knownCredentials,
+		loader.credentialTypes,
+		httpRequestNodeType,
+		4.1, // If a new HTTP request node version releases, keep v4.1 variants for compatibility
+	);
+
 	const nodeTypes = loaderNodeTypes
 		.map((data) => {
 			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
 			NodeHelpers.applySpecialNodeParameters(nodeType);
 			return data.type;
 		})
-		.flatMap((nodeData) => {
-			return NodeHelpers.getVersionedNodeTypeAll(nodeData).map((item) => {
+		.flatMap((nodeType) =>
+			NodeHelpers.getVersionedNodeTypeAll(nodeType).map((item) => {
 				const { __loadOptionsMethods, ...rest } = item.description;
-
 				return rest;
-			});
-		});
+			}),
+		)
+		.concat(httpVariantNodes);
 
 	const referencedMethods = findReferencedMethods(nodeTypes);
 

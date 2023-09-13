@@ -23,11 +23,7 @@
 			</div>
 
 			<import-parameter
-				v-else-if="
-					parameter.type === 'curlImport' &&
-					nodeTypeName === 'n8n-nodes-base.httpRequest' &&
-					nodeTypeVersion >= 3
-				"
+				v-else-if="parameter.type === 'curlImport' && isHttpRequestNode && nodeTypeVersion >= 3"
 				:isReadOnly="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
@@ -128,9 +124,6 @@
 </template>
 
 <script lang="ts">
-import { defineAsyncComponent, defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
 import type {
 	INodeParameters,
 	INodeProperties,
@@ -138,19 +131,22 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import MultipleParameter from '@/components/MultipleParameter.vue';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
+import MultipleParameter from '@/components/MultipleParameter.vue';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import { get, set } from 'lodash-es';
+import { HTTP_REQUEST_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { getMainAuthField, getNodeAuthFields, isAuthRelatedParameter } from '@/utils';
+import { get, set } from 'lodash-es';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -236,7 +232,11 @@ export default defineComponent({
 			let index = 0;
 			// For nodes that use old credentials UI, keep credentials below authentication field in NDV
 			// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
-			const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.nodeType?.name || '') ? 1 : 0;
+			const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.some(
+				(type) => this.nodeType?.name?.startsWith(type),
+			)
+				? 1
+				: 0;
 			const credentialsDependencies = this.getCredentialsDependencies();
 
 			this.filteredParameters.forEach((prop, propIndex) => {
@@ -245,10 +245,17 @@ export default defineComponent({
 				}
 			});
 
-			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
+			if (this.isHttpRequestNode && index === 0) {
+				return 3;
+			}
+
+			return Math.max(index, this.filteredParameters.length - 1);
 		},
 		mainNodeAuthField(): INodeProperties | null {
 			return getMainAuthField(this.nodeType || null);
+		},
+		isHttpRequestNode(): boolean {
+			return this.nodeTypeName.startsWith(HTTP_REQUEST_NODE_TYPE);
 		},
 	},
 	methods: {
@@ -334,7 +341,7 @@ export default defineComponent({
 
 			// Hide authentication related fields since it will now be part of credentials modal
 			if (
-				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
+				!KEEP_AUTH_IN_NDV_FOR_NODES.some((type) => this.node?.type?.startsWith(type)) &&
 				this.mainNodeAuthField &&
 				(parameter.name === this.mainNodeAuthField?.name ||
 					this.shouldHideAuthRelatedParameter(parameter))

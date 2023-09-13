@@ -1,40 +1,40 @@
-import uniq from 'lodash/uniq';
 import glob from 'fast-glob';
+import uniq from 'lodash/uniq';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
-	UserSettings,
 	CustomDirectoryLoader,
-	PackageDirectoryLoader,
 	LazyPackageDirectoryLoader,
+	PackageDirectoryLoader,
+	UserSettings,
 } from 'n8n-core';
 import type {
 	ICredentialTypes,
 	ILogger,
+	INodeTypeDescription,
 	INodesAndCredentials,
 	KnownNodesAndCredentials,
-	INodeTypeDescription,
 	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
-import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy } from 'n8n-workflow';
 
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import config from '@/config';
+import {
+	CLI_DIR,
+	CUSTOM_API_CALL_KEY,
+	CUSTOM_API_CALL_NAME,
+	GENERATED_STATIC_DIR,
+	RESPONSE_ERROR_MESSAGES,
+	inE2ETests,
+	inTest,
+} from '@/constants';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import path from 'path';
-import config from '@/config';
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { CommunityPackageService } from './services/communityPackage.service';
-import {
-	GENERATED_STATIC_DIR,
-	RESPONSE_ERROR_MESSAGES,
-	CUSTOM_API_CALL_KEY,
-	CUSTOM_API_CALL_NAME,
-	inTest,
-	CLI_DIR,
-	inE2ETests,
-} from '@/constants';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import Container, { Service } from 'typedi';
+import { CommunityPackageService } from './services/communityPackage.service';
 
 @Service()
 export class LoadNodesAndCredentials implements INodesAndCredentials {
@@ -368,15 +368,15 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				const {
 					className,
 					sourcePath,
-					nodesToTestWith,
+					supportedNodes,
 					extends: extendsArr,
 				} = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(directory, sourcePath),
-					nodesToTestWith:
+					supportedNodes:
 						loader instanceof PackageDirectoryLoader
-							? nodesToTestWith?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
 							: undefined,
 					extends: extendsArr,
 				};

@@ -14,19 +14,18 @@ import type {
 
 import {
 	BINARY_ENCODING,
-	jsonParse,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
+	jsonParse,
 	removeCircularRefs,
+	sleep,
 } from 'n8n-workflow';
-
-import { keysToLowercase } from '@utils/utilities';
 
 import type { OptionsWithUri } from 'request-promise-native';
 
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 
+import { keysToLowercase } from '@utils/utilities';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
@@ -51,7 +50,7 @@ export class HttpRequestV3 implements INodeType {
 			version: [3, 4, 4.1],
 			defaults: {
 				name: 'HTTP Request',
-				color: '#2200DD',
+				color: '#0004F5',
 			},
 			inputs: ['main'],
 			outputs: ['main'],

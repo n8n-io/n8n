@@ -1,8 +1,8 @@
 import { loadClassInIsolation } from 'n8n-core';
 import type { ICredentialType, ICredentialTypes, LoadedClass } from 'n8n-workflow';
 import { Service } from 'typedi';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 @Service()
 export class CredentialTypes implements ICredentialTypes {
@@ -18,8 +18,8 @@ export class CredentialTypes implements ICredentialTypes {
 		return this.getCredential(credentialType).type;
 	}
 
-	getNodeTypesToTestWith(type: string): string[] {
-		return this.knownCredentials[type]?.nodesToTestWith ?? [];
+	getSupportedNodes(type: string): string[] {
+		return this.knownCredentials[type]?.supportedNodes ?? [];
 	}
 
 	/**

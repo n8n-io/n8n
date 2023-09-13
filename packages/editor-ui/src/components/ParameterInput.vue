@@ -350,53 +350,53 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 import { get } from 'lodash-es';
 
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type {
+	CodeNodeEditorLanguage,
+	EditorType,
+	IDataObject,
 	ILoadOptions,
 	INodeParameters,
-	INodePropertyOptions,
-	Workflow,
 	INodeProperties,
 	INodePropertyCollection,
-	NodeParameterValueType,
+	INodePropertyOptions,
 	IParameterLabel,
-	EditorType,
-	CodeNodeEditorLanguage,
-	IDataObject,
+	NodeParameterValueType,
+	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, NodeHelpers } from 'n8n-workflow';
 
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
+import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
-import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import TextEdit from '@/components/TextEdit.vue';
-import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import HtmlEditor from '@/components/HtmlEditor/HtmlEditor.vue';
 import SqlEditor from '@/components/SqlEditor/SqlEditor.vue';
+import TextEdit from '@/components/TextEdit.vue';
+import { useI18n } from '@/composables';
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+import { htmlEditorEventBus } from '@/event-bus';
+import { debounceHelper } from '@/mixins/debounce';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
-import type { PropType } from 'vue';
-import { debounceHelper } from '@/mixins/debounce';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { htmlEditorEventBus } from '@/event-bus';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { hasExpressionMapping, isResourceLocatorValue, isValueExpression } from '@/utils';
+import type { N8nInput } from 'n8n-design-system';
 import type { EventBus } from 'n8n-design-system/utils';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useI18n } from '@/composables';
-import type { N8nInput } from 'n8n-design-system';
+import type { PropType } from 'vue';
 
 export default defineComponent({
 	name: 'parameter-input',

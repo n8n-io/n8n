@@ -5,7 +5,7 @@
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		:class="$style.nodeItem"
-		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
+		:description="description"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
 		:is-trigger="isTrigger"
@@ -39,17 +39,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	CORE_NODES_CATEGORY,
+	CORE_VARIANT_NODES_CATEGORY,
+} from '@/constants';
 import type { SimplifiedNodeType } from '@/Interface';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
+import { computed, ref } from 'vue';
 
+import NodeIcon from '@/components/NodeIcon.vue';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { isCommunityPackageName } from '@/utils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import NodeIcon from '@/components/NodeIcon.vue';
 
-import { useActions } from '../composables/useActions';
 import { useI18n, useTelemetry } from '@/composables';
+import { useActions } from '../composables/useActions';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -72,6 +76,14 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
+	const shouldDisplayDescription = !!props.nodeType.codex?.categories?.find(
+		(category) => category === CORE_NODES_CATEGORY || category === CORE_VARIANT_NODES_CATEGORY,
+	);
+
+	if (!shouldDisplayDescription) {
+		return '';
+	}
+
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,

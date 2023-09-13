@@ -2,23 +2,23 @@
 
 import type * as express from 'express';
 import type FormData from 'form-data';
+import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { Readable } from 'stream';
-import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
-import type { PathLike } from 'fs';
+import type { Readable } from 'stream';
+import type { URLSearchParams } from 'url';
 
+import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
+import type { ExecutionStatus } from './ExecutionStatus';
+import type { ExpressionError } from './ExpressionError';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { Workflow } from './Workflow';
-import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import type { ExpressionError } from './ExpressionError';
-import type { ExecutionStatus } from './ExecutionStatus';
-import type { AuthenticationMethod } from './Authentication';
+import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -322,6 +322,11 @@ export interface ICredentialTestRequestData {
 	testRequest: ICredentialTestRequest;
 }
 
+export interface ICredentialHttpRequestNodeVariant {
+	apiDocsUrl: string;
+	apiBaseUrl: string;
+}
+
 export interface ICredentialType {
 	name: string;
 	displayName: string;
@@ -338,12 +343,13 @@ export interface ICredentialType {
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
+	httpRequestNodeVariant?: ICredentialHttpRequestNodeVariant;
 }
 
 export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
-	getNodeTypesToTestWith(type: string): string[];
+	getSupportedNodes(type: string): string[];
 	getParentTypes(typeName: string): string[];
 }
 
@@ -1347,6 +1353,7 @@ export interface INodeTypeBaseDescription {
 	name: string;
 	icon?: string;
 	iconUrl?: string;
+	badgeIcon?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1590,7 +1597,7 @@ export type LoadingDetails = {
 };
 
 export type CredentialLoadingDetails = LoadingDetails & {
-	nodesToTestWith?: string[];
+	supportedNodes?: string[];
 	extends?: string[];
 };
 

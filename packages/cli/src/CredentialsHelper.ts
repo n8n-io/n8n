@@ -5,56 +5,56 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
-import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 import get from 'lodash/get';
+import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestFunction,
+	ICredentialTestFunctions,
+	ICredentialTestRequestData,
 	ICredentialsDecrypted,
 	ICredentialsExpressionResolveValues,
-	ICredentialTestFunction,
-	ICredentialTestRequestData,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
-	INodeCredentialsDetails,
 	INodeCredentialTestResult,
+	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
 	INodeProperties,
 	INodeType,
-	IVersionedNodeType,
-	IRequestOptionsSimplified,
-	IRunExecutionData,
-	IWorkflowDataProxyAdditionalKeys,
-	WorkflowExecuteMode,
-	ITaskDataConnections,
-	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	IRequestOptionsSimplified,
+	IRunExecutionData,
+	ITaskDataConnections,
+	IVersionedNodeType,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
-	ICredentialTestFunctions,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
+	ErrorReporterProxy as ErrorReporter,
 	ICredentialsHelper,
-	VersionedNodeType,
+	LoggerProxy as Logger,
 	NodeHelpers,
 	RoutingNode,
+	VersionedNodeType,
 	Workflow,
-	LoggerProxy as Logger,
-	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import * as Db from '@/Db';
-import type { ICredentialsDb } from '@/Interfaces';
-import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import type { User } from '@db/entities/User';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { NodeTypes } from '@/NodeTypes';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import * as Db from '@/Db';
+import type { ICredentialsDb } from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { User } from '@db/entities/User';
+import { Container } from 'typedi';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { Container } from 'typedi';
 import { isObjectLiteral } from './utils';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
@@ -503,8 +503,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 			};
 		}
 
-		const nodeTypesToTestWith = this.credentialTypes.getNodeTypesToTestWith(credentialType);
-		for (const nodeName of nodeTypesToTestWith) {
+		const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+		for (const nodeName of supportedNodes) {
 			const node = this.nodeTypes.getByName(nodeName);
 
 			// Always set to an array even if node is not versioned to not having

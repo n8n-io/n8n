@@ -55,13 +55,13 @@
 </template>
 
 <script lang="ts">
-import type { ICredentialType } from 'n8n-workflow';
-import { defineComponent } from 'vue';
-import ScopesNotice from '@/components/ScopesNotice.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import { mapStores } from 'pinia';
+import ScopesNotice from '@/components/ScopesNotice.vue';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import type { N8nSelect } from 'n8n-design-system';
+import type { ICredentialType } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 type N8nSelectRef = InstanceType<typeof N8nSelect>;
 
@@ -136,28 +136,22 @@ export default defineComponent({
 				);
 			}
 
+			if (supported.name.includes(checkedCredType.name)) {
+				return true;
+			}
+
 			return false;
 		},
 		getSupportedSets(credentialTypes: string[]) {
-			return credentialTypes.reduce<{ extends: string[]; has: string[] }>(
+			return credentialTypes.reduce<{ extends: string[]; has: string[]; name: string[] }>(
 				(acc, cur) => {
-					const _extends = cur.split('extends:');
+					const [prefix, data] = cur.split(':');
 
-					if (_extends.length === 2) {
-						acc.extends.push(_extends[1]);
-						return acc;
-					}
-
-					const _has = cur.split('has:');
-
-					if (_has.length === 2) {
-						acc.has.push(_has[1]);
-						return acc;
-					}
+					acc[prefix as 'extends' | 'has' | 'name'].push(data);
 
 					return acc;
 				},
-				{ extends: [], has: [] },
+				{ extends: [], has: [], name: [] },
 			);
 		},
 	},
