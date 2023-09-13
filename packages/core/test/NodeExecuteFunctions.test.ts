@@ -19,7 +19,6 @@ import {
 } from '@/NodeExecuteFunctions';
 import { initLogger } from './helpers/utils';
 import Container from 'typedi';
-import type { IBinaryDataConfig } from '@/Interfaces';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
@@ -27,14 +26,13 @@ describe('NodeExecuteFunctions', () => {
 	describe('test binary data helper methods', () => {
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 			// Setup a 'default' binary data manager instance
-			const config: IBinaryDataConfig = {
+			Container.set(BinaryDataManager, new BinaryDataManager());
+
+			await Container.get(BinaryDataManager).init({
 				mode: 'default',
 				availableModes: 'default',
 				localStoragePath: temporaryDir,
-			};
-			Container.set(BinaryDataManager, new BinaryDataManager());
-
-			await Container.get(BinaryDataManager).init(config);
+			});
 
 			// Set our binary data buffer
 			const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
@@ -78,15 +76,14 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
-			const config: IBinaryDataConfig = {
-				mode: 'filesystem',
-				availableModes: 'filesystem',
-				localStoragePath: temporaryDir,
-			};
 			Container.set(BinaryDataManager, new BinaryDataManager());
 
 			// Setup a 'filesystem' binary data manager instance
-			await Container.get(BinaryDataManager).init(config);
+			await Container.get(BinaryDataManager).init({
+				mode: 'filesystem',
+				availableModes: 'filesystem',
+				localStoragePath: temporaryDir,
+			});
 
 			// Set our binary data buffer
 			const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
