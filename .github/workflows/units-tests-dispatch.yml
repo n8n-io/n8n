@@ -19,9 +19,11 @@ on:
         type: number
 
 jobs:
-  unit-test:
-    name: Unit tests
+  prepare:
+    name: Prepare
     runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.compute-branch.outputs.branch }}
     steps:
       - name: Compute branch
         id: compute-branch
@@ -32,10 +34,12 @@ jobs:
           else
             BRANCH_NAME="${{ inputs.ref }}"
           fi
-          echo "::set-output name=branch::$BRANCH_NAME"
+          echo "branch=$BRANCH_NAME >> $GITHUB_OUTPUT"
 
-      - name: Run unit tests
-        uses: ./.github/workflows/units-tests-reusable.yml
-        with:
-          branch: ${{ steps.compute-branch.outputs.branch }}
-          nodeVersion: ${{ inputs.nodeVersion }}
+  unit-test:
+    name: Unit tests
+    needs: prepare
+    uses: ./.github/workflows/units-tests-reusable.yml
+    with:
+      branch: ${{ needs.prepare.outputs.branch }}
+      nodeVersion: ${{ inputs.nodeVersion }}
