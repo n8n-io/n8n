@@ -40,6 +40,7 @@ import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
+import WorkflowHistory from '@/views/WorkflowHistory.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 interface IRouteConfig {
@@ -294,6 +295,28 @@ export const routes = [
 		],
 	},
 	{
+		path: '/workflow/:name/history/:id?',
+		name: VIEWS.WORKFLOW_HISTORY,
+		components: {
+			default: WorkflowHistory,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			keepWorkflowAlive: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+				deny: {
+					shouldDeny: () =>
+						!useSettingsStore().isEnterpriseFeatureEnabled(
+							EnterpriseEditionFeature.WorkflowHistory,
+						),
+				},
+			},
+		},
+	},
+	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
@@ -493,7 +516,7 @@ export const routes = [
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
 								return (
-									settingsStore.settings.hideUsagePage === true ||
+									settingsStore.settings.hideUsagePage ||
 									settingsStore.settings.deployment?.type === 'cloud'
 								);
 							},
@@ -570,7 +593,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isPublicApiEnabled === false;
+								return !settingsStore.isPublicApiEnabled;
 							},
 						},
 					},
@@ -685,7 +708,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCommunityNodesFeatureEnabled === false;
+								return !settingsStore.isCommunityNodesFeatureEnabled;
 							},
 						},
 					},
@@ -702,7 +725,7 @@ export const routes = [
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
-								feature: route.params['featureId'],
+								feature: route.params.featureId,
 							};
 						},
 					},
