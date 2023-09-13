@@ -6,7 +6,7 @@ import path from 'path';
 
 describe('Test Move Binary Data Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataManager();
+		await Helpers.initBinaryDataService();
 	});
 
 	const workflow = Helpers.readJsonFileSync(

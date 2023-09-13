@@ -217,7 +217,7 @@ export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
-export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
 	const binaryDataService = new BinaryDataService();
 	await binaryDataService.init({ mode: 'default', availableModes: mode });
 	Container.set(BinaryDataService, binaryDataService);
