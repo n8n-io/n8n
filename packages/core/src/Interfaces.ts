@@ -40,7 +40,7 @@ export interface IBinaryDataConfig {
 	localStoragePath: string;
 }
 
-export interface IBinaryDataManager {
+export interface BinaryDataClient {
 	init(startPurger: boolean): Promise<void>;
 	getFileSize(filePath: string): Promise<number>;
 	copyBinaryFile(filePath: string, executionId: string): Promise<string>;

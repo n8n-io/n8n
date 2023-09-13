@@ -6,13 +6,13 @@ import type { Readable } from 'stream';
 import type { BinaryMetadata } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import type { IBinaryDataConfig, BinaryDataClient } from '../Interfaces';
 import { FileNotFoundError } from '../errors';
 
 const executionExtractionRegexp =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
-export class BinaryDataFileSystem implements IBinaryDataManager {
+export class BinaryDataFileSystem implements BinaryDataClient {
 	private storagePath: string;
 
 	constructor(config: IBinaryDataConfig) {
