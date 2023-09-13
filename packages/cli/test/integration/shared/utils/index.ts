@@ -385,9 +385,9 @@ export async function initNodeTypes() {
 }
 
 /**
- * Initialize a BinaryManager for test runs.
+ * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryManager() {
+export async function initBinaryDataService() {
 	const binaryDataConfig = config.getEnv('binaryDataService');
 
 	const binaryDataService = new BinaryDataService();

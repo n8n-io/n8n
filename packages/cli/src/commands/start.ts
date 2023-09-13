@@ -198,7 +198,7 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
-		await this.initBinaryManager();
+		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
 
