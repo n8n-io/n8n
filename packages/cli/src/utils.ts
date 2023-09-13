@@ -101,3 +101,122 @@ export const isIntegerString = (value: string) => /^\d+$/.test(value);
 export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
 	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
+
+export const createErrorPage = (title: string, message: string) => {
+	const html = `
+	<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="https://n8n.io/favicon.ico" />
+  <title>${title}</title>
+  <style>
+    *,
+    ::after,
+    ::before {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: sans-serif;
+      font-weight: 400;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: start;
+    }
+
+    .container {
+      margin: 1em auto;
+      text-align: center;
+      min-width: 30em;
+      max-width: 50em;
+      padding: 1em;
+
+    }
+
+    .n8n-link {
+      color: grey;
+      margin: 1em;
+      font-weight: 400;
+      font-size: 1.2em;
+    }
+
+    .n8n-link a {
+      color: grey;
+      font-weight: 400;
+      font-size: 1.2em;
+      text-decoration: none;
+    }
+
+    .n8n-link strong {
+      color: black;
+      font-weight: 700;
+      font-size: 1.3em;
+    }
+
+    .n8n-link img {
+      display: inline-block;
+      vertical-align: middle;
+    }
+
+    .header {
+      color: grey;
+      margin-top: 2em;
+      margin-bottom: 3em;
+      font-size: 1em;
+      border-radius: 0.5em;
+			max-width: 40em;
+    }
+
+    .header h1 {
+      /* margin-top: 2em; */
+      font-size: 2em;
+      font-weight: 600;
+    }
+
+    .header p {
+      margin: 1em auto;
+      font-size: 1.3em;
+      font-weight: 500;
+
+    }
+
+    .card {
+      margin: 1em;
+      padding: 0.5em 1em;
+      background-color: white;
+      border: 0.1em solid lightgray;
+      border-radius: 0.5em;
+      box-shadow: 0 0.3em 2em rgba(0, 0, 0, 0.1);
+      min-width: 40em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <section>
+      <div class="card">
+        <div class="header">
+          <h1>${title}</h1>
+          <p>${message}</p>
+        </div>
+      </div>
+      <div class="n8n-link">
+        <a href="https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger" target="_blank">
+          Form automated with <img src="https://n8n.io/favicon.ico" alt="n8n logo"> <strong>n8n</strong>
+        </a>
+      </div>
+    </section>
+  </div>
+</body>
+
+</html>
+	`;
+	return html;
+};

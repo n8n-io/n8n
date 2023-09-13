@@ -63,6 +63,7 @@ import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
 import { WorkflowsService } from './workflows/workflows.services';
+import { createErrorPage } from './utils';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -109,7 +110,24 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error);
+			if (error.errorCode === 404 && (error.message as string).includes('/n8n-form')) {
+				const isTestWebhook = req.originalUrl.includes('/webhook-test');
+				let html = '';
+				if (isTestWebhook) {
+					html = createErrorPage(
+						"Form Trigger isn't listening yet",
+						'Click the <strong>"Test Step"</strong> button in your form trigger',
+					);
+				} else {
+					html = createErrorPage(
+						'Problem loading form',
+						'This usually occurs if the n8n workflow serving this form is deactivated or no longer exist',
+					);
+				}
+				return ResponseHelper.sendSuccessResponse(res, html, true, 404);
+			} else {
+				return ResponseHelper.sendErrorResponse(res, error as Error);
+			}
 		}
 
 		// Don't respond, if already responded
