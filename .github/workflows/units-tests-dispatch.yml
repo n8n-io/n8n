@@ -5,7 +5,8 @@ on:
     inputs:
       ref:
         description: 'GitHub ref to test.'
-        required: true
+        required: false
+        default: 'master'
         type: string
       nodeVersion:
         description: 'Version of node to use.'
