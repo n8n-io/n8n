@@ -6,45 +6,29 @@ import { BINARY_ENCODING } from 'n8n-workflow';
 import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
 import { binaryToBuffer } from './utils';
+import { Service } from 'typedi';
 
+@Service()
 export class BinaryDataManager {
-	static instance: BinaryDataManager | undefined;
-
 	private managers: {
 		[key: string]: IBinaryDataManager;
-	};
+	} = {};
 
-	private binaryDataMode: string;
+	private binaryDataMode = '';
 
-	private availableModes: string[];
+	private availableModes: string[] = [];
 
-	constructor(config: IBinaryDataConfig) {
+	async init(config: IBinaryDataConfig, mainManager = false) {
 		this.binaryDataMode = config.mode;
 		this.availableModes = config.availableModes.split(',');
 		this.managers = {};
-	}
 
-	static async init(config: IBinaryDataConfig, mainManager = false): Promise<void> {
-		if (BinaryDataManager.instance) {
-			throw new Error('Binary Data Manager already initialized');
-		}
-
-		BinaryDataManager.instance = new BinaryDataManager(config);
-
-		if (BinaryDataManager.instance.availableModes.includes('filesystem')) {
-			BinaryDataManager.instance.managers.filesystem = new BinaryDataFileSystem(config);
-			await BinaryDataManager.instance.managers.filesystem.init(mainManager);
+		if (this.availableModes.includes('filesystem')) {
+			this.managers.filesystem = new BinaryDataFileSystem(config);
+			await this.managers.filesystem.init(mainManager);
 		}
 
 		return undefined;
-	}
-
-	static getInstance(): BinaryDataManager {
-		if (!BinaryDataManager.instance) {
-			throw new Error('Binary Data Manager not initialized');
-		}
-
-		return BinaryDataManager.instance;
 	}
 
 	async copyBinaryFile(
