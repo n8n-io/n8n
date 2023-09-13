@@ -140,6 +140,7 @@ export class FormTrigger implements INodeType {
 									{
 										displayName: 'Values',
 										name: 'values',
+										displayItemIndex: true,
 										values: [
 											{
 												displayName: 'Option',

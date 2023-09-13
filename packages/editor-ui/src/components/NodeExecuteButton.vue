@@ -253,7 +253,7 @@ export default defineComponent({
 						window.open(testUrl, '_blank');
 					} else {
 						const width = 700;
-						const height = window.innerHeight;
+						const height = window.innerHeight * 0.9;
 						const left = (window.innerWidth - width) / 2;
 						const top = (window.innerHeight - height) / 2;
 						const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
