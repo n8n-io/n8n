@@ -171,8 +171,7 @@ export default defineComponent({
 		async onClick(event: Event) {
 			if (
 				this.$refs.cardActions === event.target ||
-				this.$refs.cardActions?.contains(event.target) ||
-				event.target?.contains(this.$refs.cardActions)
+				this.$refs.cardActions?.contains(event.target)
 			) {
 				return;
 			}
@@ -292,6 +291,7 @@ export default defineComponent({
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
 }
