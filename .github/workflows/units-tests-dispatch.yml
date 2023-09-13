@@ -1,0 +1,26 @@
+name: Runs unit tests for a given ref
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'GitHub ref to test.'
+        required: true
+        type: string
+      nodeVersion:
+        description: 'Version of node to use.'
+        required: false
+        type: string
+        default: '18.x'
+      prNumber:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
+
+jobs:
+  unit-test:
+    name: Unit tests
+    uses: ./.github/workflows/units-tests-reusable.yml
+    with:
+      branch: "${{ inputs.prNumber != '' && inputs.prNumber != null ? 'refs/pull/' + inputs.prNumber + '/merge' : inputs.ref }}"
+      nodeVersion: ${{ inputs.nodeVersion }}

@@ -1,28 +1,7 @@
 name: Reusable units test workflow
 
 on:
-  pull_request:
   workflow_call:
-    inputs:
-      branch:
-        description: 'GitHub branch to test.'
-        required: false
-        type: string
-      nodeVersion:
-        description: 'Version of node to use.'
-        required: false
-        type: string
-        default: '18.x'
-      cacheKey:
-        description: 'Cache key for modules and build artifacts.'
-        required: false
-        default: ''
-        type: string
-      prNumber:
-        description: 'PR number to run tests for.'
-        required: false
-        type: number
-  workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test.'
