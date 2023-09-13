@@ -21,7 +21,21 @@ on:
 jobs:
   unit-test:
     name: Unit tests
-    uses: ./.github/workflows/units-tests-reusable.yml
-    with:
-      branch: "${{ inputs.prNumber != '' && inputs.prNumber != null ? 'refs/pull/' + inputs.prNumber + '/merge' : inputs.ref }}"
-      nodeVersion: ${{ inputs.nodeVersion }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute branch
+        id: compute-branch
+        run: |
+          BRANCH_NAME=""
+          if [[ "${{ inputs.prNumber }}" != "" && "${{ inputs.prNumber }}" != "null" ]]; then
+            BRANCH_NAME="refs/pull/${{ inputs.prNumber }}/merge"
+          else
+            BRANCH_NAME="${{ inputs.ref }}"
+          fi
+          echo "::set-output name=branch::$BRANCH_NAME"
+
+      - name: Run unit tests
+        uses: ./.github/workflows/units-tests-reusable.yml
+        with:
+          branch: ${{ steps.compute-branch.outputs.branch }}
+          nodeVersion: ${{ inputs.nodeVersion }}
