@@ -630,6 +630,9 @@ importers:
       qs:
         specifier: ^6.10.1
         version: 6.11.0
+      typedi:
+        specifier: ^0.10.0
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -6759,7 +6762,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.8
+      vue-component-type-helpers: 1.8.11
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -9069,7 +9072,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
+      follow-redirects: 1.15.2(debug@3.2.7)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -9098,11 +9101,12 @@ packages:
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
+    dev: true
 
   /axios@1.4.0:
     resolution: {integrity: sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@4.3.4)
+      follow-redirects: 1.15.2(debug@3.2.7)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -12674,6 +12678,7 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4(supports-color@8.1.1)
+    dev: true
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -18003,7 +18008,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@4.3.4)
+      axios: 0.27.2(debug@3.2.7)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -21734,12 +21739,12 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.4:
-    resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
+  /vue-component-type-helpers@1.8.11:
+    resolution: {integrity: sha512-CWItFzuEWjkSXDeMGwQEc5cFH4FaueyPQHfi1mBDe+wA2JABqNjFxFUtmZJ9WHkb0HpEwqgBg1umiXrWYXkXHw==}
     dev: true
 
-  /vue-component-type-helpers@1.8.8:
-    resolution: {integrity: sha512-Ohv9HQY92nSbpReC6WhY0X4YkOszHzwUHaaN/lev5tHQLM1AEw+LrLeB2bIGIyKGDU7ZVrncXcv/oBny4rjbYg==}
+  /vue-component-type-helpers@1.8.4:
+    resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.3.4):
