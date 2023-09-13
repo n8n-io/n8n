@@ -3,10 +3,12 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
+	SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
-import { getVisibleDropdown, getVisibleSelect } from '../utils';
+import { getVisibleSelect } from '../utils';
+import { WorkflowExecutionsTab } from "../pages";
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const IMPORT_WORKFLOW_URL =
@@ -16,6 +18,7 @@ const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
 const WorkflowPage = new WorkflowPageClass();
 const WorkflowPages = new WorkflowsPageClass();
+const executionsTab = new WorkflowExecutionsTab();
 
 describe('Workflow Actions', () => {
 	beforeEach(() => {
@@ -249,5 +252,26 @@ describe('Workflow Actions', () => {
 			WorkflowPage.actions.saveWorkflowOnButtonClick();
 			duplicateWorkflow();
 		});
+	});
+
+	it('should keep endpoint click working when switching between execution and editor tab', () => {
+		cy.intercept('GET', '/rest/executions?filter=*').as('getExecutions');
+		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
+
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+
+		WorkflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
+		cy.get('body').type('{esc}');
+
+		executionsTab.actions.switchToExecutionsTab();
+		cy.wait(['@getExecutions', '@getCurrentExecutions']);
+		cy.wait(500);
+		executionsTab.actions.switchToEditorTab();
+
+		WorkflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
+		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 	});
 });
