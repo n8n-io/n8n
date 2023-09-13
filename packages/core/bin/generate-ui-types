@@ -38,7 +38,7 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 			const httpIcon = httpNode.description.icon;
 			const nodeName = credentialType.displayName.replace(/ API$/, '');
 			const httpNodeClone = new httpNode.constructor().getNodeType(4.1);
-			const { apiDocsUrl, apiBaseUrl } = credentialType.httpRequestNodeVariant;
+			const { docsUrl, apiBaseUrl } = credentialType.httpRequestNodeVariant;
 
 			httpNodeClone.hidden = hasSupportedNodes;
 			httpNodeClone.description.codex = httpNode.description.codex;
@@ -55,26 +55,24 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 			httpNodeClone.description.codex.subcategories = {
 				'Core Variant Nodes': ['Http'],
 			};
-			httpNodeClone.description.properties = [
-				{
-					displayName: `Use the <a target="_blank" href="${apiDocsUrl}">${nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a ${nodeName} credential below.`,
-					name: 'httpVariantWarning',
-					type: 'notice',
-				},
-			].concat(
-				httpNodeClone.description.properties.map((prop) => {
-					switch (prop.name) {
-						case 'authentication':
-							return { ...prop, type: 'hidden', default: 'predefinedCredentialType' };
-						case 'nodeCredentialType':
-							return { ...prop, type: 'hidden', default: credentialType.name };
-						case 'nodeCredentialType':
-							return { ...prop, default: apiBaseUrl, placeholder: `e.g. ${apiBaseUrl}` };
-						default:
-							return prop;
-					}
-				}),
-			);
+			httpNodeClone.description.properties = httpNodeClone.description.properties.map((prop) => {
+				switch (prop.name) {
+					case 'authentication':
+						return { ...prop, type: 'hidden', default: 'predefinedCredentialType' };
+					case 'nodeCredentialType':
+						return { ...prop, type: 'hidden', default: credentialType.name };
+					case 'url':
+						return { ...prop, default: apiBaseUrl, placeholder: `e.g. ${apiBaseUrl}` };
+					default:
+						return prop;
+				}
+			});
+
+			httpNodeClone.description.properties.splice(1, 0, {
+				displayName: `Use the <a target="_blank" href="${docsUrl}">${nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a ${nodeName} credential below.`,
+				name: 'httpVariantWarning',
+				type: 'notice',
+			});
 
 			return httpNodeClone.description;
 		});

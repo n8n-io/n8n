@@ -9,6 +9,11 @@ export class TrellixEpoApi implements ICredentialType {
 
 	icon = 'file:icons/Trellix.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://docs.trellix.com/en/bundle/epolicy-orchestrator-web-api-reference-guide',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

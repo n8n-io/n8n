@@ -16,6 +16,11 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 
 	icon = 'file:icons/CrowdStrike.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://developer.crowdstrike.com/',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',

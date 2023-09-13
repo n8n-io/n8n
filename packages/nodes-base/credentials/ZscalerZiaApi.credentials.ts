@@ -16,6 +16,11 @@ export class ZscalerZiaApi implements ICredentialType {
 
 	icon = 'file:icons/Zscaler.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://help.zscaler.com/zia/getting-started-zia-api',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Cookie',

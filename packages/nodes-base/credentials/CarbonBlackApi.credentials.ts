@@ -9,6 +9,11 @@ export class CarbonBlackApi implements ICredentialType {
 
 	documentationUrl = 'carbonblack';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://developer.carbonblack.com/reference',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

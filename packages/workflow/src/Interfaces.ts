@@ -323,7 +323,7 @@ export interface ICredentialTestRequestData {
 }
 
 export interface ICredentialHttpRequestNodeVariant {
-	apiDocsUrl: string;
+	docsUrl: string;
 	apiBaseUrl: string;
 }
 

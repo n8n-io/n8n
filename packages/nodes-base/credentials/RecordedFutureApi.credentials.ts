@@ -9,6 +9,11 @@ export class RecordedFutureApi implements ICredentialType {
 
 	icon = 'file:icons/RecordedFuture.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://api.recordedfuture.com',
+		apiBaseUrl: 'https://api.recordedfuture.com/v2/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',

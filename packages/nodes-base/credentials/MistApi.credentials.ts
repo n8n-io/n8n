@@ -14,6 +14,11 @@ export class MistApi implements ICredentialType {
 
 	documentationUrl = 'mist';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://www.mist.com/documentation/mist-api-introduction/',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',

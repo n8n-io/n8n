@@ -16,6 +16,11 @@ export class CiscoUmbrellaApi implements ICredentialType {
 
 	icon = 'file:icons/Cisco.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://developer.cisco.com/docs/cloud-security/',
+		apiBaseUrl: 'https://api.umbrella.com/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',

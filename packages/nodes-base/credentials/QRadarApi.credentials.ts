@@ -9,6 +9,11 @@ export class QRadarApi implements ICredentialType {
 
 	documentationUrl = 'qradar';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://www.ibm.com/docs/en/qradar-common',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

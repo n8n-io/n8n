@@ -9,6 +9,11 @@ export class CiscoMerakiApi implements ICredentialType {
 
 	icon = 'file:icons/Cisco.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://developer.cisco.com/meraki/api/',
+		apiBaseUrl: 'https://api.meraki.com/api/v1/',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

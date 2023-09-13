@@ -17,6 +17,11 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 
 	icon = 'file:icons/Cisco.svg';
 
+	httpRequestNodeVariant = {
+		docsUrl: 'https://developer.cisco.com/docs/secure-endpoint/',
+		apiBaseUrl: '',
+	};
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Region',
