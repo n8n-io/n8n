@@ -11,7 +11,7 @@ import type {
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
-import { BinaryDataManager } from '@/BinaryDataManager';
+import { BinaryDataService } from '@/binaryData/binaryData.service';
 import {
 	setBinaryDataBuffer,
 	getBinaryDataBuffer,
@@ -26,12 +26,11 @@ describe('NodeExecuteFunctions', () => {
 	describe('test binary data helper methods', () => {
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 			// Setup a 'default' binary data manager instance
-			Container.set(BinaryDataManager, new BinaryDataManager());
+			Container.set(BinaryDataService, new BinaryDataService());
 
-			await Container.get(BinaryDataManager).init({
+			await Container.get(BinaryDataService).init({
 				mode: 'default',
 				availableModes: 'default',
-				localStoragePath: temporaryDir,
 			});
 
 			// Set our binary data buffer
@@ -76,10 +75,10 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
-			Container.set(BinaryDataManager, new BinaryDataManager());
+			Container.set(BinaryDataService, new BinaryDataService());
 
 			// Setup a 'filesystem' binary data manager instance
-			await Container.get(BinaryDataManager).init({
+			await Container.get(BinaryDataService).init({
 				mode: 'filesystem',
 				availableModes: 'filesystem',
 				localStoragePath: temporaryDir,

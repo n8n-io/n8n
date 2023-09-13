@@ -9,7 +9,7 @@ import { Service } from 'typedi';
 import concatStream from 'concat-stream';
 
 @Service()
-export class BinaryDataManager {
+export class BinaryDataService {
 	private availableModes: BinaryData.Mode[] = [];
 
 	private mode: BinaryData.Mode = 'default';

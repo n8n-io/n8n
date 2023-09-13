@@ -115,7 +115,7 @@ import { Readable } from 'stream';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { createReadStream } from 'fs';
 
-import { BinaryDataManager } from './BinaryDataManager';
+import { BinaryDataService } from './binaryData/binaryData.service';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
@@ -697,7 +697,7 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await Container.get(BinaryDataManager)
+					responseData = await Container.get(BinaryDataService)
 						.binaryToBuffer(responseData)
 						.then((buffer) => buffer.toString('utf-8'));
 				}
@@ -864,21 +864,21 @@ async function httpRequest(
 }
 
 export function getBinaryPath(binaryDataId: string): string {
-	return Container.get(BinaryDataManager).getBinaryPath(binaryDataId);
+	return Container.get(BinaryDataService).getBinaryPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
 export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
-	return Container.get(BinaryDataManager).getBinaryMetadata(binaryDataId);
+	return Container.get(BinaryDataService).getBinaryMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
-	return Container.get(BinaryDataManager).getBinaryStream(binaryDataId, chunkSize);
+	return Container.get(BinaryDataService).getBinaryStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -915,7 +915,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataManager).getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataService).getBinaryDataBuffer(binaryData);
 }
 
 /**
@@ -931,7 +931,7 @@ export async function setBinaryDataBuffer(
 	binaryData: Buffer | Readable,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return Container.get(BinaryDataManager).storeBinaryData(data, binaryData, executionId);
+	return Container.get(BinaryDataService).storeBinaryData(data, binaryData, executionId);
 }
 
 export async function copyBinaryFile(
@@ -984,7 +984,7 @@ export async function copyBinaryFile(
 		returnData.fileName = path.parse(filePath).base;
 	}
 
-	return Container.get(BinaryDataManager).copyBinaryFile(returnData, filePath, executionId);
+	return Container.get(BinaryDataService).copyBinaryFile(returnData, filePath, executionId);
 }
 
 /**
@@ -2376,7 +2376,7 @@ const getBinaryHelperFunctions = ({
 	getBinaryStream,
 	getBinaryMetadata,
 	binaryToBuffer: async (body: Buffer | Readable) =>
-		Container.get(BinaryDataManager).binaryToBuffer(body),
+		Container.get(BinaryDataService).binaryToBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -2564,7 +2564,7 @@ export function getExecuteFunctions(
 						parentWorkflowSettings: workflow.settings,
 					})
 					.then(async (result) =>
-						Container.get(BinaryDataManager).duplicateBinaryData(
+						Container.get(BinaryDataService).duplicateBinaryData(
 							result,
 							additionalData.executionId!,
 						),
@@ -2637,7 +2637,7 @@ export function getExecuteFunctions(
 				return dataProxy.getDataProxy();
 			},
 			binaryToBuffer: async (body: Buffer | Readable) =>
-				Container.get(BinaryDataManager).binaryToBuffer(body),
+				Container.get(BinaryDataService).binaryToBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
