@@ -38,7 +38,6 @@ jobs:
     needs: install
     with:
       ref: ${{ github.event.pull_request.head.ref }}
-      nodeVersion: 18.x
       cacheKey: ${{ github.sha }}-base:18-test-lint
 
   lint:

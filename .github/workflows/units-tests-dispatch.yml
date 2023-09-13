@@ -37,4 +37,3 @@ jobs:
     uses: ./.github/workflows/units-tests-reusable.yml
     with:
       ref: ${{ needs.prepare.outputs.branch }}
-      nodeVersion: 18.x
