@@ -1324,6 +1324,6 @@ export class Spotify implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

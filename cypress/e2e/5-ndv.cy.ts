@@ -1,5 +1,6 @@
 import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
+import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -289,6 +290,38 @@ describe('NDV', () => {
 		});
 	});
 
+	it('should not retrieve remote options when required params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+
+		ndv.actions.setInvalidExpression('fieldId');
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getPopper().should('not.be.visible');
+
+		ndv.getters.parameterInputIssues('remoteOptions').realHover();
+		getVisiblePopper().should('include.text', `node doesn't exist`);
+	});
+
+	it('should retrieve remote options when non-required params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+		ndv.getters.parameterInput('remoteOptions').click();
+
+		ndv.actions.setInvalidExpression('otherField');
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+	});
+
 	it('should flag issues as soon as params are set', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
@@ -305,7 +338,7 @@ describe('NDV', () => {
 		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
 
 		workflowPage.getters.canvasNodes().first().dblclick();
-		ndv.getters.parameterInput('path').type('t')
+		ndv.getters.parameterInput('path').type('t');
 
 		ndv.getters.nodeExecuteButton().should('not.be.disabled');
 		ndv.getters.triggerPanelExecuteButton().should('exist');

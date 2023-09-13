@@ -402,6 +402,6 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

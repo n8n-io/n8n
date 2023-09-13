@@ -4,8 +4,9 @@ import { SharedWorkflowRepository } from '@/databases/repositories';
 import type { User } from '@/databases/entities/User';
 import { RoleService } from './role.service';
 import { UserService } from './user.service';
-import type { ListQuery } from '@/requests';
+import type { Credentials, ListQuery } from '@/requests';
 import type { Role } from '@/databases/entities/Role';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 @Service()
 export class OwnershipService {
@@ -49,5 +50,26 @@ export class OwnershipService {
 		return Object.assign(rest, {
 			ownedBy: ownerId ? { id: ownerId } : null,
 		});
+	}
+
+	addOwnedByAndSharedWith(_credential: CredentialsEntity): Credentials.WithOwnedByAndSharedWith {
+		const { shared, ...rest } = _credential;
+
+		const credential = rest as Credentials.WithOwnedByAndSharedWith;
+
+		credential.ownedBy = null;
+		credential.sharedWith = [];
+
+		shared?.forEach(({ user, role }) => {
+			const { id, email, firstName, lastName } = user;
+
+			if (role.name === 'owner') {
+				credential.ownedBy = { id, email, firstName, lastName };
+			} else {
+				credential.sharedWith.push({ id, email, firstName, lastName });
+			}
+		});
+
+		return credential;
 	}
 }

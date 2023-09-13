@@ -1161,9 +1161,9 @@ export class QuickBooks implements INodeType {
 			['get'].includes(operation) &&
 			download
 		) {
-			return this.prepareOutputData(responseData as INodeExecutionData[]);
+			return [responseData as INodeExecutionData[]];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

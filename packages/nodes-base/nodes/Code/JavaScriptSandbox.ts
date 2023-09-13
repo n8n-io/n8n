@@ -42,6 +42,7 @@ export class JavaScriptSandbox extends Sandbox {
 			console: 'redirect',
 			sandbox: context,
 			require: vmResolver,
+			wasm: false,
 		});
 
 		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));

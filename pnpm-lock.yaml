@@ -11,7 +11,7 @@ overrides:
   '@types/node': ^18.16.16
   chokidar: 3.5.2
   jsonwebtoken: 9.0.0
-  prettier: ^3.0.0
+  prettier: ^3.0.3
   semver: ^7.5.4
   tough-cookie: ^4.1.3
   tslib: ^2.6.1
@@ -178,7 +178,7 @@ importers:
         version: 1.0.0
       eslint-plugin-prettier:
         specifier: ^5.0.0
-        version: 5.0.0(@types/eslint@8.44.1)(eslint-config-prettier@8.9.0)(eslint@8.45.0)(prettier@3.0.0)
+        version: 5.0.0(@types/eslint@8.44.1)(eslint-config-prettier@8.9.0)(eslint@8.45.0)(prettier@3.0.3)
       eslint-plugin-unicorn:
         specifier: ^48.0.1
         version: 48.0.1(eslint@8.45.0)
@@ -198,8 +198,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.4.0
-        version: 2.4.0
+        specifier: ~2.5.1
+        version: 2.5.1
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -254,12 +254,6 @@ importers:
       connect-history-api-fallback:
         specifier: ^1.6.0
         version: 1.6.0
-      content-disposition:
-        specifier: ^0.5.4
-        version: 0.5.4
-      content-type:
-        specifier: ^1.0.4
-        version: 1.0.4
       convict:
         specifier: ^6.2.4
         version: 6.2.4
@@ -317,6 +311,9 @@ importers:
       ioredis:
         specifier: ^5.2.4
         version: 5.2.4
+      isbot:
+        specifier: ^3.6.13
+        version: 3.6.13
       json-diff:
         specifier: ^1.0.6
         version: 1.0.6
@@ -450,8 +447,8 @@ importers:
         specifier: ^0.10.0
         version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       typeorm:
-        specifier: ^0.3.12
-        version: 0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
+        specifier: ^0.3.17
+        version: 0.3.17(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -492,12 +489,6 @@ importers:
       '@types/connect-history-api-fallback':
         specifier: ^1.3.1
         version: 1.3.5
-      '@types/content-disposition':
-        specifier: ^0.5.5
-        version: 0.5.5
-      '@types/content-type':
-        specifier: ^1.1.5
-        version: 1.1.5
       '@types/convict':
         specifier: ^6.1.1
         version: 6.1.1
@@ -588,6 +579,12 @@ importers:
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
+      content-disposition:
+        specifier: ^0.5.4
+        version: 0.5.4
+      content-type:
+        specifier: ^1.0.4
+        version: 1.0.4
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -612,6 +609,9 @@ importers:
       mime-types:
         specifier: ^2.1.27
         version: 2.1.35
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../nodes-base
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -634,6 +634,12 @@ importers:
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
+      '@types/content-disposition':
+        specifier: ^0.5.5
+        version: 0.5.5
+      '@types/content-type':
+        specifier: ^1.1.5
+        version: 1.1.5
       '@types/cron':
         specifier: ~1.7.1
         version: 1.7.3
@@ -894,8 +900,8 @@ importers:
         specifier: ^2.1.6
         version: 2.1.6(typescript@5.2.2)(vue@3.3.4)
       prettier:
-        specifier: ^3.0.0
-        version: 3.0.0
+        specifier: ^3.0.3
+        version: 3.0.3
       qrcode.vue:
         specifier: ^3.3.4
         version: 3.3.4(vue@3.3.4)
@@ -1010,8 +1016,8 @@ importers:
         specifier: 1.0.6
         version: 1.0.6
       '@n8n/vm2':
-        specifier: ^3.9.19
-        version: 3.9.19
+        specifier: ^3.9.20
+        version: 3.9.20
       amqplib:
         specifier: ^0.10.3
         version: 0.10.3
@@ -1033,6 +1039,9 @@ importers:
       cron:
         specifier: ~1.7.2
         version: 1.7.2
+      csv-parse:
+        specifier: ^5.5.0
+        version: 5.5.0
       currency-codes:
         specifier: ^2.1.0
         version: 2.1.0
@@ -1061,8 +1070,8 @@ importers:
         specifier: ^4.3.0
         version: 4.3.0
       isbot:
-        specifier: ^3.3.4
-        version: 3.6.1
+        specifier: ^3.6.13
+        version: 3.6.13
       iso-639-1:
         specifier: ^2.1.3
         version: 2.1.15
@@ -4641,8 +4650,8 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@n8n/vm2@3.9.19:
-    resolution: {integrity: sha512-KmrkVqri7VG+GQ2JbJ2/2gyEmVkysxzoJUF+zdtqBZLU8GN9UDwAnjzUOUgpD0dCRd1SUVLqwM4GpjOeca4XZw==}
+  /@n8n/vm2@3.9.20:
+    resolution: {integrity: sha512-qk2oJYkuFRVSTxoro4obX/sv/wT1pViZjHh/isjOvFB93D52QIg3TCjMPsHOfHTmkxCKJffjLrUvjIwvWzSMCQ==}
     engines: {node: '>=18.10', pnpm: '>=8.6.12'}
     hasBin: true
     dependencies:
@@ -4650,8 +4659,8 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.4.0:
-    resolution: {integrity: sha512-99kuCVH4NcBi4nyn/WIpd6KSIMLk/pbBks0zr8bC65ALKj0se7/2MwC6N+WwGkG7NqH0kMdGe/7Y5KnJkMTefg==}
+  /@n8n_io/license-sdk@2.5.1:
+    resolution: {integrity: sha512-CL4JVJS8nvI8qPFQ1jSG7CiPnNkeKJSgbDxWOLVX4MRjTKrwL8Cpd1LeYMx5g5StmHzkoxz2TDqL8WT6qyMlrQ==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -5885,7 +5894,7 @@ packages:
       less-loader: 11.1.3(less@4.1.3)(webpack@5.75.0)
       postcss: 8.4.27
       postcss-loader: 7.3.3(postcss@8.4.27)(webpack@5.75.0)
-      prettier: 3.0.0
+      prettier: 3.0.3
       react: 17.0.2
       react-dom: 18.2.0(react@17.0.2)
       resolve-url-loader: 5.0.0
@@ -6199,7 +6208,7 @@ packages:
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       leven: 3.1.0
       ora: 5.4.1
-      prettier: 3.0.0
+      prettier: 3.0.3
       prompts: 2.4.2
       puppeteer-core: 2.1.1
       read-pkg-up: 7.0.1
@@ -6250,7 +6259,7 @@ packages:
       globby: 11.1.0
       jscodeshift: 0.14.0(@babel/preset-env@7.22.9)
       lodash: 4.17.21
-      prettier: 3.0.0
+      prettier: 3.0.3
       recast: 0.23.3
     transitivePeerDependencies:
       - supports-color
@@ -6756,7 +6765,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.8
+      vue-component-type-helpers: 1.8.10
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -8421,7 +8430,7 @@ packages:
   /acorn-globals@7.0.1:
     resolution: {integrity: sha512-umOSDSDrfHbTNPuNpC2NSnnA3LUrqpevPb4T9jRx4MagXNS0rs+gwiTcAvqCRmsD6utzsrzNt+ebm00SNWiC3Q==}
     dependencies:
-      acorn: 8.8.1
+      acorn: 8.10.0
       acorn-walk: 8.2.0
     dev: true
 
@@ -10586,6 +10595,10 @@ packages:
   /csstype@3.1.1:
     resolution: {integrity: sha512-DJR/VvkAvSZW9bTouZue2sSxDwdTN92uHjqeKVm+0dAqdfNykRzQ95tay8aXMBAAPpUiq4Qcug2L7neoRh2Egw==}
 
+  /csv-parse@5.5.0:
+    resolution: {integrity: sha512-RxruSK3M4XgzcD7Trm2wEN+SJ26ChIb903+IWxNOcB5q4jT2Cs+hFr6QP39J05EohshRFEvyzEBoZ/466S2sbw==}
+    dev: false
+
   /curlconverter@3.21.0(chokidar@3.5.2):
     resolution: {integrity: sha512-DXCnp1A/Xa69FujksUfdvWQFAnIn/C+4Wuv8t+UVdZkF/lY5bzj98GGKOGme7V/ckSHDLxE29Xp76sJ5Cpsp5A==}
     hasBin: true
@@ -10620,7 +10633,7 @@ packages:
       cypress: ^4.x || ^5.x || ^6.x || ^7.x || ^8.x || ^9.x || ^10.x || ^11.x || ^12.x
     dependencies:
       cypress: 12.17.2
-      prettier: 3.0.0
+      prettier: 3.0.3
     dev: true
 
   /cypress@12.17.2:
@@ -10694,17 +10707,11 @@ packages:
       whatwg-url: 11.0.0
     dev: true
 
-  /date-fns@2.29.3:
-    resolution: {integrity: sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==}
-    engines: {node: '>=0.11'}
-    dev: false
-
   /date-fns@2.30.0:
     resolution: {integrity: sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==}
     engines: {node: '>=0.11'}
     dependencies:
       '@babel/runtime': 7.22.6
-    dev: true
 
   /dateformat@3.0.3:
     resolution: {integrity: sha512-jyCETtSl3VMZMWeRo7iY1FL19ges1t55hMo5yaam4Jrsm5EPL89UQkoQRyiI+Yf4k8r2ZpdngkV8hr1lIdjb3Q==}
@@ -11129,7 +11136,6 @@ packages:
   /dotenv@16.3.1:
     resolution: {integrity: sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==}
     engines: {node: '>=12'}
-    dev: true
 
   /dotenv@8.6.0:
     resolution: {integrity: sha512-IrPdXQsk2BbzvCBGBOTmmSH5SodmqZNt4ERAZDmW4CT+tL8VtvinqywuANaFu4bOMWki16nqf0e4oC0QIaDr/g==}
@@ -11810,14 +11816,14 @@ packages:
       - typescript
     dev: true
 
-  /eslint-plugin-prettier@5.0.0(@types/eslint@8.44.1)(eslint-config-prettier@8.9.0)(eslint@8.45.0)(prettier@3.0.0):
+  /eslint-plugin-prettier@5.0.0(@types/eslint@8.44.1)(eslint-config-prettier@8.9.0)(eslint@8.45.0)(prettier@3.0.3):
     resolution: {integrity: sha512-AgaZCVuYDXHUGxj/ZGu1u8H8CYgDY3iG6w5kUFw4AzMVXzB7VvbKgYR4nATIN+OvUrghMbiDLeimVjVY5ilq3w==}
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       '@types/eslint': '>=8.0.0'
       eslint: '>=8.0.0'
       eslint-config-prettier: '*'
-      prettier: ^3.0.0
+      prettier: ^3.0.3
     peerDependenciesMeta:
       '@types/eslint':
         optional: true
@@ -11827,7 +11833,7 @@ packages:
       '@types/eslint': 8.44.1
       eslint: 8.45.0
       eslint-config-prettier: 8.9.0(eslint@8.45.0)
-      prettier: 3.0.0
+      prettier: 3.0.3
       prettier-linter-helpers: 1.0.0
       synckit: 0.8.5
     dev: true
@@ -14366,8 +14372,8 @@ packages:
   /isarray@2.0.5:
     resolution: {integrity: sha512-xHjhDr3cNBK0BzdUJSPXZntQUx/mwMS5Rw4A7lPJ90XGAO6ISP/ePDNuo0vhqOZU+UD5JoodwCAAoZQd3FeAKw==}
 
-  /isbot@3.6.1:
-    resolution: {integrity: sha512-e1RmjWns87x60QyiHberWWMJGutL3+Ad0nZ8cz735iDEDDS6ApPfKSFo4EMj0PmMZ0m0ntpWIM0ADdqDFvUJPQ==}
+  /isbot@3.6.13:
+    resolution: {integrity: sha512-uoP4uK5Dc2CrabmK+Gue1jTL+scHiCc1c9rblRpJwG8CPxjLIv8jmGyyGRGkbPOweayhkskdZsEQXG6p+QCQrg==}
     engines: {node: '>=12'}
     dev: false
 
@@ -18035,8 +18041,8 @@ packages:
       fast-diff: 1.2.0
     dev: true
 
-  /prettier@3.0.0:
-    resolution: {integrity: sha512-zBf5eHpwHOGPC47h0zrPyNn+eAEIdEzfywMoYn2XPi0P44Zp0tSq64rq0xAREh4auw2cJZHo9QUob+NqCQky4g==}
+  /prettier@3.0.3:
+    resolution: {integrity: sha512-L/4pUDMxcNa8R/EthV08Zt42WBO4h1rarVtK0K+QJG0X187OLo7l699jWw0GKuwzkPQ//jMFA/8Xm6Fh3J/DAg==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -21008,8 +21014,8 @@ packages:
     dev: false
     patched: true
 
-  /typeorm@0.3.12(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
-    resolution: {integrity: sha512-sYSxBmCf1nJLLTcYtwqZ+lQIRtLPyUoO93rHTOKk9vJCyT4UfRtU7oRsJvfvKP3nnZTD1hzz2SEy2zwPEN6OyA==}
+  /typeorm@0.3.17(ioredis@5.2.4)(mysql2@2.3.3)(pg@8.8.0)(sqlite3@5.1.6):
+    resolution: {integrity: sha512-UDjUEwIQalO9tWw9O2A4GU+sT3oyoUXheHJy4ft+RFdnRdQctdQ34L9SqE2p7LdwzafHx1maxT+bqXON+Qnmig==}
     engines: {node: '>= 12.9.0'}
     hasBin: true
     peerDependencies:
@@ -21018,8 +21024,8 @@ packages:
       better-sqlite3: ^7.1.2 || ^8.0.0
       hdb-pool: ^0.1.6
       ioredis: ^5.0.4
-      mongodb: ^3.6.0
-      mssql: ^7.3.0
+      mongodb: ^5.2.0
+      mssql: ^9.1.1
       mysql2: ^2.2.5 || ^3.0.1
       oracledb: ^5.1.0
       pg: ^8.5.1
@@ -21071,12 +21077,11 @@ packages:
       buffer: 6.0.3
       chalk: 4.1.2
       cli-highlight: 2.1.11
-      date-fns: 2.29.3
+      date-fns: 2.30.0
       debug: 4.3.4(supports-color@8.1.1)
-      dotenv: 16.0.3
+      dotenv: 16.3.1
       glob: 8.1.0
       ioredis: 5.2.4
-      js-yaml: 4.1.0
       mkdirp: 2.1.3
       mysql2: 2.3.3
       pg: 8.8.0
@@ -21085,8 +21090,7 @@ packages:
       sqlite3: 5.1.6
       tslib: 2.6.1
       uuid: 9.0.0
-      xml2js: 0.5.0
-      yargs: 17.6.2
+      yargs: 17.7.2
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -21740,12 +21744,12 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.4:
-    resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
+  /vue-component-type-helpers@1.8.10:
+    resolution: {integrity: sha512-FJtmfw2Gn6eQ8kAVNEhw9nYIzWmVQJjdyQRtJXZ7tgXh/FoZhQnZ2KyxR+NuF9U4iZLBvSspeetIpnP9yxxyMw==}
     dev: true
 
-  /vue-component-type-helpers@1.8.8:
-    resolution: {integrity: sha512-Ohv9HQY92nSbpReC6WhY0X4YkOszHzwUHaaN/lev5tHQLM1AEw+LrLeB2bIGIyKGDU7ZVrncXcv/oBny4rjbYg==}
+  /vue-component-type-helpers@1.8.4:
+    resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.3.4):
@@ -22422,19 +22426,6 @@ packages:
       yargs-parser: 21.1.1
     dev: false
 
-  /yargs@17.6.2:
-    resolution: {integrity: sha512-1/9UrdHjDZc0eOU0HxOHoS78C69UD3JRMvzlJ7S79S2nTaWRA/whGCTV8o9e/N/1Va9YIV7Q4sOxD8VV4pCWOw==}
-    engines: {node: '>=12'}
-    dependencies:
-      cliui: 8.0.1
-      escalade: 3.1.1
-      get-caller-file: 2.0.5
-      require-directory: 2.1.1
-      string-width: 4.2.3
-      y18n: 5.0.8
-      yargs-parser: 21.1.1
-    dev: false
-
   /yargs@17.7.2:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
     engines: {node: '>=12'}
@@ -22446,7 +22437,6 @@ packages:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
-    dev: true
 
   /yargs@7.1.2:
     resolution: {integrity: sha512-ZEjj/dQYQy0Zx0lgLMLR8QuaqTihnxirir7EwUHp1Axq4e3+k8jXU5K0VLbNvedv1f4EWtBonDIZm0NUr+jCcA==}

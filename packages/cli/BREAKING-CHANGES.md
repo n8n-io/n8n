@@ -6,7 +6,7 @@ This list shows all the versions which include breaking changes and how to upgra
 
 ### What changed?
 
-In the Code node, `console.log` does not output to stdout by default. 
+In the Code node, `console.log` does not output to stdout by default.
 
 ### When is action necessary?
 

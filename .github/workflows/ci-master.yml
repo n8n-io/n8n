@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.5]
 
     steps:
       - uses: actions/checkout@v3.5.3
@@ -44,7 +44,7 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.5]
     steps:
       - uses: actions/checkout@v3.5.3
         with:
@@ -82,7 +82,7 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.5]
     steps:
       - uses: actions/checkout@v3.5.3
         with:

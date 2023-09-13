@@ -768,6 +768,6 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
