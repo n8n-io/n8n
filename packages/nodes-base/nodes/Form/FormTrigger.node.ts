@@ -1,9 +1,10 @@
-import type {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookFunctions,
-	IWebhookResponseData,
+import {
+	FORM_TRIGGER_PATH_IDENTIFIER,
+	type IDataObject,
+	type INodeType,
+	type INodeTypeDescription,
+	type IWebhookFunctions,
+	type IWebhookResponseData,
 } from 'n8n-workflow';
 
 import { createPage } from './templates';
@@ -27,14 +28,14 @@ export class FormTrigger implements INodeType {
 				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: 'n8n-form',
+				path: FORM_TRIGGER_PATH_IDENTIFIER,
 				hidden: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
-				path: 'n8n-form',
+				path: FORM_TRIGGER_PATH_IDENTIFIER,
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the form',
