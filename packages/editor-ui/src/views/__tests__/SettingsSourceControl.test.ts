@@ -128,4 +128,49 @@ describe('SettingsSourceControl', () => {
 			expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument(),
 		);
 	}, 10000);
+
+	describe('should test repo URLs', () => {
+		beforeEach(() => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.SourceControl] = true;
+		});
+
+		test.each([
+			['git@github.com:user/repository.git', true],
+			['git@github.enterprise.com:org-name/repo-name.git', true],
+			['git@192.168.1.101:2222:user/repo.git', true],
+			['git@github.com:user/repo.git/path/to/subdir', true],
+			// The opening bracket in curly braces makes sure it is not treated as a special character by the 'user-event' library
+			['git@{[}2001:db8:100:f101:210:a4ff:fee3:9566]:user/repo.git', true],
+			['git@github.com:org/suborg/repo.git', true],
+			['git@github.com:user-name/repo-name.git', true],
+			['git@github.com:user_name/repo_name.git', true],
+			['git@github.com:user/repository', true],
+			['git@github.enterprise.com:org-name/repo-name', true],
+			['git@192.168.1.101:2222:user/repo', true],
+			['git@ssh.dev.azure.com:v3/User/repo/directory', true],
+			['http://github.com/user/repository', false],
+			['https://github.com/user/repository', false],
+		])('%s', async (url: string, isValid: boolean) => {
+			await nextTick();
+			const { container, queryByText } = renderComponent({
+				pinia,
+			});
+
+			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
+
+			const repoUrlInput = container.querySelector('input[name="repoUrl"]')!;
+
+			await userEvent.click(repoUrlInput);
+			await userEvent.type(repoUrlInput, url);
+			await userEvent.tab();
+
+			const inputError = expect(queryByText('The Git repository URL is not valid'));
+
+			if (isValid) {
+				inputError.not.toBeInTheDocument();
+			} else {
+				inputError.toBeInTheDocument();
+			}
+		});
+	});
 });
