@@ -157,13 +157,13 @@
 	--color-button-secondary-loading-background: var(--prim-gray-0);
 
 	// Table
-	--table-header-background: var(--prim-gray-740);
-	--table-row-background: var(--prim-gray-820);
-	--table-row-even-background: var(--prim-gray-800);
-	--table-row-hover-background: var(--prim-gray-740);
+	--color-table-header-background: var(--prim-gray-740);
+	--color-table-row-background: var(--prim-gray-820);
+	--color-table-row-even-background: var(--prim-gray-800);
+	--color-table-row-hover-background: var(--prim-gray-740);
 
 	// Notification
-	--notification-background: var(--prim-gray-740);
+	--color-notification-background: var(--prim-gray-740);
 
 	// Execution card
 	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
@@ -173,10 +173,10 @@
 	--execution-card-border-unknown: var(--prim-gray-120);
 
 	// NDV
-	--run-data-background: var(--prim-gray-800);
+	--color-run-data-background: var(--prim-gray-800);
 
 	// Notice
-	--notice-color-font: var(--prim-gray-540);
+	--color-notice-font: var(--prim-gray-540);
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
