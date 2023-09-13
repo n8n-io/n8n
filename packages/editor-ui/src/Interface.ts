@@ -1,4 +1,8 @@
-import type { AI_NODE_CREATOR_VIEW, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { AI_NODE_CREATOR_VIEW, CREDENTIAL_EDIT_MODAL_KEY , SignInType ,
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+} from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -37,12 +41,6 @@ import type {
 	BannerName,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import type { SignInType } from './constants';
-import type {
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-} from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy } from '@/utils/typeHelpers';
 import type { INodeProperties } from 'n8n-workflow';
@@ -1042,7 +1040,7 @@ export type NewCredentialsModal = ModalState & {
 	showAuthSelector?: boolean;
 };
 
-export type IRunDataDisplayMode = 'ai' | 'table' | 'json' | 'binary' | 'schema' | 'html';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {

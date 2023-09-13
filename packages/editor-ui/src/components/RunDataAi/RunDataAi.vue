@@ -1,7 +1,11 @@
 <template>
-	<div v-if="aiData" :class="$style.container">
-		<div :class="$style.tree">
-			<p :class="$style.title">Log tree</p>
+	<div v-if="aiData" :class="{ [$style.container]: true }">
+		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
+			<p
+				:class="$style.title"
+				v-text="$locale.baseText('ndv.output.ai.logTree')"
+				v-if="hideTitle === false"
+			/>
 			<el-tree
 				:data="executionTree"
 				:props="{ label: 'node' }"
@@ -18,21 +22,39 @@
 						:data-tree-depth="data.depth"
 						:style="{ '--item-depth': data.depth }"
 					>
-						<node-icon
-							v-if="getNodeType(data.node)"
-							:node-type="getNodeType(data.node)"
-							:size="17"
+						<font-awesome-icon
+							v-if="data.children.length"
+							:icon="node.expanded ? 'angle-down' : 'angle-up'"
+							size="md"
 						/>
-						<span>{{ node.label }}</span>
+						<n8n-tooltip :disabled="!slim" placement="right">
+							<template #content>
+								{{ node.label }}
+							</template>
+							<span :class="$style.leafLabel">
+								<node-icon :node-type="getNodeType(data.node)!" :size="17" />
+								<span v-text="node.label" v-if="!slim" />
+							</span>
+						</n8n-tooltip>
 					</div>
 				</template>
 			</el-tree>
 		</div>
 		<div :class="$style.runData">
-			<div v-for="(data, index) in selectedRun" :key="`${data.node}__${data.runIndex}__index`">
-				<RunDataAiContent2 :inputData="data" :contentIndex="index" />
+			<div v-if="selectedRun.length === 0" :class="$style.empty">
+				<n8n-text size="large">
+					{{
+						$locale.baseText('ndv.output.ai.empty', {
+							interpolate: {
+								node: props.node.name,
+							},
+						})
+					}}
+				</n8n-text>
 			</div>
-			<!-- Run Data 1: -->
+			<div v-for="(data, index) in selectedRun" :key="`${data.node}__${data.runIndex}__index`">
+				<RunDataAiContent :inputData="data" :contentIndex="index" />
+			</div>
 		</div>
 	</div>
 </template>
@@ -44,7 +66,7 @@ import type { ITaskAIRunMetadata, ITaskDataConnections } from 'n8n-workflow';
 import type { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
 import NodeIcon from '@/components/NodeIcon.vue';
-import RunDataAiContent2 from './RunDataAiContent2.vue';
+import RunDataAiContent from './RunDataAiContent.vue';
 
 interface AIResult {
 	node: string;
@@ -54,53 +76,71 @@ interface AIResult {
 
 const props = defineProps<{
 	node: INodeUi;
+	hideTitle?: boolean;
+	slim?: boolean;
 }>();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
-
-const aiData = computed<AIResult[] | undefined>(() => {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
-
-	if (!resultData || !Array.isArray(resultData)) {
-		return;
-	}
-
-	const aiRun = resultData[resultData.length - 1].metadata?.aiRun;
-	if (!Array.isArray(aiRun)) {
-		return;
-	}
-	// Extend the aiRun with the data and sort by adding execution time + startTime and comparing them
-	const aiRunWithData = aiRun.flatMap((run) =>
-		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
-	);
-
-	aiRunWithData.sort((a, b) => {
-		const aTime = a.data?.metadata?.startTime || 0;
-		const bTime = b.data?.metadata?.startTime || 0;
-		return aTime - bTime;
-	});
-
-	return aiRunWithData;
-});
-
-const executionTree = computed<TreeNode[]>(() => {
-	const rootNode = props.node;
-
-	const tree = getTreeNodeData(rootNode.name, 0);
-	return tree || [];
-});
 const selectedRun: Ref<IAiData[]> = ref([]);
 
-function isTreeNodeSelected(node) {
-	console.log('🚀 ~ file: RunDataAi.vue:91 ~ isTreeNodeSelected ~ node:', node);
+function isTreeNodeSelected(node: TreeNode) {
 	return selectedRun.value.some((run) => run.node === node.node && run.runIndex === node.runIndex);
 }
+
+function getReferencedData(
+	reference: ITaskAIRunMetadata,
+	withInput: boolean,
+	withOutput: boolean,
+): IAiDataContent[] {
+	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
+
+	if (!resultData?.[reference.runIndex]) {
+		return [];
+	}
+
+	const taskData = resultData[reference.runIndex];
+
+	if (!taskData) {
+		return [];
+	}
+
+	const returnData: IAiDataContent[] = [];
+
+	function addFunction(data: ITaskDataConnections | undefined, inOut: 'input' | 'output') {
+		if (!data) {
+			return;
+		}
+
+		Object.keys(data).map((type) => {
+			returnData.push({
+				data: data[type][0],
+				inOut,
+				type: type as EndpointType,
+				metadata: {
+					executionTime: taskData.executionTime,
+					startTime: taskData.startTime,
+				},
+			});
+		});
+	}
+
+	if (withInput) {
+		addFunction(taskData.inputOverride, 'input');
+	}
+	if (withOutput) {
+		addFunction(taskData.data, 'output');
+	}
+
+	return returnData;
+}
+
 function onItemClick(data: TreeNode) {
-	console.log('🚀 ~ file: RunDataAi.vue:92 ~ onItemClick ~ data:', data);
 	const matchingRun = aiData.value?.find(
 		(run) => run.node === data.node && run.runIndex === data.runIndex,
 	);
 	if (!matchingRun) {
+		selectedRun.value = [];
+
 		return;
 	}
 	selectedRun.value = [
@@ -153,6 +193,7 @@ const createNode = (
 function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 	const { connectionsByDestinationNode } = workflowsStore.getCurrentWorkflow();
 	const connections = connectionsByDestinationNode[nodeName];
+	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const resultData = aiData.value?.filter((data) => data.node === nodeName) ?? [];
 
 	if (!connections) {
@@ -173,67 +214,48 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 	return [createNode(nodeName, currentDepth, undefined, children)];
 }
 
-function getReferencedData(
-	reference: ITaskAIRunMetadata,
-	withInput: boolean,
-	withOutput: boolean,
-): IAiDataContent[] {
-	const resultData = workflowsStore.getWorkflowResultDataByNodeName(reference.node);
-	console.log('🚀 ~ file: RunDataAi.vue:159 ~ getReferencedData ~ resultData:', resultData);
+const aiData = computed<AIResult[] | undefined>(() => {
+	const resultData = workflowsStore.getWorkflowResultDataByNodeName(props.node.name);
 
-	if (!resultData?.[reference.runIndex]) {
-		return [];
+	if (!resultData || !Array.isArray(resultData)) {
+		return;
 	}
 
-	const taskData = resultData[reference.runIndex];
-
-	if (!taskData) {
-		return [];
+	const aiRun = resultData[resultData.length - 1].metadata?.aiRun;
+	if (!Array.isArray(aiRun)) {
+		return;
 	}
+	// Extend the aiRun with the data and sort by adding execution time + startTime and comparing them
+	const aiRunWithData = aiRun.flatMap((run) =>
+		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
+	);
 
-	const returnData: IAiDataContent[] = [];
+	aiRunWithData.sort((a, b) => {
+		const aTime = a.data?.metadata?.startTime || 0;
+		const bTime = b.data?.metadata?.startTime || 0;
+		return aTime - bTime;
+	});
 
-	function addFunction(data: ITaskDataConnections | undefined, inOut: 'input' | 'output') {
-		if (!data) {
-			return;
-		}
+	return aiRunWithData;
+});
 
-		Object.keys(data).map((type) => {
-			returnData.push({
-				data: data[type][0],
-				inOut,
-				type: type as EndpointType,
-				metadata: {
-					executionTime: taskData.executionTime,
-					startTime: taskData.startTime,
-				},
-			});
-		});
-	}
+const executionTree = computed<TreeNode[]>(() => {
+	const rootNode = props.node;
 
-	if (withInput) {
-		addFunction(taskData.inputOverride, 'input');
-	}
-	if (withOutput) {
-		addFunction(taskData.data, 'output');
-	}
-
-	return returnData;
-}
-// watch(
-// 	() => aiData.value,
-// 	() => {
-// 		console.log('AI Data changed', aiData.value);
-// 		buildExecutionTree();
-// 		// getReferencedData(refData);
-// 	},
-// 	{
-// 		immediate: true,
-// 	},
-// );
+	const tree = getTreeNodeData(rootNode.name, 0);
+	return tree || [];
+});
 </script>
 
 <style lang="scss" module>
+.leafLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing-3xs);
+}
+.empty {
+	padding: var(--spacing-l);
+}
 .title {
 	font-size: var(--font-size-s);
 	margin-bottom: var(--spacing-xs);
@@ -244,6 +266,10 @@ function getReferencedData(
 	height: 100%;
 	border-right: 1px solid var(--color-foreground-base);
 	padding-right: var(--spacing-xs);
+	padding-left: var(--spacing-2xs);
+	&.slim {
+		min-width: auto;
+	}
 }
 .runData {
 	width: 100%;

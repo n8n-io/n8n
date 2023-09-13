@@ -29,28 +29,14 @@ const outputTypeParsers: {
 		data: unknown;
 	};
 } = {
-	// - If execData.response.generations exists, maps over each generation and returns the text if it exists. If the generation is an array, join all the text items together
-	// - If execData.response is an array with one string item, return that string as text.
-	// - If execData.response is a non-empty array, return the entire array as JSON.
-	// - If none of the above conditions are met, return the entire execData object as JSON.
 	[EndpointType.LanguageModel](execData: IDataObject) {
 		const response = (execData.response as IDataObject) ?? execData;
 		if (!response) throw new Error('No response from Language Model');
 		console.log('🚀 ~ file: useAiContentParsers.ts:31 ~ response:', response);
 
+		// Use the memory parser if the response is a memory-like(chat) object
 		if (response.messages && Array.isArray(response.messages)) {
-			return {
-				type: 'markdown',
-				data: response.messages
-					.map((content: unknown) => {
-						if (content && typeof content === 'string') {
-							return content;
-						}
-
-						return (content as MemoryMessage).kwargs.content;
-					})
-					.join('\n\n'),
-			};
+			return outputTypeParsers.memory(execData);
 		}
 		if (response.generations) {
 			const generations = response.generations as LmGeneration[];
@@ -90,49 +76,34 @@ const outputTypeParsers: {
 	},
 	[EndpointType.Tool]: fallbackParser,
 	[EndpointType.Memory](execData: IDataObject) {
-		let responses;
-
-		if (execData.response ?? execData.message) {
-			responses = execData.response ? execData.response : execData.message;
-			if (!Array.isArray(responses)) {
-				responses = [responses];
-			}
-
-			const responseText = responses.map((response: any) => {
-				let responseData = [response];
-				if (Array.isArray(response.chat_history)) {
-					responseData = response.chat_history;
-				}
-
-				return responseData
-					.map((content: any) => {
-						if (
-							content.type === 'constructor' &&
-							content.id?.includes('schema') &&
-							content.kwargs
-						) {
-							let message = content.kwargs.content;
-							if (Object.keys(content.kwargs.additional_kwargs).length) {
-								message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
-							}
-							if (content.id.includes('HumanMessage')) {
-								message = `**Human:** ${message.trim()}`;
-							} else if (content.id.includes('AIMessage')) {
-								message = `**AI:** ${message.trim()}`;
-							}
-							if (execData.action && execData.action !== 'getMessages') {
-								message = `## Action: ${execData.action}\n\n${message}`;
-							}
-
-							return message;
+		const chatHistory =
+			execData.chatHistory ?? execData.messages ?? execData?.response?.chat_history;
+		if (Array.isArray(chatHistory)) {
+			const responseText = chatHistory
+				.map((content: MemoryMessage) => {
+					if (content.type === 'constructor' && content.id?.includes('schema') && content.kwargs) {
+						let message = content.kwargs.content;
+						if (Object.keys(content.kwargs.additional_kwargs).length) {
+							message += ` (${JSON.stringify(content.kwargs.additional_kwargs)})`;
 						}
-					})
-					.join('\n\n');
-			});
+						if (content.id.includes('HumanMessage')) {
+							message = `**Human:** ${message.trim()}`;
+						} else if (content.id.includes('AIMessage')) {
+							message = `**AI:** ${message}`;
+						}
+						if (execData.action && execData.action !== 'getMessages') {
+							message = `## Action: ${execData.action}\n\n${message}`;
+						}
+
+						return message;
+					}
+					return '';
+				})
+				.join('\n\n');
 
 			return {
 				type: 'markdown',
-				data: responseText.join('\n\n'),
+				data: responseText,
 			};
 		}
 
