@@ -8,11 +8,6 @@ on:
         required: false
         default: 'master'
         type: string
-      nodeVersion:
-        description: 'Version of node to use.'
-        required: false
-        type: string
-        default: '18.x'
       prNumber:
         description: 'PR number to run tests for.'
         required: false
@@ -42,4 +37,4 @@ jobs:
     uses: ./.github/workflows/units-tests-reusable.yml
     with:
       ref: ${{ needs.prepare.outputs.branch }}
-      nodeVersion: ${{ inputs.nodeVersion }}
+      nodeVersion: 18.x
