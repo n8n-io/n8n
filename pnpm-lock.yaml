@@ -139,7 +139,7 @@ importers:
     dependencies:
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
 
   packages/@n8n_io/eslint-config:
     devDependencies:
@@ -220,7 +220,7 @@ importers:
         version: 7.28.1
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       basic-auth:
         specifier: ^2.0.1
         version: 2.0.1
@@ -587,7 +587,7 @@ importers:
         version: link:../@n8n/client-oauth2
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
@@ -850,7 +850,7 @@ importers:
         version: 10.2.0(vue@3.3.4)
       axios:
         specifier: ^0.21.1
-        version: 0.21.4
+        version: 0.21.4(debug@4.3.2)
       codemirror-lang-html-n8n:
         specifier: ^1.0.0
         version: 1.0.0
@@ -1183,6 +1183,9 @@ importers:
       tmp-promise:
         specifier: ^3.0.2
         version: 3.0.3
+      typedi:
+        specifier: ^0.10.0
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -5009,7 +5012,7 @@ packages:
     dependencies:
       '@segment/loosely-validate-event': 2.0.0
       auto-changelog: 1.16.4
-      axios: 0.21.4
+      axios: 0.21.4(debug@4.3.2)
       axios-retry: 3.3.1
       bull: 3.29.3
       lodash.clonedeep: 4.5.0
@@ -9069,18 +9072,19 @@ packages:
       is-retry-allowed: 2.2.0
     dev: false
 
-  /axios@0.21.4:
-    resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
-    dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
-    transitivePeerDependencies:
-      - debug
-    dev: false
-
   /axios@0.21.4(debug@4.3.2):
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
       follow-redirects: 1.15.2(debug@4.3.2)
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios@0.27.2:
+    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
+    dependencies:
+      follow-redirects: 1.15.2(debug@4.3.2)
+      form-data: 4.0.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -9106,7 +9110,7 @@ packages:
   /axios@1.4.0:
     resolution: {integrity: sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.2)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -18008,7 +18012,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@3.2.7)
+      axios: 0.27.2
     transitivePeerDependencies:
       - debug
     dev: false

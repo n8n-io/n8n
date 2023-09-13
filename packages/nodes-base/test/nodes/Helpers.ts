@@ -3,7 +3,8 @@ import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
 import { get } from 'lodash';
-import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { Container } from 'typedi';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -217,13 +218,9 @@ export function createTemporaryDir(prefix = 'n8n') {
 }
 
 export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
-	const temporaryDir = createTemporaryDir();
-	await BinaryDataManager.init({
-		mode,
-		availableModes: mode,
-		localStoragePath: temporaryDir,
-	});
-	return temporaryDir;
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({ mode: 'default', availableModes: mode });
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 const credentialTypes = new CredentialType();
