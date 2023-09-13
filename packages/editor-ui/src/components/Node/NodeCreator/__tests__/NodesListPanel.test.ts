@@ -76,7 +76,7 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
 		});
 
 		it('should render regular nodes', async () => {
