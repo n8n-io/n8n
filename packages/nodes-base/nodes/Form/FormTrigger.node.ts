@@ -169,10 +169,10 @@ export class FormTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
+		const formFields = this.getNodeParameter('formFields.values', []) as FormField[];
 
 		//Show the form on GET request
 		if (webhookName === 'setup') {
-			const formFields = this.getNodeParameter('formFields.values', []) as FormField[];
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
 			const instanceId = await this.getInstanceId();
@@ -192,8 +192,15 @@ export class FormTrigger implements INodeType {
 		returnData['form url'] = mode;
 
 		Object.keys(bodyData).map((key) => {
-			const value = bodyData[key];
+			let value = bodyData[key];
 			const escapedKey = key.replace(/___/g, ' ');
+			const expectedType = formFields.find((field) => field.fieldLabel === escapedKey)?.fieldType;
+			if (expectedType === 'number') {
+				value = Number(value);
+			}
+			if (expectedType === 'text') {
+				value = String(value).trim();
+			}
 			returnData[escapedKey] = value;
 		});
 

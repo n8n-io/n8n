@@ -133,8 +133,9 @@ form input::placeholder {
 
 form input:focus {
 	color: grey;
+	outline: none;
+	border-color: #ff6d5a;
 }
-
 
 form select.form-input {
 	border: 0.1em solid lightgray;
@@ -242,7 +243,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 			formHtml += `<label class="form-label" for="${fieldLabel}">${field.fieldLabel}</label>`;
 			formHtml += `<select class="form-input" id="${fieldLabel}" name="${fieldLabel}" ${required}>`;
-			formHtml += '<option value="" disabled selected>Select an option</option>';
+			formHtml += '<option value="" disabled selected>Select an option ...</option>';
 			for (const entry of fieldOptions) {
 				formHtml += `<option value="${entry.option}">${entry.option}</option>`;
 			}
@@ -261,15 +262,13 @@ const prepareFormGroups = (formFields: FormField[]) => {
 			variables += `
 				const input${index} = document.querySelector('#${fieldLabel}');
 				const error${index} = document.querySelector('.error-${fieldLabel}');
+				input${index}.addEventListener('blur', () => {
+					validateInput(input${index}, error${index});
+				});
 			`;
 
 			validationCases += `
-				if (input${index}.value === '') {
-					error${index}.classList.add('error-show');
-					valid = false;
-				} else {
-					error${index}.classList.remove('error-show');
-				}
+				valid = validateInput(input${index}, error${index});
 			`;
 		}
 
@@ -328,6 +327,16 @@ export const createPage = (
 				</section>
 			</div>
 			<script>
+			function validateInput(input, errorElement) {
+				if (input.value === '') {
+					errorElement.classList.add('error-show');
+					return false;
+				} else {
+					errorElement.classList.remove('error-show');
+					return true;
+				}
+			}
+
 			const form = document.querySelector('#n8n-form');
 			${variables}
 

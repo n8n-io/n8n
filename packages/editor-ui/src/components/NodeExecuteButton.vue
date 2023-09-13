@@ -244,6 +244,11 @@ export default defineComponent({
 					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
 					this.$emit('execute');
 				}
+
+				if (this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE) {
+					const testUrl = this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
+					window.open(testUrl, '_blank');
+				}
 			}
 		},
 	},
