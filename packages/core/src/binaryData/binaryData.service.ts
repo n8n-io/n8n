@@ -1,12 +1,14 @@
 import { readFile, stat } from 'fs/promises';
-import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
-import prettyBytes from 'pretty-bytes';
-import type { Readable } from 'stream';
-import { BINARY_ENCODING } from 'n8n-workflow';
-import type { BinaryData } from './types';
-import { FileSystemClient } from './fs.client';
-import { Service } from 'typedi';
 import concatStream from 'concat-stream';
+import prettyBytes from 'pretty-bytes';
+import { Service } from 'typedi';
+import { BINARY_ENCODING } from 'n8n-workflow';
+
+import { FileSystemClient } from './fs.client';
+
+import type { Readable } from 'stream';
+import type { BinaryData } from './types';
+import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
@@ -31,59 +33,55 @@ export class BinaryDataService {
 	}
 
 	async copyBinaryFile(binaryData: IBinaryData, path: string, executionId: string) {
-		// If a client handles this binary, copy over the binary file and return its reference id.
 		const client = this.clients[this.mode];
 
-		if (client) {
-			const identifier = await client.copyByPath(path, executionId);
-			// Add client reference id.
-			binaryData.id = this.createIdentifier(identifier);
-
-			// Prevent preserving data in memory if handled by a client.
-			binaryData.data = this.mode;
-
-			const fileSize = await client.getSize(identifier);
-			binaryData.fileSize = prettyBytes(fileSize);
-
-			await client.storeMetadata(identifier, {
-				fileName: binaryData.fileName,
-				mimeType: binaryData.mimeType,
-				fileSize,
-			});
-		} else {
+		if (!client) {
 			const { size } = await stat(path);
 			binaryData.fileSize = prettyBytes(size);
 			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
+
+			return binaryData;
 		}
+
+		const identifier = await client.copyByPath(path, executionId);
+		binaryData.id = this.createIdentifier(identifier);
+		binaryData.data = this.mode; // clear from memory
+
+		const fileSize = await client.getSize(identifier);
+		binaryData.fileSize = prettyBytes(fileSize);
+
+		await client.storeMetadata(identifier, {
+			fileName: binaryData.fileName,
+			mimeType: binaryData.mimeType,
+			fileSize,
+		});
 
 		return binaryData;
 	}
 
 	async store(binaryData: IBinaryData, input: Buffer | Readable, executionId: string) {
-		// If a client handles this binary, return the binary data with its reference id.
 		const client = this.clients[this.mode];
-		if (client) {
-			const identifier = await client.store(input, executionId);
 
-			// Add client reference id.
-			binaryData.id = this.createIdentifier(identifier);
-
-			// Prevent preserving data in memory if handled by a client.
-			binaryData.data = this.mode;
-
-			const fileSize = await client.getSize(identifier);
-			binaryData.fileSize = prettyBytes(fileSize);
-
-			await client.storeMetadata(identifier, {
-				fileName: binaryData.fileName,
-				mimeType: binaryData.mimeType,
-				fileSize,
-			});
-		} else {
+		if (!client) {
 			const buffer = await this.binaryToBuffer(input);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
+
+			return binaryData;
 		}
+
+		const identifier = await client.store(input, executionId);
+		binaryData.id = this.createIdentifier(identifier);
+		binaryData.data = this.mode; // clear from memory
+
+		const fileSize = await client.getSize(identifier);
+		binaryData.fileSize = prettyBytes(fileSize);
+
+		await client.storeMetadata(identifier, {
+			fileName: binaryData.fileName,
+			mimeType: binaryData.mimeType,
+			fileSize,
+		});
 
 		return binaryData;
 	}
@@ -98,11 +96,7 @@ export class BinaryDataService {
 	getAsStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		const client = this.clients[mode];
-
-		if (client) return client.getAsStream(id, chunkSize);
-
-		throw new Error('Storage mode used to store binary data not available');
+		return this.getClient(mode).getAsStream(id, chunkSize);
 	}
 
 	async getBinaryDataBuffer(binaryData: IBinaryData) {
@@ -114,37 +108,23 @@ export class BinaryDataService {
 	async retrieveBinaryDataByIdentifier(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		const client = this.clients[mode];
-
-		if (client) return client.getAsBuffer(id);
-
-		throw new Error('Storage mode used to store binary data not available');
+		return this.getClient(mode).getAsBuffer(id);
 	}
 
 	getPath(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		const client = this.clients[mode];
-
-		if (client) return client.getPath(id);
-
-		throw new Error('Storage mode used to store binary data not available');
+		return this.getClient(mode).getPath(id);
 	}
 
 	async getMetadata(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		const client = this.clients[mode];
-
-		if (client) return client.getMetadata(id);
-
-		throw new Error('Storage mode used to store binary data not available');
+		return this.getClient(mode).getMetadata(id);
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
-		const client = this.clients[this.mode];
-
-		if (client) await client.deleteManyByExecutionIds(executionIds);
+		await this.getClient(this.mode).deleteManyByExecutionIds(executionIds);
 	}
 
 	async duplicateBinaryData(inputData: Array<INodeExecutionData[] | null>, executionId: string) {
@@ -225,5 +205,13 @@ export class BinaryDataService {
 		}
 
 		return executionData;
+	}
+
+	private getClient(mode: string) {
+		const client = this.clients[mode];
+
+		if (!client) throw new Error('This method is not supported by in-memory storage mode');
+
+		return client;
 	}
 }
