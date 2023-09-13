@@ -247,7 +247,19 @@ export default defineComponent({
 
 				if (this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE) {
 					const testUrl = this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
-					window.open(testUrl, '_blank');
+
+					const windowWidth = window.innerWidth;
+					if (windowWidth < 800) {
+						window.open(testUrl, '_blank');
+					} else {
+						const width = 700;
+						const height = window.innerHeight;
+						const left = (window.innerWidth - width) / 2;
+						const top = (window.innerHeight - height) / 2;
+						const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
+
+						window.open(testUrl, '_blank', features);
+					}
 				}
 			}
 		},
