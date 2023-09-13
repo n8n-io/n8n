@@ -490,7 +490,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id }) => id);
 
-		await this.binaryDataService.deleteBinaryDataByExecutionIds(executionIds);
+		await this.binaryDataService.deleteManyByExecutionIds(executionIds);
 
 		// Actually delete these executions
 		await this.delete({ id: In(executionIds) });

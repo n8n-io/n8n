@@ -864,21 +864,21 @@ async function httpRequest(
 }
 
 export function getBinaryPath(binaryDataId: string): string {
-	return Container.get(BinaryDataService).getBinaryPath(binaryDataId);
+	return Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
 export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
-	return Container.get(BinaryDataService).getBinaryMetadata(binaryDataId);
+	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
-	return Container.get(BinaryDataService).getBinaryStream(binaryDataId, chunkSize);
+	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -931,7 +931,7 @@ export async function setBinaryDataBuffer(
 	binaryData: Buffer | Readable,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return Container.get(BinaryDataService).storeBinaryData(data, binaryData, executionId);
+	return Container.get(BinaryDataService).store(data, binaryData, executionId);
 }
 
 export async function copyBinaryFile(

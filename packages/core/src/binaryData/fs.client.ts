@@ -110,7 +110,7 @@ export class FileSystemClient implements BinaryData.Client {
 	}
 
 	// ----------------------------------
-	//        private methods
+	//         private methods
 	// ----------------------------------
 
 	private async ensureDirExists(dir: string) {

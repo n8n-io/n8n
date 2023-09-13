@@ -37,7 +37,7 @@ export class BinaryDataService {
 		if (client) {
 			const identifier = await client.copyByPath(path, executionId);
 			// Add client reference id.
-			binaryData.id = this.generateBinaryId(identifier);
+			binaryData.id = this.createIdentifier(identifier);
 
 			// Prevent preserving data in memory if handled by a client.
 			binaryData.data = this.mode;
@@ -59,14 +59,14 @@ export class BinaryDataService {
 		return binaryData;
 	}
 
-	async storeBinaryData(binaryData: IBinaryData, input: Buffer | Readable, executionId: string) {
+	async store(binaryData: IBinaryData, input: Buffer | Readable, executionId: string) {
 		// If a client handles this binary, return the binary data with its reference id.
 		const client = this.clients[this.mode];
 		if (client) {
 			const identifier = await client.store(input, executionId);
 
 			// Add client reference id.
-			binaryData.id = this.generateBinaryId(identifier);
+			binaryData.id = this.createIdentifier(identifier);
 
 			// Prevent preserving data in memory if handled by a client.
 			binaryData.data = this.mode;
@@ -95,8 +95,9 @@ export class BinaryDataService {
 		});
 	}
 
-	getBinaryStream(identifier: string, chunkSize?: number) {
+	getAsStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
+
 		if (this.clients[mode]) {
 			return this.clients[mode].getAsStream(id, chunkSize);
 		}
@@ -114,6 +115,7 @@ export class BinaryDataService {
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
+
 		if (this.clients[mode]) {
 			return this.clients[mode].getAsBuffer(id);
 		}
@@ -121,8 +123,9 @@ export class BinaryDataService {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	getBinaryPath(identifier: string) {
+	getPath(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
+
 		if (this.clients[mode]) {
 			return this.clients[mode].getPath(id);
 		}
@@ -130,7 +133,7 @@ export class BinaryDataService {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async getBinaryMetadata(identifier: string) {
+	async getMetadata(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
 			return this.clients[mode].getMetadata(id);
@@ -139,7 +142,7 @@ export class BinaryDataService {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async deleteBinaryDataByExecutionIds(executionIds: string[]) {
+	async deleteManyByExecutionIds(executionIds: string[]) {
 		const client = this.clients[this.mode];
 		if (client) {
 			await client.deleteManyByExecutionIds(executionIds);
@@ -172,12 +175,17 @@ export class BinaryDataService {
 		return inputData as INodeExecutionData[][];
 	}
 
-	private generateBinaryId(filename: string) {
+	// ----------------------------------
+	//         private methods
+	// ----------------------------------
+
+	private createIdentifier(filename: string) {
 		return `${this.mode}:${filename}`;
 	}
 
 	private splitBinaryModeFileId(fileId: string): { mode: string; id: string } {
 		const [mode, id] = fileId.split(':');
+
 		return { mode, id };
 	}
 
@@ -202,7 +210,7 @@ export class BinaryDataService {
 				return client
 					?.copyByIdentifier(this.splitBinaryModeFileId(binaryDataId).id, executionId)
 					.then((filename) => ({
-						newId: this.generateBinaryId(filename),
+						newId: this.createIdentifier(filename),
 						key,
 					}));
 			});

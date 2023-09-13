@@ -1425,11 +1425,11 @@ export class Server extends AbstractServer {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				try {
-					const binaryPath = this.binaryDataService.getBinaryPath(identifier);
+					const binaryPath = this.binaryDataService.getPath(identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await this.binaryDataService.getBinaryMetadata(identifier);
+							const metadata = await this.binaryDataService.getMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
