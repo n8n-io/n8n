@@ -34,7 +34,7 @@ jobs:
 
   unit-test:
     name: Unit tests
-    uses: ./.github/workflows/unit-test-reusable.yml
+    uses: ./.github/workflows/units-tests-reusable.yml
     with:
       branch: ${{ inputs.branch }}
       nodeVersion: 18.x

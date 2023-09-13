@@ -22,10 +22,10 @@ on:
         required: false
         default: ${{ github.sha }}-units-tests-modules
         type: string
-      # prNumber:
-      #   description: 'PR number to run tests for.'
-      #   required: false
-      #   type: number
+      prNumber:
+        description: 'PR number to run tests for.'
+        required: false
+        type: number
     outputs:
       tests_passed:
         description: 'True if all E2E tests passed, otherwise false'
