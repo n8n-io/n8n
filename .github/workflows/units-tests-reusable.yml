@@ -21,7 +21,7 @@ on:
       cacheKey:
         description: 'Cache key for modules and build artifacts.'
         required: false
-        default: ${{ github.sha }}-units-tests-modules
+        default: ''
         type: string
       prNumber:
         description: 'PR number to run tests for.'
@@ -53,7 +53,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build
+        if: ${{ inputs.cacheKey == '' }}
+        run: pnpm build
+
       - name: Restore cached build artifacts
+        if: ${{ inputs.cacheKey != '' }}
         uses: actions/cache/restore@v3.3.1
         with:
           path: ./packages/**/dist
