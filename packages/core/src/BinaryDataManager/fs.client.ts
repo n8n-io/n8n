@@ -12,7 +12,7 @@ import { FileNotFoundError } from '../errors';
 const executionExtractionRegexp =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
-export class BinaryDataFileSystem implements BinaryDataClient {
+export class FileSystemClient implements BinaryDataClient {
 	private storagePath: string;
 
 	constructor(config: IBinaryDataConfig) {

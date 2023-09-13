@@ -4,7 +4,7 @@ import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { IBinaryDataConfig, BinaryDataClient } from '../Interfaces';
-import { BinaryDataFileSystem } from './FileSystem';
+import { FileSystemClient } from './fs.client';
 import { binaryToBuffer } from './utils';
 import { Service } from 'typedi';
 
@@ -30,7 +30,7 @@ export class BinaryDataManager {
 		this.clients = {};
 
 		if (this.availableModes.includes('filesystem')) {
-			this.clients.filesystem = new BinaryDataFileSystem(config);
+			this.clients.filesystem = new FileSystemClient(config);
 			await this.clients.filesystem.init(mainClient);
 		}
 
