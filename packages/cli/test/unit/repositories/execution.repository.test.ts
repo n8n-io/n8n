@@ -34,7 +34,7 @@ describe('ExecutionRepository', () => {
 
 	describe('pruneBySoftDeleting()', () => {
 		test('should soft-delete executions based on batch size', async () => {
-			config.set('executions.pruneDataMaxCount', 0); // disable path
+			config.set('executions.pruneDataMaxCount', 0); // disable prune-by-count path
 
 			executionRepository.deletionBatchSize = 5;
 
@@ -64,7 +64,7 @@ describe('ExecutionRepository', () => {
 		test('should limit pruning based on EXECUTIONS_DATA_MAX_AGE', async () => {
 			const maxAge = 5; // hours
 
-			config.set('executions.pruneDataMaxCount', 0); // disable path
+			config.set('executions.pruneDataMaxCount', 0); // disable prune-by-count path
 			config.set('executions.pruneDataMaxAge', 5);
 
 			entityManager.find.mockResolvedValue([]);
