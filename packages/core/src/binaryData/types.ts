@@ -17,7 +17,7 @@ export namespace BinaryData {
 
 	type InMemoryConfig = ConfigBase & { mode: 'default' };
 
-	export type FileSystemConfig = ConfigBase & { mode: 'filesystem'; localStoragePath: string };
+	export type FileSystemConfig = ConfigBase & { mode: 'filesystem'; storagePath: string };
 
 	export type Config = InMemoryConfig | FileSystemConfig;
 

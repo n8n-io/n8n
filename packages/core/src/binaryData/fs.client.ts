@@ -16,7 +16,7 @@ export class FileSystemClient implements BinaryData.Client {
 	private storagePath: string;
 
 	constructor(config: BinaryData.FileSystemConfig) {
-		this.storagePath = config.localStoragePath;
+		this.storagePath = config.storagePath;
 	}
 
 	async init() {

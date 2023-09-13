@@ -895,7 +895,7 @@ export const schema = {
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',
 		},
-		localStoragePath: {
+		storagePath: {
 			format: String,
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
