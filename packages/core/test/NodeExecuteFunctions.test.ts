@@ -18,23 +18,23 @@ import {
 	proxyRequestToAxios,
 } from '@/NodeExecuteFunctions';
 import { initLogger } from './helpers/utils';
+import Container from 'typedi';
+import type { IBinaryDataConfig } from '@/Interfaces';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
 describe('NodeExecuteFunctions', () => {
 	describe('test binary data helper methods', () => {
-		// Reset BinaryDataManager for each run. This is a dirty operation, as individual managers are not cleaned.
-		beforeEach(() => {
-			BinaryDataManager.instance = undefined;
-		});
-
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 			// Setup a 'default' binary data manager instance
-			await BinaryDataManager.init({
+			const config: IBinaryDataConfig = {
 				mode: 'default',
 				availableModes: 'default',
 				localStoragePath: temporaryDir,
-			});
+			};
+			Container.set(BinaryDataManager, new BinaryDataManager());
+
+			await Container.get(BinaryDataManager).init(config);
 
 			// Set our binary data buffer
 			const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
@@ -78,12 +78,15 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
-			// Setup a 'filesystem' binary data manager instance
-			await BinaryDataManager.init({
+			const config: IBinaryDataConfig = {
 				mode: 'filesystem',
 				availableModes: 'filesystem',
 				localStoragePath: temporaryDir,
-			});
+			};
+			Container.set(BinaryDataManager, new BinaryDataManager());
+
+			// Setup a 'filesystem' binary data manager instance
+			await Container.get(BinaryDataManager).init(config);
 
 			// Set our binary data buffer
 			const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
