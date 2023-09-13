@@ -37,11 +37,7 @@ export class BinaryDataManager {
 		return undefined;
 	}
 
-	async copyBinaryFile(
-		binaryData: IBinaryData,
-		filePath: string,
-		executionId: string,
-	): Promise<IBinaryData> {
+	async copyBinaryFile(binaryData: IBinaryData, filePath: string, executionId: string) {
 		// If a manager handles this binary, copy over the binary file and return its reference id.
 		const manager = this.managers[this.mode];
 		if (manager) {
@@ -69,11 +65,7 @@ export class BinaryDataManager {
 		return binaryData;
 	}
 
-	async storeBinaryData(
-		binaryData: IBinaryData,
-		input: Buffer | Readable,
-		executionId: string,
-	): Promise<IBinaryData> {
+	async storeBinaryData(binaryData: IBinaryData, input: Buffer | Readable, executionId: string) {
 		// If a manager handles this binary, return the binary data with its reference id.
 		const manager = this.managers[this.mode];
 		if (manager) {
@@ -102,7 +94,7 @@ export class BinaryDataManager {
 		return binaryData;
 	}
 
-	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+	getBinaryStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.managers[mode]) {
 			return this.managers[mode].getBinaryStream(id, chunkSize);
@@ -128,7 +120,7 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	getBinaryPath(identifier: string): string {
+	getBinaryPath(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.managers[mode]) {
 			return this.managers[mode].getBinaryPath(id);
@@ -137,7 +129,7 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async getBinaryMetadata(identifier: string): Promise<BinaryMetadata> {
+	async getBinaryMetadata(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.managers[mode]) {
 			return this.managers[mode].getBinaryMetadata(id);
@@ -146,16 +138,13 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<void> {
+	async deleteBinaryDataByExecutionIds(executionIds: string[]) {
 		if (this.managers[this.mode]) {
 			await this.managers[this.mode].deleteBinaryDataByExecutionIds(executionIds);
 		}
 	}
 
-	async duplicateBinaryData(
-		inputData: Array<INodeExecutionData[] | null>,
-		executionId: string,
-	): Promise<INodeExecutionData[][]> {
+	async duplicateBinaryData(inputData: Array<INodeExecutionData[] | null>, executionId: string) {
 		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
 				async (executionDataArray) => {
@@ -193,7 +182,7 @@ export class BinaryDataManager {
 	private async duplicateBinaryDataInExecData(
 		executionData: INodeExecutionData,
 		executionId: string,
-	): Promise<INodeExecutionData> {
+	) {
 		const binaryManager = this.managers[this.mode];
 
 		if (executionData.binary) {
