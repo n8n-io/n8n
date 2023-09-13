@@ -95,6 +95,9 @@ export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
+/**
+ * Units of time in milliseconds
+ */
 export const TIME = {
 	SECOND: 1000,
 	MINUTE: 60 * 1000,
