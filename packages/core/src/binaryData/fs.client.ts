@@ -23,42 +23,36 @@ export class FileSystemClient implements BinaryData.Client {
 		await this.assertFolder(this.storagePath);
 	}
 
-	async getFileSize(identifier: string): Promise<number> {
-		const stats = await fs.stat(this.getBinaryPath(identifier));
+	async getSize(identifier: string): Promise<number> {
+		const stats = await fs.stat(this.getPath(identifier));
 		return stats.size;
 	}
 
-	async copyBinaryFile(filePath: string, executionId: string): Promise<string> {
-		const binaryDataId = this.generateFileName(executionId);
-		await this.copyFileToLocalStorage(filePath, binaryDataId);
-		return binaryDataId;
-	}
-
-	async storeBinaryMetadata(identifier: string, metadata: BinaryMetadata) {
+	async storeMetadata(identifier: string, metadata: BinaryMetadata) {
 		await fs.writeFile(this.getMetadataPath(identifier), JSON.stringify(metadata), {
 			encoding: 'utf-8',
 		});
 	}
 
-	async getBinaryMetadata(identifier: string): Promise<BinaryMetadata> {
+	async getMetadata(identifier: string): Promise<BinaryMetadata> {
 		return jsonParse(await fs.readFile(this.getMetadataPath(identifier), { encoding: 'utf-8' }));
 	}
 
-	async storeBinaryData(binaryData: Buffer | Readable, executionId: string): Promise<string> {
+	async store(binaryData: Buffer | Readable, executionId: string): Promise<string> {
 		const binaryDataId = this.generateFileName(executionId);
 		await this.saveToLocalStorage(binaryData, binaryDataId);
 		return binaryDataId;
 	}
 
-	getBinaryStream(identifier: string, chunkSize?: number): Readable {
-		return createReadStream(this.getBinaryPath(identifier), { highWaterMark: chunkSize });
+	toStream(identifier: string, chunkSize?: number): Readable {
+		return createReadStream(this.getPath(identifier), { highWaterMark: chunkSize });
 	}
 
-	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
+	async toBuffer(identifier: string): Promise<Buffer> {
 		return this.retrieveFromLocalStorage(identifier);
 	}
 
-	getBinaryPath(identifier: string): string {
+	getPath(identifier: string): string {
 		return this.resolveStoragePath(identifier);
 	}
 
@@ -66,17 +60,23 @@ export class FileSystemClient implements BinaryData.Client {
 		return this.resolveStoragePath(`${identifier}.metadata`);
 	}
 
-	async duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string> {
+	async copyByPath(filePath: string, executionId: string): Promise<string> {
+		const binaryDataId = this.generateFileName(executionId);
+		await this.copyFileToLocalStorage(filePath, binaryDataId);
+		return binaryDataId;
+	}
+
+	async copyByIdentifier(identifier: string, prefix: string): Promise<string> {
 		const newBinaryDataId = this.generateFileName(prefix);
 
 		await fs.copyFile(
-			this.resolveStoragePath(binaryDataId),
+			this.resolveStoragePath(identifier),
 			this.resolveStoragePath(newBinaryDataId),
 		);
 		return newBinaryDataId;
 	}
 
-	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]> {
+	async deleteManyByExecutionIds(executionIds: string[]): Promise<string[]> {
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
 		const deletedIds = [];
@@ -91,7 +91,7 @@ export class FileSystemClient implements BinaryData.Client {
 		return deletedIds;
 	}
 
-	async deleteBinaryDataByIdentifier(identifier: string): Promise<void> {
+	async deleteOne(identifier: string): Promise<void> {
 		return this.deleteFromLocalStorage(identifier);
 	}
 
@@ -108,19 +108,19 @@ export class FileSystemClient implements BinaryData.Client {
 	}
 
 	private async deleteFromLocalStorage(identifier: string) {
-		return fs.rm(this.getBinaryPath(identifier));
+		return fs.rm(this.getPath(identifier));
 	}
 
 	private async copyFileToLocalStorage(source: string, identifier: string): Promise<void> {
-		await fs.cp(source, this.getBinaryPath(identifier));
+		await fs.cp(source, this.getPath(identifier));
 	}
 
 	private async saveToLocalStorage(binaryData: Buffer | Readable, identifier: string) {
-		await fs.writeFile(this.getBinaryPath(identifier), binaryData);
+		await fs.writeFile(this.getPath(identifier), binaryData);
 	}
 
 	private async retrieveFromLocalStorage(identifier: string): Promise<Buffer> {
-		const filePath = this.getBinaryPath(identifier);
+		const filePath = this.getPath(identifier);
 		try {
 			return await fs.readFile(filePath);
 		} catch (e) {
@@ -130,8 +130,9 @@ export class FileSystemClient implements BinaryData.Client {
 
 	private resolveStoragePath(...args: string[]) {
 		const returnPath = path.join(this.storagePath, ...args);
-		if (path.relative(this.storagePath, returnPath).startsWith('..'))
+		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
 			throw new FileNotFoundError('Invalid path detected');
+		}
 		return returnPath;
 	}
 }

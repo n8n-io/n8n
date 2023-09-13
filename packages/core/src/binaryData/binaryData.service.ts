@@ -28,29 +28,30 @@ export class BinaryDataService {
 		return undefined;
 	}
 
-	async copyBinaryFile(binaryData: IBinaryData, filePath: string, executionId: string) {
+	async copyBinaryFile(binaryData: IBinaryData, path: string, executionId: string) {
 		// If a client handles this binary, copy over the binary file and return its reference id.
 		const client = this.clients[this.mode];
+
 		if (client) {
-			const identifier = await client.copyBinaryFile(filePath, executionId);
+			const identifier = await client.copyByPath(path, executionId);
 			// Add client reference id.
 			binaryData.id = this.generateBinaryId(identifier);
 
 			// Prevent preserving data in memory if handled by a client.
 			binaryData.data = this.mode;
 
-			const fileSize = await client.getFileSize(identifier);
+			const fileSize = await client.getSize(identifier);
 			binaryData.fileSize = prettyBytes(fileSize);
 
-			await client.storeBinaryMetadata(identifier, {
+			await client.storeMetadata(identifier, {
 				fileName: binaryData.fileName,
 				mimeType: binaryData.mimeType,
 				fileSize,
 			});
 		} else {
-			const { size } = await stat(filePath);
+			const { size } = await stat(path);
 			binaryData.fileSize = prettyBytes(size);
-			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
+			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
 		}
 
 		return binaryData;
@@ -60,7 +61,7 @@ export class BinaryDataService {
 		// If a client handles this binary, return the binary data with its reference id.
 		const client = this.clients[this.mode];
 		if (client) {
-			const identifier = await client.storeBinaryData(input, executionId);
+			const identifier = await client.store(input, executionId);
 
 			// Add client reference id.
 			binaryData.id = this.generateBinaryId(identifier);
@@ -68,10 +69,10 @@ export class BinaryDataService {
 			// Prevent preserving data in memory if handled by a client.
 			binaryData.data = this.mode;
 
-			const fileSize = await client.getFileSize(identifier);
+			const fileSize = await client.getSize(identifier);
 			binaryData.fileSize = prettyBytes(fileSize);
 
-			await client.storeBinaryMetadata(identifier, {
+			await client.storeMetadata(identifier, {
 				fileName: binaryData.fileName,
 				mimeType: binaryData.mimeType,
 				fileSize,
@@ -95,7 +96,7 @@ export class BinaryDataService {
 	getBinaryStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
-			return this.clients[mode].getBinaryStream(id, chunkSize);
+			return this.clients[mode].toStream(id, chunkSize);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
@@ -112,7 +113,7 @@ export class BinaryDataService {
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
-			return this.clients[mode].retrieveBinaryDataByIdentifier(id);
+			return this.clients[mode].toBuffer(id);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
@@ -121,7 +122,7 @@ export class BinaryDataService {
 	getBinaryPath(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
-			return this.clients[mode].getBinaryPath(id);
+			return this.clients[mode].getPath(id);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
@@ -130,15 +131,16 @@ export class BinaryDataService {
 	async getBinaryMetadata(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
-			return this.clients[mode].getBinaryMetadata(id);
+			return this.clients[mode].getMetadata(id);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async deleteBinaryDataByExecutionIds(executionIds: string[]) {
-		if (this.clients[this.mode]) {
-			await this.clients[this.mode].deleteBinaryDataByExecutionIds(executionIds);
+		const client = this.clients[this.mode];
+		if (client) {
+			await client.deleteManyByExecutionIds(executionIds);
 		}
 	}
 
@@ -196,10 +198,7 @@ export class BinaryDataService {
 				}
 
 				return client
-					?.duplicateBinaryDataByIdentifier(
-						this.splitBinaryModeFileId(binaryDataId).id,
-						executionId,
-					)
+					?.copyByIdentifier(this.splitBinaryModeFileId(binaryDataId).id, executionId)
 					.then((filename) => ({
 						newId: this.generateBinaryId(filename),
 						key,
