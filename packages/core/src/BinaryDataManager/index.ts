@@ -14,7 +14,7 @@ export class BinaryDataManager {
 		[key: string]: IBinaryDataManager;
 	} = {};
 
-	private binaryDataMode = '';
+	private binaryDataMode = 'default';
 
 	private availableModes: string[] = [];
 
