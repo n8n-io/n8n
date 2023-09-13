@@ -1,6 +1,7 @@
 name: Reusable units test workflow
 
 on:
+  pull_request:
   workflow_call:
     inputs:
       branch:
@@ -35,7 +36,6 @@ jobs:
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
-    needs: install
     steps:
       - uses: actions/checkout@v3.5.3
         with:
