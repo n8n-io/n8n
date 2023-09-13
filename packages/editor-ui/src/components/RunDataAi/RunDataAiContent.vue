@@ -87,8 +87,8 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { EndpointType, IAiData, IAiDataContent } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { EndpointType, IAiData } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
 

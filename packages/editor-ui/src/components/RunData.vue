@@ -546,8 +546,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
 const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));

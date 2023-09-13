@@ -117,7 +117,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { INode, INodeType, ITaskData } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
+const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
 interface ChatMessage {
 	text: string;
@@ -274,7 +274,7 @@ export default defineComponent({
 				memoryConnection.node,
 			);
 
-			let memoryOutputData = nodeResultData
+			const memoryOutputData = nodeResultData
 				?.map(
 					(
 						data,
