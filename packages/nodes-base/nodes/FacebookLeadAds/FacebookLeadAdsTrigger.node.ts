@@ -220,14 +220,11 @@ export class FacebookLeadAdsTrigger implements INodeType {
 			}
 		}
 
-		// validate signature if app secret is set
-		if (credentials.appSecret) {
-			const computedSignature = createHmac('sha1', credentials.appSecret as string)
-				.update(req.rawBody)
-				.digest('hex');
-			if (headerData['x-hub-signature'] !== `sha1=${computedSignature}`) {
-				return {};
-			}
+		const computedSignature = createHmac('sha256', credentials.clientSecret as string)
+			.update(req.rawBody)
+			.digest('hex');
+		if (headerData['x-hub-signature-256'] !== `sha256=${computedSignature}`) {
+			return {};
 		}
 
 		if (bodyData.object !== 'page') {
@@ -275,7 +272,6 @@ export class FacebookLeadAdsTrigger implements INodeType {
 								name: form.name,
 								locale: form.locale,
 								status: form.status,
-								questions: form.questions,
 							},
 							ad: { id: lead.ad_id, name: lead.ad_name },
 							adset: { id: lead.adset_id, name: lead.adset_name },
