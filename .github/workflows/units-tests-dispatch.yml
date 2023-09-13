@@ -1,6 +1,7 @@
 name: Runs unit tests for a given ref
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       ref:
