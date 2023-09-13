@@ -1,3 +1,29 @@
+# [1.7.0](https://github.com/n8n-io/n8n/compare/n8n@1.6.0...n8n@1.7.0) (2023-09-13)
+
+
+### Bug Fixes
+
+* Account for nanoid workflow ids for subworkflow execute policy ([#7094](https://github.com/n8n-io/n8n/issues/7094)) ([67092c0](https://github.com/n8n-io/n8n/commit/67092c0a1bf98ccc5ceadc3d582fac7bff2dc46c))
+* **Code Node:** Disable WASM to address CVE-2023-37903 ([#7122](https://github.com/n8n-io/n8n/issues/7122)) ([36a8e91](https://github.com/n8n-io/n8n/commit/36a8e911e6f58d0b87816fae0443c6ce8f5ea45a))
+* **Code Node:** Upgrade vm2 to address CVE-2023-37466 ([#7123](https://github.com/n8n-io/n8n/issues/7123)) ([0a35025](https://github.com/n8n-io/n8n/commit/0a35025e5e6669661bdfcc16378453ec9109a347))
+* **core:** Disable Node.js custom inspection to address CVE-2023-37903 ([#7125](https://github.com/n8n-io/n8n/issues/7125)) ([a223734](https://github.com/n8n-io/n8n/commit/a223734a4a781834bee1a1484dffc47c56e8d50e)), closes [#7122](https://github.com/n8n-io/n8n/issues/7122)
+* **editor:** Tweak hover area of workflow / cred cards ([#7108](https://github.com/n8n-io/n8n/issues/7108)) ([217de21](https://github.com/n8n-io/n8n/commit/217de21605beca57f087921231ae929279071686))
+* **editor:** Unbind workflow endpoint events in case of workspace reset  ([#7129](https://github.com/n8n-io/n8n/issues/7129)) ([c9b7948](https://github.com/n8n-io/n8n/commit/c9b79485cf7d361174aeba175ccb98de7d918693))
+* **editor:** Update git repo url validation regex ([#7151](https://github.com/n8n-io/n8n/issues/7151)) ([e51f173](https://github.com/n8n-io/n8n/commit/e51f173608dd79bfe53eb86eeaed976109f74410))
+* **Google Cloud Firestore Node:** Fix empty string interpreted as number ([#7136](https://github.com/n8n-io/n8n/issues/7136)) ([915cfa0](https://github.com/n8n-io/n8n/commit/915cfa0f6a0311ca34d2f8eeb471c601473314aa))
+* **HubSpot Node:** Fix issue with contact lists not working ([#5582](https://github.com/n8n-io/n8n/issues/5582)) ([6e5a4f6](https://github.com/n8n-io/n8n/commit/6e5a4f6a589550a816f421ffa966cfeea3cac64d))
+* **Postgres Node:** Fix automatic column mapping ([#7121](https://github.com/n8n-io/n8n/issues/7121)) ([92af131](https://github.com/n8n-io/n8n/commit/92af1314fe60560cdfb52b3307cc74559ba530a8))
+* **Zoho CRM Node:** Fix issue with Sales Order not updating ([#6959](https://github.com/n8n-io/n8n/issues/6959)) ([fd800b6](https://github.com/n8n-io/n8n/commit/fd800b674b52079eb2572a4d2465774759e9b31d))
+
+
+### Features
+
+* **core:** Add an option to enable WAL mode for SQLite ([#7118](https://github.com/n8n-io/n8n/issues/7118)) ([1d1a022](https://github.com/n8n-io/n8n/commit/1d1a022defefc790905cfb8fcb9dd364ffb063bb))
+* **core:** Add commands to workers to respond with current state ([#7029](https://github.com/n8n-io/n8n/issues/7029)) ([7b49cf2](https://github.com/n8n-io/n8n/commit/7b49cf2a2c750d685af6cff464401f38482dac5a))
+* **Salesforce Node:** Add fax field to lead option ([#7030](https://github.com/n8n-io/n8n/issues/7030)) ([01f875a](https://github.com/n8n-io/n8n/commit/01f875a94d193ba1e709bf6cfe31a3951f3af81a))
+
+
+
 # [1.6.0](https://github.com/n8n-io/n8n/compare/n8n@1.5.1...n8n@1.6.0) (2023-09-06)
 
 
