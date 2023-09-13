@@ -26,7 +26,7 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataManager,
+	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
@@ -201,7 +201,7 @@ export class Server extends AbstractServer {
 
 	push: Push;
 
-	binaryDataManager: BinaryDataManager;
+	binaryDataService: BinaryDataService;
 
 	constructor() {
 		super('main');
@@ -358,13 +358,13 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
-		this.binaryDataManager = Container.get(BinaryDataManager);
+		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
+		const binaryDataConfig = config.getEnv('binaryDataService');
 		const diagnosticInfo: IDiagnosticInfo = {
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(
@@ -1425,11 +1425,11 @@ export class Server extends AbstractServer {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				try {
-					const binaryPath = this.binaryDataManager.getBinaryPath(identifier);
+					const binaryPath = this.binaryDataService.getBinaryPath(identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await this.binaryDataManager.getBinaryMetadata(identifier);
+							const metadata = await this.binaryDataService.getBinaryMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);

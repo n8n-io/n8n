@@ -3,7 +3,7 @@ import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataService, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
@@ -104,8 +104,8 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected async initBinaryManager() {
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await Container.get(BinaryDataManager).init(binaryDataConfig, true);
+		const binaryDataConfig = config.getEnv('binaryDataService');
+		await Container.get(BinaryDataService).init(binaryDataConfig, true);
 	}
 
 	protected async initExternalHooks() {

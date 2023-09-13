@@ -23,7 +23,7 @@ beforeAll(async () => {
 	user1 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 	user2 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 
-	// TODO: mock BinaryDataManager instead
+	// TODO: mock BinaryDataService instead
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();
 

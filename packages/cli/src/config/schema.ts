@@ -882,7 +882,7 @@ export const schema = {
 		},
 	},
 
-	binaryDataManager: {
+	binaryDataService: {
 		availableModes: {
 			format: String,
 			default: 'filesystem,object',

@@ -14,7 +14,7 @@ import stream from 'stream';
 import { promisify } from 'util';
 import formidable from 'formidable';
 
-import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
+import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
 	IBinaryData,
@@ -514,7 +514,7 @@ export async function executeWebhook(
 					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 					if (binaryData?.id) {
 						res.header(response.headers);
-						const stream = Container.get(BinaryDataManager).getBinaryStream(binaryData.id);
+						const stream = Container.get(BinaryDataService).getBinaryStream(binaryData.id);
 						void pipeline(stream, res).then(() =>
 							responseCallback(null, { noWebhookResponse: true }),
 						);
@@ -732,7 +732,7 @@ export async function executeWebhook(
 							// Send the webhook response manually
 							res.setHeader('Content-Type', binaryData.mimeType);
 							if (binaryData.id) {
-								const stream = Container.get(BinaryDataManager).getBinaryStream(binaryData.id);
+								const stream = Container.get(BinaryDataService).getBinaryStream(binaryData.id);
 								await pipeline(stream, res);
 							} else {
 								res.end(Buffer.from(binaryData.data, BINARY_ENCODING));

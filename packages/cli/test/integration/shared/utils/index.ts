@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 import { CronJob } from 'cron';
 import set from 'lodash/set';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataService, UserSettings } from 'n8n-core';
 import type {
 	ICredentialType,
 	IExecuteFunctions,
@@ -388,8 +388,13 @@ export async function initNodeTypes() {
  * Initialize a BinaryManager for test runs.
  */
 export async function initBinaryManager() {
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	await BinaryDataManager.init(binaryDataConfig);
+	const binaryDataConfig = config.getEnv('binaryDataService');
+
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init(binaryDataConfig);
+	Container.set(BinaryDataService, binaryDataService);
+
+	await binaryDataService.init(binaryDataConfig);
 }
 
 /**
