@@ -5,8 +5,8 @@ import type { Readable } from 'stream';
 import { BINARY_ENCODING } from 'n8n-workflow';
 import type { BinaryData } from './types';
 import { FileSystemClient } from './fs.client';
-import { binaryToBuffer } from './utils';
 import { Service } from 'typedi';
+import concatStream from 'concat-stream';
 
 @Service()
 export class BinaryDataManager {
@@ -77,12 +77,19 @@ export class BinaryDataManager {
 				fileSize,
 			});
 		} else {
-			const buffer = await binaryToBuffer(input);
+			const buffer = await this.binaryToBuffer(input);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
 		}
 
 		return binaryData;
+	}
+
+	async binaryToBuffer(body: Buffer | Readable) {
+		return new Promise<Buffer>((resolve) => {
+			if (Buffer.isBuffer(body)) resolve(body);
+			else body.pipe(concatStream(resolve));
+		});
 	}
 
 	getBinaryStream(identifier: string, chunkSize?: number) {
@@ -94,7 +101,7 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async getBinaryDataBuffer(binaryData: IBinaryData): Promise<Buffer> {
+	async getBinaryDataBuffer(binaryData: IBinaryData) {
 		if (binaryData.id) {
 			return this.retrieveBinaryDataByIdentifier(binaryData.id);
 		}
