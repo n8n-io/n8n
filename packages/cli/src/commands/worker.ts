@@ -110,7 +110,7 @@ export class Worker extends BaseCommand {
 	}
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
-		const { executionId, loadStaticData, returnResults } = job.data;
+		const { executionId, loadStaticData } = job.data;
 		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
 			executionId,
 			{
@@ -247,7 +247,6 @@ export class Worker extends BaseCommand {
 
 		return {
 			success: true,
-			executionResponse: returnResults ? fullExecutionData : undefined,
 		};
 	}
 
@@ -269,17 +268,7 @@ export class Worker extends BaseCommand {
 	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
-			replicateToRedisEventLogFunction: undefined,
 		});
-		// NOTE: this alternative would cause the event bus running on the worker
-		// to replicate events to the event log in redis, which would then be
-		// picked up by the main process and written to its log file
-		// await eventBus.initialize({
-		// 	workerId: this.uniqueInstanceId,
-		// 	replicateToRedisEventLogFunction: async (event) => {
-		// 		await this.redisPublisher.publishToEventLog(event);
-		// 	},
-		// });
 	}
 
 	/**

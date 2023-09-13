@@ -11,7 +11,6 @@ import {
 } from './services/redis/RedisServiceHelper';
 import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
 import config from '@/config';
-import type { IExecutionResponse } from './Interfaces';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -25,7 +24,6 @@ export interface JobData {
 
 export interface JobResponse {
 	success: boolean;
-	executionResponse?: IExecutionResponse;
 	error?: ExecutionError;
 }
 

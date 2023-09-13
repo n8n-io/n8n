@@ -30,7 +30,6 @@ import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import Container from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
 import { OrchestrationService } from '../../services/orchestration.service';
-import type { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -42,7 +41,6 @@ export interface MessageWithCallback {
 export interface MessageEventBusInitializeOptions {
 	skipRecoveryPass?: boolean;
 	workerId?: string;
-	replicateToRedisEventLogFunction?: (msg: AbstractEventMessage) => Promise<void>;
 }
 
 export class MessageEventBus extends EventEmitter {
@@ -57,8 +55,6 @@ export class MessageEventBus extends EventEmitter {
 	} = {};
 
 	private pushIntervalTimer: NodeJS.Timer;
-
-	replicateToRedisEventLogFunction: ((msg: AbstractEventMessage) => Promise<void>) | undefined;
 
 	constructor() {
 		super();
@@ -104,8 +100,6 @@ export class MessageEventBus extends EventEmitter {
 
 		LoggerProxy.debug('Initializing event writer');
 		if (options?.workerId) {
-			// replication should only happen when run on a worker
-			this.replicateToRedisEventLogFunction = options.replicateToRedisEventLogFunction;
 			// only add 'worker' to log file name since the ID changes on every start and we
 			// would not be able to recover the log files from the previous run not knowing it
 			const logBaseName = config.getEnv('eventBus.logWriter.logBaseName') + '-worker';
@@ -261,9 +255,6 @@ export class MessageEventBus extends EventEmitter {
 				this.confirmSent(msg, { id: '0', name: 'eventBus' });
 			}
 			await this.emitMessage(msg);
-			if (this.replicateToRedisEventLogFunction) {
-				await this.replicateToRedisEventLogFunction(msg);
-			}
 		}
 	}
 

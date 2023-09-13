@@ -186,15 +186,17 @@ export class WorkflowRunner {
 				executionId,
 				responsePromise,
 			);
-		} else if (executionsProcess === 'main') {
-			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
-			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		} else {
-			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
+			if (executionsProcess === 'main') {
+				executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
+			} else {
+				executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
+			}
 			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId, data);
 		}
 
-		// these calls are moved into the worker
+		// only run these when not in queue mode or when the execution is manual,
+		// since these calls are now done by the worker directly
 		if (executionsMode !== 'queue' || data.executionMode === 'manual') {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			const externalHooks = Container.get(ExternalHooks);
@@ -206,26 +208,23 @@ export class WorkflowRunner {
 						executionData,
 						data.userId,
 					);
+					if (externalHooks.exists('workflow.postExecute')) {
+						try {
+							await externalHooks.run('workflow.postExecute', [
+								executionData,
+								data.workflowData,
+								executionId,
+							]);
+						} catch (error) {
+							ErrorReporter.error(error);
+							console.error('There was a problem running hook "workflow.postExecute"', error);
+						}
+					}
 				})
 				.catch((error) => {
 					ErrorReporter.error(error);
 					console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
 				});
-			// move into worker and anly
-			if (externalHooks.exists('workflow.postExecute')) {
-				postExecutePromise
-					.then(async (executionData) => {
-						await externalHooks.run('workflow.postExecute', [
-							executionData,
-							data.workflowData,
-							executionId,
-						]);
-					})
-					.catch((error) => {
-						ErrorReporter.error(error);
-						console.error('There was a problem running hook "workflow.postExecute"', error);
-					});
-			}
 		}
 
 		return executionId;
@@ -465,12 +464,6 @@ export class WorkflowRunner {
 			// Normally also workflow should be supplied here but as it only used for sending
 			// data to editor-UI is not needed.
 			await hooks.executeHookFunctions('workflowExecuteBefore', []);
-
-			// NOTE: after removing the push related hooks, this is the only code that actually remains in the above hooks:
-			// await Container.get(ExternalHooks).run('workflow.preExecute', [
-			// 	data.workflowData,
-			// 	data.executionMode,
-			// ]);
 		} catch (error) {
 			// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 			// "workflowExecuteAfter" which we require.
@@ -576,7 +569,7 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				// only pull execution data from the Db when it is needed
+				// optimization: only pull and unflatten execution data from the Db when it is needed
 				const executionHasPostExecutionPromises =
 					this.activeExecutions.getPostExecutePromiseCount(executionId) > 0;
 
@@ -613,11 +606,9 @@ export class WorkflowRunner {
 					runData.data = (fullExecutionData as IExecutionResponse).data;
 				}
 
-				// NOTE: for future use, a manual return value via Redis could be used here
-				// if (racingPromisesResult.success && racingPromisesResult.executionResponse) {
-				// 	runData.data = racingPromisesResult.executionResponse.data;
-				// }
-
+				// NOTE: due to the optimization of not loading the execution data from the db when no post execution promises are present,
+				// the execution data in runData.data MAY not be available here.
+				// This means that any function expecting with runData has to check if the runData.data defined from this point
 				this.activeExecutions.remove(executionId, runData);
 
 				// Normally also static data should be supplied here but as it only used for sending
@@ -633,7 +624,6 @@ export class WorkflowRunner {
 						workflowSettings.saveDataSuccessExecution ??
 						config.getEnv('executions.saveDataOnSuccess');
 
-					// const workflowDidSucceed = !runData.data.resultData.error;
 					const workflowDidSucceed = !racingPromisesResult.error;
 					if (
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
