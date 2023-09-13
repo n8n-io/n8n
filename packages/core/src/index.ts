@@ -15,3 +15,4 @@ export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };
 export * from './errors';
+export * from './BinaryDataManager/types';

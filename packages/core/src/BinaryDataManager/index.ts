@@ -3,34 +3,25 @@ import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 import { BINARY_ENCODING } from 'n8n-workflow';
-import type { IBinaryDataConfig, BinaryDataClient } from '../Interfaces';
+import type { BinaryData } from './types';
 import { FileSystemClient } from './fs.client';
 import { binaryToBuffer } from './utils';
 import { Service } from 'typedi';
 
 @Service()
 export class BinaryDataManager {
-	private clients: {
-		[key: string]: BinaryDataClient;
-	} = {};
+	private availableModes: BinaryData.Mode[] = [];
 
-	/**
-	 * Mode for storing binary data:
-	 * - `default` (in memory)
-	 * - `filesystem` (on disk)
-	 * - `object` (S3)
-	 */
-	private mode = 'default';
+	private mode: BinaryData.Mode = 'default';
 
-	private availableModes: string[] = [];
+	private clients: Record<string, BinaryData.Client> = {};
 
-	async init(config: IBinaryDataConfig, mainClient = false) {
+	async init(config: BinaryData.Config, mainClient = false) {
+		this.availableModes = config.availableModes.split(',') as BinaryData.Mode[]; // @TODO: Remove assertion
 		this.mode = config.mode;
-		this.availableModes = config.availableModes.split(',');
-		this.clients = {};
 
 		if (this.availableModes.includes('filesystem')) {
-			this.clients.filesystem = new FileSystemClient(config);
+			this.clients.filesystem = new FileSystemClient(config as BinaryData.FileSystemConfig); // @TODO: Remove assertion
 			await this.clients.filesystem.init(mainClient);
 		}
 
