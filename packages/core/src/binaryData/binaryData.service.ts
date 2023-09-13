@@ -21,7 +21,9 @@ export class BinaryDataService {
 		this.mode = config.mode;
 
 		if (this.availableModes.includes('filesystem')) {
-			this.clients.filesystem = new FileSystemClient(config as BinaryData.FileSystemConfig); // @TODO: Remove assertion
+			this.clients.filesystem = new FileSystemClient(
+				(config as BinaryData.FileSystemConfig).storagePath,
+			); // @TODO: Remove assertion
 			await this.clients.filesystem.init(mainClient);
 		}
 
@@ -96,7 +98,7 @@ export class BinaryDataService {
 	getBinaryStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
-			return this.clients[mode].toStream(id, chunkSize);
+			return this.clients[mode].getAsStream(id, chunkSize);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
@@ -113,7 +115,7 @@ export class BinaryDataService {
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.clients[mode]) {
-			return this.clients[mode].toBuffer(id);
+			return this.clients[mode].getAsBuffer(id);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');

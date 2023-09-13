@@ -2,137 +2,137 @@ import { createReadStream } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
-import type { Readable } from 'stream';
-import type { BinaryMetadata } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
-
-import type { BinaryData } from './types';
 import { FileNotFoundError } from '../errors';
 
-const executionExtractionRegexp =
+import type { Readable } from 'stream';
+import type { BinaryMetadata } from 'n8n-workflow';
+import type { BinaryData } from './types';
+
+const EXECUTION_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
 export class FileSystemClient implements BinaryData.Client {
-	private storagePath: string;
-
-	constructor(config: BinaryData.FileSystemConfig) {
-		this.storagePath = config.storagePath;
-	}
+	constructor(private storagePath: string) {}
 
 	async init() {
-		await this.assertFolder(this.storagePath);
+		await this.ensureDirExists(this.storagePath);
 	}
 
-	async getSize(identifier: string): Promise<number> {
-		const stats = await fs.stat(this.getPath(identifier));
+	getPath(identifier: string) {
+		return this.resolvePath(identifier);
+	}
+
+	async getSize(identifier: string) {
+		const filePath = this.getPath(identifier);
+		const stats = await fs.stat(filePath);
+
 		return stats.size;
 	}
 
-	async storeMetadata(identifier: string, metadata: BinaryMetadata) {
-		await fs.writeFile(this.getMetadataPath(identifier), JSON.stringify(metadata), {
-			encoding: 'utf-8',
-		});
-	}
-
-	async getMetadata(identifier: string): Promise<BinaryMetadata> {
-		return jsonParse(await fs.readFile(this.getMetadataPath(identifier), { encoding: 'utf-8' }));
-	}
-
-	async store(binaryData: Buffer | Readable, executionId: string): Promise<string> {
-		const binaryDataId = this.generateFileName(executionId);
-		await this.saveToLocalStorage(binaryData, binaryDataId);
-		return binaryDataId;
-	}
-
-	toStream(identifier: string, chunkSize?: number): Readable {
-		return createReadStream(this.getPath(identifier), { highWaterMark: chunkSize });
-	}
-
-	async toBuffer(identifier: string): Promise<Buffer> {
-		return this.retrieveFromLocalStorage(identifier);
-	}
-
-	getPath(identifier: string): string {
-		return this.resolveStoragePath(identifier);
-	}
-
-	getMetadataPath(identifier: string): string {
-		return this.resolveStoragePath(`${identifier}.metadata`);
-	}
-
-	async copyByPath(filePath: string, executionId: string): Promise<string> {
-		const binaryDataId = this.generateFileName(executionId);
-		await this.copyFileToLocalStorage(filePath, binaryDataId);
-		return binaryDataId;
-	}
-
-	async copyByIdentifier(identifier: string, prefix: string): Promise<string> {
-		const newBinaryDataId = this.generateFileName(prefix);
-
-		await fs.copyFile(
-			this.resolveStoragePath(identifier),
-			this.resolveStoragePath(newBinaryDataId),
-		);
-		return newBinaryDataId;
-	}
-
-	async deleteManyByExecutionIds(executionIds: string[]): Promise<string[]> {
-		const set = new Set(executionIds);
-		const fileNames = await fs.readdir(this.storagePath);
-		const deletedIds = [];
-		for (const fileName of fileNames) {
-			const executionId = fileName.match(executionExtractionRegexp)?.[1];
-			if (executionId && set.has(executionId)) {
-				const filePath = this.resolveStoragePath(fileName);
-				await Promise.all([fs.rm(filePath), fs.rm(`${filePath}.metadata`)]);
-				deletedIds.push(executionId);
-			}
-		}
-		return deletedIds;
-	}
-
-	async deleteOne(identifier: string): Promise<void> {
-		return this.deleteFromLocalStorage(identifier);
-	}
-
-	private async assertFolder(folder: string): Promise<void> {
-		try {
-			await fs.access(folder);
-		} catch {
-			await fs.mkdir(folder, { recursive: true });
-		}
-	}
-
-	private generateFileName(prefix: string): string {
-		return [prefix, uuid()].join('');
-	}
-
-	private async deleteFromLocalStorage(identifier: string) {
-		return fs.rm(this.getPath(identifier));
-	}
-
-	private async copyFileToLocalStorage(source: string, identifier: string): Promise<void> {
-		await fs.cp(source, this.getPath(identifier));
-	}
-
-	private async saveToLocalStorage(binaryData: Buffer | Readable, identifier: string) {
-		await fs.writeFile(this.getPath(identifier), binaryData);
-	}
-
-	private async retrieveFromLocalStorage(identifier: string): Promise<Buffer> {
+	getAsStream(identifier: string, chunkSize?: number) {
 		const filePath = this.getPath(identifier);
+
+		return createReadStream(filePath, { highWaterMark: chunkSize });
+	}
+
+	async getAsBuffer(identifier: string) {
+		const filePath = this.getPath(identifier);
+
 		try {
 			return await fs.readFile(filePath);
-		} catch (e) {
+		} catch {
 			throw new Error(`Error finding file: ${filePath}`);
 		}
 	}
 
-	private resolveStoragePath(...args: string[]) {
+	async storeMetadata(identifier: string, metadata: BinaryMetadata) {
+		const filePath = this.resolvePath(`${identifier}.metadata`);
+
+		await fs.writeFile(filePath, JSON.stringify(metadata), { encoding: 'utf-8' });
+	}
+
+	async getMetadata(identifier: string): Promise<BinaryMetadata> {
+		const filePath = this.resolvePath(`${identifier}.metadata`);
+
+		return jsonParse(await fs.readFile(filePath, { encoding: 'utf-8' }));
+	}
+
+	async store(binaryData: Buffer | Readable, executionId: string) {
+		const identifier = this.createIdentifier(executionId);
+		const filePath = this.getPath(identifier);
+
+		await fs.writeFile(filePath, binaryData);
+
+		return identifier;
+	}
+
+	async deleteOne(identifier: string) {
+		const filePath = this.getPath(identifier);
+
+		return fs.rm(filePath);
+	}
+
+	async deleteManyByExecutionIds(executionIds: string[]) {
+		const set = new Set(executionIds);
+		const fileNames = await fs.readdir(this.storagePath);
+		const deletedIds = [];
+
+		for (const fileName of fileNames) {
+			const executionId = fileName.match(EXECUTION_EXTRACTOR)?.[1];
+
+			if (executionId && set.has(executionId)) {
+				const filePath = this.resolvePath(fileName);
+
+				await Promise.all([fs.rm(filePath), fs.rm(`${filePath}.metadata`)]);
+
+				deletedIds.push(executionId);
+			}
+		}
+
+		return deletedIds;
+	}
+
+	async copyByPath(filePath: string, executionId: string) {
+		const identifier = this.createIdentifier(executionId);
+
+		await fs.cp(filePath, this.getPath(identifier));
+
+		return identifier;
+	}
+
+	async copyByIdentifier(identifier: string, executionId: string) {
+		const newIdentifier = this.createIdentifier(executionId);
+
+		await fs.copyFile(this.resolvePath(identifier), this.resolvePath(newIdentifier));
+
+		return newIdentifier;
+	}
+
+	// ----------------------------------
+	//        private methods
+	// ----------------------------------
+
+	private async ensureDirExists(dir: string) {
+		try {
+			await fs.access(dir);
+		} catch {
+			await fs.mkdir(dir, { recursive: true });
+		}
+	}
+
+	private createIdentifier(executionId: string) {
+		return [executionId, uuid()].join('');
+	}
+
+	// @TODO: Variadic needed?
+	private resolvePath(...args: string[]) {
 		const returnPath = path.join(this.storagePath, ...args);
+
 		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
 			throw new FileNotFoundError('Invalid path detected');
 		}
+
 		return returnPath;
 	}
 }

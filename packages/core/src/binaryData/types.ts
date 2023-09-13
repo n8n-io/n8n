@@ -26,13 +26,12 @@ export namespace BinaryData {
 
 		store(binaryData: Buffer | Readable, executionId: string): Promise<string>;
 		getPath(identifier: string): string;
-		getSize(path: string): Promise<number>;
+		getSize(path: string): Promise<number>; // @TODO: Refactor to use identifier?
+		getAsBuffer(identifier: string): Promise<Buffer>;
+		getAsStream(identifier: string, chunkSize?: number): Readable;
 
 		storeMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
 		getMetadata(identifier: string): Promise<BinaryMetadata>;
-
-		toBuffer(identifier: string): Promise<Buffer>;
-		toStream(identifier: string, chunkSize?: number): Readable;
 
 		copyByPath(path: string, executionId: string): Promise<string>;
 		copyByIdentifier(identifier: string, prefix: string): Promise<string>;
