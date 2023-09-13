@@ -85,7 +85,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 
 		if (config.getEnv('executions.pruneData')) {
-			setInterval(async () => this.pruneBySoftDeleting(), 10 * TIME.HOUR);
+			setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
 		}
 
 		setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
