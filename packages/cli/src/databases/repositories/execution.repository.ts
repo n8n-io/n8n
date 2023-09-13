@@ -1,5 +1,13 @@
 import { Service } from 'typedi';
-import { DataSource, In, IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+	Brackets,
+	DataSource,
+	In,
+	IsNull,
+	LessThanOrEqual,
+	MoreThanOrEqual,
+	Repository,
+} from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
@@ -77,7 +85,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 
 		if (config.getEnv('executions.pruneData')) {
-			setInterval(async () => this.pruneBySoftDeleting(), TIME.HOUR);
+			setInterval(async () => this.pruneBySoftDeleting(), 10 * TIME.SECOND);
 		}
 
 		setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
@@ -430,7 +438,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const date = new Date();
 		date.setHours(date.getHours() - maxAge);
 
-		const toPrune: Array<FindOptionsWhere<IExecutionFlattedDb>> = [
+		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
 			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
 			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
 		];
@@ -448,18 +456,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		}
 
-		const executionIds = (
-			await this.find({
-				select: ['id'],
-				where: toPrune,
-				take: this.deletionBatchSize,
-			})
-		).map(({ id }) => id);
-		await this.softDelete(executionIds);
+		const [timeBasedWhere, countBasedWhere] = toPrune;
 
-		if (executionIds.length === this.deletionBatchSize) {
-			setTimeout(async () => this.pruneBySoftDeleting(), TIME.SECOND);
-		}
+		await this.createQueryBuilder()
+			.update(ExecutionEntity)
+			.set({ deletedAt: new Date() })
+			.where(
+				new Brackets((qb) =>
+					countBasedWhere
+						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
+						: qb.where(timeBasedWhere),
+				),
+			)
+			.execute();
 	}
 
 	/**
