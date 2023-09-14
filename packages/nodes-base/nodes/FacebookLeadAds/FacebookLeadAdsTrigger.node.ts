@@ -54,6 +54,13 @@ export class FacebookLeadAdsTrigger implements INodeType {
 		],
 		properties: [
 			{
+				displayName:
+					'Due to Facebook API limitations, you can use just one Facebook Lead Ads trigger for each Facebook App',
+				name: 'facebookLeadAdsNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Event',
 				name: 'event',
 				type: 'options',
@@ -280,7 +287,16 @@ export class FacebookLeadAdsTrigger implements INodeType {
 						};
 					}
 
-					return { lead, form, event };
+					return {
+						id: lead.id,
+						field_data: lead.field_data,
+						form,
+						ad: { id: lead.ad_id, name: lead.ad_name },
+						adset: { id: lead.adset_id, name: lead.adset_name },
+						page: form.page,
+						created_time: lead.created_time,
+						event,
+					};
 				}),
 		);
 
