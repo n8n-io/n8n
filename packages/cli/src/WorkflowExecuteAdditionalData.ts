@@ -599,11 +599,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 				try {
-					// Prune old execution data
-					if (config.getEnv('executions.pruneData')) {
-						await pruneExecutionData.call(this);
-					}
-
 					if (isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
