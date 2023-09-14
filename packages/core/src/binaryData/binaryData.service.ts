@@ -30,8 +30,6 @@ export class BinaryDataService {
 
 			await this.clients.filesystem.init(mainClient);
 		}
-
-		return undefined;
 	}
 
 	async copyBinaryFile(binaryData: IBinaryData, path: string, executionId: string) {
