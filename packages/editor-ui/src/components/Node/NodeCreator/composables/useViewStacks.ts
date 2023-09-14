@@ -22,6 +22,7 @@ import { ConnectionTypes, INodeInputFilter, INodeTypeDescription } from 'n8n-wor
 import { useNodeTypesStore } from '@/stores';
 import { useI18n } from '@/composables';
 import { BaseTextKey } from '@/plugins/i18n';
+import { AIView } from '@/components/Node/NodeCreator/viewsData';
 
 interface ViewStack {
 	uuid?: string;
@@ -112,15 +113,22 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		filter?: INodeInputFilter,
 	) {
 		const nodesByOutputType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
-		const i18n = useI18n();
+		const relatedAIView = AIView([]).items.find(
+			(item) => item.properties.connectionType === connectionType,
+		);
 
 		await nextTick();
 		pushViewStack({
-			title: i18n.baseText(`nodeCreator.connectionNames.${connectionType}` as BaseTextKey),
+			title: relatedAIView?.properties.title,
 			rootView: AI_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
-			panelClass: `nodes-list-panel-${connectionType}`,
+			nodeIcon: {
+				iconType: 'icon',
+				icon: relatedAIView?.properties.icon,
+				color: relatedAIView?.properties.iconProps?.color,
+			},
+			panelClass: relatedAIView?.properties.panelClass,
 			baseFilter: (i: INodeCreateElement) => {
 				const displayNode = nodesByOutputType[connectionType].includes(i.key);
 

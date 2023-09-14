@@ -41,6 +41,7 @@ interface NodeViewItem {
 		iconProps?: {
 			color?: string;
 		};
+		connectionType?: NodeConnectionType;
 		panelClass?: string;
 		group?: string[];
 		description?: string;
@@ -59,12 +60,13 @@ interface NodeView {
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 
-	function getAISubcategoryProperties(endpointType: NodeConnectionType) {
+	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionType) {
 		return {
+			connectionType: nodeConnectionType,
 			iconProps: {
-				color: `var(--node-type-${endpointType}-color)`,
+				color: `var(--node-type-${nodeConnectionType}-color)`,
 			},
-			panelClass: `nodes-list-panel-${endpointType}`,
+			panelClass: `nodes-list-panel-${nodeConnectionType}`,
 		};
 	}
 
