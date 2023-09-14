@@ -34,6 +34,17 @@ const outputTypeParsers: {
 		const response = (execData.response as IDataObject) ?? execData;
 		if (!response) throw new Error('No response from Language Model');
 
+		// Simple LLM output — single string message item
+		if (
+			Array.isArray(response?.messages) &&
+			response?.messages.length === 1 &&
+			typeof response?.messages[0] === 'string'
+		) {
+			return {
+				type: 'text',
+				data: response.messages[0],
+			};
+		}
 		// Use the memory parser if the response is a memory-like(chat) object
 		if (response.messages && Array.isArray(response.messages)) {
 			return outputTypeParsers.memory(execData);
@@ -57,15 +68,6 @@ const outputTypeParsers: {
 			return {
 				type: 'json',
 				data: content,
-			};
-		} else if (
-			Array.isArray(response) &&
-			response.length === 1 &&
-			typeof response[0] === 'string'
-		) {
-			return {
-				type: 'text',
-				data: response[0],
 			};
 		}
 
