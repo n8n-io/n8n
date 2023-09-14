@@ -1190,7 +1190,6 @@ export interface INodePropertyCollection {
 	displayName: string;
 	name: string;
 	values: INodeProperties[];
-	displayItemIndex?: boolean;
 }
 
 export interface INodePropertyValueExtractorBase {

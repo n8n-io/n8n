@@ -25,7 +25,6 @@
 					class="parameter-item"
 				>
 					<div class="parameter-item-wrapper">
-						<div v-if="property.displayItemIndex" class="item-index">{{ index + 1 }}</div>
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon
 								icon="trash"
@@ -366,17 +365,6 @@ export default defineComponent({
 	height: 100%;
 }
 
-.item-index {
-	display: block;
-	position: absolute;
-	z-index: 999;
-	right: 0.1em;
-	top: 0;
-	width: 15px;
-	height: 100%;
-	font-weight: var(--font-weight-bold);
-}
-
 .parameter-item:hover > .parameter-item-wrapper > .delete-option {
 	display: block;
 }
@@ -391,10 +379,6 @@ export default defineComponent({
 
 			.delete-option {
 				top: 14px;
-			}
-
-			.item-index {
-				top: 16px;
 			}
 		}
 	}
