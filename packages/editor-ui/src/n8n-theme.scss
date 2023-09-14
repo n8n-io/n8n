@@ -237,6 +237,7 @@
 		&,
 		&:hover,
 		&:focus {
+			padding-left: 35px;
 			border-radius: var(--border-radius-base);
 			color: var(--color-text-dark);
 			background-color: var(--color-background-base);
