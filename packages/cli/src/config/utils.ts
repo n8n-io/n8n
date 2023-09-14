@@ -2,8 +2,7 @@ import type { SchemaObj } from 'convict';
 
 class NotStringArrayError extends Error {
 	constructor(env: string) {
-		super();
-		this.message = `${env} is not a string array.`;
+		super(`${env} is not a string array.`);
 	}
 }
 

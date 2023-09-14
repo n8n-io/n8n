@@ -1,6 +1,6 @@
 import type { BinaryData } from './types';
 
-export class InvalidModeError extends Error {}
+export class InvalidBinaryModeError extends Error {}
 
 /**
  * Modes for storing binary data:
