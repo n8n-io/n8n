@@ -177,6 +177,7 @@ export const setupTestServer = ({
 				variables: { controller: variablesController, path: 'variables' },
 			};
 
+			config.set('publicApi.swaggerUi.disabled', true);
 			if (enablePublicAPI) {
 				const { apiRouters } = await loadPublicApiVersions(PUBLIC_API_REST_PATH_SEGMENT);
 				map.publicApi = apiRouters;
