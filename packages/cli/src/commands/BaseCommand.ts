@@ -103,7 +103,7 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
-	protected async initBinaryDataService() {
+	async initBinaryDataService() {
 		const binaryDataConfig = config.getEnv('binaryDataService');
 		await Container.get(BinaryDataService).init(binaryDataConfig, true);
 	}
