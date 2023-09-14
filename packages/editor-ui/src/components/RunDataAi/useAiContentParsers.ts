@@ -32,7 +32,6 @@ const outputTypeParsers: {
 	[EndpointType.LanguageModel](execData: IDataObject) {
 		const response = (execData.response as IDataObject) ?? execData;
 		if (!response) throw new Error('No response from Language Model');
-		console.log('🚀 ~ file: useAiContentParsers.ts:31 ~ response:', response);
 
 		// Use the memory parser if the response is a memory-like(chat) object
 		if (response.messages && Array.isArray(response.messages)) {

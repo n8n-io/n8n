@@ -16,7 +16,11 @@
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press" ref="messagesContainer">
-					<div :class="['message', message.sender]" v-for="message in messages">
+					<div
+						v-for="message in messages"
+						:key="`${message.executionId}__${message.sender}`"
+						:class="['message', message.sender]"
+					>
 						<div :class="['content', message.sender]">
 							{{ message.text }}
 

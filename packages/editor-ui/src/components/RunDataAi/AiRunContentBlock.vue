@@ -93,7 +93,6 @@ function parseAiRunData(run: IAiDataContent) {
 		return;
 	}
 	const parsedData = contentParsers.parseAiRunData(run.data, run.type);
-	console.log('🚀 ~ file: AiRunContentBlock.vue:73 ~ parseAiRunData ~ parsedData:', parsedData);
 
 	return parsedData;
 }
