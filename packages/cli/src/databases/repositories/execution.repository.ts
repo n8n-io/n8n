@@ -78,6 +78,8 @@ function parseFiltersToQueryBuilder(
 export class ExecutionRepository extends Repository<ExecutionEntity> {
 	deletionBatchSize = 100;
 
+	hardDeletionInterval: NodeJS.Timer | null = null;
+
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
@@ -88,7 +90,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
 		}
 
-		setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
+		this.setHardDeletionInterval();
+	}
+
+	setHardDeletionInterval() {
+		this.hardDeletionInterval = setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
+	}
+
+	clearHardDeletionInterval() {
+		if (this.hardDeletionInterval) clearInterval(this.hardDeletionInterval);
 	}
 
 	async findMultipleExecutions(
@@ -495,8 +505,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		// Actually delete these executions
 		await this.delete({ id: In(executionIds) });
 
+		/**
+		 * If the volume of executions to prune is as high as the batch size, there is a risk
+		 * that the pruning process is unable to catch up to the creation of new executions,
+		 * with high concurrency possibly leading to errors from duplicate deletions.
+		 *
+		 * Therefore, in this high-volume case we speed up the hard deletion cycle, until
+		 * the number of executions to prune is low enough to fit in a single batch.
+		 */
 		if (executionIds.length === this.deletionBatchSize) {
-			setTimeout(async () => this.hardDelete(), 1000);
+			this.clearHardDeletionInterval();
+
+			setTimeout(async () => this.hardDelete(), 1 * TIME.SECOND);
+		} else {
+			if (this.hardDeletionInterval) return;
+
+			this.setHardDeletionInterval();
 		}
 	}
 }
