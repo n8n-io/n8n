@@ -210,7 +210,7 @@ export class BinaryDataService {
 	private getClient(mode: string) {
 		const client = this.clients[mode];
 
-		if (!client) throw new Error('This method is not supported by in-memory storage mode');
+		if (!client) throw new Error('No binary data client found');
 
 		return client;
 	}
