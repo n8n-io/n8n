@@ -1,20 +1,14 @@
 import type { OptionsWithUri } from 'request';
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 export async function segmentApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 	body: any = {},
@@ -32,7 +26,7 @@ export async function segmentApiRequest(
 		uri: uri || `https://api.segment.io/v1${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 	return this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);

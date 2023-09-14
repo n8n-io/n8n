@@ -1,6 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import * as employee from './employee';
 import * as employeeDocument from './employeeDocument';

@@ -42,7 +42,7 @@ export interface Command {
 	};
 }
 
-export enum CommandType {
+export const enum CommandType {
 	ITEM_MOVE = 'item_move',
 	ITEM_ADD = 'item_add',
 	ITEM_UPDATE = 'item_update',
@@ -95,7 +95,7 @@ export class CreateHandler implements OperationHandler {
 			body.parent_id = options.parentId as string;
 		}
 
-		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body);
+		const data = await todoistApiRequest.call(ctx, 'POST', '/tasks', body as IDataObject);
 
 		return {
 			data,
@@ -147,6 +147,9 @@ export class GetAllHandler implements OperationHandler {
 
 		if (filters.projectId) {
 			qs.project_id = filters.projectId as string;
+		}
+		if (filters.sectionId) {
+			qs.section_id = filters.sectionId as string;
 		}
 		if (filters.labelId) {
 			qs.label = filters.labelId as string;
@@ -238,7 +241,7 @@ export class UpdateHandler implements OperationHandler {
 			body.due_lang = updateFields.dueLang as string;
 		}
 
-		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body);
+		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body as IDataObject);
 
 		return { success: true };
 	}

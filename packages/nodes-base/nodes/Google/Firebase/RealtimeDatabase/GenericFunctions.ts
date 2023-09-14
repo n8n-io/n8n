@@ -1,12 +1,15 @@
 import type { OptionsWithUrl } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, JsonObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	projectId: string,
 	method: string,
 	resource: string,
@@ -35,7 +38,7 @@ export async function googleApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 
@@ -50,7 +53,7 @@ export async function googleApiRequest(
 }
 
 export async function googleApiRequestAllItems(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	projectId: string,
 	method: string,
 	resource: string,
@@ -77,7 +80,7 @@ export async function googleApiRequestAllItems(
 			uri,
 		);
 		qs.pageToken = responseData.nextPageToken;
-		returnData.push.apply(returnData, responseData[resource]);
+		returnData.push.apply(returnData, responseData[resource] as IDataObject[]);
 	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;

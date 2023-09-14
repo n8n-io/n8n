@@ -1,9 +1,8 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
-import { idStringifier } from '../utils/transformers';
 import { datetimeColumnType } from './AbstractEntity';
 import { WorkflowEntity } from './WorkflowEntity';
 
-export enum StatisticsNames {
+export const enum StatisticsNames {
 	productionSuccess = 'production_success',
 	productionError = 'production_error',
 	manualSuccess = 'manual_success',
@@ -25,6 +24,6 @@ export class WorkflowStatistics {
 	@ManyToOne('WorkflowEntity', 'shared')
 	workflow: WorkflowEntity;
 
-	@PrimaryColumn({ transformer: idStringifier })
+	@PrimaryColumn()
 	workflowId: string;
 }

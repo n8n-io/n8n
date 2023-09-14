@@ -1,10 +1,10 @@
 <template>
-	<div>
+	<div data-test-id="parameter-input">
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
 			:parameter="parameter"
-			:value="value"
+			:modelValue="modelValue"
 			:path="path"
 			:isReadOnly="isReadOnly"
 			:droppable="droppable"
@@ -16,19 +16,23 @@
 			:isForCredential="isForCredential"
 			:eventSource="eventSource"
 			:expressionEvaluated="expressionValueComputed"
-			:data-test-id="`parameter-input-${parameter.name}`"
+			:additionalExpressionData="resolvedAdditionalExpressionData"
+			:label="label"
+			:data-test-id="`parameter-input-${parsedParameterName}`"
+			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
 			@drop="onDrop"
 			@textInput="onTextInput"
-			@valueChanged="onValueChanged"
+			@update="onValueChanged"
 		/>
 		<input-hint
 			v-if="expressionOutput"
-			:class="$style.hint"
+			:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
 			data-test-id="parameter-expression-preview"
-			:highlight="!!(expressionOutput && targetItem)"
+			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
 			:hint="expressionOutput"
+			:singleLine="true"
 		/>
 		<input-hint
 			v-else-if="parameterHint"
@@ -40,36 +44,42 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
 import ParameterInput from '@/components/ParameterInput.vue';
-import InputHint from './ParameterInputHint.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import {
+import InputHint from '@/components/ParameterInputHint.vue';
+import type {
+	IDataObject,
 	INodeProperties,
 	INodePropertyMode,
-	IRunData,
-	isResourceLocatorValue,
+	IParameterLabel,
 	NodeParameterValue,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
+import { isResourceLocatorValue } from 'n8n-workflow';
+import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression } from '@/utils';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
 
-export default mixins(showMessage, workflowHelpers).extend({
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
+
+export default defineComponent({
 	name: 'parameter-input-wrapper',
+	mixins: [workflowHelpers],
 	components: {
 		ParameterInput,
 		InputHint,
 	},
-	mounted() {
-		this.$on('optionSelected', this.optionSelected);
-	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},
@@ -79,7 +89,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		path: {
 			type: String,
 		},
-		value: {
+		modelValue: {
 			type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 		},
 		droppable: {
@@ -113,25 +123,35 @@ export default mixins(showMessage, workflowHelpers).extend({
 		eventSource: {
 			type: String,
 		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
+		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useExternalSecretsStore, useEnvironmentsStore),
 		isValueExpression() {
-			return isValueExpression(this.parameter, this.value);
+			return isValueExpression(this.parameter, this.modelValue);
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
 		selectedRLMode(): INodePropertyMode | undefined {
 			if (
-				typeof this.value !== 'object' ||
+				typeof this.modelValue !== 'object' ||
 				this.parameter.type !== 'resourceLocator' ||
-				!isResourceLocatorValue(this.value)
+				!isResourceLocatorValue(this.modelValue)
 			) {
 				return undefined;
 			}
 
-			const mode = this.value.mode;
+			const mode = this.modelValue.mode;
 			if (mode) {
 				return this.parameter.modes?.find((m: INodePropertyMode) => m.name === mode);
 			}
@@ -151,31 +171,38 @@ export default mixins(showMessage, workflowHelpers).extend({
 		targetItem(): TargetItem | null {
 			return this.ndvStore.hoveringItem;
 		},
+		isInputParentOfActiveNode(): boolean {
+			return this.ndvStore.isInputParentOfActiveNode;
+		},
 		expressionValueComputed(): string | null {
-			const inputNodeName: string | undefined = this.ndvStore.ndvInputNodeName;
-			const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
-			if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
+			const value = isResourceLocatorValue(this.modelValue)
+				? this.modelValue.value
+				: this.modelValue;
+			if (!this.activeNode || !this.isValueExpression || typeof value !== 'string') {
 				return null;
 			}
 
-			const inputRunIndex: number | undefined = this.ndvStore.ndvInputRunIndex;
-			const inputBranchIndex: number | undefined = this.ndvStore.ndvInputBranchIndex;
-
 			let computedValue: NodeParameterValue;
 			try {
-				const targetItem = this.targetItem ?? undefined;
-				computedValue = this.resolveExpression(value, undefined, {
-					targetItem,
-					inputNodeName,
-					inputRunIndex,
-					inputBranchIndex,
-				});
+				let opts;
+				if (this.ndvStore.isInputParentOfActiveNode) {
+					opts = {
+						targetItem: this.targetItem ?? undefined,
+						inputNodeName: this.ndvStore.ndvInputNodeName,
+						inputRunIndex: this.ndvStore.ndvInputRunIndex,
+						inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+						additionalKeys: this.resolvedAdditionalExpressionData,
+					};
+				}
+
+				computedValue = this.resolveExpression(value, undefined, opts);
+
 				if (computedValue === null) {
 					return null;
 				}
 
-				if (typeof computedValue === 'string' && computedValue.trim().length === 0) {
-					computedValue = this.$locale.baseText('parameterInput.emptyString');
+				if (typeof computedValue === 'string' && computedValue.length === 0) {
+					return this.$locale.baseText('parameterInput.emptyString');
 				}
 			} catch (error) {
 				computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
@@ -190,6 +217,18 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			return null;
 		},
+		resolvedAdditionalExpressionData() {
+			return {
+				$vars: this.environmentsStore.variablesAsObject,
+				...(this.externalSecretsStore.isEnterpriseExternalSecretsEnabled && this.isForCredential
+					? { $secrets: this.externalSecretsStore.secretsAsObject }
+					: {}),
+				...this.additionalExpressionData,
+			};
+		},
+		parsedParameterName() {
+			return parseResourceMapperFieldName(this.parameter?.name ?? '');
+		},
 	},
 	methods: {
 		onFocus() {
@@ -201,13 +240,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 		onDrop(data: string) {
 			this.$emit('drop', data);
 		},
-		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
-		},
 		onValueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
 			this.$emit('textInput', parameterData);

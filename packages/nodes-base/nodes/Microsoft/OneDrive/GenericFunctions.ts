@@ -1,12 +1,15 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -33,13 +36,13 @@ export async function microsoftApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		if (Object.keys(body).length === 0) {
+		if (Object.keys(body as IDataObject).length === 0) {
 			delete options.body;
 		}
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftOneDriveOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -64,7 +67,7 @@ export async function microsoftApiRequestAllItems(
 		if (uri?.includes('$top')) {
 			delete query.$top;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData['@odata.nextLink'] !== undefined);
 
 	return returnData;
@@ -88,7 +91,7 @@ export async function microsoftApiRequestAllItemsSkip(
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
 		query.$skip += query.$top;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.value.length !== 0);
 
 	return returnData;

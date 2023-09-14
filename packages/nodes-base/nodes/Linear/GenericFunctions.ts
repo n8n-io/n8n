@@ -1,18 +1,18 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import { query } from './Queries';
 
@@ -59,7 +59,7 @@ export async function linearApiRequestAllItems(
 
 	do {
 		responseData = await linearApiRequest.call(this, body);
-		returnData.push.apply(returnData, get(responseData, `${propertyName}.nodes`));
+		returnData.push.apply(returnData, get(responseData, `${propertyName}.nodes`) as IDataObject[]);
 		body.variables.after = get(responseData, `${propertyName}.pageInfo.endCursor`);
 	} while (get(responseData, `${propertyName}.pageInfo.hasNextPage`));
 	return returnData;

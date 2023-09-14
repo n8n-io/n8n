@@ -25,8 +25,8 @@
 
 		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<el-checkbox :value="checked" @change="handleCheckboxChange">{{
-					$locale.baseText('activationModal.dontShowAgain')
+				<el-checkbox :modelValue="checked" @update:modelValue="handleCheckboxChange">{{
+					$locale.baseText('generic.dontShowAgain')
 				}}</el-checkbox>
 				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
 			</div>
@@ -35,7 +35,9 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { createEventBus } from 'n8n-design-system/utils';
 
 import Modal from '@/components/Modal.vue';
 import {
@@ -45,12 +47,11 @@ import {
 	VIEWS,
 } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'ActivationModal',
 	components: {
 		Modal,
@@ -60,7 +61,7 @@ export default Vue.extend({
 		return {
 			WORKFLOW_ACTIVE_MODAL_KEY,
 			checked: false,
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 		};
 	},
 	methods: {

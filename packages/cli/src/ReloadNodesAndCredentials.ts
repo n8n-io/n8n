@@ -1,17 +1,16 @@
 import path from 'path';
 import { realpath, access } from 'fs/promises';
 
-import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
-import type { NodeTypesClass } from '@/NodeTypes';
+import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import type { NodeTypes } from '@/NodeTypes';
 import type { Push } from '@/push';
 
 export const reloadNodesAndCredentials = async (
-	loadNodesAndCredentials: LoadNodesAndCredentialsClass,
-	nodeTypes: NodeTypesClass,
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+	nodeTypes: NodeTypes,
 	push: Push,
 ) => {
-	// eslint-disable-next-line import/no-extraneous-dependencies
-	const { default: debounce } = await import('lodash.debounce');
+	const { default: debounce } = await import('lodash/debounce');
 	// eslint-disable-next-line import/no-extraneous-dependencies
 	const { watch } = await import('chokidar');
 

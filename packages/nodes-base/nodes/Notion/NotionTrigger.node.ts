@@ -1,6 +1,5 @@
-import type { IPollFunctions } from 'n8n-core';
-
 import type {
+	IPollFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -14,7 +13,6 @@ import { getDatabases } from './SearchFunctions';
 
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
 		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
@@ -23,7 +21,7 @@ export class NotionTrigger implements INodeType {
 		description: 'Starts the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
-			name: 'Notion Trigger (Beta)',
+			name: 'Notion Trigger',
 		},
 		credentials: [
 			{
@@ -216,7 +214,7 @@ export class NotionTrigger implements INodeType {
 		}
 
 		// if something changed after the last check
-		if (Array.isArray(data) && data.length && Object.keys(data[0]).length !== 0) {
+		if (Array.isArray(data) && data.length && Object.keys(data[0] as IDataObject).length !== 0) {
 			do {
 				body.page_size = 10;
 				const { results, has_more, next_cursor } = await notionApiRequest.call(
@@ -228,7 +226,7 @@ export class NotionTrigger implements INodeType {
 					'',
 					option,
 				);
-				records.push(...results);
+				records.push(...(results as IDataObject[]));
 				hasMore = has_more;
 				if (next_cursor !== null) {
 					body.start_cursor = next_cursor;

@@ -1,7 +1,13 @@
 /* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import type { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
@@ -29,7 +35,7 @@ export class StripeTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				reponseMode: 'onReceived',
+				responseMode: 'onReceived',
 				path: 'webhook',
 			},
 		],
@@ -496,6 +502,11 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs when a PaymentIntent has been successfully fulfilled.',
 					},
 					{
+						name: 'Payment Intent.requires_action',
+						value: 'payment_intent.requires_action',
+						description: 'Occurs when a PaymentIntent requires an action.',
+					},
+					{
 						name: 'Payment Method.attached',
 						value: 'payment_method.attached',
 						description: 'Occurs whenever a new payment method is attached to a customer.',
@@ -819,7 +830,6 @@ export class StripeTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -877,7 +887,7 @@ export class StripeTrigger implements INodeType {
 					responseData.status !== 'enabled'
 				) {
 					// Required data is missing so was not successful
-					throw new NodeApiError(this.getNode(), responseData, {
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, {
 						message: 'Stripe webhook creation response did not contain the expected data.',
 					});
 				}
@@ -903,7 +913,7 @@ export class StripeTrigger implements INodeType {
 					}
 
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 					delete webhookData.webhookEvents;
 					delete webhookData.webhookSecret;
@@ -929,7 +939,7 @@ export class StripeTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }

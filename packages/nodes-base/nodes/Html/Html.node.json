@@ -13,5 +13,5 @@
 	"subcategories": {
 		"Core Nodes": ["Helpers", "Data Transformation"]
 	},
-	"alias": ["extract", "template"]
+	"alias": ["extract", "template", "table"]
 }

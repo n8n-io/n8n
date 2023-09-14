@@ -1,6 +1,15 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
-import { difference, get, intersection, isEmpty, isEqual, isNull, omit, set, union } from 'lodash';
+
+import difference from 'lodash/difference';
+import get from 'lodash/get';
+import intersection from 'lodash/intersection';
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+import unset from 'lodash/unset';
+import { cloneDeep } from 'lodash';
+import set from 'lodash/set';
+import union from 'lodash/union';
+import { fuzzyCompare } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -14,11 +23,18 @@ type EntryMatches = {
 
 type CompareFunction = <T, U>(a: T, b: U) => boolean;
 
+const processNullishValueFunction = (version: number) => {
+	if (version >= 2) {
+		return <T>(value: T) => (value === undefined ? null : value);
+	}
+	return <T>(value: T) => value || null;
+};
+
 function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
-	resolve: string,
+	options: IDataObject,
 	skipFields: string[],
 	isEntriesEqual: CompareFunction,
 ) {
@@ -29,9 +45,16 @@ function compareItems(
 
 	const keys1 = Object.keys(item1.json);
 	const keys2 = Object.keys(item2.json);
-	const intersectionKeys = intersection(keys1, keys2);
+	const allUniqueKeys = union(keys1, keys2);
 
-	const same = intersectionKeys.reduce((acc, key) => {
+	let keysToCompare;
+	if (options.fuzzyCompare && (options.nodeVersion as number) >= 2.1) {
+		keysToCompare = allUniqueKeys;
+	} else {
+		keysToCompare = intersection(keys1, keys2);
+	}
+
+	const same = keysToCompare.reduce((acc, key) => {
 		if (isEntriesEqual(item1.json[key], item2.json[key])) {
 			acc[key] = item1.json[key];
 		}
@@ -39,27 +62,79 @@ function compareItems(
 	}, {} as IDataObject);
 
 	const sameKeys = Object.keys(same);
-	const allUniqueKeys = union(keys1, keys2);
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
 	const skipped: IDataObject = {};
 
-	differentKeys.forEach((key) => {
-		switch (resolve) {
+	differentKeys.forEach((key, i) => {
+		const processNullishValue = processNullishValueFunction(options.nodeVersion as number);
+
+		switch (options.resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] || null;
+				different[key] = processNullishValue(item1.json[key]);
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] || null;
+				different[key] = processNullishValue(item2.json[key]);
 				break;
 			default:
-				const input1 = item1.json[key] || null;
-				const input2 = item2.json[key] || null;
-				if (skipFields.includes(key)) {
-					skipped[key] = { input1, input2 };
+				let input1 = processNullishValue(item1.json[key]);
+				let input2 = processNullishValue(item2.json[key]);
+
+				let [firstInputName, secondInputName] = ['input1', 'input2'];
+				if ((options.nodeVersion as number) >= 2) {
+					[firstInputName, secondInputName] = ['inputA', 'inputB'];
+				}
+
+				if (
+					(options.nodeVersion as number) >= 2.1 &&
+					!options.disableDotNotation &&
+					!skipFields.some((field) => field === key)
+				) {
+					const skippedFieldsWithDotNotation = skipFields.filter(
+						(field) => field.startsWith(key) && field.includes('.'),
+					);
+
+					input1 = cloneDeep(input1);
+					input2 = cloneDeep(input2);
+
+					if (
+						skippedFieldsWithDotNotation.length &&
+						(typeof input1 !== 'object' || typeof input2 !== 'object')
+					) {
+						throw new Error(
+							`The field \'${key}\' in item ${i} is not an object. It is not possible to use dot notation.`,
+						);
+					}
+
+					if (skipped[key] === undefined && skippedFieldsWithDotNotation.length) {
+						skipped[key] = { [firstInputName]: {}, [secondInputName]: {} };
+					}
+
+					for (const skippedField of skippedFieldsWithDotNotation) {
+						const nestedField = skippedField.replace(`${key}.`, '');
+						set(
+							(skipped[key] as IDataObject)[firstInputName] as IDataObject,
+							nestedField,
+							get(input1, nestedField),
+						);
+						set(
+							(skipped[key] as IDataObject)[secondInputName] as IDataObject,
+							nestedField,
+							get(input2, nestedField),
+						);
+
+						unset(input1, nestedField);
+						unset(input2, nestedField);
+					}
+
+					different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
 				} else {
-					different[key] = { input1, input2 };
+					if (skipFields.includes(key)) {
+						skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+					} else {
+						different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+					}
 				}
 		}
 	});
@@ -160,93 +235,6 @@ function findFirstMatch(
 	return [{ entry: data[index], index }];
 }
 
-const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
-	try {
-		const parsedArray = jsonParse(str);
-		return isEqual(parsedArray, arr);
-	} catch (error) {
-		return false;
-	}
-};
-
-function isFalsy<T>(value: T) {
-	if (isNull(value)) return true;
-	if (typeof value === 'string' && value === '') return true;
-	if (Array.isArray(value) && value.length === 0) return true;
-	return false;
-}
-
-const fuzzyCompare =
-	(options: IDataObject) =>
-	<T, U>(item1: T, item2: U) => {
-		//Fuzzy compare is disabled, so we do strict comparison
-		if (!options.fuzzyCompare) return isEqual(item1, item2);
-
-		//Both types are the same, so we do strict comparison
-		if (!isNull(item1) && !isNull(item2) && typeof item1 === typeof item2) {
-			return isEqual(item1, item2);
-		}
-
-		//Null, empty strings, empty arrays all treated as the same
-		if (isFalsy(item1) && isFalsy(item2)) return true;
-
-		//When a field is missing in one branch and isFalsy() in another, treat them as matching
-		if (isFalsy(item1) && item2 === undefined) return true;
-		if (item1 === undefined && isFalsy(item2)) return true;
-
-		//Compare numbers and strings representing that number
-		if (typeof item1 === 'number' && typeof item2 === 'string') {
-			return item1.toString() === item2;
-		}
-
-		if (typeof item1 === 'string' && typeof item2 === 'number') {
-			return item1 === item2.toString();
-		}
-
-		//Compare objects/arrays and their stringified version
-		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
-			return parseStringAndCompareToObject(item2, item1 as IDataObject);
-		}
-
-		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
-			return parseStringAndCompareToObject(item1, item2 as IDataObject);
-		}
-
-		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
-		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
-			if (item1 === true && item2.toLocaleLowerCase() === 'true') return true;
-			if (item1 === false && item2.toLocaleLowerCase() === 'false') return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
-			if (item2 === true && item1.toLocaleLowerCase() === 'true') return true;
-			if (item2 === false && item1.toLocaleLowerCase() === 'false') return true;
-		}
-
-		//Compare booleans and the numbers/string 0 and 1
-		if (typeof item1 === 'boolean' && typeof item2 === 'number') {
-			if (item1 === true && item2 === 1) return true;
-			if (item1 === false && item2 === 0) return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'number') {
-			if (item2 === true && item1 === 1) return true;
-			if (item2 === false && item1 === 0) return true;
-		}
-
-		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
-			if (item1 === true && item2 === '1') return true;
-			if (item1 === false && item2 === '0') return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
-			if (item2 === true && item1 === '1') return true;
-			if (item2 === false && item1 === '0') return true;
-		}
-
-		return isEqual(item1, item2);
-	};
-
 export function findMatches(
 	input1: INodeExecutionData[],
 	input2: INodeExecutionData[],
@@ -256,10 +244,22 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
-	const isEntriesEqual = fuzzyCompare(options);
+	const isEntriesEqual = fuzzyCompare(
+		options.fuzzyCompare as boolean,
+		options.nodeVersion as number,
+	);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
+
+	if (disableDotNotation && skipFields.some((field) => field.includes('.'))) {
+		const fieldToSkip = skipFields.find((field) => field.includes('.'));
+		throw new Error(
+			`Dot notation is disabled, but field to skip comparing '${
+				fieldToSkip as string
+			}' contains dot`,
+		);
+	}
 
 	const filteredData = {
 		matched: [] as EntryMatches[],
@@ -321,8 +321,18 @@ export function findMatches(
 			let entryFromInput2 = match.json;
 
 			if (skipFields.length) {
-				entryFromInput1 = omit(entryFromInput1, skipFields);
-				entryFromInput2 = omit(entryFromInput2, skipFields);
+				if (disableDotNotation || !skipFields.some((field) => field.includes('.'))) {
+					entryFromInput1 = omit(entryFromInput1, skipFields);
+					entryFromInput2 = omit(entryFromInput2, skipFields);
+				} else {
+					entryFromInput1 = cloneDeep(entryFromInput1);
+					entryFromInput2 = cloneDeep(entryFromInput2);
+
+					skipFields.forEach((field) => {
+						unset(entryFromInput1, field);
+						unset(entryFromInput2, field);
+					});
+				}
 			}
 
 			let isItemsEqual = true;
@@ -370,7 +380,7 @@ export function findMatches(
 								entryMatches.entry,
 								match,
 								fieldsToMatch,
-								options.resolve as string,
+								options,
 								skipFields,
 								isEntriesEqual,
 							),
@@ -404,7 +414,15 @@ export function checkMatchFieldsInput(data: IDataObject[]) {
 	return data as PairToMatch[];
 }
 
-export function checkInput(
+export function checkInput(input: INodeExecutionData[]) {
+	if (!input) return [];
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	return input;
+}
+
+export function checkInputAndThrowError(
 	input: INodeExecutionData[],
 	fields: string[],
 	disableDotNotation: boolean,

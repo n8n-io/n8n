@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable consistent-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
+import 'reflect-metadata';
+import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
@@ -49,11 +51,12 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { getLogger } from '@/Logger';
 
 import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
-import { getLicense } from './License';
+import { License } from '@/License';
+import { InternalHooks } from '@/InternalHooks';
+import { PostHogClient } from '@/posthog';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -73,7 +76,6 @@ class WorkflowRunnerProcess {
 		[key: string]: IWorkflowExecuteProcess;
 	} = {};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		setTimeout(() => {
 			// Attempt a graceful shutdown, giving executions 30 seconds to finish
@@ -87,7 +89,6 @@ class WorkflowRunnerProcess {
 
 		await initErrorHandling();
 
-		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
 		LoggerProxy.init(logger);
 
@@ -101,38 +102,36 @@ class WorkflowRunnerProcess {
 
 		this.startedAt = new Date();
 
+		// Init db since we need to read the license.
+		await Db.init();
+
 		const userSettings = await UserSettings.prepareUserSettings();
 
-		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.init();
 
-		const nodeTypes = NodeTypes(loadNodesAndCredentials);
-		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+		const nodeTypes = Container.get(NodeTypes);
+		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
-		const externalHooks = ExternalHooks();
+		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
 		const instanceId = userSettings.instanceId ?? '';
-		await InternalHooksManager.init(instanceId, nodeTypes);
+		await Container.get(PostHogClient).init(instanceId);
+		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
-		// Init db since we need to read the license.
-		await Db.init();
-
-		const license = getLicense();
+		const license = Container.get(License);
 		await license.init(instanceId);
 
-		// Start timeout for the execution
-		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
-		// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-		if (this.data.workflowData.settings && this.data.workflowData.settings.executionTimeout) {
-			workflowTimeout = this.data.workflowData.settings.executionTimeout as number; // preference on workflow setting
-		}
+		const workflowSettings = this.data.workflowData.settings ?? {};
 
+		// Start timeout for the execution
+		let workflowTimeout = workflowSettings.executionTimeout ?? config.getEnv('executions.timeout'); // initialize with default
 		if (workflowTimeout > 0) {
 			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout'));
 		}
@@ -169,6 +168,7 @@ class WorkflowRunnerProcess {
 			undefined,
 			workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
 		);
+		additionalData.restartExecutionId = this.data.restartExecutionId;
 		additionalData.hooks = this.getProcessForwardHooks();
 
 		additionalData.hooks.hookFunctions.sendResponse = [
@@ -191,12 +191,10 @@ class WorkflowRunnerProcess {
 			}
 
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.error(
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem sending UI data to parent process: "${error.message}"`,
 				);
 			}
@@ -229,7 +227,7 @@ class WorkflowRunnerProcess {
 				};
 			});
 
-			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+			void Container.get(InternalHooks).onWorkflowBeforeExecute(executionId || '', runData);
 
 			let result: IRun;
 			try {
@@ -250,7 +248,7 @@ class WorkflowRunnerProcess {
 				const { workflow } = executeWorkflowFunctionOutput;
 				result = await workflowExecute.processRunExecutionData(workflow);
 				await externalHooks.run('workflow.postExecute', [result, workflowData, executionId]);
-				void InternalHooksManager.getInstance().onWorkflowPostExecute(
+				void Container.get(InternalHooks).onWorkflowPostExecute(
 					executionId,
 					workflowData,
 					result,
@@ -294,13 +292,7 @@ class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
-			let startNode;
-			if (
-				this.data.startNodes?.length === 1 &&
-				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
-			) {
-				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
-			}
+			const startNode = WorkflowHelpers.getExecutionStartNode(this.data, this.workflow);
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);
@@ -326,7 +318,7 @@ class WorkflowRunnerProcess {
 	 * Sends hook data to the parent process that it executes them
 	 *
 	 */
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
 		try {
 			await sendToParentProcess('processHook', {
@@ -375,7 +367,7 @@ class WorkflowRunnerProcess {
 		};
 
 		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const key of Object.keys(preExecuteFunctions)) {
 			if (hookFunctions[key] === undefined) {
 				hookFunctions[key] = [];
@@ -442,7 +434,6 @@ process.on('message', async (message: IProcessMessage) => {
 			if (workflowRunner.workflowExecute !== undefined) {
 				const executionIds = Object.keys(workflowRunner.childExecutions);
 
-				// eslint-disable-next-line no-restricted-syntax
 				for (const executionId of executionIds) {
 					const childWorkflowExecute = workflowRunner.childExecutions[executionId];
 					runData = childWorkflowExecute.workflowExecute.getFullRunData(
@@ -454,7 +445,7 @@ process.on('message', async (message: IProcessMessage) => {
 							: new WorkflowOperationError('Workflow-Execution has been canceled!');
 
 					// If there is any data send it to parent process, if execution timedout add the error
-					// eslint-disable-next-line no-await-in-loop
+
 					await childWorkflowExecute.workflowExecute.processSuccessExecution(
 						workflowRunner.childExecutions[executionId].startedAt,
 						childWorkflowExecute.workflow,
@@ -469,6 +460,8 @@ process.on('message', async (message: IProcessMessage) => {
 					message.type === 'timeout'
 						? new WorkflowOperationError('Workflow execution timed out!')
 						: new WorkflowOperationError('Workflow-Execution has been canceled!');
+
+				runData.status = message.type === 'timeout' ? 'failed' : 'canceled';
 
 				// If there is any data send it to parent process, if execution timedout add the error
 				await workflowRunner.workflowExecute.processSuccessExecution(
@@ -493,8 +486,7 @@ process.on('message', async (message: IProcessMessage) => {
 					status: 'canceled',
 				};
 
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
+				await workflowRunner.sendHookToParentProcess('workflowExecuteAfter', [runData]);
 			}
 
 			await sendToParentProcess(message.type === 'timeout' ? message.type : 'end', {
@@ -504,10 +496,11 @@ process.on('message', async (message: IProcessMessage) => {
 			// Stop process
 			process.exit();
 		} else if (message.type === 'executionId') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			workflowRunner.executionIdCallback(message.data.executionId);
 		}
 	} catch (error) {
+		workflowRunner.logger.error(error.message);
+
 		// Catch all uncaught errors and forward them to parent process
 		const executionError = {
 			...error,

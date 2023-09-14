@@ -1,12 +1,12 @@
 import type { IHourlyRateDto, IMembershipDto } from './CommonDtos';
 
-enum AdminOnlyPagesEnum {
+const enum AdminOnlyPagesEnum {
 	PROJECT = 'PROJECT',
 	TEAM = 'TEAM',
 	REPORTS = 'REPORTS',
 }
 
-enum DaysOfWeekEnum {
+const enum DaysOfWeekEnum {
 	MONDAY = 'MONDAY',
 	TUESDAY = 'TUESDAY',
 	WEDNESDAY = 'WEDNESDAY',
@@ -16,13 +16,13 @@ enum DaysOfWeekEnum {
 	SUNDAY = 'SUNDAY',
 }
 
-enum DatePeriodEnum {
+const enum DatePeriodEnum {
 	DAYS = 'DAYS',
 	WEEKS = 'WEEKS',
 	MONTHS = 'MONTHS',
 }
 
-enum AutomaticLockTypeEnum {
+const enum AutomaticLockTypeEnum {
 	WEEKLY = 'WEEKLY',
 	MONTHLY = 'MONTHLY',
 	OLDER_THAN = 'OLDER_THAN',

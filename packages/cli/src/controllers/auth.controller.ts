@@ -1,64 +1,110 @@
 import validator from 'validator';
-import { Get, Post, RestController } from '@/decorators';
-import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
+import { In } from 'typeorm';
+import { Container } from 'typedi';
+import { Authorized, Get, Post, RestController } from '@/decorators';
+import {
+	AuthError,
+	BadRequestError,
+	InternalServerError,
+	UnauthorizedError,
+} from '@/ResponseHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
+import { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import { LoginRequest, UserRequest } from '@/requests';
-import type { Repository } from 'typeorm';
-import { In } from 'typeorm';
-import type { Config } from '@/config';
-import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser } from '@/Interfaces';
+import { Config } from '@/config';
+import { IInternalHooksClass } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';
+import { PostHogClient } from '@/posthog';
+import {
+	getCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
+} from '@/sso/ssoHelpers';
+import { InternalHooks } from '../InternalHooks';
+import { License } from '@/License';
+import { UserService } from '@/services/user.service';
+import { MfaService } from '@/Mfa/mfa.service';
 
 @RestController()
 export class AuthController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userRepository: Repository<User>;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		repositories,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User'>;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly mfaService: MfaService,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Log in a user.
-	 * Authless endpoint.
 	 */
 	@Post('/login')
-	async login(req: LoginRequest, res: Response): Promise<PublicUser> {
-		const { email, password } = req.body;
+	async login(req: LoginRequest, res: Response): Promise<PublicUser | undefined> {
+		const { email, password, mfaToken, mfaRecoveryCode } = req.body;
 		if (!email) throw new Error('Email is required to log in');
 		if (!password) throw new Error('Password is required to log in');
 
-		const user =
-			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+		let user: User | undefined;
 
-		if (user) {
-			await issueCookie(res, user);
-			return sanitizeUser(user);
+		let usedAuthenticationMethod = getCurrentAuthenticationMethod();
+		if (isSamlCurrentAuthenticationMethod()) {
+			// attempt to fetch user data with the credentials, but don't log in yet
+			const preliminaryUser = await handleEmailLogin(email, password);
+			// if the user is an owner, continue with the login
+			if (
+				preliminaryUser?.globalRole?.name === 'owner' ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
+				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
+			} else {
+				throw new AuthError('SSO is enabled, please log in with SSO');
+			}
+		} else if (isLdapCurrentAuthenticationMethod()) {
+			user = await handleLdapLogin(email, password);
+		} else {
+			user = await handleEmailLogin(email, password);
 		}
 
+		if (user) {
+			if (user.mfaEnabled) {
+				if (!mfaToken && !mfaRecoveryCode) {
+					throw new AuthError('MFA Error', 998);
+				}
+
+				const { decryptedRecoveryCodes, decryptedSecret } =
+					await this.mfaService.getSecretAndRecoveryCodes(user.id);
+
+				user.mfaSecret = decryptedSecret;
+				user.mfaRecoveryCodes = decryptedRecoveryCodes;
+
+				const isMFATokenValid =
+					(await this.validateMfaToken(user, mfaToken)) ||
+					(await this.validateMfaRecoveryCode(user, mfaRecoveryCode));
+
+				if (!isMFATokenValid) {
+					throw new AuthError('Invalid mfa token or recovery code');
+				}
+			}
+
+			await issueCookie(res, user);
+			void Container.get(InternalHooks).onUserLoginSuccess({
+				user,
+				authenticationMethod: usedAuthenticationMethod,
+			});
+
+			return this.userService.toPublic(user, { posthog: this.postHog });
+		}
+		void Container.get(InternalHooks).onUserLoginFailed({
+			user: email,
+			authenticationMethod: usedAuthenticationMethod,
+			reason: 'wrong credentials',
+		});
 		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 
@@ -76,7 +122,8 @@ export class AuthController {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				return sanitizeUser(user);
+
+				return await this.userService.toPublic(user, { posthog: this.postHog });
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
@@ -87,10 +134,7 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userRepository.findOneOrFail({
-				relations: ['globalRole'],
-				where: {},
-			});
+			user = await this.userService.findOneOrFail({ where: {} });
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',
@@ -102,16 +146,24 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-		return sanitizeUser(user);
+		return this.userService.toPublic(user, { posthog: this.postHog });
 	}
 
 	/**
 	 * Validate invite token to enable invitee to set up their account.
-	 * Authless endpoint.
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
 		const { inviterId, inviteeId } = req.query;
+		const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
+
+		if (!isWithinUsersLimit) {
+			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
+				inviterId,
+				inviteeId,
+			});
+			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+		}
 
 		if (!inviterId || !inviteeId) {
 			this.logger.debug(
@@ -131,7 +183,10 @@ export class AuthController {
 			}
 		}
 
-		const users = await this.userRepository.find({ where: { id: In([inviterId, inviteeId]) } });
+		const users = await this.userService.findMany({
+			where: { id: In([inviterId, inviteeId]) },
+			relations: ['globalRole'],
+		});
 		if (users.length !== 2) {
 			this.logger.debug(
 				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
@@ -168,11 +223,34 @@ export class AuthController {
 
 	/**
 	 * Log out a user.
-	 * Authless endpoint.
 	 */
+	@Authorized()
 	@Post('/logout')
 	logout(req: Request, res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 		return { loggedOut: true };
+	}
+
+	private async validateMfaToken(user: User, token?: string) {
+		if (!!!token) return false;
+		return this.mfaService.totp.verifySecret({
+			secret: user.mfaSecret ?? '',
+			token,
+		});
+	}
+
+	private async validateMfaRecoveryCode(user: User, mfaRecoveryCode?: string) {
+		if (!!!mfaRecoveryCode) return false;
+		const index = user.mfaRecoveryCodes.indexOf(mfaRecoveryCode);
+		if (index === -1) return false;
+
+		// remove used recovery code
+		user.mfaRecoveryCodes.splice(index, 1);
+
+		await this.userService.update(user.id, {
+			mfaRecoveryCodes: this.mfaService.encryptRecoveryCodes(user.mfaRecoveryCodes),
+		});
+
+		return true;
 	}
 }

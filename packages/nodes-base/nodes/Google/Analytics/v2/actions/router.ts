@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { GoogleAnalytics, ReportBasedOnProperty } from './node.type';
@@ -48,5 +47,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw error;
 		}
 	}
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

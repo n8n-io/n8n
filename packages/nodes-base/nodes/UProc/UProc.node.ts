@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -103,7 +102,6 @@ export class UProc implements INodeType {
 				return field.name;
 			});
 
-		const _requestPromises = [];
 		for (let i = 0; i < length; i++) {
 			try {
 				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();

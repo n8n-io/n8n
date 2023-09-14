@@ -1,16 +1,20 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
-import type { IDataObject, INodePropertyOptions } from 'n8n-workflow';
-import { LoggerProxy as Logger, NodeApiError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	INodePropertyOptions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
 
 function getOptions(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 
@@ -29,16 +33,15 @@ function getOptions(
 		json: true,
 	};
 
-	if (!Object.keys(options.body).length) {
+	if (!Object.keys(options.body as IDataObject).length) {
 		delete options.body;
 	}
 
-	//@ts-ignore
 	return options;
 }
 
 async function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
@@ -80,7 +83,7 @@ async function getAccessToken(
 }
 
 export async function salesforceApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 
@@ -105,7 +108,7 @@ export async function salesforceApiRequest(
 				qs,
 				instance_url as string,
 			);
-			Logger.debug(
+			this.logger.debug(
 				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.uri}`,
 			);
 			options.headers!.Authorization = `Bearer ${access_token}`;
@@ -126,15 +129,15 @@ export async function salesforceApiRequest(
 				qs,
 				credentials.oauthTokenData.instance_url,
 			);
-			Logger.debug(
+			this.logger.debug(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
 			Object.assign(options, option);
-			//@ts-ignore
+
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -155,7 +158,7 @@ export async function salesforceApiRequestAllItems(
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
@@ -178,7 +181,7 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 }
 
 export function getValue(value: any) {
-	if (moment(value).isValid()) {
+	if (moment(value as string).isValid()) {
 		return value;
 	} else if (typeof value === 'string') {
 		return `'${value}'`;

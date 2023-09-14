@@ -1,18 +1,16 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+} from 'n8n-workflow';
 
 import moment from 'moment';
 
 export async function cortexApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -34,7 +32,7 @@ export async function cortexApiRequest(
 	if (Object.keys(option).length !== 0) {
 		options = Object.assign({}, options, option);
 	}
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	if (Object.keys(query).length === 0) {

@@ -8,7 +8,7 @@ import { entities } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
-import type { DatabaseType } from '@/Interfaces';
+import type { DatabaseType } from '@db/types';
 import config from '@/config';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
@@ -24,6 +24,7 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 						UserSettings.getUserN8nFolderPath(),
 						config.getEnv('database.sqlite.database'),
 					),
+					enableWAL: config.getEnv('database.sqlite.enableWAL'),
 			  }
 			: {
 					database: config.getEnv(`database.${configDBType}.database`),
@@ -35,7 +36,6 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
-		migrationsRun: false,
 		migrationsTableName: `${entityPrefix}migrations`,
 		cli: { entitiesDir, migrationsDir },
 		...connectionDetails,

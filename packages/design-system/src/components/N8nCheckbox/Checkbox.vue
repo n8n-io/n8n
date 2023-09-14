@@ -5,10 +5,12 @@
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
-		:value="value"
-		@change="onChange"
+		:modelValue="modelValue"
+		@update:modelValue="onUpdateModelValue"
 	>
+		<slot></slot>
 		<n8n-input-label
+			v-if="label"
 			:label="label"
 			:tooltipText="tooltipText"
 			:bold="false"
@@ -19,11 +21,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { Checkbox as ElCheckbox } from 'element-ui';
+import { defineComponent } from 'vue';
+import { ElCheckbox } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-checkbox',
 	components: {
 		ElCheckbox,
@@ -32,7 +34,6 @@ export default Vue.extend({
 	props: {
 		label: {
 			type: String,
-			required: true,
 		},
 		disabled: {
 			type: Boolean,
@@ -40,13 +41,12 @@ export default Vue.extend({
 		},
 		tooltipText: {
 			type: String,
-			required: false,
 		},
 		indeterminate: {
 			type: Boolean,
 			default: false,
 		},
-		value: {
+		modelValue: {
 			type: Boolean,
 			default: false,
 		},
@@ -57,8 +57,8 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onChange(event: Event) {
-			this.$emit('input', event);
+		onUpdateModelValue(value: boolean) {
+			this.$emit('update:modelValue', value);
 		},
 		onLabelClick() {
 			const checkboxComponent = this.$refs.checkbox as ElCheckbox;
@@ -76,6 +76,7 @@ export default Vue.extend({
 .n8nCheckbox {
 	display: flex !important;
 	white-space: normal !important;
+	margin-bottom: var(--spacing-2xs);
 
 	span {
 		white-space: normal;
@@ -83,6 +84,7 @@ export default Vue.extend({
 
 	label {
 		cursor: pointer;
+		margin-bottom: 0;
 	}
 }
 </style>

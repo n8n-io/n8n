@@ -1,17 +1,16 @@
 import type { OptionsWithUrl } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 async function getMetadata(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	oauthTokenData: IDataObject,
 ) {
 	const credentials = await this.getCredentials('mailchimpOAuth2Api');
@@ -28,7 +27,7 @@ async function getMetadata(
 }
 
 export async function mailchimpApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
 
@@ -51,7 +50,7 @@ export async function mailchimpApiRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -78,7 +77,7 @@ export async function mailchimpApiRequest(
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -100,7 +99,7 @@ export async function mailchimpApiRequestAllItems(
 
 	do {
 		responseData = await mailchimpApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.offset += query.count;
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);
 

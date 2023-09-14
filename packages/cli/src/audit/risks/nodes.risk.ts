@@ -2,7 +2,7 @@ import * as path from 'path';
 import glob from 'fast-glob';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { getNodeTypes } from '@/audit/utils';
-import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
+import { CommunityPackageService } from '@/services/communityPackage.service';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
 	ENV_VARS_DOCS_URL,
@@ -12,9 +12,10 @@ import {
 } from '@/audit/constants';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
+import { Container } from 'typedi';
 
 async function getCommunityNodeDetails() {
-	const installedPackages = await getAllInstalledPackages();
+	const installedPackages = await Container.get(CommunityPackageService).getAllInstalledPackages();
 
 	return installedPackages.reduce<Risk.CommunityNodeDetails[]>((acc, pkg) => {
 		pkg.installedNodes.forEach((node) =>
@@ -32,7 +33,8 @@ async function getCommunityNodeDetails() {
 async function getCustomNodeDetails() {
 	const customNodeTypes: Risk.CustomNodeDetails[] = [];
 
-	for (const customDir of LoadNodesAndCredentials().getCustomDirectories()) {
+	const nodesAndCredentials = Container.get(LoadNodesAndCredentials);
+	for (const customDir of nodesAndCredentials.getCustomDirectories()) {
 		const customNodeFiles = await glob('**/*.node.js', { cwd: customDir, absolute: true });
 
 		for (const nodeFile of customNodeFiles) {

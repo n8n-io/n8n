@@ -1,6 +1,10 @@
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
@@ -51,7 +55,7 @@ export async function bubbleApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -73,7 +77,7 @@ export async function bubbleApiRequestAllItems(
 	do {
 		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
 		qs.cursor += qs.limit;
-		returnData.push.apply(returnData, responseData.response.results);
+		returnData.push.apply(returnData, responseData.response.results as IDataObject[]);
 	} while (responseData.response.remaining !== 0);
 
 	return returnData;

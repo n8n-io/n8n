@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container">
-		<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('click')" />
+		<GoogleAuthButton v-if="isGoogleOAuthType" @click.stop="$emit('click')" />
 		<n8n-button
 			v-else
 			:label="$locale.baseText('credentialEdit.oAuthButton.connectMyAccount')"
@@ -12,7 +12,6 @@
 
 <script lang="ts" setup>
 import GoogleAuthButton from './GoogleAuthButton.vue';
-import Vue from 'vue';
 
 defineProps<{
 	isGoogleOAuthType: boolean;

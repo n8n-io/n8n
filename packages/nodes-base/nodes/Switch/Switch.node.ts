@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeParameters,
 	INodeType,
@@ -477,7 +477,6 @@ export class Switch implements INodeType {
 				],
 			},
 
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'Fallback Output',
 				name: 'fallbackOutput',
@@ -618,7 +617,7 @@ export class Switch implements INodeType {
 			}
 		};
 
-		// Itterate over all items to check to which output they should be routed to
+		// Iterate over all items to check to which output they should be routed to
 		itemLoop: for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				item = items[itemIndex];

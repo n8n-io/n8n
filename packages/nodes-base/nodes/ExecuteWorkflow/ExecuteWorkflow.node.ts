@@ -1,7 +1,7 @@
 import { readFile as fsReadFile } from 'fs/promises';
 
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
@@ -26,6 +26,19 @@ export class ExecuteWorkflow implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'hidden',
+				noDataExpression: true,
+				default: 'call_workflow',
+				options: [
+					{
+						name: 'Call Another Workflow',
+						value: 'call_workflow',
+					},
+				],
+			},
 			{
 				displayName: 'Source',
 				name: 'source',
@@ -195,7 +208,7 @@ export class ExecuteWorkflow implements INodeType {
 			return receivedData;
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 
 			throw error;

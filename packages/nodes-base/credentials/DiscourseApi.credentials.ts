@@ -57,7 +57,7 @@ export class DiscourseApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',
-			url: '/admin/groups.json',
+			url: '/groups.json',
 			method: 'GET',
 		},
 	};

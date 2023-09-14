@@ -1,7 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 
 import { inspect } from 'util';
 import winston from 'winston';
@@ -24,7 +21,6 @@ export class Logger implements ILogger {
 			.map((output) => output.trim());
 
 		this.logger = winston.createLogger({
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			level,
 			silent: level === 'silent',
 		});
@@ -36,9 +32,8 @@ export class Logger implements ILogger {
 					winston.format.metadata(),
 					winston.format.timestamp(),
 					winston.format.colorize({ all: true }),
-					// eslint-disable-next-line @typescript-eslint/no-shadow
+
 					winston.format.printf(({ level, message, timestamp, metadata }) => {
-						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						return `${timestamp} | ${level.padEnd(18)} | ${message}${
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							Object.keys(metadata).length ? ` ${JSON.stringify(inspect(metadata))}` : ''
@@ -118,7 +113,6 @@ export class Logger implements ILogger {
 
 let activeLoggerInstance: Logger | undefined;
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export function getLogger() {
 	if (activeLoggerInstance === undefined) {
 		activeLoggerInstance = new Logger();

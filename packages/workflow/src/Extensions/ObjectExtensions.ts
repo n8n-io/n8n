@@ -64,7 +64,7 @@ export function compact(value: object): object {
 		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
 				if (Object.keys(val as object).length === 0) continue;
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				newObj[key] = compact(val);
 			} else {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
@@ -82,48 +82,71 @@ export function urlEncode(value: object) {
 
 isEmpty.doc = {
 	name: 'isEmpty',
-	description: 'Checks if the Object has no key-value pairs',
+	description: 'Checks if the Object has no key-value pairs.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-isEmpty',
 };
 
 isNotEmpty.doc = {
 	name: 'isNotEmpty',
-	description: 'Checks if the Object has key-value pairs',
+	description: 'Checks if the Object has key-value pairs.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-isNotEmpty',
 };
 
 compact.doc = {
 	name: 'compact',
-	description: 'Removes empty values from an Object',
+	description: 'Removes empty values from an Object.',
 	returnType: 'boolean',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-compact',
 };
 
 urlEncode.doc = {
 	name: 'urlEncode',
 	description: 'Transforms an Object into a URL parameter list. Only top-level keys are supported.',
 	returnType: 'string',
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-urlEncode',
 };
-
-// @TODO_NEXT_PHASE: Surface extensions below which take args
 
 hasField.doc = {
 	name: 'hasField',
+	description: 'Checks if the Object has a given field. Only top-level keys are supported.',
 	returnType: 'boolean',
+	args: [{ name: 'fieldName', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-hasField',
 };
 
 removeField.doc = {
 	name: 'removeField',
+	description: 'Removes a given field from the Object. Only top-level fields are supported.',
 	returnType: 'object',
+	args: [{ name: 'key', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-removeField',
 };
 
 removeFieldsContaining.doc = {
 	name: 'removeFieldsContaining',
+	description:
+		'Removes fields with a given value from the Object. Only top-level values are supported.',
 	returnType: 'object',
+	args: [{ name: 'value', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-removeFieldsContaining',
 };
 
 keepFieldsContaining.doc = {
 	name: 'keepFieldsContaining',
+	description: 'Removes fields that do not match the given value from the Object.',
 	returnType: 'object',
+	args: [{ name: 'value', type: 'string' }],
+	docURL:
+		'https://docs.n8n.io/code-examples/expressions/data-transformation-functions/objects/#object-keepFieldsContaining',
 };
 
 export const objectExtensions: ExtensionMap = {

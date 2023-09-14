@@ -16,6 +16,7 @@
 				v-for="option in currentResults"
 				:key="option.key"
 				:extendAll="extendAll"
+				:redactValues="redactValues"
 				@itemSelected="forwardItemSelected"
 			></variable-selector-item>
 		</div>
@@ -24,9 +25,11 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE } from '@/constants';
 
-import {
+import type {
 	GenericValue,
 	IContextObject,
 	IDataObject,
@@ -36,34 +39,28 @@ import {
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	WorkflowDataProxy,
 } from 'n8n-workflow';
+import { WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
-import {
-	IExecutionResponse,
-	INodeUi,
-	IVariableItemSelected,
-	IVariableSelectorOption,
-} from '@/Interface';
+import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'VariableSelector',
+	mixins: [workflowHelpers],
 	components: {
 		VariableSelectorItem,
 	},
-	props: ['path'],
+	props: ['path', 'redactValues'],
 	data() {
 		return {
 			variableFilter: '',
@@ -295,7 +292,7 @@ export default mixins(workflowHelpers).extend({
 		 * @param {number} [runIndex=0] The index of the run
 		 * @param {string} [inputName='main'] The name of the input
 		 * @param {number} [outputIndex=0] The index of the output
-		 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
 		getNodeRunDataOutput(
 			nodeName: string,
@@ -356,7 +353,7 @@ export default mixins(workflowHelpers).extend({
 		 * @param {string} nodeName The name of the node to get the data of
 		 * @param {IPinData[string]} pinData The node's pin data
 		 * @param {string} filterText Filter text for parameters
-		 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
 		getNodePinDataOutput(
 			nodeName: string,
@@ -364,7 +361,7 @@ export default mixins(workflowHelpers).extend({
 			filterText: string,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
-			const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
+			const outputData = pinData.map((data) => ({ json: data }) as INodeExecutionData)[0];
 
 			return this.getNodeOutput(nodeName, outputData, filterText, useShort);
 		},
@@ -387,7 +384,7 @@ export default mixins(workflowHelpers).extend({
 
 			// Get json data
 			if (outputData.hasOwnProperty('json')) {
-				const jsonPropertyPrefix = useShort === true ? '$json' : `$node["${nodeName}"].json`;
+				const jsonPropertyPrefix = useShort === true ? '$json' : `$('${nodeName}').item.json`;
 
 				const jsonDataOptions: IVariableSelectorOption[] = [];
 				for (const propertyName of Object.keys(outputData.json)) {
@@ -412,7 +409,7 @@ export default mixins(workflowHelpers).extend({
 
 			// Get binary data
 			if (outputData.hasOwnProperty('binary')) {
-				const binaryPropertyPrefix = useShort === true ? '$binary' : `$node["${nodeName}"].binary`;
+				const binaryPropertyPrefix = useShort === true ? '$binary' : `$('${nodeName}').item.binary`;
 
 				const binaryData = [];
 				let binaryPropertyData = [];
@@ -528,7 +525,7 @@ export default mixins(workflowHelpers).extend({
 
 				returnData.push({
 					name: key,
-					key: `$node["${nodeName}"].context["${key}"]`,
+					key: `$('${nodeName}').context["${key}"]`,
 					// @ts-ignore
 					value: nodeContext[key],
 				});
@@ -609,6 +606,7 @@ export default mixins(workflowHelpers).extend({
 			const currentNodeData: IVariableSelectorOption[] = [];
 
 			let tempOptions: IVariableSelectorOption[];
+
 			if (executionData !== null && executionData.data !== undefined) {
 				const runExecutionData: IRunExecutionData = executionData.data;
 
@@ -779,12 +777,7 @@ export default mixins(workflowHelpers).extend({
 					{
 						name: this.$locale.baseText('variableSelector.parameters'),
 						options: this.sortOptions(
-							this.getNodeParameters(
-								nodeName,
-								`$node["${nodeName}"].parameter`,
-								undefined,
-								filterText,
-							),
+							this.getNodeParameters(nodeName, `$('${nodeName}').params`, undefined, filterText),
 						),
 					} as IVariableSelectorOption,
 				];

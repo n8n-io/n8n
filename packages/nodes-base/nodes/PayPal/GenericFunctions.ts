@@ -1,16 +1,14 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	JsonObject,
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-import { BINARY_ENCODING } from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 function getEnvironment(env: string) {
 	return {
@@ -20,12 +18,7 @@ function getEnvironment(env: string) {
 }
 
 async function getAccessToken(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 ): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials.env as string);
@@ -48,17 +41,12 @@ async function getAccessToken(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeOperationError(this.getNode(), error);
+		throw new NodeOperationError(this.getNode(), error as Error);
 	}
 }
 
 export async function payPalApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
 	method: string,
 
@@ -84,7 +72,7 @@ export async function payPalApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -102,7 +90,7 @@ function getNext(links: IDataObject[]): string | undefined {
  * and return all results
  */
 export async function payPalApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	endpoint: string,
 	method: string,
@@ -119,9 +107,9 @@ export async function payPalApiRequestAllItems(
 
 	do {
 		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
-		uri = getNext(responseData.links);
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (getNext(responseData.links) !== undefined);
+		uri = getNext(responseData.links as IDataObject[]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (getNext(responseData.links as IDataObject[]) !== undefined);
 
 	return returnData;
 }

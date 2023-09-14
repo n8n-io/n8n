@@ -1,10 +1,14 @@
 import type { OptionsWithUri } from 'request';
-import type { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import type { IDataObject } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
+	IDataObject,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function googleApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
@@ -43,9 +47,13 @@ export async function googleApiRequest(
 			const [message, ...rest] = parsedError.error.message.split('\n');
 			const description = rest.join('\n');
 			const httpCode = parsedError.error.code;
-			throw new NodeApiError(this.getNode(), error, { message, description, httpCode });
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
+				message,
+				description,
+				httpCode,
+			});
 		}
-		throw new NodeApiError(this.getNode(), error, { message: error.message });
+		throw new NodeApiError(this.getNode(), error as JsonObject, { message: error.message });
 	}
 }
 
@@ -69,7 +77,7 @@ export async function googleApiRequestAllItems(
 		} else {
 			body.pageToken = responseData.nextPageToken;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (
 		(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
 		responseData[propertyName]?.[0].nextPageToken !== undefined
@@ -119,7 +127,7 @@ export function merge(responseData: [any]) {
 	for (const {
 		data: { rows },
 	} of responseData) {
-		allRows.push(...rows);
+		allRows.push(...(rows as IDataObject[]));
 	}
 	response.data.rows = allRows as [];
 	return [response];

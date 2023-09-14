@@ -15,7 +15,8 @@ import {
 import type { User } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
 import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
-import { InternalHooksManager } from '@/InternalHooksManager';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 
 export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -103,14 +104,6 @@ export class LdapSync {
 			role,
 		);
 
-		if (usersToDisable.length) {
-			void InternalHooksManager.getInstance().onLdapUsersDisabled({
-				reason: 'ldap_update',
-				users: usersToDisable.length,
-				user_ids: usersToDisable,
-			});
-		}
-
 		Logger.debug('LDAP - Users processed', {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,
@@ -144,7 +137,7 @@ export class LdapSync {
 			error: errorMessage,
 		});
 
-		void InternalHooksManager.getInstance().onLdapSyncFinished({
+		void Container.get(InternalHooks).onLdapSyncFinished({
 			type: !this.intervalId ? 'scheduled' : `manual_${mode}`,
 			succeeded: true,
 			users_synced: usersToCreate.length + usersToUpdate.length + usersToDisable.length,

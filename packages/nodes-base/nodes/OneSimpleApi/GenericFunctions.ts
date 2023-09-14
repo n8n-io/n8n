@@ -1,8 +1,6 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions } from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, JsonObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function oneSimpleApiRequest(
@@ -36,6 +34,6 @@ export async function oneSimpleApiRequest(
 		const responseData = await this.helpers.request(options);
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

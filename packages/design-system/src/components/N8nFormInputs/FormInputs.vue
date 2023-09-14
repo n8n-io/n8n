@@ -5,7 +5,7 @@
 				<div
 					v-for="(input, index) in filteredInputs"
 					:key="input.name"
-					:class="{ [`mt-${verticalSpacing}`]: index > 0 }"
+					:class="{ [`mt-${verticalSpacing}`]: verticalSpacing && index > 0 }"
 				>
 					<n8n-text
 						color="text-base"
@@ -22,12 +22,13 @@
 						v-bind="input.properties"
 						:name="input.name"
 						:label="input.properties.label || ''"
-						:value="values[input.name]"
+						:modelValue="values[input.name]"
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
-						@input="(value) => onInput(input.name, value)"
+						:teleported="teleported"
+						:tagSize="tagSize"
+						@update:modelValue="(value) => onUpdateModelValue(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
-						@change="(value) => onInput(input.name, value)"
 						@enter="onSubmit"
 					/>
 				</div>
@@ -37,12 +38,15 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
@@ -50,13 +54,12 @@ export default Vue.extend({
 	},
 	props: {
 		inputs: {
-			type: Array,
-			default() {
-				return [[]];
-			},
+			type: Array as PropType<IFormInput[]>,
+			default: (): IFormInput[] => [],
 		},
 		eventBus: {
-			type: Vue,
+			type: Object as PropType<EventBus>,
+			default: (): EventBus => createEventBus(),
 		},
 		columnView: {
 			type: Boolean,
@@ -64,8 +67,17 @@ export default Vue.extend({
 		},
 		verticalSpacing: {
 			type: String,
-			required: false,
-			validator: (value: string): boolean => ['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
+			default: '',
+			validator: (value: string): boolean => ['', 'xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
+		},
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+		tagSize: {
+			type: String,
+			default: 'small',
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
 		},
 	},
 	data() {
@@ -76,19 +88,22 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		(this.inputs as IFormInput[]).forEach((input) => {
+		this.inputs.forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
-				Vue.set(this.values, input.name, input.initialValue);
+				this.values = {
+					...this.values,
+					[input.name]: input.initialValue,
+				};
 			}
 		});
 
 		if (this.eventBus) {
-			this.eventBus.$on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
+			this.eventBus.on('submit', () => this.onSubmit());
 		}
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			return (this.inputs as IFormInput[]).filter((input) =>
+			return this.inputs.filter((input) =>
 				typeof input.shouldDisplay === 'function' ? input.shouldDisplay(this.values) : true,
 			);
 		},
@@ -103,18 +118,22 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onInput(name: string, value: unknown) {
+		onUpdateModelValue(name: string, value: unknown) {
 			this.values = {
 				...this.values,
-				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+				[name]: value,
 			};
-			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+			this.$emit('update', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
-			Vue.set(this.validity, name, valid);
+			this.validity = {
+				...this.validity,
+				[name]: valid,
+			};
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;
+
 			if (this.isReadyToSubmit) {
 				const toSubmit = this.filteredInputs.reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {

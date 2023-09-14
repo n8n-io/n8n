@@ -72,7 +72,7 @@ export async function getRepositories(
 			{},
 			{ q, page, per_page },
 		);
-	} catch (_error) {
+	} catch {
 		// will fail if the owner does not have any repositories
 	}
 

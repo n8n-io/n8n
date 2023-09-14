@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -36,7 +35,7 @@ import type {
 	NewCustomer,
 	NewProduct,
 	Search,
-} from './Types';
+} from './types';
 
 import { capitalCase } from 'change-case';
 
@@ -793,7 +792,7 @@ export class Magento2 implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -811,6 +810,6 @@ export class Magento2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

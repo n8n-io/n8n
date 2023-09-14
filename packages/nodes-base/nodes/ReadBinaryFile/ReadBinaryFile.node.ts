@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -8,6 +12,7 @@ export class ReadBinaryFile implements INodeType {
 		icon: 'fa:file-import',
 		group: ['input'],
 		version: 1,
+		hidden: true,
 		description: 'Reads a binary file from disk',
 		defaults: {
 			name: 'Read Binary File',
@@ -62,15 +67,17 @@ export class ReadBinaryFile implements INodeType {
 				}
 
 				const filePath = this.getNodeParameter('filePath', itemIndex);
+
 				const stream = await this.helpers.createReadStream(filePath);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);
 				returnData.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: error.message,
+							error: (error as Error).message,
 						},
 						pairedItem: {
 							item: itemIndex,
@@ -82,6 +89,6 @@ export class ReadBinaryFile implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

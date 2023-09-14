@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "conventional-changelog": "^4.0.0",
+    "glob": "^10.3.0",
+    "semver": "^7.5.4",
+    "tempfile": "^5.0.0",
+    "typescript": "*"
+  }
+}

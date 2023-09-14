@@ -1,18 +1,6 @@
-import type { Telemetry } from '.';
-
-declare module 'vue/types/vue' {
-	interface Vue {
-		$telemetry: Telemetry;
-	}
-}
-
 declare global {
 	interface Window {
 		rudderanalytics: RudderStack;
-		posthog: {
-			isFeatureEnabled(flagName: string): boolean;
-			getFeatureFlag(flagName: string): boolean | string;
-		};
 	}
 }
 
@@ -64,3 +52,5 @@ interface RudderStack extends Array<unknown> {
 
 	reset(): void;
 }
+
+export {};

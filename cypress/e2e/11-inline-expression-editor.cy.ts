@@ -3,20 +3,18 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Inline expression editor', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openInlineExpressionEditor();
+
+		cy.on('uncaught:exception', (err) => err.name !== 'ExpressionError');
 	});
 
 	it('should resolve primitive resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters.inlineExpressionEditorInput().type('1 + 2');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^3$/);
@@ -35,6 +33,7 @@ describe('Inline expression editor', () => {
 	});
 
 	it('should resolve object resolvables', () => {
+		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
 		WorkflowPage.getters
 			.inlineExpressionEditorInput()
@@ -66,7 +65,8 @@ describe('Inline expression editor', () => {
 	it('should resolve $parameter[]', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
+		// Resolving $parameter is slow, especially on CI runner
 		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
-		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^getAll$/);
+		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
 	});
 });

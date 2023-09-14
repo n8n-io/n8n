@@ -1,6 +1,5 @@
 import { loadClassInIsolation } from 'n8n-core';
 import type {
-	INodesAndCredentials,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypes,
@@ -8,10 +7,18 @@ import type {
 	LoadedClass,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
+import { Service } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
+import { join, dirname } from 'path';
+import { readdir } from 'fs/promises';
+import type { Dirent } from 'fs';
 
-export class NodeTypesClass implements INodeTypes {
-	constructor(private nodesAndCredentials: INodesAndCredentials) {
+@Service()
+export class NodeTypes implements INodeTypes {
+	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {}
+
+	init() {
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
 		this.applySpecialNodeParameters();
@@ -74,19 +81,46 @@ export class NodeTypesClass implements INodeTypes {
 	private get knownNodes() {
 		return this.nodesAndCredentials.known.nodes;
 	}
-}
 
-let nodeTypesInstance: NodeTypesClass | undefined;
+	async getNodeTranslationPath({
+		nodeSourcePath,
+		longNodeType,
+		locale,
+	}: {
+		nodeSourcePath: string;
+		longNodeType: string;
+		locale: string;
+	}) {
+		const nodeDir = dirname(nodeSourcePath);
+		const maxVersion = await this.getMaxVersion(nodeDir);
+		const nodeType = longNodeType.replace('n8n-nodes-base.', '');
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypesClass {
-	if (!nodeTypesInstance) {
-		if (nodesAndCredentials) {
-			nodeTypesInstance = new NodeTypesClass(nodesAndCredentials);
-		} else {
-			throw new Error('NodeTypes not initialized yet');
-		}
+		return maxVersion
+			? join(nodeDir, `v${maxVersion}`, 'translations', locale, `${nodeType}.json`)
+			: join(nodeDir, 'translations', locale, `${nodeType}.json`);
 	}
 
-	return nodeTypesInstance;
+	private async getMaxVersion(dir: string) {
+		const entries = await readdir(dir, { withFileTypes: true });
+
+		const dirnames = entries.reduce<string[]>((acc, cur) => {
+			if (this.isVersionedDirname(cur)) acc.push(cur.name);
+			return acc;
+		}, []);
+
+		if (!dirnames.length) return null;
+
+		return Math.max(...dirnames.map((d) => parseInt(d.charAt(1), 10)));
+	}
+
+	private isVersionedDirname(dirent: Dirent) {
+		if (!dirent.isDirectory()) return false;
+
+		const ALLOWED_VERSIONED_DIRNAME_LENGTH = [2, 3]; // e.g. v1, v10
+
+		return (
+			ALLOWED_VERSIONED_DIRNAME_LENGTH.includes(dirent.name.length) &&
+			dirent.name.toLowerCase().startsWith('v')
+		);
+	}
 }

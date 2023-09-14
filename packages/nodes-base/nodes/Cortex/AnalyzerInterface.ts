@@ -1,6 +1,6 @@
 import type { IDataObject } from 'n8n-workflow';
 
-export enum JobStatus {
+export const enum JobStatus {
 	WAITING = 'Waiting',
 	INPROGRESS = 'InProgress',
 	SUCCESS = 'Success',
@@ -8,14 +8,14 @@ export enum JobStatus {
 	DELETED = 'Deleted',
 }
 
-export enum TLP {
+export const enum TLP {
 	white,
 	green,
 	amber,
 	red,
 }
 
-export enum ObservableDataType {
+export const enum ObservableDataType {
 	'domain' = 'domain',
 	'file' = 'file',
 	'filename' = 'filename',

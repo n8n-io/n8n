@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel ? '' : $locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel ? '' : $locale.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
@@ -10,74 +10,74 @@
 	>
 		<template #options>
 			<parameter-options
+				v-if="displayOptions"
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:showOptions="displayOptions"
 				:showExpressionSelector="showExpressionSelector"
-				@optionSelected="optionSelected"
+				@update:modelValue="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
 		</template>
-		<template>
-			<draggable-target
-				type="mapping"
-				:disabled="isDropDisabled"
-				:sticky="true"
-				:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
-				@drop="onDrop"
-			>
-				<template #default="{ droppable, activeDrop }">
-					<n8n-tooltip
-						placement="left"
-						:manual="true"
-						:value="showMappingTooltip"
-						:buttons="dataMappingTooltipButtons"
-					>
-						<template #content>
-							<span
-								v-html="
-									$locale.baseText(`dataMapping.${displayMode}Hint`, {
-										interpolate: { name: parameter.displayName },
-									})
-								"
-							/>
-						</template>
-						<parameter-input-wrapper
-							ref="param"
-							:parameter="parameter"
-							:value="value"
-							:path="path"
-							:isReadOnly="isReadOnly"
-							:droppable="droppable"
-							:activeDrop="activeDrop"
-							:forceShowExpression="forceShowExpression"
-							:hint="hint"
-							:hide-issues="hideIssues"
-							@valueChanged="valueChanged"
-							@textInput="onTextInput"
-							@focus="onFocus"
-							@blur="onBlur"
-							@drop="onDrop"
-							inputSize="small"
+		<draggable-target
+			type="mapping"
+			:disabled="isDropDisabled"
+			:sticky="true"
+			:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
+			@drop="onDrop"
+		>
+			<template #default="{ droppable, activeDrop }">
+				<n8n-tooltip
+					placement="left"
+					:visible="showMappingTooltip"
+					:buttons="dataMappingTooltipButtons"
+				>
+					<template #content>
+						<span
+							v-html="
+								i18n.baseText(`dataMapping.${displayMode}Hint`, {
+									interpolate: { name: parameter.displayName },
+								})
+							"
 						/>
-					</n8n-tooltip>
-				</template>
-			</draggable-target>
-		</template>
+					</template>
+					<parameter-input-wrapper
+						ref="param"
+						:parameter="parameter"
+						:modelValue="value"
+						:path="path"
+						:isReadOnly="isReadOnly"
+						:droppable="droppable"
+						:activeDrop="activeDrop"
+						:forceShowExpression="forceShowExpression"
+						:hint="hint"
+						:hide-issues="hideIssues"
+						:label="label"
+						:event-bus="eventBus"
+						@update="valueChanged"
+						@textInput="onTextInput"
+						@focus="onFocus"
+						@blur="onBlur"
+						@drop="onDrop"
+						inputSize="small"
+					/>
+				</n8n-tooltip>
+			</template>
+		</draggable-target>
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 
-import { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
+import type { IN8nButton, INodeUi, IRunDataDisplayMode, IUpdateInformation } from '@/Interface';
 
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
-import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/mixins/showMessage';
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
+import { useI18n, useToast } from '@/composables';
 import {
 	hasExpressionMapping,
 	isResourceLocatorValue,
@@ -85,17 +85,38 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
-import { BaseTextKey } from '@/plugins/i18n';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import type {
+	INodeParameters,
+	INodeProperties,
+	INodePropertyMode,
+	IParameterLabel,
+} from 'n8n-workflow';
+import type { BaseTextKey } from '@/plugins/i18n';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useSegment } from '@/stores/segment.store';
+import { externalHooks } from '@/mixins/externalHooks';
+import { getMappedResult } from '@/utils/mappingUtils';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(showMessage).extend({
+const DISPLAY_MODES_WITH_DATA_MAPPING = ['table', 'json', 'schema'];
+
+export default defineComponent({
 	name: 'parameter-input-full',
+	mixins: [externalHooks],
 	components: {
 		ParameterOptions,
 		DraggableTarget,
 		ParameterInputWrapper,
+	},
+	setup() {
+		const eventBus = createEventBus();
+		const i18n = useI18n();
+
+		return {
+			i18n,
+			eventBus,
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -104,7 +125,6 @@ export default mixins(showMessage).extend({
 			forceShowExpression: false,
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
-			localStorageMappingFlag: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true',
 		};
 	},
 	props: {
@@ -140,15 +160,16 @@ export default mixins(showMessage).extend({
 			}),
 		},
 	},
-	created() {
+	mounted() {
 		const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 		this.dataMappingTooltipButtons = [
 			{
 				attrs: {
-					label: this.$locale.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					label: this.i18n.baseText('_reusableBaseText.dismiss' as BaseTextKey),
+					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
-					click: mappingTooltipDismissHandler,
+					onClick: mappingTooltipDismissHandler,
 				},
 			},
 		];
@@ -159,7 +180,7 @@ export default mixins(showMessage).extend({
 			return this.ndvStore.activeNode;
 		},
 		hint(): string | null {
-			return this.$locale.nodeText().hint(this.parameter, this.path);
+			return this.i18n.nodeText().hint(this.parameter, this.path);
 		},
 		isInputTypeString(): boolean {
 			return this.parameter.type === 'string';
@@ -185,10 +206,11 @@ export default mixins(showMessage).extend({
 		showMappingTooltip(): boolean {
 			return (
 				this.mappingTooltipEnabled &&
+				!this.ndvStore.isMappingOnboarded &&
 				this.focused &&
 				this.isInputTypeString &&
 				!this.isInputDataEmpty &&
-				!this.localStorageMappingFlag
+				DISPLAY_MODES_WITH_DATA_MAPPING.includes(this.displayMode)
 			);
 		},
 	},
@@ -214,53 +236,25 @@ export default mixins(showMessage).extend({
 			this.menuExpanded = expanded;
 		},
 		optionSelected(command: string) {
-			if (this.$refs.param) {
-				(this.$refs.param as Vue).$emit('optionSelected', command);
-			}
+			this.eventBus.emit('optionSelected', command);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			this.$emit('valueChanged', parameterData);
+			this.$emit('update', parameterData);
 		},
 		onTextInput(parameterData: IUpdateInformation) {
-			const param = this.$refs.param as Vue | undefined;
-
 			if (isValueExpression(this.parameter, parameterData.value)) {
-				param?.$emit('optionSelected', 'addExpression');
+				this.eventBus.emit('optionSelected', 'addExpression');
 			}
 		},
-		onDrop(data: string) {
-			const useDataPath = !!this.parameter.requiresDataPath && data.startsWith('{{ $json');
-			if (!useDataPath) {
+		onDrop(newParamValue: string) {
+			const updatedValue = getMappedResult(this.parameter, newParamValue, this.value);
+			const prevValue = this.isResourceLocator ? this.value.value : this.value;
+
+			if (updatedValue.startsWith('=')) {
 				this.forceShowExpression = true;
 			}
 			setTimeout(() => {
 				if (this.node) {
-					const prevValue = this.isResourceLocator ? this.value.value : this.value;
-					let updatedValue: string;
-					if (useDataPath) {
-						const newValue = data
-							.replace('{{ $json', '')
-							.replace(new RegExp('^\\.'), '')
-							.replace(new RegExp('}}$'), '')
-							.trim();
-
-						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
-							updatedValue = `${prevValue}, ${newValue}`;
-						} else {
-							updatedValue = newValue;
-						}
-					} else if (
-						typeof prevValue === 'string' &&
-						prevValue.startsWith('=') &&
-						prevValue.length > 1
-					) {
-						updatedValue = `${prevValue} ${data}`;
-					} else if (prevValue && ['string', 'json'].includes(this.parameter.type)) {
-						updatedValue = prevValue === '=' ? `=${data}` : `=${prevValue} ${data}`;
-					} else {
-						updatedValue = `=${data}`;
-					}
-
 					let parameterData;
 					if (this.isResourceLocator) {
 						if (!isResourceLocatorValue(this.value)) {
@@ -302,16 +296,17 @@ export default mixins(showMessage).extend({
 						};
 					}
 
-					this.$emit('valueChanged', parameterData);
+					this.valueChanged(parameterData);
 
-					if (window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true') {
-						this.$showMessage({
-							title: this.$locale.baseText('dataMapping.success.title'),
-							message: this.$locale.baseText('dataMapping.success.moreInfo'),
+					if (!this.ndvStore.isMappingOnboarded) {
+						this.showMessage({
+							title: this.i18n.baseText('dataMapping.success.title'),
+							message: this.i18n.baseText('dataMapping.success.moreInfo'),
 							type: 'success',
+							dangerouslyUseHTMLString: true,
 						});
 
-						window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+						this.ndvStore.disableMappingHint();
 					}
 
 					this.ndvStore.setMappingTelemetry({
@@ -326,12 +321,15 @@ export default mixins(showMessage).extend({
 							hasExpressionMapping(prevValue),
 						success: true,
 					});
+
+					const segment = useSegment();
+					segment.track(segment.EVENTS.MAPPED_DATA);
 				}
 				this.forceShowExpression = false;
 			}, 200);
 		},
 		onMappingTooltipDismissed() {
-			this.localStorageMappingFlag = true;
+			this.ndvStore.disableMappingHint(false);
 		},
 	},
 	watch: {

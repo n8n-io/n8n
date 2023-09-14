@@ -3,24 +3,33 @@
 		ref="layout"
 		resource-key="workflows"
 		:resources="allWorkflows"
-		:initialize="initialize"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
+		:type-props="{ itemSize: 80 }"
 		:show-aside="allWorkflows.length > 0"
 		:shareable="isShareable"
+		:initialize="initialize"
+		:disabled="readOnlyEnv"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
-		<template #callout v-if="!hasActiveWorkflows && isDemoTest">
-			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-xs">
-				{{ $locale.baseText('workflows.viewDemoNotice') }}
-
-				<template #trailingContent>
-					<n8n-link size="small" theme="secondary" bold underline @click="goToTemplates">
-						{{ $locale.baseText('workflows.viewDemo') }}
-					</n8n-link>
+		<template #add-button="{ disabled }">
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						:disabled="disabled"
+						@click="addWorkflow"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`workflows.add`) }}
+					</n8n-button>
+				</div>
+				<template #content>
+					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
 				</template>
-			</n8n-callout>
+			</n8n-tooltip>
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
@@ -29,6 +38,7 @@
 				:data="data"
 				@expand:tags="updateItemSize(data)"
 				@click:tag="onClickTag"
+				:readOnly="readOnlyEnv"
 			/>
 		</template>
 		<template #empty>
@@ -44,12 +54,18 @@
 					}}
 				</n8n-heading>
 				<n8n-text size="large" color="text-base">
-					{{ $locale.baseText('workflows.empty.description') }}
+					{{
+						$locale.baseText(
+							readOnlyEnv
+								? 'workflows.empty.description.readOnlyEnv'
+								: 'workflows.empty.description',
+						)
+					}}
 				</n8n-text>
 			</div>
-			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
+			<div v-if="!readOnlyEnv" :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
-					:class="[$style.emptyStateCard, 'mr-s']"
+					:class="$style.emptyStateCard"
 					hoverable
 					@click="addWorkflow"
 					data-test-id="new-workflow-card"
@@ -57,24 +73,6 @@
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
-					</n8n-text>
-				</n8n-card>
-				<n8n-card
-					:class="$style.emptyStateCard"
-					hoverable
-					@click="goToTemplates"
-					data-test-id="new-workflow-template-card"
-				>
-					<n8n-icon
-						:class="$style.emptyStateCardIcon"
-						:icon="isDemoTest ? 'graduation-cap' : 'box-open'"
-					/>
-					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{
-							$locale.baseText(
-								isDemoTest ? 'workflows.empty.viewDemo' : 'workflows.empty.browseTemplates',
-							)
-						}}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -90,9 +88,9 @@
 				/>
 				<TagsDropdown
 					:placeholder="$locale.baseText('workflowOpen.filterWorkflows')"
-					:currentTagIds="filters.tags"
+					:modelValue="filters.tags"
 					:createEnabled="false"
-					@update="setKeyValue('tags', $event)"
+					@update:modelValue="setKeyValue('tags', $event)"
 				/>
 			</div>
 			<div class="mb-s">
@@ -103,7 +101,7 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="medium">
+				<n8n-select :modelValue="filters.status" @update:modelValue="setKeyValue('status', $event)">
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
@@ -118,27 +116,22 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
-
-import SettingsView from './SettingsView.vue';
+import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
-import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import TemplateCard from '@/components/TemplateCard.vue';
-import { EnterpriseEditionFeature, POSTHOG_ASSUMPTION_TEST, VIEWS } from '@/constants';
-import { debounceHelper } from '@/mixins/debounce';
-import Vue from 'vue';
-import { ITag, IUser, IWorkflowDb } from '@/Interface';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import type { ITag, IUser, IWorkflowDb } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { genericHelpers } from '@/mixins/genericHelpers';
 
-type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
 const StatusFilter = {
 	ACTIVE: true,
@@ -146,14 +139,11 @@ const StatusFilter = {
 	ALL: '',
 };
 
-export default mixins(showMessage, debounceHelper).extend({
+const WorkflowsView = defineComponent({
 	name: 'WorkflowsView',
+	mixins: [genericHelpers],
 	components: {
 		ResourcesListLayout,
-		TemplateCard,
-		PageViewLayout,
-		PageViewLayoutList,
-		SettingsView,
 		WorkflowCard,
 		TagsDropdown,
 	},
@@ -166,10 +156,18 @@ export default mixins(showMessage, debounceHelper).extend({
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
+			sourceControlStoreUnsubscribe: () => {},
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+			useCredentialsStore,
+			useSourceControlStore,
+		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -178,12 +176,6 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
-		},
-		hasActiveWorkflows(): boolean {
-			return !!this.workflowsStore.activeWorkflows.length;
-		},
-		isDemoTest(): boolean {
-			return window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-demo';
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
@@ -205,28 +197,18 @@ export default mixins(showMessage, debounceHelper).extend({
 	methods: {
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
 		},
-		goToTemplates() {
-			if (this.isDemoTest) {
-				this.$router.push({ name: VIEWS.COLLECTION, params: { id: '7' } });
-				this.$telemetry.track('User clicked on inspect demo workflow', {
-					location: this.allWorkflows.length ? 'workflows' : 'start_page',
-				});
-			} else {
-				this.$router.push({ name: VIEWS.TEMPLATES });
-			}
-		},
 		async initialize() {
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
-
-			return await Promise.all([
+			await Promise.all([
+				this.usersStore.fetchUsers(),
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
+				this.credentialsStore.fetchAllCredentials(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
@@ -242,12 +224,13 @@ export default mixins(showMessage, debounceHelper).extend({
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
-					filters.tags.every((tag) =>
-						(resource.tags as ITag[])?.find((resourceTag) =>
-							typeof resourceTag === 'object'
-								? `${resourceTag.id}` === `${tag}`
-								: `${resourceTag}` === `${tag}`,
-						),
+					filters.tags.every(
+						(tag) =>
+							(resource.tags as ITag[])?.find((resourceTag) =>
+								typeof resourceTag === 'object'
+									? `${resourceTag.id}` === `${tag}`
+									: `${resourceTag}` === `${tag}`,
+							),
 					);
 			}
 
@@ -267,9 +250,22 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 	},
 	mounted() {
-		this.usersStore.showPersonalizationSurvey();
+		void this.usersStore.showPersonalizationSurvey();
+
+		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
+			if (name === 'pullWorkfolder' && after) {
+				after(() => {
+					void this.initialize();
+				});
+			}
+		});
+	},
+	beforeUnmount() {
+		this.sourceControlStoreUnsubscribe();
 	},
 });
+
+export default WorkflowsView;
 </script>
 
 <style lang="scss" module>
@@ -283,6 +279,10 @@ export default mixins(showMessage, debounceHelper).extend({
 	text-align: center;
 	display: inline-flex;
 	height: 230px;
+
+	& + & {
+		margin-left: var(--spacing-s);
+	}
 
 	&:hover {
 		svg {

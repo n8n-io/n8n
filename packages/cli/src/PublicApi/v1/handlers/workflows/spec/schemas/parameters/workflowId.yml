@@ -3,4 +3,4 @@ in: path
 description: The ID of the workflow.
 required: true
 schema:
-  type: number
+  type: string

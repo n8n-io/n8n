@@ -1,17 +1,9 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddWebhookId1611071044839 implements MigrationInterface {
-	name = 'AddWebhookId1611071044839';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class AddWebhookId1611071044839 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
-			`CREATE TABLE "temporary_webhook_entity" ("workflowId" integer NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, "webhookId" varchar, "pathLength" integer, PRIMARY KEY ("webhookPath", "method"))`,
+			'CREATE TABLE "temporary_webhook_entity" ("workflowId" integer NOT NULL, "webhookPath" varchar NOT NULL, "method" varchar NOT NULL, "node" varchar NOT NULL, "webhookId" varchar, "pathLength" integer, PRIMARY KEY ("webhookPath", "method"))',
 		);
 		await queryRunner.query(
 			`INSERT INTO "temporary_webhook_entity"("workflowId", "webhookPath", "method", "node") SELECT "workflowId", "webhookPath", "method", "node" FROM "${tablePrefix}webhook_entity"`,
@@ -23,13 +15,9 @@ export class AddWebhookId1611071044839 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}742496f199721a057051acf4c2" ON "${tablePrefix}webhook_entity" ("webhookId", "method", "pathLength") `,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}742496f199721a057051acf4c2"`);
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}webhook_entity" RENAME TO "temporary_webhook_entity"`,
@@ -40,6 +28,6 @@ export class AddWebhookId1611071044839 implements MigrationInterface {
 		await queryRunner.query(
 			`INSERT INTO "${tablePrefix}webhook_entity"("workflowId", "webhookPath", "method", "node") SELECT "workflowId", "webhookPath", "method", "node" FROM "temporary_webhook_entity"`,
 		);
-		await queryRunner.query(`DROP TABLE "temporary_webhook_entity"`);
+		await queryRunner.query('DROP TABLE "temporary_webhook_entity"');
 	}
 }

@@ -8,6 +8,8 @@ import type { User } from '@db/entities/User';
 import { ExternalHooks } from '@/ExternalHooks';
 import type { IDependency, IJsonSchema } from '../../../types';
 import type { CredentialRequest } from '@/requests';
+import { Container } from 'typedi';
+import { RoleService } from '@/services/role.service';
 
 export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
 	return Db.collections.Credentials.findOneBy({ id: credentialId });
@@ -44,7 +46,6 @@ export async function createCredential(
 	} else {
 		// Add the added date for node access permissions
 		newCredential.nodesAccess.forEach((nodeAccess) => {
-			// eslint-disable-next-line no-param-reassign
 			nodeAccess.date = new Date();
 		});
 	}
@@ -57,12 +58,9 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Db.collections.Role.findOneByOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	const role = await Container.get(RoleService).findCredentialOwnerRole();
 
-	await ExternalHooks().run('credentials.create', [encryptedData]);
+	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
 	return Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -84,7 +82,7 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
-	await ExternalHooks().run('credentials.delete', [credentials.id]);
+	await Container.get(ExternalHooks).run('credentials.delete', [credentials.id]);
 	return Db.collections.Credentials.remove(credentials);
 }
 
@@ -116,7 +114,6 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { data, nodesAccess, shared, ...rest } = credential;
 		return rest;
 	});
@@ -192,7 +189,6 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			let dependantValue: string | number | boolean = '';
 
 			if (displayOptionsValues && Array.isArray(displayOptionsValues) && displayOptionsValues[0]) {
-				// eslint-disable-next-line prefer-destructuring
 				dependantValue = displayOptionsValues[0];
 			}
 

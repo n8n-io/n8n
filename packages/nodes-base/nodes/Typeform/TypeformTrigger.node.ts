@@ -1,6 +1,6 @@
-import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
 import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -93,12 +93,11 @@ export class TypeformTrigger implements INodeType {
 					'Form which should trigger workflow on submission. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-simplify
 				displayName: 'Simplify Answers',
 				name: 'simplifyAnswers',
 				type: 'boolean',
 				default: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-simplify
+
 				description:
 					'Whether to convert the answers to a key:value pair ("FIELD_TITLE":"USER_ANSER") to be easily processable',
 			},
@@ -153,7 +152,6 @@ export class TypeformTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -212,7 +210,7 @@ export class TypeformTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 
@@ -240,16 +238,16 @@ export class TypeformTrigger implements INodeType {
 		const answers = (bodyData.form_response as IDataObject).answers as ITypeformAnswer[];
 
 		// Some fields contain lower level fields of which we are only interested of the values
-		const subvalueKeys = ['label', 'labels'];
+		const subValueKeys = ['label', 'labels'];
 
 		if (simplifyAnswers) {
 			// Convert the answers to simple key -> value pairs
 			const definition = (bodyData.form_response as IDataObject).definition as ITypeformDefinition;
 
 			// Create a dictionary to get the field title by its ID
-			const defintitionsById: { [key: string]: string } = {};
+			const definitionsById: { [key: string]: string } = {};
 			for (const field of definition.fields) {
-				defintitionsById[field.id] = field.title.replace(/\{\{/g, '[').replace(/\}\}/g, ']');
+				definitionsById[field.id] = field.title.replace(/\{\{/g, '[').replace(/\}\}/g, ']');
 			}
 
 			// Convert the answers to key -> value pair
@@ -257,14 +255,14 @@ export class TypeformTrigger implements INodeType {
 			for (const answer of answers) {
 				let value = answer[answer.type];
 				if (typeof value === 'object') {
-					for (const key of subvalueKeys) {
+					for (const key of subValueKeys) {
 						if ((value as IDataObject)[key] !== undefined) {
 							value = (value as ITypeformAnswerField)[key];
 							break;
 						}
 					}
 				}
-				convertedAnswers[defintitionsById[answer.field.id]] = value;
+				convertedAnswers[definitionsById[answer.field.id]] = value;
 			}
 
 			if (onlyAnswers) {

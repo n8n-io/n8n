@@ -36,7 +36,7 @@ export const stringMethods: NativeDoc = {
 		indexOf: {
 			doc: {
 				name: 'indexOf',
-				description: 'Returns the index of the first occurrence of `searchString`',
+				description: 'Returns the index of the first occurrence of `searchString`.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf',
 				returnType: 'number',
@@ -49,7 +49,7 @@ export const stringMethods: NativeDoc = {
 		lastIndexOf: {
 			doc: {
 				name: 'lastIndexOf',
-				description: 'Returns the index of the last occurrence of `searchString`',
+				description: 'Returns the index of the last occurrence of `searchString`.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf',
 				returnType: 'number',

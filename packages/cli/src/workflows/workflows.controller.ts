@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-
 import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
@@ -11,19 +9,23 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
-import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import { InternalHooksManager } from '@/InternalHooksManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
-import type { WorkflowRequest } from '@/requests';
+import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { In } from 'typeorm';
+import { Container } from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
+import * as utils from '@/utils';
+import { listQueryMiddleware } from '@/middlewares';
+import { TagService } from '@/services/tag.service';
 
 export const workflowsController = express.Router();
 
@@ -57,12 +59,12 @@ workflowsController.post(
 
 		await validateEntity(newWorkflow);
 
-		await ExternalHooks().run('workflow.create', [newWorkflow]);
+		await Container.get(ExternalHooks).run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.find({
+			newWorkflow.tags = await Container.get(TagService).findMany({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
@@ -79,10 +81,7 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneByOrFail({
-				name: 'owner',
-				scope: 'workflow',
-			});
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const newSharedWorkflow = new SharedWorkflow();
 
@@ -101,13 +100,13 @@ workflowsController.post(
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
-			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
+			savedWorkflow.tags = Container.get(TagService).sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
 		}
 
-		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
+		await Container.get(ExternalHooks).run('workflow.afterCreate', [savedWorkflow]);
+		void Container.get(InternalHooks).onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;
 	}),
@@ -118,9 +117,23 @@ workflowsController.post(
  */
 workflowsController.get(
 	'/',
-	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query.filter);
-	}),
+	listQueryMiddleware,
+	async (req: ListQuery.Request, res: express.Response) => {
+		try {
+			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, ['owner']);
+
+			const { workflows: data, count } = await WorkflowsService.getMany(
+				sharedWorkflowIds,
+				req.listQueryOptions,
+			);
+
+			res.json({ count, data });
+		} catch (maybeError) {
+			const error = utils.toError(maybeError);
+			ResponseHelper.reportError(error);
+			ResponseHelper.sendErrorResponse(res, error);
+		}
+	},
 );
 
 /**
@@ -170,8 +183,7 @@ workflowsController.get(
 
 		// Do a very basic check if it is really a n8n-workflow-json
 		if (
-			workflowData === undefined ||
-			workflowData.nodes === undefined ||
+			workflowData?.nodes === undefined ||
 			!Array.isArray(workflowData.nodes) ||
 			workflowData.connections === undefined ||
 			typeof workflowData.connections !== 'object' ||
@@ -190,7 +202,7 @@ workflowsController.get(
  * GET /workflows/:id
  */
 workflowsController.get(
-	'/:id(\\d+)',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
@@ -229,7 +241,7 @@ workflowsController.get(
  * PATCH /workflows/:id
  */
 workflowsController.patch(
-	'/:id',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
 
@@ -255,7 +267,7 @@ workflowsController.patch(
  * DELETE /workflows/:id
  */
 workflowsController.delete(
-	'/:id',
+	'/:id(\\w+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 

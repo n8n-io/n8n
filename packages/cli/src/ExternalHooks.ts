@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable import/no-dynamic-require */
-/* eslint-disable no-restricted-syntax */
+
+import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type {
 	IExternalHooksClass,
@@ -10,7 +10,8 @@ import type {
 
 import config from '@/config';
 
-class ExternalHooksClass implements IExternalHooksClass {
+@Service()
+export class ExternalHooks implements IExternalHooksClass {
 	externalHooks: {
 		[key: string]: Array<() => {}>;
 	} = {};
@@ -49,13 +50,11 @@ class ExternalHooksClass implements IExternalHooksClass {
 						delete require.cache[require.resolve(hookFilePath)];
 					}
 
-					// eslint-disable-next-line import/no-dynamic-require
-					// eslint-disable-next-line global-require
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (error) {
 					throw new Error(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`Problem loading external hook file "${hookFilePath}": ${error.message}`,
 						{ cause: error as Error },
 					);
@@ -94,7 +93,6 @@ class ExternalHooksClass implements IExternalHooksClass {
 		}
 
 		for (const externalHookFunction of this.externalHooks[hookName]) {
-			// eslint-disable-next-line no-await-in-loop, @typescript-eslint/await-thenable
 			await externalHookFunction.apply(externalHookFunctions, hookParameters);
 		}
 	}
@@ -102,15 +100,4 @@ class ExternalHooksClass implements IExternalHooksClass {
 	exists(hookName: string): boolean {
 		return !!this.externalHooks[hookName];
 	}
-}
-
-let externalHooksInstance: ExternalHooksClass | undefined;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export function ExternalHooks(): ExternalHooksClass {
-	if (externalHooksInstance === undefined) {
-		externalHooksInstance = new ExternalHooksClass();
-	}
-
-	return externalHooksInstance;
 }

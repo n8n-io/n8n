@@ -1,9 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
@@ -447,7 +448,6 @@ export class Chargebee implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		let _item: INodeExecutionData;
 
 		const credentials = await this.getCredentials('chargebeeApi');
 
@@ -460,7 +460,6 @@ export class Chargebee implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				_item = items[i];
 				const resource = this.getNodeParameter('resource', i);
 				const operation = this.getNodeParameter('operation', i);
 
@@ -597,7 +596,7 @@ export class Chargebee implements INodeType {
 				try {
 					responseData = await this.helpers.request(options);
 				} catch (error) {
-					throw new NodeApiError(this.getNode(), error);
+					throw new NodeApiError(this.getNode(), error as JsonObject);
 				}
 
 				if (resource === 'invoice' && operation === 'list') {
@@ -620,7 +619,7 @@ export class Chargebee implements INodeType {
 					returnData.push(...responseData);
 				} else {
 					responseData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...responseData);
@@ -634,6 +633,6 @@ export class Chargebee implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

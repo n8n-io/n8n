@@ -1,4 +1,4 @@
-import * as esprima from 'esprima-next';
+import type * as esprima from 'esprima-next';
 import type { Completion } from '@codemirror/autocomplete';
 import type { Node } from 'estree';
 import type { RangeNode } from './types';

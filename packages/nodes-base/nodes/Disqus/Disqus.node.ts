@@ -1,5 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -577,12 +577,10 @@ export class Disqus implements INodeType {
 
 		let endpoint = '';
 		let requestMethod = '';
-		let _body: IDataObject | Buffer;
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				_body = {};
 				qs = {};
 
 				if (resource === 'forum') {
@@ -605,7 +603,7 @@ export class Disqus implements INodeType {
 						try {
 							const responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(responseData.response),
+								this.helpers.returnJsonArray(responseData.response as IDataObject[]),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
@@ -763,6 +761,6 @@ export class Disqus implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,54 +1,67 @@
 <template>
 	<div>
-		<aside :class="{ 'node-creator-scrim': true, active: nodeCreatorStore.showScrim }" />
-
+		<aside :class="{ [$style.nodeCreatorScrim]: true, [$style.active]: showScrim }" />
 		<slide-transition>
 			<div
 				v-if="active"
-				class="node-creator"
+				:class="$style.nodeCreator"
+				:style="nodeCreatorInlineStyle"
 				ref="nodeCreator"
-				v-click-outside="onClickOutside"
 				@dragover="onDragOver"
 				@drop="onDrop"
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" />
+				<NodesListPanel @nodeTypeSelected="onNodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { watch, reactive, toRefs } from 'vue';
+import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
+
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
-import MainPanel from './MainPanel.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useViewStacks } from './composables/useViewStacks';
+import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
+import { useActionsGenerator } from './composables/useActionsGeneration';
+import NodesListPanel from './Panel/NodesListPanel.vue';
+import { useUIStore } from '@/stores';
 
 export interface Props {
 	active?: boolean;
+	onNodeTypeSelected?: (nodeType: string) => void;
 }
 
 const props = defineProps<Props>();
-
+const { resetViewStacks } = useViewStacks();
+const { registerKeyHook } = useKeyboardNavigation();
 const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void;
+	(event: 'nodeTypeSelected', value: string[]): void;
 }>();
+const uiStore = useUIStore();
 
-const nodeCreatorStore = useNodeCreatorStore();
+const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
+const { generateMergedNodesAndActions } = useActionsGenerator();
+
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 	mousedownInsideEvent: null as MouseEvent | null,
 });
 
-function onClickOutside(event: Event) {
-	// We need to prevent cases where user would click inside the node creator
-	// and try to drag undraggable element. In that case the click event would
-	// be fired and the node creator would be closed. So we stop that if we detect
-	// that the click event originated from inside the node creator. And fire click even on the
-	// original target.
+const showScrim = computed(() => useNodeCreatorStore().showScrim);
+
+const viewStacksLength = computed(() => useViewStacks().viewStacks.length);
+
+const nodeCreatorInlineStyle = computed(() => {
+	return { top: `${uiStore.bannersHeight + uiStore.headerHeight}px` };
+});
+function onMouseUpOutside() {
 	if (state.mousedownInsideEvent) {
 		const clickEvent = new MouseEvent('click', {
 			bubbles: true,
@@ -56,18 +69,21 @@ function onClickOutside(event: Event) {
 		});
 		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
 		state.mousedownInsideEvent = null;
-		return;
+		unBindOnMouseUpOutside();
 	}
-
-	if (event.type === 'click') {
-		emit('closeNodeCreator');
-	}
+}
+function unBindOnMouseUpOutside() {
+	document.removeEventListener('mouseup', onMouseUpOutside);
+	document.removeEventListener('touchstart', onMouseUpOutside);
 }
 function onMouseUp() {
 	state.mousedownInsideEvent = null;
+	unBindOnMouseUpOutside();
 }
 function onMouseDown(event: MouseEvent) {
 	state.mousedownInsideEvent = event;
+	document.addEventListener('mouseup', onMouseUpOutside);
+	document.addEventListener('touchstart', onMouseUpOutside);
 }
 function onDragOver(event: DragEvent) {
 	event.preventDefault();
@@ -93,21 +109,53 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) nodeCreatorStore.setShowScrim(false);
+		if (isActive === false) {
+			setShowScrim(false);
+			resetViewStacks();
+		}
 	},
 );
 
+// Close node creator when the last view stacks is closed
+watch(viewStacksLength, (viewStacksLength) => {
+	if (viewStacksLength === 0) {
+		emit('closeNodeCreator');
+		setShowScrim(false);
+	}
+});
+
+registerKeyHook('NodeCreatorCloseEscape', {
+	keyboardKeys: ['Escape'],
+	handler: () => emit('closeNodeCreator'),
+});
+registerKeyHook('NodeCreatorCloseTab', {
+	keyboardKeys: ['Tab'],
+	handler: () => emit('closeNodeCreator'),
+});
+
+watch(
+	() => useNodeTypesStore().visibleNodeTypes,
+	(nodeTypes) => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes);
+
+		setActions(actions);
+		setMergeNodes(mergedNodes);
+	},
+	{ immediate: true },
+);
 const { nodeCreator } = toRefs(state);
+
+onBeforeUnmount(() => {
+	unBindOnMouseUpOutside();
+});
 </script>
 
-<style scoped lang="scss">
-::v-deep *,
-*:before,
-*:after {
-	box-sizing: border-box;
+<style module lang="scss">
+:global(strong) {
+	font-weight: var(--font-weight-bold);
 }
-
-.node-creator {
+.nodeCreator {
+	--node-icon-color: var(--color-text-base);
 	position: fixed;
 	top: $header-height;
 	bottom: 0;
@@ -117,7 +165,7 @@ const { nodeCreator } = toRefs(state);
 	color: $node-creator-text-color;
 }
 
-.node-creator-scrim {
+.nodeCreatorScrim {
 	position: fixed;
 	top: $header-height;
 	right: 0;

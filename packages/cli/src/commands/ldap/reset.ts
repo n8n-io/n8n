@@ -1,5 +1,5 @@
 import * as Db from '@/Db';
-import { LDAP_FEATURE_NAME } from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { In } from 'typeorm';
 import { BaseCommand } from '../BaseCommand';
 
@@ -17,6 +17,11 @@ export class Reset extends BaseCommand {
 		await AuthIdentity.delete({ providerType: 'ldap' });
 		await User.delete({ id: In(ldapIdentities.map((i) => i.userId)) });
 		await Settings.delete({ key: LDAP_FEATURE_NAME });
+		await Settings.insert({
+			key: LDAP_FEATURE_NAME,
+			value: JSON.stringify(LDAP_DEFAULT_CONFIGURATION),
+			loadOnStartup: true,
+		});
 
 		this.logger.info('Successfully reset the database to default ldap state.');
 	}

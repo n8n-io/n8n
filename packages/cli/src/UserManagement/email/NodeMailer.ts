@@ -3,21 +3,30 @@ import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
-import type { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
+import type { MailData, SendEmailResult } from './Interfaces';
+import type SMTPConnection from 'nodemailer/lib/smtp-connection';
 
-export class NodeMailer implements UserManagementMailerImplementation {
+export class NodeMailer {
 	private transport?: Transporter;
 
 	async init(): Promise<void> {
-		this.transport = createTransport({
+		const transportConfig: SMTPConnection.Options = {
 			host: config.getEnv('userManagement.emails.smtp.host'),
 			port: config.getEnv('userManagement.emails.smtp.port'),
 			secure: config.getEnv('userManagement.emails.smtp.secure'),
-			auth: {
+		};
+
+		if (
+			config.getEnv('userManagement.emails.smtp.auth.user') &&
+			config.getEnv('userManagement.emails.smtp.auth.pass')
+		) {
+			transportConfig.auth = {
 				user: config.getEnv('userManagement.emails.smtp.auth.user'),
 				pass: config.getEnv('userManagement.emails.smtp.auth.pass'),
-			},
-		});
+			};
+		}
+
+		this.transport = createTransport(transportConfig);
 	}
 
 	async verifyConnection(): Promise<void> {

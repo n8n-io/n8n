@@ -1,11 +1,16 @@
 import type { OptionsWithUri } from 'request';
 
-import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
-
-import type { IDataObject, ILoadOptionsFunctions } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IHookFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { flow, sortBy } from 'lodash';
+import flow from 'lodash/flow';
+import sortBy from 'lodash/sortBy';
 
 import type {
 	AllFields,
@@ -25,7 +30,9 @@ import type {
 
 export function throwOnErrorStatus(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
-	responseData: { data?: Array<{ status: string; message: string }> },
+	responseData: {
+		data?: Array<{ status: string; message: string }>;
+	},
 ) {
 	if (responseData?.data?.[0].status === 'error') {
 		throw new NodeOperationError(this.getNode(), responseData as Error);
@@ -64,14 +71,18 @@ export async function zohoApiRequest(
 
 	try {
 		const responseData = await this.helpers.requestOAuth2?.call(this, 'zohoOAuth2Api', options);
-
 		if (responseData === undefined) return [];
-
-		throwOnErrorStatus.call(this, responseData);
+		throwOnErrorStatus.call(this, responseData as IDataObject);
 
 		return responseData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		const args = error.cause?.data
+			? {
+					message: error.cause.data.message || 'The Zoho API returned an error.',
+					description: JSON.stringify(error.cause.data, null, 2),
+			  }
+			: undefined;
+		throw new NodeApiError(this.getNode(), error as JsonObject, args);
 	}
 }
 
@@ -94,7 +105,7 @@ export async function zohoApiRequestAllItems(
 	do {
 		responseData = await zohoApiRequest.call(this, method, endpoint, body, qs);
 		if (Array.isArray(responseData) && !responseData.length) return returnData;
-		returnData.push(...responseData.data);
+		returnData.push(...(responseData.data as IDataObject[]));
 		qs.page++;
 	} while (responseData.info.more_records !== undefined && responseData.info.more_records === true);
 
@@ -156,13 +167,18 @@ const omit = (propertyToOmit: string, { [propertyToOmit]: _, ...remainingObject 
 /**
  * Place a product ID at a nested position in a product details field.
  */
-export const adjustProductDetails = (productDetails: ProductDetails) => {
+export const adjustProductDetails = (productDetails: ProductDetails, operation?: string) => {
 	return productDetails.map((p) => {
-		return {
-			...omit('product', p),
+		const adjustedProduct = {
 			product: { id: p.id },
 			quantity: p.quantity || 1,
 		};
+
+		if (operation === 'upsert') {
+			return { ...adjustedProduct, ...omit('id', p) };
+		} else {
+			return { ...adjustedProduct, ...omit('product', p) };
+		}
 	});
 };
 

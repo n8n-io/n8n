@@ -58,6 +58,7 @@
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
 			:buttonLoading="isRetesting"
 			@click="$emit('retest')"
+			data-test-id="credentials-config-container-test-success"
 		/>
 
 		<template v-if="credentialPermissions.updateConnection">
@@ -87,10 +88,11 @@
 				:toastTitle="
 					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
 				"
+				:redactValue="true"
 			/>
 		</template>
 		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
-			<div class="ph-no-capture">
+			<div>
 				<n8n-info-tip :bold="false">
 					{{
 						$locale.baseText('credentialEdit.credentialEdit.info.sharee', {
@@ -107,7 +109,7 @@
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
 			:showValidationWarnings="showValidationWarning"
-			@change="onDataChange"
+			@update="onDataChange"
 		/>
 
 		<OauthButton
@@ -124,43 +126,54 @@
 		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
 			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 		</n8n-text>
+
+		<EnterpriseEdition :features="[EnterpriseEditionFeature.ExternalSecrets]">
+			<template #fallback>
+				<n8n-info-tip class="mt-s">
+					{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets') }}
+					<n8n-link bold :to="$locale.baseText('settings.externalSecrets.docs')" size="small">
+						{{ $locale.baseText('credentialEdit.credentialConfig.externalSecrets.moreInfo') }}
+					</n8n-link>
+				</n8n-info-tip>
+			</template>
+		</EnterpriseEdition>
 	</div>
 </template>
 
 <script lang="ts">
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
 import OauthButton from './OauthButton.vue';
-import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
-import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
-import { IPermissions } from '@/permissions';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialsResponse, IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import type { IPermissions } from '@/permissions';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ICredentialsResponse } from '@/Interface';
 import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
+import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 
-export default mixins(restApi).extend({
+export default defineComponent({
 	name: 'CredentialConfig',
 	components: {
+		EnterpriseEdition,
 		AuthTypeSelector,
 		Banner,
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
-		ParameterInputFull,
 		GoogleAuthButton,
 	},
 	props: {
@@ -226,7 +239,9 @@ export default mixins(restApi).extend({
 
 		if (this.$locale.exists(key)) return;
 
-		const credTranslation = await this.restApi().getCredentialTranslation(this.credentialType.name);
+		const credTranslation = await this.credentialsStore.getCredentialTranslation(
+			this.credentialType.name,
+		);
 
 		addCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },
@@ -263,7 +278,7 @@ export default mixins(restApi).extend({
 			);
 		},
 		credentialTypeName(): string {
-			return (this.credentialType as ICredentialType).name;
+			return (this.credentialType as ICredentialType)?.name;
 		},
 		credentialOwnerName(): string {
 			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
@@ -330,7 +345,7 @@ export default mixins(restApi).extend({
 			return this.credentialsStore.allUsableCredentialsByType[type];
 		},
 		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
-			this.$emit('change', event);
+			this.$emit('update', event);
 		},
 		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {

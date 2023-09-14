@@ -1,8 +1,8 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
+	IExecuteFunctions,
+	ILoadOptionsFunctions,
 	IHookFunctions,
 	INodeCredentialTestResult,
 	INodePropertyOptions,
@@ -50,7 +50,7 @@ export async function emeliaGraphqlRequest(
 	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
 
 	if (response.errors) {
-		throw new NodeApiError(this.getNode(), response);
+		throw new NodeApiError(this.getNode(), response as JsonObject);
 	}
 
 	return response;

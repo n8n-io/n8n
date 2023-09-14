@@ -116,7 +116,7 @@ export const arrayMethods: NativeDoc = {
 					'Returns a string that concatenates all of the elements in an array, separated by `separator`, which defaults to comma.',
 				docURL:
 					'https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/join',
-				returnType: 'Array',
+				returnType: 'string',
 				args: [{ name: 'separator?', type: 'string' }],
 			},
 		},

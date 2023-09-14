@@ -1,0 +1,203 @@
+{
+	"name": "SplitinBatches Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f35d9ed9-a095-4555-b445-b22ab2bd4670",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [860, 400]
+		},
+		{
+			"parameters": {
+				"jsCode": "const newItems = [];\n\nfor (let i=0;i<10;i++) {\n  newItems.push({json:{i}});\n}\n\nreturn newItems;"
+			},
+			"id": "3962fba9-8f67-4b16-b2a2-69fc4b374fc8",
+			"name": "Create Test Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [1080, 400]
+		},
+		{
+			"parameters": {
+				"batchSize": 3,
+				"options": {}
+			},
+			"name": "SplitInBatches1",
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 2,
+			"position": [1340, 400],
+			"id": "02d51797-ae62-4fd6-b703-426a4b3fb951"
+		},
+		{
+			"parameters": {},
+			"id": "ceebf988-a81f-4e57-8917-f3d1af0742e0",
+			"name": "Do something",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1540, 380]
+		},
+		{
+			"parameters": {},
+			"id": "82598a32-3ede-4a1b-b7ec-e5d0e39b71c7",
+			"name": "Done",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1780, 620]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"value": "=A-{{ $runIndex }}-{{ $itemIndex }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c05f63fd-057b-4bdc-8559-1ae5789be346",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [1760, 380]
+		}
+	],
+	"pinData": {
+		"Done": [
+			{
+				"json": {
+					"i": 0,
+					"propertyName": "A-0-0"
+				}
+			},
+			{
+				"json": {
+					"i": 1,
+					"propertyName": "A-0-1"
+				}
+			},
+			{
+				"json": {
+					"i": 2,
+					"propertyName": "A-0-2"
+				}
+			},
+			{
+				"json": {
+					"i": 3,
+					"propertyName": "A-1-0"
+				}
+			},
+			{
+				"json": {
+					"i": 4,
+					"propertyName": "A-1-1"
+				}
+			},
+			{
+				"json": {
+					"i": 5,
+					"propertyName": "A-1-2"
+				}
+			},
+			{
+				"json": {
+					"i": 6,
+					"propertyName": "A-2-0"
+				}
+			},
+			{
+				"json": {
+					"i": 7,
+					"propertyName": "A-2-1"
+				}
+			},
+			{
+				"json": {
+					"i": 8,
+					"propertyName": "A-2-2"
+				}
+			},
+			{
+				"json": {
+					"i": 9,
+					"propertyName": "A-3-0"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Create Test Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"SplitInBatches1": {
+			"main": [
+				[
+					{
+						"node": "Do something",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Done",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Do something": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "SplitInBatches1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Create Test Data": {
+			"main": [
+				[
+					{
+						"node": "SplitInBatches1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "d7a267d4-df50-457d-b473-850d43e49685",
+	"id": "1088",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

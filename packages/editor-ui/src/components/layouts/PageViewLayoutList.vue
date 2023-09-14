@@ -1,5 +1,18 @@
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
+	props: {
+		overflow: {
+			type: Boolean,
+			default: false,
+		},
+	},
+});
+</script>
+
 <template>
-	<div :class="$style.wrapper">
+	<div :class="{ [$style.wrapper]: true, [$style.overflow]: overflow }">
 		<div :class="$style.list">
 			<div v-if="$slots.header" :class="$style.header">
 				<slot name="header" />
@@ -16,6 +29,14 @@
 	display: block;
 	width: 100%;
 	height: 100%;
+}
+
+.overflow {
+	.list {
+		.body {
+			overflow: auto;
+		}
+	}
 }
 
 .list {

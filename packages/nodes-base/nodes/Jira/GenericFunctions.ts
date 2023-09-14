@@ -1,17 +1,17 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject, INodeListSearchItems } from 'n8n-workflow';
+	INodeListSearchItems,
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
 	body: any = {},
@@ -49,7 +49,7 @@ export async function jiraSoftwareCloudApiRequest(
 		Object.assign(options, option);
 	}
 
-	if (Object.keys(body).length === 0) {
+	if (Object.keys(body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -63,7 +63,7 @@ export async function jiraSoftwareCloudApiRequest(
 			error.description?.includes &&
 			error.description.includes("Field 'priority' cannot be set")
 		) {
-			throw new NodeApiError(this.getNode(), error, {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
 				message:
 					"Field 'priority' cannot be set. You need to add the Priority field to your Jira Project's Issue Types.",
 			});
@@ -91,7 +91,7 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
 		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
 	} while (

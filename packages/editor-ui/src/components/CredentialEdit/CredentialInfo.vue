@@ -16,8 +16,8 @@
 								fallback: node.displayName,
 							})
 						"
-						:value="!!nodeAccess[node.name]"
-						@change="(val) => onNodeAccessChange(node.name, val)"
+						:modelValue="!!nodeAccess[node.name]"
+						@update:modelValue="(val) => onNodeAccessChange(node.name, val)"
 					/>
 					<n8n-text v-else>
 						{{
@@ -68,12 +68,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import TimeAgo from '../TimeAgo.vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'CredentialInfo',
 	props: ['nodesWithAccess', 'nodeAccess', 'currentCredential', 'credentialPermissions'],
 	components: {

@@ -156,7 +156,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Provide a short description for your image or article',
 				displayOptions: {
 					show: {
-						'/shareMediaCategory': ['ARTICLE', 'IMAGE'],
+						'/shareMediaCategory': ['ARTICLE'],
 					},
 				},
 			},

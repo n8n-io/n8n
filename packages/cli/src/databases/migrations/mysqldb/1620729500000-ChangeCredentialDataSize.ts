@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class ChangeCredentialDataSize1620729500000 implements MigrationInterface {
-	name = 'ChangeCredentialDataSize1620729500000';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class ChangeCredentialDataSize1620729500000 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' +
 				tablePrefix +
@@ -14,9 +9,7 @@ export class ChangeCredentialDataSize1620729500000 implements MigrationInterface
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'ALTER TABLE `' +
 				tablePrefix +

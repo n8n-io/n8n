@@ -1,13 +1,12 @@
 import type { OptionsWithUri } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
-
-import type { IDataObject } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import type { IContactUpdate } from './ContactInterface';
@@ -15,7 +14,7 @@ import type { IContactUpdate } from './ContactInterface';
 import type { IFilterRules, ISearchConditions } from './FilterInterface';
 
 export async function agileCrmApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: any = {},
@@ -51,7 +50,7 @@ export async function agileCrmApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -79,7 +78,7 @@ export async function agileCrmApiRequestAllItems(
 			sendAsForm,
 		);
 		if (responseData.length !== 0) {
-			returnData.push.apply(returnData, responseData);
+			returnData.push.apply(returnData, responseData as IDataObject[]);
 			if (sendAsForm) {
 				body.cursor = responseData[responseData.length - 1].cursor;
 			} else {
@@ -95,7 +94,7 @@ export async function agileCrmApiRequestAllItems(
 }
 
 export async function agileCrmApiRequestUpdate(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method = 'PUT',
 	endpoint?: string,
 	body: any = {},
@@ -169,9 +168,9 @@ export async function agileCrmApiRequestUpdate(
 		return lastSuccesfulUpdateReturn;
 	} catch (error) {
 		if (successfulUpdates.length === 0) {
-			throw new NodeApiError(this.getNode(), error);
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		} else {
-			throw new NodeApiError(this.getNode(), error, {
+			throw new NodeApiError(this.getNode(), error as JsonObject, {
 				message: `Not all properties updated. Updated properties: ${successfulUpdates.join(', ')}`,
 				description: error.message,
 				httpCode: error.statusCode,

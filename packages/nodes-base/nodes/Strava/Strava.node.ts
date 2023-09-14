@@ -1,6 +1,5 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -162,14 +161,6 @@ export class Strava implements INodeType {
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
-						if (updateFields.trainer === true) {
-							updateFields.trainer = 1;
-						}
-
-						if (updateFields.commute === true) {
-							updateFields.commute = 1;
-						}
-
 						const body: IDataObject = {};
 
 						Object.assign(body, updateFields);
@@ -184,7 +175,7 @@ export class Strava implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -202,6 +193,6 @@ export class Strava implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
