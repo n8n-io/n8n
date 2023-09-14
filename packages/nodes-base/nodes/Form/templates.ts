@@ -31,12 +31,10 @@ body {
 }
 
 .container {
-	margin: 1em auto;
+	margin: 0em auto;
 	text-align: center;
-	min-width: 30em;
+	min-width: 10em;
 	max-width: 50em;
-	padding: 1em;
-
 }
 
 .n8n-link {
@@ -86,13 +84,12 @@ body {
 
 .test-notice {
 	color: ${NOTICE_TEXT_COLOR};
-	margin: 3em auto;
 	background-color: ${NOTICE_BACKGROUND_COLOR};
 	margin: 1.5em 1em;
 	padding: 0 1em;
 	font-weight: ${FONT_WEIGHT_BOLD};
 	font-size: 1.3em;
-	border-radius: .5em;
+	border-radius: ${BORDER_RADIUS};
 	border: 0.1em solid ${NOTICE_TEXT_COLOR};
 	text-align: left;
 }
@@ -169,12 +166,13 @@ form select.form-input option {
 	display: block;
 	position: relative;
 	color: #ff6d5a;
-	text-align: right;
+	text-align: left;
 	font-size: 1em;
 	font-weight: ${FONT_WEIGHT_NORMAL};
 	font-style: italic;
 	visibility: hidden;
-	padding: 0.5em;
+	padding-top: 0.5em;
+	padding-left: 0.5em;
 }
 
 .error-show {
@@ -266,7 +264,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 		formHtml += `
 		<p class="error-${fieldLabel} error-hidden">
-			"${field.fieldLabel}" cannot be empty
+			This field is required
 		</p>`;
 
 		if (requiredField) {
@@ -339,7 +337,7 @@ export const createPage = (
 			</div>
 			<script>
 			function validateInput(input, errorElement) {
-				if (input.type === 'number') {
+				if (input.type === 'number' && input.value !== '') {
 					const value = input.value.trim();
 
 					if (value === '' || isNaN(value)) {
