@@ -74,6 +74,7 @@
     "vue": "^3.3.4",
     "vue-agile": "^2.0.0",
     "vue-i18n": "^9.2.2",
+    "vue-json-compare": "^3.0.0",
     "vue-json-pretty": "2.2.4",
     "vue-router": "^4.2.2",
     "vue3-touch-events": "^4.1.3",

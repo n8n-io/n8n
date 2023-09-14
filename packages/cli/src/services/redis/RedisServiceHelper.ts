@@ -3,6 +3,7 @@ import type { Cluster, RedisOptions } from 'ioredis';
 import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import type { RedisClientType } from './RedisServiceBaseClasses';
+import { parseRedisUrl } from '@/ParserHelper';
 
 export const EVENT_BUS_REDIS_STREAM = 'n8n:eventstream';
 export const COMMAND_REDIS_STREAM = 'n8n:commandstream';
@@ -43,8 +44,11 @@ export function getRedisStandardClient(
 ): Redis | Cluster {
 	let lastTimer = 0;
 	let cumulativeTimeout = 0;
-	const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+	const { host, port, username, password, db }: RedisOptions =
+		parseRedisUrl() || config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
+	LoggerProxy.debug(`Redis is configured to: host: ${host}, port: ${port}, db: ${db}`);
+
 	const sharedRedisOptions: RedisOptions = {
 		...redisOptions,
 		host,
@@ -92,7 +96,8 @@ export function getRedisClusterClient(
 	let lastTimer = 0;
 	let cumulativeTimeout = 0;
 	const clusterNodes = getRedisClusterNodes();
-	const { username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+	const { host, port, username, password, db }: RedisOptions =
+		parseRedisUrl() || config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 	const sharedRedisOptions: RedisOptions = {
 		...redisOptions,

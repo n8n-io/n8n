@@ -201,7 +201,6 @@ export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
-		AskAiModal,
 		WorkflowWithVersionModalKey,
 		ActivationModal,
 		CommunityPackageInstallModal,

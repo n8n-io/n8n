@@ -3,7 +3,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { URL } from 'url';
 import config from '@/config';
 
-export function parseRedisUrl(): RedisOptions | null{
+export function parseRedisUrl(): RedisOptions | null {
 	const redisUri = process.env.REDIS_URL;
 	if (redisUri) {
 		const parsedURL = new URL(redisUri);
@@ -11,9 +11,10 @@ export function parseRedisUrl(): RedisOptions | null{
 		return {
 			host: parsedURL.hostname,
 			port: parseInt(parsedURL.port),
+			username: config.getEnv('queue.bull.redis.username'),
 			password: parsedURL.password,
-			db: config.getEnv('queue.bull.redis.db')
-		}
+			db: config.getEnv('queue.bull.redis.db'),
+		};
 	} else {
 		Logger.debug(`Global Redis is not configured, working with specific environment variables`);
 		return null;
@@ -31,7 +32,7 @@ export function parsePostgresUrl(): any {
 			password: parsedURL.password,
 			host: parsedURL.hostname,
 			port: parseInt(parsedURL.port),
-		}
+		};
 	} else {
 		Logger.debug(`Global Postgres is not configured, working with specific environment variables`);
 		return null;
