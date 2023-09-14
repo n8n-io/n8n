@@ -407,7 +407,7 @@ export const schema = {
 				},
 				tls: {
 					format: 'Boolean',
-					default: false,
+					default: true,
 					env: 'QUEUE_BULL_REDIS_TLS',
 					doc: 'Enable TLS on Redis connections. Default: false',
 				},
