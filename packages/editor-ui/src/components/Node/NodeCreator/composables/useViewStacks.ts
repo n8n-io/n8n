@@ -2,7 +2,7 @@ import { computed, nextTick, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import type {
-	NodeConnectionType,
+	EndpointType,
 	INodeCreateElement,
 	NodeFilterType,
 	SimplifiedNodeType,
@@ -109,7 +109,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	});
 
 	async function gotoCompatibleConnectionView(
-		connectionType: NodeConnectionType,
+		connectionType: EndpointType,
 		filter?: INodeInputFilter,
 	) {
 		const nodesByOutputType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;

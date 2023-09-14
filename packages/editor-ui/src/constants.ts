@@ -1,5 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
-import { NodeConnectionType } from './Interface';
+import { EndpointType } from './Interface';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -92,16 +92,16 @@ export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger'
 
 // Node endpoint types
 export const SCOPED_ENDPOINT_TYPES = [
-	NodeConnectionType.Chain,
-	NodeConnectionType.Tool,
-	NodeConnectionType.Memory,
-	NodeConnectionType.OutputParser,
-	NodeConnectionType.LanguageModel,
-	NodeConnectionType.VectorRetriever,
-	NodeConnectionType.VectorStore,
-	NodeConnectionType.Embedding,
-	NodeConnectionType.Document,
-	NodeConnectionType.TextSplitter,
+	EndpointType.Chain,
+	EndpointType.Tool,
+	EndpointType.Memory,
+	EndpointType.OutputParser,
+	EndpointType.LanguageModel,
+	EndpointType.VectorRetriever,
+	EndpointType.VectorStore,
+	EndpointType.Embedding,
+	EndpointType.Document,
+	EndpointType.TextSplitter,
 ];
 
 // node types

@@ -341,7 +341,7 @@ import {
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { SCOPED_ENDPOINT_TYPES } from '@/constants';
-import type { NodeConnectionType } from '@/Interface';
+import type { EndpointType } from '@/Interface';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1980,7 +1980,7 @@ export default defineComponent({
 					// If node has only scoped outputs, position it below the last selected node
 					if (
 						nodeTypeData.outputs.every((output) =>
-							SCOPED_ENDPOINT_TYPES.includes(output as NodeConnectionType),
+							SCOPED_ENDPOINT_TYPES.includes(output as EndpointType),
 						)
 					) {
 						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
@@ -2167,7 +2167,7 @@ export default defineComponent({
 			// Handle connection of scoped_endpoint types
 			if (lastSelectedNodeEndpointUuid) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
-				if (SCOPED_ENDPOINT_TYPES.includes(lastSelectedEndpoint.scope as NodeConnectionType)) {
+				if (SCOPED_ENDPOINT_TYPES.includes(lastSelectedEndpoint.scope as EndpointType)) {
 					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
@@ -2206,7 +2206,7 @@ export default defineComponent({
 			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
 			nodeCreatorView?: string;
-			outputType?: NodeConnectionType;
+			outputType?: EndpointType;
 			endpointUuid?: string;
 		}) {
 			const type = info.outputType || 'main';

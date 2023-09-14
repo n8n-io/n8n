@@ -16,7 +16,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
-import type { NodeConnectionType } from '@/Interface';
+import type { EndpointType } from '@/Interface';
 import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
 
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
@@ -141,7 +141,7 @@ export const nodeBase = defineComponent({
 					inputsOfSameRootType.length,
 				)[rootTypeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(inputName as NodeConnectionType);
+				const scope = NodeViewUtils.getEndpointScope(inputName as EndpointType);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, inputName, typeIndex),
@@ -259,7 +259,7 @@ export const nodeBase = defineComponent({
 					outputsOfSameRootType.length,
 				)[rootTypeIndex];
 
-				const scope = NodeViewUtils.getEndpointScope(outputName as NodeConnectionType);
+				const scope = NodeViewUtils.getEndpointScope(outputName as EndpointType);
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, outputName, typeIndex),

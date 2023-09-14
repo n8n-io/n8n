@@ -56,7 +56,7 @@
 </template>
 
 <script lang="ts" setup>
-import { NodeConnectionType, type IAiDataContent } from '@/Interface';
+import { EndpointType, type IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
 import { ref, computed } from 'vue';
 import { useAiContentParsers } from './useAiContentParsers';
@@ -76,12 +76,12 @@ const isShowRaw = ref(false);
 
 function getInitialExpandedState() {
 	const collapsedTypes = {
-		input: [NodeConnectionType.Document, NodeConnectionType.TextSplitter],
+		input: [EndpointType.Document, EndpointType.TextSplitter],
 		output: [
-			NodeConnectionType.Document,
-			NodeConnectionType.Embedding,
-			NodeConnectionType.TextSplitter,
-			NodeConnectionType.VectorStore,
+			EndpointType.Document,
+			EndpointType.Embedding,
+			EndpointType.TextSplitter,
+			EndpointType.VectorStore,
 		],
 	};
 
