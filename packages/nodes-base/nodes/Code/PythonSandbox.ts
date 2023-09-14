@@ -39,8 +39,8 @@ export class PythonSandbox extends Sandbox {
 		}, {} as PythonSandboxContext);
 	}
 
-	async runCode(): Promise<string> {
-		return this.runCodeInPython<string>();
+	async runCode(): Promise<unknown> {
+		return this.runCodeInPython<unknown>();
 	}
 
 	async runCodeAllItems() {

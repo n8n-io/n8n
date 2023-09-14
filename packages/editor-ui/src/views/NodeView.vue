@@ -1968,7 +1968,7 @@ export default defineComponent({
 
 					const workflow = this.getCurrentWorkflow();
 					const workflowNode = workflow.getNode(newNodeData.name);
-					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeType);
+					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
 
 					// If node has only scoped outputs, position it below the last selected node
 					if (outputs.every((output) => SCOPED_ENDPOINT_TYPES.includes(output as EndpointType))) {

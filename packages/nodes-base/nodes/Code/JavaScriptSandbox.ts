@@ -1,4 +1,4 @@
-import { NodeVM, makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { NodeVM, makeResolverFromLegacyOptions, type Resolver } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ValidationError } from './ValidationError';
@@ -27,6 +27,7 @@ export class JavaScriptSandbox extends Sandbox {
 		private jsCode: string,
 		itemIndex: number | undefined,
 		helpers: IExecuteFunctions['helpers'],
+		options?: { resolver?: Resolver },
 	) {
 		super(
 			{
@@ -41,14 +42,14 @@ export class JavaScriptSandbox extends Sandbox {
 		this.vm = new NodeVM({
 			console: 'redirect',
 			sandbox: context,
-			require: vmResolver,
+			require: options?.resolver ?? vmResolver,
 			wasm: false,
 		});
 
 		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
-	async runCode(): Promise<string> {
+	async runCode(): Promise<unknown> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 		try {
 			return await this.vm.run(script, __dirname);

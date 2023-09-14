@@ -1,0 +1,249 @@
+/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import type {
+	IExecuteFunctions,
+	// INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	SupplyData,
+} from 'n8n-workflow';
+
+// TODO: Add support for execute function. Got already started but got commented out
+
+import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
+import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
+// import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code//utils';
+import type { Tool } from 'langchain/tools';
+import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { logWrapper } from '../../utils/logWrapper';
+
+const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
+	process.env;
+
+const connectorTypes = {
+	chain: 'Chain',
+	document: 'Document',
+	embedding: 'Embedding',
+	languageModel: 'Language Model',
+	// main: 'Main',
+	memory: 'Memory',
+	outputParser: 'Output Parser',
+	textSplitter: 'Text Splitter',
+	tool: 'Tool',
+	vectorRetriever: 'Vector Retriever',
+	vectorStore: 'Vector Store',
+};
+
+export const vmResolver = makeResolverFromLegacyOptions({
+	external: {
+		modules: external ? ['langchain', ...external.split(',')] : ['langchain'],
+		transitive: false,
+	},
+	builtin: builtIn?.split(',') ?? [],
+});
+
+function getSandbox(this: IExecuteFunctions, code: string, index = 0) {
+	const node = this.getNode();
+	const workflowMode = this.getMode();
+
+	const context = getSandboxContext.call(this, index);
+
+	const sandbox = new JavaScriptSandbox(context, code, index, this.helpers, {
+		resolver: vmResolver,
+	});
+
+	sandbox.on(
+		'output',
+		workflowMode === 'manual'
+			? this.sendMessageToUI.bind(this)
+			: (...args: unknown[]) =>
+					console.log(`[Workflow "${this.getWorkflow().id}"][Node "${node.name}"]`, ...args),
+	);
+	return sandbox;
+}
+
+export class Code implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'LangChain Code',
+		name: 'code',
+		icon: 'fa:code',
+		group: ['transform'],
+		version: 1,
+		description: 'LangChain Code Node',
+		defaults: {
+			name: 'LangChain Code',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			color: '#400080',
+		},
+		codex: {
+			categories: ['AI'],
+			// subcategories: {
+			// 	AI: ['Tools'],
+			// },
+		},
+		inputs: `={{ ((values) => { const connectorTypes = ${JSON.stringify(
+			connectorTypes,
+		)}; return values.map(value => { return { type: value.type, required: value.required, maxConnections: value.maxConnections === -1 ? undefined : value.maxConnections, displayName: connectorTypes[value.type] !== 'Main' ? connectorTypes[value.type] : undefined } } ) })($parameter.inputs.input) }}`,
+		outputs: `={{ ((values) => { const connectorTypes = ${JSON.stringify(
+			connectorTypes,
+		)}; return values.map(value => { return { type: value.type, displayName: connectorTypes[value.type] !== 'Main' ? connectorTypes[value.type] : undefined } } ) })($parameter.outputs.output) }}`,
+		properties: [
+			// {
+			// 	displayName: 'JavaScript - Execute',
+			// 	name: 'jsCodeExecute',
+			// 	type: 'string',
+			// 	typeOptions: {
+			// 		editor: 'codeNodeEditor',
+			// 		editorLanguage: 'javaScript',
+			// 	},
+			// 	default:
+			// 		'',
+			// 	// hint: 'You can access the input the tool receives via the input property "query". The returned value should be a single string.',
+			// 	// description:
+			// 	// 	'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
+			// 	noDataExpression: true,
+			// },
+			{
+				displayName: 'JavaScript - SupplyData',
+				name: 'jsCodeSupplyData',
+				type: 'string',
+				typeOptions: {
+					editor: 'codeNodeEditor',
+					editorLanguage: 'javaScript',
+				},
+				default:
+					"const { WikipediaQueryRun } = require('langchain/tools');\nreturn new WikipediaQueryRun();",
+				noDataExpression: true,
+			},
+			// TODO: Add links to docs which provide additional information regarding functionality
+			{
+				displayName:
+					'You can import langchain and use all available functionality. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName: 'Inputs',
+				name: 'inputs',
+				placeholder: 'Add Input',
+				type: 'fixedCollection',
+				noDataExpression: true,
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				description: 'The input to add',
+				default: {},
+				options: [
+					{
+						name: 'input',
+						displayName: 'Input',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: Object.keys(connectorTypes).map((key) => ({
+									name: connectorTypes[key as keyof typeof connectorTypes],
+									value: key,
+								})),
+								noDataExpression: true,
+								default: '',
+								required: true,
+								description: 'The type of the input',
+							},
+							{
+								displayName: 'Max Connections',
+								name: 'maxConnections',
+								type: 'number',
+								noDataExpression: true,
+								default: 1,
+								required: true,
+								description:
+									'How many nodes of this type are allowed to be connected. Set it to -1 for unlimited.',
+							},
+							{
+								displayName: 'Required',
+								name: 'required',
+								type: 'boolean',
+								noDataExpression: true,
+								default: false,
+								required: true,
+								description: 'Whether the input needs a connection',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Outputs',
+				name: 'outputs',
+				placeholder: 'Add Output',
+				type: 'fixedCollection',
+				noDataExpression: true,
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				description: 'The output to add',
+				default: {},
+				options: [
+					{
+						name: 'output',
+						displayName: 'Output',
+						values: [
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								options: Object.keys(connectorTypes).map((key) => ({
+									name: connectorTypes[key as keyof typeof connectorTypes],
+									value: key,
+								})),
+								noDataExpression: true,
+								default: '',
+								required: true,
+								description: 'The type of the input',
+							},
+						],
+					},
+				],
+			},
+		],
+	};
+
+	// async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	// 	const itemIndex = 0;
+
+	// 	const code = this.getNodeParameter('jsCodeExecute', itemIndex) as string;
+
+	// 	const sandbox = getSandbox.call(this, code, itemIndex);
+
+	// 	let items: INodeExecutionData[];
+	// 	try {
+	// 		items = await sandbox.runCodeAllItems();
+	// 	} catch (error) {
+	// 		if (!this.continueOnFail()) throw error;
+	// 		items = [{ json: { error: error.message } }];
+	// 	}
+
+	// 	for (const item of items) {
+	// 		standardizeOutput(item.json);
+	// 	}
+
+	// 	return [items];
+	// }
+
+	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+		const itemIndex = 0;
+
+		const code = this.getNodeParameter('jsCodeSupplyData', itemIndex) as string;
+
+		const sandbox = getSandbox.call(this, code, itemIndex);
+		const response = (await sandbox.runCode()) as Tool;
+
+		return {
+			response: logWrapper(response, this),
+		};
+	}
+}
