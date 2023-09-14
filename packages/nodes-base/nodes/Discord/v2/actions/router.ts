@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import * as message from './message/Message.resource';
@@ -8,7 +7,7 @@ import * as member from './member/Member.resource';
 import * as webhook from './webhook/Webhook.resource';
 import type { Discord } from './node.type';
 
-export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+export async function router(this: IExecuteFunctions) {
 	let returnData: INodeExecutionData[] = [];
 
 	const resource = this.getNodeParameter<Discord>('resource', 0);
@@ -42,5 +41,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

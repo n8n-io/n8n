@@ -1,13 +1,13 @@
 import type { OptionsWithUrl } from 'request';
 
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+} from 'n8n-workflow';
 
-import type { IDataObject } from 'n8n-workflow';
 import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
 
 import type FormData from 'form-data';
