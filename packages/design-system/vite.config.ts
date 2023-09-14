@@ -1,13 +1,65 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { defineConfig, mergeConfig } from 'vite';
+import { defineConfig, mergeConfig, Plugin } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
+import { createFilter } from '@rollup/pluginutils';
+import { transform } from '@swc/core';
 
 const { coverageReporters } = require('../../jest.config.js');
 
+export function RollupPluginSwc(): Plugin {
+	const filter = createFilter(/\.ts$/, /\.js$/);
+	const cleanUrl = (url: string) => url.replace(/#.*$/, '').replace(/\?.*$/, '');
+	return {
+		name: 'rollup-plugin-swc',
+		async transform(code, id, options) {
+			if (filter(id) || filter(cleanUrl(id))) {
+				const result = await transform(code, {
+					filename: id,
+					jsc: {
+						target: 'esnext',
+						parser: {
+							syntax: 'typescript',
+							tsx: false,
+						},
+						externalHelpers: false,
+						keepClassNames: true,
+					},
+					minify: true,
+					sourceMaps: true,
+				});
+				return {
+					code: result.code,
+					map: result.map,
+				};
+			}
+		},
+	};
+}
+
+export const vitestConfig = defineVitestConfig({
+	test: {
+		globals: true,
+		environment: 'jsdom',
+		setupFiles: ['./src/__tests__/setup.ts'],
+		coverage: {
+			provider: 'v8',
+			reporter: coverageReporters,
+			all: true,
+		},
+		css: {
+			modules: {
+				classNameStrategy: 'non-scoped',
+			},
+		},
+	},
+});
+
 export default mergeConfig(
 	defineConfig({
-		plugins: [vue()],
+		esbuild: false,
+		plugins: [vue(), RollupPluginSwc()],
+		logLevel: 'error',
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
@@ -35,21 +87,5 @@ export default mergeConfig(
 			},
 		},
 	}),
-	defineVitestConfig({
-		test: {
-			globals: true,
-			environment: 'jsdom',
-			setupFiles: ['./src/__tests__/setup.ts'],
-			coverage: {
-				provider: 'v8',
-				reporter: coverageReporters,
-				all: true,
-			},
-			css: {
-				modules: {
-					classNameStrategy: 'non-scoped',
-				},
-			},
-		},
-	}),
+	vitestConfig,
 );

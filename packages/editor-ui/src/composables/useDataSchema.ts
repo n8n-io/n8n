@@ -1,5 +1,5 @@
-import type { Optional, Primitives, Schema, INodeUi, INodeExecutionData } from '@/Interface';
-import type { ITaskDataConnections, type IDataObject } from 'n8n-workflow';
+import type { Optional, Primitives, Schema, INodeUi } from '@/Interface';
+import type { ITaskDataConnections, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { merge } from 'lodash-es';
 import { generatePath } from '@/utils/mappingUtils';
 import { isObj } from '@/utils/typeGuards';
