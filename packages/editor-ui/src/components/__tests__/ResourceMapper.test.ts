@@ -3,7 +3,6 @@ import {
 	MAPPING_COLUMNS_RESPONSE,
 	NODE_PARAMETER_VALUES,
 	UPDATED_SCHEMA,
-	getLatestValueChangeEvent,
 } from './utils/ResourceMapper.utils';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { waitAllPromises } from '@/__tests__/utils';
