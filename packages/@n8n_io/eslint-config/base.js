@@ -491,19 +491,3 @@ const config = (module.exports = {
 		},
 	],
 });
-
-if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
-	/**
-	 * Plugin to lint only changes
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.plugins.push('eslint-plugin-diff');
-
-	/**
-	 * Config for eslint-plugin-diff
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.extends.push('plugin:diff/diff');
-}
