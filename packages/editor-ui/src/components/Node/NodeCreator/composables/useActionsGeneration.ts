@@ -1,12 +1,12 @@
+import type { ActionTypeDescription, ActionsRecord, SimplifiedNodeType } from '@/Interface';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { memoize, startCase } from 'lodash-es';
 import type {
+	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
-import type { ActionTypeDescription, SimplifiedNodeType, ActionsRecord } from '@/Interface';
 
 import { i18n } from '@/plugins/i18n';
 
@@ -225,7 +225,8 @@ export function useActionsGenerator() {
 	}
 
 	function getSimplifiedNodeType(node: INodeTypeDescription): SimplifiedNodeType {
-		const { displayName, defaults, description, name, group, icon, iconUrl, codex } = node;
+		const { displayName, defaults, description, name, group, icon, iconUrl, badgeIconUrl, codex } =
+			node;
 
 		return {
 			displayName,
@@ -235,6 +236,7 @@ export function useActionsGenerator() {
 			group,
 			icon,
 			iconUrl,
+			badgeIconUrl,
 			codex,
 		};
 	}

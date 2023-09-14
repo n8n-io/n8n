@@ -1,50 +1,50 @@
 import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 
-import type { IMenuItem } from 'n8n-design-system';
-import type {
-	GenericValue,
-	IConnections,
-	ICredentialsDecrypted,
-	ICredentialsEncrypted,
-	ICredentialType,
-	IDataObject,
-	INode,
-	INodeIssues,
-	INodeParameters,
-	INodeTypeDescription,
-	IPinData,
-	IRunExecutionData,
-	IRun,
-	IRunData,
-	ITaskData,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	WorkflowExecuteMode,
-	PublicInstalledPackage,
-	INodeTypeNameVersion,
-	ILoadOptions,
-	INodeCredentials,
-	INodeListSearchItems,
-	NodeParameterValueType,
-	IDisplayOptions,
-	IExecutionsSummary,
-	FeatureFlags,
-	ExecutionStatus,
-	ITelemetryTrackProperties,
-	IUserManagementSettings,
-	WorkflowSettings,
-	IUserSettings,
-	IN8nUISettings,
-	BannerName,
-} from 'n8n-workflow';
-import type { SignInType } from './constants';
-import type {
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-} from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy } from '@/utils/typeHelpers';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IMenuItem } from 'n8n-design-system';
+import type {
+	BannerName,
+	ExecutionStatus,
+	FeatureFlags,
+	GenericValue,
+	IConnections,
+	ICredentialType,
+	ICredentialsDecrypted,
+	ICredentialsEncrypted,
+	IDataObject,
+	IDisplayOptions,
+	IExecutionsSummary,
+	ILoadOptions,
+	IN8nUISettings,
+	INode,
+	INodeCredentials,
+	INodeIssues,
+	INodeListSearchItems,
+	INodeParameters,
+	INodeProperties,
+	INodeTypeDescription,
+	INodeTypeNameVersion,
+	IPinData,
+	IRun,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	ITelemetryTrackProperties,
+	IUserManagementSettings,
+	IUserSettings,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	NodeParameterValueType,
+	PublicInstalledPackage,
+	WorkflowExecuteMode,
+	WorkflowSettings,
+} from 'n8n-workflow';
+import type {
+	FAKE_DOOR_FEATURES,
+	REGULAR_NODE_CREATOR_VIEW,
+	SignInType,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from './constants';
 
 export * from 'n8n-design-system/types';
 
@@ -734,11 +734,19 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
 };
 
-export interface SimplifiedNodeType
-	extends Pick<
-		INodeTypeDescription,
-		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
-	> {}
+export type SimplifiedNodeType = Pick<
+	INodeTypeDescription,
+	| 'displayName'
+	| 'description'
+	| 'name'
+	| 'group'
+	| 'icon'
+	| 'iconUrl'
+	| 'badgeIconUrl'
+	| 'codex'
+	| 'defaults'
+>;
+
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;

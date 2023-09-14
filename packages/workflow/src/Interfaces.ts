@@ -1353,7 +1353,7 @@ export interface INodeTypeBaseDescription {
 	name: string;
 	icon?: string;
 	iconUrl?: string;
-	badgeIcon?: string;
+	badgeIconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;

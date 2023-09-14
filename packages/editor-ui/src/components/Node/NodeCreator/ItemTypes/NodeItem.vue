@@ -12,7 +12,7 @@
 		:data-test-id="dataTestId"
 	>
 		<template #icon>
-			<node-icon :nodeType="nodeType" />
+			<node-icon :size="24" :nodeType="nodeType" />
 		</template>
 
 		<template #tooltip v-if="isCommunityNode">
