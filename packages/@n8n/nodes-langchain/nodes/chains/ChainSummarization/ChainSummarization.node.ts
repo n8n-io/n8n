@@ -35,7 +35,7 @@ export class ChainSummarization implements INodeType {
 		inputs: [
 			'main',
 			{
-				displayName: 'Language Model',
+				displayName: 'Model',
 				maxConnections: 1,
 				type: 'languageModel',
 				required: true,

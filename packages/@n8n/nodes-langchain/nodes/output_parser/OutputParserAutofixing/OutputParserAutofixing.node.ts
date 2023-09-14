@@ -26,7 +26,7 @@ export class OutputParserAutofixing implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
 			{
-				displayName: 'Language Model',
+				displayName: 'Model',
 				maxConnections: 1,
 				type: 'languageModel',
 				required: true,

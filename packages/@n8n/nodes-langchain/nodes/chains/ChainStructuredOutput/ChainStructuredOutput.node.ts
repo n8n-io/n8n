@@ -48,7 +48,7 @@ export class ChainStructuredOutput implements INodeType {
 		inputs: [
 			'main',
 			{
-				displayName: 'Language Model',
+				displayName: 'Model',
 				maxConnections: 1,
 				type: 'languageModel',
 				filter: {

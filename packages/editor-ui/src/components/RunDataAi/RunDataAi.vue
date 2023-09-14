@@ -66,7 +66,7 @@
 import type { Ref } from 'vue';
 import { computed, ref } from 'vue';
 import type { ITaskAIRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import type { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import type { NodeConnectionType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
@@ -118,7 +118,7 @@ function getReferencedData(
 			returnData.push({
 				data: data[type][0],
 				inOut,
-				type: type as EndpointType,
+				type: type as NodeConnectionType,
 				metadata: {
 					executionTime: taskData.executionTime,
 					startTime: taskData.startTime,

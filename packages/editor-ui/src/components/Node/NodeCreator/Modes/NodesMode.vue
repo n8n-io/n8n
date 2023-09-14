@@ -54,14 +54,24 @@ function selectNodeType(nodeTypes: string[]) {
 
 function onSelected(item: INodeCreateElement) {
 	if (item.type === 'subcategory') {
-		const title = i18n.baseText(
-			`nodeCreator.subcategoryNames.${camelCase(item.properties.title)}` as BaseTextKey,
-		);
+		const subcategoryKey = camelCase(item.properties.title);
+		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
+
+		console.log(item);
 
 		pushViewStack({
 			subcategory: item.key,
 			title,
 			mode: 'nodes',
+			...(item.properties.icon
+				? {
+						nodeIcon: {
+							icon: item.properties.icon,
+							iconType: 'icon',
+						},
+				  }
+				: {}),
+			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
