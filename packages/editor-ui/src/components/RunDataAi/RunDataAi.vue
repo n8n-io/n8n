@@ -12,6 +12,7 @@
 				default-expand-all
 				:indent="12"
 				@node-click="onItemClick"
+				:expand-on-click-node="false"
 			>
 				<template #default="{ node, data }">
 					<div
@@ -22,11 +23,13 @@
 						:data-tree-depth="data.depth"
 						:style="{ '--item-depth': data.depth }"
 					>
-						<font-awesome-icon
+						<button
+							:class="$style.treeToggle"
 							v-if="data.children.length"
-							:icon="node.expanded ? 'angle-down' : 'angle-up'"
-							size="md"
-						/>
+							@click="toggleTreeItem(node)"
+						>
+							<font-awesome-icon :icon="node.expanded ? 'angle-down' : 'angle-up'" />
+						</button>
 						<n8n-tooltip :disabled="!slim" placement="right">
 							<template #content>
 								{{ node.label }}
@@ -132,6 +135,10 @@ function getReferencedData(
 	}
 
 	return returnData;
+}
+
+function toggleTreeItem(node: { expanded: boolean }) {
+	node.expanded = !node.expanded;
 }
 
 function onItemClick(data: TreeNode) {
@@ -248,6 +255,13 @@ const executionTree = computed<TreeNode[]>(() => {
 </script>
 
 <style lang="scss" module>
+.treeToggle {
+	border: none;
+	background-color: transparent;
+	padding: 0 var(--spacing-3xs);
+	margin: 0 calc(-1 * var(--spacing-3xs));
+	cursor: pointer;
+}
 .leafLabel {
 	display: flex;
 	align-items: center;

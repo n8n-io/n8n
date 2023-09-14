@@ -247,6 +247,7 @@
 						})
 					}}
 				</n8n-text>
+				<slot name="content" v-else-if="$slots['content']"></slot>
 				<NodeErrorView
 					v-else
 					:error="workflowRunData[node.name][runIndex].error"

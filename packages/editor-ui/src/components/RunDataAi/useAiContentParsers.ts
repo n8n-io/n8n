@@ -1,5 +1,6 @@
 import { EndpointType } from '@/Interface';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { isObjectEmpty } from 'n8n-workflow';
 
 interface MemoryMessage {
 	lc: number;
@@ -168,7 +169,11 @@ export const useAiContentParsers = () => {
 			return executionData.map((data) => ({ raw: data.json, parsedContent: null }));
 		}
 
-		const contentJson = executionData.map((node) => node.json);
+		const contentJson = executionData.map((node) => {
+			const hasBinarData = !isObjectEmpty(node.binary);
+			return hasBinarData ? node.binary : node.json;
+		});
+
 		const parser = outputTypeParsers[endpointType as AllowedEndpointType];
 		if (!parser) return [{ raw: contentJson, parsedContent: null }];
 
