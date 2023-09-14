@@ -1,6 +1,6 @@
 import type { IExternalHooks } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
-import { useWebhooksStore } from '@/stores';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { runExternalHook } from '@/utils';
 
 export function useExternalHooks(): IExternalHooks {

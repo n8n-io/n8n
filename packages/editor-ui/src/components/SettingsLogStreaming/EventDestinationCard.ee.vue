@@ -13,7 +13,7 @@
 			</div>
 		</template>
 		<template #append>
-			<div :class="$style.cardActions">
+			<div :class="$style.cardActions" ref="cardActions">
 				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
 					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
 						{{ $locale.baseText('workflowActivator.active') }}
@@ -83,9 +83,7 @@ export default defineComponent({
 		destination: {
 			type: Object,
 			required: true,
-			default: deepCopy(
-				defaultMessageEventBusDestinationOptions,
-			) as MessageEventBusDestinationOptions,
+			default: deepCopy(defaultMessageEventBusDestinationOptions),
 		},
 		isInstanceOwner: Boolean,
 	},
@@ -130,17 +128,16 @@ export default defineComponent({
 				);
 			}
 		},
-		async onClick(event?: PointerEvent) {
+		async onClick(event: Event) {
 			if (
-				event &&
-				event.target &&
-				'className' in event.target &&
-				event.target['className'] === 'el-switch__core'
+				this.$refs.cardActions === event.target ||
+				this.$refs.cardActions?.contains(event.target) ||
+				event.target?.contains(this.$refs.cardActions)
 			) {
-				event.stopPropagation();
-			} else {
-				this.$emit('edit', this.destination.id);
+				return;
 			}
+
+			this.$emit('edit', this.destination.id);
 		},
 		onEnabledSwitched(state: boolean, destinationId: string) {
 			this.nodeParameters.enabled = state;
@@ -184,6 +181,8 @@ export default defineComponent({
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
+	padding: 0 0 0 var(--spacing-s);
+	align-items: stretch;
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
@@ -201,12 +200,14 @@ export default defineComponent({
 .cardHeading {
 	font-size: var(--font-size-s);
 	word-break: break-word;
+	padding: var(--spacing-s) 0 0 var(--spacing-s);
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
+	padding: 0 0 var(--spacing-s) var(--spacing-s);
 }
 
 .cardActions {
@@ -214,5 +215,7 @@ export default defineComponent({
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	padding: 0 var(--spacing-s) 0 0;
+	cursor: default;
 }
 </style>

@@ -46,7 +46,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy } from '@/utils/typeHelpers';
+import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 
@@ -1499,6 +1499,8 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
+export type SshKeyTypes = ['ed25519', 'rsa'];
+
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
@@ -1507,6 +1509,7 @@ export type SourceControlPreferences = {
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
 };
 

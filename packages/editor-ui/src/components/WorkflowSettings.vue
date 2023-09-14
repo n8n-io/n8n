@@ -67,7 +67,7 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
-				<div v-if="isSharingEnabled">
+				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
@@ -114,6 +114,7 @@
 								type="text"
 								v-model="workflowSettings.callerIds"
 								@update:modelValue="onCallerIdsInput"
+								data-test-id="workflow-caller-policy-workflow-ids"
 							/>
 						</el-col>
 					</el-row>
@@ -374,13 +375,11 @@ import {
 
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import {
-	useWorkflowsStore,
-	useSettingsStore,
-	useRootStore,
-	useWorkflowsEEStore,
-	useUsersStore,
-} from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
@@ -566,9 +565,9 @@ export default defineComponent({
 	},
 	methods: {
 		onCallerIdsInput(str: string) {
-			this.workflowSettings.callerIds = /^[0-9,\s]+$/.test(str)
+			this.workflowSettings.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
 				? str
-				: str.replace(/[^0-9,\s]/g, '');
+				: str.replace(/[^a-zA-Z0-9,\s]/g, '');
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
