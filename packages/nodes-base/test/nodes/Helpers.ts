@@ -219,7 +219,7 @@ export function createTemporaryDir(prefix = 'n8n') {
 
 export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
 	const binaryDataService = new BinaryDataService();
-	await binaryDataService.init({ mode: 'default', availableModes: mode });
+	await binaryDataService.init({ mode: 'default', availableModes: [mode] });
 	Container.set(BinaryDataService, binaryDataService);
 }
 
