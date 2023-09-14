@@ -59,7 +59,11 @@ export function getRedisStandardClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
-	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
+
+	if (host !== 'localhost' && '127.0.0.1') {
+		// If redis is in localhost mode then there is no need to configre any ssl options
+		sharedRedisOptions['tls'] = { rejectUnauthorized: false };
+	}
 	LoggerProxy.debug(
 		`Initialising Redis client${redisType ? ` of type ${redisType}` : ''} connection with host: ${
 			host ?? 'localhost'
@@ -107,6 +111,12 @@ export function getRedisClusterClient(
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
 	};
+
+	if (host !== 'localhost' && '127.0.0.1') {
+		// If redis is in localhost mode then there is no need to configre any ssl options
+		sharedRedisOptions['tls'] = { rejectUnauthorized: false };
+	}
+
 	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
 	LoggerProxy.debug(
 		`Initialising Redis cluster${
