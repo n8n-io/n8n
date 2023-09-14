@@ -6,24 +6,24 @@ import {
 } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import type { BaseLanguageModel } from 'langchain/base_language';
 import type { Tool } from 'langchain/tools';
-import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import { BaseChatModel } from 'langchain/chat_models/base';
 
-export class ConversationalAgent implements INodeType {
+export class ReactAgent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Conversational Agent',
-		name: 'conversationalAgent',
+		displayName: 'ReAct Agent',
+		name: 'reactAgent',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
 		description:
-			'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
+			'Leverages the ReAct framework to retrieve past dialogues from memory and strategically chooses tools to fulfill a specific task',
 		defaults: {
-			name: 'Conversational Agent',
+			name: 'ReAct Agent',
 			color: '#404040',
 		},
 		codex: {
@@ -40,16 +40,7 @@ export class ConversationalAgent implements INodeType {
 				displayName: 'Language Model',
 				maxConnections: 1,
 				type: 'languageModel',
-				filter: {
-					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
-				},
 				required: true,
-			},
-			{
-				displayName: 'Memory',
-				maxConnections: 1,
-				type: 'memory',
-				required: false,
 			},
 			{
 				displayName: 'Tools',
@@ -90,26 +81,17 @@ export class ConversationalAgent implements INodeType {
 				type: 'string',
 				default: '={{ $json.input }}',
 			},
-			{
-				displayName: 'System Message',
-				name: 'systemMessage',
-				type: 'string',
-				default:
-					'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
-				description: 'The message that will be sent to the agent before the conversation starts',
-				typeOptions: {
-					rows: 3,
-				},
-			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Conversational Agent');
+		this.logger.verbose('Executing ReAct Agent');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
-		const memory = (await this.getInputConnectionData('memory', 0)) as BaseChatMemory | undefined;
+		const model = (await this.getInputConnectionData('languageModel', 0)) as
+			| BaseLanguageModel
+			| BaseChatModel;
+
 		const tools = (await this.getInputConnectionData('tool', 0)) as Tool[];
 		const outputParsers = (await this.getInputConnectionData(
 			'outputParser',
@@ -117,15 +99,10 @@ export class ConversationalAgent implements INodeType {
 		)) as BaseOutputParser[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
-			// Passing "chat-conversational-react-description" as the agent type
-			// automatically creates and uses BufferMemory with the executor.
-			// If you would like to override this, you can pass in a custom
-			// memory option, but the memoryKey set on it must be "chat_history".
-			agentType: 'chat-conversational-react-description',
-			memory,
-			agentArgs: {
-				systemMessage: this.getNodeParameter('systemMessage', 0) as string,
-			},
+			agentType:
+				model instanceof BaseChatModel
+					? 'chat-zero-shot-react-description'
+					: 'zero-shot-react-description',
 		});
 
 		const returnData: INodeExecutionData[] = [];
@@ -133,11 +110,9 @@ export class ConversationalAgent implements INodeType {
 		let outputParser: BaseOutputParser | undefined;
 		let prompt: PromptTemplate | undefined;
 		if (outputParsers.length) {
-			if (outputParsers.length === 1) {
-				outputParser = outputParsers[0];
-			} else {
-				outputParser = new CombiningOutputParser(...outputParsers);
-			}
+			outputParser =
+				outputParsers.length === 1 ? outputParsers[0] : new CombiningOutputParser(...outputParsers);
+
 			const formatInstructions = outputParser.getFormatInstructions();
 
 			prompt = new PromptTemplate({

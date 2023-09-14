@@ -6,24 +6,24 @@ import {
 } from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Tool } from 'langchain/tools';
-import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import type { BaseChatMemory } from 'langchain/memory';
+import type { OpenAIChat } from 'langchain/dist/llms/openai-chat';
 
-export class ConversationalAgent implements INodeType {
+export class OpenAiFunctionsAgent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Conversational Agent',
-		name: 'conversationalAgent',
+		displayName: 'OpenAi Functions Agent',
+		name: 'openAiFunctionsAgent',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
 		description:
-			'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
+			"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
 		defaults: {
-			name: 'Conversational Agent',
+			name: 'OpenAi Functions Agent',
 			color: '#404040',
 		},
 		codex: {
@@ -90,25 +90,14 @@ export class ConversationalAgent implements INodeType {
 				type: 'string',
 				default: '={{ $json.input }}',
 			},
-			{
-				displayName: 'System Message',
-				name: 'systemMessage',
-				type: 'string',
-				default:
-					'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
-				description: 'The message that will be sent to the agent before the conversation starts',
-				typeOptions: {
-					rows: 3,
-				},
-			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Conversational Agent');
+		this.logger.verbose('Executing OpenAi Functions Agent');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+		const model = (await this.getInputConnectionData('languageModel', 0)) as OpenAIChat;
 		const memory = (await this.getInputConnectionData('memory', 0)) as BaseChatMemory | undefined;
 		const tools = (await this.getInputConnectionData('tool', 0)) as Tool[];
 		const outputParsers = (await this.getInputConnectionData(
@@ -117,27 +106,21 @@ export class ConversationalAgent implements INodeType {
 		)) as BaseOutputParser[];
 
 		const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
-			// Passing "chat-conversational-react-description" as the agent type
-			// automatically creates and uses BufferMemory with the executor.
-			// If you would like to override this, you can pass in a custom
-			// memory option, but the memoryKey set on it must be "chat_history".
-			agentType: 'chat-conversational-react-description',
-			memory,
-			agentArgs: {
-				systemMessage: this.getNodeParameter('systemMessage', 0) as string,
-			},
+			agentType: 'openai-functions',
 		});
+
+		if (memory) {
+			agentExecutor.memory = memory;
+		}
 
 		const returnData: INodeExecutionData[] = [];
 
 		let outputParser: BaseOutputParser | undefined;
 		let prompt: PromptTemplate | undefined;
 		if (outputParsers.length) {
-			if (outputParsers.length === 1) {
-				outputParser = outputParsers[0];
-			} else {
-				outputParser = new CombiningOutputParser(...outputParsers);
-			}
+			outputParser =
+				outputParsers.length === 1 ? outputParsers[0] : new CombiningOutputParser(...outputParsers);
+
 			const formatInstructions = outputParser.getFormatInstructions();
 
 			prompt = new PromptTemplate({

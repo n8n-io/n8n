@@ -43,7 +43,9 @@
     ],
     "nodes": [
       "dist/nodes/agents/ConversationalAgent/ConversationalAgent.node.js",
+      "dist/nodes/agents/OpenAiFunctionsAgent/OpenAiFunctionsAgent.node.js",
       "dist/nodes/agents/SqlAgent/SqlAgent.node.js",
+      "dist/nodes/agents/ReactAgent/ReactAgent.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.js",
       "dist/nodes/chains/ChainVectorStoreQA/ChainVectorStoreQa.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
