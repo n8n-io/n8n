@@ -29,6 +29,7 @@ import {
 	WorkflowActivationError,
 	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
+	WebhookPathAlreadyTakenError,
 } from 'n8n-workflow';
 
 import type express from 'express';
@@ -428,11 +429,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
-				if (error.name === 'QueryFailedError') {
-					error = new Error(
-						`The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`,
-						{ cause: error },
-					);
+				if (error instanceof Error && error.name === 'QueryFailedError') {
+					error = new WebhookPathAlreadyTakenError(webhook, error);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;

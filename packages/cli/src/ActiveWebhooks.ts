@@ -6,7 +6,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
+import { WebhookPathAlreadyTakenError } from 'n8n-workflow';
 import * as NodeExecuteFunctions from 'n8n-core';
 
 @Service()
@@ -46,9 +46,7 @@ export class ActiveWebhooks {
 
 		// check that there is not a webhook already registered with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
-			throw new Error(
-				`The URL path that the "${webhookData.node}" node uses is already taken. Please change it to something else.`,
-			);
+			throw new WebhookPathAlreadyTakenError(webhookData);
 		}
 
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {
