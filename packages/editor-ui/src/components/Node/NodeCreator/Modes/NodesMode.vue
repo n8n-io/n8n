@@ -191,7 +191,7 @@ function onKeySelect(activeItemId: string) {
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
 	if (!item) return;
 
-	onSelected(item as INodeCreateElement);
+	onSelected(item);
 }
 
 registerKeyHook('MainViewArrowRight', {

@@ -77,7 +77,9 @@
       "dist/nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.js",
       "dist/nodes/vector_store/InMemoryVectorStore/InMemoryVectorStore.node.js",
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
-      "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js"
+      "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
+      "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js"
     ]
   },
   "devDependencies": {
@@ -93,6 +95,7 @@
     "@gxl/epub-parser": "^2.0.4",
     "@huggingface/inference": "2.6.1",
     "@pinecone-database/pinecone": "^0.1.6",
+    "@supabase/supabase-js": "^2.33.2",
     "@types/temp": "^0.9.1",
     "@xata.io/cli": "^0.13.4",
     "@xata.io/client": "^0.26.2",

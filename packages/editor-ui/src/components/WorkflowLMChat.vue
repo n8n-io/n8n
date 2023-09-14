@@ -16,7 +16,11 @@
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press" ref="messagesContainer">
-					<div :class="['message', message.sender]" v-for="message in messages">
+					<div
+						v-for="message in messages"
+						:key="`${message.executionId}__${message.sender}`"
+						:class="['message', message.sender]"
+					>
 						<div :class="['content', message.sender]">
 							{{ message.text }}
 
@@ -60,7 +64,7 @@
 					</div>
 				</div>
 				<div class="logs">
-					<run-data-ai v-if="node" :node="node" />
+					<run-data-ai v-if="node" :node="node" hide-title slim />
 					<div v-else class="no-node-connected">
 						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 							$locale.baseText('chat.window.noExecution')
@@ -117,7 +121,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { INode, INodeType, ITaskData } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
+const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
 interface ChatMessage {
 	text: string;
@@ -274,7 +278,7 @@ export default defineComponent({
 				memoryConnection.node,
 			);
 
-			let memoryOutputData = nodeResultData
+			const memoryOutputData = nodeResultData
 				?.map(
 					(
 						data,
@@ -469,6 +473,7 @@ export default defineComponent({
 		height: 100%;
 		overflow-y: auto;
 		width: 100%;
+		padding: var(--spacing-xs) 0;
 	}
 	.messages {
 		background-color: var(--color-background-base);

@@ -324,7 +324,7 @@ export default defineComponent({
 			if (this.nodeType?.outputs.length) {
 				const otherOutputs = this.nodeType.outputs.filter((outputName) => outputName !== 'main');
 				if (otherOutputs.length) {
-					classes[`node-other`] = true;
+					classes['node-other'] = true;
 				}
 			}
 
@@ -400,7 +400,7 @@ export default defineComponent({
 		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
-			if (workflowExecution && workflowExecution.waitTill) {
+			if (workflowExecution?.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
@@ -643,7 +643,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
