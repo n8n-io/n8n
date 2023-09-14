@@ -10,7 +10,7 @@ import type { Readable } from 'stream';
 import type { BinaryMetadata } from 'n8n-workflow';
 import type { BinaryData } from './types';
 
-const EXECUTION_EXTRACTOR =
+const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
 export class FileSystemClient implements BinaryData.Client {
@@ -80,7 +80,7 @@ export class FileSystemClient implements BinaryData.Client {
 		const deletedIds = [];
 
 		for (const fileName of fileNames) {
-			const executionId = fileName.match(EXECUTION_EXTRACTOR)?.[1];
+			const executionId = fileName.match(EXECUTION_ID_EXTRACTOR)?.[1];
 
 			if (executionId && set.has(executionId)) {
 				const filePath = this.resolvePath(fileName);
