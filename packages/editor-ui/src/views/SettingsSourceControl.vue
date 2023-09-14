@@ -5,6 +5,8 @@ import { MODAL_CONFIRM } from '@/constants';
 import { useUIStore, useSourceControlStore } from '@/stores';
 import { useToast, useMessage, useLoadingService, useI18n } from '@/composables';
 import CopyInput from '@/components/CopyInput.vue';
+import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { SshKeyTypes } from '@/Interface';
 
 const locale = useI18n();
 const sourceControlStore = useSourceControlStore();
@@ -111,6 +113,7 @@ onMounted(async () => {
 
 const formValidationStatus = reactive<Record<string, boolean>>({
 	repoUrl: false,
+	keyGeneratorType: false,
 });
 
 function onValidate(key: string, value: boolean) {
@@ -129,6 +132,8 @@ const repoUrlValidationRules: Array<Rule | RuleGroup> = [
 	},
 ];
 
+const keyGeneratorTypeValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
+
 const validForConnection = computed(() => formValidationStatus.repoUrl);
 const branchNameValidationRules: Array<Rule | RuleGroup> = [{ name: 'REQUIRED' }];
 
@@ -144,7 +149,7 @@ async function refreshSshKey() {
 		);
 
 		if (confirmation === MODAL_CONFIRM) {
-			await sourceControlStore.generateKeyPair();
+			await sourceControlStore.generateKeyPair(sourceControlStore.preferences.keyGeneratorType);
 			toast.showMessage({
 				title: locale.baseText('settings.sourceControl.refreshSshKey.successful.title'),
 				type: 'success',
@@ -165,6 +170,13 @@ const refreshBranches = async () => {
 	} catch (error) {
 		toast.showError(error, locale.baseText('settings.sourceControl.refreshBranches.error'));
 	}
+};
+
+const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
+	if (sshKeyType === sourceControlStore.preferences.keyGeneratorType) {
+		return;
+	}
+	sourceControlStore.preferences.keyGeneratorType = sshKeyType;
 };
 </script>
 
@@ -219,7 +231,22 @@ const refreshBranches = async () => {
 			<div v-if="sourceControlStore.preferences.publicKey" :class="$style.group">
 				<label>{{ locale.baseText('settings.sourceControl.sshKey') }}</label>
 				<div :class="{ [$style.sshInput]: !isConnected }">
+					<n8n-form-input
+						v-if="!isConnected"
+						label
+						type="select"
+						id="keyGeneratorType"
+						name="keyGeneratorType"
+						data-test-id="source-control-ssh-key-type-select"
+						validateOnBlur
+						:validationRules="keyGeneratorTypeValidationRules"
+						:options="sourceControlStore.sshKeyTypesWithLabel"
+						:modelValue="sourceControlStore.preferences.keyGeneratorType"
+						@validate="(value) => onValidate('keyGeneratorType', value)"
+						@update:modelValue="onSelectSshKeyType"
+					/>
 					<CopyInput
+						:class="$style.copyInput"
 						collapse
 						size="medium"
 						:value="sourceControlStore.preferences.publicKey"
@@ -230,8 +257,8 @@ const refreshBranches = async () => {
 						size="large"
 						type="tertiary"
 						icon="sync"
-						class="ml-s"
 						@click="refreshSshKey"
+						data-test-id="source-control-refresh-ssh-key-button"
 					>
 						{{ locale.baseText('settings.sourceControl.refreshSshKey') }}
 					</n8n-button>
@@ -412,12 +439,21 @@ const refreshBranches = async () => {
 	align-items: center;
 
 	> div {
-		width: calc(100% - 144px - var(--spacing-s));
+		flex: 1 1 auto;
+		overflow: auto;
 	}
 
 	> button {
 		height: 42px;
 	}
+
+	.copyInput {
+		margin: 0 var(--spacing-2xs);
+	}
+}
+
+.copyInput {
+	flex: 1 0 auto;
 }
 
 .branchSelection {
