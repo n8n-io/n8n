@@ -1,4 +1,16 @@
-import type { FormField } from './interfaces';
+import { WHITE_SPACE_PLACEHOLDER, type FormField } from './interfaces';
+
+const FONT_FAMILY = 'sans-serif';
+const FONT_SIZE = '12px';
+const FONT_WEIGHT_NORMAL = '400';
+const FONT_WEIGHT_BOLD = '700';
+
+const NOTICE_BACKGROUND_COLOR = '#fefaf6';
+const NOTICE_TEXT_COLOR = '#ebb360';
+
+const FONT_COLOR = 'grey';
+const BORDER_COLOR = 'lightgrey';
+const BORDER_RADIUS = '0.5em';
 
 const styles = `
 *,
@@ -10,9 +22,9 @@ const styles = `
 }
 
 body {
-	font-family: sans-serif;
-	font-weight: 400;
-	font-size: 12px;
+	font-family: ${FONT_FAMILY};
+	font-weight: ${FONT_WEIGHT_NORMAL};
+	font-size: ${FONT_SIZE};
 	display: flex;
 	flex-direction: column;
 	justify-content: start;
@@ -28,22 +40,22 @@ body {
 }
 
 .n8n-link {
-	color: grey;
+	color: ${FONT_COLOR};
 	margin: 1em;
-	font-weight: 400;
+	font-weight: ${FONT_WEIGHT_NORMAL};
 	font-size: 1.2em;
 }
 
 .n8n-link a {
-	color: grey;
-	font-weight: 400;
+	color: ${FONT_COLOR};
+	font-weight: ${FONT_WEIGHT_NORMAL};
 	font-size: 1.2em;
 	text-decoration: none;
 }
 
 .n8n-link strong {
 	color: black;
-	font-weight: 700;
+	font-weight: ${FONT_WEIGHT_BOLD};
 	font-size: 1.3em;
 }
 
@@ -53,51 +65,50 @@ body {
 }
 
 .form-header {
-	color: grey;
+	color: ${FONT_COLOR};
 	margin-top: 2em;
 	margin-bottom: 3em;
 	font-size: 1em;
-	border-radius: 0.5em;
+	border-radius: ${BORDER_RADIUS};
 }
 
 .form-header h1 {
-	/* margin-top: 2em; */
 	font-size: 2em;
-	font-weight: 600;
+	font-weight: ${FONT_WEIGHT_BOLD};
 }
 
 .form-header p {
 	margin: 1em auto;
 	font-size: 1.3em;
-	font-weight: 500;
+	font-weight: ${FONT_WEIGHT_NORMAL};
 
 }
 
 .test-notice {
-	color: #ebb360;
+	color: ${NOTICE_TEXT_COLOR};
 	margin: 3em auto;
-	background-color: #fefaf6;
+	background-color: ${NOTICE_BACKGROUND_COLOR};
 	margin: 1.5em 1em;
 	padding: 0 1em;
-	font-weight: 700;
+	font-weight: ${FONT_WEIGHT_BOLD};
 	font-size: 1.3em;
 	border-radius: .5em;
-	border: 0.1em solid #ebb360;
+	border: 0.1em solid ${NOTICE_TEXT_COLOR};
 	text-align: left;
 }
 
 .test-notice p {
 	margin: 1.5em 0.5em;
-	font-weight: 500;
+	font-weight: ${FONT_WEIGHT_NORMAL};
 	opacity: 0.8;
 }
 
 .card {
 	margin: 1em;
-	padding: 0.5em 1em;
+	padding: 0.5em 3em;
 	background-color: white;
-	border: 0.1em solid lightgray;
-	border-radius: 0.5em;
+	border: 0.1em solid ${BORDER_COLOR};
+	border-radius: ${BORDER_RADIUS};
 	box-shadow: 0 0.3em 2em rgba(0, 0, 0, 0.1);
 	min-width: 40em;
 }
@@ -106,44 +117,44 @@ form label {
 	display: block;
 	text-align: left;
 	font-size: 1.3em;
-	font-weight: 700;
-	color: #555555;
+	font-weight: ${FONT_WEIGHT_BOLD};
+	color: ${FONT_COLOR};
 	padding-bottom: .5em;
 	padding-left: .5em;
 }
 
 form .form-input {
-	border: 0.1em solid lightgray;
-	border-radius: 0.5em;
+	border: 0.1em solid ${BORDER_COLOR};
+	border-radius: ${BORDER_RADIUS};
 	padding: 1em;
 	width: 98%;
 	font-size: 1.3em;
-	color: grey;
+	color: ${FONT_COLOR};
 }
 
 form .form-group {
 	width: 100%;
-	margin-bottom: .5em;
+	margin-bottom: 0.5em;
 }
 
 form input::placeholder {
-	font-weight: 700;
+	font-weight: ${FONT_WEIGHT_BOLD};
 	font-size: 1em;
 }
 
 form input:focus {
-	color: grey;
+	color: ${FONT_COLOR};
 	outline: none;
 	border-color: #ff6d5a;
 }
 
 form select.form-input {
-	border: 0.1em solid lightgray;
-	border-radius: 0.5em;
+	border: 0.1em solid ${BORDER_COLOR};
+	border-radius: ${BORDER_RADIUS};
 	padding: 1em;
 	width: 98%;
 	font-size: 1.3em;
-	color: grey;
+	color: ${FONT_COLOR};
 	background-color: white;
 }
 
@@ -151,7 +162,7 @@ form select.form-input option {
 	font-size: 1.2em;
 	padding: 1em;
 	background-color: white;
-	color: grey;
+	color: ${FONT_COLOR};
 }
 
 .error-hidden {
@@ -160,10 +171,10 @@ form select.form-input option {
 	color: #ff6d5a;
 	text-align: right;
 	font-size: 1em;
-	font-weight: 400;
+	font-weight: ${FONT_WEIGHT_NORMAL};
 	font-style: italic;
 	visibility: hidden;
-	padding: .5em;
+	padding: 0.5em;
 }
 
 .error-show {
@@ -175,10 +186,10 @@ form select.form-input option {
 	margin-bottom: 2em;
 	margin-top: 2em;
 	padding: 1em;
-	border-radius: 0.5em;
+	border-radius: ${BORDER_RADIUS};
 	border: 0;
 	font-size: 1.3em;
-	font-weight: 600;
+	font-weight: ${FONT_WEIGHT_BOLD};
 	background-color: #ff6d5a;
 	color: white;
 	cursor: pointer;
@@ -232,7 +243,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 	for (const [index, field] of formFields.entries()) {
 		const { fieldType, requiredField } = field;
-		const fieldLabel = (field.fieldLabel ?? '').replace(/ /g, '___');
+		const fieldLabel = (field.fieldLabel ?? '').replace(/ /g, WHITE_SPACE_PLACEHOLDER);
 
 		const required = requiredField ? 'required' : '';
 
@@ -253,12 +264,12 @@ const prepareFormGroups = (formFields: FormField[]) => {
 			formHtml += `<input class="form-input" type="${fieldType}" id="${fieldLabel}" name="${fieldLabel}" ${required}/>`;
 		}
 
-		if (requiredField) {
-			formHtml += `
-			<p class="error-${fieldLabel} error-hidden">
-				"${field.fieldLabel}" cannot be empty
-			</p>`;
+		formHtml += `
+		<p class="error-${fieldLabel} error-hidden">
+			"${field.fieldLabel}" cannot be empty
+		</p>`;
 
+		if (requiredField) {
 			variables += `
 				const input${index} = document.querySelector('#${fieldLabel}');
 				const error${index} = document.querySelector('.error-${fieldLabel}');

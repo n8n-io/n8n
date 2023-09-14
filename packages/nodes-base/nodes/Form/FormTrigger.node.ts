@@ -8,7 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { createPage } from './templates';
-import type { FormField } from './interfaces';
+import { WHITE_SPACE_PLACEHOLDER, type FormField } from './interfaces';
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -101,7 +101,7 @@ export class FormTrigger implements INodeType {
 								description: 'Field name appears for users, guiding their input',
 								options: [
 									{
-										name: 'String',
+										name: 'Text',
 										value: 'text',
 									},
 									{
@@ -191,9 +191,10 @@ export class FormTrigger implements INodeType {
 		const returnData: IDataObject = {};
 		returnData['form url'] = mode;
 
+		const regexp = new RegExp(WHITE_SPACE_PLACEHOLDER, 'g');
 		Object.keys(bodyData).map((key) => {
 			let value = bodyData[key];
-			const escapedKey = key.replace(/___/g, ' ');
+			const escapedKey = key.replace(regexp, ' ');
 			const expectedType = formFields.find((field) => field.fieldLabel === escapedKey)?.fieldType;
 			if (expectedType === 'number') {
 				value = Number(value);

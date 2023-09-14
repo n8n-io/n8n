@@ -4,3 +4,5 @@ export type FormField = {
 	requiredField: boolean;
 	fieldOptions?: { values: Array<{ option: string }> };
 };
+
+export const WHITE_SPACE_PLACEHOLDER = '___';
