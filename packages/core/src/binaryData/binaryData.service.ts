@@ -5,7 +5,7 @@ import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { FileSystemClient } from './fs.client';
-import { InvalidModeError, areValidModes } from './utils';
+import { InvalidBinaryModeError, areValidModes } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -20,7 +20,7 @@ export class BinaryDataService {
 	private clients: Record<string, BinaryData.Client> = {};
 
 	async init(config: BinaryData.Config, mainClient = false) {
-		if (!areValidModes(config.availableModes)) throw new InvalidModeError();
+		if (!areValidModes(config.availableModes)) throw new InvalidBinaryModeError();
 
 		this.availableModes = config.availableModes;
 		this.mode = config.mode;
