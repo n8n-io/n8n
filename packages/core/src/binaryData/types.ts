@@ -1,18 +1,13 @@
 import type { Readable } from 'stream';
 import type { BinaryMetadata } from 'n8n-workflow';
+import type { BINARY_DATA_MODES } from './utils';
 
 export namespace BinaryData {
-	/**
-	 * Mode for storing binary data:
-	 * - `default` (in memory)
-	 * - `filesystem` (on disk)
-	 * - `object` (S3)
-	 */
-	export type Mode = 'default' | 'filesystem' | 'object';
+	export type Mode = (typeof BINARY_DATA_MODES)[number];
 
 	type ConfigBase = {
 		mode: Mode;
-		availableModes: string; // comma-separated list
+		availableModes: string[];
 	};
 
 	type InMemoryConfig = ConfigBase & { mode: 'default' };
