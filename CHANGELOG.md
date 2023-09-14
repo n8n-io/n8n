@@ -1,3 +1,12 @@
+## [1.7.1](https://github.com/n8n-io/n8n/compare/n8n@1.7.0...n8n@1.7.1) (2023-09-14)
+
+
+### Bug Fixes
+
+* **editor:** Prevent duplicate creation of credential for OAuth2 ([#7163](https://github.com/n8n-io/n8n/issues/7163)) ([f6d7ffe](https://github.com/n8n-io/n8n/commit/f6d7ffe510a6a32d10a3eb2a5ddb1617b5894f1f))
+
+
+
 # [1.7.0](https://github.com/n8n-io/n8n/compare/n8n@1.6.0...n8n@1.7.0) (2023-09-13)
 
 
