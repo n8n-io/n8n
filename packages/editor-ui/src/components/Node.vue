@@ -879,6 +879,10 @@ export default defineComponent({
 				left: 65px;
 				height: 25px;
 			}
+
+			.node-executing-info {
+				left: -67px;
+			}
 		}
 	}
 
