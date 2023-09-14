@@ -5,6 +5,7 @@ import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { FileSystemClient } from './fs.client';
+import { InvalidModeError, areValidModes } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -19,13 +20,14 @@ export class BinaryDataService {
 	private clients: Record<string, BinaryData.Client> = {};
 
 	async init(config: BinaryData.Config, mainClient = false) {
-		this.availableModes = config.availableModes.split(',') as BinaryData.Mode[]; // @TODO: Remove assertion
+		if (!areValidModes(config.availableModes)) throw new InvalidModeError();
+
+		this.availableModes = config.availableModes;
 		this.mode = config.mode;
 
-		if (this.availableModes.includes('filesystem')) {
-			this.clients.filesystem = new FileSystemClient(
-				(config as BinaryData.FileSystemConfig).storagePath,
-			); // @TODO: Remove assertion
+		if (this.availableModes.includes('filesystem') && config.mode === 'filesystem') {
+			this.clients.filesystem = new FileSystemClient(config.storagePath);
+
 			await this.clients.filesystem.init(mainClient);
 		}
 
