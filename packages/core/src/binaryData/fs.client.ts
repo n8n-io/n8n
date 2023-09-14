@@ -126,7 +126,6 @@ export class FileSystemClient implements BinaryData.Client {
 		return [executionId, uuid()].join('');
 	}
 
-	// @TODO: Variadic needed?
 	private resolvePath(...args: string[]) {
 		const returnPath = path.join(this.storagePath, ...args);
 
