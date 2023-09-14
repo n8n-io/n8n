@@ -14,9 +14,6 @@ export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
 
 export class InvalidBinaryModeError extends Error {
 	constructor() {
-		const validModes = BINARY_DATA_MODES.join(', ');
-		super(
-			`Invalid binary data mode. Set N8N_AVAILABLE_BINARY_DATA_MODES using only valid modes: ${validModes}`,
-		);
+		super(`Invalid binary data mode. Valid modes: ${BINARY_DATA_MODES.join(', ')}`);
 	}
 }
