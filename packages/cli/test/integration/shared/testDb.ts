@@ -580,7 +580,7 @@ export async function getVariableById(id: string) {
  * Generate options for an in-memory sqlite database connection,
  * one per test suite run.
  */
-export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
+const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions => {
 	return {
 		name,
 		type: 'sqlite',
@@ -590,6 +590,7 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
 		migrations: sqliteMigrations,
 		migrationsTableName: 'migrations',
 		migrationsRun: false,
+		enableWAL: config.getEnv('database.sqlite.enableWAL'),
 	};
 };
 

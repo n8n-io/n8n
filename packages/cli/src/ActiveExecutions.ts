@@ -123,6 +123,10 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].responsePromise?.resolve(response);
 	}
 
+	getPostExecutePromiseCount(executionId: string): number {
+		return this.activeExecutions[executionId]?.postExecutePromises.length ?? 0;
+	}
+
 	/**
 	 * Remove an active execution
 	 *

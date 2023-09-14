@@ -108,7 +108,7 @@ export abstract class BaseCommand extends Command {
 		await Container.get(BinaryDataService).init(binaryDataConfig, true);
 	}
 
-	protected async initExternalHooks() {
+	async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
 	}
