@@ -9,6 +9,7 @@ import {
 	VariablesValidationError,
 } from './variables.service.ee';
 import { isVariablesEnabled } from './enviromentHelpers';
+import Container from 'typedi';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEVariablesController = express.Router();
@@ -37,7 +38,7 @@ EEVariablesController.post(
 		const variable = req.body;
 		delete variable.id;
 		try {
-			return await EEVariablesService.create(variable);
+			return await Container.get(EEVariablesService).create(variable);
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
 				throw new ResponseHelper.BadRequestError(error.message);
@@ -63,7 +64,7 @@ EEVariablesController.patch(
 		const variable = req.body;
 		delete variable.id;
 		try {
-			return await EEVariablesService.update(id, variable);
+			return await Container.get(EEVariablesService).update(id, variable);
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
 				throw new ResponseHelper.BadRequestError(error.message);

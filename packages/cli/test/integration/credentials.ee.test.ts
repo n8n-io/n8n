@@ -5,28 +5,25 @@ import type { IUser } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { CredentialWithSharings } from '@/credentials/credentials.types';
+import type { Credentials } from '@/requests';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
-import * as utils from './shared/utils';
+import type { SaveCredentialFunction } from './shared/types';
+import * as utils from './shared/utils/';
+
+const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 
 let globalMemberRole: Role;
 let owner: User;
 let member: User;
 let authOwnerAgent: SuperAgentTest;
-let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
-let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['credentials'] });
-
-	await utils.initConfigFile();
-
 	const globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 	const credentialOwnerRole = await testDb.getCredentialOwnerRole();
@@ -34,19 +31,13 @@ beforeAll(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	authAgent = utils.createAuthAgent(app);
-	authOwnerAgent = authAgent(owner);
+	authOwnerAgent = testServer.authAgentFor(owner);
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
-	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
-});
-
-afterAll(async () => {
-	await testDb.terminate();
 });
 
 // ----------------------------------------
@@ -100,8 +91,12 @@ describe('GET /credentials', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
-
-		const [ownerCredential, memberCredential] = response.body.data as CredentialWithSharings[];
+		const ownerCredential = response.body.data.find(
+			(e: Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === owner.id,
+		);
+		const memberCredential = response.body.data.find(
+			(e: Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === member1.id,
+		);
 
 		validateMainCredentialData(ownerCredential);
 		expect(ownerCredential.data).toBeUndefined();
@@ -157,7 +152,7 @@ describe('GET /credentials', () => {
 
 		await testDb.shareCredentialWithUsers(savedMemberCredential, [member2]);
 
-		const response = await authAgent(member1).get('/credentials');
+		const response = await testServer.authAgentFor(member1).get('/credentials');
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(1); // member retrieved only member cred
@@ -264,7 +259,7 @@ describe('GET /credentials/:id', () => {
 		const [member1, member2, member3] = await testDb.createManyUsers(3, {
 			globalRole: globalMemberRole,
 		});
-		const authMemberAgent = authAgent(member1);
+		const authMemberAgent = testServer.authAgentFor(member1);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
 		await testDb.shareCredentialWithUsers(savedCredential, [member2, member3]);
 
@@ -301,7 +296,9 @@ describe('GET /credentials/:id', () => {
 	test('should not retrieve non-owned cred for member', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-		const response = await authAgent(member).get(`/credentials/${savedCredential.id}`);
+		const response = await testServer
+			.authAgentFor(member)
+			.get(`/credentials/${savedCredential.id}`);
 
 		expect(response.statusCode).toBe(403);
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
@@ -500,7 +497,7 @@ describe('PUT /credentials/:id/share', () => {
 	});
 });
 
-function validateMainCredentialData(credential: CredentialWithSharings) {
+function validateMainCredentialData(credential: Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
 	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');

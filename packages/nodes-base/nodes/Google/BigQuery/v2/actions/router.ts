@@ -1,5 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleBigQuery } from './node.type';
 
@@ -24,5 +23,5 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

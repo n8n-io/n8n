@@ -246,16 +246,16 @@ const config = (module.exports = {
 				format: ['PascalCase'],
 			},
 			{
-				selector: ['method', 'function'],
+				selector: ['method', 'function', 'parameter'],
 				format: ['camelCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 			},
 		],
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-duplicate-imports.md
+		 * https://github.com/import-js/eslint-plugin-import/blob/HEAD/docs/rules/no-duplicates.md
 		 */
-		'@typescript-eslint/no-duplicate-imports': 'error',
+		'import/no-duplicates': 'error',
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-invalid-void-type.md
@@ -324,7 +324,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 		 */
-		'import/no-cycle': 'error',
+		'import/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
@@ -451,7 +451,7 @@ const config = (module.exports = {
 			},
 		},
 		{
-			files: ['test/**/*.ts'],
+			files: ['test/**/*.ts', 'src/__tests__/*.ts'],
 			rules: {
 				'n8n-local-rules/no-skipped-tests':
 					process.env.NODE_ENV === 'development' ? 'warn' : 'error',
@@ -460,7 +460,7 @@ const config = (module.exports = {
 				'@typescript-eslint/await-thenable': 'off',
 				'@typescript-eslint/ban-ts-comment': 'off',
 				'@typescript-eslint/naming-convention': 'off',
-				'@typescript-eslint/no-duplicate-imports': 'off',
+				'import/no-duplicates': 'off',
 				'@typescript-eslint/no-empty-function': 'off',
 				'@typescript-eslint/no-loop-func': 'off',
 				'@typescript-eslint/no-non-null-assertion': 'off',
@@ -491,19 +491,3 @@ const config = (module.exports = {
 		},
 	],
 });
-
-if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
-	/**
-	 * Plugin to lint only changes
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.plugins.push('eslint-plugin-diff');
-
-	/**
-	 * Config for eslint-plugin-diff
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.extends.push('plugin:diff/diff');
-}

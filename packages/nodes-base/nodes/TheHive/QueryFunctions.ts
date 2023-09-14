@@ -14,7 +14,6 @@ export declare type queryIndexSignature =
 	| '_id'
 	| '_between'
 	| '_parent'
-	| '_parent'
 	| '_child'
 	| '_type'
 	| '_string'

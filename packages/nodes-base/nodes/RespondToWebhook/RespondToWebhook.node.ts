@@ -261,6 +261,6 @@ export class RespondToWebhook implements INodeType {
 
 		this.sendResponse(response);
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

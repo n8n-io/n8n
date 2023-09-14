@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
@@ -14,6 +18,7 @@ import type {
 import {
 	addReturning,
 	checkItemAgainstSchema,
+	configureTableSchemaUpdater,
 	doesRowExist,
 	getTableSchema,
 	prepareItem,
@@ -63,13 +68,14 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Column to Match On',
 		name: 'columnToMatchOn',
 		type: 'options',
 		required: true,
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The column to compare when finding the rows to update. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
 			loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -122,8 +128,9 @@ const properties: INodeProperties[] = [
 						displayName: 'Column',
 						name: 'column',
 						type: 'options',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumnsWithoutColumnToMatchOn',
 							loadOptionsDependsOn: ['schema.value', 'table.value'],
@@ -165,7 +172,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2],
+				'@version': [2.2, 2.3],
 			},
 		},
 	},
@@ -192,19 +199,31 @@ export async function execute(
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
+	const nodeVersion = nodeOptions.nodeVersion as number;
+
+	let schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const updateTableSchema = configureTableSchemaUpdater(schema, table);
+
+	let tableSchema = await getTableSchema(db, schema, table);
 
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const schema = this.getNodeParameter('schema', i, undefined, {
+		schema = this.getNodeParameter('schema', i, undefined, {
 			extractValue: true,
 		}) as string;
 
-		const table = this.getNodeParameter('table', i, undefined, {
+		table = this.getNodeParameter('table', i, undefined, {
 			extractValue: true,
 		}) as string;
 
-		const nodeVersion = this.getNode().typeVersion;
 		const columnsToMatchOn: string[] =
 			nodeVersion < 2.2
 				? [this.getNodeParameter('columnToMatchOn', i) as string]
@@ -280,7 +299,7 @@ export async function execute(
 			}
 		}
 
-		const tableSchema = await getTableSchema(db, schema, table);
+		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 

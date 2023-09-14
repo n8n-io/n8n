@@ -1,8 +1,9 @@
 import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEditor/constants';
-import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY, SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
+import { useUIStore } from '@/stores/ui.store';
 import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
 // String literal expression is everything enclosed in single, double or tick quotes following a dot
@@ -98,11 +99,21 @@ export const isAllowedInDotNotation = (str: string) => {
 // ----------------------------------
 
 export function receivesNoBinaryData() {
-	return resolveParameter('={{ $binary }}')?.data === undefined;
+	try {
+		return resolveParameter('={{ $binary }}')?.data === undefined;
+	} catch {
+		return true;
+	}
 }
 
 export function hasNoParams(toResolve: string) {
-	const params = resolveParameter(`={{ ${toResolve}.params }}`);
+	let params;
+
+	try {
+		params = resolveParameter(`={{ ${toResolve}.params }}`);
+	} catch {
+		return true;
+	}
 
 	if (!params) return true;
 
@@ -114,6 +125,8 @@ export function hasNoParams(toResolve: string) {
 // ----------------------------------
 //        state-based utils
 // ----------------------------------
+
+export const isCredentialsModalOpen = () => useUIStore().modals[CREDENTIAL_EDIT_MODAL_KEY].open;
 
 export const hasActiveNode = () => useNDVStore().activeNode?.name !== undefined;
 

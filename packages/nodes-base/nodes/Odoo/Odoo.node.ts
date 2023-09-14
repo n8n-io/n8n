@@ -765,6 +765,6 @@ export class Odoo implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

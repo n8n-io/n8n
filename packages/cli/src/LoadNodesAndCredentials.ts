@@ -23,7 +23,7 @@ import { mkdir } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { executeCommand } from '@/CommunityNodes/helpers';
+import { CommunityPackageService } from './services/communityPackage.service';
 import {
 	GENERATED_STATIC_DIR,
 	RESPONSE_ERROR_MESSAGES,
@@ -31,9 +31,10 @@ import {
 	CUSTOM_API_CALL_NAME,
 	inTest,
 	CLI_DIR,
+	inE2ETests,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 @Service()
 export class LoadNodesAndCredentials implements INodesAndCredentials {
@@ -64,22 +65,29 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		if (!inTest) module.constructor._initPaths();
 
+		if (!inE2ETests) {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.e2eTest');
+		}
+
 		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
-		// Load nodes from `n8n-nodes-base` and any other `n8n-nodes-*` package in the main `node_modules`
-		const pathsToScan = [
+		// Load nodes from `n8n-nodes-base`
+		const basePathsToScan = [
 			// In case "n8n" package is in same node_modules folder.
 			path.join(CLI_DIR, '..'),
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
 			path.join(CLI_DIR, 'node_modules'),
-			// Path where all community nodes are installed
-			path.join(this.downloadFolder, 'node_modules'),
 		];
 
-		for (const nodeModulesDir of pathsToScan) {
-			await this.loadNodesFromNodeModules(nodeModulesDir);
+		for (const nodeModulesDir of basePathsToScan) {
+			await this.loadNodesFromNodeModules(nodeModulesDir, 'n8n-nodes-base');
 		}
+
+		// Load nodes from any other `n8n-nodes-*` packages in the download directory
+		// This includes the community nodes
+		await this.loadNodesFromNodeModules(path.join(this.downloadFolder, 'node_modules'));
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -127,12 +135,21 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
-	private async loadNodesFromNodeModules(nodeModulesDir: string): Promise<void> {
-		const globOptions = { cwd: nodeModulesDir, onlyDirectories: true };
-		const installedPackagePaths = [
-			...(await glob('n8n-nodes-*', { ...globOptions, deep: 1 })),
-			...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
-		];
+	private async loadNodesFromNodeModules(
+		nodeModulesDir: string,
+		packageName?: string,
+	): Promise<void> {
+		const globOptions = {
+			cwd: nodeModulesDir,
+			onlyDirectories: true,
+			deep: 1,
+		};
+		const installedPackagePaths = packageName
+			? await glob(packageName, globOptions)
+			: [
+					...(await glob('n8n-nodes-*', globOptions)),
+					...(await glob('@*/n8n-nodes-*', { ...globOptions, deep: 2 })),
+			  ];
 
 		for (const packagePath of installedPackagePaths) {
 			try {
@@ -172,8 +189,10 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			? `npm update ${packageName}`
 			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
 
+		const communityPackageService = Container.get(CommunityPackageService);
+
 		try {
-			await executeCommand(command);
+			await communityPackageService.executeNpmCommand(command);
 		} catch (error) {
 			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 				throw new Error(`The npm package "${packageName}" could not be found.`);
@@ -190,7 +209,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			// Remove this package since loading it failed
 			const removeCommand = `npm remove ${packageName}`;
 			try {
-				await executeCommand(removeCommand);
+				await communityPackageService.executeNpmCommand(removeCommand);
 			} catch {}
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
 		}
@@ -198,11 +217,10 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		if (loader.loadedNodes.length > 0) {
 			// Save info to DB
 			try {
-				const { persistInstalledPackageData, removePackageFromDatabase } = await import(
-					'@/CommunityNodes/packageModel'
-				);
-				if (isUpdate) await removePackageFromDatabase(options.installedPackage);
-				const installedPackage = await persistInstalledPackageData(loader);
+				if (isUpdate) {
+					await communityPackageService.removePackageFromDatabase(options.installedPackage);
+				}
+				const installedPackage = await communityPackageService.persistInstalledPackage(loader);
 				await this.postProcessLoaders();
 				await this.generateTypesForFrontend();
 				return installedPackage;
@@ -217,7 +235,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 			// Remove this package since it contains no loadable nodes
 			const removeCommand = `npm remove ${packageName}`;
 			try {
-				await executeCommand(removeCommand);
+				await communityPackageService.executeNpmCommand(removeCommand);
 			} catch {}
 
 			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
@@ -229,12 +247,11 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 	}
 
 	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
-		const command = `npm remove ${packageName}`;
+		const communityPackageService = Container.get(CommunityPackageService);
 
-		await executeCommand(command);
+		await communityPackageService.executeNpmCommand(`npm remove ${packageName}`);
 
-		const { removePackageFromDatabase } = await import('@/CommunityNodes/packageModel');
-		await removePackageFromDatabase(installedPackage);
+		await communityPackageService.removePackageFromDatabase(installedPackage);
 
 		if (packageName in this.loaders) {
 			this.loaders[packageName].reset();
@@ -326,7 +343,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { types, directory } = loader;
+			const { known, types, directory } = loader;
 			this.types.nodes = this.types.nodes.concat(types.nodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
@@ -339,26 +356,30 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
 			}
 
-			// Nodes and credentials that will be lazy loaded
-			if (loader instanceof PackageDirectoryLoader) {
-				const { packageName, known } = loader;
+			for (const type in known.nodes) {
+				const { className, sourcePath } = known.nodes[type];
+				this.known.nodes[type] = {
+					className,
+					sourcePath: path.join(directory, sourcePath),
+				};
+			}
 
-				for (const type in known.nodes) {
-					const { className, sourcePath } = known.nodes[type];
-					this.known.nodes[type] = {
-						className,
-						sourcePath: path.join(directory, sourcePath),
-					};
-				}
-
-				for (const type in known.credentials) {
-					const { className, sourcePath, nodesToTestWith } = known.credentials[type];
-					this.known.credentials[type] = {
-						className,
-						sourcePath: path.join(directory, sourcePath),
-						nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
-					};
-				}
+			for (const type in known.credentials) {
+				const {
+					className,
+					sourcePath,
+					nodesToTestWith,
+					extends: extendsArr,
+				} = known.credentials[type];
+				this.known.credentials[type] = {
+					className,
+					sourcePath: path.join(directory, sourcePath),
+					nodesToTestWith:
+						loader instanceof PackageDirectoryLoader
+							? nodesToTestWith?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+					extends: extendsArr,
+				};
 			}
 		}
 	}

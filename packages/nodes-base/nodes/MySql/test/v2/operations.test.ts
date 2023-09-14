@@ -1,6 +1,6 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
@@ -305,7 +305,7 @@ describe('Test MySql V2, operations', () => {
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,
-			nodeOptions,
+			{ ...nodeOptions, nodeVersion: 2 },
 			pool,
 		);
 

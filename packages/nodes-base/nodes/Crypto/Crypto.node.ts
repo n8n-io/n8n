@@ -277,6 +277,7 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				required: true,
 			},
@@ -551,6 +552,6 @@ export class Crypto implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

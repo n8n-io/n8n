@@ -2,7 +2,7 @@
 	<div :class="classes" role="alert">
 		<div :class="$style.messageSection">
 			<div :class="$style.icon" v-if="!iconless">
-				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
+				<n8n-icon :icon="getIcon" :size="getIconSize" />
 			</div>
 			<n8n-text size="small">
 				<slot />
@@ -24,7 +24,7 @@ const CALLOUT_DEFAULT_ICONS: { [key: string]: string } = {
 	info: 'info-circle',
 	success: 'check-circle',
 	warning: 'exclamation-triangle',
-	danger: 'times-circle',
+	danger: 'exclamation-triangle',
 };
 
 export default defineComponent({
@@ -42,13 +42,20 @@ export default defineComponent({
 		},
 		icon: {
 			type: String,
-			default: 'info-circle',
+		},
+		iconSize: {
+			type: String,
+			default: 'medium',
 		},
 		iconless: {
 			type: Boolean,
 		},
 		slim: {
 			type: Boolean,
+		},
+		roundCorners: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	computed: {
@@ -58,14 +65,20 @@ export default defineComponent({
 				this.$style.callout,
 				this.$style[this.theme],
 				this.slim ? this.$style.slim : '',
+				this.roundCorners ? this.$style.round : '',
 			];
 		},
 		getIcon(): string {
-			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
-				return CALLOUT_DEFAULT_ICONS[this.theme];
+			return this.icon ?? CALLOUT_DEFAULT_ICONS?.[this.theme] ?? CALLOUT_DEFAULT_ICONS.info;
+		},
+		getIconSize(): string {
+			if (this.iconSize) {
+				return this.iconSize;
 			}
-
-			return this.icon;
+			if (this.theme === 'secondary') {
+				return 'medium';
+			}
+			return 'large';
 		},
 	},
 });
@@ -78,7 +91,6 @@ export default defineComponent({
 	font-size: var(--font-size-2xs);
 	padding: var(--spacing-xs);
 	border: var(--border-width-base) var(--border-style-base);
-	border-radius: var(--border-radius-base);
 	align-items: center;
 	line-height: var(--font-line-height-loose);
 
@@ -86,6 +98,10 @@ export default defineComponent({
 		line-height: var(--font-line-height-loose);
 		padding: var(--spacing-3xs) var(--spacing-2xs);
 	}
+}
+
+.round {
+	border-radius: var(--border-radius-base);
 }
 
 .messageSection {
@@ -96,7 +112,7 @@ export default defineComponent({
 .info,
 .custom {
 	border-color: var(--color-foreground-base);
-	background-color: var(--color-background-light);
+	background-color: var(--color-foreground-xlight);
 	color: var(--color-info);
 }
 
@@ -119,7 +135,8 @@ export default defineComponent({
 }
 
 .icon {
-	margin-right: var(--spacing-xs);
+	line-height: 1;
+	margin-right: var(--spacing-2xs);
 }
 
 .secondary {

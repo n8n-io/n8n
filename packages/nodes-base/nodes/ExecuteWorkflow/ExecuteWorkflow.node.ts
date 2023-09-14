@@ -208,7 +208,7 @@ export class ExecuteWorkflow implements INodeType {
 			return receivedData;
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 
 			throw error;

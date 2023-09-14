@@ -10,10 +10,6 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});

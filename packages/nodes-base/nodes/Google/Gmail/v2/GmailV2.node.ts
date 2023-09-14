@@ -819,8 +819,8 @@ export class GmailV2 implements INodeType {
 			['draft', 'message', 'thread'].includes(resource) &&
 			['get', 'getAll'].includes(operation)
 		) {
-			return this.prepareOutputData(unescapeSnippets(returnData));
+			return [unescapeSnippets(returnData)];
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,5 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
@@ -167,7 +171,7 @@ export async function execute(
 				const firstDataRow = this.getNodeParameter('dataStartRow', i, 1) as number;
 
 				returnData.push(
-					...prepareOutput(this.getNode(), responseData as ExcelResponse, {
+					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						keyRow,
 						firstDataRow,
@@ -176,7 +180,7 @@ export async function execute(
 			} else {
 				const dataProperty = (options.dataProperty as string) || 'data';
 				returnData.push(
-					...prepareOutput(this.getNode(), responseData as ExcelResponse, {
+					...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 						rawData,
 						dataProperty,
 					}),

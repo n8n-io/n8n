@@ -62,24 +62,26 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<collection-parameter
-					v-if="parameter.type === 'collection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
-				<fixed-collection-parameter
-					v-else-if="parameter.type === 'fixedCollection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
+				<Suspense>
+					<collection-parameter
+						v-if="parameter.type === 'collection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+					<fixed-collection-parameter
+						v-else-if="parameter.type === 'fixedCollection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+				</Suspense>
 			</div>
 			<resource-mapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -114,7 +116,7 @@
 					:isReadOnly="isReadOnly"
 					:hideLabel="false"
 					:nodeValues="nodeValues"
-					@valueChanged="valueChanged"
+					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
@@ -126,7 +128,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type {
@@ -150,14 +152,19 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
+const FixedCollectionParameter = defineAsyncComponent(
+	async () => import('./FixedCollectionParameter.vue'),
+);
+const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
+
 export default defineComponent({
 	name: 'ParameterInputList',
 	mixins: [workflowHelpers],
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
-		FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue'),
-		CollectionParameter: async () => import('./CollectionParameter.vue'),
+		FixedCollectionParameter,
+		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
 	},

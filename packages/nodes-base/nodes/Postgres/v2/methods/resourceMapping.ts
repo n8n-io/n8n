@@ -47,7 +47,7 @@ export async function getMappingColumns(
 ): Promise<ResourceMapperFields> {
 	const credentials = await this.getCredentials('postgres');
 
-	const { db } = await configurePostgres(credentials);
+	const { db, sshClient } = await configurePostgres(credentials);
 
 	const schema = this.getNodeParameter('schema', 0, {
 		extractValue: true,
@@ -63,14 +63,15 @@ export async function getMappingColumns(
 
 	try {
 		const columns = await getTableSchema(db, schema, table);
-		const unique = operation === 'upsert' ? await uniqueColumns(db, table) : [];
+		const unique = operation === 'upsert' ? await uniqueColumns(db, table, schema) : [];
 		const enumInfo = await getEnums(db);
 		const fields = await Promise.all(
 			columns.map(async (col) => {
 				const canBeUsedToMatch =
 					operation === 'upsert' ? unique.some((u) => u.attname === col.column_name) : true;
 				const type = mapPostgresType(col.data_type);
-				const options = type === 'options' ? getEnumValues(enumInfo, col.udt_name) : undefined;
+				const options =
+					type === 'options' ? getEnumValues(enumInfo, col.udt_name as string) : undefined;
 				const isAutoIncrement = col.column_default?.startsWith('nextval');
 				return {
 					id: col.column_name,
@@ -87,5 +88,10 @@ export async function getMappingColumns(
 		return { fields };
 	} catch (error) {
 		throw error;
+	} finally {
+		if (sshClient) {
+			sshClient.end();
+		}
+		await db.$pool.end();
 	}
 }

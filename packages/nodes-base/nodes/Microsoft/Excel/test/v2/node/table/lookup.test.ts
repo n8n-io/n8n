@@ -1,8 +1,8 @@
 import type { INodeTypes } from 'n8n-workflow';
 
-import { getResultNodeData, setup, workflowToTests } from '../../../../../../../test/nodes/Helpers';
-import type { WorkflowTestData } from '../../../../../../../test/nodes/types';
-import { executeWorkflow } from '../../../../../../../test/nodes/ExecuteWorkflow';
+import { getResultNodeData, setup, workflowToTests } from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 import * as transport from '../../../../v2/transport';
 

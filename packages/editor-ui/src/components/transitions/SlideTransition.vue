@@ -18,7 +18,7 @@ export default defineComponent({
 	transition: 200ms ease;
 }
 .slide-leave-to,
-.slide-enter {
+.slide-enter-from {
 	transform: translateX(100%);
 }
 </style>

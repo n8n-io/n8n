@@ -127,6 +127,6 @@ export class ExecuteCommand implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

@@ -1,11 +1,16 @@
 import type Bull from 'bull';
-import type { RedisOptions } from 'ioredis';
 import { Service } from 'typedi';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
-import config from '@/config';
+import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { parseRedisUrl } from './ParserHelper';
+import {
+	getRedisClusterClient,
+	getRedisClusterNodes,
+	getRedisPrefix,
+	getRedisStandardClient,
+} from './services/redis/RedisServiceHelper';
+import type { RedisClientType } from './services/redis/RedisServiceBaseClasses';
+import config from '@/config';
 
 export type JobId = Bull.JobId;
 export type Job = Bull.Job<JobData>;
@@ -18,6 +23,7 @@ export interface JobData {
 
 export interface JobResponse {
 	success: boolean;
+	error?: ExecutionError;
 }
 
 export interface WebhookResponse {
@@ -32,27 +38,29 @@ export class Queue {
 	constructor(private activeExecutions: ActiveExecutions) {}
 
 	async init() {
-		const prefix = config.getEnv('queue.bull.prefix');
-		const redisOptions: RedisOptions = parseRedisUrl() ||config.getEnv('queue.bull.redis');
-		if ( redisOptions.host !== 'localhost' && '127.0.0.1' ) {
-			// If redis is in localhost mode then there is no need to configre any ssl options
-			redisOptions['tls'] = { rejectUnauthorized: false }
-		}
-
+		const bullPrefix = config.getEnv('queue.bull.prefix');
+		const prefix = getRedisPrefix(bullPrefix);
+		const clusterNodes = getRedisClusterNodes();
+		const usesRedisCluster = clusterNodes.length > 0;
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { default: Bull } = await import('bull');
-
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Redis } = await import('ioredis');
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
 		// redis is back up and resume working.
 		// More here: https://github.com/OptimalBits/bull/issues/890
-		// @ts-ignore
-		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
+		this.jobQueue = new Bull('jobs', {
+			prefix,
+			createClient: (type, clientConfig) =>
+				usesRedisCluster
+					? getRedisClusterClient(Redis, clientConfig, (type + '(bull)') as RedisClientType)
+					: getRedisStandardClient(Redis, clientConfig, (type + '(bull)') as RedisClientType),
+		});
 
 		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
 				WebhookHelpers.decodeWebhookResponse(progress.response),
 			);

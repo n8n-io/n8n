@@ -1,4 +1,4 @@
-import type { Application } from 'express';
+import type { Application, Request, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -21,7 +21,9 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
+	INodeProperties,
 	IUserSettings,
+	IHttpRequestMethods,
 } from 'n8n-workflow';
 
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -53,15 +55,15 @@ import type {
 	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
-	TagRepository,
 	UserRepository,
 	VariablesRepository,
-	WebhookRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 	WorkflowWithVersionRepository,
 } from '@db/repositories';
+import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
+import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 
 export interface IActivationError {
 	time: number;
@@ -85,6 +87,10 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
+/**
+ * @important Do not add to these collections. Inject the repository as a dependency instead.
+ */
+
 /* eslint-disable @typescript-eslint/naming-convention */
 export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	AuthIdentity: AuthIdentityRepository;
@@ -100,10 +106,8 @@ export interface IDatabaseCollections extends Record<string, Repository<any>> {
 	Settings: SettingsRepository;
 	SharedCredentials: SharedCredentialsRepository;
 	SharedWorkflow: SharedWorkflowRepository;
-	Tag: TagRepository;
 	User: UserRepository;
 	Variables: VariablesRepository;
-	Webhook: WebhookRepository;
 	Workflow: WorkflowRepository;
 	WorkflowWithVersion: WorkflowWithVersionRepository;
 	WorkflowStatistics: WorkflowStatisticsRepository;
@@ -198,7 +202,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
 }
 
 // Flatted data to save memory when saving in database or transferring
@@ -303,12 +307,24 @@ export interface IExternalHooksClass {
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
+export type WebhookCORSRequest = Request & { method: 'OPTIONS' };
+
+export type WebhookRequest = Request<{ path: string }> & { method: IHttpRequestMethods };
+
+export type WaitingWebhookRequest = WebhookRequest & {
+	params: WebhookRequest['path'] & { suffix?: string };
+};
+
+export interface IWebhookManager {
+	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
+	executeWebhook(req: WebhookRequest, res: Response): Promise<IResponseCallbackData>;
+}
+
 export interface IDiagnosticInfo {
 	versionCli: string;
 	databaseType: DatabaseType;
 	notificationsEnabled: boolean;
 	disableProductionWebhooksOnMainProcess: boolean;
-	basicAuthActive: boolean;
 	systemInfo: {
 		os: {
 			type?: string;
@@ -326,7 +342,6 @@ export interface IDiagnosticInfo {
 	};
 	deploymentType: string;
 	binaryDataMode: string;
-	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
@@ -452,6 +467,13 @@ export interface IInternalHooksClass {
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onVariableCreated(createData: { variable_type: string }): Promise<void>;
+	onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string;
+	}): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
@@ -658,22 +680,8 @@ export interface IWorkflowExecuteProcess {
 	workflowExecute: WorkflowExecute;
 }
 
-export interface IWorkflowStatisticsCounts {
-	productionSuccess: number;
-	productionError: number;
-	manualSuccess: number;
-	manualError: number;
-}
-
 export interface IWorkflowStatisticsDataLoaded {
 	dataLoaded: boolean;
-}
-
-export interface IWorkflowStatisticsTimestamps {
-	productionSuccess: Date | null;
-	productionError: Date | null;
-	manualSuccess: Date | null;
-	manualError: Date | null;
 }
 
 export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
@@ -720,6 +728,11 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 //               license
 // ----------------------------------
 
+type ValuesOf<T> = T[keyof T];
+
+export type BooleanLicenseFeature = ValuesOf<typeof LICENSE_FEATURES>;
+export type NumericLicenseFeature = ValuesOf<typeof LICENSE_QUOTAS>;
+
 export interface ILicenseReadResponse {
 	usage: {
 		executions: {
@@ -759,14 +772,13 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	hasRecoveryCodesLeft: boolean;
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
 	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
-}
-
-export interface CurrentUser extends PublicUser {
+	isOwner?: boolean;
 	featureFlags?: FeatureFlags;
 }
 
@@ -778,3 +790,36 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export interface SecretsProviderSettings<T = IDataObject> {
+	connected: boolean;
+	connectedAt: Date | null;
+	settings: T;
+}
+
+export interface ExternalSecretsSettings {
+	[key: string]: SecretsProviderSettings;
+}
+
+export type SecretsProviderState = 'initializing' | 'connected' | 'error';
+
+export abstract class SecretsProvider {
+	displayName: string;
+
+	name: string;
+
+	properties: INodeProperties[];
+
+	state: SecretsProviderState;
+
+	abstract init(settings: SecretsProviderSettings): Promise<void>;
+	abstract connect(): Promise<void>;
+	abstract disconnect(): Promise<void>;
+	abstract update(): Promise<void>;
+	abstract test(): Promise<[boolean] | [boolean, string]>;
+	abstract getSecret(name: string): IDataObject | undefined;
+	abstract hasSecret(name: string): boolean;
+	abstract getSecretNames(): string[];
+}
+
+export type N8nInstanceType = 'main' | 'webhook' | 'worker';

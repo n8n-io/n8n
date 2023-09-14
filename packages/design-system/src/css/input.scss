@@ -114,6 +114,7 @@
 		display: inline-block;
 		font-size: inherit;
 		height: var.$input-height;
+		min-height: var.$input-height;
 		line-height: var.$input-height;
 		outline: none;
 		padding: 0 0 0 var(--spacing-2xs);
@@ -231,6 +232,7 @@
 
 		@include mixins.e(inner) {
 			height: var.$input-medium-height;
+			min-height: var.$input-medium-height;
 			line-height: var.$input-medium-height;
 		}
 
@@ -243,6 +245,7 @@
 
 		@include mixins.e(inner) {
 			height: var.$input-small-height;
+			min-height: var.$input-small-height;
 			line-height: var.$input-small-height;
 		}
 
@@ -255,6 +258,7 @@
 
 		@include mixins.e(inner) {
 			height: var.$input-mini-height;
+			min-height: var.$input-mini-height;
 			line-height: var.$input-mini-height;
 		}
 

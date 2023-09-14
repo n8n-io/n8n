@@ -1,4 +1,4 @@
-import { createMockExecuteFunction } from '../../../../test/nodes/Helpers';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
@@ -45,7 +45,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "Single" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.SINGLE, nodeVersion: 2 };
 
 		const pool = createFakePool(fakeConnection);
 		const fakeExecuteFunction = createMockExecuteFunction({}, mySqlMockNode);
@@ -81,7 +81,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "independently" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.INDEPENDENTLY };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.INDEPENDENTLY, nodeVersion: 2 };
 
 		const pool = createFakePool(fakeConnection);
 
@@ -126,7 +126,7 @@ describe('Test MySql V2, runQueries', () => {
 	});
 
 	it('should execute in "transaction" mode, should return success true', async () => {
-		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.TRANSACTION };
+		const nodeOptions: IDataObject = { queryBatching: BATCH_MODE.TRANSACTION, nodeVersion: 2 };
 
 		const pool = createFakePool(fakeConnection);
 

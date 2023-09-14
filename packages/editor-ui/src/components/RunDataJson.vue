@@ -1,15 +1,17 @@
 <template>
 	<div :class="$style.jsonDisplay">
-		<run-data-json-actions
-			v-if="!editMode.enabled"
-			:node="node"
-			:sessioId="sessionId"
-			:displayMode="displayMode"
-			:distanceFromActive="distanceFromActive"
-			:selectedJsonPath="selectedJsonPath"
-			:jsonData="jsonData"
-			:paneType="paneType"
-		/>
+		<Suspense>
+			<run-data-json-actions
+				v-if="!editMode.enabled"
+				:node="node"
+				:sessioId="sessionId"
+				:displayMode="displayMode"
+				:distanceFromActive="distanceFromActive"
+				:selectedJsonPath="selectedJsonPath"
+				:jsonData="jsonData"
+				:paneType="paneType"
+			/>
+		</Suspense>
 		<draggable
 			type="mapping"
 			targetDataKey="mappable"
@@ -20,57 +22,54 @@
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
-			<template>
-				<vue-json-pretty
-					:data="jsonData"
-					:deep="10"
-					:showLength="true"
-					:selected-value.sync="selectedJsonPath"
-					rootPath=""
-					selectableType="single"
-					class="json-data"
-				>
-					<template #nodeKey="{ node }">
-						<span
-							data-target="mappable"
-							:data-value="getJsonParameterPath(node.path)"
-							:data-name="node.key"
-							:data-path="node.path"
-							:data-depth="node.level"
-							:class="{
-								[$style.mappable]: mappingEnabled,
-								[$style.dragged]: draggingPath === node.path,
-							}"
-							>"{{ node.key }}"</span
-						>
-					</template>
-					<template #nodeValue="{ node }">
-						<span v-if="isNaN(node.index)" class="ph-no-capture">{{
-							getContent(node.content)
-						}}</span>
-						<span
-							v-else
-							data-target="mappable"
-							:data-value="getJsonParameterPath(node.path)"
-							:data-name="getListItemName(node.path)"
-							:data-path="node.path"
-							:data-depth="node.level"
-							:class="{
-								[$style.mappable]: mappingEnabled,
-								[$style.dragged]: draggingPath === node.path,
-							}"
-							class="ph-no-capture"
-							>{{ getContent(node.content) }}</span
-						>
-					</template>
-				</vue-json-pretty>
-			</template>
+			<vue-json-pretty
+				:data="jsonData"
+				:deep="10"
+				:showLength="true"
+				:selectedValue="selectedJsonPath"
+				rootPath=""
+				selectableType="single"
+				class="json-data"
+				@update:selectedValue="selectedJsonPath = $event"
+			>
+				<template #renderNodeKey="{ node }">
+					<span
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="node.key"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>"{{ node.key }}"</span
+					>
+				</template>
+				<template #renderNodeValue="{ node }">
+					<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+					<span
+						v-else
+						data-target="mappable"
+						:data-value="getJsonParameterPath(node.path)"
+						:data-name="getListItemName(node.path)"
+						:data-path="node.path"
+						:data-depth="node.level"
+						:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						class="ph-no-capture"
+						>{{ getContent(node.content) }}</span
+					>
+				</template>
+			</vue-json-pretty>
 		</draggable>
 	</div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent, ref } from 'vue';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
@@ -83,9 +82,11 @@ import { useNDVStore } from '@/stores/ndv.store';
 import MappingPill from './MappingPill.vue';
 import { getMappedExpression } from '@/utils/mappingUtils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { nonExistingJsonPath } from '@/components/RunDataJsonActions.vue';
+import { nonExistingJsonPath } from '@/constants';
 
-const runDataJsonActions = async () => import('@/components/RunDataJsonActions.vue');
+const RunDataJsonActions = defineAsyncComponent(
+	async () => import('@/components/RunDataJsonActions.vue'),
+);
 
 export default defineComponent({
 	name: 'run-data-json',
@@ -93,7 +94,7 @@ export default defineComponent({
 	components: {
 		VueJsonPretty,
 		Draggable,
-		runDataJsonActions,
+		RunDataJsonActions,
 		MappingPill,
 	},
 	props: {
@@ -125,11 +126,15 @@ export default defineComponent({
 			type: Number,
 		},
 	},
-	data() {
+	setup() {
+		const selectedJsonPath = ref(nonExistingJsonPath);
+		const draggingPath = ref<null | string>(null);
+		const displayMode = ref('json');
+
 		return {
-			selectedJsonPath: nonExistingJsonPath,
-			draggingPath: null as null | string,
-			displayMode: 'json',
+			selectedJsonPath,
+			draggingPath,
+			displayMode,
 		};
 	},
 	computed: {
