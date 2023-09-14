@@ -61,8 +61,8 @@ would look like this:
 File named: `MyNode.node.ts`
 
 ```TypeScript
-import { IExecuteFunctions } from 'n8n-core';
 import {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -114,7 +114,7 @@ export class MyNode implements INodeType {
 			item.json['myString'] = myString;
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 
 	}
 }
@@ -129,16 +129,13 @@ following methods defined which contains the actual logic:
 Method is called when the workflow gets executed
 
 - `execute`: Executed once no matter how many items
-- `executeSingle`: Executed once for every item
 
 By default, `execute` should always be used, especially when creating a
-third-party integration. The reason for this is that it provides much more 
+third-party integration. The reason for this is that it provides much more
 flexibility and allows, for example, returning a different number of items than
 it received as input. This becomes crucial when a node needs to query data such as _return
 all users_. In such cases, the node typically receives only one input item but returns as
 many items as there are users. Therefore, when in doubt, it is recommended to use `execute`!
-
-
 
 **Trigger node**
 
@@ -158,7 +155,6 @@ Property overview
 
 - **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
 - **execute** [optional]: Method is called when the workflow gets executed (once).
-- **executeSingle** [optional]: Method is called when the workflow gets executed (once for every item).
 - **hooks** [optional]: The hook methods.
 - **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
 - **trigger** [optional]: Method is called once when the workflow gets activated.

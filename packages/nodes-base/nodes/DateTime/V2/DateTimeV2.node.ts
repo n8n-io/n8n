@@ -134,18 +134,24 @@ export class DateTimeV2 implements INodeType {
 				const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
 				const { timezone } = this.getNodeParameter('options', i) as { timezone: boolean };
 
-				const dateLuxon = timezone
-					? parseDate.call(this, date, workflowTimezone)
-					: parseDate.call(this, date);
-				if (format === 'custom') {
-					const customFormat = this.getNodeParameter('customFormat', i) as string;
+				if (date === null || date === undefined) {
 					responseData.push({
-						[outputFieldName]: dateLuxon.toFormat(customFormat),
+						[outputFieldName]: date,
 					});
 				} else {
-					responseData.push({
-						[outputFieldName]: dateLuxon.toFormat(format),
-					});
+					const dateLuxon = timezone
+						? parseDate.call(this, date, workflowTimezone)
+						: parseDate.call(this, date);
+					if (format === 'custom') {
+						const customFormat = this.getNodeParameter('customFormat', i) as string;
+						responseData.push({
+							[outputFieldName]: dateLuxon.toFormat(customFormat),
+						});
+					} else {
+						responseData.push({
+							[outputFieldName]: dateLuxon.toFormat(format),
+						});
+					}
 				}
 			} else if (operation === 'roundDate') {
 				const date = this.getNodeParameter('date', i) as string;
@@ -207,6 +213,6 @@ export class DateTimeV2 implements INodeType {
 			// Reset responseData
 			responseData.length = 0;
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

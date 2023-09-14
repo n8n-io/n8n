@@ -46,7 +46,10 @@ export default defineComponent({
 				const rem = style.getPropertyValue(variable);
 				const px = parseFloat(rem.replace('rem', '')) * 16;
 
-				this.$set(this.sizes, variable, { rem, px });
+				this.sizes = {
+					...this.sizes,
+					[variable]: { rem, px },
+				};
 			});
 		};
 
@@ -65,7 +68,7 @@ export default defineComponent({
 			this.observer.observe(body, { attributes: true });
 		}
 	},
-	destroyed() {
+	unmounted() {
 		if (this.observer) {
 			this.observer.disconnect();
 		}

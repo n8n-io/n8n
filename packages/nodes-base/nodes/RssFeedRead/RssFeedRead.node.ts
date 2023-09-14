@@ -14,7 +14,7 @@ import { URL } from 'url';
 
 function validateURL(url: string) {
 	try {
-		const _parseUrl = new URL(url);
+		new URL(url);
 		return true;
 	} catch (err) {
 		return false;
@@ -44,12 +44,30 @@ export class RssFeedRead implements INodeType {
 				required: true,
 				description: 'URL of the RSS feed',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Ignore SSL Issues',
+						name: 'ignoreSSL',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to ignore SSL/TLS certificate issues or not',
+					},
+				],
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const url = this.getNodeParameter('url', 0) as string;
+			const options = this.getNodeParameter('options', 0);
+			const ignoreSSL = Boolean(options.ignoreSSL);
 
 			if (!url) {
 				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
@@ -59,7 +77,11 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'The provided "URL" is not valid!');
 			}
 
-			const parser = new Parser();
+			const parser = new Parser({
+				requestOptions: {
+					rejectUnauthorized: !ignoreSSL,
+				},
+			});
 
 			let feed: Parser.Output<IDataObject>;
 			try {
@@ -87,7 +109,7 @@ export class RssFeedRead implements INodeType {
 			return [this.helpers.returnJsonArray(returnData)];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 			throw error;
 		}

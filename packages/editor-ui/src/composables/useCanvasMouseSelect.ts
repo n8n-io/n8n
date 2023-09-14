@@ -6,7 +6,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import {
 	getMousePosition,
 	getRelativePosition,
-	HEADER_HEIGHT,
 	SIDEBAR_WIDTH,
 	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
@@ -187,10 +186,11 @@ export default function useCanvasMouseSelect() {
 			: uiStore.sidebarMenuCollapsed
 			? SIDEBAR_WIDTH
 			: SIDEBAR_WIDTH_EXPANDED;
-		const headerHeight = canvasStore.isDemo ? 0 : HEADER_HEIGHT;
 
 		const relativeX = mouseX - sidebarWidth;
-		const relativeY = mouseY - headerHeight;
+		const relativeY = canvasStore.isDemo
+			? mouseY
+			: mouseY - uiStore.bannersHeight - uiStore.headerHeight;
 		const nodeViewScale = canvasStore.nodeViewScale;
 		const nodeViewOffsetPosition = uiStore.nodeViewOffsetPosition;
 
@@ -224,6 +224,7 @@ export default function useCanvasMouseSelect() {
 	});
 
 	return {
+		selectActive,
 		getMousePositionWithinNodeView,
 		mouseUpMouseSelect,
 		mouseDownMouseSelect,

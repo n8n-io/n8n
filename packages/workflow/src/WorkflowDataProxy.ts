@@ -1,11 +1,8 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
@@ -30,6 +27,7 @@ import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
+import { deepCopy } from './utils';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -146,6 +144,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					if (Reflect.ownKeys(target).length === 0) {
 						// Target object did not get set yet
@@ -162,7 +161,7 @@ export class WorkflowDataProxy {
 				},
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
-					// eslint-disable-next-line no-param-reassign
+
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
 
@@ -178,10 +177,11 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
@@ -202,6 +202,7 @@ export class WorkflowDataProxy {
 		const node = this.workflow.nodes[nodeName];
 
 		return new Proxy(node.parameters, {
+			has: () => true,
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
@@ -213,6 +214,8 @@ export class WorkflowDataProxy {
 			},
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
+				if (name === 'toJSON') return () => deepCopy(target);
+
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -230,6 +233,9 @@ export class WorkflowDataProxy {
 
 					returnValue = node.parameters[name];
 				}
+
+				// Avoid recursion
+				if (returnValue === `={{ $parameter.${name} }}`) return undefined;
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
@@ -323,7 +329,7 @@ export class WorkflowDataProxy {
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
-			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
+			if (!taskData.main?.length || taskData.main[0] === null) {
 				// throw new Error(`No data found for item-index: "${itemIndex}"`);
 				throw new ExpressionError('No data found from "main" input.', {
 					runIndex: that.runIndex,
@@ -384,6 +390,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
+				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
@@ -421,7 +428,7 @@ export class WorkflowDataProxy {
 								for (const propertyName in binaryData) {
 									if (propertyName === 'data') {
 										// Skip the data property
-										// eslint-disable-next-line no-continue
+
 										continue;
 									}
 									(returnData[keyName] as IDataObject)[propertyName] = binaryData[propertyName];
@@ -436,10 +443,7 @@ export class WorkflowDataProxy {
 						// Get node parameter data
 						return that.nodeParameterGetter(nodeName);
 					} else if (name === 'runIndex') {
-						if (
-							that.runExecutionData === null ||
-							!that.runExecutionData.resultData.runData[nodeName]
-						) {
+						if (!that.runExecutionData?.resultData.runData[nodeName]) {
 							return -1;
 						}
 						return that.runExecutionData.resultData.runData[nodeName].length - 1;
@@ -461,6 +465,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 
@@ -468,7 +473,6 @@ export class WorkflowDataProxy {
 						throw new ExpressionError('not accessible via UI, please run node', {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
 						});
 					}
 					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
@@ -477,7 +481,6 @@ export class WorkflowDataProxy {
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
 						});
 					}
 					return process.env[name.toString()];
@@ -493,6 +496,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return allowedValues;
 				},
@@ -540,6 +544,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return allowedValues;
 				},
@@ -560,7 +565,6 @@ export class WorkflowDataProxy {
 								description: 'Please save the workflow first to use $workflow',
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
-								failExecution: true,
 							});
 						}
 
@@ -583,6 +587,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				get(target, name, receiver) {
 					if (name === 'isProxy') return true;
 
@@ -592,8 +597,6 @@ export class WorkflowDataProxy {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							// TODO: re-enable this for v1.0.0 release
-							// failExecution: true,
 						});
 					}
 
@@ -630,7 +633,6 @@ export class WorkflowDataProxy {
 				throw new ExpressionError('expected two arguments (Object, string) for this function', {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
-					clientOnly: true,
 				});
 			}
 
@@ -696,7 +698,6 @@ export class WorkflowDataProxy {
 			return new ExpressionError(message, {
 				runIndex: that.runIndex,
 				itemIndex: that.itemIndex,
-				failExecution: true,
 				...context,
 			});
 		};
@@ -950,9 +951,14 @@ export class WorkflowDataProxy {
 					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
+				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
+					throw createExpressionError(`no data, execute "${nodeName}" node first`);
+				}
+
 				return new Proxy(
 					{},
 					{
+						has: () => true,
 						ownKeys(target) {
 							return [
 								'pairedItem',
@@ -1076,6 +1082,7 @@ export class WorkflowDataProxy {
 			},
 
 			$input: new Proxy({} as ProxyInput, {
+				has: () => true,
 				ownKeys(target) {
 					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
@@ -1241,6 +1248,7 @@ export class WorkflowDataProxy {
 		};
 
 		return new Proxy(base, {
+			has: () => true,
 			get(target, name, receiver) {
 				if (name === 'isProxy') return true;
 

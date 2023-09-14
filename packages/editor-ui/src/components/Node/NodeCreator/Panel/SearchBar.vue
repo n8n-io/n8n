@@ -1,21 +1,21 @@
 <template>
 	<div :class="$style.searchContainer" data-test-id="search-bar">
-		<div :class="{ [$style.prefix]: true, [$style.active]: value.length > 0 }">
+		<div :class="{ [$style.prefix]: true, [$style.active]: modelValue.length > 0 }">
 			<font-awesome-icon icon="search" size="sm" />
 		</div>
 		<div :class="$style.text">
 			<input
 				:placeholder="placeholder"
-				:value="value"
-				@input="onInput"
+				:value="modelValue"
 				:class="$style.input"
 				ref="inputRef"
 				autofocus
 				data-test-id="node-creator-search-bar"
 				tabindex="0"
+				@input="onInput"
 			/>
 		</div>
-		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
+		<div :class="$style.suffix" v-if="modelValue.length > 0" @click="clear">
 			<button :class="[$style.clear, $style.clickable]">
 				<font-awesome-icon icon="times-circle" />
 			</button>
@@ -30,16 +30,16 @@ import { runExternalHook } from '@/utils';
 
 export interface Props {
 	placeholder: string;
-	value: string;
+	modelValue: string;
 }
 
 withDefaults(defineProps<Props>(), {
 	placeholder: '',
-	value: '',
+	modelValue: '',
 });
 
 const emit = defineEmits<{
-	(event: 'input', value: string): void;
+	(event: 'update:modelValue', value: string): void;
 }>();
 
 const state = reactive({
@@ -52,11 +52,11 @@ function focus() {
 
 function onInput(event: Event) {
 	const input = event.target as HTMLInputElement;
-	emit('input', input.value);
+	emit('update:modelValue', input.value);
 }
 
 function clear() {
-	emit('input', '');
+	emit('update:modelValue', '');
 }
 
 onMounted(() => {

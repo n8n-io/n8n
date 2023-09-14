@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
 import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
@@ -95,6 +95,22 @@ export class MessageEventBusLogWriter {
 	async pauseLogging() {
 		if (this.worker) {
 			this.worker.postMessage({ command: 'pauseLogging', data: {} });
+		}
+	}
+
+	startRecoveryProcess() {
+		if (this.worker) {
+			this.worker.postMessage({ command: 'startRecoveryProcess', data: {} });
+		}
+	}
+
+	isRecoveryProcessRunning(): boolean {
+		return existsSync(this.getRecoveryInProgressFileName());
+	}
+
+	endRecoveryProcess() {
+		if (this.worker) {
+			this.worker.postMessage({ command: 'endRecoveryProcess', data: {} });
 		}
 	}
 
@@ -219,7 +235,6 @@ export class MessageEventBusLogWriter {
 						}
 					} catch (error) {
 						LoggerProxy.error(
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}
@@ -239,6 +254,10 @@ export class MessageEventBusLogWriter {
 		} else {
 			return `${MessageEventBusLogWriter.options.logFullBasePath}.log`;
 		}
+	}
+
+	getRecoveryInProgressFileName(): string {
+		return `${MessageEventBusLogWriter.options.logFullBasePath}.recoveryInProgress`;
 	}
 
 	cleanAllLogs() {

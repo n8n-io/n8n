@@ -5,7 +5,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
@@ -249,7 +249,7 @@ export class Xml implements INodeType {
 					}
 
 					const json = await parser.parseStringPromise(item.json[dataPropertyName] as string);
-					returnData.push({ json });
+					returnData.push({ json: deepCopy(json) });
 				} else if (mode === 'jsonToxml') {
 					const builder = new Builder(options);
 
@@ -282,6 +282,6 @@ export class Xml implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

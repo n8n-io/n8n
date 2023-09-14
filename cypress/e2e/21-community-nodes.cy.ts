@@ -4,6 +4,7 @@ import { CredentialsModal, WorkflowPage } from '../pages';
 import CustomNodeWithN8nCredentialFixture from '../fixtures/Custom_node_n8n_credential.json';
 import CustomNodeWithCustomCredentialFixture from '../fixtures/Custom_node_custom_credential.json';
 import CustomCredential from '../fixtures/Custom_credential.json';
+import { getVisibleSelect } from '../utils';
 
 const credentialsModal = new CredentialsModal();
 const nodeCreatorFeature = new NodeCreator();
@@ -13,9 +14,6 @@ const workflowPage = new WorkflowPage();
 // so the /nodes and /credentials endpoints are intercepted and non-cached.
 // We want to keep the other tests as fast as possible so we don't want to break the cache in those.
 describe('Community Nodes', () => {
-	before(() => {
-		cy.skipSetup();
-	})
 	beforeEach(() => {
 		cy.intercept('/types/nodes.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -23,9 +21,13 @@ describe('Community Nodes', () => {
 			req.on('response', (res) => {
 				const nodes = res.body || [];
 
-				nodes.push(CustomNodeFixture, CustomNodeWithN8nCredentialFixture, CustomNodeWithCustomCredentialFixture);
+				nodes.push(
+					CustomNodeFixture,
+					CustomNodeWithN8nCredentialFixture,
+					CustomNodeWithCustomCredentialFixture,
+				);
 			});
-		})
+		});
 
 		cy.intercept('/types/credentials.json', { middleware: true }, (req) => {
 			req.headers['cache-control'] = 'no-cache, no-store';
@@ -34,8 +36,9 @@ describe('Community Nodes', () => {
 				const credentials = res.body || [];
 
 				credentials.push(CustomCredential);
-			})
-		})
+			});
+		});
+
 		workflowPage.actions.visit();
 	});
 
@@ -47,7 +50,7 @@ describe('Community Nodes', () => {
 
 		nodeCreatorFeature.getters
 			.getCreatorItem(customNode)
-			.findChildByTestId('node-creator-item-tooltip')
+			.find('.el-tooltip__trigger')
 			.should('exist');
 		nodeCreatorFeature.actions.selectNode(customNode);
 
@@ -67,16 +70,9 @@ describe('Community Nodes', () => {
 		secondParameter().find('label').contains('Resource').should('exist');
 		secondParameter().find('input.el-input__inner').should('have.value', 'option2');
 		secondParameter().find('.el-select').click();
-		secondParameter().find('.el-select-dropdown__list').should('exist');
 		// Check if all options are rendered and select the fourth one
-		secondParameter().find('.el-select-dropdown__list').children().should('have.length', 4);
-		secondParameter()
-			.find('.el-select-dropdown__list')
-			.children()
-			.eq(3)
-			.contains('option4')
-			.should('exist')
-			.click();
+		getVisibleSelect().find('li').should('have.length', 4);
+		getVisibleSelect().find('li').eq(3).contains('option4').should('exist').click();
 		secondParameter().find('input.el-input__inner').should('have.value', 'option4');
 	});
 

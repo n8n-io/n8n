@@ -87,6 +87,15 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		visibleNodeTypes(): INodeTypeDescription[] {
 			return this.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
 		},
+		/**
+		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
+		 */
+		nativelyNumberSuffixedDefaults(): string[] {
+			return this.allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.defaults.name as string)) acc.push(cur.defaults.name as string);
+				return acc;
+			}, []);
+		},
 	},
 	actions: {
 		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {

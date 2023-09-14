@@ -12,7 +12,7 @@ import {
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
 import config from '@/config';
-import { generateNanoId } from '@/databases/utils/generators';
+import { generateNanoId } from '@db/utils/generators';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -244,12 +244,9 @@ test('should report security settings', async () => {
 			versionNotificationsEnabled: true,
 			templatesEnabled: true,
 			publicApiEnabled: false,
-			userManagementEnabled: true,
 		},
 		auth: {
 			authExcludeEndpoints: 'none',
-			basicAuthActive: false,
-			jwtAuthActive: false,
 		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
 		telemetry: { diagnosticsEnabled: true },

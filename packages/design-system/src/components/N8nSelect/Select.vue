@@ -10,29 +10,26 @@
 			<slot name="prepend" />
 		</div>
 		<el-select
-			v-bind="$props"
-			:value="value"
+			v-bind="{ ...$props, ...listeners }"
+			:modelValue="modelValue"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			v-on="$listeners"
 			ref="innerSelect"
 		>
-			<template #prefix>
+			<template #prefix v-if="$slots.prefix">
 				<slot name="prefix" />
 			</template>
-			<template #suffix>
+			<template #suffix v-if="$slots.suffix">
 				<slot name="suffix" />
 			</template>
-			<template #default>
-				<slot></slot>
-			</template>
+			<slot></slot>
 		</el-select>
 	</div>
 </template>
 
 <script lang="ts">
-import { Select as ElSelect } from 'element-ui';
+import { ElSelect } from 'element-plus';
 import { defineComponent } from 'vue';
 
 type InnerSelectRef = InstanceType<typeof ElSelect>;
@@ -49,7 +46,8 @@ export default defineComponent({
 		ElSelect,
 	},
 	props: {
-		value: {},
+		...ElSelect.props,
+		modelValue: {},
 		size: {
 			type: String,
 			default: 'large',
@@ -94,7 +92,20 @@ export default defineComponent({
 		},
 	},
 	computed: {
+		listeners() {
+			return Object.entries(this.$attrs).reduce<Record<string, () => {}>>((acc, [key, value]) => {
+				if (/^on[A-Z]/.test(key)) {
+					acc[key] = value;
+				}
+
+				return acc;
+			}, {});
+		},
 		computedSize(): string | undefined {
+			if (this.size === 'medium') {
+				return 'default';
+			}
+
 			if (this.size === 'xlarge') {
 				return undefined;
 			}

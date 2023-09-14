@@ -1,4 +1,5 @@
-// eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
+import type { Readable } from 'stream';
+
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,12 +9,11 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep, removeCircularRefs } from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request';
 import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
 import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
-
 interface OptionData {
 	name: string;
 	displayName: string;
@@ -634,7 +634,7 @@ export class HttpRequestV1 implements INodeType {
 			oAuth2Api = await this.getCredentials('oAuth2Api');
 		} catch {}
 
-		let requestOptions: OptionsWithUri;
+		let requestOptions: OptionsWithUri & { useStream?: boolean };
 		let setUiParameter: IDataObject;
 
 		const uiParameters: IDataObject = {
@@ -875,6 +875,7 @@ export class HttpRequestV1 implements INodeType {
 
 			if (responseFormat === 'file') {
 				requestOptions.encoding = null;
+				requestOptions.useStream = true;
 
 				if (options.bodyContentType !== 'raw') {
 					requestOptions.body = JSON.stringify(requestOptions.body);
@@ -887,6 +888,7 @@ export class HttpRequestV1 implements INodeType {
 				}
 			} else if (options.bodyContentType === 'raw') {
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
@@ -976,6 +978,7 @@ export class HttpRequestV1 implements INodeType {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response as JsonObject, { itemIndex });
 				} else {
+					removeCircularRefs(response.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({
 						json: {
@@ -992,7 +995,6 @@ export class HttpRequestV1 implements INodeType {
 			response = response.value;
 
 			const options = this.getNodeParameter('options', itemIndex, {});
-			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			const fullResponse = !!options.fullResponse;
 
@@ -1015,8 +1017,7 @@ export class HttpRequestV1 implements INodeType {
 					Object.assign(newItem.binary, items[itemIndex].binary);
 				}
 
-				const fileName = url.split('/').pop();
-
+				let binaryData: Buffer | Readable;
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullResponseProperties) {
@@ -1027,20 +1028,13 @@ export class HttpRequestV1 implements INodeType {
 					}
 
 					newItem.json = returnItem;
-
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body as Buffer,
-						fileName,
-					);
+					binaryData = response!.body;
 				} else {
 					newItem.json = items[itemIndex].json;
-
-					newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(
-						response! as Buffer,
-						fileName,
-					);
+					binaryData = response;
 				}
 
+				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(binaryData);
 				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
@@ -1134,6 +1128,6 @@ export class HttpRequestV1 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

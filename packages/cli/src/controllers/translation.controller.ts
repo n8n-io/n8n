@@ -17,7 +17,10 @@ export declare namespace TranslationRequest {
 @Authorized()
 @RestController('/')
 export class TranslationController {
-	constructor(private config: Config, private credentialTypes: ICredentialTypes) {}
+	constructor(
+		private config: Config,
+		private credentialTypes: ICredentialTypes,
+	) {}
 
 	@Get('/credential-translation')
 	async getCredentialTranslation(req: TranslationRequest.Credential) {

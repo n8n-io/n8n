@@ -7,10 +7,10 @@
 			v-for="option in options"
 			:key="option.value"
 			v-bind="option"
-			:active="value === option.value"
+			:active="modelValue === option.value"
 			:size="size"
 			:disabled="disabled || option.disabled"
-			@click="() => onClick(option)"
+			@click.prevent.stop="onClick(option)"
 		/>
 	</div>
 </template>
@@ -30,7 +30,7 @@ export interface RadioOption {
 export default defineComponent({
 	name: 'n8n-radio-buttons',
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
 		options: {
@@ -52,7 +52,7 @@ export default defineComponent({
 			if (this.disabled || option.disabled) {
 				return;
 			}
-			this.$emit('input', option.value);
+			this.$emit('update:modelValue', option.value);
 		},
 	},
 });

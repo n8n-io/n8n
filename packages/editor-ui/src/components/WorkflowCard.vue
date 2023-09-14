@@ -1,13 +1,7 @@
 <template>
 	<n8n-card :class="$style.cardLink" @click="onClick">
 		<template #header>
-			<n8n-heading
-				tag="h2"
-				bold
-				class="ph-no-capture"
-				:class="$style.cardHeading"
-				data-test-id="workflow-card-name"
-			>
+			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
 				{{ data.name }}
 			</n8n-heading>
 		</template>
@@ -27,7 +21,7 @@
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
-						@click="onClickTag"
+						@click:tag="onClickTag"
 						@expand="onExpandTags"
 						data-test-id="workflow-card-tags"
 					/>
@@ -35,7 +29,7 @@
 			</n8n-text>
 		</div>
 		<template #append>
-			<div :class="$style.cardActions">
+			<div :class="$style.cardActions" ref="cardActions">
 				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
@@ -46,7 +40,6 @@
 					class="mr-s"
 					:workflow-active="data.active"
 					:workflow-id="data.id"
-					ref="activator"
 					data-test-id="workflow-card-activator"
 				/>
 
@@ -54,6 +47,7 @@
 					:actions="actions"
 					theme="dark"
 					@action="onAction"
+					@click.stop
 					data-test-id="workflow-card-actions"
 				/>
 			</div>
@@ -82,8 +76,6 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import TimeAgo from '@/components/TimeAgo.vue';
-
-type ActivatorRef = InstanceType<typeof WorkflowActivator>;
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -169,21 +161,22 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		async onClick(event?: PointerEvent) {
-			if (event) {
-				if ((this.$refs.activator as ActivatorRef)?.$el.contains(event.target as HTMLElement)) {
-					return;
-				}
+		async onClick(event: Event) {
+			if (
+				this.$refs.cardActions === event.target ||
+				this.$refs.cardActions?.contains(event.target)
+			) {
+				return;
+			}
 
-				if (event.metaKey || event.ctrlKey) {
-					const route = this.$router.resolve({
-						name: VIEWS.WORKFLOW,
-						params: { name: this.data.id },
-					});
-					window.open(route.href, '_blank');
+			if (event.metaKey || event.ctrlKey) {
+				const route = this.$router.resolve({
+					name: VIEWS.WORKFLOW,
+					params: { name: this.data.id },
+				});
+				window.open(route.href, '_blank');
 
-					return;
-				}
+				return;
 			}
 
 			await this.$router.push({
@@ -265,6 +258,8 @@ export default defineComponent({
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
+	padding: 0;
+	align-items: stretch;
 
 	&:hover {
 		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
@@ -274,12 +269,14 @@ export default defineComponent({
 .cardHeading {
 	font-size: var(--font-size-s);
 	word-break: break-word;
+	padding: var(--spacing-s) 0 0 var(--spacing-s);
 }
 
 .cardDescription {
 	min-height: 19px;
 	display: flex;
 	align-items: center;
+	padding: 0 0 var(--spacing-s) var(--spacing-s);
 }
 
 .cardActions {
@@ -287,5 +284,8 @@ export default defineComponent({
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
+	align-self: stretch;
+	padding: 0 var(--spacing-s) 0 0;
+	cursor: default;
 }
 </style>

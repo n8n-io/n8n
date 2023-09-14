@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
@@ -14,12 +13,7 @@ import { NodeApiError } from 'n8n-workflow';
 import { capitalCase } from 'change-case';
 
 export async function facebookApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 
@@ -554,7 +548,6 @@ export function getFields(object: string) {
 		],
 	} as { [key: string]: any };
 
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	return [{ name: '*', value: '*' }].concat(data[object] || []).map((fieldObject: IDataObject) => ({
 		...fieldObject,
 		name: fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,

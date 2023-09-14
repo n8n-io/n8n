@@ -2,10 +2,10 @@ import { Column, Entity, ManyToOne, PrimaryColumn } from 'typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { User } from './User';
 import { Role } from './Role';
-import { AbstractEntity } from './AbstractEntity';
+import { WithTimestamps } from './AbstractEntity';
 
 @Entity()
-export class SharedWorkflow extends AbstractEntity {
+export class SharedWorkflow extends WithTimestamps {
 	@ManyToOne('Role', 'sharedWorkflows', { nullable: false })
 	role: Role;
 

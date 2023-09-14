@@ -3,7 +3,6 @@ import type { OptionsWithUrl } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
@@ -15,7 +14,7 @@ import { createHmac } from 'crypto';
 import qs from 'qs';
 
 export async function unleashedApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
 	body: IDataObject = {},

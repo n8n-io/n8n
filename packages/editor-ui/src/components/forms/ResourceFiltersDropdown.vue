@@ -1,10 +1,9 @@
 <template>
-	<n8n-popover trigger="click">
+	<n8n-popover trigger="click" width="304" size="large">
 		<template #reference>
 			<n8n-button
 				icon="filter"
 				type="tertiary"
-				size="medium"
 				:active="hasFilters"
 				:class="[$style['filter-button'], 'ml-2xs']"
 				data-test-id="resources-list-filters-trigger"
@@ -16,7 +15,7 @@
 			</n8n-button>
 		</template>
 		<div :class="$style['filters-dropdown']" data-test-id="resources-list-filters-dropdown">
-			<slot :filters="value" :setKeyValue="setKeyValue" />
+			<slot :filters="modelValue" :setKeyValue="setKeyValue" />
 			<enterprise-edition
 				class="mb-s"
 				:features="[EnterpriseEditionFeature.Sharing]"
@@ -32,9 +31,9 @@
 				<n8n-user-select
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
-					:value="value.ownedBy"
+					:modelValue="modelValue.ownedBy"
 					size="medium"
-					@input="setKeyValue('ownedBy', $event)"
+					@update:modelValue="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
@@ -48,9 +47,9 @@
 				<n8n-user-select
 					:users="sharedWithUsers"
 					:currentUserId="usersStore.currentUser.id"
-					:value="value.sharedWith"
+					:modelValue="modelValue.sharedWith"
 					size="medium"
-					@input="setKeyValue('sharedWith', $event)"
+					@update:modelValue="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
 			<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="hasFilters">
@@ -74,7 +73,7 @@ export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 export default defineComponent({
 	props: {
-		value: {
+		modelValue: {
 			type: Object as PropType<IResourceFiltersType>,
 			default: () => ({}),
 		},
@@ -99,12 +98,12 @@ export default defineComponent({
 		...mapStores(useUsersStore),
 		ownedByUsers(): IUser[] {
 			return this.usersStore.allUsers.map((user) =>
-				user.id === this.value.sharedWith ? { ...user, disabled: true } : user,
+				user.id === this.modelValue.sharedWith ? { ...user, disabled: true } : user,
 			);
 		},
 		sharedWithUsers(): IUser[] {
 			return this.usersStore.allUsers.map((user) =>
-				user.id === this.value.ownedBy ? { ...user, disabled: true } : user,
+				user.id === this.modelValue.ownedBy ? { ...user, disabled: true } : user,
 			);
 		},
 		filtersLength(): number {
@@ -116,7 +115,9 @@ export default defineComponent({
 				}
 
 				length += (
-					Array.isArray(this.value[key]) ? this.value[key].length > 0 : this.value[key] !== ''
+					Array.isArray(this.modelValue[key])
+						? this.modelValue[key].length > 0
+						: this.modelValue[key] !== ''
 				)
 					? 1
 					: 0;
@@ -131,23 +132,23 @@ export default defineComponent({
 	methods: {
 		setKeyValue(key: string, value: unknown) {
 			const filters = {
-				...this.value,
+				...this.modelValue,
 				[key]: value,
 			};
 
-			this.$emit('input', filters);
+			this.$emit('update:modelValue', filters);
 		},
 		resetFilters() {
 			if (this.reset) {
 				this.reset();
 			} else {
-				const filters = { ...this.value };
+				const filters = { ...this.modelValue };
 
 				(this.keys as string[]).forEach((key) => {
-					filters[key] = Array.isArray(this.value[key]) ? [] : '';
+					filters[key] = Array.isArray(this.modelValue[key]) ? [] : '';
 				});
 
-				this.$emit('input', filters);
+				this.$emit('update:modelValue', filters);
 			}
 		},
 	},
@@ -161,7 +162,7 @@ export default defineComponent({
 
 <style lang="scss" module>
 .filter-button {
-	height: 36px;
+	height: 40px;
 	align-items: center;
 }
 

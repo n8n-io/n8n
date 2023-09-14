@@ -9,6 +9,7 @@ import type {
 } from '@/Interface';
 import type { INodeIssues, IRunData } from 'n8n-workflow';
 import { defineStore } from 'pinia';
+import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
 
 export const useNDVStore = defineStore(STORES.NDV, {
@@ -163,7 +164,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			};
 		},
 		setNDVSessionId(): void {
-			this.sessionId = `ndv-${Math.random().toString(36).slice(-8)}`;
+			this.sessionId = `ndv-${uuid()}`;
 		},
 		resetNDVSessionId(): void {
 			this.sessionId = '';

@@ -4,7 +4,6 @@ import { audit } from '@/audit';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -27,7 +26,7 @@ test('should report filesystem interaction nodes', async () => {
 	);
 
 	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
-		const details = new WorkflowEntity({
+		const details = Db.collections.Workflow.create({
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},

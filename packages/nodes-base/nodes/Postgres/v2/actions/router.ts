@@ -17,12 +17,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const credentials = await this.getCredentials('postgres');
 	const options = this.getNodeParameter('options', 0, {});
 	options.nodeVersion = this.getNode().typeVersion;
+	options.operation = operation;
 
 	const { db, pgp, sshClient } = await configurePostgres(credentials, options);
 
-	const runQueries = configureQueryRunner(
+	const runQueries = configureQueryRunner.call(
+		this,
 		this.getNode(),
-		this.helpers.constructExecutionMetaData,
 		this.continueOnFail(),
 		pgp,
 		db,
@@ -56,8 +57,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		if (sshClient) {
 			sshClient.end();
 		}
-		pgp.end();
+
+		await db.$pool.end();
 	}
 
-	return this.prepareOutputData(returnData);
+	return [returnData];
 }

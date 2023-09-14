@@ -423,6 +423,6 @@ export class MicrosoftToDo implements INodeType {
 
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

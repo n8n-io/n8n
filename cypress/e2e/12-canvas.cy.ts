@@ -5,9 +5,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 	SET_NODE_NAME,
 	SWITCH_NODE_NAME,
-	IF_NODE_NAME,
 	MERGE_NODE_NAME,
-	HTTP_REQUEST_NODE_NAME,
 } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
@@ -21,10 +19,6 @@ const ZOOM_OUT_X2_FACTOR = 0.64;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 	});
@@ -113,7 +107,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.zoomToFit();
 
 		cy.get('.plus-draggable-endpoint').filter(':visible').should('not.have.class', 'ep-success');
-		cy.get('.jtk-connector.success').should('have.length', 4);
+		cy.get('.jtk-connector.success').should('have.length', 3);
 		cy.get('.jtk-connector').should('have.length', 4);
 	});
 
@@ -168,7 +162,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 740px; top: 360px;');
+			.should('have.attr', 'style', 'left: 740px; top: 320px;');
 	});
 
 	it('should zoom in', () => {

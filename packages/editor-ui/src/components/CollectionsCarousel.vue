@@ -31,7 +31,7 @@ import type { PropType } from 'vue';
 import type { ITemplatesCollection } from '@/Interface';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
-import VueAgile from 'vue-agile';
+import { VueAgile } from 'vue-agile';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 
@@ -98,20 +98,19 @@ export default defineComponent({
 			}
 		},
 	},
-	mounted() {
-		this.$nextTick(() => {
-			const sliderRef = this.$refs.slider as SliderRef | undefined;
-			if (!sliderRef) {
-				return;
-			}
+	async mounted() {
+		await this.$nextTick();
+		const sliderRef = this.$refs.slider as SliderRef | undefined;
+		if (!sliderRef) {
+			return;
+		}
 
-			this.listElement = sliderRef.$el.querySelector('.agile__list');
-			if (this.listElement) {
-				this.listElement.addEventListener('scroll', this.updateCarouselScroll);
-			}
-		});
+		this.listElement = sliderRef.$el.querySelector('.agile__list');
+		if (this.listElement) {
+			this.listElement.addEventListener('scroll', this.updateCarouselScroll);
+		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		const sliderRef = this.$refs.slider as SliderRef | undefined;
 		if (sliderRef) {
 			sliderRef.destroy();

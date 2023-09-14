@@ -10,11 +10,11 @@
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
-						:value="curlCommand"
+						:modelValue="curlCommand"
 						type="textarea"
 						:rows="5"
 						:placeholder="$locale.baseText('importCurlModal.input.placeholder')"
-						@input="onInput"
+						@update:modelValue="onInput"
 						@focus="$event.target.select()"
 						ref="input"
 					/>
@@ -52,7 +52,7 @@ import type { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'ImportCurlModal',

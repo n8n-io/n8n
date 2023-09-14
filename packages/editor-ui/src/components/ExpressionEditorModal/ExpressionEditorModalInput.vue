@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture" @keydown.stop></div>
+	<div ref="root" @keydown.stop></div>
 </template>
 
 <script lang="ts">
@@ -24,7 +24,7 @@ export default defineComponent({
 	name: 'ExpressionEditorModalInput',
 	mixins: [expressionManager, completionManager, workflowHelpers],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
 		},
 		path: {
@@ -69,6 +69,8 @@ export default defineComponent({
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
+				this.editorState = this.editor.state;
+
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
@@ -89,11 +91,12 @@ export default defineComponent({
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
+				doc: this.modelValue.startsWith('=') ? this.modelValue.slice(1) : this.modelValue,
 				extensions,
 			}),
 		});
 
+		this.editorState = this.editor.state;
 		this.editor.focus();
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
@@ -107,7 +110,7 @@ export default defineComponent({
 			segments: this.displayableSegments,
 		});
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.editor?.destroy();
 	},
 	methods: {

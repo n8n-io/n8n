@@ -1,17 +1,8 @@
 import { Container } from 'typedi';
-import { RoleRepository, UserRepository } from '@db/repositories';
-import type { Role } from '@db/entities/Role';
+import { UserRepository } from '@db/repositories';
 import type { User } from '@db/entities/User';
 import pick from 'lodash/pick';
 import { validate as uuidValidate } from 'uuid';
-
-export function isInstanceOwner(user: User): boolean {
-	return user.globalRole.name === 'owner';
-}
-
-export async function getWorkflowOwnerRole(): Promise<Role> {
-	return Container.get(RoleRepository).findWorkflowOwnerRoleOrFail();
-}
 
 export const getSelectableProperties = (table: 'user' | 'role'): string[] => {
 	return {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
-import * as Helpers from '../../../test/nodes/Helpers';
-import type { WorkflowTestData } from '../../../test/nodes/types';
-import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
+import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import path from 'path';
 
 describe('Test Write Binary File Node', () => {

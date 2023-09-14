@@ -4,7 +4,7 @@
 		:form="config"
 		:formLoading="loading"
 		@submit="onSubmit"
-		@input="onInput"
+		@update="onInput"
 	/>
 </template>
 
@@ -14,7 +14,7 @@ import { useToast } from '@/composables';
 
 import { defineComponent } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 
@@ -39,7 +39,7 @@ export default defineComponent({
 		...mapStores(useUsersStore),
 	},
 	async mounted() {
-		this.config = {
+		const form: IFormBoxConfig = {
 			title: this.$locale.baseText('auth.changePassword'),
 			buttonText: this.$locale.baseText('auth.changePassword'),
 			redirectText: this.$locale.baseText('auth.signin'),
@@ -75,23 +75,33 @@ export default defineComponent({
 				},
 			],
 		};
-		const token =
-			!this.$route.query.token || typeof this.$route.query.token !== 'string'
-				? null
-				: this.$route.query.token;
-		const userId =
-			!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-				? null
-				: this.$route.query.userId;
+
+		const token = this.getResetToken();
+		const mfaEnabled = this.getMfaEnabled();
+
+		if (mfaEnabled) {
+			form.inputs.push({
+				name: 'mfaToken',
+				initialValue: '',
+				properties: {
+					required: true,
+					label: this.$locale.baseText('mfa.code.input.label'),
+					placeholder: this.$locale.baseText('mfa.code.input.placeholder'),
+					maxlength: MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH,
+					capitalize: true,
+					validateOnBlur: true,
+				},
+			});
+		}
+
+		this.config = form;
+
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
 			}
-			if (!userId) {
-				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
-			}
 
-			await this.usersStore.validatePasswordToken({ token, userId });
+			await this.usersStore.validatePasswordToken({ token });
 		} catch (e) {
 			this.showMessage({
 				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
@@ -118,20 +128,28 @@ export default defineComponent({
 				this.password = e.value;
 			}
 		},
-		async onSubmit() {
+		getResetToken() {
+			return !this.$route.query.token || typeof this.$route.query.token !== 'string'
+				? null
+				: this.$route.query.token;
+		},
+		getMfaEnabled() {
+			if (!this.$route.query.mfaEnabled) return null;
+			return this.$route.query.mfaEnabled === 'true' ? true : false;
+		},
+		async onSubmit(values: { mfaToken: string }) {
 			try {
 				this.loading = true;
-				const token =
-					!this.$route.query.token || typeof this.$route.query.token !== 'string'
-						? null
-						: this.$route.query.token;
-				const userId =
-					!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
-						? null
-						: this.$route.query.userId;
+				const token = this.getResetToken();
 
-				if (token && userId) {
-					await this.usersStore.changePassword({ token, userId, password: this.password });
+				if (token) {
+					const changePasswordParameters = {
+						token,
+						password: this.password,
+						...(values.mfaToken && { mfaToken: values.mfaToken }),
+					};
+
+					await this.usersStore.changePassword(changePasswordParameters);
 
 					this.showMessage({
 						type: 'success',
