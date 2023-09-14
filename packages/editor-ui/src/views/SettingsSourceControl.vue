@@ -233,6 +233,7 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 				<div :class="{ [$style.sshInput]: !isConnected }">
 					<n8n-form-input
 						v-if="!isConnected"
+						:class="$style.sshKeyTypeSelect"
 						label
 						type="select"
 						id="keyGeneratorType"
@@ -440,7 +441,6 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 
 	> div {
 		flex: 1 1 auto;
-		overflow: auto;
 	}
 
 	> button {
@@ -452,8 +452,12 @@ const onSelectSshKeyType = async (sshKeyType: TupleToUnion<SshKeyTypes>) => {
 	}
 }
 
+.sshKeyTypeSelect {
+	min-width: 120px;
+}
+
 .copyInput {
-	flex: 1 0 auto;
+	overflow: auto;
 }
 
 .branchSelection {
