@@ -734,7 +734,7 @@ export async function executeWebhook(
 								// Send the webhook response manually
 								res.setHeader('Content-Type', binaryData.mimeType);
 								if (binaryData.id) {
-									const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
+									const stream = Container.get(BinaryDataService).getAsStream(binaryData.id);
 									await pipeline(stream, res);
 								} else {
 									res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
@@ -756,17 +756,9 @@ export async function executeWebhook(
 						}
 
 						if (!didSendResponse) {
-							// Send the webhook response manually
-							res.setHeader('Content-Type', binaryData.mimeType);
-							if (binaryData.id) {
-								const stream = Container.get(BinaryDataService).getAsStream(binaryData.id);
-								await pipeline(stream, res);
-							} else {
-								res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
-							}
-
 							responseCallback(null, {
-								noWebhookResponse: true,
+								data,
+								responseCode,
 							});
 						}
 					}
