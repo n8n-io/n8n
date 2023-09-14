@@ -6,7 +6,7 @@ import { BaseChatMessageHistory } from 'langchain/schema';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
 
-import { Embeddings } from 'langchain/embeddings';
+import { Embeddings } from 'langchain/embeddings/base';
 import type { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { VectorStore } from 'langchain/vectorstores/base';
 import type { Document } from 'langchain/document';

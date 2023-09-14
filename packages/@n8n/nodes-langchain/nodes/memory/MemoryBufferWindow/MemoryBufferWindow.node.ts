@@ -24,12 +24,12 @@ class MemoryBufferSingleton {
 	}
 
 	public async getMemory(
-		memoryKey: string,
+		sessionKey: string,
 		memoryParams: BufferWindowMemoryInput,
 	): Promise<BufferWindowMemory> {
 		await this.cleanupStaleBuffers();
 
-		let memoryInstance = this.memoryBuffer.get(memoryKey);
+		let memoryInstance = this.memoryBuffer.get(sessionKey);
 		if (memoryInstance) {
 			memoryInstance.last_accessed = new Date();
 		} else {
@@ -40,7 +40,7 @@ class MemoryBufferSingleton {
 				created: new Date(),
 				last_accessed: new Date(),
 			};
-			this.memoryBuffer.set(memoryKey, memoryInstance);
+			this.memoryBuffer.set(sessionKey, memoryInstance);
 		}
 		return memoryInstance.buffer;
 	}
@@ -89,8 +89,8 @@ export class MemoryBufferWindow implements INodeType {
 			// 	default: 'input',
 			// },
 			{
-				displayName: 'Memory Key',
-				name: 'memoryKey',
+				displayName: 'Session Key',
+				name: 'sessionKey',
 				type: 'string',
 				default: 'chat_history',
 				description: 'The key to use to store the memory in the workflow data',
@@ -106,12 +106,12 @@ export class MemoryBufferWindow implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
+		const sessionKey = this.getNodeParameter('sessionKey', 0) as string;
 		const contextWindowLength = this.getNodeParameter('contextWindowLength', 0) as number;
 		const workflowId = this.getWorkflow().id;
 		const memoryInstance = MemoryBufferSingleton.getInstance();
 
-		const memory = await memoryInstance.getMemory(`${workflowId}__${memoryKey}`, {
+		const memory = await memoryInstance.getMemory(`${workflowId}__${sessionKey}`, {
 			k: contextWindowLength,
 			inputKey: 'input',
 			memoryKey: 'chat_history',
