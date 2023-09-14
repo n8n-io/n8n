@@ -30,7 +30,7 @@ describe('NodeExecuteFunctions', () => {
 
 			await Container.get(BinaryDataService).init({
 				mode: 'default',
-				availableModes: 'default',
+				availableModes: ['default'],
 			});
 
 			// Set our binary data buffer
@@ -80,7 +80,7 @@ describe('NodeExecuteFunctions', () => {
 			// Setup a 'filesystem' binary data manager instance
 			await Container.get(BinaryDataService).init({
 				mode: 'filesystem',
-				availableModes: 'filesystem',
+				availableModes: ['filesystem'],
 				storagePath: temporaryDir,
 			});
 
