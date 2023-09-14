@@ -112,7 +112,7 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export const enum EndpointType {
+export const enum NodeConnectionType {
 	Agent = 'agent',
 	Chain = 'chain',
 	Main = 'main',
@@ -183,7 +183,7 @@ export interface INodeTranslationHeaders {
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
-	type: EndpointType;
+	type: NodeConnectionType;
 	metadata: {
 		executionTime: number;
 		startTime: number;

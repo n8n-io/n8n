@@ -17,7 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores';
-import type { EndpointType } from '@/Interface';
+import type { NodeConnectionType } from '@/Interface';
 
 /*
 	Canvas constants and functions.
@@ -258,7 +258,7 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getEndpointScope = (endpointType: EndpointType): string | undefined => {
+export const getEndpointScope = (endpointType: NodeConnectionType): string | undefined => {
 	if (SCOPED_ENDPOINT_TYPES.includes(endpointType)) {
 		return endpointType;
 	}

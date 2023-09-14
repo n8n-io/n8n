@@ -1,4 +1,4 @@
-import { EndpointType } from '@/Interface';
+import { NodeConnectionType } from '@/Interface';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { isObjectEmpty } from 'n8n-workflow';
 
@@ -17,7 +17,7 @@ interface LmGeneration {
 }
 
 type ExcludedKeys = 'main' | 'chain' | 'agent';
-type AllowedEndpointType = Exclude<EndpointType, ExcludedKeys>;
+type AllowedEndpointType = Exclude<NodeConnectionType, ExcludedKeys>;
 
 const fallbackParser = (execData: IDataObject) => ({
 	type: 'json' as 'json' | 'text' | 'markdown',
@@ -30,7 +30,7 @@ const outputTypeParsers: {
 		data: unknown;
 	};
 } = {
-	[EndpointType.LanguageModel](execData: IDataObject) {
+	[NodeConnectionType.LanguageModel](execData: IDataObject) {
 		const response = (execData.response as IDataObject) ?? execData;
 		if (!response) throw new Error('No response from Language Model');
 
@@ -74,8 +74,8 @@ const outputTypeParsers: {
 			data: response,
 		};
 	},
-	[EndpointType.Tool]: fallbackParser,
-	[EndpointType.Memory](execData: IDataObject) {
+	[NodeConnectionType.Tool]: fallbackParser,
+	[NodeConnectionType.Memory](execData: IDataObject) {
 		const chatHistory =
 			execData.chatHistory ?? execData.messages ?? execData?.response?.chat_history;
 		if (Array.isArray(chatHistory)) {
@@ -109,9 +109,9 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[EndpointType.OutputParser]: fallbackParser,
-	[EndpointType.VectorRetriever]: fallbackParser,
-	[EndpointType.VectorStore](execData: IDataObject) {
+	[NodeConnectionType.OutputParser]: fallbackParser,
+	[NodeConnectionType.VectorRetriever]: fallbackParser,
+	[NodeConnectionType.VectorStore](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
@@ -121,7 +121,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[EndpointType.Embedding](execData: IDataObject) {
+	[NodeConnectionType.Embedding](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
@@ -131,7 +131,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[EndpointType.Document](execData: IDataObject) {
+	[NodeConnectionType.Document](execData: IDataObject) {
 		if (execData.documents) {
 			return {
 				type: 'json',
@@ -141,7 +141,7 @@ const outputTypeParsers: {
 
 		return fallbackParser(execData);
 	},
-	[EndpointType.TextSplitter](execData: IDataObject) {
+	[NodeConnectionType.TextSplitter](execData: IDataObject) {
 		const arrayData = Array.isArray(execData.response)
 			? execData.response
 			: [execData.textSplitter];
@@ -162,7 +162,7 @@ export type ParsedAiContent = Array<{
 export const useAiContentParsers = () => {
 	const parseAiRunData = (
 		executionData: INodeExecutionData[],
-		endpointType: EndpointType,
+		endpointType: NodeConnectionType,
 	): ParsedAiContent => {
 		if (['chain', 'agent', 'main'].includes(endpointType)) {
 			console.log(`Unsupported endpoint type parser ${endpointType}, returning raw data`);

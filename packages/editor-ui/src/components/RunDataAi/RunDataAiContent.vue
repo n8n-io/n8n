@@ -72,7 +72,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { EndpointType, IAiData, IAiDataContent } from '@/Interface';
+import type { NodeConnectionType, IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
 import type { IDataObject, INodeExecutionData, INodeTypeDescription } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -84,7 +84,7 @@ interface RunMeta {
 	executionTimeMs: number;
 	node: INodeTypeDescription | null;
 	type: 'input' | 'output';
-	connectionType: EndpointType;
+	connectionType: NodeConnectionType;
 }
 const props = defineProps<{
 	inputData: IAiData;
