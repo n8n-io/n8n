@@ -14,9 +14,7 @@ module.exports = defineConfig({
 	experimentalMemoryManagement: true,
 	e2e: {
 		baseUrl: BASE_URL,
-		video: true,
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
-		experimentalSessionAndOrigin: true,
 	},
 });
