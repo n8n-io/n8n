@@ -223,7 +223,11 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
 		).toBe(4);
-		expect(queryAllByTestId('remove-field-button').length).toBe(1);
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll(
+				'[data-test-id^="remove-field-button"]',
+			).length,
+		).toBe(1);
 	});
 
 	it('should render correct options based on saved schema', async () => {
