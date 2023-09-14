@@ -775,6 +775,10 @@ export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
 	icon?: string;
+	iconProps?: {
+		color?: string;
+	};
+	panelClass?: string;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;

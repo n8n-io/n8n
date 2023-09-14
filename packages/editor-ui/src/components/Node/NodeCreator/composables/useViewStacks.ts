@@ -47,6 +47,7 @@ interface ViewStack {
 	mode?: 'actions' | 'nodes';
 	baseFilter?: (item: INodeCreateElement) => boolean;
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
+	panelClass?: string;
 }
 
 export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
@@ -119,6 +120,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			rootView: AI_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
+			panelClass: `nodes-list-panel-${connectionType}`,
 			baseFilter: (i: INodeCreateElement) => {
 				const displayNode = nodesByOutputType[connectionType].includes(i.key);
 
