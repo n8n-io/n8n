@@ -12,6 +12,7 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
+					:icon="isFormTriggerNode && 'flask'"
 					:transparentBackground="transparent"
 					@click="onClick"
 				/>

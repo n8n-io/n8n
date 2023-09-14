@@ -339,7 +339,18 @@ export const createPage = (
 			</div>
 			<script>
 			function validateInput(input, errorElement) {
-				if (input.value === '') {
+				if (input.type === 'number') {
+					const value = input.value.trim();
+
+					if (value === '' || isNaN(value)) {
+						errorElement.textContent = 'Enter only numbers in this field';
+						errorElement.classList.add('error-show');
+						return false;
+					} else {
+						errorElement.classList.remove('error-show');
+						return true;
+					}
+				} else if (input.value === '') {
 					errorElement.classList.add('error-show');
 					return false;
 				} else {
