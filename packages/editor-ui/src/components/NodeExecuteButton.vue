@@ -223,7 +223,10 @@ export default defineComponent({
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					await this.runWorkflow({ destinationNode: this.nodeName, source: 'RunData.ExecuteNodeButton' });
+					await this.runWorkflow({
+						destinationNode: this.nodeName,
+						source: 'RunData.ExecuteNodeButton',
+					});
 					this.$emit('execute');
 				}
 			}

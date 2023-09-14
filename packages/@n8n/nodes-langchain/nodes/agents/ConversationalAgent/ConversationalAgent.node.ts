@@ -66,12 +66,6 @@ export class ConversationalAgent implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				default: '={{ $json.input }}',
-			},
-			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -90,7 +84,12 @@ export class ConversationalAgent implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
-
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				default: '={{ $json.input }}',
+			},
 			{
 				displayName: 'System Message',
 				name: 'systemMessage',
