@@ -75,13 +75,11 @@ export async function initNodeTypes() {
  * Initialize a BinaryDataService for test runs.
  */
 export async function initBinaryDataService() {
-	const binaryDataConfig = config.getEnv('binaryDataService');
-
 	const binaryDataService = new BinaryDataService();
-	await binaryDataService.init(binaryDataConfig);
-	Container.set(BinaryDataService, binaryDataService);
 
-	await binaryDataService.init(binaryDataConfig);
+	await binaryDataService.init(config.getEnv('binaryDataService'));
+
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 /**
