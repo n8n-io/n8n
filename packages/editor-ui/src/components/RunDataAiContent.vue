@@ -87,7 +87,7 @@ import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { EndpointType, IAiData, IAiDataContent } from '@/Interface';
+import { NodeConnectionType, IAiData, IAiDataContent } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
@@ -155,7 +155,7 @@ export default defineComponent({
 		},
 		getContent(
 			data: IDataObject,
-			type: EndpointType,
+			type: NodeConnectionType,
 			rawData: boolean,
 		): { type: 'json' | 'text' | 'markdown'; data: string | IDataObject } | undefined {
 			// TODO: All that is super horrible. Has to be rewritten

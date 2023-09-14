@@ -13,7 +13,7 @@ import { mapStores } from 'pinia';
 import type { ITaskAIRunMetadata, ITaskDataConnections, ITaskMetadata } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import type { EndpointType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import type { NodeConnectionType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
 
 const RunDataAiContent = defineAsyncComponent(
 	async () => import('@/components/RunDataAiContent.vue'),
@@ -70,7 +70,7 @@ export default defineComponent({
 					returnData.push({
 						data: data[type][0],
 						inOut,
-						type: type as EndpointType,
+						type: type as NodeConnectionType,
 						metadata: {
 							executionTime: taskData.executionTime,
 							startTime: taskData.startTime,
