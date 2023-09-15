@@ -383,6 +383,7 @@ export const enum VIEWS {
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
+	WORKFLOW_HISTORY = 'WorkflowHistory',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -454,6 +455,7 @@ export const enum EnterpriseEditionFeature {
 	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
+	WorkflowHistory = 'workflowHistory',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
