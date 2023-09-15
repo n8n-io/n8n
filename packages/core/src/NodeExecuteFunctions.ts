@@ -2802,14 +2802,7 @@ export function getExecuteFunctions(
 									runIndex,
 								);
 
-								// Display on the calling node which node has the error
-								throw new NodeOperationError(
-									connectedNode,
-									`Error on node "${connectedNode.name}" connected via input "${inputName}"`,
-									{
-										itemIndex,
-									},
-								);
+								throw error;
 							}
 						};
 
