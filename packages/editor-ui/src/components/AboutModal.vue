@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		width="540px"
+		max-width="540px"
 		:title="$locale.baseText('about.aboutN8n')"
 		:eventBus="modalBus"
 		:name="ABOUT_MODAL_KEY"
@@ -56,7 +56,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
 import { useSettingsStore } from '@/stores/settings.store';

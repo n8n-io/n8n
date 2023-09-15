@@ -35,7 +35,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	icon: 'fa:code-branch',
 	group: ['transform'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merges data of multiple streams once data from both is available',
 	defaults: {
@@ -46,6 +46,9 @@ const versionDescription: INodeTypeDescription = {
 	inputs: ['main', 'main'],
 	outputs: ['main'],
 	inputNames: ['Input 1', 'Input 2'],
+	// If the node is of version 2.2 or if mode is chooseBranch data from both branches is required
+	// to continue, else data from any input suffices
+	requiredInputs: '={{ $parameter["mode"] === "chooseBranch" ? [0, 1] : 1 }}',
 	properties: [
 		{
 			displayName: 'Mode',
@@ -374,6 +377,12 @@ export class MergeV2 implements INodeType {
 				let input1 = this.getInputData(0);
 				let input2 = this.getInputData(1);
 
+				if (input1.length === 0 || input2.length === 0) {
+					// If data of any input is missing, return the data of
+					// the input that contains data
+					return [[...input1, ...input2]];
+				}
+
 				if (clashHandling.resolveClash === 'preferInput1') {
 					[input1, input2] = [input2, input1];
 				}
@@ -454,6 +463,7 @@ export class MergeV2 implements INodeType {
 
 				let input1 = this.getInputData(0);
 				let input2 = this.getInputData(1);
+
 				if (nodeVersion < 2.1) {
 					input1 = checkInput(
 						this.getInputData(0),
@@ -472,6 +482,24 @@ export class MergeV2 implements INodeType {
 				} else {
 					if (!input1) return [returnData];
 				}
+
+				if (input1.length === 0 || input2.length === 0) {
+					if (joinMode === 'keepMatches') {
+						// Stop the execution
+						return [[]];
+					} else if (joinMode === 'enrichInput1' && input1.length === 0) {
+						// No data to enrich so stop
+						return [[]];
+					} else if (joinMode === 'enrichInput2' && input2.length === 0) {
+						// No data to enrich so stop
+						return [[]];
+					} else {
+						// Return the data of any of the inputs that contains data
+						return [[...input1, ...input2]];
+					}
+				}
+
+				if (!input1) return [returnData];
 
 				if (!input2 || !matchFields.length) {
 					if (

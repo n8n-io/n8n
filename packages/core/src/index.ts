@@ -1,4 +1,3 @@
-import { eventEmitter } from './EventEmitter';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
@@ -14,5 +13,5 @@ export * from './LoadNodeParameterOptions';
 export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
-export { eventEmitter, NodeExecuteFunctions, UserSettings };
+export { NodeExecuteFunctions, UserSettings };
 export * from './errors';

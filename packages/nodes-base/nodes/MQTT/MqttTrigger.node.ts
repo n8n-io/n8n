@@ -4,10 +4,13 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	IDeferredPromise,
+	IRun,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import mqtt from 'mqtt';
+import * as mqtt from 'mqtt';
+import { formatPrivateKey } from '@utils/utilities';
 
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -70,6 +73,14 @@ export class MqttTrigger implements INodeType {
 						default: false,
 						description: 'Whether to return only the message property',
 					},
+					{
+						displayName: 'Parallel Processing',
+						name: 'parallelProcessing',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether to process messages in parallel or by keeping the message in order',
+					},
 				],
 			},
 		],
@@ -88,6 +99,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		const options = this.getNodeParameter('options') as IDataObject;
+		const parallelProcessing = this.getNodeParameter('options.parallelProcessing', true) as boolean;
 
 		if (!topics) {
 			throw new NodeOperationError(this.getNode(), 'Topics are mandatory!');
@@ -101,9 +113,9 @@ export class MqttTrigger implements INodeType {
 			(credentials.clientId as string) || `mqttjs_${Math.random().toString(16).substr(2, 8)}`;
 		const clean = credentials.clean as boolean;
 		const ssl = credentials.ssl as boolean;
-		const ca = credentials.ca as string;
-		const cert = credentials.cert as string;
-		const key = credentials.key as string;
+		const ca = formatPrivateKey(credentials.ca as string);
+		const cert = formatPrivateKey(credentials.cert as string);
+		const key = formatPrivateKey(credentials.key as string);
 		const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
 
 		let client: mqtt.MqttClient;
@@ -142,11 +154,11 @@ export class MqttTrigger implements INodeType {
 		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
-						if (err) {
-							reject(err);
+					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (error, _granted) => {
+						if (error) {
+							reject(error);
 						}
-						client.on('message', (topic: string, message: Buffer | string) => {
+						client.on('message', async (topic: string, message: Buffer | string) => {
 							let result: IDataObject = {};
 
 							message = message.toString();
@@ -154,7 +166,7 @@ export class MqttTrigger implements INodeType {
 							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (error) {}
+								} catch (e) {}
 							}
 
 							result.message = message;
@@ -164,7 +176,15 @@ export class MqttTrigger implements INodeType {
 								//@ts-ignore
 								result = [message as string];
 							}
-							this.emit([this.helpers.returnJsonArray(result)]);
+
+							let responsePromise: IDeferredPromise<IRun> | undefined;
+							if (!parallelProcessing) {
+								responsePromise = await this.helpers.createDeferredPromise();
+							}
+							this.emit([this.helpers.returnJsonArray([result])], undefined, responsePromise);
+							if (responsePromise) {
+								await responsePromise.promise();
+							}
 							resolve(true);
 						});
 					});

@@ -7,8 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { IRecord } from './GenericFunctions';
-import { apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
+import type { IRecord } from './v1/GenericFunctions';
+import { apiRequestAllItems, downloadRecordAttachments } from './v1/GenericFunctions';
 
 import moment from 'moment';
 
@@ -43,6 +43,15 @@ export class AirtableTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'airtableOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['airtableOAuth2Api'],
+					},
+				},
+			},
 		],
 		polling: true,
 		inputs: [],
@@ -60,6 +69,10 @@ export class AirtableTrigger implements INodeType {
 					{
 						name: 'Access Token',
 						value: 'airtableTokenApi',
+					},
+					{
+						name: 'OAuth2',
+						value: 'airtableOAuth2Api',
 					},
 				],
 				default: 'airtableApi',

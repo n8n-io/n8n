@@ -120,7 +120,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (const category of categories) {
 					returnData.push({
 						name: category.displayName as string,
-						value: category.id as string,
+						value: category.displayName as string,
 					});
 				}
 				return returnData;
@@ -1194,9 +1194,9 @@ export class MicrosoftOutlook implements INodeType {
 			(resource === 'message' && operation === 'getMime') ||
 			(resource === 'messageAttachment' && operation === 'download')
 		) {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

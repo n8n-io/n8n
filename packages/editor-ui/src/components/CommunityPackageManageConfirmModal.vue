@@ -15,9 +15,7 @@
 				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
 			>
 				<n8n-info-tip theme="info" type="note" :bold="false">
-					<template>
-						<span v-text="getModalContent.description"></span>
-					</template>
+					<span v-text="getModalContent.description"></span>
 				</n8n-info-tip>
 			</div>
 		</template>
@@ -41,7 +39,7 @@ import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS }
 import { useToast } from '@/composables';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'CommunityPackageManageConfirmModal',

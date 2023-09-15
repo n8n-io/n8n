@@ -66,11 +66,11 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
-	private executionDataRepository: ExecutionDataRepository;
-
-	constructor(dataSource: DataSource, executionDataRepository: ExecutionDataRepository) {
+	constructor(
+		dataSource: DataSource,
+		private readonly executionDataRepository: ExecutionDataRepository,
+	) {
 		super(ExecutionEntity, dataSource.manager);
-		this.executionDataRepository = executionDataRepository;
 	}
 
 	async findMultipleExecutions(
@@ -216,6 +216,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return newExecution;
 	}
 
+	async markAsCrashed(executionIds: string[]) {
+		await this.update(
+			{ id: In(executionIds) },
+			{
+				status: 'crashed',
+				stoppedAt: new Date(),
+			},
+		);
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
@@ -238,9 +248,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 	}
 
-	async deleteExecution(executionId: string) {
-		// TODO: Should this be awaited? Should we add a catch in case it fails?
-		await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(executionId);
+	async deleteExecution(executionId: string, deferBinaryDataDeletion = false) {
+		const binaryDataManager = BinaryDataManager.getInstance();
+		if (deferBinaryDataDeletion) {
+			await binaryDataManager.markDataForDeletionByExecutionId(executionId);
+		} else {
+			await binaryDataManager.deleteBinaryDataByExecutionIds([executionId]);
+		}
 		return this.delete({ id: executionId });
 	}
 
@@ -392,17 +406,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		const idsToDelete = executions.map(({ id }) => id);
-
+		const executionIds = executions.map(({ id }) => id);
 		const binaryDataManager = BinaryDataManager.getInstance();
-		await Promise.all(
-			idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
-		);
+		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = idsToDelete.splice(0, 500);
+			const batch = executionIds.splice(0, 500);
 			await this.delete(batch);
-		} while (idsToDelete.length > 0);
+		} while (executionIds.length > 0);
 	}
 }

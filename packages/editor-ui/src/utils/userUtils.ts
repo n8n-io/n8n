@@ -101,7 +101,7 @@ export const PERMISSIONS: IUserPermissions = {
 	TAGS: {
 		CAN_DELETE_TAGS: {
 			allow: {
-				role: [ROLE.Owner, ROLE.Default],
+				role: [ROLE.Owner],
 			},
 		},
 	},
@@ -125,7 +125,7 @@ export const PERMISSIONS: IUserPermissions = {
 	USAGE: {
 		CAN_ACTIVATE_LICENSE: {
 			allow: {
-				role: [ROLE.Owner, ROLE.Default],
+				role: [ROLE.Owner],
 			},
 		},
 	},

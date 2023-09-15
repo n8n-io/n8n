@@ -4,56 +4,29 @@ import type { ILogger } from 'n8n-workflow';
 import jwt from 'jsonwebtoken';
 import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import type {
-	CredentialsRepository,
-	SettingsRepository,
-	UserRepository,
-	WorkflowRepository,
-} from '@db/repositories';
+import type { SettingsRepository } from '@db/repositories';
 import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import { UserService } from '@/services/user.service';
+import { mockInstance } from '../../integration/shared/utils';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
 	const logger = mock<ILogger>();
 	const internalHooks = mock<IInternalHooksClass>();
-	const userRepository = mock<UserRepository>();
+	const userService = mockInstance(UserService);
 	const settingsRepository = mock<SettingsRepository>();
-	const credentialsRepository = mock<CredentialsRepository>();
-	const workflowsRepository = mock<WorkflowRepository>();
-	const controller = new OwnerController({
+	const controller = new OwnerController(
 		config,
 		logger,
 		internalHooks,
-		repositories: {
-			User: userRepository,
-			Settings: settingsRepository,
-			Credentials: credentialsRepository,
-			Workflow: workflowsRepository,
-		},
-	});
-
-	describe('preSetup', () => {
-		it('should throw a BadRequestError if the instance owner is already setup', async () => {
-			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(true);
-			await expect(controller.preSetup()).rejects.toThrowError(
-				new BadRequestError('Instance owner already setup'),
-			);
-		});
-
-		it('should a return credential and workflow count', async () => {
-			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
-			credentialsRepository.countBy.mockResolvedValue(7);
-			workflowsRepository.countBy.mockResolvedValue(31);
-			const { credentials, workflows } = await controller.preSetup();
-			expect(credentials).toBe(7);
-			expect(workflows).toBe(31);
-		});
-	});
+		settingsRepository,
+		userService,
+	);
 
 	describe('setupOwner', () => {
 		it('should throw a BadRequestError if the instance owner is already setup', async () => {
@@ -110,28 +83,17 @@ describe('OwnerController', () => {
 			});
 			const res = mock<Response>();
 			config.getEnv.calledWith('userManagement.isInstanceOwnerSetUp').mockReturnValue(false);
-			userRepository.save.calledWith(anyObject()).mockResolvedValue(user);
+			userService.save.calledWith(anyObject()).mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			await controller.setupOwner(req, res);
 
-			expect(userRepository.save).toHaveBeenCalledWith(user);
+			expect(userService.save).toHaveBeenCalledWith(user);
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
 			expect(cookieOptions.value.httpOnly).toBe(true);
 			expect(cookieOptions.value.sameSite).toBe('lax');
-		});
-	});
-
-	describe('skipSetup', () => {
-		it('should skip setting up the instance owner', async () => {
-			await controller.skipSetup();
-			expect(settingsRepository.update).toHaveBeenCalledWith(
-				{ key: 'userManagement.skipInstanceOwnerSetup' },
-				{ value: JSON.stringify(true) },
-			);
-			expect(config.set).toHaveBeenCalledWith('userManagement.skipInstanceOwnerSetup', true);
 		});
 	});
 });

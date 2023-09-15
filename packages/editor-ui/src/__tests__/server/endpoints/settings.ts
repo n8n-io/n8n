@@ -18,6 +18,8 @@ const defaultSettings: IN8nUISettings = {
 		variables: true,
 		sourceControl: false,
 		auditLogs: false,
+		versionControl: false,
+		showNonProdBanner: false,
 	},
 	executionMode: 'regular',
 	executionTimeout: 0,
@@ -56,7 +58,6 @@ const defaultSettings: IN8nUISettings = {
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
 	userManagement: {
-		enabled: true,
 		showSetupOnFirstLoad: true,
 		smtpSetup: true,
 		authenticationMethod: 'email',
@@ -74,6 +75,9 @@ const defaultSettings: IN8nUISettings = {
 	},
 	deployment: {
 		type: 'default',
+	},
+	banners: {
+		dismissed: [],
 	},
 };
 

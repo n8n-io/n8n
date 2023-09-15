@@ -6,6 +6,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
 import { VariablesService } from './variables.service';
 import { EEVariablesController } from './variables.controller.ee';
+import Container from 'typedi';
 
 export const variablesController = express.Router();
 
@@ -28,7 +29,7 @@ variablesController.use(EEVariablesController);
 variablesController.get(
 	'/',
 	ResponseHelper.send(async () => {
-		return VariablesService.getAll();
+		return Container.get(VariablesService).getAllCached();
 	}),
 );
 
@@ -43,7 +44,7 @@ variablesController.get(
 	'/:id(\\w+)',
 	ResponseHelper.send(async (req: VariablesRequest.Get) => {
 		const id = req.params.id;
-		const variable = await VariablesService.get(id);
+		const variable = await Container.get(VariablesService).getCached(id);
 		if (variable === null) {
 			throw new ResponseHelper.NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
@@ -69,7 +70,7 @@ variablesController.delete(
 			});
 			throw new ResponseHelper.AuthError('Unauthorized');
 		}
-		await VariablesService.delete(id);
+		await Container.get(VariablesService).delete(id);
 
 		return true;
 	}),

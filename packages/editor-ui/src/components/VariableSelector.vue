@@ -16,6 +16,7 @@
 				v-for="option in currentResults"
 				:key="option.key"
 				:extendAll="extendAll"
+				:redactValues="redactValues"
 				@itemSelected="forwardItemSelected"
 			></variable-selector-item>
 		</div>
@@ -59,7 +60,7 @@ export default defineComponent({
 	components: {
 		VariableSelectorItem,
 	},
-	props: ['path'],
+	props: ['path', 'redactValues'],
 	data() {
 		return {
 			variableFilter: '',
@@ -360,7 +361,7 @@ export default defineComponent({
 			filterText: string,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
-			const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
+			const outputData = pinData.map((data) => ({ json: data }) as INodeExecutionData)[0];
 
 			return this.getNodeOutput(nodeName, outputData, filterText, useShort);
 		},

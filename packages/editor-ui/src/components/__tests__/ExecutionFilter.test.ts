@@ -1,29 +1,14 @@
 import { describe, test, expect } from 'vitest';
-import Vue from 'vue';
-import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import type { RenderOptions } from '@testing-library/vue';
-import { render } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { faker } from '@faker-js/faker';
 import ExecutionFilter from '@/components/ExecutionFilter.vue';
 import { STORES } from '@/constants';
-import { i18nInstance } from '@/plugins/i18n';
 import type { IWorkflowShortResponse, ExecutionFilterType } from '@/Interface';
-import { useTelemetry } from '@/composables';
-
-vi.mock('@/composables', () => {
-	const track = vi.fn();
-	return {
-		useTelemetry: () => ({
-			track,
-		}),
-	};
-});
-
-let telemetry: ReturnType<typeof useTelemetry>;
-
-Vue.use(PiniaVuePlugin);
+import { createComponentRenderer } from '@/__tests__/render';
+import * as telemetryModule from '@/composables/useTelemetry';
+import type { Telemetry } from '@/plugins/telemetry';
+import { merge } from 'lodash-es';
 
 const defaultFilterState: ExecutionFilterType = {
 	status: 'all',
@@ -37,8 +22,8 @@ const defaultFilterState: ExecutionFilterType = {
 const workflowDataFactory = (): IWorkflowShortResponse => ({
 	createdAt: faker.date.past().toDateString(),
 	updatedAt: faker.date.past().toDateString(),
-	id: faker.datatype.uuid(),
-	name: faker.datatype.string(),
+	id: faker.string.uuid(),
+	name: faker.string.sample(),
 	active: faker.datatype.boolean(),
 	tags: [],
 });
@@ -65,13 +50,36 @@ const initialState = {
 	},
 };
 
-const renderOptions: RenderOptions<ExecutionFilter> = {
-	i18n: i18nInstance,
-};
+const renderComponent = createComponentRenderer(ExecutionFilter, {
+	props: {
+		teleported: false,
+	},
+});
 
 describe('ExecutionFilter', () => {
-	beforeEach(() => {
-		telemetry = useTelemetry();
+	afterAll(() => {
+		vi.clearAllMocks();
+	});
+
+	test('telemetry sent only once after component is mounted', async () => {
+		const track = vi.fn();
+		const spy = vi.spyOn(telemetryModule, 'useTelemetry');
+		spy.mockImplementation(
+			() =>
+				({
+					track,
+				}) as unknown as Telemetry,
+		);
+
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia({ initialState }),
+		});
+		const customDataKeyInput = getByTestId('execution-filter-saved-data-key-input');
+
+		await userEvent.type(customDataKeyInput, 'test');
+		await userEvent.type(customDataKeyInput, 'key');
+
+		expect(track).toHaveBeenCalledTimes(1);
 	});
 
 	test.each([
@@ -84,32 +92,51 @@ describe('ExecutionFilter', () => {
 		['production', 'default', false, undefined],
 		['production', 'default', true, workflowsData],
 	])(
-		'renders in %s environment on %s deployment with advancedExecutionFilters %s and workflows %s',
+		'renders in %s environment on %s deployment with advancedExecutionFilters %s',
 		async (environment, deployment, advancedExecutionFilters, workflows) => {
-			initialState[STORES.SETTINGS].settings.license.environment = environment;
-			initialState[STORES.SETTINGS].settings.deployment.type = deployment;
-			initialState[STORES.SETTINGS].settings.enterprise.advancedExecutionFilters =
-				advancedExecutionFilters;
-
-			renderOptions.pinia = createTestingPinia({ initialState });
-			renderOptions.props = { workflows };
-
-			const { getByTestId, queryByTestId } = render(ExecutionFilter, renderOptions);
+			const { html, getByTestId, queryByTestId, queryAllByTestId } = renderComponent({
+				props: { workflows },
+				pinia: createTestingPinia({
+					initialState: merge(initialState, {
+						[STORES.SETTINGS]: {
+							settings: {
+								license: {
+									environment,
+								},
+								deployment: {
+									type: deployment,
+								},
+								enterprise: {
+									advancedExecutionFilters,
+								},
+							},
+						},
+					}),
+				}),
+			});
 
 			await userEvent.click(getByTestId('executions-filter-button'));
 			await userEvent.hover(getByTestId('execution-filter-saved-data-key-input'));
 
 			if (advancedExecutionFilters) {
-				expect(queryByTestId('executions-filter-view-plans-link')).not.toBeInTheDocument();
+				expect(queryByTestId('executions-filter-view-plans-link')).not.toBeVisible();
 			}
 
 			expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
-			expect(!!queryByTestId('executions-filter-workflows-select')).toBe(!!workflows?.length);
+
+			const select = queryByTestId('executions-filter-workflows-select');
+			if (workflows && workflows.length > 0) {
+				expect(select).toBeVisible();
+			} else {
+				expect(select).not.toBeInTheDocument();
+			}
 		},
 	);
 
 	test('state change', async () => {
-		const { getByTestId, queryByTestId, emitted } = render(ExecutionFilter, renderOptions);
+		const { html, getByTestId, queryByTestId, emitted } = renderComponent({
+			pinia: createTestingPinia({ initialState }),
+		});
 
 		const filterChangedEvent = emitted().filterChanged;
 		expect(filterChangedEvent).toHaveLength(1);
@@ -123,6 +150,7 @@ describe('ExecutionFilter', () => {
 		expect(getByTestId('execution-filter-form')).toBeVisible();
 
 		await userEvent.click(getByTestId('executions-filter-status-select'));
+
 		await userEvent.click(getByTestId('executions-filter-status-select').querySelectorAll('li')[1]);
 
 		expect(emitted().filterChanged).toHaveLength(2);
@@ -135,15 +163,5 @@ describe('ExecutionFilter', () => {
 		expect(filterChangedEvent[2]).toEqual([defaultFilterState]);
 		expect(queryByTestId('executions-filter-reset-button')).not.toBeInTheDocument();
 		expect(queryByTestId('execution-filter-badge')).not.toBeInTheDocument();
-	});
-
-	test('telemetry sent only once after component is mounted', async () => {
-		const { getByTestId } = render(ExecutionFilter, renderOptions);
-		const customDataKeyInput = getByTestId('execution-filter-saved-data-key-input');
-
-		await userEvent.type(customDataKeyInput, 'test');
-		await userEvent.type(customDataKeyInput, 'key');
-
-		expect(telemetry.track).toHaveBeenCalledTimes(1);
 	});
 });

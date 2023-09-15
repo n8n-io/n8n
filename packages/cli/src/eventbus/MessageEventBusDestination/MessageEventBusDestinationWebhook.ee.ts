@@ -1,18 +1,21 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
+
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
-import { jsonParse, LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import {
+	jsonParse,
+	LoggerProxy,
+	MessageEventBusDestinationTypeNames,
+	MessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
 import type {
 	MessageEventBusDestinationOptions,
-	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
@@ -20,7 +23,9 @@ import { Agent as HTTPSAgent } from 'https';
 import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
-import type { MessageEventBus, MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
+import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
+import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -105,6 +110,7 @@ export class MessageEventBusDestinationWebhook
 		if (foundCredential) {
 			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
+				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',

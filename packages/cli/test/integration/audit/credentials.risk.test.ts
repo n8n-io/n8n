@@ -5,7 +5,7 @@ import { audit } from '@/audit';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/testDb';
-import { generateNanoId } from '@/databases/utils/generators';
+import { generateNanoId } from '@db/utils/generators';
 
 beforeAll(async () => {
 	await testDb.init();

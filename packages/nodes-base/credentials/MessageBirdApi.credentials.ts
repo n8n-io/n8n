@@ -12,6 +12,7 @@ export class MessageBirdApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'accessKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

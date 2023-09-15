@@ -35,7 +35,7 @@ import type {
 	NewCustomer,
 	NewProduct,
 	Search,
-} from './Types';
+} from './types';
 
 import { capitalCase } from 'change-case';
 
@@ -810,6 +810,6 @@ export class Magento2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

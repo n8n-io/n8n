@@ -4,6 +4,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
 import glob from 'fast-glob';
 
 export class ReadBinaryFiles implements INodeType {
@@ -61,6 +62,6 @@ export class ReadBinaryFiles implements INodeType {
 			});
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

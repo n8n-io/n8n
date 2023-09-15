@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { RoleNames, RoleScopes } from '@db/entities/Role';
 import { Role } from '@db/entities/Role';
 import { RoleRepository } from '@db/repositories/role.repository';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../integration/shared/utils/';
 import { randomInteger } from '../../integration/shared/random';
 
 describe('RoleRepository', () => {
@@ -26,20 +26,6 @@ describe('RoleRepository', () => {
 			entityManager.findOne.mockResolvedValueOnce(null);
 			const role = await roleRepository.findRole('global', 'owner');
 			expect(role).toEqual(null);
-		});
-	});
-
-	describe('findRoleOrFail', () => {
-		test('should return the role when present', async () => {
-			entityManager.findOneOrFail.mockResolvedValueOnce(createRole('global', 'owner'));
-			const role = await roleRepository.findRoleOrFail('global', 'owner');
-			expect(role?.name).toEqual('owner');
-			expect(role?.scope).toEqual('global');
-		});
-
-		test('should throw otherwise', async () => {
-			entityManager.findOneOrFail.mockRejectedValueOnce(new Error());
-			await expect(async () => roleRepository.findRoleOrFail('global', 'owner')).rejects.toThrow();
 		});
 	});
 

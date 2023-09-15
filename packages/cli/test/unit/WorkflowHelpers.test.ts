@@ -1,9 +1,14 @@
 import type { INode } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, type Workflow } from 'n8n-workflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { getNodesWithInaccessibleCreds, validateWorkflowCredentialUsage } from '@/WorkflowHelpers';
+import {
+	getExecutionStartNode,
+	getNodesWithInaccessibleCreds,
+	validateWorkflowCredentialUsage,
+} from '@/WorkflowHelpers';
 import { getLogger } from '@/Logger';
+import type { IWorkflowExecutionDataProcess } from '../../src/Interfaces';
 
 const FIRST_CREDENTIAL_ID = '1';
 const SECOND_CREDENTIAL_ID = '2';
@@ -143,6 +148,46 @@ describe('WorkflowHelpers', () => {
 			expect(() => {
 				validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
 			}).toThrow();
+		});
+	});
+	describe('getExecutionStartNode', () => {
+		it('Should return undefined', () => {
+			const data = {
+				pinData: {},
+				startNodes: [],
+			} as unknown as IWorkflowExecutionDataProcess;
+			const workflow = {
+				getNode(nodeName: string) {
+					return {
+						name: nodeName,
+					};
+				},
+			} as unknown as Workflow;
+			const executionStartNode = getExecutionStartNode(data, workflow);
+			expect(executionStartNode).toBeUndefined();
+		});
+		it('Should return startNode', () => {
+			const data = {
+				pinData: {
+					node1: {},
+					node2: {},
+				},
+				startNodes: ['node2'],
+			} as unknown as IWorkflowExecutionDataProcess;
+			const workflow = {
+				getNode(nodeName: string) {
+					if (nodeName === 'node2') {
+						return {
+							name: 'node2',
+						};
+					}
+					return undefined;
+				},
+			} as unknown as Workflow;
+			const executionStartNode = getExecutionStartNode(data, workflow);
+			expect(executionStartNode).toEqual({
+				name: 'node2',
+			});
 		});
 	});
 });

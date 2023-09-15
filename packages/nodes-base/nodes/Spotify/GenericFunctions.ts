@@ -55,7 +55,7 @@ export async function spotifyApiRequestAllItems(
 
 	do {
 		responseData = await spotifyApiRequest.call(this, method, endpoint, body, query, uri);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 		returnData.push.apply(returnData, get(responseData, propertyName));
 		uri = responseData.next || responseData[propertyName.split('.')[0]].next;
 		//remove the query as the query parameters are already included in the next, else api throws error.

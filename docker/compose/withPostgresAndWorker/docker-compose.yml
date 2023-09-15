@@ -7,6 +7,7 @@ volumes:
 
 x-shared: &shared
   restart: always
+  image: docker.n8n.io/n8nio/n8n
   environment:
     - DB_TYPE=postgresdb
     - DB_POSTGRESDB_HOST=postgres
@@ -17,9 +18,6 @@ x-shared: &shared
     - EXECUTIONS_MODE=queue
     - QUEUE_BULL_REDIS_HOST=redis
     - QUEUE_HEALTH_CHECK_ACTIVE=true
-    - N8N_BASIC_AUTH_ACTIVE=true
-    - N8N_BASIC_AUTH_USER
-    - N8N_BASIC_AUTH_PASSWORD
   links:
     - postgres
     - redis
@@ -63,14 +61,11 @@ services:
 
   n8n:
     <<: *shared
-    image: docker.n8n.io/n8nio/n8n
-    command: /bin/sh -c "n8n start --tunnel"
     ports:
       - 5678:5678
 
   n8n-worker:
     <<: *shared
-    image: docker.n8n.io/n8nio/n8n
-    command: /bin/sh -c "sleep 5; n8n worker"
+    command: worker
     depends_on:
       - n8n

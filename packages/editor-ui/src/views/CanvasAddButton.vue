@@ -7,17 +7,16 @@
 	>
 		<n8n-tooltip
 			placement="top"
-			:value="showTooltip"
-			manual
+			:visible="showTooltip"
 			:disabled="nodeCreatorStore.showScrim"
 			:popper-class="$style.tooltip"
-			:open-delay="700"
+			:show-after="700"
 		>
 			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>
-				<p v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')" />
+				{{ $locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting') }}
 			</template>
 		</n8n-tooltip>
 		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
@@ -80,10 +79,6 @@ const containerCssVars = computed(() => ({
 			fill: var(--color-foreground-xdark);
 		}
 	}
-}
-
-:root .tooltip {
-	max-width: 180px;
 }
 
 .label {

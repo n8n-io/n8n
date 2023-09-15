@@ -1084,6 +1084,9 @@ export class Salesforce implements INodeType {
 						if (additionalFields.hasOptedOutOfEmail !== undefined) {
 							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
 						}
+						if (additionalFields.hasOptedOutOfFax !== undefined) {
+							body.HasOptedOutOfFax = additionalFields.hasOptedOutOfFax as boolean;
+						}
 						if (additionalFields.email !== undefined) {
 							body.Email = additionalFields.email as string;
 						}
@@ -1122,6 +1125,9 @@ export class Salesforce implements INodeType {
 						}
 						if (additionalFields.industry !== undefined) {
 							body.Industry = additionalFields.industry as string;
+						}
+						if (additionalFields.fax !== undefined) {
+							body.Fax = additionalFields.fax as number;
 						}
 						if (additionalFields.firstname !== undefined) {
 							body.FirstName = additionalFields.firstname as string;
@@ -1190,6 +1196,9 @@ export class Salesforce implements INodeType {
 						if (updateFields.hasOptedOutOfEmail !== undefined) {
 							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
 						}
+						if (updateFields.hasOptedOutOfFax !== undefined) {
+							body.hasOptedOutOfFax = updateFields.hasOptedOutOfFax as boolean;
+						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;
 						}
@@ -1237,6 +1246,9 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.firstname !== undefined) {
 							body.FirstName = updateFields.firstname as string;
+						}
+						if (updateFields.fax !== undefined) {
+							body.Fax = updateFields.fax as number;
 						}
 						if (updateFields.leadSource !== undefined) {
 							body.LeadSource = updateFields.leadSource as string;
@@ -2213,8 +2225,8 @@ export class Salesforce implements INodeType {
 						if (updateFields.phone !== undefined) {
 							body.Phone = updateFields.phone as string;
 						}
-						if (updateFields.owner !== undefined) {
-							body.OwnerId = updateFields.owner as string;
+						if (updateFields.ownerId !== undefined) {
+							body.OwnerId = updateFields.ownerId as string;
 						}
 						if (updateFields.sicDesc !== undefined) {
 							body.SicDesc = updateFields.sicDesc as string;
@@ -3082,6 +3094,6 @@ export class Salesforce implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

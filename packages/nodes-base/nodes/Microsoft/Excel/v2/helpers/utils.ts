@@ -1,8 +1,6 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INode, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ExcelResponse, SheetData, UpdateSummary } from './interfaces';
-import { constructExecutionMetaData } from 'n8n-core';
 import { wrapData } from '@utils/utilities';
 
 type PrepareOutputConfig = {
@@ -15,6 +13,7 @@ type PrepareOutputConfig = {
 };
 
 export function prepareOutput(
+	this: IExecuteFunctions,
 	node: INode,
 	responseData: ExcelResponse,
 	config: PrepareOutputConfig,
@@ -54,14 +53,14 @@ export function prepareOutput(
 			for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
 				data[columns[columnIndex] as string] = values[rowIndex][columnIndex];
 			}
-			const executionData = constructExecutionMetaData(wrapData({ ...data }), {
+			const executionData = this.helpers.constructExecutionMetaData(wrapData({ ...data }), {
 				itemData: { item: rowIndex },
 			});
 
 			returnData.push(...executionData);
 		}
 	} else {
-		const executionData = constructExecutionMetaData(
+		const executionData = this.helpers.constructExecutionMetaData(
 			wrapData({ [config.dataProperty || 'data']: responseData }),
 			{ itemData: { item: 0 } },
 		);
