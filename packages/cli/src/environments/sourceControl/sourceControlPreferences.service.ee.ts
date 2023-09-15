@@ -19,6 +19,8 @@ import {
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
 import path from 'path';
+import type { KeyPairType } from './types/keyPairType';
+import config from '@/config';
 
 @Service()
 export class SourceControlPreferencesService {
@@ -86,9 +88,15 @@ export class SourceControlPreferencesService {
 	 * Will generate an ed25519 key pair and save it to the database and the file system
 	 * Note: this will overwrite any existing key pair
 	 */
-	async generateAndSaveKeyPair(): Promise<SourceControlPreferences> {
+	async generateAndSaveKeyPair(keyPairType?: KeyPairType): Promise<SourceControlPreferences> {
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
-		const keyPair = await generateSshKeyPair('ed25519');
+		if (!keyPairType) {
+			keyPairType =
+				this.getPreferences().keyGeneratorType ??
+				(config.get('sourceControl.defaultKeyPairType') as KeyPairType) ??
+				'ed25519';
+		}
+		const keyPair = await generateSshKeyPair(keyPairType);
 		if (keyPair.publicKey && keyPair.privateKey) {
 			try {
 				await fsWriteFile(this.sshKeyName + '.pub', keyPair.publicKey, {
@@ -99,6 +107,10 @@ export class SourceControlPreferencesService {
 			} catch (error) {
 				throw Error(`Failed to save key pair: ${(error as Error).message}`);
 			}
+		}
+		// update preferences only after generating key pair to prevent endless loop
+		if (keyPairType !== this.getPreferences().keyGeneratorType) {
+			await this.setPreferences({ keyGeneratorType: keyPairType });
 		}
 		return this.getPreferences();
 	}
@@ -146,8 +158,11 @@ export class SourceControlPreferencesService {
 	): Promise<SourceControlPreferences> {
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		if (!this.hasKeyPairFiles()) {
-			LoggerProxy.debug('No key pair files found, generating new pair');
-			await this.generateAndSaveKeyPair();
+			const keyPairType =
+				preferences.keyGeneratorType ??
+				(config.get('sourceControl.defaultKeyPairType') as KeyPairType);
+			LoggerProxy.debug(`No key pair files found, generating new pair using type: ${keyPairType}`);
+			await this.generateAndSaveKeyPair(keyPairType);
 		}
 		this.sourceControlPreferences = preferences;
 		if (saveToDb) {
