@@ -89,3 +89,24 @@ export async function microsoftApiRequestAllItemsSkip(
 
 	return returnData;
 }
+
+export function prepareMessage(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	message: string,
+	messageType: string,
+	includeLinkToWorkflow: boolean,
+) {
+	if (includeLinkToWorkflow) {
+		const { id } = this.getWorkflow();
+		const link = `${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n&utm_medium=microsoftTeams`;
+		messageType = 'html';
+		message = `${message}<br><br><em> Automated with this <a href="${link}">n8n workflow</a> </em>`;
+	}
+
+	return {
+		body: {
+			contentType: messageType,
+			content: message,
+		},
+	};
+}
