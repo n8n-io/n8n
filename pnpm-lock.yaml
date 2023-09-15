@@ -167,9 +167,6 @@ importers:
       eslint-import-resolver-typescript:
         specifier: ^3.5.5
         version: 3.5.5(@typescript-eslint/parser@6.2.0)(eslint-plugin-import@2.28.0)(eslint@8.45.0)
-      eslint-plugin-diff:
-        specifier: ^2.0.1
-        version: 2.0.1(eslint@8.45.0)
       eslint-plugin-import:
         specifier: ^2.28.0
         version: 2.28.0(@typescript-eslint/parser@6.2.0)(eslint-import-resolver-typescript@3.5.5)(eslint@8.45.0)
@@ -11748,15 +11745,6 @@ packages:
       eslint-import-resolver-typescript: 3.5.5(@typescript-eslint/parser@6.2.0)(eslint-plugin-import@2.28.0)(eslint@8.45.0)
     transitivePeerDependencies:
       - supports-color
-    dev: true
-
-  /eslint-plugin-diff@2.0.1(eslint@8.45.0):
-    resolution: {integrity: sha512-qqbvwaaO1cfkUprliqiRojRsD0qGsvzmJNqNrb9s0h15sDVzZMXYdu0TUFpUwauLeU28etSsfWIp0Uu+OAcXXw==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      eslint: '>=6.7.0'
-    dependencies:
-      eslint: 8.45.0
     dev: true
 
   /eslint-plugin-import@2.28.0(@typescript-eslint/parser@6.2.0)(eslint-import-resolver-typescript@3.5.5)(eslint@8.45.0):
