@@ -12,6 +12,7 @@ import { Container } from 'typedi';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
+	console.log(JSON.stringify(user, undefined, 2));
 	const expiresIn = 7 * 86400000; // 7 days
 	const isWithinUsersLimit = Container.get(License).isWithinUsersLimit();
 
