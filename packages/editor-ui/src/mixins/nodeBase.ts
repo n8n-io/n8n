@@ -110,7 +110,7 @@ export const nodeBase = defineComponent({
 					inputConfiguration = value;
 				}
 
-				let inputName: ConnectionTypes = inputConfiguration.type;
+				const inputName: ConnectionTypes = inputConfiguration.type;
 
 				const rootCategoryInputName = inputName === 'main' ? 'main' : 'other';
 
@@ -148,10 +148,7 @@ export const nodeBase = defineComponent({
 					anchor: anchorPosition,
 					// We potentially want to change that in the future to allow people to dynamically
 					// activate and deactivate connected nodes
-					maxConnections:
-						inputConfiguration.maxConnections === undefined
-							? -1
-							: inputConfiguration.maxConnections,
+					maxConnections: inputConfiguration.maxConnections ?? -1,
 					endpoint: 'Rectangle',
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
