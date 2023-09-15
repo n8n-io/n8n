@@ -42,7 +42,6 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
-	IExecutionDb,
 	IPushDataExecutionFinished,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
