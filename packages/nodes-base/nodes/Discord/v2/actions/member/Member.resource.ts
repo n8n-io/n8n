@@ -21,8 +21,8 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve many the members',
-				action: 'Retrieve all the members',
+				description: 'Retrieve the members of a server',
+				action: 'Get many members',
 			},
 			{
 				name: 'Role Add',

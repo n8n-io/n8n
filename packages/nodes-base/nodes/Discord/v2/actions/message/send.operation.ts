@@ -95,11 +95,12 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Message Reference ID',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Message to Reply to',
 				name: 'message_reference',
 				type: 'string',
 				default: '',
-				description: 'Fill this to make your message a reply',
+				description: 'Fill this to make your message a reply. Add the message ID.',
 				placeholder: 'e.g. 1059467601836773386',
 			},
 			{

@@ -23,7 +23,7 @@ export const description: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new channel',
-				action: 'Create a new channel',
+				action: 'Create a channel',
 			},
 			{
 				name: 'Delete',
@@ -34,8 +34,8 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve many the channels',
-				action: 'Retrieve all the channels',
+				description: 'Retrieve the channels of a server',
+				action: 'Get many channels',
 			},
 
 			{
