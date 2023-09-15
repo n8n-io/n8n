@@ -1,7 +1,28 @@
 <script setup lang="ts">
+import { onBeforeMount } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
+import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 
+const route = useRoute();
+const router = useRouter();
 const i18n = useI18n();
+const workflowHistoryStore = useWorkflowHistoryStore();
+
+onBeforeMount(async () => {
+	await workflowHistoryStore.getWorkflowHistory(route.params.workflowId);
+	if (!route.params.versionId) {
+		await router.push({
+			name: VIEWS.WORKFLOW_HISTORY,
+			params: {
+				workflowId: route.params.workflowId,
+				versionId: workflowHistoryStore.workflowHistory[0].id,
+			},
+		});
+	}
+});
 </script>
 <template>
 	<div :class="$style.view">
@@ -13,7 +34,10 @@ const i18n = useI18n();
 			<n8n-button type="tertiary" icon="times" size="small" text square />
 		</div>
 		<div :class="$style.content"></div>
-		<div :class="$style.list"></div>
+		<workflow-history-list
+			:class="$style.listComponent"
+			:items="workflowHistoryStore.workflowHistory"
+		/>
 	</div>
 </template>
 <style module lang="scss">
@@ -49,7 +73,7 @@ const i18n = useI18n();
 	grid-area: content;
 }
 
-.list {
+.listComponent {
 	grid-area: list;
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
