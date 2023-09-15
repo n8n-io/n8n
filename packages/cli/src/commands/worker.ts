@@ -256,7 +256,7 @@ export class Worker extends BaseCommand {
 		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
 		this.logger.debug('Starting n8n worker...');
 
-		await this.initLicense();
+		await this.initLicense('worker');
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
@@ -295,6 +295,7 @@ export class Worker extends BaseCommand {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			getWorkerCommandReceivedHandler({
 				uniqueInstanceId: this.uniqueInstanceId,
+				instanceId: this.instanceId,
 				redisPublisher: this.redisPublisher,
 				getRunningJobIds: () => Object.keys(Worker.runningJobs),
 			}),

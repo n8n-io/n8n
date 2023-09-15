@@ -159,6 +159,7 @@ export class OrchestrationService {
 		});
 	}
 
+	// will restart the event bus on workers to make sure their destination settings are up to date
 	async restartEventBus(id?: string) {
 		if (!this.initialized) {
 			throw new Error('OrchestrationService not initialized');
@@ -166,6 +167,18 @@ export class OrchestrationService {
 		await this.redisPublisher.publishToCommandChannel({
 			senderId: this.uniqueInstanceId,
 			command: 'restartEventBus',
+			targets: id ? [id] : undefined,
+		});
+	}
+
+	// reload the license on workers after it was changed on the main instance
+	async reloadLicense(id?: string) {
+		if (!this.initialized) {
+			throw new Error('OrchestrationService not initialized');
+		}
+		await this.redisPublisher.publishToCommandChannel({
+			senderId: this.uniqueInstanceId,
+			command: 'reloadLicense',
 			targets: id ? [id] : undefined,
 		});
 	}

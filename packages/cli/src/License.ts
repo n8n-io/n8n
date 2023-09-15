@@ -11,8 +11,9 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { Service } from 'typedi';
-import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces';
+import Container, { Service } from 'typedi';
+import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -26,18 +27,28 @@ export class License {
 
 	private manager: LicenseManager | undefined;
 
+	private orchestrationService: OrchestrationService;
+
 	constructor() {
 		this.logger = getLogger();
+		this.orchestrationService = Container.get(OrchestrationService);
 	}
 
-	async init(instanceId: string) {
+	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
 			return;
 		}
 
+		// only the main instance should renew licenses and write to the database
+		const isMainInstance = instanceType === 'main';
+
 		const server = config.getEnv('license.serverUrl');
-		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
+		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
+		const offlineMode = !isMainInstance;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
+		const saveCertStr = isMainInstance
+			? async (value: TLicenseBlock) => this.saveCertStr(value)
+			: async () => {};
 
 		try {
 			this.manager = new LicenseManager({
@@ -46,9 +57,10 @@ export class License {
 				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled,
 				autoRenewOffset,
+				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => this.loadCertStr(),
-				saveCertStr: async (value: TLicenseBlock) => this.saveCertStr(value),
+				saveCertStr,
 				deviceFingerprint: () => instanceId,
 			});
 
@@ -86,6 +98,8 @@ export class License {
 			},
 			['key'],
 		);
+		// notify workers to reload the license
+		await this.orchestrationService.reloadLicense();
 	}
 
 	async activate(activationKey: string): Promise<void> {

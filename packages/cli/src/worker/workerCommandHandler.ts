@@ -1,12 +1,15 @@
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import { eventBus } from '../eventbus';
+import { eventBus } from '@/eventbus';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
-import type { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
+import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import * as os from 'os';
+import Container from 'typedi';
+import { License } from '@/License';
 
 export function getWorkerCommandReceivedHandler(options: {
 	uniqueInstanceId: string;
+	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
 }) {
@@ -64,6 +67,9 @@ export function getWorkerCommandReceivedHandler(options: {
 								result: 'success',
 							},
 						});
+						break;
+					case 'reloadLicense':
+						await Container.get(License).init(options.instanceId, 'worker');
 						break;
 					case 'stopWorker':
 						// TODO: implement proper shutdown
