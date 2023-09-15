@@ -295,7 +295,7 @@ export const routes = [
 		],
 	},
 	{
-		path: '/workflow/:name/history/:id?',
+		path: '/workflow/:workflowId/history/:historyId?',
 		name: VIEWS.WORKFLOW_HISTORY,
 		components: {
 			default: WorkflowHistory,
