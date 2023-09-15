@@ -410,7 +410,7 @@ export const embedsFixedCollection: INodeProperties = {
 							value: 'json',
 						},
 					],
-					default: 'json',
+					default: 'fields',
 				},
 				{
 					displayName: 'JSON',

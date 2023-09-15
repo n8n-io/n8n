@@ -18,10 +18,10 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Send',
+				name: 'Send a Message',
 				value: 'sendLegacy',
-				description: 'Send a message to a channel using webhook',
-				action: 'Send a message to a channel using webhook',
+				description: 'Send a message to a channel using the webhook',
+				action: 'Send a message',
 			},
 		],
 		default: 'sendLegacy',

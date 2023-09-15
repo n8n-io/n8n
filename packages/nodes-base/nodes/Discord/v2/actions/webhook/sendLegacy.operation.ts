@@ -27,7 +27,7 @@ const properties: INodeProperties[] = [
 		placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
 	},
 	{
-		displayName: 'Content',
+		displayName: 'Message',
 		name: 'content',
 		type: 'string',
 		default: '',
@@ -91,8 +91,7 @@ const properties: INodeProperties[] = [
 				name: 'wait',
 				type: 'boolean',
 				default: false,
-				description:
-					'Whether waits for server confirmation of message send before response, and returns the created message body',
+				description: 'Whether wait for the message to be created before returning its response',
 			},
 		],
 	},
