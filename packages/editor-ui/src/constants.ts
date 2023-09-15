@@ -96,6 +96,7 @@ export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
 export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
+export const GOOGLE_GMAIL_NODE_TYPE = 'n8n-nodes-base.gmail';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';

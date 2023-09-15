@@ -435,19 +435,44 @@ export function prepareEmailsInput(
 export function prepareEmailBody(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
+	addAtribution = false,
+	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
+	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
 
-	let body = '';
-	let htmlBody = '';
-
-	if (emailType === 'html') {
-		htmlBody = (this.getNodeParameter('message', itemIndex, '') as string).trim();
-	} else {
-		body = (this.getNodeParameter('message', itemIndex, '') as string).trim();
+	if (addAtribution) {
+		const nodeName = this.getNode().name;
+		const attributionText = 'This email was sent automatically with ';
+		const link = `https://n8n.io/?utm_source=n8n&utm_medium=gmailNode&utm_campaign=${nodeName}${
+			instanceId ? '_' + instanceId : ''
+		}`;
+		if (emailType === 'html') {
+			message = `
+			${message}
+			<br>
+			<br>
+			---
+			<br>
+			<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
+			`;
+		} else {
+			message = `${message}\n\n---\n${attributionText}n8n: ${link}`;
+		}
 	}
 
-	return { body, htmlBody };
+	const body = {
+		body: '',
+		htmlBody: '',
+	};
+
+	if (emailType === 'html') {
+		body.htmlBody = message;
+	} else {
+		body.body = message;
+	}
+
+	return body;
 }
 
 export async function prepareEmailAttachments(
