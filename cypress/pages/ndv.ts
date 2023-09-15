@@ -28,6 +28,7 @@ export class NDV extends BasePage {
 			this.getters.runDataPaneHeader().find('button').filter(':visible').contains('Save'),
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
+		outputTableHeaderByText: (text: string) => this.getters.outputTableHeaders().contains(text),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
 		outputTbodyCell: (row: number, col: number) =>
 			this.getters.outputTableRow(row).find('td').eq(col),
@@ -71,6 +72,9 @@ export class NDV extends BasePage {
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
+		resourceMapperRemoveFieldButton: (fieldName: string) => cy.getByTestId(`remove-field-button-${fieldName}`),
+		resourceMapperColumnsOptionsButton: () => cy.getByTestId('columns-parameter-input-options-container'),
+		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 	};
 
 	actions = {
