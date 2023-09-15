@@ -7,7 +7,7 @@ export const guildRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'Select the server(guild) that your bot is connected to',
+	description: 'Select the server (guild) that your bot is connected to',
 	modes: [
 		{
 			displayName: 'By Name',
@@ -61,7 +61,7 @@ export const channelRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'Select the channel by name or ID',
+	description: 'Select the channel by name, URL, or ID',
 	modes: [
 		{
 			displayName: 'By Name',
@@ -115,7 +115,7 @@ export const textChannelRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	description: 'Select the channel by name or ID',
+	description: 'Select the channel by name, URL, or ID',
 	modes: [
 		{
 			displayName: 'By Name',

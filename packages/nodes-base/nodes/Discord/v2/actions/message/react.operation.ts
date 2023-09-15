@@ -13,9 +13,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description:
-			'The emoji you want to react with, get the code from <a href="https://unicode.org/emoji/charts/full-emoji-list.html" target="_blank">here</a>',
-		placeholder: 'e.g. 🙂',
+		description: 'The emoji you want to react with',
 	},
 ];
 

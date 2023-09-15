@@ -20,16 +20,16 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Delete',
-				value: 'deleteChannel',
-				description: 'Delete a channel',
-				action: 'Delete a channel',
-			},
-			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new channel',
 				action: 'Create a new channel',
+			},
+			{
+				name: 'Delete',
+				value: 'deleteChannel',
+				description: 'Delete a channel',
+				action: 'Delete a channel',
 			},
 			{
 				name: 'Get Many',

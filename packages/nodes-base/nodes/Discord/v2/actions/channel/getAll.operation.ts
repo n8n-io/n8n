@@ -19,7 +19,7 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Filter',
+				displayName: 'Filter by Type',
 				name: 'filter',
 				type: 'multiOptions',
 				default: [],

@@ -58,7 +58,7 @@ const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Content',
+		displayName: 'Message',
 		name: 'content',
 		type: 'string',
 		default: '',

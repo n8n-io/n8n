@@ -36,7 +36,7 @@ export const description: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve many the latest messages in a channel',
-				action: 'Get many records',
+				action: 'Get many messages',
 			},
 			{
 				name: 'React with Emoji',

@@ -72,6 +72,7 @@ const properties: INodeProperties[] = [
 				name: 'bitrate',
 				type: 'number',
 				default: 8000,
+				placeholder: 'e.g. 8000',
 				typeOptions: {
 					minValue: 8000,
 				},
