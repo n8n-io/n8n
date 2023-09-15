@@ -2172,7 +2172,10 @@ export default defineComponent({
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
 					const viableConnection = newNodeConnections.find((conn) => {
-						return conn.scope === connectionType && conn.isTarget;
+						return (
+							conn.scope === connectionType &&
+							lastSelectedEndpoint.parameters.connection !== conn.parameters.connection
+						);
 					});
 
 					this.instance?.connect({
