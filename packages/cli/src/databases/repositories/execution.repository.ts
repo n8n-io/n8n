@@ -22,7 +22,6 @@ import { BinaryDataService } from 'n8n-core';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
-	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/Interfaces';
