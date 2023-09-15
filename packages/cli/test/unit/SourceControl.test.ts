@@ -20,6 +20,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { constants as fsConstants, accessSync } from 'fs';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
+import type { SourceControlPreferences } from '@/environments/sourceControl/types/sourceControlPreferences';
 
 const pushResult: SourceControlledFile[] = [
 	{
@@ -167,11 +168,19 @@ beforeAll(async () => {
 
 describe('Source Control', () => {
 	it('should generate an SSH key pair', async () => {
-		const keyPair = await generateSshKeyPair();
+		const keyPair = await generateSshKeyPair('ed25519');
 		expect(keyPair.privateKey).toBeTruthy();
 		expect(keyPair.privateKey).toContain('BEGIN OPENSSH PRIVATE KEY');
 		expect(keyPair.publicKey).toBeTruthy();
 		expect(keyPair.publicKey).toContain('ssh-ed25519');
+	});
+
+	it('should generate an RSA key pair', async () => {
+		const keyPair = await generateSshKeyPair('rsa');
+		expect(keyPair.privateKey).toBeTruthy();
+		expect(keyPair.privateKey).toContain('BEGIN OPENSSH PRIVATE KEY');
+		expect(keyPair.publicKey).toBeTruthy();
+		expect(keyPair.publicKey).toContain('ssh-rsa');
 	});
 
 	it('should check for git and ssh folders and create them if required', async () => {
@@ -242,7 +251,7 @@ describe('Source Control', () => {
 	});
 
 	it('should class validate correct preferences', async () => {
-		const validPreferences = {
+		const validPreferences: Partial<SourceControlPreferences> = {
 			branchName: 'main',
 			repositoryUrl: 'git@example.com:n8ntest/n8n_testrepo.git',
 			branchReadOnly: false,

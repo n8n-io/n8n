@@ -27,7 +27,7 @@ export = {
 			// look for the execution on the workflow the user owns
 			const execution = await getExecutionInWorkflows(id, sharedWorkflowsIds, false);
 
-			if (!execution?.id) {
+			if (!execution) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
@@ -103,7 +103,7 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? '0' : (executions.slice(-1)[0].id as string);
+			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 
