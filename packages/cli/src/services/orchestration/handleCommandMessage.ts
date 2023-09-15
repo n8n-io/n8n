@@ -18,10 +18,7 @@ export async function handleCommandMessage(messageString: string, uniqueInstance
 		}
 		switch (message.command) {
 			case 'reloadLicense':
-				const instanceId = Container.get(License).instanceId;
-				if (instanceId) {
-					await Container.get(License).init(instanceId, 'main');
-				}
+				await Container.get(License).reload();
 				break;
 			default:
 				break;

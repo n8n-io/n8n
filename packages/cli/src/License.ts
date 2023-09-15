@@ -37,12 +37,12 @@ export class License {
 	}
 
 	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
-		const isMainInstance = instanceType === 'main';
-		if (this.manager && isMainInstance) {
+		if (this.manager) {
 			return;
 		}
 
 		this.instanceId = instanceId;
+		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
 		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
 		const offlineMode = !isMainInstance;
@@ -116,6 +116,14 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
+	}
+
+	async reload(): Promise<void> {
+		if (!this.manager) {
+			return;
+		}
+		this.logger.debug('Reloading license');
+		await this.manager.reload();
 	}
 
 	async renew() {

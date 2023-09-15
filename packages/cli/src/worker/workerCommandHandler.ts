@@ -67,7 +67,7 @@ export function getWorkerCommandReceivedHandler(options: {
 						});
 						break;
 					case 'reloadLicense':
-						await Container.get(License).init(options.instanceId, 'worker');
+						await Container.get(License).reload();
 						break;
 					case 'stopWorker':
 						// TODO: implement proper shutdown
