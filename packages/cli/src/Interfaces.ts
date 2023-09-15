@@ -189,6 +189,11 @@ export interface IExecutionDb extends IExecutionBase {
 	workflowData?: IWorkflowBase;
 }
 
+/**
+ * Payload for creating or updating an execution.
+ */
+export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
+
 export interface IExecutionPushResponse {
 	executionId?: string;
 	waitingForWebhook?: boolean;

@@ -20,6 +20,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { BinaryDataManager } from 'n8n-core';
 import type {
+	ExecutionPayload,
 	IExecutionBase,
 	IExecutionDb,
 	IExecutionFlattedDb,
@@ -242,7 +243,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
-	async createNewExecution(execution: IExecutionDb) {
+	async createNewExecution(execution: ExecutionPayload) {
 		const { data, workflowData, ...rest } = execution;
 
 		const newExecution = await this.save(rest);
