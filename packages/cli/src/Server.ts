@@ -324,6 +324,7 @@ export class Server extends AbstractServer {
 				externalSecrets: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
+				workflowHistory: false,
 			},
 			mfa: {
 				enabled: false,
