@@ -18,7 +18,7 @@ export class OutputParserItemList implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Output Parser'],
+				AI: ['Output Parsers'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

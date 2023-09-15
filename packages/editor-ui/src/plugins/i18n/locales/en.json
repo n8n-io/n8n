@@ -842,7 +842,7 @@
 	"nodeCreator.subcategoryNames.embeddings": "Embeddings",
 	"nodeCreator.subcategoryNames.languageModels": "Language Models",
 	"nodeCreator.subcategoryNames.memory": "Memory",
-	"nodeCreator.subcategoryNames.outputParsers": "Output Parser",
+	"nodeCreator.subcategoryNames.outputParsers": "Output Parsers",
 	"nodeCreator.subcategoryNames.retrievers": "Retrievers",
 	"nodeCreator.subcategoryNames.textSplitters": "Text Splitters",
 	"nodeCreator.subcategoryNames.tools": "Tools",
