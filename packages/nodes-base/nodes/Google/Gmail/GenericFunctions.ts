@@ -435,14 +435,14 @@ export function prepareEmailsInput(
 export function prepareEmailBody(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	itemIndex: number,
-	addAtribution = false,
+	appendAttribution = false,
 	instanceId?: string,
 ) {
 	const emailType = this.getNodeParameter('emailType', itemIndex) as string;
 	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
 
-	if (addAtribution) {
-		const nodeName = this.getNode().name;
+	if (appendAttribution) {
+		const nodeName = encodeURIComponent(this.getNode().name);
 		const attributionText = 'This email was sent automatically with ';
 		const link = `https://n8n.io/?utm_source=n8n&utm_medium=gmailNode&utm_campaign=${nodeName}${
 			instanceId ? '_' + instanceId : ''

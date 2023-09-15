@@ -586,3 +586,5 @@ export const nonExistingJsonPath = '_!^&*';
 export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
+
+export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';

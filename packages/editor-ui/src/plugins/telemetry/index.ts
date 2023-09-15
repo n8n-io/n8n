@@ -7,7 +7,7 @@ import type { IUserNodesPanelSession } from './telemetry.types';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { GOOGLE_GMAIL_NODE_TYPE, SLACK_NODE_TYPE } from '@/constants';
+import { APPEND_ATTRIBUTION_DEFAULT_PATH, SLACK_NODE_TYPE } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNDVStore } from '@/stores';
 
@@ -222,34 +222,19 @@ export class Telemetry {
 	// so we are using this method as centralized way to track node parameters changes
 	trackNodeParametersValuesChange(nodeType: string, change: IUpdateInformation) {
 		if (this.rudderStack) {
-			switch (nodeType) {
-				case SLACK_NODE_TYPE:
-					if (change.name === 'parameters.otherOptions.includeLinkToWorkflow') {
-						this.track(
-							'User toggled n8n reference option',
-							{
-								node: nodeType,
-								toValue: change.value,
-							},
-							{ withPostHog: true },
-						);
-					}
-					break;
-				case GOOGLE_GMAIL_NODE_TYPE:
-					if (change.name === 'parameters.options.appendAttribution') {
-						this.track(
-							'User toggled n8n reference option',
-							{
-								node: nodeType,
-								toValue: change.value,
-							},
-							{ withPostHog: true },
-						);
-					}
-					break;
-
-				default:
-					break;
+			const changeNameMap: { [key: string]: string } = {
+				[SLACK_NODE_TYPE]: 'parameters.otherOptions.includeLinkToWorkflow',
+			};
+			const changeName = changeNameMap[nodeType] || APPEND_ATTRIBUTION_DEFAULT_PATH;
+			if (change.name === changeName) {
+				this.track(
+					'User toggled n8n reference option',
+					{
+						node: nodeType,
+						toValue: change.value,
+					},
+					{ withPostHog: true },
+				);
 			}
 		}
 	}
