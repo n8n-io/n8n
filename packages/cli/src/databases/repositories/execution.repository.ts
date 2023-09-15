@@ -86,19 +86,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
-		if (config.getEnv('executions.pruneData')) {
-			setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
-		}
+		if (config.getEnv('executions.pruneData')) this.setPruningInterval();
 
 		this.setHardDeletionInterval();
 	}
 
+	setPruningInterval() {
+		setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
+	}
+
 	setHardDeletionInterval() {
+		if (this.hardDeletionInterval) return;
+
 		this.hardDeletionInterval = setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
 	}
 
 	clearHardDeletionInterval() {
-		if (this.hardDeletionInterval) clearInterval(this.hardDeletionInterval);
+		if (!this.hardDeletionInterval) return;
+
+		clearInterval(this.hardDeletionInterval);
 	}
 
 	async findMultipleExecutions(
@@ -518,8 +524,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			setTimeout(async () => this.hardDelete(), 1 * TIME.SECOND);
 		} else {
-			if (this.hardDeletionInterval) return;
-
 			this.setHardDeletionInterval();
 		}
 	}
