@@ -2186,6 +2186,7 @@ export interface IN8nUISettings {
 		externalSecrets: boolean;
 		showNonProdBanner: boolean;
 		debugInEditor: boolean;
+		workflowHistory: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
