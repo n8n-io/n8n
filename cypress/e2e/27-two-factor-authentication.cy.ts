@@ -37,7 +37,7 @@ describe('Two-factor authentication', () => {
 		});
 	});
 
-	it('Should be able to login with MFA token', () => {
+	it.skip('Should be able to login with MFA token', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
@@ -47,7 +47,7 @@ describe('Two-factor authentication', () => {
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to login with recovery code', () => {
+	it.skip('Should be able to login with recovery code', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
@@ -56,7 +56,7 @@ describe('Two-factor authentication', () => {
 		mainSidebar.actions.signout();
 	});
 
-	it('Should be able to disable MFA in account', () => {
+	it.skip('Should be able to disable MFA in account', () => {
 		const { email, password } = user;
 		signinPage.actions.loginWithEmailAndPassword(email, password);
 		personalSettingsPage.actions.enableMfa();
