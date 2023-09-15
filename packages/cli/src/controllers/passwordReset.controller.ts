@@ -231,7 +231,7 @@ export class PasswordResetController {
 
 		const user = await this.userService.findOne({
 			where: { id: decodedToken.sub },
-			relations: ['authIdentities'],
+			relations: ['authIdentities', 'globalRole'],
 		});
 
 		if (!user) {
