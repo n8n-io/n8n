@@ -1,3 +1,4 @@
+import { BannerName } from 'n8n-workflow';
 import type { NodeCreatorOpenSource } from './Interface';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
@@ -585,3 +586,12 @@ export const nonExistingJsonPath = '_!^&*';
 export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
+
+// Banner priority is used to determine which banner is currently visible
+export const BANNER_PRIORITIES: { [key in BannerName]: number } = {
+	V1: 350,
+	TRIAL_OVER: 260,
+	EMAIL_CONFIRMATION: 250,
+	TRIAL: 150,
+	NON_PRODUCTION_LICENSE: 140,
+};

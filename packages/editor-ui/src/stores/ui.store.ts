@@ -33,6 +33,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
+	BANNER_PRIORITIES,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -184,14 +185,8 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
-		banners: {
-			V1: { dismissed: true },
-			TRIAL: { dismissed: true },
-			TRIAL_OVER: { dismissed: true },
-			NON_PRODUCTION_LICENSE: { dismissed: true },
-			EMAIL_CONFIRMATION: { dismissed: true },
-		},
 		bannersHeight: 0,
+		bannerStack: [],
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -564,12 +559,10 @@ export const useUIStore = defineStore(STORES.UI, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});
-				this.banners[name].dismissed = true;
-				this.banners[name].type = 'permanent';
+				this.removeBannerFromStack(name);
 				return;
 			}
-			this.banners[name].dismissed = true;
-			this.banners[name].type = 'temporary';
+			this.removeBannerFromStack(name);
 		},
 		showBanner(name: BannerName): void {
 			this.banners[name].dismissed = false;
@@ -580,20 +573,37 @@ export const useUIStore = defineStore(STORES.UI, {
 		async initBanners(): Promise<void> {
 			const cloudPlanStore = useCloudPlanStore();
 			if (cloudPlanStore.userIsTrialing) {
-				await this.dismissBanner('V1', 'temporary');
 				if (cloudPlanStore.trialExpired) {
-					this.showBanner('TRIAL_OVER');
+					this.pushBannerToStack('TRIAL_OVER');
 				} else {
-					this.showBanner('TRIAL');
+					this.pushBannerToStack('TRIAL');
 				}
 			}
 		},
-		async dismissAllBanners() {
-			return Promise.all([
-				this.dismissBanner('TRIAL', 'temporary'),
-				this.dismissBanner('TRIAL_OVER', 'temporary'),
-				this.dismissBanner('V1', 'temporary'),
-			]);
+		pushBannerToStack(name: BannerName) {
+			if (this.bannerStack.includes(name)) return;
+			this.bannerStack.push(name);
+			this.sortBannerStack();
+		},
+		removeBannerFromStack(name: BannerName) {
+			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
+		},
+		clearBannerStack() {
+			this.bannerStack = [];
+		},
+		sortBannerStack() {
+			this.bannerStack = this.bannerStack.sort((a: BannerName, b: BannerName) => {
+				const priorityA = BANNER_PRIORITIES[a];
+				const priorityB = BANNER_PRIORITIES[b];
+
+				if (priorityA > priorityB) {
+					return -1;
+				}
+				if (priorityA < priorityB) {
+					return 1;
+				}
+				return 0;
+			});
 		},
 	},
 });

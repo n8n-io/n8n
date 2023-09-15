@@ -5,14 +5,14 @@ import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
 import { useUIStore } from '@/stores/ui.store';
-import { onMounted, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { getBannerRowHeight } from '@/utils';
 import type { BannerName } from 'n8n-workflow';
 
 const uiStore = useUIStore();
 
 function shouldShowBanner(bannerName: BannerName) {
-	return uiStore.banners[bannerName].dismissed === false;
+	return false;
 }
 
 async function updateCurrentBannerHeight() {
@@ -20,11 +20,15 @@ async function updateCurrentBannerHeight() {
 	uiStore.updateBannersHeight(bannerHeight);
 }
 
+const currentlyShownBanner = computed(() => {
+	return uiStore.bannerStack[0];
+});
+
 onMounted(async () => {
 	await updateCurrentBannerHeight();
 });
 
-watch(uiStore.banners, async () => {
+watch(uiStore.bannerStack, async () => {
 	await updateCurrentBannerHeight();
 });
 </script>

@@ -205,7 +205,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
 			}
 			if (settings.enterprise?.showNonProdBanner) {
-				useUIStore().banners.NON_PRODUCTION_LICENSE.dismissed = false;
+				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
 			}
 		},
 		async getSettings(): Promise<void> {
@@ -239,7 +239,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				useRootStore().versionCli.startsWith('1.') &&
 				!useCloudPlanStore().userIsTrialing
 			) {
-				useUIStore().showBanner('V1');
+				useUIStore().pushBannerToStack('V1');
 			}
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);

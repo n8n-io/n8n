@@ -7,6 +7,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
+import { useUIStore } from '.';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
@@ -62,6 +63,10 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 			plan = await getCurrentPlan(rootStore.getRestApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
+
+			if (plan.account?.verified === false) {
+				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
+			}
 		} catch (error) {
 			state.loadingPlan = false;
 			throw new Error(error);
