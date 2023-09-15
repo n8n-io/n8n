@@ -68,8 +68,9 @@ describe('SettingsSourceControl', () => {
 		await nextTick();
 
 		const updatePreferencesSpy = vi.spyOn(sourceControlStore, 'updatePreferences');
+		const generateKeyPairSpy = vi.spyOn(sourceControlStore, 'generateKeyPair');
 
-		const { html, container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
+		const { container, getByTestId, getByText, queryByTestId, getByRole } = renderComponent({
 			pinia,
 			global: {
 				stubs: ['teleport'],
@@ -127,6 +128,25 @@ describe('SettingsSourceControl', () => {
 		await waitFor(() =>
 			expect(queryByTestId('source-control-connected-content')).not.toBeInTheDocument(),
 		);
+
+		const sshKeyTypeSelect = getByTestId('source-control-ssh-key-type-select');
+		const refreshSshKeyButton = getByTestId('source-control-refresh-ssh-key-button');
+		await waitFor(() => {
+			expect(sshKeyTypeSelect).toBeVisible();
+			expect(refreshSshKeyButton).toBeVisible();
+		});
+
+		await userEvent.click(within(sshKeyTypeSelect).getByRole('textbox'));
+		await waitFor(() => expect(getByText('RSA')).toBeVisible());
+		await userEvent.click(getByText('RSA'));
+		await userEvent.click(refreshSshKeyButton);
+
+		const refreshSshKeyDialog = getByRole('dialog');
+		await waitFor(() => expect(refreshSshKeyDialog).toBeVisible());
+		await userEvent.click(within(refreshSshKeyDialog).getAllByRole('button')[1]);
+		await waitFor(() => expect(refreshSshKeyDialog).not.toBeVisible());
+
+		expect(generateKeyPairSpy).toHaveBeenCalledWith('rsa');
 	}, 10000);
 
 	describe('should test repo URLs', () => {
