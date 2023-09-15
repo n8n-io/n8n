@@ -321,6 +321,8 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
+		await this.redisSubscriber?.unSubscribeFromCommandChannel();
+		await this.redisSubscriber?.unSubscribeFromEventLog();
 		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
 	}

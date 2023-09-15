@@ -1,5 +1,4 @@
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import { eventBus } from '@/eventbus';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
 import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
@@ -59,7 +58,6 @@ export function getWorkerCommandReceivedHandler(options: {
 						});
 						break;
 					case 'restartEventBus':
-						await eventBus.restart();
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.uniqueInstanceId,
 							command: message.command,
