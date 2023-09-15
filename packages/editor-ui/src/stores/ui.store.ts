@@ -33,7 +33,6 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	BANNER_PRIORITIES,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -61,6 +60,7 @@ import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import { N8N_BANNERS } from '@/components/banners/BannerStack.vue';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -564,9 +564,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 			this.removeBannerFromStack(name);
 		},
-		showBanner(name: BannerName): void {
-			this.banners[name].dismissed = false;
-		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
 		},
@@ -593,8 +590,8 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		sortBannerStack() {
 			this.bannerStack = this.bannerStack.sort((a: BannerName, b: BannerName) => {
-				const priorityA = BANNER_PRIORITIES[a];
-				const priorityB = BANNER_PRIORITIES[b];
+				const priorityA = N8N_BANNERS[a].priority;
+				const priorityB = N8N_BANNERS[b].priority;
 
 				if (priorityA > priorityB) {
 					return -1;

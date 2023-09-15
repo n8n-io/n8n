@@ -1,19 +1,32 @@
-<script setup lang="ts">
+<script lang="ts">
 import NonProductionLicenseBanner from '@/components/banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
 import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
+import type { Component } from 'vue';
+import type { N8nBanners } from '@/Interface';
+
+// All banners that can be shown in the banner stack should be registered here.
+// All banners that should be shown at the same time are placed on banner stack in UI store
+// and this component will render the banner with the highest priority from the stack
+// When registering a new banner, please consult this document to determine it's priority:
+// https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
+export const N8N_BANNERS: N8nBanners = {
+	V1: { priority: 350, component: V1Banner as Component },
+	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },
+	EMAIL_CONFIRMATION: { priority: 250, component: EmailConfirmationBanner as Component },
+	TRIAL: { priority: 150, component: TrialBanner as Component },
+	NON_PRODUCTION_LICENSE: { priority: 140, component: NonProductionLicenseBanner as Component },
+};
+</script>
+
+<script setup lang="ts">
 import { useUIStore } from '@/stores/ui.store';
-import { computed, onMounted, watch } from 'vue';
+import { computed, onMounted } from 'vue';
 import { getBannerRowHeight } from '@/utils';
-import type { BannerName } from 'n8n-workflow';
 
 const uiStore = useUIStore();
-
-function shouldShowBanner(bannerName: BannerName) {
-	return false;
-}
 
 async function updateCurrentBannerHeight() {
 	const bannerHeight = await getBannerRowHeight();
@@ -21,24 +34,18 @@ async function updateCurrentBannerHeight() {
 }
 
 const currentlyShownBanner = computed(() => {
-	return uiStore.bannerStack[0];
+	const name = uiStore.bannerStack[0];
+	void updateCurrentBannerHeight();
+	return N8N_BANNERS[name].component;
 });
 
 onMounted(async () => {
-	await updateCurrentBannerHeight();
-});
-
-watch(uiStore.bannerStack, async () => {
 	await updateCurrentBannerHeight();
 });
 </script>
 
 <template>
 	<div data-test-id="banner-stack">
-		<trial-over-banner v-if="shouldShowBanner('TRIAL_OVER')" />
-		<trial-banner v-if="shouldShowBanner('TRIAL')" />
-		<v1-banner v-if="shouldShowBanner('V1')" />
-		<non-production-license-banner v-if="shouldShowBanner('NON_PRODUCTION_LICENSE')" />
-		<email-confirmation-banner v-if="shouldShowBanner('EMAIL_CONFIRMATION')" />
+		<component :is="currentlyShownBanner" />
 	</div>
 </template>

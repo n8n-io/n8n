@@ -45,6 +45,7 @@ import type {
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
+import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
 
@@ -1597,3 +1598,10 @@ export type UTMCampaign =
 	| 'open'
 	| 'upgrade-users'
 	| 'upgrade-variables';
+
+export type N8nBanners = {
+	[key in BannerName]: {
+		priority: number;
+		component: Component;
+	};
+};
