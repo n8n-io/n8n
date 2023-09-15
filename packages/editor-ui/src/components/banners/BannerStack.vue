@@ -34,9 +34,8 @@ async function updateCurrentBannerHeight() {
 }
 
 const currentlyShownBanner = computed(() => {
-	const name = uiStore.bannerStack[0];
 	void updateCurrentBannerHeight();
-	return N8N_BANNERS[name].component;
+	return uiStore.bannerStack.length > 0 ? N8N_BANNERS[uiStore.bannerStack[0]].component : null;
 });
 
 onMounted(async () => {
