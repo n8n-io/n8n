@@ -969,7 +969,7 @@
 	"nodeWebhooks.showMessage.message.formTrigger": "Form submissions made via this URL will trigger the workflow when it's activated",
 	"nodeWebhooks.testUrl": "Test URL",
 	"nodeWebhooks.webhookUrls": "Webhook URLs",
-	"nodeWebhooks.webhookUrls.formTrigger": "Form URL",
+	"nodeWebhooks.webhookUrls.formTrigger": "Form URLs",
 	"onboardingCallSignupModal.title": "Your onboarding session",
 	"onboardingCallSignupModal.description": "Pop in your email and we'll send you some scheduling options",
 	"onboardingCallSignupModal.emailInput.placeholder": "Your work email",
