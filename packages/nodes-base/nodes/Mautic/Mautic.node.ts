@@ -1029,6 +1029,6 @@ export class Mautic implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

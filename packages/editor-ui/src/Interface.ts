@@ -1,4 +1,10 @@
-import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	SignInType,
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+} from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -35,16 +41,10 @@ import type {
 	IUserSettings,
 	IN8nUISettings,
 	BannerName,
+	INodeProperties,
 } from 'n8n-workflow';
-import type { SignInType } from './constants';
-import type {
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-} from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy } from '@/utils/typeHelpers';
-import type { INodeProperties } from 'n8n-workflow';
+import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 
@@ -734,11 +734,10 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
 };
 
-export interface SimplifiedNodeType
-	extends Pick<
-		INodeTypeDescription,
-		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
-	> {}
+export type SimplifiedNodeType = Pick<
+	INodeTypeDescription,
+	'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+>;
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
@@ -1462,6 +1461,8 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
+export type SshKeyTypes = ['ed25519', 'rsa'];
+
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
@@ -1470,6 +1471,7 @@ export type SourceControlPreferences = {
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
 };
 

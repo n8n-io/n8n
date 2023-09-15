@@ -14,7 +14,7 @@
 				<slot name="footer" />
 			</div>
 		</div>
-		<div v-if="$slots.append">
+		<div v-if="$slots.append" :class="$style.append">
 			<slot name="append" />
 		</div>
 	</div>
@@ -82,7 +82,6 @@ export default defineComponent({
 
 .icon {
 	width: 24px;
-	height: 24px;
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
@@ -100,5 +99,11 @@ export default defineComponent({
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 	}
+}
+
+.append {
+	display: flex;
+	align-items: center;
+	cursor: default;
 }
 </style>
