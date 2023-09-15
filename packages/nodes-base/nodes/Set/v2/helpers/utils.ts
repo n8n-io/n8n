@@ -72,7 +72,8 @@ export function composeReturnItem(
 		case INCLUDE.SELECTED:
 			const includeFields = (this.getNodeParameter('includeFields', itemIndex) as string)
 				.split(',')
-				.map((item) => item.trim());
+				.map((item) => item.trim())
+				.filter((item) => item);
 
 			for (const key of includeFields) {
 				const fieldValue = fieldHelper.get(inputItem.json, key) as IDataObject;
@@ -86,7 +87,8 @@ export function composeReturnItem(
 		case INCLUDE.EXCEPT:
 			const excludeFields = (this.getNodeParameter('excludeFields', itemIndex) as string)
 				.split(',')
-				.map((item) => item.trim());
+				.map((item) => item.trim())
+				.filter((item) => item);
 
 			const inputData = deepCopy(inputItem.json);
 
