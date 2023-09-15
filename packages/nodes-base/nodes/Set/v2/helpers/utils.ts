@@ -13,7 +13,7 @@ import unset from 'lodash/unset';
 
 import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';
-import { getResolvables } from '../../../../utils/utilities';
+import { getResolvables } from '@utils/utilities';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
