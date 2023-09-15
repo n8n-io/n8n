@@ -189,6 +189,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			TRIAL: { dismissed: true },
 			TRIAL_OVER: { dismissed: true },
 			NON_PRODUCTION_LICENSE: { dismissed: true },
+			EMAIL_CONFIRMATION: { dismissed: true },
 		},
 		bannersHeight: 0,
 	}),

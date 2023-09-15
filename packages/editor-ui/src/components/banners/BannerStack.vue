@@ -3,6 +3,7 @@ import NonProductionLicenseBanner from '@/components/banners/NonProductionLicens
 import TrialOverBanner from '@/components/banners/TrialOverBanner.vue';
 import TrialBanner from '@/components/banners/TrialBanner.vue';
 import V1Banner from '@/components/banners/V1Banner.vue';
+import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanner.vue';
 import { useUIStore } from '@/stores/ui.store';
 import { onMounted, watch } from 'vue';
 import { getBannerRowHeight } from '@/utils';
@@ -34,5 +35,6 @@ watch(uiStore.banners, async () => {
 		<trial-banner v-if="shouldShowBanner('TRIAL')" />
 		<v1-banner v-if="shouldShowBanner('V1')" />
 		<non-production-license-banner v-if="shouldShowBanner('NON_PRODUCTION_LICENSE')" />
+		<email-confirmation-banner v-if="shouldShowBanner('EMAIL_CONFIRMATION')" />
 	</div>
 </template>
