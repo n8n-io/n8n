@@ -32,6 +32,7 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
+      "dist/credentials/AnthropicApi.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
@@ -55,6 +56,7 @@
       "dist/nodes/document_loaders/DocumentGithubLoader/DocumentGithubLoader.node.js",
       "dist/nodes/document_loaders/DocumentJSONInputLoader/DocumentJsonInputLoader.node.js",
       "dist/nodes/embeddings/EmbeddingsOpenAI/EmbeddingsOpenAi.node.js",
+      "dist/nodes/llms/LMChatAnthropic/LmChatAnthropic.node.js",
       "dist/nodes/llms/LMChatOpenAi/LmChatOpenAi.node.js",
       "dist/nodes/llms/LMOpenAi/LmOpenAi.node.js",
       "dist/nodes/llms/LMCohere/LmCohere.node.js",
