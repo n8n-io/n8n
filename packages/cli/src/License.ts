@@ -13,7 +13,8 @@ import {
 } from './constants';
 import Container, { Service } from 'typedi';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
-import { OrchestrationService } from '@/services/orchestration.service';
+import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
+import { RedisService } from './services/redis.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -27,21 +28,21 @@ export class License {
 
 	private manager: LicenseManager | undefined;
 
-	private orchestrationService: OrchestrationService;
+	instanceId: string | undefined;
+
+	private redisPublisher: RedisServicePubSubPublisher;
 
 	constructor() {
 		this.logger = getLogger();
-		this.orchestrationService = Container.get(OrchestrationService);
 	}
 
 	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
-		if (this.manager) {
+		const isMainInstance = instanceType === 'main';
+		if (this.manager && isMainInstance) {
 			return;
 		}
 
-		// only the main instance should renew licenses and write to the database
-		const isMainInstance = instanceType === 'main';
-
+		this.instanceId = instanceId;
 		const server = config.getEnv('license.serverUrl');
 		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
 		const offlineMode = !isMainInstance;
@@ -98,8 +99,15 @@ export class License {
 			},
 			['key'],
 		);
-		// notify workers to reload the license
-		await this.orchestrationService.reloadLicense();
+		if (config.getEnv('executions.mode') === 'queue') {
+			if (!this.redisPublisher) {
+				this.logger.debug('Initializing Redis publisher for License Service');
+				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
+			}
+			await this.redisPublisher.publishToCommandChannel({
+				command: 'reloadLicense',
+			});
+		}
 	}
 
 	async activate(activationKey: string): Promise<void> {

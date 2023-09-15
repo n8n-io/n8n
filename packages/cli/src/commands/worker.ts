@@ -268,6 +268,7 @@ export class Worker extends BaseCommand {
 	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
+			uniqueInstanceId: this.uniqueInstanceId,
 		});
 	}
 
