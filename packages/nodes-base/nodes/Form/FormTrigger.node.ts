@@ -75,7 +75,7 @@ export class FormTrigger implements INodeType {
 				name: 'formFields',
 				placeholder: 'Add Form Field',
 				type: 'fixedCollection',
-				default: { values: [{ label: '', fieldType: 'string' }] },
+				default: { values: [{ label: '', fieldType: 'text' }] },
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
