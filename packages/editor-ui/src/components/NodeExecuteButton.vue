@@ -250,13 +250,14 @@ export default defineComponent({
 					const testUrl = this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
 
 					const windowWidth = window.innerWidth;
-					if (windowWidth < 800) {
+					const smallScreen = windowWidth <= 800;
+					if (smallScreen) {
 						window.open(testUrl, '_blank');
 					} else {
 						const width = 700;
-						const height = window.innerHeight * 0.9;
+						const height = window.innerHeight - 50;
 						const left = (window.innerWidth - width) / 2;
-						const top = (window.innerHeight - height) / 2;
+						const top = 50;
 						const features = `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
 
 						window.open(testUrl, '_blank', features);

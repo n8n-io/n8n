@@ -35,13 +35,20 @@
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div class="webhook-wrapper">
-						<div v-if="showHttpLabel" class="http-field">
+					<div v-if="showHttpLabel" class="webhook-wrapper">
+						<div class="http-field">
 							<div class="http-method">
 								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
 						</div>
 						<div class="url-field">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
+							</div>
+						</div>
+					</div>
+					<div v-else class="webhook-wrapper">
+						<div class="url-field-full-width">
 							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
 								{{ getWebhookUrlDisplay(webhook) }}<br />
 							</div>
@@ -98,15 +105,16 @@ export default defineComponent({
 			switch (nodeType) {
 				case FORM_TRIGGER_NODE_TYPE:
 					return {
-						toggleTitle: 'Form URLs',
-						clickToDisplay: 'Click to display Form URL',
-						clickToHide: 'Click to hide Form URL',
-						clickToCopy: 'Click to copy Form URL',
-						testUrl: 'Test URL',
-						productionUrl: 'Production URL',
-						copyTitle: 'Form URL copied',
-						copyMessage:
-							"Form submissions made via this URL will trigger the workflow when it's activated",
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.formTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.formTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.formTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.formTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.formTrigger'),
 					};
 
 				default:
@@ -203,6 +211,10 @@ export default defineComponent({
 	display: inline-block;
 	width: calc(100% - 60px);
 	margin-left: 55px;
+}
+.url-field-full-width {
+	display: inline-block;
+	width: 100%;
 }
 
 .url-selection {
