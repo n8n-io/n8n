@@ -14,7 +14,7 @@ import {
 	resolveRawData,
 } from './helpers/utils';
 import type { SetField, SetNodeOptions } from './helpers/interfaces';
-import { updateDisplayOptions } from '@utils/utilities';
+import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { parseJsonParameter, composeReturnItem, resolveRawData } from './helpers/utils';
 import type { SetNodeOptions } from './helpers/interfaces';
-import { updateDisplayOptions } from '@utils/utilities';
+import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
