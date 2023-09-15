@@ -132,10 +132,6 @@ export class MessageEventBus extends EventEmitter {
 					if (error.message) LoggerProxy.debug(error.message as string);
 				}
 			}
-
-			this.on('message', async (msg: EventMessageTypes) => {
-				await this.send(msg);
-			});
 		}
 
 		LoggerProxy.debug('Initializing event writer');
