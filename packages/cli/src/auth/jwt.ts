@@ -21,6 +21,13 @@ export function issueJWT(user: User): JwtToken {
 		password: password ?? null,
 	};
 
+	console.log('user.isOwner', user.isOwner);
+	console.log(
+		'config.getEnv(userManagement.isInstanceOwnerSetUp)',
+		config.getEnv('userManagement.isInstanceOwnerSetUp'),
+	);
+	console.log('isWithinUsersLimit', isWithinUsersLimit);
+
 	if (
 		config.getEnv('userManagement.isInstanceOwnerSetUp') &&
 		!user.isOwner &&

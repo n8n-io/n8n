@@ -132,6 +132,8 @@ export class PasswordResetController {
 			user.mfaEnabled,
 		);
 
+		console.log('password reset link', url);
+
 		try {
 			await this.mailer.passwordReset({
 				email,
