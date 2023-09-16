@@ -8,21 +8,27 @@ n8n is an extendable workflow automation tool. With a [fair-code](http://faircod
 
 ## Contents
 
-- [Demo](#demo)
-- [Available integrations](#available-integrations)
-- [Documentation](#documentation)
-- [Start n8n in Docker](#start-n8n-in-docker)
-- [Start with tunnel](#start-with-tunnel)
-- [Securing n8n](#securing-n8n)
-- [Persist data](#persist-data)
-- [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
-- [Updating a Running docker-compose Instance](#updating-a-running-docker-compose-instance)
-- [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
-- [What does n8n mean and how do you pronounce it](#what-does-n8n-mean-and-how-do-you-pronounce-it)
-- [Support](#support)
-- [Jobs](#jobs)
-- [Upgrading](#upgrading)
-- [License](#license)
+- [n8n - Workflow automation tool](#n8n---workflow-automation-tool)
+  - [Contents](#contents)
+  - [Demo](#demo)
+  - [Available integrations](#available-integrations)
+  - [Documentation](#documentation)
+  - [Start n8n in Docker](#start-n8n-in-docker)
+  - [Start with tunnel](#start-with-tunnel)
+  - [Persist data](#persist-data)
+    - [Start with other Database](#start-with-other-database)
+      - [Use with PostgresDB](#use-with-postgresdb)
+      - [Use with MySQL](#use-with-mysql)
+  - [Passing Sensitive Data via File](#passing-sensitive-data-via-file)
+  - [Example Setup with Lets Encrypt](#example-setup-with-lets-encrypt)
+  - [Updating a running docker-compose instance](#updating-a-running-docker-compose-instance)
+  - [Setting Timezone](#setting-timezone)
+  - [Build Docker-Image](#build-docker-image)
+  - [What does n8n mean and how do you pronounce it?](#what-does-n8n-mean-and-how-do-you-pronounce-it)
+  - [Support](#support)
+  - [Jobs](#jobs)
+  - [Upgrading](#upgrading)
+  - [License](#license)
 
 ## Demo
 
@@ -69,20 +75,6 @@ docker run -it --rm \
  -v ~/.n8n:/home/node/.n8n \
  docker.n8n.io/n8nio/n8n \
  n8n start --tunnel
-```
-
-## Securing n8n
-
-By default n8n can be accessed by everybody. This is OK if you have it only running
-locally but if you deploy it on a server which is accessible from the web you have
-to make sure that n8n is protected!
-Right now we have very basic protection via basic-auth in place. It can be activated
-by setting the following environment variables:
-
-```text
-N8N_BASIC_AUTH_ACTIVE=true
-N8N_BASIC_AUTH_USER=<USER>
-N8N_BASIC_AUTH_PASSWORD=<PASSWORD>
 ```
 
 ## Persist data
@@ -171,7 +163,7 @@ docker run -it --rm \
 To avoid passing sensitive information via environment variables "\_FILE" may be
 appended to some environment variables. It will then load the data from a file
 with the given name. That makes it possible to load data easily from
-Docker- and Kubernetes-Secrets.
+Docker and Kubernetes secrets.
 
 The following environment variables support file input:
 
@@ -181,8 +173,6 @@ The following environment variables support file input:
 - DB_POSTGRESDB_PORT_FILE
 - DB_POSTGRESDB_USER_FILE
 - DB_POSTGRESDB_SCHEMA_FILE
-- N8N_BASIC_AUTH_PASSWORD_FILE
-- N8N_BASIC_AUTH_USER_FILE
 
 ## Example Setup with Lets Encrypt
 
@@ -193,26 +183,25 @@ A basic step by step example setup of n8n with docker-compose and Lets Encrypt i
 
 1. Pull the latest version from the registry
 
-    `docker pull docker.n8n.io/n8nio/n8n`
+   `docker pull docker.n8n.io/n8nio/n8n`
 
 2. Stop the current setup
 
-    `sudo docker-compose stop`
+   `sudo docker-compose stop`
 
 3. Delete it (will only delete the docker-containers, data is stored separately)
 
-    `sudo docker-compose rm`
+   `sudo docker-compose rm`
 
 4. Then start it again
 
-    `sudo docker-compose up -d`
+   `sudo docker-compose up -d`
 
 ## Setting Timezone
 
 To define the timezone n8n should use, the environment variable `GENERIC_TIMEZONE` can
-be set. This gets used by for example the Cron-Node.
-Apart from that can also the timezone of the system be set separately. Which controls what
-some scripts and commands return like `$ date`. The system timezone can be set via
+be set. One instance where this variable is implemented is in the Schedule node. Furthermore, the system's timezone can be set separately,
+which controls the output of certain scripts and commands such as `$ date`. The system timezone can be set via
 the environment variable `TZ`.
 
 Example to use the same timezone for both:

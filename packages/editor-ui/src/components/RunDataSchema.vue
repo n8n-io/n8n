@@ -1,17 +1,16 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { merge } from 'lodash-es';
-import type { INodeUi, Schema } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWebhooksStore } from '@/stores/webhooks.store';
 import { telemetry } from '@/plugins/telemetry';
 import type { IDataObject } from 'n8n-workflow';
-import { getSchema, isEmpty, runExternalHook } from '@/utils';
+import { isEmpty, runExternalHook } from '@/utils';
 import { i18n } from '@/plugins/i18n';
 import MappingPill from './MappingPill.vue';
-
+import { useDataSchema } from '@/composables';
 type Props = {
 	data: IDataObject[];
 	mappingEnabled: boolean;
@@ -29,15 +28,11 @@ const props = withDefaults(defineProps<Props>(), {
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
 const webhooksStore = useWebhooksStore();
+const { getSchemaForExecutionData } = useDataSchema();
 
-const schema = computed<Schema>(() => {
-	const [head, ...tail] = props.data;
-	return getSchema(merge({}, head, ...tail, head));
-});
+const schema = computed(() => getSchemaForExecutionData(props.data));
 
-const isDataEmpty = computed(() => {
-	return isEmpty(props.data);
-});
+const isDataEmpty = computed(() => isEmpty(props.data));
 
 const onDragStart = (el: HTMLElement) => {
 	if (el && el.dataset?.path) {
@@ -87,21 +82,19 @@ const onDragEnd = (el: HTMLElement) => {
 			<template #preview="{ canDrop, el }">
 				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-			<template>
-				<div :class="$style.schema">
-					<run-data-schema-item
-						:schema="schema"
-						:level="0"
-						:parent="null"
-						:paneType="paneType"
-						:subKey="`${schema.type}-0-0`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
-						:node="node"
-					/>
-				</div>
-			</template>
+			<div :class="$style.schema">
+				<run-data-schema-item
+					:schema="schema"
+					:level="0"
+					:parent="null"
+					:paneType="paneType"
+					:subKey="`${schema.type}-0-0`"
+					:mappingEnabled="mappingEnabled"
+					:draggingPath="draggingPath"
+					:distanceFromActive="distanceFromActive"
+					:node="node"
+				/>
+			</div>
 		</draggable>
 	</div>
 </template>

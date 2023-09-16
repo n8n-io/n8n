@@ -1,5 +1,3 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy, LoggerProxy } from 'n8n-workflow';
@@ -12,9 +10,10 @@ import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsDb } from '@/Interfaces';
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { listQueryMiddleware } from '@/middlewares';
 
 export const credentialsController = express.Router();
 
@@ -37,8 +36,9 @@ credentialsController.use('/', EECredentialsController);
  */
 credentialsController.get(
 	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsDb[]> => {
-		return CredentialsService.getAll(req.user, { roles: ['owner'] });
+	listQueryMiddleware,
+	ResponseHelper.send(async (req: ListQuery.Request) => {
+		return CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
 	}),
 );
 

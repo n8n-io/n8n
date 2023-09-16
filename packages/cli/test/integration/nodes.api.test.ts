@@ -1,112 +1,104 @@
 import path from 'path';
-import { mocked } from 'jest-mock';
-import type { SuperAgentTest } from 'supertest';
-import {
-	executeCommand,
-	checkNpmPackageStatus,
-	hasPackageLoaded,
-	removePackageFromMissingList,
-	isNpmError,
-} from '@/CommunityNodes/helpers';
-import { findInstalledPackage, isPackageInstalled } from '@/CommunityNodes/packageModel';
+
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { User } from '@db/entities/User';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
+import { CommunityPackageService } from '@/services/communityPackage.service';
+
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
-import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
+import {
+	mockInstance,
+	setupTestServer,
+	mockPackage,
+	mockNode,
+	mockPackageName,
+} from './shared/utils';
 
-const mockLoadNodesAndCredentials = utils.mockInstance(LoadNodesAndCredentials);
-utils.mockInstance(NodeTypes);
-utils.mockInstance(Push);
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
+import type { SuperAgentTest } from 'supertest';
 
-jest.mock('@/CommunityNodes/helpers', () => {
-	return {
-		...jest.requireActual('@/CommunityNodes/helpers'),
-		checkNpmPackageStatus: jest.fn(),
-		executeCommand: jest.fn(),
-		hasPackageLoaded: jest.fn(),
-		isNpmError: jest.fn(),
-		removePackageFromMissingList: jest.fn(),
-	};
-});
+const communityPackageService = mockInstance(CommunityPackageService);
+const mockLoadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+mockInstance(Push);
 
-jest.mock('@/CommunityNodes/packageModel', () => {
-	return {
-		...jest.requireActual('@/CommunityNodes/packageModel'),
-		isPackageInstalled: jest.fn(),
-		findInstalledPackage: jest.fn(),
-	};
-});
+const testServer = setupTestServer({ endpointGroups: ['nodes'] });
 
-const mockedEmptyPackage = mocked(utils.emptyPackage);
+const commonUpdatesProps = {
+	createdAt: new Date(),
+	updatedAt: new Date(),
+	installedVersion: COMMUNITY_PACKAGE_VERSION.CURRENT,
+	updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED,
+};
 
-let ownerShell: User;
-let authOwnerShellAgent: SuperAgentTest;
+const parsedNpmPackageName = {
+	packageName: 'test',
+	rawString: 'test',
+};
+
+let authAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	const app = await utils.initTestServer({ endpointGroups: ['nodes'] });
-
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	ownerShell = await testDb.createUserShell(globalOwnerRole);
-	authOwnerShellAgent = utils.createAuthAgent(app)(ownerShell);
-
-	await utils.initConfigFile();
+	const ownerShell = await testDb.createOwner();
+	authAgent = testServer.authAgentFor(ownerShell);
 });
 
-beforeEach(async () => {
-	await testDb.truncate(['InstalledNodes', 'InstalledPackages']);
-
-	mocked(executeCommand).mockReset();
-	mocked(findInstalledPackage).mockReset();
-});
-
-afterAll(async () => {
-	await testDb.terminate();
+beforeEach(() => {
+	jest.resetAllMocks();
 });
 
 describe('GET /nodes', () => {
 	test('should respond 200 if no nodes are installed', async () => {
+		communityPackageService.getAllInstalledPackages.mockResolvedValue([]);
 		const {
-			statusCode,
 			body: { data },
-		} = await authOwnerShellAgent.get('/nodes');
+		} = await authAgent.get('/nodes').expect(200);
 
-		expect(statusCode).toBe(200);
 		expect(data).toHaveLength(0);
 	});
 
 	test('should return list of one installed package and node', async () => {
-		const { packageName } = await testDb.saveInstalledPackage(utils.installedPackagePayload());
-		await testDb.saveInstalledNode(utils.installedNodePayload(packageName));
+		const pkg = mockPackage();
+		const node = mockNode(pkg.packageName);
+		pkg.installedNodes = [node];
+		communityPackageService.getAllInstalledPackages.mockResolvedValue([pkg]);
+		communityPackageService.matchPackagesWithUpdates.mockReturnValue([pkg]);
 
 		const {
-			statusCode,
 			body: { data },
-		} = await authOwnerShellAgent.get('/nodes');
+		} = await authAgent.get('/nodes').expect(200);
 
-		expect(statusCode).toBe(200);
 		expect(data).toHaveLength(1);
 		expect(data[0].installedNodes).toHaveLength(1);
 	});
 
 	test('should return list of multiple installed packages and nodes', async () => {
-		const first = await testDb.saveInstalledPackage(utils.installedPackagePayload());
-		await testDb.saveInstalledNode(utils.installedNodePayload(first.packageName));
+		const pkgA = mockPackage();
+		const nodeA = mockNode(pkgA.packageName);
 
-		const second = await testDb.saveInstalledPackage(utils.installedPackagePayload());
-		await testDb.saveInstalledNode(utils.installedNodePayload(second.packageName));
-		await testDb.saveInstalledNode(utils.installedNodePayload(second.packageName));
+		const pkgB = mockPackage();
+		const nodeB = mockNode(pkgB.packageName);
+		const nodeC = mockNode(pkgB.packageName);
+
+		communityPackageService.getAllInstalledPackages.mockResolvedValue([pkgA, pkgB]);
+
+		communityPackageService.matchPackagesWithUpdates.mockReturnValue([
+			{
+				...commonUpdatesProps,
+				packageName: pkgA.packageName,
+				installedNodes: [nodeA],
+			},
+			{
+				...commonUpdatesProps,
+				packageName: pkgB.packageName,
+				installedNodes: [nodeB, nodeC],
+			},
+		]);
 
 		const {
-			statusCode,
 			body: { data },
-		} = await authOwnerShellAgent.get('/nodes');
+		} = await authAgent.get('/nodes').expect(200);
 
-		expect(statusCode).toBe(200);
 		expect(data).toHaveLength(2);
 
 		const allNodes = data.reduce(
@@ -118,166 +110,141 @@ describe('GET /nodes', () => {
 	});
 
 	test('should not check for updates if no packages installed', async () => {
-		await authOwnerShellAgent.get('/nodes');
+		await authAgent.get('/nodes');
 
-		expect(mocked(executeCommand)).toHaveBeenCalledTimes(0);
+		expect(communityPackageService.executeNpmCommand).not.toHaveBeenCalled();
 	});
 
 	test('should check for updates if packages installed', async () => {
-		const { packageName } = await testDb.saveInstalledPackage(utils.installedPackagePayload());
-		await testDb.saveInstalledNode(utils.installedNodePayload(packageName));
+		communityPackageService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 
-		await authOwnerShellAgent.get('/nodes');
+		await authAgent.get('/nodes').expect(200);
 
-		expect(mocked(executeCommand)).toHaveBeenCalledWith('npm outdated --json', {
-			doNotHandleError: true,
-		});
+		const args = ['npm outdated --json', { doNotHandleError: true }];
+
+		expect(communityPackageService.executeNpmCommand).toHaveBeenCalledWith(...args);
 	});
 
 	test('should report package updates if available', async () => {
-		const { packageName } = await testDb.saveInstalledPackage(utils.installedPackagePayload());
-		await testDb.saveInstalledNode(utils.installedNodePayload(packageName));
+		const pkg = mockPackage();
+		communityPackageService.getAllInstalledPackages.mockResolvedValue([pkg]);
 
-		mocked(executeCommand).mockImplementationOnce(() => {
+		communityPackageService.executeNpmCommand.mockImplementation(() => {
 			throw {
 				code: 1,
 				stdout: JSON.stringify({
-					[packageName]: {
+					[pkg.packageName]: {
 						current: COMMUNITY_PACKAGE_VERSION.CURRENT,
 						wanted: COMMUNITY_PACKAGE_VERSION.CURRENT,
 						latest: COMMUNITY_PACKAGE_VERSION.UPDATED,
-						location: path.join('node_modules', packageName),
+						location: path.join('node_modules', pkg.packageName),
 					},
 				}),
 			};
 		});
 
-		mocked(isNpmError).mockReturnValueOnce(true);
+		communityPackageService.matchPackagesWithUpdates.mockReturnValue([
+			{
+				packageName: 'test',
+				installedNodes: [],
+				...commonUpdatesProps,
+			},
+		]);
 
 		const {
 			body: { data },
-		} = await authOwnerShellAgent.get('/nodes');
+		} = await authAgent.get('/nodes').expect(200);
 
-		expect(data[0].installedVersion).toBe(COMMUNITY_PACKAGE_VERSION.CURRENT);
-		expect(data[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
+		const [returnedPkg] = data;
+
+		expect(returnedPkg.installedVersion).toBe(COMMUNITY_PACKAGE_VERSION.CURRENT);
+		expect(returnedPkg.updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
 	});
 });
 
 describe('POST /nodes', () => {
 	test('should reject if package name is missing', async () => {
-		const { statusCode } = await authOwnerShellAgent.post('/nodes');
-
-		expect(statusCode).toBe(400);
+		await authAgent.post('/nodes').expect(400);
 	});
 
 	test('should reject if package is duplicate', async () => {
-		mocked(findInstalledPackage).mockResolvedValueOnce(new InstalledPackages());
-		mocked(isPackageInstalled).mockResolvedValueOnce(true);
-		mocked(hasPackageLoaded).mockReturnValueOnce(true);
+		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackageService.isPackageInstalled.mockResolvedValue(true);
+		communityPackageService.hasPackageLoaded.mockReturnValue(true);
+		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
-			statusCode,
 			body: { message },
-		} = await authOwnerShellAgent.post('/nodes').send({
-			name: utils.installedPackagePayload().packageName,
-		});
+		} = await authAgent.post('/nodes').send({ name: mockPackageName() }).expect(400);
 
-		expect(statusCode).toBe(400);
 		expect(message).toContain('already installed');
 	});
 
 	test('should allow installing packages that could not be loaded', async () => {
-		mocked(findInstalledPackage).mockResolvedValueOnce(new InstalledPackages());
-		mocked(hasPackageLoaded).mockReturnValueOnce(false);
-		mocked(checkNpmPackageStatus).mockResolvedValueOnce({ status: 'OK' });
+		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackageService.hasPackageLoaded.mockReturnValue(false);
+		communityPackageService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+		mockLoadNodesAndCredentials.installNpmModule.mockResolvedValue(mockPackage());
 
-		mockLoadNodesAndCredentials.installNpmModule.mockImplementationOnce(mockedEmptyPackage);
+		await authAgent.post('/nodes').send({ name: mockPackageName() }).expect(200);
 
-		const { statusCode } = await authOwnerShellAgent.post('/nodes').send({
-			name: utils.installedPackagePayload().packageName,
-		});
-
-		expect(statusCode).toBe(200);
-		expect(mocked(removePackageFromMissingList)).toHaveBeenCalled();
+		expect(communityPackageService.removePackageFromMissingList).toHaveBeenCalled();
 	});
 
 	test('should not install a banned package', async () => {
-		mocked(checkNpmPackageStatus).mockResolvedValueOnce({ status: 'Banned' });
+		communityPackageService.checkNpmPackageStatus.mockResolvedValue({ status: 'Banned' });
+		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
-			statusCode,
 			body: { message },
-		} = await authOwnerShellAgent.post('/nodes').send({
-			name: utils.installedPackagePayload().packageName,
-		});
+		} = await authAgent.post('/nodes').send({ name: mockPackageName() }).expect(400);
 
-		expect(statusCode).toBe(400);
 		expect(message).toContain('banned');
 	});
 });
 
 describe('DELETE /nodes', () => {
 	test('should not delete if package name is empty', async () => {
-		const response = await authOwnerShellAgent.delete('/nodes');
-
-		expect(response.statusCode).toBe(400);
+		await authAgent.delete('/nodes').expect(400);
 	});
 
 	test('should reject if package is not installed', async () => {
 		const {
-			statusCode,
 			body: { message },
-		} = await authOwnerShellAgent.delete('/nodes').query({
-			name: utils.installedPackagePayload().packageName,
-		});
+		} = await authAgent.delete('/nodes').query({ name: mockPackageName() }).expect(400);
 
-		expect(statusCode).toBe(400);
 		expect(message).toContain('not installed');
 	});
 
 	test('should uninstall package', async () => {
-		const removeSpy = mockLoadNodesAndCredentials.removeNpmModule.mockImplementationOnce(jest.fn());
+		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
 
-		mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
+		await authAgent.delete('/nodes').query({ name: mockPackageName() }).expect(200);
 
-		const { statusCode } = await authOwnerShellAgent.delete('/nodes').query({
-			name: utils.installedPackagePayload().packageName,
-		});
-
-		expect(statusCode).toBe(200);
-		expect(removeSpy).toHaveBeenCalledTimes(1);
+		expect(mockLoadNodesAndCredentials.removeNpmModule).toHaveBeenCalledTimes(1);
 	});
 });
 
 describe('PATCH /nodes', () => {
 	test('should reject if package name is empty', async () => {
-		const response = await authOwnerShellAgent.patch('/nodes');
-
-		expect(response.statusCode).toBe(400);
+		await authAgent.patch('/nodes').expect(400);
 	});
 
-	test('reject if package is not installed', async () => {
+	test('should reject if package is not installed', async () => {
 		const {
-			statusCode,
 			body: { message },
-		} = await authOwnerShellAgent.patch('/nodes').send({
-			name: utils.installedPackagePayload().packageName,
-		});
+		} = await authAgent.patch('/nodes').send({ name: mockPackageName() }).expect(400);
 
-		expect(statusCode).toBe(400);
 		expect(message).toContain('not installed');
 	});
 
 	test('should update a package', async () => {
-		const updateSpy =
-			mockLoadNodesAndCredentials.updateNpmModule.mockImplementationOnce(mockedEmptyPackage);
+		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
-		mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
+		await authAgent.patch('/nodes').send({ name: mockPackageName() });
 
-		await authOwnerShellAgent.patch('/nodes').send({
-			name: utils.installedPackagePayload().packageName,
-		});
-
-		expect(updateSpy).toHaveBeenCalledTimes(1);
+		expect(mockLoadNodesAndCredentials.updateNpmModule).toHaveBeenCalledTimes(1);
 	});
 });

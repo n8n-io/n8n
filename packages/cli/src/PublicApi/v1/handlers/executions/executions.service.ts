@@ -1,11 +1,11 @@
 import type { DeleteResult, FindOptionsWhere } from 'typeorm';
 import { In, Not, Raw, LessThan } from 'typeorm';
+import { Container } from 'typedi';
+import type { ExecutionStatus } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import type { IExecutionBase, IExecutionFlattedDb } from '@/Interfaces';
-import type { ExecutionStatus } from 'n8n-workflow';
-import Container from 'typedi';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 function getStatusCondition(status: ExecutionStatus) {
 	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};

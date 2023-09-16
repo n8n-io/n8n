@@ -1,7 +1,5 @@
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
-import { render } from '@testing-library/vue';
-import { PiniaVuePlugin } from 'pinia';
 
 export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
 	return new Promise((resolve, reject) => {
@@ -20,12 +18,6 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 100
 		tryAgain();
 	});
 };
-
-type RenderParams = Parameters<typeof render>;
-export const renderComponent = (Component: RenderParams[0], renderOptions: RenderParams[1] = {}) =>
-	render(Component, renderOptions, (vue) => {
-		vue.use(PiniaVuePlugin);
-	});
 
 export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
 

@@ -54,16 +54,18 @@ export default defineComponent({
 		this.observer = observer;
 
 		this.eventBus.on('observe', (observed: Element) => {
-			observer.observe(observed);
+			if (observed) {
+				observer.observe(observed);
+			}
 		});
 
 		this.eventBus.on('unobserve', (observed: Element) => {
 			observer.unobserve(observed);
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.enabled) {
-			this.$data.observer.disconnect();
+			this.observer.disconnect();
 		}
 	},
 });

@@ -51,11 +51,11 @@ export async function lemlistApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	endpoint: string,
+	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	const qs: IDataObject = {};
 
 	qs.limit = 100;
 	qs.offset = 0;

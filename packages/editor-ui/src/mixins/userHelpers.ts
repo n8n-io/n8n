@@ -2,12 +2,12 @@ import type { IPermissions } from '@/Interface';
 import { isAuthorized } from '@/utils';
 import { useUsersStore } from '@/stores/users.store';
 import { defineComponent } from 'vue';
-import type { Route } from 'vue-router';
+import type { RouteLocation } from 'vue-router';
 
 export const userHelpers = defineComponent({
 	methods: {
 		canUserAccessRouteByName(name: string): boolean {
-			const { route } = this.$router.resolve({ name });
+			const route = this.$router.resolve({ name });
 
 			return this.canUserAccessRoute(route);
 		},
@@ -16,7 +16,7 @@ export const userHelpers = defineComponent({
 			return this.canUserAccessRoute(this.$route);
 		},
 
-		canUserAccessRoute(route: Route): boolean {
+		canUserAccessRoute(route: RouteLocation): boolean {
 			const permissions: IPermissions = route.meta && route.meta.permissions;
 			const usersStore = useUsersStore();
 			const currentUser = usersStore.currentUser;

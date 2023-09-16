@@ -117,8 +117,8 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 		<!-- Pass through listeners & empty slot to ItemsRenderer -->
 		<ItemsRenderer
 			v-if="expanded"
+			v-bind="$attrs"
 			:elements="elements"
-			v-on="$listeners"
 			:isTrigger="isTriggerCategory"
 		>
 			<template #default> </template>

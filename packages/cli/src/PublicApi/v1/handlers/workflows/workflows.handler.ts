@@ -11,15 +11,12 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service.ee';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
-	hasStartNode,
-	getStartNode,
 	getSharedWorkflows,
 	createWorkflow,
 	getWorkflowIdsViaTags,
@@ -28,6 +25,7 @@ import {
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
 
 export = {
 	createWorkflow: [
@@ -37,15 +35,11 @@ export = {
 
 			workflow.active = false;
 
-			if (!hasStartNode(workflow)) {
-				workflow.nodes.push(getStartNode());
-			}
-
 			await replaceInvalidCredentials(workflow);
 
 			addNodeIds(workflow);
 
-			const role = await getWorkflowOwnerRole();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
@@ -101,7 +95,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isOwner) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);
@@ -162,10 +156,6 @@ export = {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
 				return res.status(404).json({ message: 'Not Found' });
-			}
-
-			if (!hasStartNode(updateData)) {
-				updateData.nodes.push(getStartNode());
 			}
 
 			await replaceInvalidCredentials(updateData);

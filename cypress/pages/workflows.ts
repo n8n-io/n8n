@@ -5,7 +5,7 @@ export class WorkflowsPage extends BasePage {
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
-		searchBar: () => cy.getByTestId('resources-list-search').find('input'),
+		searchBar: () => cy.getByTestId('resources-list-search'),
 		createWorkflowButton: () => cy.getByTestId('resources-list-add'),
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>

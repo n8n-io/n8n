@@ -1,4 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
+import { formatPrivateKey } from '@utils/utilities';
 
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
@@ -7,10 +8,6 @@ import type { Server } from 'net';
 import { createServer } from 'net';
 
 import pgPromise from 'pg-promise';
-
-import { rm, writeFile } from 'fs/promises';
-import { file } from 'tmp-promise';
-
 import type { PgpDatabase } from '../helpers/interfaces';
 
 async function createSshConnectConfig(credentials: IDataObject) {
@@ -22,14 +19,11 @@ async function createSshConnectConfig(credentials: IDataObject) {
 			password: credentials.sshPassword as string,
 		} as ConnectConfig;
 	} else {
-		const { path } = await file({ prefix: 'n8n-ssh-' });
-		await writeFile(path, credentials.privateKey as string);
-
 		const options: ConnectConfig = {
-			host: credentials.host as string,
-			username: credentials.username as string,
-			port: credentials.port as number,
-			privateKey: path,
+			host: credentials.sshHost as string,
+			username: credentials.sshUser as string,
+			port: credentials.sshPort as number,
+			privateKey: formatPrivateKey(credentials.privateKey as string),
 		};
 
 		if (credentials.passphrase) {
@@ -146,9 +140,6 @@ export async function configurePostgres(
 			});
 
 			sshClient.on('end', async () => {
-				if (tunnelConfig.privateKey) {
-					await rm(tunnelConfig.privateKey as string, { force: true });
-				}
 				if (proxy) proxy.close();
 			});
 		}).catch((err) => {

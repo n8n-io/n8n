@@ -4,7 +4,6 @@ import config from '@/config';
 import { toFlaggedNode } from '@/audit/utils';
 import { separate } from '@/utils';
 import {
-	SELF_HOSTED_AUTH_DOCS_URL,
 	ENV_VARS_DOCS_URL,
 	INSTANCE_REPORT,
 	WEBHOOK_NODE_TYPE,
@@ -18,31 +17,17 @@ import { isApiEnabled } from '@/PublicApi';
 function getSecuritySettings() {
 	if (config.getEnv('deployment.type') === 'cloud') return null;
 
-	const userManagementEnabled = !config.getEnv('userManagement.disabled');
-	const basicAuthActive = config.getEnv('security.basicAuth.active');
-	const jwtAuthActive = config.getEnv('security.jwtAuth.active');
-
-	const isInstancePubliclyAccessible = !userManagementEnabled && !basicAuthActive && !jwtAuthActive;
-
 	const settings: Record<string, unknown> = {};
-
-	if (isInstancePubliclyAccessible) {
-		settings.publiclyAccessibleInstance =
-			'Important! Your n8n instance is publicly accessible. Any third party who knows your instance URL can access your data.'.toUpperCase();
-	}
 
 	settings.features = {
 		communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
 		versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
 		templatesEnabled: config.getEnv('templates.enabled'),
 		publicApiEnabled: isApiEnabled(),
-		userManagementEnabled,
 	};
 
 	settings.auth = {
 		authExcludeEndpoints: config.getEnv('security.excludeEndpoints') || 'none',
-		basicAuthActive,
-		jwtAuthActive,
 	};
 
 	settings.nodes = {
@@ -207,12 +192,7 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 		report.sections.push({
 			title: INSTANCE_REPORT.SECTIONS.SECURITY_SETTINGS,
 			description: 'This n8n instance has the following security settings.',
-			recommendation: securitySettings.publiclyAccessibleInstance
-				? [
-						'Important! Your n8n instance is publicly accessible. Set up user management or basic/JWT auth to protect access to your n8n instance.'.toUpperCase(),
-						`See: ${SELF_HOSTED_AUTH_DOCS_URL}`,
-				  ].join(' ')
-				: `Consider adjusting the security settings for your n8n instance based on your needs. See: ${ENV_VARS_DOCS_URL}`,
+			recommendation: `Consider adjusting the security settings for your n8n instance based on your needs. See: ${ENV_VARS_DOCS_URL}`,
 			settings: securitySettings,
 		});
 	}

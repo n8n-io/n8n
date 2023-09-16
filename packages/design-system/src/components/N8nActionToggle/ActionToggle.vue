@@ -1,10 +1,9 @@
 <template>
-	<span :class="$style.container" data-test-id="action-toggle">
+	<span @click.stop.prevent :class="$style.container" data-test-id="action-toggle">
 		<el-dropdown
 			:placement="placement"
 			:size="size"
 			trigger="click"
-			@click.native.stop
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>
@@ -22,6 +21,7 @@
 						:key="action.value"
 						:command="action.value"
 						:disabled="action.disabled"
+						:data-test-id="`action-${action.value}`"
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
@@ -42,11 +42,7 @@
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import {
-	Dropdown as ElDropdown,
-	DropdownMenu as ElDropdownMenu,
-	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import type { UserAction } from '@/types';
 

@@ -41,7 +41,9 @@ export default defineComponent({
 	mixins: [pushConnection, workflowHelpers],
 	setup(props) {
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowHelpers.setup?.(props),
 		};
 	},
@@ -91,7 +93,7 @@ export default defineComponent({
 		// Initialize the push connection
 		this.pushConnect();
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.pushDisconnect();
 	},
 	watch: {
@@ -107,7 +109,11 @@ export default defineComponent({
 				route.name === VIEWS.EXECUTION_PREVIEW
 			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
-			} else if (route.name === VIEWS.WORKFLOW || route.name === VIEWS.NEW_WORKFLOW) {
+			} else if (
+				route.name === VIEWS.WORKFLOW ||
+				route.name === VIEWS.NEW_WORKFLOW ||
+				route.name === VIEWS.EXECUTION_DEBUG
+			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 			}
 			const workflowName = route.params.name;
@@ -172,6 +178,7 @@ export default defineComponent({
 }
 
 .top-menu {
+	position: relative;
 	display: flex;
 	align-items: center;
 	font-size: 0.9em;

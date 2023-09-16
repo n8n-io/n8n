@@ -4,10 +4,10 @@ import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { IsDate } from 'class-validator';
 
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
 
 @Entity()
-export class WorkflowEntityWithVersion extends AbstractEntity {
+export class WorkflowEntityWithVersion extends WithTimestampsAndStringId {
 	@Column()
 	id: string;
 

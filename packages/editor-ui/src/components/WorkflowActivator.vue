@@ -19,8 +19,8 @@
 			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
-				:value="workflowActive"
-				@change="activeChanged"
+				:modelValue="workflowActive"
+				@update:modelValue="activeChanged"
 				:title="
 					workflowActive
 						? $locale.baseText('workflowActivator.deactivateWorkflow')
@@ -65,6 +65,7 @@ export default defineComponent({
 	setup(props) {
 		return {
 			...useToast(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowActivate.setup?.(props),
 		};
 	},
@@ -154,15 +155,15 @@ export default defineComponent({
 	display: inline-flex;
 	flex-wrap: nowrap;
 	align-items: center;
+
+	:deep(.el-loading-spinner) {
+		margin-top: -10px;
+	}
 }
 
 .could-not-be-started {
 	display: inline-block;
 	color: #ff4949;
 	margin-left: 0.5em;
-}
-
-::v-deep .el-loading-spinner {
-	margin-top: -10px;
 }
 </style>

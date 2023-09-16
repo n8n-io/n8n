@@ -1,5 +1,5 @@
 import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils';
+import { mockInstance } from '../shared/utils/';
 import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import * as Config from '@oclif/config';

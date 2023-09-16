@@ -183,7 +183,6 @@ export async function folderSearchWithDefault(
 	} else {
 		results = [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				name: rootDefaultDisplayName,
 				value: RLC_FOLDER_DEFAULT,
 				url: 'https://drive.google.com/drive',

@@ -68,6 +68,7 @@ import type {
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore } from '@/stores/templates.store';
+import { usePostHog } from '@/stores/posthog.store';
 
 export default defineComponent({
 	name: 'TemplatesCollectionView',
@@ -78,7 +79,7 @@ export default defineComponent({
 		TemplatesView,
 	},
 	computed: {
-		...mapStores(useTemplatesStore),
+		...mapStores(useTemplatesStore, usePostHog),
 		collection(): null | ITemplatesCollectionFull {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
@@ -122,8 +123,9 @@ export default defineComponent({
 				source: 'collection',
 			};
 			void this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
-			this.$telemetry.track('User inserted workflow template', telemetryPayload);
-
+			this.$telemetry.track('User inserted workflow template', telemetryPayload, {
+				withPostHog: true,
+			});
 			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {

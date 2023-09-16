@@ -26,7 +26,7 @@
 		position: fixed;
 
 		.el-loading-spinner {
-			margin-top: #{- var.$loading-fullscreen-spinner-size * 0.5};
+			transform: translateY(-50%);
 
 			.circular {
 				height: var.$loading-fullscreen-spinner-size;
@@ -38,7 +38,7 @@
 
 @include mixins.b(loading-spinner) {
 	top: 50%;
-	margin-top: #{- var.$loading-spinner-size * 0.5};
+	transform: translateY(-50%);
 	width: 100%;
 	text-align: center;
 	position: absolute;
@@ -69,7 +69,7 @@
 	}
 }
 
-.el-loading-fade-enter,
+.el-loading-fade-enter-from,
 .el-loading-fade-leave-active {
 	opacity: 0;
 }

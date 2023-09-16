@@ -229,7 +229,7 @@ export class QuickBase implements INodeType {
 					);
 				}
 
-				return this.prepareOutputData(items);
+				return [items];
 			}
 		}
 
@@ -638,6 +638,6 @@ export class QuickBase implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

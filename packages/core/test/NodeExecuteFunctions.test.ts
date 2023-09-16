@@ -35,7 +35,6 @@ describe('NodeExecuteFunctions', () => {
 				availableModes: 'default',
 				localStoragePath: temporaryDir,
 				binaryDataTTL: 1,
-				persistedBinaryDataTTL: 1,
 			});
 
 			// Set our binary data buffer
@@ -86,7 +85,6 @@ describe('NodeExecuteFunctions', () => {
 				availableModes: 'filesystem',
 				localStoragePath: temporaryDir,
 				binaryDataTTL: 1,
-				persistedBinaryDataTTL: 1,
 			});
 
 			// Set our binary data buffer

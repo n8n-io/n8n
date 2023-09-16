@@ -20,7 +20,7 @@ export class GoogleApi implements ICredentialType {
 
 	documentationUrl = 'google/service-account';
 
-	icon = 'file:Google.svg';
+	icon = 'file:icons/Google.svg';
 
 	properties: INodeProperties[] = [
 		{

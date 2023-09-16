@@ -1,4 +1,4 @@
-import Vue, { VNode } from 'vue';
+import { VNode, ComponentPublicInstance } from 'vue';
 import type { Store } from 'pinia';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -27,7 +27,7 @@ declare global {
 
 	namespace JSX {
 		interface Element extends VNode {}
-		interface ElementClass extends Vue {}
+		interface ElementClass extends ComponentPublicInstance {}
 		interface IntrinsicElements {
 			[elem: string]: any;
 		}

@@ -1,7 +1,7 @@
-import * as Helpers from '../../../test/nodes/Helpers';
-import type { WorkflowTestData } from '../../../test/nodes/types';
+import * as Helpers from '@test/nodes/Helpers';
+import type { WorkflowTestData } from '@test/nodes/types';
 
-import { executeWorkflow } from '../../../test/nodes/ExecuteWorkflow';
+import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {

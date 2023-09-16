@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { IUpdateInformation, ResourceMapperReqParams } from '@/Interface';
-import { resolveParameter } from '@/mixins/workflowHelpers';
+import { resolveRequiredParameters } from '@/mixins/workflowHelpers';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type {
 	INode,
@@ -26,12 +26,15 @@ type Props = {
 	inputSize: string;
 	labelSize: string;
 	dependentParametersValues?: string | null;
+	teleported: boolean;
 };
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	teleported: true,
+});
 
 const emit = defineEmits<{
 	(event: 'valueChanged', value: IUpdateInformation): void;
@@ -111,7 +114,10 @@ onMounted(async () => {
 			matchingColumns: nodeValues.matchingColumns,
 		};
 	}
-	await initFetching(hasSchema);
+	if (!hasSchema) {
+		// Only fetch a schema if it's not already set
+		await initFetching();
+	}
 	// Set default values if this is the first time the parameter is being set
 	if (!state.paramValue.value) {
 		setDefaultFieldValues();
@@ -167,7 +173,9 @@ const hasAvailableMatchingColumns = computed<boolean>(() => {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					field.canBeUsedToMatch !== false && field.display !== false && field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) &&
+					field.display !== false &&
+					field.removed !== true,
 			).length > 0
 		);
 	}
@@ -178,7 +186,7 @@ const defaultSelectedMatchingColumns = computed<string[]>(() => {
 	return state.paramValue.schema.length === 1
 		? [state.paramValue.schema[0].id]
 		: state.paramValue.schema.reduce((acc, field) => {
-				if (field.defaultMatch && field.canBeUsedToMatch === true) {
+				if (field.defaultMatch) {
 					acc.push(field.id);
 				}
 				return acc;
@@ -221,7 +229,10 @@ async function loadFieldsToMap(): Promise<void> {
 			name: props.node?.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveParameter(props.node.parameters) as INodeParameters,
+		currentNodeParameters: resolveRequiredParameters(
+			props.parameter,
+			props.node.parameters,
+		) as INodeParameters,
 		path: props.path,
 		methodName: props.parameter.typeOptions?.resourceMapper?.resourceMapperMethod,
 		credentials: props.node.credentials,
@@ -340,15 +351,37 @@ function removeField(name: string): void {
 	}
 	const fieldName = parseResourceMapperFieldName(name);
 	if (fieldName) {
-		if (state.paramValue.value) {
-			delete state.paramValue.value[fieldName];
-			const field = state.paramValue.schema.find((f) => f.id === fieldName);
-			if (field) {
-				field.removed = true;
-				state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-			}
+		const field = state.paramValue.schema.find((f) => f.id === fieldName);
+		if (field) {
+			deleteField(field);
 			emitValueChanged();
 		}
+	}
+}
+
+function removeAllFields(): void {
+	state.paramValue.schema.forEach((field) => {
+		if (
+			!fieldCannotBeDeleted(
+				field,
+				showMatchingColumnsSelector.value,
+				resourceMapperMode.value,
+				matchingColumns.value,
+			)
+		) {
+			deleteField(field);
+		}
+	});
+	emitValueChanged();
+}
+
+// Delete a single field from the mapping (set removed flag to true and delete from value)
+// Used when removing one or all fields
+function deleteField(field: ResourceMapperField): void {
+	if (state.paramValue.value) {
+		delete state.paramValue.value[field.id];
+		field.removed = true;
+		state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
 	}
 }
 
@@ -384,23 +417,6 @@ function addAllFields(): void {
 		...state.paramValue.value,
 		...newValues,
 	};
-	emitValueChanged();
-}
-
-function removeAllFields(): void {
-	state.paramValue.schema.forEach((field) => {
-		if (
-			!fieldCannotBeDeleted(
-				field,
-				showMatchingColumnsSelector.value,
-				resourceMapperMode.value,
-				matchingColumns.value,
-			)
-		) {
-			field.removed = true;
-			state.paramValue.schema.splice(state.paramValue.schema.indexOf(field), 1, field);
-		}
-	});
 	emitValueChanged();
 }
 
@@ -443,11 +459,13 @@ defineExpose({
 			:loading="state.loading"
 			:loadingError="state.loadingError"
 			:fieldsToMap="state.paramValue.schema"
+			:teleported="teleported"
 			@modeChanged="onModeChanged"
 			@retryFetch="initFetching"
 		/>
 		<matching-columns-select
 			v-if="showMatchingColumnsSelector"
+			:parameter="props.parameter"
 			:label-size="labelSize"
 			:fieldsToMap="state.paramValue.schema"
 			:typeOptions="props.parameter.typeOptions"
@@ -455,7 +473,10 @@ defineExpose({
 			:loading="state.loading"
 			:initialValue="matchingColumns"
 			:serviceName="nodeType?.displayName || locale.baseText('generic.service')"
+			:teleported="teleported"
+			:refreshInProgress="state.refreshInProgress"
 			@matchingColumnsChanged="onMatchingColumnsChanged"
+			@refreshFieldList="initFetching(true)"
 		/>
 		<n8n-text v-if="!showMappingModeSelect && state.loading" size="small">
 			<n8n-icon icon="sync-alt" size="xsmall" :spin="true" />
@@ -478,6 +499,7 @@ defineExpose({
 			:showMatchingColumnsSelector="showMatchingColumnsSelector"
 			:showMappingModeSelect="showMappingModeSelect"
 			:loading="state.loading"
+			:teleported="teleported"
 			:refreshInProgress="state.refreshInProgress"
 			@fieldValueChanged="fieldValueChanged"
 			@removeField="removeField"

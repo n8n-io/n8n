@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
+import { Container } from 'typedi';
 import { isSourceControlLicensed } from '../sourceControlHelper.ee';
-import Container from 'typedi';
 import { SourceControlPreferencesService } from '../sourceControlPreferences.service.ee';
 
 export const sourceControlLicensedAndEnabledMiddleware: RequestHandler = (req, res, next) => {

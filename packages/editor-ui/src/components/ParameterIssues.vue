@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style['parameter-issues']" v-if="issues.length">
+	<div :class="$style['parameter-issues']" data-test-id="parameter-issues" v-if="issues.length">
 		<n8n-tooltip placement="top">
 			<template #content>
 				<titled-list :title="`${$locale.baseText('parameterInput.issues')}:`" :items="issues" />
