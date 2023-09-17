@@ -4,40 +4,75 @@ import { N8nAddInputEndpoint } from './N8nAddInputEndpointType';
 export const register = () => {
 	registerEndpointRenderer<N8nAddInputEndpoint>(N8nAddInputEndpoint.type, {
 		makeNode: (endpointInstance: N8nAddInputEndpoint) => {
-			const group = svg.node('g', {
+			const lineOffset = -2;
+			const width = endpointInstance.params.width;
+			const height = endpointInstance.params.height;
+			const unconnectedDiamondSize = width / 2;
+			const unconnectedDiamondWidth = unconnectedDiamondSize * Math.sqrt(2);
+			const unconnectedPlusStroke = 2;
+			const unconnectedPlusSize = width - 2 * unconnectedPlusStroke;
+
+			const sizeDifference = (unconnectedPlusSize - unconnectedDiamondWidth) / 2;
+
+			const container = svg.node('g', {
 				style: `--svg-color: var(${endpointInstance.params.color})`,
+				width,
+				height,
 			});
-			const containerBorder = svg.node('rect', {
-				rx: 3,
-				'stroke-width': 2,
-				fillOpacity: 0,
-				height: endpointInstance.params.size - 2,
-				width: endpointInstance.params.size - 2,
-				y: 1,
+
+			const unconnectedGroup = svg.node('g', { class: 'add-input-endpoint-unconnected' });
+			const unconnectedLine = svg.node('rect', {
+				x: unconnectedDiamondWidth / 2 + sizeDifference,
+				y: unconnectedDiamondWidth + lineOffset,
+				width: 2,
+				height: height - unconnectedDiamondWidth - unconnectedPlusSize,
+				'stroke-width': 0,
+				class: 'add-input-endpoint-line',
+			});
+			const unconnectedPlusGroup = svg.node('g', {
+				transform: `translate(0, ${height - unconnectedPlusSize + lineOffset})`,
+			});
+			const plusRectangle = svg.node('rect', {
 				x: 1,
+				y: 1,
+				rx: 3,
+				'stroke-width': unconnectedPlusStroke,
+				fillOpacity: 0,
+				height: unconnectedPlusSize,
+				width: unconnectedPlusSize,
 				class: 'add-input-endpoint-plus-rectangle',
 			});
-			const plusPath = svg.node('path', {
-				d: 'm16.40655,10.89837l-3.30491,0l0,-3.30491c0,-0.40555 -0.32889,-0.73443 -0.73443,-0.73443l-0.73443,0c-0.40554,0 -0.73442,0.32888 -0.73442,0.73443l0,3.30491l-3.30491,0c-0.40555,0 -0.73443,0.32888 -0.73443,0.73442l0,0.73443c0,0.40554 0.32888,0.73443 0.73443,0.73443l3.30491,0l0,3.30491c0,0.40554 0.32888,0.73442 0.73442,0.73442l0.73443,0c0.40554,0 0.73443,-0.32888 0.73443,-0.73442l0,-3.30491l3.30491,0c0.40554,0 0.73442,-0.32889 0.73442,-0.73443l0,-0.73443c0,-0.40554 -0.32888,-0.73442 -0.73442,-0.73442z',
+			const plusIcon = svg.node('path', {
+				transform: `scale(${width / 24})`,
+				d: 'm15.40655,9.89837l-3.30491,0l0,-3.30491c0,-0.40555 -0.32889,-0.73443 -0.73443,-0.73443l-0.73443,0c-0.40554,0 -0.73442,0.32888 -0.73442,0.73443l0,3.30491l-3.30491,0c-0.40555,0 -0.73443,0.32888 -0.73443,0.73442l0,0.73443c0,0.40554 0.32888,0.73443 0.73443,0.73443l3.30491,0l0,3.30491c0,0.40554 0.32888,0.73442 0.73442,0.73442l0.73443,0c0.40554,0 0.73443,-0.32888 0.73443,-0.73442l0,-3.30491l3.30491,0c0.40554,0 0.73442,-0.32889 0.73442,-0.73443l0,-0.73443c0,-0.40554 -0.32888,-0.73442 -0.73442,-0.73442z',
 				class: 'add-input-endpoint-plus-icon',
 			});
 
-			const rectangle = svg.node('rect', {
-				width: 20,
-				height: 8,
-				y: 8,
-				x: 2,
-				class: 'add-input-endpoint-connected-rectangle',
+			unconnectedPlusGroup.appendChild(plusRectangle);
+			unconnectedPlusGroup.appendChild(plusIcon);
+			unconnectedGroup.appendChild(unconnectedLine);
+			unconnectedGroup.appendChild(unconnectedPlusGroup);
+
+			const defaultGroup = svg.node('g', { class: 'add-input-endpoint-default' });
+			const defaultDiamond = svg.node('rect', {
+				x: sizeDifference + unconnectedPlusStroke,
+				y: 0,
+				'stroke-width': 0,
+				width: unconnectedDiamondSize,
+				height: unconnectedDiamondSize,
+				transform: `translate(${unconnectedDiamondWidth / 2}, 0) rotate(45)`,
+				class: 'add-input-endpoint-diamond',
 			});
 
-			group.appendChild(containerBorder);
-			group.appendChild(plusPath);
-			group.appendChild(rectangle);
+			defaultGroup.appendChild(defaultDiamond);
+
+			container.appendChild(unconnectedGroup);
+			container.appendChild(defaultGroup);
 
 			endpointInstance.setupOverlays();
 			endpointInstance.setVisible(false);
 
-			return group;
+			return container;
 		},
 		updateNode: (endpointInstance: N8nAddInputEndpoint) => {},
 	});

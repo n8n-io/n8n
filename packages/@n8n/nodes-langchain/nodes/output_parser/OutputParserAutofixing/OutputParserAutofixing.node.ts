@@ -20,13 +20,13 @@ export class OutputParserAutofixing implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Output Parser'],
+				AI: ['Output Parsers'],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
 			{
-				displayName: 'Language Model',
+				displayName: 'Model',
 				maxConnections: 1,
 				type: 'languageModel',
 				required: true,

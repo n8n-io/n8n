@@ -1219,4 +1219,13 @@ export const schema = {
 			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
 		},
 	},
+
+	sourceControl: {
+		defaultKeyPairType: {
+			doc: 'Default SSH key type to use when generating SSH keys',
+			format: ['rsa', 'ed25519'] as const,
+			default: 'ed25519',
+			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
+		},
+	},
 };

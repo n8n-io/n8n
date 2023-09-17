@@ -103,9 +103,17 @@ function onBackButton() {
 		:name="`panel-slide-${activeViewStack.transitionDirection}`"
 		@afterLeave="onTransitionEnd"
 	>
-		<aside :class="$style.nodesListPanel" @keydown.capture.stop :key="`${activeViewStack.uuid}`">
+		<aside
+			:class="[$style.nodesListPanel, activeViewStack.panelClass]"
+			@keydown.capture.stop
+			:key="`${activeViewStack.uuid}`"
+		>
 			<header
-				:class="{ [$style.header]: true, [$style.hasBg]: !activeViewStack.subtitle }"
+				:class="{
+					[$style.header]: true,
+					[$style.hasBg]: !activeViewStack.subtitle,
+					'nodes-list-panel-header': true,
+				}"
 				data-test-id="nodes-list-header"
 			>
 				<div :class="$style.top">
@@ -125,7 +133,7 @@ function onBackButton() {
 						:color="activeViewStack.nodeIcon.color"
 						:circle="false"
 						:showTooltip="false"
-						:size="16"
+						:size="20"
 					/>
 					<p :class="$style.title" v-text="activeViewStack.title" v-if="activeViewStack.title" />
 				</div>
@@ -194,7 +202,7 @@ function onBackButton() {
 	padding: 0;
 }
 .nodeIcon {
-	--node-icon-size: 16px;
+	--node-icon-size: 20px;
 	margin-right: var(--spacing-s);
 }
 .renderedItems {
@@ -273,5 +281,17 @@ function onBackButton() {
 }
 .offsetSubtitle {
 	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
+}
+</style>
+
+<style lang="scss">
+@each $node-type in $supplemental-node-types {
+	.nodes-list-panel-#{$node-type} .nodes-list-panel-header {
+		color: var(--node-type-#{$node-type}-color);
+
+		.n8n-node-icon svg {
+			color: var(--node-type-#{$node-type}-color);
+		}
+	}
 }
 </style>

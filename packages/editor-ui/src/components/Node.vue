@@ -332,7 +332,7 @@ export default defineComponent({
 			if (this.outputs.length) {
 				const otherOutputs = this.outputs.filter((outputName) => outputName !== 'main');
 				if (otherOutputs.length) {
-					classes[`node-other`] = true;
+					classes['node-other'] = true;
 				}
 			}
 
@@ -403,7 +403,7 @@ export default defineComponent({
 		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
-			if (workflowExecution && workflowExecution.waitTill) {
+			if (workflowExecution?.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
@@ -646,7 +646,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -845,6 +845,7 @@ export default defineComponent({
 				height: 25px;
 			}
 		}
+
 		.node-info-icon {
 			bottom: 0px !important;
 			right: 1px !important;
@@ -852,17 +853,38 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		width: 250px;
+		$configurable-node-width: 250px;
+		$configurable-node-icon-offset: 40px;
+		$configurable-node-icon-size: 30px;
+
+		width: $configurable-node-width;
 
 		.node-description {
-			top: 105px;
-			left: unset;
+			top: calc(50%);
+			transform: translateY(-50%);
+			left: calc($configurable-node-icon-offset + $configurable-node-icon-size + var(--spacing-s));
+			text-align: left;
+			overflow: auto;
+			white-space: normal;
+			min-width: unset;
+			max-width: calc(
+				$configurable-node-width - $configurable-node-icon-offset - $configurable-node-icon-size - 2 *
+					var(--spacing-s)
+			);
 		}
 
 		.node-default {
+			.node-icon {
+				left: $configurable-node-icon-offset;
+			}
+
 			.node-options {
 				left: 65px;
 				height: 25px;
+			}
+
+			.node-executing-info {
+				left: -67px;
 			}
 		}
 	}
@@ -1159,25 +1181,54 @@ export default defineComponent({
 	}
 }
 
+.diamond-output-endpoint {
+	--diamond-output-endpoint--transition-duration: 0.15s;
+
+	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
+	transform: rotate(45deg);
+}
+
 .add-input-endpoint {
+	--add-input-endpoint--transition-duration: 0.15s;
+
 	&:not(.jtk-endpoint-connected) {
 		cursor: pointer;
 	}
 
+	.add-input-endpoint-default {
+		transition: transform var(--add-input-endpoint--transition-duration) ease;
+	}
+
+	.add-input-endpoint-diamond {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-line {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
 	.add-input-endpoint-plus-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--color-foreground-xlight);
-		stroke: var(--color-foreground-xdark);
+		stroke: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-plus-icon {
 		stroke: none;
-		fill: var(--color-foreground-xdark);
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
 	}
 
 	.add-input-endpoint-connected-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
 		fill: var(--color-foreground-xdark);
 		stroke: var(--color-foreground-xdark);
-		display: none;
 	}
 
 	&.rect-input-endpoint-hover {
@@ -1191,16 +1242,8 @@ export default defineComponent({
 	}
 
 	&.jtk-endpoint-connected {
-		.add-input-endpoint-plus-rectangle {
+		.add-input-endpoint-unconnected {
 			display: none;
-		}
-
-		.add-input-endpoint-plus-icon {
-			display: none;
-		}
-
-		.add-input-endpoint-connected-rectangle {
-			display: initial;
 		}
 
 		&.rect-input-endpoint-hover {
@@ -1231,7 +1274,7 @@ export default defineComponent({
 
 	&--data {
 		text-align: center;
-		margin-top: calc(var(--spacing-m) * -1);
+		margin-top: calc(var(--spacing-l) * -1);
 		margin-left: 0;
 	}
 }
@@ -1246,7 +1289,7 @@ export default defineComponent({
 
 	&--data {
 		text-align: center;
-		margin-top: calc(var(--spacing-m) * -1);
+		margin-top: calc(var(--spacing-5xs) * -1);
 		margin-left: 0;
 	}
 }

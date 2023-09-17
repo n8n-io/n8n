@@ -3,9 +3,11 @@ import type {
 	SourceControlAggregatedFile,
 	SourceControlPreferences,
 	SourceControlStatus,
+	SshKeyTypes,
 } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 import type { IDataObject } from 'n8n-workflow';
+import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const sourceControlApiRoot = '/source-control';
 
@@ -70,6 +72,11 @@ export const disconnect = async (
 	});
 };
 
-export const generateKeyPair = async (context: IRestApiContext): Promise<string> => {
-	return makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/generate-key-pair`);
+export const generateKeyPair = async (
+	context: IRestApiContext,
+	keyGeneratorType?: TupleToUnion<SshKeyTypes>,
+): Promise<string> => {
+	return makeRestApiRequest(context, 'POST', `${sourceControlApiRoot}/generate-key-pair`, {
+		keyGeneratorType,
+	});
 };

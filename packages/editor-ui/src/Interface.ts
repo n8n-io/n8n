@@ -1,4 +1,11 @@
-import type { AI_NODE_CREATOR_VIEW, CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type {
+	AI_NODE_CREATOR_VIEW,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	SignInType,
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+} from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
 import type {
@@ -36,16 +43,10 @@ import type {
 	IN8nUISettings,
 	BannerName,
 	INodeExecutionData,
+	INodeProperties,
 } from 'n8n-workflow';
-import type { SignInType } from './constants';
-import type {
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-} from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy } from '@/utils/typeHelpers';
-import type { INodeProperties } from 'n8n-workflow';
+import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 
 export * from 'n8n-design-system/types';
 
@@ -111,7 +112,7 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export const enum EndpointType {
+export const enum NodeConnectionType {
 	Agent = 'agent',
 	Chain = 'chain',
 	Main = 'main',
@@ -182,7 +183,7 @@ export interface INodeTranslationHeaders {
 export interface IAiDataContent {
 	data: INodeExecutionData[] | null;
 	inOut: 'input' | 'output';
-	type: EndpointType;
+	type: NodeConnectionType;
 	metadata: {
 		executionTime: number;
 		startTime: number;
@@ -766,15 +767,18 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
 };
 
-export interface SimplifiedNodeType
-	extends Pick<
-		INodeTypeDescription,
-		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
-	> {}
+export type SimplifiedNodeType = Pick<
+	INodeTypeDescription,
+	'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+>;
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
 	icon?: string;
+	iconProps?: {
+		color?: string;
+	};
+	panelClass?: string;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -1042,7 +1046,7 @@ export type NewCredentialsModal = ModalState & {
 	showAuthSelector?: boolean;
 };
 
-export type IRunDataDisplayMode = 'ai' | 'table' | 'json' | 'binary' | 'schema' | 'html';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1499,6 +1503,8 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
+export type SshKeyTypes = ['ed25519', 'rsa'];
+
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
@@ -1507,6 +1513,7 @@ export type SourceControlPreferences = {
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
 };
 

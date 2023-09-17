@@ -181,11 +181,7 @@
 
 		<div
 			v-else-if="
-				hasNodeRun &&
-				dataCount > 0 &&
-				maxRunIndex === 0 &&
-				!isArtificialRecoveredEventItem &&
-				!isAiView
+				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
@@ -251,6 +247,7 @@
 						})
 					}}
 				</n8n-text>
+				<slot name="content" v-else-if="$slots['content']"></slot>
 				<NodeErrorView
 					v-else
 					:error="workflowRunData[node.name][runIndex].error"
@@ -295,6 +292,9 @@
 					@click="downloadJsonData()"
 				/>
 			</div>
+
+			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
+			<slot name="content" v-else-if="hasNodeRun && $slots['content']"></slot>
 
 			<div
 				v-else-if="
@@ -342,10 +342,6 @@
 					:runIndex="runIndex"
 					:totalRuns="maxRunIndex"
 				/>
-			</Suspense>
-
-			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'ai'">
-				<run-data-ai :node="ndvStore.activeNode" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
@@ -459,8 +455,7 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView &&
-				!isAiView
+				!isSchemaView
 			"
 			v-show="!editMode.enabled"
 		>
@@ -498,7 +493,6 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { get } from 'lodash-es';
 import { saveAs } from 'file-saver';
 import type {
 	ConnectionTypes,
@@ -547,8 +541,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
 const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
@@ -689,9 +683,6 @@ export default defineComponent({
 			}
 			return null;
 		},
-		isAiView(): boolean {
-			return this.displayMode === 'ai';
-		},
 		isSchemaView(): boolean {
 			return this.displayMode === 'schema';
 		},
@@ -747,15 +738,6 @@ export default defineComponent({
 				this.activeNode.parameters.operation === 'generateHtmlTemplate'
 			) {
 				defaults.unshift({ label: 'HTML', value: 'html' });
-			}
-
-			if (this.isPaneTypeOutput && this.activeNode) {
-				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(
-					this.activeNode.name,
-				);
-				if (get(resultData, [this.runIndex, 'metadata'])) {
-					defaults.unshift({ label: 'AI', value: 'ai' });
-				}
 			}
 
 			return defaults;
@@ -1296,18 +1278,6 @@ export default defineComponent({
 
 			return inputData.length;
 		},
-		hasAiMetadata(): boolean {
-			if (this.node) {
-				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
-
-				if (!resultData || !Array.isArray(resultData)) {
-					return false;
-				}
-
-				return !!resultData[resultData.length - 1!].metadata;
-			}
-			return false;
-		},
 		init() {
 			// Reset the selected output index every time another node gets selected
 			this.outputIndex = 0;
@@ -1321,15 +1291,6 @@ export default defineComponent({
 					mode: 'binary',
 				});
 			} else if (this.displayMode === 'binary') {
-				this.ndvStore.setPanelDisplayMode({
-					pane: this.paneType as 'input' | 'output',
-					mode: 'table',
-				});
-			}
-
-			if (this.displayMode === 'ai' && !this.hasAiMetadata()) {
-				// If the user has previously selected the AI view but the
-				// current node doesn't have any data disply the table view instead
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',
 					mode: 'table',

@@ -335,10 +335,14 @@ import {
 } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import { CONNECTOR_PAINT_STYLE_DATA, OVERLAY_REVERSE_ARROW_ID } from '@/utils/nodeViewUtils';
+import {
+	getConnectorPaintStyleData,
+	OVERLAY_ENDPOINT_ARROW_ID,
+	OVERLAY_REVERSE_ARROW_ID,
+} from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 import { SCOPED_ENDPOINT_TYPES } from '@/constants';
-import { EndpointType } from '@/Interface';
+import type { NodeConnectionType } from '@/Interface';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -595,6 +599,13 @@ export default defineComponent({
 				// Makes sure that nothing gets selected while select or move is active
 				returnClasses.push('do-not-select');
 			}
+
+			if (this.connectionDragScope) {
+				returnClasses.push(
+					`connection-drag-scope-active connection-drag-scope-active-${this.connectionDragScope}`,
+				);
+			}
+
 			return returnClasses;
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -653,6 +664,7 @@ export default defineComponent({
 			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
+			connectionDragScope: '',
 			renamingActive: false,
 			showStickyButton: false,
 			isExecutionPreview: false,
@@ -1971,7 +1983,9 @@ export default defineComponent({
 					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
 
 					// If node has only scoped outputs, position it below the last selected node
-					if (outputs.every((output) => SCOPED_ENDPOINT_TYPES.includes(output as EndpointType))) {
+					if (
+						outputs.every((output) => SCOPED_ENDPOINT_TYPES.includes(output as NodeConnectionType))
+					) {
 						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
@@ -2156,12 +2170,15 @@ export default defineComponent({
 			// Handle connection of scoped_endpoint types
 			if (lastSelectedNodeEndpointUuid) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
-				if (SCOPED_ENDPOINT_TYPES.includes(lastSelectedEndpoint.scope as EndpointType)) {
+				if (SCOPED_ENDPOINT_TYPES.includes(lastSelectedEndpoint.scope as NodeConnectionType)) {
 					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
 					const viableConnection = newNodeConnections.find((conn) => {
-						return conn.scope === connectionType && conn.isTarget;
+						return (
+							conn.scope === connectionType &&
+							lastSelectedEndpoint.parameters.connection !== conn.parameters.connection
+						);
 					});
 
 					this.instance?.connect({
@@ -2195,7 +2212,7 @@ export default defineComponent({
 			eventSource: NodeCreatorOpenSource;
 			connection?: Connection;
 			nodeCreatorView?: string;
-			outputType?: EndpointType;
+			outputType?: NodeConnectionType;
 			endpointUuid?: string;
 		}) {
 			const type = info.outputType || 'main';
@@ -2447,14 +2464,19 @@ export default defineComponent({
 						);
 					}, 0);
 
-					const arrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
+					const endpointArrow = NodeViewUtils.getOverlay(
+						info.connection,
+						OVERLAY_ENDPOINT_ARROW_ID,
+					);
+					const reverseArrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
 					if (sourceInfo.type === 'main') {
 						// For some reason the arrow is visible by default, so hide it
-						arrow?.setVisible(false);
+						reverseArrow?.setVisible(false);
 					} else {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DATA);
-						arrow?.setVisible(true);
+						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
+						endpointArrow?.setVisible(false);
+						reverseArrow?.setVisible(false);
 					}
 				}
 				this.dropPrevented = false;
@@ -2690,12 +2712,16 @@ export default defineComponent({
 					NodeViewUtils.resetConnectionAfterPull(connection);
 					window.removeEventListener('mousemove', onMouseMove);
 					window.removeEventListener('mouseup', onMouseUp);
+
+					this.connectionDragScope = '';
 				};
 
 				window.addEventListener('mousemove', onMouseMove);
 				window.addEventListener('touchmove', onMouseMove);
 				window.addEventListener('mouseup', onMouseUp);
 				window.addEventListener('touchend', onMouseMove);
+
+				this.connectionDragScope = connection.parameters.type;
 			} catch (e) {
 				console.error(e);
 			}
@@ -2777,15 +2803,18 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
-
-			// Get all the endpoints and unbind the events
-			const elements = this.instance.getManagedElements();
-			for (const element of Object.values(elements)) {
-				const endpoints = element.endpoints;
-				for (const endpoint of endpoints || []) {
-					const endpointInstance = endpoint?.endpoint;
-					if (endpointInstance && endpointInstance.type === N8nPlusEndpointType) {
-						(endpointInstance as N8nPlusEndpoint).unbindEvents();
+		},
+		unbindEndpointEventListeners(bind = true) {
+			if (this.instance) {
+				// Get all the endpoints and unbind the events
+				const elements = this.instance.getManagedElements();
+				for (const element of Object.values(elements)) {
+					const endpoints = element.endpoints;
+					for (const endpoint of endpoints || []) {
+						const endpointInstance = endpoint?.endpoint;
+						if (endpointInstance && endpointInstance.type === N8nPlusEndpointType) {
+							(endpointInstance as N8nPlusEndpoint).unbindEvents();
+						}
 					}
 				}
 			}
@@ -3888,6 +3917,7 @@ export default defineComponent({
 			this.nodeCreatorStore.setShowScrim(false);
 
 			// Reset nodes
+			this.unbindEndpointEventListeners();
 			this.deleteEveryEndpoint();
 
 			// Make sure that if there is a waiting test-webhook that it gets removed
@@ -4485,6 +4515,34 @@ export default defineComponent({
 </style>
 
 <style lang="scss">
+.node-view-wrapper {
+	&.connection-drag-scope-active {
+		--drag-scope-active-disabled-color: var(--color-foreground-dark);
+
+		@each $node-type in $supplemental-node-types {
+			&:not(.connection-drag-scope-active-#{$node-type}) {
+				.diamond-output-endpoint,
+				.jtk-connector,
+				.add-input-endpoint {
+					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+				}
+			}
+
+			&.connection-drag-scope-active-#{$node-type} {
+				.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
+					transform: scale(1.375) rotate(45deg);
+				}
+
+				.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
+					.add-input-endpoint-default {
+						transform: translate(-4px, -4px) scale(1.375);
+					}
+				}
+			}
+		}
+	}
+}
+
 .drop-add-node-label {
 	color: var(--color-text-dark);
 	font-weight: 600;

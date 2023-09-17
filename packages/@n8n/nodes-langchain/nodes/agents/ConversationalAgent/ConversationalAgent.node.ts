@@ -37,11 +37,15 @@ export class ConversationalAgent implements INodeType {
 		inputs: [
 			'main',
 			{
-				displayName: 'Language Model',
+				displayName: 'Model',
 				maxConnections: 1,
 				type: 'languageModel',
 				filter: {
-					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
+					nodes: [
+						'@n8n/nodes-langchain.lmChatAnthropic',
+						'@n8n/nodes-langchain.lmChatOllama',
+						'@n8n/nodes-langchain.lmChatOpenAi',
+					],
 				},
 				required: true,
 			},
@@ -66,12 +70,6 @@ export class ConversationalAgent implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				default: '={{ $json.input }}',
-			},
-			{
 				displayName: 'Mode',
 				name: 'mode',
 				type: 'options',
@@ -90,7 +88,12 @@ export class ConversationalAgent implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
-
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				default: '={{ $json.input }}',
+			},
 			{
 				displayName: 'System Message',
 				name: 'systemMessage',
@@ -106,7 +109,7 @@ export class ConversationalAgent implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		this.logger.verbose('Executing Vector Store QA Chain');
+		this.logger.verbose('Executing Conversational Agent');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
 		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;

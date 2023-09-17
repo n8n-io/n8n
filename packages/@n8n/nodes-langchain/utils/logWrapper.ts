@@ -6,7 +6,7 @@ import { BaseChatMessageHistory } from 'langchain/schema';
 import { BaseChatModel } from 'langchain/chat_models/base';
 import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
 
-import { Embeddings } from 'langchain/embeddings';
+import { Embeddings } from 'langchain/embeddings/base';
 import type { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { VectorStore } from 'langchain/vectorstores/base';
 import type { Document } from 'langchain/document';
@@ -20,7 +20,7 @@ import { BaseRetriever } from 'langchain/schema/retriever';
 import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
 import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { N8nJsonLoader } from './N8nJsonLoader';
-import type { N8nBinaryLoader } from './N8nBinaryLoader';
+import { N8nBinaryLoader } from './N8nBinaryLoader';
 
 export function logWrapper(
 	originalInstance:
@@ -181,7 +181,10 @@ export function logWrapper(
 			}
 
 			// ========== N8nJsonLoader ==========
-			if (originalInstance instanceof N8nJsonLoader) {
+			if (
+				originalInstance instanceof N8nJsonLoader ||
+				originalInstance instanceof N8nBinaryLoader
+			) {
 				// JSON Input -> Documents
 				if (prop === 'process' && 'process' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {

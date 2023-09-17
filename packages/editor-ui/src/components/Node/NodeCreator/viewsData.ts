@@ -29,6 +29,7 @@ import {
 } from '@/constants';
 import { useI18n } from '@/composables';
 import type { SimplifiedNodeType } from '@/Interface';
+import { NodeConnectionType } from '@/Interface';
 
 interface NodeViewItem {
 	key: string;
@@ -37,6 +38,11 @@ interface NodeViewItem {
 		name?: string;
 		title: string;
 		icon: string;
+		iconProps?: {
+			color?: string;
+		};
+		connectionType?: NodeConnectionType;
+		panelClass?: string;
 		group?: string[];
 		description?: string;
 		forceIncludeNodes?: string[];
@@ -53,6 +59,16 @@ interface NodeView {
 
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
+
+	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionType) {
+		return {
+			connectionType: nodeConnectionType,
+			iconProps: {
+				color: `var(--node-type-${nodeConnectionType}-color)`,
+			},
+			panelClass: `nodes-list-panel-${nodeConnectionType}`,
+		};
+	}
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -76,6 +92,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_AGENTS,
 					icon: 'robot',
+					...getAISubcategoryProperties(NodeConnectionType.Agent),
 				},
 			},
 			{
@@ -84,6 +101,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_CHAINS,
 					icon: 'link',
+					...getAISubcategoryProperties(NodeConnectionType.Chain),
 				},
 			},
 			{
@@ -92,6 +110,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
 					icon: 'file-import',
+					...getAISubcategoryProperties(NodeConnectionType.Document),
 				},
 			},
 			{
@@ -100,6 +119,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_LANGUAGE_MODELS,
 					icon: 'language',
+					...getAISubcategoryProperties(NodeConnectionType.LanguageModel),
 				},
 			},
 			{
@@ -108,6 +128,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_MEMORY,
 					icon: 'brain',
+					...getAISubcategoryProperties(NodeConnectionType.Memory),
 				},
 			},
 			{
@@ -116,6 +137,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_OUTPUTPARSER,
 					icon: 'list',
+					...getAISubcategoryProperties(NodeConnectionType.OutputParser),
 				},
 			},
 			{
@@ -124,6 +146,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_RETRIEVERS,
 					icon: 'search',
+					...getAISubcategoryProperties(NodeConnectionType.VectorRetriever),
 				},
 			},
 			{
@@ -132,6 +155,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
 					icon: 'remove-format',
+					...getAISubcategoryProperties(NodeConnectionType.TextSplitter),
 				},
 			},
 			{
@@ -140,6 +164,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_TOOLS,
 					icon: 'tools',
+					...getAISubcategoryProperties(NodeConnectionType.Tool),
 				},
 			},
 			{
@@ -148,6 +173,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
 					icon: 'project-diagram',
+					...getAISubcategoryProperties(NodeConnectionType.VectorStore),
 				},
 			},
 		],
