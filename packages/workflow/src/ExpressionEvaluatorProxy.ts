@@ -31,8 +31,8 @@ const differenceChecker = (diff: TmplDifference) => {
 	}
 };
 const tournamentEvaluator = new Tournament(errorHandler, undefined);
-let evaluator: Evaluator = tmpl.tmpl;
-let currentEvaluatorType: ExpressionEvaluatorType = 'tmpl';
+let evaluator = tournamentEvaluator.execute.bind(tournamentEvaluator);
+let currentEvaluatorType: ExpressionEvaluatorType = 'tournament';
 let diffExpressions = false;
 
 export const setErrorHandler = (handler: ErrorHandler) => {
