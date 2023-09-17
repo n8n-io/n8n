@@ -83,15 +83,21 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 					return false;
 				}
 				const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
-				return outputs ? outputs.filter((output) => output !== 'main').length > 0 : false;
+				const outputTypes = NodeHelpers.getConnectionNames(outputs);
+
+				return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
 			};
 		},
 		isConfigurableNode() {
 			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
 				const nodeType = this.getNodeType(nodeTypeName);
+				if (nodeType === null) {
+					return false;
+				}
 				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+				const inputTypes = NodeHelpers.getConnectionNames(inputs);
 
-				return inputs ? inputs.filter((input) => input !== 'main').length > 0 : false;
+				return inputTypes ? inputTypes.filter((input) => input !== 'main').length > 0 : false;
 			};
 		},
 		isTriggerNode() {

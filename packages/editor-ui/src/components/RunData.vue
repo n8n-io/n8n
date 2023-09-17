@@ -687,12 +687,15 @@ export default defineComponent({
 			return this.displayMode === 'schema';
 		},
 		isTriggerNode(): boolean {
+			if (this.node === null) {
+				return false;
+			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		canPinData(): boolean {
 			// Only "main" inputs can pin data
 
-			if (!this.node) {
+			if (this.node === null) {
 				return false;
 			}
 

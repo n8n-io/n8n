@@ -330,7 +330,9 @@ export default defineComponent({
 			};
 
 			if (this.outputs.length) {
-				const otherOutputs = this.outputs.filter((outputName) => outputName !== 'main');
+				const outputTypes = NodeHelpers.getConnectionNames(this.outputs);
+
+				const otherOutputs = outputTypes.filter((outputName) => outputName !== 'main');
 				if (otherOutputs.length) {
 					classes['node-other'] = true;
 				}
