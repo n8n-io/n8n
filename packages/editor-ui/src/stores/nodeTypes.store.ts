@@ -83,7 +83,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 					return false;
 				}
 				const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
-				const outputTypes = NodeHelpers.getConnectionNames(outputs);
+				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 				return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
 			};
@@ -95,7 +95,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 					return false;
 				}
 				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
-				const inputTypes = NodeHelpers.getConnectionNames(inputs);
+				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
 				return inputTypes ? inputTypes.filter((input) => input !== 'main').length > 0 : false;
 			};

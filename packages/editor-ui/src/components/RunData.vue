@@ -785,7 +785,7 @@ export default defineComponent({
 			return (this.dataSize / 1024 / 1000).toLocaleString();
 		},
 		maxOutputIndex(): number {
-			if (this.node === null) {
+			if (this.node === null || this.runIndex === undefined) {
 				return 0;
 			}
 
@@ -1286,8 +1286,14 @@ export default defineComponent({
 			this.outputIndex = 0;
 			this.refreshDataSize();
 			this.closeBinaryDataDisplay();
-			this.connectionType =
-				!this.nodeType || this.nodeType.outputs.length === 0 ? 'main' : this.nodeType?.outputs[0];
+			let outputTypes: ConnectionTypes[] = [];
+			if (this.nodeType !== null && this.node !== null) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+				const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+				outputTypes = NodeHelpers.getConnectionTypes(outputs);
+			}
+			this.connectionType = outputTypes.length === 0 ? 'main' : outputTypes[0];
 			if (this.binaryData.length > 0) {
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',

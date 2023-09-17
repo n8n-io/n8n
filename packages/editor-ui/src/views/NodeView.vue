@@ -1981,17 +1981,29 @@ export default defineComponent({
 					const workflow = this.getCurrentWorkflow();
 					const workflowNode = workflow.getNode(newNodeData.name);
 					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
+					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 					// If node has only scoped outputs, position it below the last selected node
 					if (
-						outputs.every((output) => SCOPED_ENDPOINT_TYPES.includes(output as NodeConnectionType))
+						outputTypes.every((outputName) =>
+							SCOPED_ENDPOINT_TYPES.includes(outputName as NodeConnectionType),
+						)
 					) {
 						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
-						const scopedConnectionIndex = (lastSelectedNodeType?.inputs || []).findIndex(
-							(output) => outputs[0] === output,
+
+						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
+						const lastSelectedInputs = NodeHelpers.getNodeInputs(
+							workflow,
+							lastSelectedNodeWorkflow!,
+							lastSelectedNodeType!,
+						);
+						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
+
+						const scopedConnectionIndex = (lastSelectedInputTypes || []).findIndex(
+							(inputType) => outputs[0] === inputType,
 						);
 
 						newNodeData.position = NodeViewUtils.getNewNodePosition(

@@ -1008,7 +1008,7 @@ export function getNodeWebhookUrl(
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
-export function getConnectionNames(
+export function getConnectionTypes(
 	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
 ): ConnectionTypes[] {
 	return connections

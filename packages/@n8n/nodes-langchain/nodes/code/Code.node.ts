@@ -1,17 +1,18 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IExecuteFunctions,
-	// INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	SupplyData,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
 } from 'n8n-workflow';
 
 // TODO: Add support for execute function. Got already started but got commented out
 
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
-// import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code//utils';
+import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code//utils';
 import type { Tool } from 'langchain/tools';
 import { makeResolverFromLegacyOptions } from '@n8n/vm2';
 import { logWrapper } from '../../utils/logWrapper';
@@ -24,7 +25,7 @@ const connectorTypes = {
 	document: 'Document',
 	embedding: 'Embedding',
 	languageModel: 'Language Model',
-	// main: 'Main',
+	main: 'Main',
 	memory: 'Memory',
 	outputParser: 'Output Parser',
 	textSplitter: 'Text Splitter',
@@ -32,6 +33,18 @@ const connectorTypes = {
 	vectorRetriever: 'Vector Retriever',
 	vectorStore: 'Vector Store',
 };
+
+const defaultCodeExecute = `const { PromptTemplate } = require('langchain/prompts');
+
+const query = 'Tell me a joke';
+const prompt = PromptTemplate.fromTemplate(query);
+const llm = await this.getInputConnectionData('languageModel', 0);
+let chain = prompt.pipe(llm);
+const response = await chain.invoke();
+return [ {json: { response } } ];`;
+
+const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
+return new WikipediaQueryRun();`;
 
 export const vmResolver = makeResolverFromLegacyOptions({
 	external: {
@@ -41,13 +54,25 @@ export const vmResolver = makeResolverFromLegacyOptions({
 	builtin: builtIn?.split(',') ?? [],
 });
 
-function getSandbox(this: IExecuteFunctions, code: string, index = 0) {
+function getSandbox(
+	this: IExecuteFunctions,
+	code: string,
+	options?: { addItems?: boolean; itemIndex?: number },
+) {
+	const itemIndex = options?.itemIndex ?? 0;
 	const node = this.getNode();
 	const workflowMode = this.getMode();
 
-	const context = getSandboxContext.call(this, index);
+	const context = getSandboxContext.call(this, itemIndex);
+	context.addInputData = this.addInputData;
+	context.addOutputData = this.addOutputData;
+	context.getInputConnectionData = this.getInputConnectionData;
+	context.getNode = this.getNode;
+	if (options?.addItems) {
+		context.items = context.$input.all();
+	}
 
-	const sandbox = new JavaScriptSandbox(context, code, index, this.helpers, {
+	const sandbox = new JavaScriptSandbox(context, code, itemIndex, this.helpers, {
 		resolver: vmResolver,
 	});
 
@@ -87,33 +112,53 @@ export class Code implements INodeType {
 			connectorTypes,
 		)}; return values.map(value => { return { type: value.type, displayName: connectorTypes[value.type] !== 'Main' ? connectorTypes[value.type] : undefined } } ) })($parameter.outputs.output) }}`,
 		properties: [
-			// {
-			// 	displayName: 'JavaScript - Execute',
-			// 	name: 'jsCodeExecute',
-			// 	type: 'string',
-			// 	typeOptions: {
-			// 		editor: 'codeNodeEditor',
-			// 		editorLanguage: 'javaScript',
-			// 	},
-			// 	default:
-			// 		'',
-			// 	// hint: 'You can access the input the tool receives via the input property "query". The returned value should be a single string.',
-			// 	// description:
-			// 	// 	'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
-			// 	noDataExpression: true,
-			// },
 			{
-				displayName: 'JavaScript - SupplyData',
-				name: 'jsCodeSupplyData',
-				type: 'string',
-				typeOptions: {
-					editor: 'codeNodeEditor',
-					editorLanguage: 'javaScript',
-				},
-				default:
-					"const { WikipediaQueryRun } = require('langchain/tools');\nreturn new WikipediaQueryRun();",
+				displayName: 'Code',
+				name: 'code',
+				placeholder: 'Add Code',
+				type: 'fixedCollection',
 				noDataExpression: true,
+				default: {},
+				options: [
+					{
+						name: 'execute',
+						displayName: 'Execute',
+						values: [
+							{
+								displayName: 'JavaScript - Execute',
+								name: 'code',
+								type: 'string',
+								typeOptions: {
+									editor: 'codeNodeEditor',
+									editorLanguage: 'javaScript',
+								},
+								default: defaultCodeExecute,
+								hint: 'This code will only run and return data if a "Main" input & output got created.',
+								noDataExpression: true,
+							},
+						],
+					},
+					{
+						name: 'supplyData',
+						displayName: 'SupplyData',
+						values: [
+							{
+								displayName: 'JavaScript - SupplyData',
+								name: 'code',
+								type: 'string',
+								typeOptions: {
+									editor: 'codeNodeEditor',
+									editorLanguage: 'javaScript',
+								},
+								default: defaultCodeSupplyData,
+								hint: 'This code will only run and return data if an output got created which is not "Main".',
+								noDataExpression: true,
+							},
+						],
+					},
+				],
 			},
+
 			// TODO: Add links to docs which provide additional information regarding functionality
 			{
 				displayName:
@@ -212,34 +257,54 @@ export class Code implements INodeType {
 		],
 	};
 
-	// async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	// 	const itemIndex = 0;
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const itemIndex = 0;
 
-	// 	const code = this.getNodeParameter('jsCodeExecute', itemIndex) as string;
+		const code = this.getNodeParameter('code', itemIndex) as { execute?: { code: string } };
 
-	// 	const sandbox = getSandbox.call(this, code, itemIndex);
+		if (!code.execute?.code) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`No code for "Execute" set on node "${this.getNode().name}`,
+				{
+					itemIndex,
+				},
+			);
+		}
 
-	// 	let items: INodeExecutionData[];
-	// 	try {
-	// 		items = await sandbox.runCodeAllItems();
-	// 	} catch (error) {
-	// 		if (!this.continueOnFail()) throw error;
-	// 		items = [{ json: { error: error.message } }];
-	// 	}
+		const sandbox = getSandbox.call(this, code.execute.code, { addItems: true, itemIndex });
 
-	// 	for (const item of items) {
-	// 		standardizeOutput(item.json);
-	// 	}
+		let items: INodeExecutionData[];
+		try {
+			items = await sandbox.runCodeAllItems();
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+			items = [{ json: { error: error.message } }];
+		}
 
-	// 	return [items];
-	// }
+		for (const item of items) {
+			standardizeOutput(item.json);
+		}
+
+		return [items];
+	}
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		const itemIndex = 0;
 
-		const code = this.getNodeParameter('jsCodeSupplyData', itemIndex) as string;
+		const code = this.getNodeParameter('code', itemIndex) as { supplyData?: { code: string } };
 
-		const sandbox = getSandbox.call(this, code, itemIndex);
+		if (!code.supplyData?.code) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`No code for "SupplyData" set on node "${this.getNode().name}`,
+				{
+					itemIndex,
+				},
+			);
+		}
+
+		const sandbox = getSandbox.call(this, code.supplyData.code, { itemIndex });
 		const response = (await sandbox.runCode()) as Tool;
 
 		return {
