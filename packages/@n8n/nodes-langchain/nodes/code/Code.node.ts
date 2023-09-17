@@ -202,7 +202,7 @@ export class Code implements INodeType {
 								name: 'maxConnections',
 								type: 'number',
 								noDataExpression: true,
-								default: 1,
+								default: -1,
 								required: true,
 								description:
 									'How many nodes of this type are allowed to be connected. Set it to -1 for unlimited.',
