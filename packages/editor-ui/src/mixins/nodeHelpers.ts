@@ -22,7 +22,7 @@ import type {
 	Workflow,
 	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -639,6 +639,9 @@ export const nodeHelpers = defineComponent({
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
 				try {
+					ExpressionEvaluatorProxy.setEvaluator(
+						useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+					);
 					return workflow.expression.getSimpleParameterValue(
 						data as INode,
 						nodeType.subtitle,
