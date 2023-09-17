@@ -113,7 +113,8 @@ export const nodeBase = defineComponent({
 			} = {};
 
 			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const inputs = NodeHelpers.getNodeInputs(workflow, this.data, nodeTypeData) || [];
+			const inputs: Array<ConnectionTypes | INodeInputConfiguration> =
+				NodeHelpers.getNodeInputs(workflow, this.data!, nodeTypeData) || [];
 			this.inputs = inputs;
 
 			inputs.forEach((value, i) => {
@@ -146,9 +147,10 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryInputName];
 				const typeIndex = typeIndexData[inputName];
 
-				const inputsOfSameRootType = inputs.filter((input) =>
-					inputName === 'main' ? input === 'main' : input !== 'main',
-				);
+				const inputsOfSameRootType = inputs.filter((inputData) => {
+					const thisInputName: string = typeof inputData === 'string' ? inputData : inputData.type;
+					return inputName === 'main' ? thisInputName === 'main' : thisInputName !== 'main';
+				});
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
@@ -276,9 +278,11 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryOutputName];
 				const typeIndex = typeIndexData[outputName];
 
-				const outputsOfSameRootType = outputs.filter((output) =>
-					outputName === 'main' ? output === 'main' : output !== 'main',
-				);
+				const outputsOfSameRootType = outputs.filter((outputData) => {
+					const thisOutputName: string =
+						typeof outputData === 'string' ? outputData : outputData.type;
+					return outputName === 'main' ? thisOutputName === 'main' : thisOutputName !== 'main';
+				});
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
