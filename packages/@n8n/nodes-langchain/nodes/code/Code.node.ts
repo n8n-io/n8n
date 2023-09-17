@@ -40,8 +40,8 @@ const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);
 const llm = await this.getInputConnectionData('languageModel', 0);
 let chain = prompt.pipe(llm);
-const response = await chain.invoke();
-return [ {json: { response } } ];`;
+const output = await chain.invoke();
+return [ {json: { output } } ];`;
 
 const defaultCodeSupplyData = `const { WikipediaQueryRun } = require('langchain/tools');
 return new WikipediaQueryRun();`;

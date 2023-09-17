@@ -107,6 +107,7 @@ import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
+	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
 	NODE_TRIGGER_CHAT_BUTTON,
 	VIEWS,
@@ -118,7 +119,7 @@ import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { INode, INodeType, ITaskData } from 'n8n-workflow';
+import { type INode, type INodeType, type ITaskData, NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
@@ -242,14 +243,31 @@ export default defineComponent({
 				const isChain =
 					nodeType.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_CHAINS);
 
-				if (!isAgent && !isChain) return false;
+				let isCustomChainOrAgent = false;
+				if (nodeType.name === AI_CODE_NODE_TYPE) {
+					const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+					const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+					const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+					if (
+						inputTypes.includes('languageModel') &&
+						inputTypes.includes('main') &&
+						outputTypes.includes('main')
+					) {
+						isCustomChainOrAgent = true;
+					}
+				}
+
+				if (!isAgent && !isChain && !isCustomChainOrAgent) return false;
 
 				const parentNodes = workflow.getParentNodes(node.name);
 				const isChatChild = parentNodes.some(
 					(parentNodeName) => parentNodeName === triggerNode[0].name,
 				);
 
-				return Boolean(isChatChild && (isAgent || isChain));
+				return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
 			});
 
 			if (!chatNode) {
