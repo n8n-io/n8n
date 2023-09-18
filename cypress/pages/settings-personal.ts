@@ -61,8 +61,10 @@ export class PersonalSettingsPage extends BasePage {
 			cy.visit(this.url);
 			this.getters.enableMfaButton().click();
 			cy.wait('@getMfaQrCode');
+			mfaSetupModal.getters.copySecretToClipboardButton().should('be.visible');
 			mfaSetupModal.getters.copySecretToClipboardButton().realClick();
 			cy.readClipboard().then((secret) => {
+				cy.log(secret);
 				const token = generateOTPToken(secret);
 
 				mfaSetupModal.getters.tokenInput().type(token);
