@@ -1538,10 +1538,10 @@ export declare namespace Cloud {
 		createdAt?: string;
 		username: string;
 		email: string;
-		hasEarlyAccess: boolean;
-		accountId: number;
+		hasEarlyAccess?: boolean;
+		accountId?: number;
 		// TODO: add full typing if needed in the future
-		account: object;
+		account?: object;
 	};
 }
 
