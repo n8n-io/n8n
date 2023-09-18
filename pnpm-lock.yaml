@@ -177,8 +177,8 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
       langchain:
-        specifier: ^0.0.149
-        version: 0.0.149(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(@supabase/supabase-js@2.33.2)(@xata.io/client@0.26.3)(cohere-ai@6.2.2)(html-to-text@9.0.5)(ignore@5.2.4)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.8)(typeorm@0.3.17)
+        specifier: ^0.0.150
+        version: 0.0.150(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(@supabase/supabase-js@2.33.2)(@xata.io/client@0.26.3)(cohere-ai@6.2.2)(html-to-text@9.0.5)(ignore@5.2.4)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.8)(typeorm@0.3.17)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -1498,7 +1498,7 @@ packages:
   /@anthropic-ai/sdk@0.6.2:
     resolution: {integrity: sha512-fB9PUj9RFT+XjkL+E9Ol864ZIJi+1P8WnbHspN3N3/GK2uSzjd0cbVIKTGgf4v3N8MwaQu+UWnU7C4BG/fap/g==}
     dependencies:
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       '@types/node-fetch': 2.6.4
       abort-controller: 3.0.0
       agentkeepalive: 4.5.0
@@ -5206,7 +5206,7 @@ packages:
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       chalk: 4.1.2
       jest-message-util: 29.6.2
       jest-util: 29.6.2
@@ -5322,7 +5322,7 @@ packages:
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
       '@jridgewell/trace-mapping': 0.3.18
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       chalk: 4.1.2
       collect-v8-coverage: 1.0.1
       exit: 0.1.2
@@ -8569,7 +8569,7 @@ packages:
   /@types/better-sqlite3@7.6.4:
     resolution: {integrity: sha512-dzrRZCYPXIXfSR1/surNbJ/grU3scTaygS0OMzjlGf71i9sc2fGyHPXXiXmEvNIoE0cGwsanEFMVJxPXmco9Eg==}
     dependencies:
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
     dev: false
 
   /@types/bluebird@3.5.37:
@@ -8976,7 +8976,7 @@ packages:
   /@types/node-fetch@2.6.4:
     resolution: {integrity: sha512-1ZX9fcN4Rvkvgv4E6PAY5WXUFWFcRWxZa3EW83UjycOB9ljJCedb2CupIP4RZMEwF/M3eTcCihbBRgwtGbg5Rg==}
     dependencies:
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       form-data: 3.0.1
 
   /@types/node-ssh@7.0.1:
@@ -9320,7 +9320,7 @@ packages:
   /@types/whatwg-url@8.2.2:
     resolution: {integrity: sha512-FtQu10RWgn3D9U4aazdwIE2yzphmTJREDqNdODHrbrZmmMqI0vMheC/6NE/J1Yveaj8H+ela+YwWTjq5PGmuhA==}
     dependencies:
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       '@types/webidl-conversions': 7.0.0
     dev: false
 
@@ -17056,7 +17056,7 @@ packages:
     dependencies:
       '@jest/types': 29.6.1
       '@types/graceful-fs': 4.1.6
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -17075,7 +17075,7 @@ packages:
     dependencies:
       '@jest/types': 29.6.1
       '@types/graceful-fs': 4.1.6
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       anymatch: 3.1.3
       fb-watchman: 2.0.2
       graceful-fs: 4.2.11
@@ -17217,7 +17217,7 @@ packages:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       chalk: 4.1.2
       emittery: 0.13.1
       graceful-fs: 4.2.11
@@ -17248,7 +17248,7 @@ packages:
       '@jest/test-result': 29.6.2
       '@jest/transform': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       chalk: 4.1.2
       cjs-module-lexer: 1.2.2
       collect-v8-coverage: 1.0.1
@@ -17337,7 +17337,7 @@ packages:
     dependencies:
       '@jest/test-result': 29.6.2
       '@jest/types': 29.6.1
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       emittery: 0.13.1
@@ -17943,8 +17943,8 @@ packages:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
 
-  /langchain@0.0.149(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(@supabase/supabase-js@2.33.2)(@xata.io/client@0.26.3)(cohere-ai@6.2.2)(html-to-text@9.0.5)(ignore@5.2.4)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.8)(typeorm@0.3.17):
-    resolution: {integrity: sha512-7Ky7TqlUCbhx6hBwNW+dIyjCXLAPX/3WP1LFZ0ZGz/B0GaAHbyBkm8uuy1jMA3f7/8lJwZMWDL3639Idd7euWA==}
+  /langchain@0.0.150(@huggingface/inference@2.6.1)(@pinecone-database/pinecone@0.1.6)(@supabase/supabase-js@2.33.2)(@xata.io/client@0.26.3)(cohere-ai@6.2.2)(html-to-text@9.0.5)(ignore@5.2.4)(mammoth@1.6.0)(pdf-parse@1.1.1)(pg@8.11.3)(redis@4.6.8)(typeorm@0.3.17):
+    resolution: {integrity: sha512-UXpz9vbMgIOfSmV705FxBRaooleaKITcWcZVgLntetaJmciFTzAlMmF4ca63XGwiGPSpPb/cfLFkE55x8jxUFg==}
     engines: {node: '>=18'}
     peerDependencies:
       '@aws-crypto/sha256-js': ^5.0.0
@@ -18015,7 +18015,7 @@ packages:
       playwright: ^1.32.1
       puppeteer: ^19.7.2
       redis: ^4.6.4
-      replicate: ^0.12.3
+      replicate: ^0.18.0
       sonix-speech-recognition: ^2.1.1
       srt-parser-2: ^1.2.2
       typeorm: ^0.3.12
@@ -20324,7 +20324,7 @@ packages:
     resolution: {integrity: sha512-JN0t628Kh95T0IrXl0HdBqnlJg+4Vq0Bnh55tio+dfCnyzHvMLiWyCM9m726MAJD2YkDU4/8RQB6rNbEq9ct2w==}
     hasBin: true
     dependencies:
-      '@types/node': 18.17.12
+      '@types/node': 18.17.15
       '@types/node-fetch': 2.6.4
       abort-controller: 3.0.0
       agentkeepalive: 4.5.0
