@@ -78,7 +78,9 @@ function parseFiltersToQueryBuilder(
 export class ExecutionRepository extends Repository<ExecutionEntity> {
 	deletionBatchSize = 100;
 
-	hardDeletionInterval: NodeJS.Timer | null = null;
+	private pruningInterval: NodeJS.Timer | null = null;
+
+	private hardDeletionInterval: NodeJS.Timer | null = null;
 
 	constructor(
 		dataSource: DataSource,
@@ -87,13 +89,24 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
+		if (config.get('generic.instanceType') === 'main') this.setTimers();
+	}
+
+	setTimers() {
 		if (config.getEnv('executions.pruneData')) this.setPruningInterval();
 
 		this.setHardDeletionInterval();
 	}
 
+	clearTimers() {
+		if (config.get('generic.instanceType') !== 'main') return;
+
+		if (this.hardDeletionInterval) clearInterval(this.hardDeletionInterval);
+		if (this.pruningInterval) clearInterval(this.pruningInterval);
+	}
+
 	setPruningInterval() {
-		setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
+		this.pruningInterval = setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
 	}
 
 	setHardDeletionInterval() {

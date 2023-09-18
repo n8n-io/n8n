@@ -81,7 +81,7 @@ describe('NodeExecuteFunctions', () => {
 			await Container.get(BinaryDataService).init({
 				mode: 'filesystem',
 				availableModes: ['filesystem'],
-				storagePath: temporaryDir,
+				localStoragePath: temporaryDir,
 			});
 
 			// Set our binary data buffer

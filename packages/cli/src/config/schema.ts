@@ -425,6 +425,12 @@ export const schema = {
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
 		},
+
+		instanceType: {
+			doc: 'Type of n8n instance',
+			format: ['main', 'webhook', 'worker'] as const,
+			default: 'main',
+		},
 	},
 
 	// How n8n can be reached (Editor & REST-API)
@@ -900,7 +906,7 @@ export const schema = {
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',
 		},
-		storagePath: {
+		localStoragePath: {
 			format: String,
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',

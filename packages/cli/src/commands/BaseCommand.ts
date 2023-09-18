@@ -18,7 +18,7 @@ import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
@@ -132,7 +132,7 @@ export abstract class BaseCommand extends Command {
 		}
 
 		const binaryDataConfig = config.getEnv('binaryDataService');
-		await Container.get(BinaryDataService).init(binaryDataConfig, true);
+		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}
 
 	async initExternalHooks() {
@@ -140,9 +140,11 @@ export abstract class BaseCommand extends Command {
 		await this.externalHooks.init();
 	}
 
-	async initLicense(): Promise<void> {
+	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
+		config.set('generic.instanceType', instanceType);
+
 		const license = Container.get(License);
-		await license.init(this.instanceId);
+		await license.init(this.instanceId, instanceType);
 
 		const activationKey = config.getEnv('license.activationKey');
 

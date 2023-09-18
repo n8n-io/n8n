@@ -12,12 +12,12 @@ export namespace BinaryData {
 
 	type InMemoryConfig = ConfigBase & { mode: 'default' };
 
-	export type FileSystemConfig = ConfigBase & { mode: 'filesystem'; storagePath: string };
+	export type FileSystemConfig = ConfigBase & { mode: 'filesystem'; localStoragePath: string };
 
 	export type Config = InMemoryConfig | FileSystemConfig;
 
 	export interface Manager {
-		init(startPurger: boolean): Promise<void>;
+		init(): Promise<void>;
 
 		store(binaryData: Buffer | Readable, executionId: string): Promise<string>;
 		getPath(identifier: string): string;

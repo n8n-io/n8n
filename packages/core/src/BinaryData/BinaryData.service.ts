@@ -19,16 +19,16 @@ export class BinaryDataService {
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
-	async init(config: BinaryData.Config, mainManager = false) {
+	async init(config: BinaryData.Config) {
 		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataModeError();
 
 		this.availableModes = config.availableModes;
 		this.mode = config.mode;
 
 		if (this.availableModes.includes('filesystem') && config.mode === 'filesystem') {
-			this.managers.filesystem = new FileSystemManager(config.storagePath);
+			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
-			await this.managers.filesystem.init(mainManager);
+			await this.managers.filesystem.init();
 		}
 	}
 
