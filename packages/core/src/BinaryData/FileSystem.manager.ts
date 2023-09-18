@@ -13,7 +13,7 @@ import type { BinaryData } from './types';
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
-export class FileSystemClient implements BinaryData.Client {
+export class FileSystemManager implements BinaryData.Manager {
 	constructor(private storagePath: string) {}
 
 	async init() {
@@ -31,13 +31,13 @@ export class FileSystemClient implements BinaryData.Client {
 		return stats.size;
 	}
 
-	getAsStream(identifier: string, chunkSize?: number) {
+	getStream(identifier: string, chunkSize?: number) {
 		const filePath = this.getPath(identifier);
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
 	}
 
-	async getAsBuffer(identifier: string) {
+	async getBuffer(identifier: string) {
 		const filePath = this.getPath(identifier);
 
 		try {

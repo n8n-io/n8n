@@ -4,7 +4,7 @@ import type { BinaryMetadata } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 
-export class S3Client implements BinaryData.Client {
+export class ObjectStoreManager implements BinaryData.Manager {
 	async init() {
 		throw new Error('TODO');
 	}
@@ -21,11 +21,11 @@ export class S3Client implements BinaryData.Client {
 		throw new Error('TODO');
 	}
 
-	async getAsBuffer(identifier: string): Promise<Buffer> {
+	async getBuffer(identifier: string): Promise<Buffer> {
 		throw new Error('TODO');
 	}
 
-	getAsStream(identifier: string, chunkSize?: number): Readable {
+	getStream(identifier: string, chunkSize?: number): Readable {
 		throw new Error('TODO');
 	}
 

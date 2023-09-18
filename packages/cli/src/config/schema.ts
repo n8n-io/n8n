@@ -890,12 +890,12 @@ export const schema = {
 	binaryDataService: {
 		availableModes: {
 			format: 'comma-separated-list',
-			default: 'filesystem,object',
+			default: 'filesystem',
 			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: ['default', 'filesystem', 'object'] as const,
+			format: ['default', 'filesystem'] as const,
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',

@@ -4,8 +4,8 @@ import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
-import { FileSystemClient } from './fs.client';
-import { InvalidBinaryModeError, areValidModes } from './utils';
+import { FileSystemManager } from './FileSystem.manager';
+import { InvalidBinaryDataManagerError, InvalidBinaryDataModeError, areValidModes } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -17,25 +17,25 @@ export class BinaryDataService {
 
 	private mode: BinaryData.Mode = 'default';
 
-	private clients: Record<string, BinaryData.Client> = {};
+	private managers: Record<string, BinaryData.Manager> = {};
 
-	async init(config: BinaryData.Config, mainClient = false) {
-		if (!areValidModes(config.availableModes)) throw new InvalidBinaryModeError();
+	async init(config: BinaryData.Config, mainManager = false) {
+		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataModeError();
 
 		this.availableModes = config.availableModes;
 		this.mode = config.mode;
 
 		if (this.availableModes.includes('filesystem') && config.mode === 'filesystem') {
-			this.clients.filesystem = new FileSystemClient(config.storagePath);
+			this.managers.filesystem = new FileSystemManager(config.storagePath);
 
-			await this.clients.filesystem.init(mainClient);
+			await this.managers.filesystem.init(mainManager);
 		}
 	}
 
 	async copyBinaryFile(binaryData: IBinaryData, path: string, executionId: string) {
-		const client = this.clients[this.mode];
+		const manager = this.managers[this.mode];
 
-		if (!client) {
+		if (!manager) {
 			const { size } = await stat(path);
 			binaryData.fileSize = prettyBytes(size);
 			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
@@ -43,14 +43,14 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const identifier = await client.copyByPath(path, executionId);
+		const identifier = await manager.copyByPath(path, executionId);
 		binaryData.id = this.createIdentifier(identifier);
-		binaryData.data = this.mode; // clear from memory
+		binaryData.data = this.mode; // clear binary data from memory
 
-		const fileSize = await client.getSize(identifier);
+		const fileSize = await manager.getSize(identifier);
 		binaryData.fileSize = prettyBytes(fileSize);
 
-		await client.storeMetadata(identifier, {
+		await manager.storeMetadata(identifier, {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
 			fileSize,
@@ -60,9 +60,9 @@ export class BinaryDataService {
 	}
 
 	async store(binaryData: IBinaryData, input: Buffer | Readable, executionId: string) {
-		const client = this.clients[this.mode];
+		const manager = this.managers[this.mode];
 
-		if (!client) {
+		if (!manager) {
 			const buffer = await this.binaryToBuffer(input);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
@@ -70,14 +70,14 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const identifier = await client.store(input, executionId);
+		const identifier = await manager.store(input, executionId);
 		binaryData.id = this.createIdentifier(identifier);
-		binaryData.data = this.mode; // clear from memory
+		binaryData.data = this.mode; // clear binary data from memory
 
-		const fileSize = await client.getSize(identifier);
+		const fileSize = await manager.getSize(identifier);
 		binaryData.fileSize = prettyBytes(fileSize);
 
-		await client.storeMetadata(identifier, {
+		await manager.storeMetadata(identifier, {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
 			fileSize,
@@ -96,7 +96,7 @@ export class BinaryDataService {
 	getAsStream(identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		return this.getClient(mode).getAsStream(id, chunkSize);
+		return this.getManager(mode).getStream(id, chunkSize);
 	}
 
 	async getBinaryDataBuffer(binaryData: IBinaryData) {
@@ -108,27 +108,27 @@ export class BinaryDataService {
 	async retrieveBinaryDataByIdentifier(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		return this.getClient(mode).getAsBuffer(id);
+		return this.getManager(mode).getBuffer(id);
 	}
 
 	getPath(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		return this.getClient(mode).getPath(id);
+		return this.getManager(mode).getPath(id);
 	}
 
 	async getMetadata(identifier: string) {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 
-		return this.getClient(mode).getMetadata(id);
+		return this.getManager(mode).getMetadata(id);
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
-		await this.getClient(this.mode).deleteManyByExecutionIds(executionIds);
+		await this.getManager(this.mode).deleteManyByExecutionIds(executionIds);
 	}
 
 	async duplicateBinaryData(inputData: Array<INodeExecutionData[] | null>, executionId: string) {
-		if (inputData && this.clients[this.mode]) {
+		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
 				async (executionDataArray) => {
 					if (executionDataArray) {
@@ -161,7 +161,7 @@ export class BinaryDataService {
 		return `${this.mode}:${filename}`;
 	}
 
-	private splitBinaryModeFileId(fileId: string): { mode: string; id: string } {
+	private splitBinaryModeFileId(fileId: string) {
 		const [mode, id] = fileId.split(':');
 
 		return { mode, id };
@@ -171,7 +171,7 @@ export class BinaryDataService {
 		executionData: INodeExecutionData,
 		executionId: string,
 	) {
-		const client = this.clients[this.mode];
+		const manager = this.managers[this.mode];
 
 		if (executionData.binary) {
 			const binaryDataKeys = Object.keys(executionData.binary);
@@ -185,7 +185,7 @@ export class BinaryDataService {
 					return { key, newId: undefined };
 				}
 
-				return client
+				return manager
 					?.copyByIdentifier(this.splitBinaryModeFileId(binaryDataId).id, executionId)
 					.then((filename) => ({
 						newId: this.createIdentifier(filename),
@@ -207,11 +207,11 @@ export class BinaryDataService {
 		return executionData;
 	}
 
-	private getClient(mode: string) {
-		const client = this.clients[mode];
+	private getManager(mode: string) {
+		const manager = this.managers[mode];
 
-		if (!client) throw new Error('No binary data client found');
+		if (manager) return manager;
 
-		return client;
+		throw new InvalidBinaryDataManagerError();
 	}
 }

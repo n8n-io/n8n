@@ -2,8 +2,8 @@ import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
 export * from './ActiveWorkflows';
-export * from './binaryData/binaryData.service';
-export * from './binaryData/types';
+export * from './BinaryData/BinaryData.service';
+export * from './BinaryData/types';
 export * from './ClassLoader';
 export * from './Constants';
 export * from './Credentials';

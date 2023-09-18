@@ -11,7 +11,7 @@ import type {
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
-import { BinaryDataService } from '@/binaryData/binaryData.service';
+import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import {
 	setBinaryDataBuffer,
 	getBinaryDataBuffer,
