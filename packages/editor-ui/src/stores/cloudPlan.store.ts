@@ -4,10 +4,10 @@ import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
+import { useUIStore } from '@/stores/ui.store';
+import { getCurrentPlan, getCurrentUsage, getCloudUserInfo } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
-import { useUIStore } from '.';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
@@ -61,10 +61,11 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		let plan;
 		try {
 			plan = await getCurrentPlan(rootStore.getRestApiContext);
+			await usersStore.fetchUserCloudAccount();
 			state.data = plan;
 			state.loadingPlan = false;
 
-			if (plan.account?.verified === false) {
+			if (useUsersStore().isInstanceOwner && !usersStore.currentUserCloudInfo?.confirmed) {
 				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
 			}
 		} catch (error) {

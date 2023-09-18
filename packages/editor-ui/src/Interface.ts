@@ -1193,6 +1193,7 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
+	currentUserCloudInfo: Cloud.UserAccount | null;
 }
 
 export interface IWorkflowsState {
@@ -1517,9 +1518,6 @@ export declare namespace Cloud {
 		displayName: string;
 		expirationDate: string;
 		metadata: PlanMetadata;
-		account?: {
-			verified?: boolean;
-		};
 	}
 
 	export interface PlanMetadata {
@@ -1533,6 +1531,18 @@ export declare namespace Cloud {
 		length: number;
 		gracePeriod: number;
 	}
+
+	export type UserAccount = {
+		id: number;
+		confirmed: boolean;
+		createdAt?: string;
+		username: string;
+		email: string;
+		hasEarlyAccess: boolean;
+		accountId: number;
+		// TODO: add full typing if needed in the future
+		account: object;
+	};
 }
 
 export interface CloudPlanState {

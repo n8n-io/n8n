@@ -8,3 +8,7 @@ export async function getCurrentPlan(context: IRestApiContext): Promise<Cloud.Pl
 export async function getCurrentUsage(context: IRestApiContext): Promise<InstanceUsage> {
 	return get(context.baseUrl, '/cloud/limits');
 }
+
+export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.UserAccount> {
+	return get(context.baseUrl, '/cloud/admin/user/me');
+}
