@@ -206,9 +206,7 @@ export class GmailV2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const nodeVersion = this.getNode().typeVersion;
-		//TODO: would be available after Form Trigger merged
-		//const instanceId = await this.getInstanceId();
-		const instanceId = '';
+		const instanceId = await this.getInstanceId();
 
 		let responseData;
 

@@ -196,9 +196,7 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
-	//TODO: would be available after Form Trigger merged
-	//const instanceId = await this.getInstanceId();
-	const instanceId = '';
+	const instanceId = await this.getInstanceId();
 
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;

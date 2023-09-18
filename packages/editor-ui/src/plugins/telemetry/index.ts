@@ -11,6 +11,7 @@ import {
 	APPEND_ATTRIBUTION_DEFAULT_PATH,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	SLACK_NODE_TYPE,
+	TELEGRAM_NODE_TYPE,
 } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
 import { useNDVStore } from '@/stores';
@@ -229,6 +230,7 @@ export class Telemetry {
 			const changeNameMap: { [key: string]: string } = {
 				[SLACK_NODE_TYPE]: 'parameters.otherOptions.includeLinkToWorkflow',
 				[MICROSOFT_TEAMS_NODE_TYPE]: 'parameters.options.includeLinkToWorkflow',
+				[TELEGRAM_NODE_TYPE]: 'parameters.additionalFields.appendAttribution',
 			};
 			const changeName = changeNameMap[nodeType] || APPEND_ATTRIBUTION_DEFAULT_PATH;
 			if (change.name === changeName) {
