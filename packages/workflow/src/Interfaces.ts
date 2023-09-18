@@ -774,6 +774,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			nodeNameOverride?: string,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;

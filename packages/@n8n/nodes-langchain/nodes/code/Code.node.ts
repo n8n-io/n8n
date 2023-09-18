@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type INodeOutputConfiguration,
 	type SupplyData,
 } from 'n8n-workflow';
 
@@ -67,7 +68,9 @@ function getSandbox(
 	context.addInputData = this.addInputData;
 	context.addOutputData = this.addOutputData;
 	context.getInputConnectionData = this.getInputConnectionData;
+	context.getInputData = this.getInputData;
 	context.getNode = this.getNode;
+	context.getNodeOutputs = this.getNodeOutputs;
 	if (options?.addItems) {
 		context.items = context.$input.all();
 	}
@@ -274,19 +277,45 @@ export class Code implements INodeType {
 
 		const sandbox = getSandbox.call(this, code.execute.code, { addItems: true, itemIndex });
 
-		let items: INodeExecutionData[];
+		const outputs = this.getNodeOutputs();
+		const mainOutputs: INodeOutputConfiguration[] = outputs.filter(
+			(output) => output.type === 'main',
+		);
+
+		const options = { multiOutput: mainOutputs.length !== 1 };
+
+		let items: INodeExecutionData[] | INodeExecutionData[][];
 		try {
-			items = await sandbox.runCodeAllItems();
+			items = await sandbox.runCodeAllItems(options);
 		} catch (error) {
 			if (!this.continueOnFail()) throw error;
 			items = [{ json: { error: error.message } }];
+			if (options.multiOutput) {
+				items = [items];
+			}
 		}
 
-		for (const item of items) {
-			standardizeOutput(item.json);
+		if (mainOutputs.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The node does not have a "Main" output set. Please add one.',
+				{
+					itemIndex,
+				},
+			);
+		} else if (!options.multiOutput) {
+			for (const item of items as INodeExecutionData[]) {
+				standardizeOutput(item.json);
+			}
+			return [items as INodeExecutionData[]];
+		} else {
+			items.forEach((data) => {
+				for (const item of data as INodeExecutionData[]) {
+					standardizeOutput(item.json);
+				}
+			});
+			return items as INodeExecutionData[][];
 		}
-
-		return [items];
 	}
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
