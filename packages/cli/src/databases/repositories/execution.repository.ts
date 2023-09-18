@@ -87,6 +87,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly executionDataRepository: ExecutionDataRepository,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+
 		if (config.get('generic.instanceType') === 'main') this.setTimers();
 	}
 
@@ -97,6 +98,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	clearTimers() {
+		if (config.get('generic.instanceType') !== 'main') return;
+
 		if (this.hardDeletionInterval) clearInterval(this.hardDeletionInterval);
 		if (this.pruningInterval) clearInterval(this.pruningInterval);
 	}
