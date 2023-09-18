@@ -49,6 +49,7 @@ class RedisServiceBase {
 			return;
 		}
 		await this.redisClient.quit();
+		this.isInitialized = false;
 		this.redisClient = undefined;
 	}
 }
