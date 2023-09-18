@@ -29,6 +29,7 @@ import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -102,6 +103,8 @@ export class Start extends BaseCommand {
 			// Shut down License manager to unclaim any floating entitlements
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
+
+			Container.get(ExecutionRepository).clearTimers();
 
 			await Container.get(InternalHooks).onN8nStop();
 
@@ -197,7 +200,7 @@ export class Start extends BaseCommand {
 		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
-		await this.initLicense();
+		await this.initLicense('main');
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();

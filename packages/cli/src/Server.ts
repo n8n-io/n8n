@@ -326,6 +326,7 @@ export class Server extends AbstractServer {
 				externalSecrets: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
+				workflowHistory: false,
 			},
 			mfa: {
 				enabled: false,
@@ -1470,7 +1471,9 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
+			await eventBus.initialize({
+				uniqueInstanceId: this.uniqueInstanceId,
+			});
 		}
 
 		if (this.endpointPresetCredentials !== '') {
