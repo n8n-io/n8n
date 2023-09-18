@@ -18,23 +18,26 @@ export async function discordApiRequest(
 	endpoint: string,
 	body?: IDataObject,
 	qs?: IDataObject,
-	webhookUri?: string,
 ) {
 	const headers: IDataObject = {};
-
-	if (!webhookUri) {
-		const credentials = await this.getCredentials('discordOAuth2Api');
-		headers.Authorization = `Bot ${credentials.botToken}`;
-	}
+	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
 
 	const options: OptionsWithUrl = {
 		headers,
 		method,
 		qs,
 		body,
-		url: webhookUri || `https://discord.com/api/v10/${endpoint}`,
+		url: `https://discord.com/api/v10/${endpoint}`,
 		json: true,
 	};
+
+	if (authentication === 'oAuth2') {
+		const credentials = await this.getCredentials('discordOAuth2Api');
+		headers.Authorization = `Bot ${credentials.botToken}`;
+	} else {
+		const credentials = await this.getCredentials('discordWebhookApi');
+		options.url = credentials.webhookUri as string;
+	}
 
 	try {
 		const response = await this.helpers.request({ ...options, resolveWithFullResponse: true });
@@ -59,23 +62,26 @@ export async function discordApiMultiPartRequest(
 	method: string,
 	endpoint: string,
 	formData: FormData,
-	webhookUri?: string,
 ) {
 	const headers: IDataObject = {
 		'content-type': 'multipart/form-data; charset=utf-8',
 	};
-
-	if (!webhookUri) {
-		const credentials = await this.getCredentials('discordOAuth2Api');
-		headers.Authorization = `Bot ${credentials.botToken}`;
-	}
+	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
 
 	const options: OptionsWithUrl = {
 		headers,
 		method,
 		formData,
-		url: webhookUri || `https://discord.com/api/v10/${endpoint}`,
+		url: `https://discord.com/api/v10/${endpoint}`,
 	};
+
+	if (authentication === 'oAuth2') {
+		const credentials = await this.getCredentials('discordOAuth2Api');
+		headers.Authorization = `Bot ${credentials.botToken}`;
+	} else {
+		const credentials = await this.getCredentials('discordWebhookApi');
+		options.url = credentials.webhookUri as string;
+	}
 
 	try {
 		const response = await this.helpers.request({ ...options, resolveWithFullResponse: true });

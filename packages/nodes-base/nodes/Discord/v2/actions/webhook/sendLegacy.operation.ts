@@ -19,14 +19,6 @@ import { embedsFixedCollection, filesFixedCollection } from '../common.descripti
 
 const properties: INodeProperties[] = [
 	{
-		displayName: 'Webhook URL',
-		name: 'webhookUri',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
-	},
-	{
 		displayName: 'Message',
 		name: 'content',
 		type: 'string',
@@ -142,22 +134,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 
 		try {
-			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
-
 			let response: IDataObject[] = [];
 
 			if (files?.length) {
 				const multiPartBody = await prepareMultiPartForm.call(this, items, files, body, i);
 
-				response = await discordApiMultiPartRequest.call(
-					this,
-					'POST',
-					'',
-					multiPartBody,
-					webhookUri,
-				);
+				response = await discordApiMultiPartRequest.call(this, 'POST', '', multiPartBody);
 			} else {
-				response = await discordApiRequest.call(this, 'POST', '', body, qs, webhookUri);
+				response = await discordApiRequest.call(this, 'POST', '', body, qs);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

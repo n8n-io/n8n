@@ -16,11 +16,15 @@ export class DiscordWebhookApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Use Webhook',
-			name: 'useWebhook',
-			type: 'boolean',
-			default: false,
+			displayName: 'Webhook URL',
+			name: 'webhookUri',
+			type: 'string',
 			required: true,
+			default: '',
+			placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
+			typeOptions: {
+				password: true,
+			},
 		},
 	];
 }
