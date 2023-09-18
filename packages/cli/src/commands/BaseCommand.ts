@@ -1,9 +1,11 @@
+import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, UserSettings } from 'n8n-core';
+import { BinaryDataService, UserSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
@@ -104,6 +106,31 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initBinaryDataService() {
+		/**
+		 * @TODO: Only for dev, remove later
+		 */
+
+		const objectStoreService = new ObjectStoreService(
+			{
+				name: config.getEnv('externalStorage.s3.bucket.name'),
+				region: config.getEnv('externalStorage.s3.bucket.region'),
+			},
+			{
+				accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
+				secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
+			},
+		);
+
+		const stream = await objectStoreService.getStream('happy-dog.jpg');
+
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await pipeline(stream as any, fs.createWriteStream('happy-dog.jpg'));
+			console.log('✅ Pipeline succeeded');
+		} catch (error) {
+			console.log('❌ Pipeline failed', error);
+		}
+
 		const binaryDataConfig = config.getEnv('binaryDataService');
 		await Container.get(BinaryDataService).init(binaryDataConfig, true);
 	}
