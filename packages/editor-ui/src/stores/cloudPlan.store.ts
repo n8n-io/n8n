@@ -65,6 +65,14 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 			state.data = plan;
 			state.loadingPlan = false;
 
+			if (userIsTrialing.value) {
+				if (trialExpired.value) {
+					useUIStore().pushBannerToStack('TRIAL_OVER');
+				} else {
+					useUIStore().pushBannerToStack('TRIAL');
+				}
+			}
+
 			if (useUsersStore().isInstanceOwner && !usersStore.currentUserCloudInfo?.confirmed) {
 				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
 			}

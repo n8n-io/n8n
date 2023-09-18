@@ -567,16 +567,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
 		},
-		async initBanners(): Promise<void> {
-			const cloudPlanStore = useCloudPlanStore();
-			if (cloudPlanStore.userIsTrialing) {
-				if (cloudPlanStore.trialExpired) {
-					this.pushBannerToStack('TRIAL_OVER');
-				} else {
-					this.pushBannerToStack('TRIAL');
-				}
-			}
-		},
 		pushBannerToStack(name: BannerName) {
 			if (this.bannerStack.includes(name)) return;
 			this.bannerStack.push(name);
