@@ -432,6 +432,12 @@ export const schema = {
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
 		},
+
+		instanceType: {
+			doc: 'Type of n8n instance',
+			format: ['main', 'webhook', 'worker'] as const,
+			default: 'main',
+		},
 	},
 
 	// How n8n can be reached (Editor & REST-API)

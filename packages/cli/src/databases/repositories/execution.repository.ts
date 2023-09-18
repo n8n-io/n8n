@@ -87,7 +87,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly executionDataRepository: ExecutionDataRepository,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+		if (config.get('generic.instanceType') === 'main') this.setTimers();
+	}
 
+	setTimers() {
 		if (config.getEnv('executions.pruneData')) this.setPruningInterval();
 
 		this.setHardDeletionInterval();
