@@ -34,6 +34,7 @@
     "bin"
   ],
   "devDependencies": {
+    "@types/aws4": "^1.5.1",
     "@types/concat-stream": "^2.0.0",
     "@types/content-disposition": "^0.5.5",
     "@types/content-type": "^1.1.5",
@@ -50,6 +51,7 @@
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
+    "aws4": "^1.8.0",
     "axios": "^0.21.1",
     "concat-stream": "^2.0.0",
     "content-disposition": "^0.5.4",
