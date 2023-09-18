@@ -22,6 +22,15 @@ export const versionDescription: INodeTypeDescription = {
 	outputs: ['main'],
 	credentials: [
 		{
+			name: 'discordBotApi',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['botToken'],
+				},
+			},
+		},
+		{
 			name: 'discordOAuth2Api',
 			required: true,
 			displayOptions: {
@@ -45,6 +54,10 @@ export const versionDescription: INodeTypeDescription = {
 			name: 'authentication',
 			type: 'options',
 			options: [
+				{
+					name: 'Bot Token',
+					value: 'botToken',
+				},
 				{
 					name: 'OAuth2',
 					value: 'oAuth2',
@@ -78,7 +91,7 @@ export const versionDescription: INodeTypeDescription = {
 			...guildRLC,
 			displayOptions: {
 				show: {
-					authentication: ['oAuth2'],
+					authentication: ['oAuth2', 'botToken'],
 				},
 			},
 		},
@@ -104,7 +117,7 @@ export const versionDescription: INodeTypeDescription = {
 			default: 'channel',
 			displayOptions: {
 				show: {
-					authentication: ['oAuth2'],
+					authentication: ['oAuth2', 'botToken'],
 				},
 			},
 		},

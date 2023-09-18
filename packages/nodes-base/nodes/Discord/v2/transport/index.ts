@@ -34,6 +34,9 @@ export async function discordApiRequest(
 	if (authentication === 'oAuth2') {
 		const credentials = await this.getCredentials('discordOAuth2Api');
 		headers.Authorization = `Bot ${credentials.botToken}`;
+	} else if (authentication === 'botToken') {
+		const credentials = await this.getCredentials('discordBotApi');
+		headers.Authorization = `Bot ${credentials.botToken}`;
 	} else {
 		const credentials = await this.getCredentials('discordWebhookApi');
 		options.url = credentials.webhookUri as string;
@@ -77,6 +80,9 @@ export async function discordApiMultiPartRequest(
 
 	if (authentication === 'oAuth2') {
 		const credentials = await this.getCredentials('discordOAuth2Api');
+		headers.Authorization = `Bot ${credentials.botToken}`;
+	} else if (authentication === 'botToken') {
+		const credentials = await this.getCredentials('discordBotApi');
 		headers.Authorization = `Bot ${credentials.botToken}`;
 	} else {
 		const credentials = await this.getCredentials('discordWebhookApi');
