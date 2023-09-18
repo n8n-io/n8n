@@ -40,7 +40,7 @@ import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
-import { getCloudUserInfo } from '@/api/cloudPlans';
+import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -376,6 +376,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			} catch (error) {
 				throw new Error(error);
 			}
+		},
+		async confirmEmail() {
+			await confirmEmail(useRootStore().getRestApiContext);
 		},
 	},
 });

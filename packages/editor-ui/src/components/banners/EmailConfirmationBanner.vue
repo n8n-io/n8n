@@ -1,13 +1,33 @@
 <script lang="ts" setup>
 import BaseBanner from '@/components/banners/BaseBanner.vue';
+import { useToast } from '@/composables';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUsersStore } from '@/stores/users.store';
 import { computed } from 'vue';
+
+const toast = useToast();
 
 const userEmail = computed(() => {
 	const { currentUser } = useUsersStore();
 	return currentUser?.email ?? '';
 });
+
+async function onConfirmEmailClick() {
+	try {
+		toast.showMessage({
+			type: 'success',
+			title: locale.baseText('banners.confirmEmail.toast.success.heading'),
+			message: locale.baseText('banners.confirmEmail.toast.success.message'),
+		});
+		await useUsersStore().confirmEmail();
+	} catch {
+		toast.showMessage({
+			type: 'error',
+			title: locale.baseText('banners.confirmEmail.toast.error.heading'),
+			message: locale.baseText('banners.confirmEmail.toast.error.message'),
+		});
+	}
+}
 </script>
 
 <template>
@@ -22,6 +42,11 @@ const userEmail = computed(() => {
 				</router-link>
 				{{ locale.baseText('banners.confirmEmail.message.3') }}
 			</span>
+		</template>
+		<template #trailingContent>
+			<n8n-button type="success" @click="onConfirmEmailClick" icon="envelope" size="small">
+				{{ locale.baseText('banners.confirmEmail.button') }}
+			</n8n-button>
 		</template>
 	</base-banner>
 </template>
