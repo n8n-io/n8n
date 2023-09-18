@@ -61,7 +61,6 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		let plan;
 		try {
 			plan = await getCurrentPlan(rootStore.getRestApiContext);
-			await usersStore.fetchUserCloudAccount();
 			state.data = plan;
 			state.loadingPlan = false;
 
@@ -73,8 +72,11 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 				}
 			}
 
-			if (useUsersStore().isInstanceOwner && !usersStore.currentUserCloudInfo?.confirmed) {
-				useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
+			if (useUsersStore().isInstanceOwner) {
+				await usersStore.fetchUserCloudAccount();
+				if (!usersStore.currentUserCloudInfo?.confirmed) {
+					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
+				}
 			}
 		} catch (error) {
 			state.loadingPlan = false;
