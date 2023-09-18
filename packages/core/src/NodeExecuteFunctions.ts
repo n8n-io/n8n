@@ -115,7 +115,7 @@ import { Readable } from 'stream';
 import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
 import { createReadStream } from 'fs';
 
-import { BinaryDataService } from './TempBinaryData/BinaryData.service';
+import { BinaryDataService } from './BinaryData/BinaryData.service';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
