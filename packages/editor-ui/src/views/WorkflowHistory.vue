@@ -75,6 +75,6 @@ onBeforeMount(async () => {
 
 .listComponent {
 	grid-area: list;
-	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	grid-area: list;
 }
 </style>

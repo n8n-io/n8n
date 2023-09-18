@@ -1,5 +1,7 @@
 export type WorkflowHistory = {
 	id: string;
-	updatedAt: string;
+	createdAt: string;
 	editors: string[];
 };
+
+export type WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
