@@ -15,7 +15,7 @@ export class InMemoryVectorStore implements INodeType {
 		description: 'Stores vectors in memory',
 		defaults: {
 			name: 'In Memory Vector Store',
-			color: '#400080',
+			color: '#F1538C',
 		},
 		codex: {
 			categories: ['AI'],

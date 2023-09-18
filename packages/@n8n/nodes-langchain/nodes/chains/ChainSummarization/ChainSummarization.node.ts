@@ -22,7 +22,7 @@ export class ChainSummarization implements INodeType {
 
 		defaults: {
 			name: 'Summarization Chain',
-			color: '#432032',
+			color: '#BCA5A5',
 		},
 		codex: {
 			alias: ['LangChain'],

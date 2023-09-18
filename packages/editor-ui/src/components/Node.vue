@@ -1,11 +1,6 @@
 <template>
 	<div
-		:class="{
-			'node-wrapper': true,
-			'node-wrapper--trigger': isTriggerNode,
-			'node-wrapper--configurable': isConfigurableNode,
-			'node-wrapper--config': isConfigNode,
-		}"
+		:class="nodeWrapperClass"
 		:style="nodePosition"
 		:id="nodeId"
 		data-test-id="canvas-node"
@@ -177,8 +172,8 @@ import { mapStores } from 'pinia';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-	WAIT_TIME_UNLIMITED,
 	MANUAL_TRIGGER_NODE_TYPE,
+	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -322,23 +317,32 @@ export default defineComponent({
 		sameTypeNodes(): INodeUi[] {
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
-		nodeClass(): object {
+		nodeWrapperClass(): object {
 			const classes = {
-				'node-box': true,
-				disabled: this.data.disabled,
-				executing: this.isExecuting,
+				'node-wrapper': true,
+				'node-wrapper--trigger': this.isTriggerNode,
+				'node-wrapper--configurable': this.isConfigurableNode,
+				'node-wrapper--config': this.isConfigNode,
 			};
 
 			if (this.outputs.length) {
 				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
-
 				const otherOutputs = outputTypes.filter((outputName) => outputName !== 'main');
 				if (otherOutputs.length) {
-					classes['node-other'] = true;
+					otherOutputs.forEach((outputName) => {
+						classes[`node-wrapper--connection-type-${outputName}`] = true;
+					});
 				}
 			}
 
 			return classes;
+		},
+		nodeClass(): object {
+			return {
+				'node-box': true,
+				disabled: this.data.disabled,
+				executing: this.isExecuting,
+			};
 		},
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
@@ -717,16 +721,6 @@ export default defineComponent({
 				.node-executing-info {
 					display: inline-block;
 				}
-
-				&.node-other {
-					background-color: $node-background-executing-other !important;
-				}
-			}
-
-			&.node-other {
-				background-color: $node-background-type-other;
-				border-radius: 50px;
-				border: 0;
 			}
 		}
 
@@ -848,9 +842,44 @@ export default defineComponent({
 			}
 		}
 
+		.node-default {
+			.node-box {
+				border: 2px solid var(--color-foreground-xdark);
+				//background-color: $node-background-type-other;
+				border-radius: 50px;
+
+				&.executing {
+					background-color: $node-background-executing-other !important;
+				}
+			}
+		}
+
+		@each $node-type in $supplemental-node-types {
+			&.node-wrapper--connection-type-#{$node-type} {
+				.node-default .node-box {
+					background: var(--node-type-#{$node-type}-background);
+				}
+
+				.node-description {
+					.node-subtitle {
+						color: var(--node-type-#{$node-type}-color);
+					}
+				}
+			}
+		}
+
 		.node-info-icon {
-			bottom: 0px !important;
-			right: 1px !important;
+			bottom: 8px !important;
+			right: 50% !important;
+			transform: translateX(50%);
+		}
+
+		&.node-wrapper--configurable {
+			.node-info-icon {
+				bottom: 1px !important;
+				right: 1px !important;
+				transform: none;
+			}
 		}
 	}
 
@@ -1269,6 +1298,12 @@ export default defineComponent({
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+
+	@each $node-type in $supplemental-node-types {
+		&.node-connection-type-#{$node-type} {
+			color: var(--node-type-#{$node-type}-color);
+		}
+	}
 }
 
 .node-output-endpoint-label {

@@ -14,7 +14,7 @@ export class ToolWolframAlpha implements INodeType {
 		defaults: {
 			name: 'Wolfram Alpha',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#400080',
+			color: '#9B13A7',
 		},
 		credentials: [
 			{

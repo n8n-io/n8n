@@ -23,6 +23,8 @@ export class MemoryRedisChat implements INodeType {
 		description: 'Stores the chat history in Redis.',
 		defaults: {
 			name: 'Redis Chat Memory',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			color: '#6613A7',
 		},
 		credentials: [
 			{

@@ -14,7 +14,7 @@ export class MemoryMotorhead implements INodeType {
 		description: 'Use Motorhead Memory',
 		defaults: {
 			name: 'Motorhead',
-			color: '#303030',
+			color: '#6613A7',
 		},
 		codex: {
 			categories: ['AI'],

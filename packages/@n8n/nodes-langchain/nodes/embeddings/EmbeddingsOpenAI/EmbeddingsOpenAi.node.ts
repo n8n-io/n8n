@@ -19,6 +19,8 @@ export class EmbeddingsOpenAi implements INodeType {
 		description: 'Use Embeddings OpenAI',
 		defaults: {
 			name: 'Embeddings OpenAI',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			color: '#137BA7',
 		},
 
 		codex: {

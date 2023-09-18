@@ -44,6 +44,8 @@ import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
+import { useI18n } from '@/composables';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export const nodeHelpers = defineComponent({
 	computed: {
@@ -629,6 +631,13 @@ export const nodeHelpers = defineComponent({
 		},
 		// @ts-ignore
 		getNodeSubtitle(data, nodeType, workflow): string | undefined {
+			const otherOutputs = (nodeType.outputs || []).filter(
+				(outputName: string) => outputName !== 'main',
+			);
+			if (otherOutputs.length > 0) {
+				return useI18n().baseText(`node.connectionType.${otherOutputs[0]}` as BaseTextKey);
+			}
+
 			if (!data) {
 				return undefined;
 			}

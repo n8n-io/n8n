@@ -15,7 +15,7 @@ export class DocumentJsonInputLoader implements INodeType {
 		defaults: {
 			name: 'Workflow Input to JSON Document',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#500080',
+			color: '#27A6DD',
 		},
 		codex: {
 			categories: ['AI'],
