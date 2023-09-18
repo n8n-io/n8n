@@ -7,9 +7,8 @@ import EmailConfirmationBanner from '@/components/banners/EmailConfirmationBanne
 import type { Component } from 'vue';
 import type { N8nBanners } from '@/Interface';
 
-// All banners that can be shown in the banner stack should be registered here.
-// All banners that should be shown at the same time are placed on banner stack in UI store
-// and this component will render the banner with the highest priority from the stack
+// All banners that can be shown in the app should be registered here.
+// This component renders the banner with the highest priority from the banner stack, located in the UI store.
 // When registering a new banner, please consult this document to determine it's priority:
 // https://www.notion.so/n8n/Banner-stack-60948c4167c743718fde80d6745258d5
 export const N8N_BANNERS: N8nBanners = {

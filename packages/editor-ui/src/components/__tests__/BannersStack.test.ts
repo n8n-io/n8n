@@ -1,4 +1,3 @@
-import { within } from '@testing-library/vue';
 import { merge } from 'lodash-es';
 import userEvent from '@testing-library/user-event';
 
@@ -20,11 +19,7 @@ const initialState = {
 		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
 	},
 	[STORES.UI]: {
-		banners: {
-			V1: { dismissed: false },
-			TRIAL: { dismissed: false },
-			TRIAL_OVER: { dismissed: false },
-		},
+		bannerStack: ['V1', 'TRIAL_OVER', 'EMAIL_CONFIRMATION', 'NON_PRODUCTION_LICENSE'],
 	},
 	[STORES.USERS]: {
 		currentUserId: 'aaa-bbb',
@@ -66,37 +61,14 @@ describe('BannerStack', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should render default configuration', async () => {
-		const { getByTestId } = renderComponent();
+	it('should render banner with the highest priority', async () => {
+		const { getByTestId, queryByTestId } = renderComponent();
 
 		const bannerStack = getByTestId('banner-stack');
 		expect(bannerStack).toBeInTheDocument();
-
-		expect(within(bannerStack).getByTestId('banners-TRIAL')).toBeInTheDocument();
-		expect(within(bannerStack).getByTestId('banners-TRIAL_OVER')).toBeInTheDocument();
-		expect(within(bannerStack).getByTestId('banners-V1')).toBeInTheDocument();
-	});
-
-	it('should not render dismissed banners', async () => {
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: merge(initialState, {
-					[STORES.UI]: {
-						banners: {
-							V1: { dismissed: true },
-							TRIAL: { dismissed: true },
-						},
-					},
-				}),
-			}),
-		});
-
-		const bannerStack = getByTestId('banner-stack');
-		expect(bannerStack).toBeInTheDocument();
-
-		expect(within(bannerStack).queryByTestId('banners-V1')).not.toBeInTheDocument();
-		expect(within(bannerStack).queryByTestId('banners-TRIAL')).not.toBeInTheDocument();
-		expect(within(bannerStack).getByTestId('banners-TRIAL_OVER')).toBeInTheDocument();
+		// Only V1 banner should be visible
+		expect(getByTestId('banners-V1')).toBeInTheDocument();
+		expect(queryByTestId('banners-TRIAL_OVER')).not.toBeInTheDocument();
 	});
 
 	it('should dismiss banner on click', async () => {
@@ -104,24 +76,15 @@ describe('BannerStack', () => {
 		const dismissBannerSpy = vi
 			.spyOn(useUIStore(), 'dismissBanner')
 			.mockImplementation(async (banner, mode) => {});
-		const closeTrialBannerButton = getByTestId('banner-TRIAL_OVER-close');
+		expect(getByTestId('banners-V1')).toBeInTheDocument();
+		const closeTrialBannerButton = getByTestId('banner-V1-close');
 		expect(closeTrialBannerButton).toBeInTheDocument();
 		await userEvent.click(closeTrialBannerButton);
-		expect(dismissBannerSpy).toHaveBeenCalledWith('TRIAL_OVER');
+		expect(dismissBannerSpy).toHaveBeenCalledWith('V1');
 	});
 
 	it('should permanently dismiss banner on click', async () => {
-		const { getByTestId } = renderComponent({
-			pinia: createTestingPinia({
-				initialState: merge(initialState, {
-					[STORES.UI]: {
-						banners: {
-							V1: { dismissed: false },
-						},
-					},
-				}),
-			}),
-		});
+		const { getByTestId } = renderComponent();
 		const dismissBannerSpy = vi
 			.spyOn(useUIStore(), 'dismissBanner')
 			.mockImplementation(async (banner, mode) => {});
@@ -143,5 +106,19 @@ describe('BannerStack', () => {
 			}),
 		});
 		expect(queryByTestId('banner-confirm-v1')).not.toBeInTheDocument();
+	});
+
+	it('should render empty banner stack when there are no banners to display', async () => {
+		const { queryByTestId } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: [],
+					},
+				},
+			}),
+		});
+		expect(queryByTestId('banner-stack')).toBeEmptyDOMElement();
 	});
 });
