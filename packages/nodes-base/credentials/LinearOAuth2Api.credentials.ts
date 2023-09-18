@@ -33,6 +33,24 @@ export class LinearOAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			displayName: 'Actor',
+			name: 'actor',
+			type: 'options',
+			options: [
+				{
+					name: 'User',
+					value: 'user',
+					description: 'Resources are created as the user who authorized the application',
+				},
+				{
+					name: 'Application',
+					value: 'application',
+					description: 'Resources are created as the application',
+				},
+			],
+			default: 'user',
+		},
+		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
@@ -43,7 +61,7 @@ export class LinearOAuth2Api implements ICredentialType {
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: '',
+			default: '={{"actor="+$self["actor"]}}',
 		},
 		{
 			displayName: 'Authentication',
