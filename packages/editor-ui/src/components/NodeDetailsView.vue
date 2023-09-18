@@ -134,7 +134,7 @@ import type {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, NodeHelpers } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -329,18 +329,22 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (
-				this.inputNode === null &&
-				this.activeNode === null &&
-				this.activeNodeType?.outputs.includes('main')
-			) {
+			if (this.inputNode === null && this.activeNode === null) {
 				return 0;
 			}
 
-			const runData: IRunData | null = this.workflowRunData;
+			const workflowNode = this.workflow.getNode(this.activeNode.name);
+			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
+
+			if (outputs.includes('main')) {
+				return 0;
+			}
 
 			let node = this.inputNode;
-			if (this.activeNodeType?.outputs.filter((output) => output !== 'main').length) {
+
+			const runData: IRunData | null = this.workflowRunData;
+
+			if (outputs.filter((output) => output !== 'main').length) {
 				node = this.activeNode;
 			}
 
@@ -614,6 +618,19 @@ export default defineComponent({
 		async close() {
 			if (this.isDragging) {
 				return;
+			}
+
+			if (
+				typeof this.activeNodeType.outputs === 'string' ||
+				typeof this.activeNodeType.inputs === 'string'
+			) {
+				// TODO: We should keep track of if it actually changed and only do if required
+				// Whenever a node with custom inputs and outputs gets closed redraw it in case
+				// they changed
+				const nodeName = this.activeNode.name;
+				setTimeout(() => {
+					this.$emit('redrawNode', nodeName);
+				}, 1);
 			}
 
 			if (this.outputPanelEditMode.enabled) {

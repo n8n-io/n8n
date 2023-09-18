@@ -504,6 +504,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 
 import type {
 	IExecutionResponse,
@@ -686,11 +687,23 @@ export default defineComponent({
 			return this.displayMode === 'schema';
 		},
 		isTriggerNode(): boolean {
+			if (this.node === null) {
+				return false;
+			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		canPinData(): boolean {
 			// Only "main" inputs can pin data
-			const nonMainInputs = !!this.nodeType?.inputs.find((input) => {
+
+			if (this.node === null) {
+				return false;
+			}
+
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const workflowNode = workflow.getNode(this.node.name);
+			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+
+			const nonMainInputs = !!inputs.find((input) => {
 				if (typeof input === 'string') {
 					return input !== 'main';
 				}
@@ -772,7 +785,7 @@ export default defineComponent({
 			return (this.dataSize / 1024 / 1000).toLocaleString();
 		},
 		maxOutputIndex(): number {
-			if (this.node === null) {
+			if (this.node === null || this.runIndex === undefined) {
 				return 0;
 			}
 
@@ -1273,8 +1286,14 @@ export default defineComponent({
 			this.outputIndex = 0;
 			this.refreshDataSize();
 			this.closeBinaryDataDisplay();
-			this.connectionType =
-				!this.nodeType || this.nodeType.outputs.length === 0 ? 'main' : this.nodeType?.outputs[0];
+			let outputTypes: ConnectionTypes[] = [];
+			if (this.nodeType !== null && this.node !== null) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+				const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+				outputTypes = NodeHelpers.getConnectionTypes(outputs);
+			}
+			this.connectionType = outputTypes.length === 0 ? 'main' : outputTypes[0];
 			if (this.binaryData.length > 0) {
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',

@@ -65,6 +65,7 @@ import type {
 	INodeType,
 	ITaskData,
 	ExecutionError,
+	INodeOutputConfiguration,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -2707,7 +2708,10 @@ export function getExecuteFunctions(
 			): Promise<unknown> {
 				const node = this.getNode();
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-				let inputConfiguration = nodeType.description.inputs.find((input) => {
+
+				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+
+				let inputConfiguration = inputs.find((input) => {
 					if (typeof input === 'string') {
 						return input === inputName;
 					}
@@ -2857,6 +2861,17 @@ export function getExecuteFunctions(
 				return inputConfiguration.maxConnections === 1
 					? (nodes || [])[0]?.response
 					: nodes.map((node) => node.response);
+			},
+			getNodeOutputs(): INodeOutputConfiguration[] {
+				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {
+					if (typeof output === 'string') {
+						return {
+							type: output,
+						};
+					}
+					return output;
+				});
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {

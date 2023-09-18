@@ -86,6 +86,7 @@
 				:readOnly="isReadOnlyRoute || readOnlyEnv"
 				:renaming="renamingActive"
 				:isProductionExecutionPreview="isProductionExecutionPreview"
+				@redrawNode="redrawNode"
 				@valueChanged="valueChanged"
 				@stopExecution="stopExecution"
 				@saveKeyboardShortcut="onSaveKeyboardShortcut"
@@ -1977,18 +1978,32 @@ export default defineComponent({
 						}
 					}
 
+					const workflow = this.getCurrentWorkflow();
+					const workflowNode = workflow.getNode(newNodeData.name);
+					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
+					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
 					// If node has only scoped outputs, position it below the last selected node
 					if (
-						nodeTypeData.outputs.every((output) =>
-							SCOPED_ENDPOINT_TYPES.includes(output as NodeConnectionType),
+						outputTypes.every((outputName) =>
+							SCOPED_ENDPOINT_TYPES.includes(outputName as NodeConnectionType),
 						)
 					) {
 						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
-						const scopedConnectionIndex = (lastSelectedNodeType?.inputs || []).findIndex(
-							(output) => nodeTypeData.outputs[0] === output,
+
+						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
+						const lastSelectedInputs = NodeHelpers.getNodeInputs(
+							workflow,
+							lastSelectedNodeWorkflow!,
+							lastSelectedNodeType!,
+						);
+						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
+
+						const scopedConnectionIndex = (lastSelectedInputTypes || []).findIndex(
+							(inputType) => outputs[0] === inputType,
 						);
 
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
@@ -2223,10 +2238,15 @@ export default defineComponent({
 				return;
 			}
 
+			const workflow = this.getCurrentWorkflow();
+
 			const nodeType = this.nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
 
 			if (nodeType) {
-				const filterFound = nodeType.inputs?.filter((input) => {
+				const workflowNode = workflow.getNode(sourceNode.name);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
+
+				const filterFound = inputs.filter((input) => {
 					if (typeof input === 'string' || input.type !== info.outputType || !input.filter) {
 						// No filters defined or wrong connection type
 						return false;
@@ -2670,7 +2690,12 @@ export default defineComponent({
 							const node = this.workflowsStore.getNodeByName(nodeName);
 							if (node) {
 								const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-								if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
+
+								const workflow = this.getCurrentWorkflow();
+								const workflowNode = workflow.getNode(nodeName);
+								const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
+
+								if (nodeType && inputs.length === 1) {
 									this.pullConnActiveNodeName = node.name;
 									const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
 									if (endpointUUID) {
@@ -3349,7 +3374,17 @@ export default defineComponent({
 			let waitForNewConnection = false;
 			// connect nodes before/after deleted node
 			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (nodeType && nodeType.outputs.length === 1 && nodeType.inputs.length === 1) {
+
+			const workflow = this.getCurrentWorkflow();
+			const workflowNode = workflow.getNode(node.name);
+			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+			if (nodeType) {
+				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
+				outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeType);
+			}
+
+			if (outputs.length === 1 && inputs.length === 1) {
 				const { incoming, outgoing } = this.getIncomingOutgoingConnections(node.name);
 				if (incoming.length === 1 && outgoing.length === 1) {
 					const conn1 = incoming[0];
@@ -3409,6 +3444,14 @@ export default defineComponent({
 					this.historyStore.stopRecordingUndo();
 				}, recordingTimeout);
 			}
+		},
+		async redrawNode(nodeName: string) {
+			// TODO: Improve later
+			// For now we redraw the node by simply renaming it. Can for sure be
+			// done better later but should be fine for now.
+			const tempName = 'x____XXXX____x';
+			await this.renameNode(nodeName, tempName);
+			await this.renameNode(tempName, nodeName);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			if (parameterData.name === 'name' && parameterData.oldValue) {

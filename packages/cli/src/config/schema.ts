@@ -1209,7 +1209,7 @@ export const schema = {
 		evaluator: {
 			doc: 'Expression evaluator to use',
 			format: ['tmpl', 'tournament'] as const,
-			default: 'tmpl',
+			default: 'tournament',
 			env: 'N8N_EXPRESSION_EVALUATOR',
 		},
 		reportDifference: {
