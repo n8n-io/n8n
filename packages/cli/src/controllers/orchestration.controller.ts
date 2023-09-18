@@ -1,15 +1,12 @@
-import config from '@/config';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
 import { Service } from 'typedi';
-import { OrchestrationService } from '../services/orchestration.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @Authorized(['global', 'owner'])
 @RestController('/orchestration')
 @Service()
 export class OrchestrationController {
-	private config = config;
-
 	constructor(private readonly orchestrationService: OrchestrationService) {}
 
 	/**
