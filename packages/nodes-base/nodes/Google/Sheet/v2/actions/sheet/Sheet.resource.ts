@@ -69,7 +69,7 @@ export const descriptions: INodeProperties[] = [
 				name: 'Update Row',
 				value: 'update',
 				description: 'Update an existing row in a sheet',
-				action: 'Update a row in sheet',
+				action: 'Update row in sheet',
 			},
 		],
 		default: 'read',
