@@ -32,12 +32,7 @@ export class ObjectStoreService {
 	async checkConnection() {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
-		try {
-			return await this.request('HEAD', host);
-		} catch (error) {
-			const msg = 'Failed to connect to external storage. Please recheck your credentials.';
-			throw new Error(msg, { cause: error as unknown });
-		}
+		return this.request('HEAD', host);
 	}
 
 	/**
