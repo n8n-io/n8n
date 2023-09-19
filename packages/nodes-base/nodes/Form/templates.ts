@@ -225,7 +225,7 @@ const submittedTestMessage = (testRun: boolean) => {
 		<p>
 			${
 				testRun
-					? 'Go back to the n8n editor and close this window'
+					? 'Close this window and go back to the n8n editor'
 					: 'Refresh this page to make another submission'
 			}
 		</p>
