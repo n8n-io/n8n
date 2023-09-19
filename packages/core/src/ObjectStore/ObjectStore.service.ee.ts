@@ -24,14 +24,18 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * Confirm that the configured bucket exists and that the caller has permission to access it.
+	 * Confirm that the configured bucket exists and the caller has permission to access it.
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
 	async checkConnection() {
-		const host = `s3.${this.bucket.region}.amazonaws.com`;
+		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
-		return this.request('HEAD', host, this.bucket.name); // @TODO: Not working with Axios
+		try {
+			return await this.request('HEAD', host);
+		} catch {
+			throw new ObjectStorageError.ConnectionFailed();
+		}
 	}
 
 	/**
@@ -84,7 +88,7 @@ export class ObjectStoreService {
 	private async request(
 		method: Method,
 		host: string,
-		path: string,
+		path = '',
 		{
 			headers,
 			responseType,
@@ -97,6 +101,9 @@ export class ObjectStoreService {
 		const slashPath = path.startsWith('/') ? path : `/${path}`;
 
 		const optionsToSign: Aws4Options = {
+			method,
+			service: 's3',
+			region: this.bucket.region,
 			host,
 			path: slashPath,
 			...headers,
@@ -118,8 +125,8 @@ export class ObjectStoreService {
 			return await axios.request<unknown>(config);
 		} catch (error) {
 			if (error instanceof Error) console.log(error.message); // @TODO: Remove
+			throw error; // @TODO: Remove
 			// throw new ObjectStorageError.RequestFailed(config); // @TODO: Restore
-			throw error;
 		}
 	}
 }

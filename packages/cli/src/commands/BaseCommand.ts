@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import { pipeline } from 'node:stream/promises';
+// import fs from 'node:fs';
+// import { pipeline } from 'node:stream/promises';
 // import { readFile } from 'node:fs/promises';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
@@ -126,17 +126,16 @@ export abstract class BaseCommand extends Command {
 		// const buffer = Buffer.from(await readFile(filePath));
 		// await objectStoreService.put('object-store-service-happy-dog.jpg', buffer);
 
-		// await objectStoreService.checkConnection();
+		await objectStoreService.checkConnection();
 
-		const stream = await objectStoreService.getStream('happy-dog.jpg');
-
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			await pipeline(stream as any, fs.createWriteStream('happy-dog.jpg'));
-			console.log('✅ Pipeline succeeded');
-		} catch (error) {
-			console.log('❌ Pipeline failed', error);
-		}
+		// const stream = await objectStoreService.getStream('happy-dog.jpg');
+		// try {
+		// 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// 	await pipeline(stream as any, fs.createWriteStream('happy-dog.jpg'));
+		// 	console.log('✅ Pipeline succeeded');
+		// } catch (error) {
+		// 	console.log('❌ Pipeline failed', error);
+		// }
 
 		const binaryDataConfig = config.getEnv('binaryDataService');
 		await Container.get(BinaryDataService).init(binaryDataConfig);

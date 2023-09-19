@@ -8,6 +8,12 @@ export namespace ObjectStorageError {
 		}
 	}
 
+	export class ConnectionFailed extends TypeError {
+		constructor() {
+			super('Failed to connect to external storage. Please recheck your credentials.');
+		}
+	}
+
 	export class RequestFailed extends Error {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		constructor(requestConfig: AxiosRequestConfig) {
