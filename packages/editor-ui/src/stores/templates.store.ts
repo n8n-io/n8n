@@ -335,18 +335,16 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			return getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
 		},
 
-		async getFixedWorkflowTemplate(templateId: string): Promise<IWorkflowTemplate> {
+		async getFixedWorkflowTemplate(templateId: string): Promise<IWorkflowTemplate | undefined> {
 			const template = await this.getWorkflowTemplate(templateId);
-			if (!template) {
-				throw new Error(`The template with the ID "${templateId}" does not exist.`);
+			if (template?.workflow?.nodes) {
+				template.workflow.nodes = getFixedNodesList(template.workflow.nodes) as INodeUi[];
+				template.workflow.nodes?.forEach((node) => {
+					if (node.credentials) {
+						delete node.credentials;
+					}
+				});
 			}
-
-			template.workflow.nodes = getFixedNodesList(template.workflow.nodes) as INodeUi[];
-			template.workflow.nodes?.forEach((node) => {
-				if (node.credentials) {
-					delete node.credentials;
-				}
-			});
 
 			return template;
 		},

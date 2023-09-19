@@ -12,6 +12,10 @@ const route = useRoute();
 const openWorkflowTemplate = async (templateId: string) => {
 	try {
 		const template = await templateStore.getFixedWorkflowTemplate(templateId);
+		if (!template) {
+			throw new Error();
+		}
+
 		const workflow = await workfowStore.createNewWorkflow({
 			name: template.name,
 			connections: template.workflow.connections,
