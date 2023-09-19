@@ -3,7 +3,7 @@ import {
 	IF_NODE_NAME,
 	INSTANCE_OWNER,
 	MANUAL_TRIGGER_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage, NDV, WorkflowExecutionsTab } from '../pages';
 
@@ -35,7 +35,7 @@ describe('Debug', () => {
 		ndv.actions.typeIntoParameterInput('url', 'https://foo.bar');
 		ndv.actions.close();
 
-		workflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true);
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true);
 
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
 		workflowPage.actions.executeWorkflow();
@@ -101,7 +101,7 @@ describe('Debug', () => {
 		confirmDialog.find('li').should('have.length', 1);
 		confirmDialog.get('.btn--confirm').click();
 
-		workflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
+		workflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		workflowPage.actions.addNodeToCanvas(IF_NODE_NAME, false);
 		workflowPage.actions.saveWorkflowUsingKeyboardShortcut();
 
