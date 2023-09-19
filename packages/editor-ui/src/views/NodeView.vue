@@ -4550,6 +4550,11 @@ export default defineComponent({
 				.add-input-endpoint {
 					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
 				}
+
+				.node-input-endpoint-label,
+				.node-output-endpoint-label {
+					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+				}
 			}
 
 			&.connection-drag-scope-active-type-#{$node-type} {
@@ -4569,6 +4574,12 @@ export default defineComponent({
 						}
 
 						// Apply style to non-dragged compatible input endpoints
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
+
+					.node-input-endpoint-label {
 						&:not(.jtk-dragging) {
 							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
 						}
@@ -4593,6 +4604,12 @@ export default defineComponent({
 					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
 						.add-input-endpoint-default {
 							transform: translate(-4px, -4px) scale(1.375);
+						}
+					}
+
+					.node-output-endpoint-label {
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
 						}
 					}
 				}

@@ -1288,6 +1288,8 @@ export default defineComponent({
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
+	--node-endpoint-label--transition-duration: 0.15s;
+
 	background-color: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -1298,6 +1300,7 @@ export default defineComponent({
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	transition: color var(--node-endpoint-label--transition-duration) ease;
 
 	@each $node-type in $supplemental-node-types {
 		&.node-connection-type-#{$node-type} {
