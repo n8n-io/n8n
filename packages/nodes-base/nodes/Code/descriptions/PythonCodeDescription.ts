@@ -7,6 +7,7 @@ const commonDescription: INodeProperties = {
 	typeOptions: {
 		editor: 'codeNodeEditor',
 		editorLanguage: 'python',
+		rows: 5,
 	},
 	default: '',
 	description:
