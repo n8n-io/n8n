@@ -5,6 +5,18 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
+import type { WorkflowHistoryActionTypes, WorkflowHistory } from '@/types/workflowHistory';
+import type { TupleToUnion } from '@/utils/typeHelpers';
+
+const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
+	'restore',
+	'clone',
+	'open',
+	'download',
+];
+const workflowHistoryActionsRecord = workflowHistoryActionTypes.map((value) => ({
+	[value.toUpperCase()]: value,
+}));
 
 const route = useRoute();
 const router = useRouter();
@@ -23,6 +35,20 @@ onBeforeMount(async () => {
 		});
 	}
 });
+
+const onAction = ({
+	action,
+	id,
+}: {
+	action: TupleToUnion<WorkflowHistoryActionTypes>;
+	id: WorkflowHistory['id'];
+}) => {
+	console.log('action', { action, id });
+};
+
+const onPreview = ({ id }: { id: WorkflowHistory['id'] }) => {
+	console.log('preview', { id });
+};
 </script>
 <template>
 	<div :class="$style.view">
@@ -37,6 +63,10 @@ onBeforeMount(async () => {
 		<workflow-history-list
 			:class="$style.listComponent"
 			:items="workflowHistoryStore.workflowHistory"
+			:action-types="workflowHistoryActionTypes"
+			:active-item-id="route.params.versionId"
+			@action="onAction"
+			@preview="onPreview"
 		/>
 	</div>
 </template>

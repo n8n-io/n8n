@@ -6,29 +6,28 @@ import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workfl
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 
-const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
-	'restore',
-	'clone',
-	'open',
-	'download',
-];
-const workflowHistoryActionsRecord = workflowHistoryActionTypes.map((value) => ({
-	[value.toUpperCase()]: value,
-}));
-
 const props = withDefaults(
 	defineProps<{
 		items: WorkflowHistory[];
+		activeItemId: WorkflowHistory['id'];
+		actionTypes: WorkflowHistoryActionTypes;
 	}>(),
 	{
 		items: () => [],
 	},
 );
+const emit = defineEmits<{
+	(
+		event: 'action',
+		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['id'] },
+	): void;
+	(event: 'preview', value: { id: WorkflowHistory['id'] }): void;
+}>();
 
 const i18n = useI18n();
 
-const workflowHistoryItemActions = computed<UserAction[]>(() =>
-	workflowHistoryActionTypes.map((value) => ({
+const actions = computed<UserAction[]>(() =>
+	props.actionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled: false,
 		value,
@@ -42,7 +41,11 @@ const onAction = ({
 	action: TupleToUnion<WorkflowHistoryActionTypes>;
 	id: WorkflowHistory['id'];
 }) => {
-	console.log({ action, id });
+	emit('action', { action, id });
+};
+
+const onPreview = ({ id }: { id: WorkflowHistory['id'] }) => {
+	emit('preview', { id });
 };
 </script>
 
@@ -52,8 +55,10 @@ const onAction = ({
 			v-for="item in props.items"
 			:key="item.id"
 			:item="item"
-			:actions="workflowHistoryItemActions"
+			:active="item.id === props.activeItemId"
+			:actions="actions"
 			@action="onAction"
+			@preview="onPreview"
 		/>
 	</ul>
 </template>
