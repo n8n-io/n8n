@@ -7,6 +7,7 @@ import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
+import { useUIStore } from './ui.store';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
@@ -55,13 +56,28 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
+		// if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
 		let plan;
 		try {
 			plan = await getCurrentPlan(rootStore.getRestApiContext);
 			state.data = plan;
 			state.loadingPlan = false;
+
+			if (userIsTrialing.value) {
+				if (trialExpired.value) {
+					useUIStore().pushBannerToStack('TRIAL_OVER');
+				} else {
+					useUIStore().pushBannerToStack('TRIAL');
+				}
+			}
+
+			if (useUsersStore().isInstanceOwner) {
+				await usersStore.fetchUserCloudAccount();
+				if (!usersStore.currentUserCloudInfo?.confirmed) {
+					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
+				}
+			}
 		} catch (error) {
 			state.loadingPlan = false;
 			throw new Error(error);

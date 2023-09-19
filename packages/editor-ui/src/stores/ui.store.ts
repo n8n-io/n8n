@@ -60,6 +60,7 @@ import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import { N8N_BANNERS } from '@/components/banners/BannerStack.vue';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -184,13 +185,8 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
-		banners: {
-			V1: { dismissed: true },
-			TRIAL: { dismissed: true },
-			TRIAL_OVER: { dismissed: true },
-			NON_PRODUCTION_LICENSE: { dismissed: true },
-		},
 		bannersHeight: 0,
+		bannerStack: [],
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -563,36 +559,38 @@ export const useUIStore = defineStore(STORES.UI, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});
-				this.banners[name].dismissed = true;
-				this.banners[name].type = 'permanent';
+				this.removeBannerFromStack(name);
 				return;
 			}
-			this.banners[name].dismissed = true;
-			this.banners[name].type = 'temporary';
-		},
-		showBanner(name: BannerName): void {
-			this.banners[name].dismissed = false;
+			this.removeBannerFromStack(name);
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
 		},
-		async initBanners(): Promise<void> {
-			const cloudPlanStore = useCloudPlanStore();
-			if (cloudPlanStore.userIsTrialing) {
-				await this.dismissBanner('V1', 'temporary');
-				if (cloudPlanStore.trialExpired) {
-					this.showBanner('TRIAL_OVER');
-				} else {
-					this.showBanner('TRIAL');
-				}
-			}
+		pushBannerToStack(name: BannerName) {
+			if (this.bannerStack.includes(name)) return;
+			this.bannerStack.push(name);
+			this.sortBannerStack();
 		},
-		async dismissAllBanners() {
-			return Promise.all([
-				this.dismissBanner('TRIAL', 'temporary'),
-				this.dismissBanner('TRIAL_OVER', 'temporary'),
-				this.dismissBanner('V1', 'temporary'),
-			]);
+		removeBannerFromStack(name: BannerName) {
+			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
+		},
+		clearBannerStack() {
+			this.bannerStack = [];
+		},
+		sortBannerStack() {
+			this.bannerStack = this.bannerStack.sort((a: BannerName, b: BannerName) => {
+				const priorityA = N8N_BANNERS[a].priority;
+				const priorityB = N8N_BANNERS[b].priority;
+
+				if (priorityA > priorityB) {
+					return -1;
+				}
+				if (priorityA < priorityB) {
+					return 1;
+				}
+				return 0;
+			});
 		},
 	},
 });

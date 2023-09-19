@@ -127,7 +127,7 @@ export default defineComponent({
 				});
 				this.loading = false;
 				await this.cloudPlanStore.checkForCloudPlanData();
-				await this.uiStore.initBanners();
+				await this.settingsStore.getSettings();
 				this.clearAllStickyNotifications();
 				this.checkRecoveryCodesLeft();
 
