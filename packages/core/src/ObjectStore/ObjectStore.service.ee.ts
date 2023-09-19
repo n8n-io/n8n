@@ -3,12 +3,13 @@
 import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
-import { isStream } from './utils';
+import { isStream, parseXml } from './utils';
 import { createHash } from 'node:crypto';
 import type { AxiosRequestConfig, Method, ResponseType } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
+import type { ListPage, RawListPage } from './types';
 
-// @TODO: Decouple from AWS
+// @TODO: Decouple host from AWS
 
 @Service()
 export class ObjectStoreService {
@@ -81,21 +82,87 @@ export class ObjectStoreService {
 		return this.request('DELETE', host, `/${encodeURIComponent(path)}`);
 	}
 
+	/**
+	 * List all objects with a common prefix in the configured bucket.
+	 *
+	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
+	 */
+	async list(prefix: string) {
+		const items = [];
+
+		let isTruncated;
+		let token; // for next page
+
+		do {
+			const listPage = await this.getListPage(prefix, token);
+
+			if (listPage.contents?.length > 0) items.push(...listPage.contents);
+
+			isTruncated = listPage.isTruncated;
+			token = listPage.nextContinuationToken;
+		} while (isTruncated && token);
+
+		return items;
+	}
+
+	/**
+	 * Fetch a page of objects with a common prefix in the configured bucket. Max 1000 per page.
+	 */
+	private async getListPage(prefix: string, nextPageToken?: string) {
+		const host = `s3.${this.bucket.region}.amazonaws.com`;
+
+		const qs: Record<string, string | number> = { 'list-type': 2, prefix };
+
+		if (nextPageToken) qs['continuation-token'] = nextPageToken;
+
+		const response = await this.request('GET', host, `/${this.bucket.name}`, { qs });
+
+		if (typeof response.data !== 'string') {
+			throw new TypeError('Expected string');
+		}
+
+		const { listBucketResult: listPage } = await parseXml<RawListPage>(response.data);
+
+		// restore array wrapper removed by `explicitArray: false` on single item array
+
+		if (!Array.isArray(listPage.contents)) {
+			listPage.contents = [listPage.contents];
+		}
+
+		// remove null prototype - https://github.com/Leonidas-from-XIV/node-xml2js/issues/670
+
+		listPage.contents.forEach((item) => {
+			Object.setPrototypeOf(item, Object.prototype);
+		});
+
+		return listPage as ListPage;
+	}
+
 	private async request(
 		method: Method,
 		host: string,
 		path = '',
 		{
+			qs,
 			headers,
 			body,
 			responseType,
 		}: {
+			qs?: Record<string, string | number>;
 			headers?: Record<string, string | number>;
 			body?: Buffer;
 			responseType?: ResponseType;
 		} = {},
 	) {
-		const slashPath = path.startsWith('/') ? path : `/${path}`;
+		let slashPath = path.startsWith('/') ? path : `/${path}`;
+
+		if (qs) {
+			const qsParams = Object.keys(qs)
+				.map((key) => `${key}=${qs[key]}`)
+				.join('&');
+
+			slashPath = slashPath.concat(`?${qsParams}`);
+		}
 
 		const optionsToSign: Aws4Options = {
 			method,
@@ -119,11 +186,12 @@ export class ObjectStoreService {
 		if (body) config.data = body;
 		if (responseType) config.responseType = responseType;
 
-		console.log(config);
+		// console.log(config);
 
 		try {
 			return await axios.request<unknown>(config);
 		} catch (error) {
+			// console.log(error);
 			throw new Error('Request to external object storage failed', {
 				cause: { error: error as unknown, details: config },
 			});

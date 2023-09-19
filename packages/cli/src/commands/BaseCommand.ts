@@ -129,6 +129,9 @@ export abstract class BaseCommand extends Command {
 
 		await objectStoreService.checkConnection();
 
+		// const res = await objectStoreService.list('uploaded');
+		// console.log('res', res);
+
 		// await objectStoreService.delete('object-store-service-dog.jpg');
 
 		// const stream = await objectStoreService.get('happy-dog.jpg', { mode: 'stream' });

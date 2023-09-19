@@ -44,7 +44,8 @@
     "@types/lodash": "^4.14.195",
     "@types/mime-types": "^2.1.0",
     "@types/request-promise-native": "~1.0.15",
-    "@types/uuid": "^8.3.2"
+    "@types/uuid": "^8.3.2",
+    "@types/xml2js": "^0.4.11"
   },
   "peerDependencies": {
     "n8n-nodes-base": "workspace:*"
@@ -70,6 +71,7 @@
     "pretty-bytes": "^5.6.0",
     "qs": "^6.10.1",
     "typedi": "^0.10.0",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "xml2js": "^0.5.0"
   }
 }

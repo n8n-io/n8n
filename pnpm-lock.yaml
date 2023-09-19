@@ -633,6 +633,9 @@ importers:
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
+      xml2js:
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
       '@types/aws4':
         specifier: ^1.5.1
@@ -667,6 +670,9 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      '@types/xml2js':
+        specifier: ^0.4.11
+        version: 0.4.11
 
   packages/design-system:
     dependencies:
