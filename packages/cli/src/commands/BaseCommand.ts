@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
+// import { readFile } from 'node:fs/promises';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
@@ -120,6 +121,12 @@ export abstract class BaseCommand extends Command {
 				secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
 			},
 		);
+
+		// const filePath = '/Users/ivov/Downloads/happy-dog.jpg';
+		// const buffer = Buffer.from(await readFile(filePath));
+		// await objectStoreService.put('object-store-service-happy-dog.jpg', buffer);
+
+		// await objectStoreService.checkConnection();
 
 		const stream = await objectStoreService.getStream('happy-dog.jpg');
 
