@@ -4,6 +4,8 @@ import type { BinaryMetadata } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 
+// `/workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
+
 export class ObjectStoreManager implements BinaryData.Manager {
 	async init() {
 		throw new Error('TODO');
