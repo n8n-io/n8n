@@ -45,6 +45,7 @@ export class ObjectStoreService {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
 		const headers = {
+			// derive content-type from filename
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
 		};
@@ -83,7 +84,30 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * List all objects with a common prefix in the configured bucket.
+	 * Delete objects with a common prefix in the configured bucket.
+	 *
+	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObjects.html
+	 */
+	async deleteMany(prefix: string) {
+		const objects = await this.list(prefix);
+
+		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
+
+		const innerXml = objects.map((o) => `<Object><Key>${o.key}</Key></Object>`).join('\n');
+
+		const body = ['<Delete>', innerXml, '</Delete>'].join('\n');
+
+		const headers = {
+			'Content-Type': 'application/xml',
+			'Content-Length': body.length,
+			'Content-MD5': createHash('md5').update(body).digest('base64'),
+		};
+
+		return this.request('POST', host, '/?delete', { headers, body });
+	}
+
+	/**
+	 * List objects with a common prefix in the configured bucket.
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 	 */
@@ -138,10 +162,22 @@ export class ObjectStoreService {
 		return listPage as ListPage;
 	}
 
+	private toPath(rawPath: string, qs?: Record<string, string | number>) {
+		const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+
+		if (!qs) return path;
+
+		const qsParams = Object.keys(qs)
+			.map((key) => `${key}=${qs[key]}`)
+			.join('&');
+
+		return path.concat(`?${qsParams}`);
+	}
+
 	private async request(
 		method: Method,
 		host: string,
-		path = '',
+		rawPath = '',
 		{
 			qs,
 			headers,
@@ -150,26 +186,18 @@ export class ObjectStoreService {
 		}: {
 			qs?: Record<string, string | number>;
 			headers?: Record<string, string | number>;
-			body?: Buffer;
+			body?: string | Buffer;
 			responseType?: ResponseType;
 		} = {},
 	) {
-		let slashPath = path.startsWith('/') ? path : `/${path}`;
-
-		if (qs) {
-			const qsParams = Object.keys(qs)
-				.map((key) => `${key}=${qs[key]}`)
-				.join('&');
-
-			slashPath = slashPath.concat(`?${qsParams}`);
-		}
+		const path = this.toPath(rawPath, qs);
 
 		const optionsToSign: Aws4Options = {
 			method,
 			service: 's3',
 			region: this.bucket.region,
 			host,
-			path: slashPath,
+			path,
 		};
 
 		if (headers) optionsToSign.headers = headers;
@@ -179,7 +207,7 @@ export class ObjectStoreService {
 
 		const config: AxiosRequestConfig = {
 			method,
-			url: `https://${host}${slashPath}`,
+			url: `https://${host}${path}`,
 			headers: signedOptions.headers,
 		};
 
