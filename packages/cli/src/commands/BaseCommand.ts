@@ -129,7 +129,7 @@ export abstract class BaseCommand extends Command {
 
 		await objectStoreService.checkConnection();
 
-		// const stream = await objectStoreService.getStream('happy-dog.jpg');
+		// const stream = await objectStoreService.get('happy-dog.jpg', { mode: 'stream' });
 		// try {
 		// 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		// 	await pipeline(stream as any, fs.createWriteStream('happy-dog.jpg'));

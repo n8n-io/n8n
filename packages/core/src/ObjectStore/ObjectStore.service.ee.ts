@@ -9,6 +9,8 @@ import { createHash } from 'node:crypto';
 import type { AxiosRequestConfig, Method, ResponseType } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 
+// @TODO: Decouple from AWS
+
 @Service()
 export class ObjectStoreService {
 	private credentials: Aws4Credentials;
@@ -55,33 +57,21 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * Download an object as a stream from the configured bucket.
+	 * Download an object as a stream or buffer from the configured bucket.
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async getStream(path: string) {
+	async get(path: string, { mode }: { mode: 'stream' | 'buffer' }) {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
+		const responseType = mode === 'buffer' ? 'arraybuffer' : 'stream';
 
-		const { data } = await this.request('GET', host, path, { responseType: 'stream' });
+		const { data } = await this.request('GET', host, path, { responseType });
 
-		if (isStream(data)) return data;
+		if (mode === 'stream' && isStream(data)) return data;
 
-		throw new ObjectStorageError.TypeMismatch('stream', typeof data);
-	}
+		if (mode === 'buffer' && Buffer.isBuffer(data)) return data;
 
-	/**
-	 * Download an object as a buffer from the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
-	 */
-	async getBuffer(path: string) {
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-
-		const { data } = await this.request('GET', host, path, { responseType: 'arraybuffer' });
-
-		if (Buffer.isBuffer(data)) return data;
-
-		throw new ObjectStorageError.TypeMismatch('buffer', typeof data);
+		throw new ObjectStorageError.TypeMismatch(mode, typeof data);
 	}
 
 	private async request(
