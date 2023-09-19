@@ -110,20 +110,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	clearTimers() {
 		if (!this.isMainInstance) return;
 
-		this.logger.info('Clearing soft-deletion and hard-deletion intervals for executions');
+		this.logger.debug('Clearing soft-deletion and hard-deletion intervals for executions');
 
 		clearInterval(this.intervals.softDeletion);
 		clearInterval(this.intervals.hardDeletion);
 	}
 
 	setSoftDeletionInterval() {
-		this.logger.info('Setting soft-deletion interval (pruning) for executions');
+		this.logger.debug('Setting soft-deletion interval (pruning) for executions');
 
 		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.hardDeletion);
 	}
 
 	setHardDeletionInterval() {
-		this.logger.info('Setting hard-deletion interval for executions');
+		this.logger.debug('Setting hard-deletion interval for executions');
 
 		this.intervals.hardDeletion = setInterval(
 			async () => this.hardDelete(),
@@ -538,7 +538,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const binaryDataManager = BinaryDataManager.getInstance();
 		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
-		this.logger.info(`Hard-deleting ${executionIds.length} executions from database`, {
+		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,
 		});
 
