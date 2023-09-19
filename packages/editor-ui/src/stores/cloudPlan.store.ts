@@ -7,7 +7,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, STORES } from '@/constants';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,
@@ -15,7 +15,7 @@ const DEFAULT_STATE: CloudPlanState = {
 	loadingPlan: false,
 };
 
-export const useCloudPlanStore = defineStore('cloudPlan', () => {
+export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
@@ -56,7 +56,7 @@ export const useCloudPlanStore = defineStore('cloudPlan', () => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
 		const hasCloudPlan =
 			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-		// if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
+		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
 		let plan;
 		try {
