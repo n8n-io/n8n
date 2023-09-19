@@ -2339,7 +2339,10 @@ export default defineComponent({
 					targetInfo = info.dropEndpoint.parameters;
 				}
 
-				if (sourceInfo.type !== targetInfo.type) {
+				if (
+					sourceInfo.type !== targetInfo.type ||
+					sourceInfo.connection === targetInfo.connection
+				) {
 					this.dropPrevented = true;
 					return false;
 				}
