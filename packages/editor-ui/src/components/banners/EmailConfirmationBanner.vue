@@ -20,7 +20,7 @@ async function onConfirmEmailClick() {
 			title: locale.baseText('banners.confirmEmail.toast.success.heading'),
 			message: locale.baseText('banners.confirmEmail.toast.success.message'),
 		});
-	} catch(error) {
+	} catch (error) {
 		toast.showMessage({
 			type: 'error',
 			title: locale.baseText('banners.confirmEmail.toast.error.heading'),

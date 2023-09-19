@@ -45,7 +45,7 @@ import type {
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
-import { Component } from 'vue';
+import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
 
