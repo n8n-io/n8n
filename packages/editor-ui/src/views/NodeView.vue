@@ -2635,6 +2635,15 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
+
+						if (workflow.meta?.onboardingId) {
+							this.$telemetry.track(
+								`User opened workflow from ${workflow.meta.onboardingId} onboarding template`,
+								{
+									workflow_id: workflow.id,
+								},
+							);
+						}
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow

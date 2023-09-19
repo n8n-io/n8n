@@ -16,6 +16,9 @@ const openWorkflowTemplate = async (templateId: string) => {
 			name: template.name,
 			connections: template.workflow.connections,
 			nodes: template.workflow.nodes,
+			meta: {
+				onboardingId: templateId,
+			},
 		});
 
 		await router.replace({

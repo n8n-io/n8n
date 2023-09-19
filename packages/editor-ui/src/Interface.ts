@@ -213,6 +213,7 @@ export interface IWorkflowDataUpdate {
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -235,6 +236,10 @@ export interface INewWorkflowData {
 	onboardingFlowEnabled: boolean;
 }
 
+export interface WorkflowMetadata {
+	onboardingId?: string;
+}
+
 // Almost identical to cli.Interfaces.ts
 export interface IWorkflowDb {
 	id: string;
@@ -251,6 +256,7 @@ export interface IWorkflowDb {
 	ownedBy?: Partial<IUser>;
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
+	meta?: WorkflowMetadata;
 }
 
 // Identical to cli.Interfaces.ts

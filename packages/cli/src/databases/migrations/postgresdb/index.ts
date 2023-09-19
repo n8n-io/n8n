@@ -46,6 +46,7 @@ import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColu
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
+import { AddWorkflowMetadata1695128658538 } from '../sqlite/1695128658538-AddWorkflowMetadata';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -95,4 +96,5 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowHistoryTable1692967111175,
 	DisallowOrphanExecutions1693554410387,
 	ExecutionSoftDelete1693491613982,
+	AddWorkflowMetadata1695128658538,
 ];
