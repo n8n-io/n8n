@@ -195,8 +195,10 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
-			if ((event.ctrlKey || event.shiftKey) && event.key === 'Enter') {
-				this.sendChatMessage(this.currentMessage);
+			if (event.key === 'Enter' && !event.shiftKey && this.currentMessage) {
+				void this.sendChatMessage(this.currentMessage);
+				event.stopPropagation();
+				event.preventDefault();
 			}
 		},
 		async sendChatMessage(message: string) {
