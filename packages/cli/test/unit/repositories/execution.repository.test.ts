@@ -11,6 +11,8 @@ import { DateUtils } from 'typeorm/util/DateUtils';
 
 jest.mock('typeorm/util/DateUtils');
 
+LoggerProxy.init(getLogger());
+
 const { objectContaining } = expect;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
