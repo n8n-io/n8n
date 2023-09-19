@@ -12,6 +12,11 @@ const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
 let owner: User;
 let member: User;
 
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
+LoggerProxy.init(getLogger());
+
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'Credentials']);
 

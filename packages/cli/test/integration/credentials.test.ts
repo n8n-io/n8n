@@ -12,6 +12,10 @@ import { randomCredentialPayload, randomName, randomString } from './shared/rand
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
+LoggerProxy.init(getLogger());
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
