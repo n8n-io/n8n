@@ -532,7 +532,7 @@ export const nodeHelpers = defineComponent({
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
 				try {
 					ExpressionEvaluatorProxy.setEvaluator(
-						useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+						useSettingsStore().settings.expressions?.evaluator ?? 'tournament',
 					);
 					return workflow.expression.getSimpleParameterValue(
 						data as INode,

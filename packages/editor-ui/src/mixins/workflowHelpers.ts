@@ -165,7 +165,7 @@ export function resolveParameter(
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
 
 	ExpressionEvaluatorProxy.setEvaluator(
-		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+		useSettingsStore().settings.expressions?.evaluator ?? 'tournament',
 	);
 
 	return workflow.expression.getParameterValue(
