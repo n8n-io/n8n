@@ -9,14 +9,20 @@ export const verifyCrmToken = async (
 ) => {
 	if (!token) throw new Error('Token is missing');
 	const signatureWithData = Buffer.from(token, 'base64').toString('utf8');
-	const [signature, timestamp, userObjectString] = signatureWithData.split('|');
 
-	const signatureData = `${timestamp}|${userObjectString}`;
+	const esaProjectName = process.env.ESA_PROJECT_NAME || '';
+	const isBMH = esaProjectName.toLowerCase().includes('bmh');
+	const tokenSeparator = isBMH ? ':' : '|';
+
+	const [signature, timestamp, userIdentificationComponent] =
+		signatureWithData.split(tokenSeparator);
+	const signatureString = `${timestamp}${tokenSeparator}${userIdentificationComponent}`;
 
 	const createdSignature = crypto
 		.createHmac('sha1', process.env.ZOHO_CRM_SECRET_KEY!)
-		.update(signatureData)
+		.update(signatureString)
 		.digest('base64');
+
 	if (createdSignature !== signature) throw new Error('Token is invalid');
 	if (moment(Number(timestamp)).add(10, 'hours').isBefore(moment()))
 		throw new Error('Token has expired');
@@ -38,7 +44,7 @@ export const verifyCrmToken = async (
 			generatedAt: Number(timestamp),
 		},
 		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-		zohoUser: JSON.parse(userObjectString),
+		zohoUser: isBMH ? { id: userIdentificationComponent } : JSON.parse(userIdentificationComponent),
 	};
 };
 
