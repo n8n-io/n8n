@@ -22,8 +22,7 @@ export namespace BinaryData {
 		store(binaryData: Buffer | Readable, executionId: string): Promise<string>;
 		getPath(identifier: string): string;
 
-		// @TODO: Refactor to use identifier
-		getSize(path: string): Promise<number>;
+		getSize(identifier: string): Promise<number>;
 
 		getBuffer(identifier: string): Promise<Buffer>;
 		getStream(identifier: string, chunkSize?: number): Readable;

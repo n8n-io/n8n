@@ -19,7 +19,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		throw new Error('TODO');
 	}
 
-	async getSize(path: string): Promise<number> {
+	async getSize(identifier: string): Promise<number> {
 		throw new Error('TODO');
 	}
 
