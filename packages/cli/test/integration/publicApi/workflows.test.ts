@@ -10,6 +10,8 @@ import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -17,6 +19,8 @@ let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
+
+LoggerProxy.init(getLogger());
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
