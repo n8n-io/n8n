@@ -12,13 +12,8 @@ import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { ListQuery } from '@/requests';
 
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-
-LoggerProxy.init(getLogger());
 
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
 const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });

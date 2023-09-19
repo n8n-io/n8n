@@ -10,11 +10,6 @@ import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
-LoggerProxy.init(getLogger());
-
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let owner: User;

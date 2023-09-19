@@ -1,10 +1,6 @@
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils';
 import type { User } from '@/databases/entities/User';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
-LoggerProxy.init(getLogger());
 
 let testServer = setupTestServer({ endpointGroups: ['executions'] });
 

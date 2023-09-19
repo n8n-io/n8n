@@ -141,6 +141,9 @@ export const setupTestServer = ({
 	app.use(rawBodyReader);
 	app.use(cookieParser());
 
+	const logger = getLogger();
+	LoggerProxy.init(logger);
+
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
@@ -151,9 +154,6 @@ export const setupTestServer = ({
 
 	beforeAll(async () => {
 		await testDb.init();
-
-		const logger = getLogger();
-		LoggerProxy.init(logger);
 
 		// Mock all telemetry.
 		mockInstance(InternalHooks);

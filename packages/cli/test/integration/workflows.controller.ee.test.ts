@@ -13,9 +13,6 @@ import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils/';
 import { randomCredentialPayload } from './shared/random';
 
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
 let owner: User;
 let member: User;
 let anotherMember: User;
@@ -23,8 +20,6 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
 let saveCredential: SaveCredentialFunction;
-
-LoggerProxy.init(getLogger());
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({
