@@ -41,16 +41,17 @@ const formattedCreatedAtDate = computed<string>(() => {
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
-const editors = computed<{ label: string; tooltip: string }>(() => {
-	let label = props.item.editors[0];
+const authors = computed<{ label: string; tooltip: string }>(() => {
+	const allAuthors = props.item.authors.split(', ');
+	let label = allAuthors[0];
 
-	if (props.item.editors.length > 1) {
-		label = `${label} + ${props.item.editors.length - 1}`;
+	if (allAuthors.length > 1) {
+		label = `${label} + ${allAuthors.length - 1}`;
 	}
 
 	return {
+		size: allAuthors.length,
 		label,
-		tooltip: props.item.editors.join(', '),
 	};
 });
 
@@ -68,9 +69,9 @@ const idLabel = computed<string>(() =>
 	>
 		<p @click="onItemClick">
 			<strong>{{ formattedCreatedAtDate }}</strong>
-			<n8n-tooltip placement="right-end" :disabled="props.item.editors.length < 2">
-				<template #content>{{ editors.tooltip }}</template>
-				<span>{{ editors.label }}</span>
+			<n8n-tooltip placement="right-end" :disabled="authors.size < 2">
+				<template #content>{{ props.item.authors }}</template>
+				<span>{{ authors.label }}</span>
 			</n8n-tooltip>
 			<small>{{ idLabel }}</small>
 		</p>
