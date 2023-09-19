@@ -88,6 +88,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		rows: {
+			type: Number,
+			default: -1,
+		},
 	},
 	data(): SQLEditorData {
 		return {
@@ -184,7 +188,16 @@ export default defineComponent({
 	mounted() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
-		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
+		let doc = this.modelValue;
+
+		const lines = doc.split('\n');
+
+		if (lines.length < this.rows) {
+			doc += '\n'.repeat(this.rows - lines.length);
+		}
+
+		const state = EditorState.create({ doc, extensions: this.extensions });
+
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 		this.editorState = this.editor.state;
 		highlighter.addColor(this.editor as EditorView, this.resolvableSegments);
