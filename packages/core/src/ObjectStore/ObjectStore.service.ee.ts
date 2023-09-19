@@ -63,9 +63,10 @@ export class ObjectStoreService {
 	 */
 	async get(path: string, { mode }: { mode: 'stream' | 'buffer' }) {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-		const responseType = mode === 'buffer' ? 'arraybuffer' : 'stream';
 
-		const { data } = await this.request('GET', host, path, { responseType });
+		const { data } = await this.request('GET', host, path, {
+			responseType: mode === 'buffer' ? 'arraybuffer' : 'stream',
+		});
 
 		if (mode === 'stream' && isStream(data)) return data;
 
