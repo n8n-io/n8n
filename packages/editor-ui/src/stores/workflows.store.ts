@@ -1281,11 +1281,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		): Promise<IWorkflowDb> {
 			const workflowDataRequest = deepCopy(sendData);
 			// make sure that the new ones are not active
-			sendData.active = false;
+			workflowDataRequest.active = false;
 			const changedNodes = {} as IDataObject;
 
 			if (resetNodeIds) {
-				sendData.nodes = (sendData.nodes || []).map((node) => {
+				workflowDataRequest.nodes = (workflowDataRequest.nodes || []).map((node) => {
 					node.id = uuid();
 
 					return node;
@@ -1293,7 +1293,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			if (resetWebhookUrls) {
-				sendData.nodes = (workflowDataRequest.nodes || []).map((node) => {
+				workflowDataRequest.nodes = (workflowDataRequest.nodes || []).map((node) => {
 					if (node.webhookId) {
 						node.webhookId = uuid();
 						changedNodes[node.name] = node.webhookId;
