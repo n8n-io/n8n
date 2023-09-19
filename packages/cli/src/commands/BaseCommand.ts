@@ -129,6 +129,8 @@ export abstract class BaseCommand extends Command {
 
 		await objectStoreService.checkConnection();
 
+		// await objectStoreService.delete('object-store-service-dog.jpg');
+
 		// const stream = await objectStoreService.get('happy-dog.jpg', { mode: 'stream' });
 		// try {
 		// 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

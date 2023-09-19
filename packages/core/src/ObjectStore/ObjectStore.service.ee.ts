@@ -4,7 +4,6 @@ import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream } from './utils';
-import { ObjectStorageError } from './errors';
 import { createHash } from 'node:crypto';
 import type { AxiosRequestConfig, Method, ResponseType } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
@@ -35,8 +34,9 @@ export class ObjectStoreService {
 
 		try {
 			return await this.request('HEAD', host);
-		} catch {
-			throw new ObjectStorageError.ConnectionFailed();
+		} catch (error) {
+			const msg = 'Failed to connect to external storage. Please recheck your credentials.';
+			throw new Error(msg, { cause: error as unknown });
 		}
 	}
 
@@ -72,7 +72,20 @@ export class ObjectStoreService {
 
 		if (mode === 'buffer' && Buffer.isBuffer(data)) return data;
 
-		throw new ObjectStorageError.TypeMismatch(mode, typeof data);
+		throw new TypeError(`Expected ${mode} but received ${typeof data}.`);
+	}
+
+	/**
+	 * Delete an object in the configured bucket.
+	 *
+	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
+	 */
+	async delete(filename: string) {
+		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
+
+		const path = `/${encodeURIComponent(filename)}`;
+
+		return this.request('DELETE', host, path);
 	}
 
 	private async request(
@@ -113,13 +126,14 @@ export class ObjectStoreService {
 		if (body) config.data = body;
 		if (responseType) config.responseType = responseType;
 
+		console.log(config);
+
 		try {
 			return await axios.request<unknown>(config);
 		} catch (error) {
-			console.log('Axios error', error);
-			if (error instanceof Error) console.log(error.message); // @TODO: Remove
-			throw error; // @TODO: Remove
-			// throw new ObjectStorageError.RequestFailed(config); // @TODO: Restore
+			throw new Error('Request to external object storage failed', {
+				cause: { error: error as unknown, details: config },
+			});
 		}
 	}
 }
