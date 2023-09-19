@@ -60,7 +60,6 @@ import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
-import { N8N_BANNERS } from '@/components/banners/BannerStack.vue';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -570,27 +569,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		pushBannerToStack(name: BannerName) {
 			if (this.bannerStack.includes(name)) return;
 			this.bannerStack.push(name);
-			this.sortBannerStack();
 		},
 		removeBannerFromStack(name: BannerName) {
 			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
 		},
 		clearBannerStack() {
 			this.bannerStack = [];
-		},
-		sortBannerStack() {
-			this.bannerStack = this.bannerStack.sort((a: BannerName, b: BannerName) => {
-				const priorityA = N8N_BANNERS[a].priority;
-				const priorityB = N8N_BANNERS[b].priority;
-
-				if (priorityA > priorityB) {
-					return -1;
-				}
-				if (priorityA < priorityB) {
-					return 1;
-				}
-				return 0;
-			});
 		},
 	},
 });

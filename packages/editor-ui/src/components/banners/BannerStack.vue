@@ -34,7 +34,17 @@ async function updateCurrentBannerHeight() {
 
 const currentlyShownBanner = computed(() => {
 	void updateCurrentBannerHeight();
-	return uiStore.bannerStack.length > 0 ? N8N_BANNERS[uiStore.bannerStack[0]].component : null;
+	if (uiStore.bannerStack.length === 0) return null;
+	// Find the banner with the highest priority
+	let banner = N8N_BANNERS[uiStore.bannerStack[0]];
+	uiStore.bannerStack.forEach((bannerName, index) => {
+		if (index === 0) return;
+		const bannerToCompare = N8N_BANNERS[bannerName];
+		if (bannerToCompare.priority > banner.priority) {
+			banner = bannerToCompare;
+		}
+	});
+	return banner.component;
 });
 
 onMounted(async () => {
