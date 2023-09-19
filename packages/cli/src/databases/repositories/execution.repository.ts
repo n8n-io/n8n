@@ -526,6 +526,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
 				},
 				take: this.deletionBatchSize,
+
+				/**
+				 * @important This ensures soft-deleted executions are included,
+				 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
+				 */
+				withDeleted: true,
 			})
 		).map(({ id }) => id);
 
