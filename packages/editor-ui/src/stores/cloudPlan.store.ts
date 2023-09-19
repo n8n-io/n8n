@@ -3,11 +3,11 @@ import { defineStore } from 'pinia';
 import type { CloudPlanState } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { getCurrentPlan, getCurrentUsage } from '@/api/cloudPlans';
 import { DateTime } from 'luxon';
 import { CLOUD_TRIAL_CHECK_INTERVAL } from '@/constants';
-import { useUIStore } from './ui.store';
 
 const DEFAULT_STATE: CloudPlanState = {
 	data: null,

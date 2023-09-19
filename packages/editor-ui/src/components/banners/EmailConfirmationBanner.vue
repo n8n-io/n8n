@@ -14,17 +14,17 @@ const userEmail = computed(() => {
 
 async function onConfirmEmailClick() {
 	try {
+		await useUsersStore().confirmEmail();
 		toast.showMessage({
 			type: 'success',
 			title: locale.baseText('banners.confirmEmail.toast.success.heading'),
 			message: locale.baseText('banners.confirmEmail.toast.success.message'),
 		});
-		await useUsersStore().confirmEmail();
-	} catch {
+	} catch(error) {
 		toast.showMessage({
 			type: 'error',
 			title: locale.baseText('banners.confirmEmail.toast.error.heading'),
-			message: locale.baseText('banners.confirmEmail.toast.error.message'),
+			message: error.message,
 		});
 	}
 }
@@ -35,12 +35,8 @@ async function onConfirmEmailClick() {
 		<template #mainContent>
 			<span>
 				{{ locale.baseText('banners.confirmEmail.message.1') }}
-				<router-link to="/settings/personal">
-					{{
-						locale.baseText('banners.confirmEmail.message.2', { interpolate: { email: userEmail } })
-					}}
-				</router-link>
-				{{ locale.baseText('banners.confirmEmail.message.3') }}
+				<router-link to="/settings/personal">{{ userEmail }}</router-link>
+				{{ locale.baseText('banners.confirmEmail.message.2') }}
 			</span>
 		</template>
 		<template #trailingContent>
