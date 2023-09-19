@@ -94,6 +94,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+
+		rows: {
+			type: Number,
+			default: -1,
+		},
 		modelValue: {
 			type: String,
 		},
@@ -349,8 +354,16 @@ export default defineComponent({
 		const [languageSupport, ...otherExtensions] = this.languageExtensions;
 		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
+		let doc = this.modelValue ?? this.placeholder;
+
+		const lines = doc.split('\n');
+
+		if (lines.length < this.rows) {
+			doc += '\n'.repeat(this.rows - lines.length);
+		}
+
 		const state = EditorState.create({
-			doc: this.modelValue ?? this.placeholder,
+			doc,
 			extensions,
 		});
 

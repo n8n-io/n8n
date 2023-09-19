@@ -57,6 +57,7 @@ export class License {
 				tenantId: config.getEnv('license.tenantId'),
 				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled,
+				renewOnInit: autoRenewEnabled,
 				autoRenewOffset,
 				offlineMode,
 				logger: this.logger,
