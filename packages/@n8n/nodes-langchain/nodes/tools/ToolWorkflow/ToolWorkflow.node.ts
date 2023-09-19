@@ -286,71 +286,60 @@ export class ToolWorkflow implements INodeType {
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
 		const runFunction = async (query: string): Promise<string> => {
-			try {
-				const source = this.getNodeParameter('source', itemIndex) as string;
-				const responsePropertyName = this.getNodeParameter(
-					'responsePropertyName',
-					itemIndex,
-				) as string;
+			const source = this.getNodeParameter('source', itemIndex) as string;
+			const responsePropertyName = this.getNodeParameter(
+				'responsePropertyName',
+				itemIndex,
+			) as string;
 
-				const workflowInfo: IExecuteWorkflowInfo = {};
-				if (source === 'database') {
-					// Read workflow from database
-					workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
-				} else if (source === 'parameter') {
-					// Read workflow from parameter
-					const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
-					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-				}
-
-				const rawData: IDataObject = { query };
-
-				const workflowFieldsJson = this.getNodeParameter('fields.values', 0, [], {
-					rawExpressions: true,
-				}) as SetField[];
-
-				// Copied from Set Node v2
-				for (const entry of workflowFieldsJson) {
-					if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
-						rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
-					}
-				}
-
-				const options: SetNodeOptions = {
-					include: 'all',
-				};
-
-				const newItem = await manual.execute.call(
-					this,
-					{ json: { query } },
-					itemIndex,
-					options,
-					rawData,
-					this.getNode(),
-				);
-
-				const items = [{ json: newItem }] as INodeExecutionData[];
-
-				const receivedData = (await this.executeWorkflow(
-					workflowInfo,
-					items,
-				)) as INodeExecutionData;
-
-				let response: string | undefined = get(receivedData, [
-					0,
-					0,
-					'json',
-					responsePropertyName,
-				]) as string | undefined;
-				if (response === undefined) {
-					response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
-				}
-
-				return response;
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				return `There was an error: "${error.message}"`;
+			const workflowInfo: IExecuteWorkflowInfo = {};
+			if (source === 'database') {
+				// Read workflow from database
+				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
+			} else if (source === 'parameter') {
+				// Read workflow from parameter
+				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
+				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
 			}
+
+			const rawData: IDataObject = { query };
+
+			const workflowFieldsJson = this.getNodeParameter('fields.values', 0, [], {
+				rawExpressions: true,
+			}) as SetField[];
+
+			// Copied from Set Node v2
+			for (const entry of workflowFieldsJson) {
+				if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
+					rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
+				}
+			}
+
+			const options: SetNodeOptions = {
+				include: 'all',
+			};
+
+			const newItem = await manual.execute.call(
+				this,
+				{ json: { query } },
+				itemIndex,
+				options,
+				rawData,
+				this.getNode(),
+			);
+
+			const items = [{ json: newItem }] as INodeExecutionData[];
+
+			const receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
+
+			let response: string | undefined = get(receivedData, [0, 0, 'json', responsePropertyName]) as
+				| string
+				| undefined;
+			if (response === undefined) {
+				response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
+			}
+
+			return response;
 		};
 
 		return {
@@ -387,7 +376,7 @@ export class ToolWorkflow implements INodeType {
 					}
 
 					if (executionError) {
-						void this.addOutputData('tool', [[{ json: { error: executionError } }]]);
+						void this.addOutputData('tool', executionError);
 					} else {
 						void this.addOutputData('tool', [[{ json: { response } }]]);
 					}

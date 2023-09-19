@@ -191,7 +191,7 @@ export class ToolCode implements INodeType {
 					}
 
 					if (executionError) {
-						void this.addOutputData('tool', [[{ json: { error: executionError } }]]);
+						void this.addOutputData('tool', executionError);
 					} else {
 						void this.addOutputData('tool', [[{ json: { response } }]]);
 					}
