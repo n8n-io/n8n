@@ -167,9 +167,6 @@ importers:
       eslint-import-resolver-typescript:
         specifier: ^3.5.5
         version: 3.5.5(@typescript-eslint/parser@6.2.0)(eslint-plugin-import@2.28.0)(eslint@8.45.0)
-      eslint-plugin-diff:
-        specifier: ^2.0.1
-        version: 2.0.1(eslint@8.45.0)
       eslint-plugin-import:
         specifier: ^2.28.0
         version: 2.28.0(@typescript-eslint/parser@6.2.0)(eslint-import-resolver-typescript@3.5.5)(eslint@8.45.0)
@@ -198,8 +195,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.5.1
-        version: 2.5.1
+        specifier: ~2.6.0
+        version: 2.6.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -4672,8 +4669,8 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.5.1:
-    resolution: {integrity: sha512-CL4JVJS8nvI8qPFQ1jSG7CiPnNkeKJSgbDxWOLVX4MRjTKrwL8Cpd1LeYMx5g5StmHzkoxz2TDqL8WT6qyMlrQ==}
+  /@n8n_io/license-sdk@2.6.0:
+    resolution: {integrity: sha512-jPUn8xKAZMWgFw8w6BwqbdlZ1Et4tZcPUdOfEzxpWxEmgtCEAdbl3V0ygP3pTXyWY0hblvv8QzbHOUrK25hQSA==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -6784,7 +6781,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.10
+      vue-component-type-helpers: 1.8.11
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -11764,15 +11761,6 @@ packages:
       eslint-import-resolver-typescript: 3.5.5(@typescript-eslint/parser@6.2.0)(eslint-plugin-import@2.28.0)(eslint@8.45.0)
     transitivePeerDependencies:
       - supports-color
-    dev: true
-
-  /eslint-plugin-diff@2.0.1(eslint@8.45.0):
-    resolution: {integrity: sha512-qqbvwaaO1cfkUprliqiRojRsD0qGsvzmJNqNrb9s0h15sDVzZMXYdu0TUFpUwauLeU28etSsfWIp0Uu+OAcXXw==}
-    engines: {node: '>=14.0.0'}
-    peerDependencies:
-      eslint: '>=6.7.0'
-    dependencies:
-      eslint: 8.45.0
     dev: true
 
   /eslint-plugin-import@2.28.0(@typescript-eslint/parser@6.2.0)(eslint-import-resolver-typescript@3.5.5)(eslint@8.45.0):
@@ -21759,8 +21747,8 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.10:
-    resolution: {integrity: sha512-FJtmfw2Gn6eQ8kAVNEhw9nYIzWmVQJjdyQRtJXZ7tgXh/FoZhQnZ2KyxR+NuF9U4iZLBvSspeetIpnP9yxxyMw==}
+  /vue-component-type-helpers@1.8.11:
+    resolution: {integrity: sha512-CWItFzuEWjkSXDeMGwQEc5cFH4FaueyPQHfi1mBDe+wA2JABqNjFxFUtmZJ9WHkb0HpEwqgBg1umiXrWYXkXHw==}
     dev: true
 
   /vue-component-type-helpers@1.8.4:

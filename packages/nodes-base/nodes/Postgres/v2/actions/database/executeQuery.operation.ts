@@ -6,13 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
-
 import type { PgpDatabase, QueriesRunner, QueryWithValues } from '../../helpers/interfaces';
 
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -27,6 +26,7 @@ const properties: INodeProperties[] = [
 			"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
 		typeOptions: {
 			editor: 'sqlEditor',
+			rows: 5,
 			sqlDialect: 'PostgreSQL',
 		},
 		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
