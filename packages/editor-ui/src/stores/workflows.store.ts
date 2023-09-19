@@ -86,6 +86,7 @@ import { useNDVStore } from './ndv.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
+import { v4 as uuid } from 'uuid';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1271,7 +1272,35 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		// Creates a new workflow
-		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+		async createNewWorkflow(
+			sendData: IWorkflowDataUpdate,
+			{
+				resetNodeIds,
+				resetWebhookUrls,
+			}: { resetNodeIds?: boolean; resetWebhookUrls?: boolean } = {},
+		): Promise<IWorkflowDb> {
+			const workflowDataRequest = deepCopy(sendData);
+			// make sure that the new ones are not active
+			sendData.active = false;
+			const changedNodes = {} as IDataObject;
+
+			if (resetNodeIds) {
+				sendData.nodes = (sendData.nodes || []).map((node) => {
+					node.id = uuid();
+
+					return node;
+				});
+			}
+
+			if (resetWebhookUrls) {
+				sendData.nodes = (workflowDataRequest.nodes || []).map((node) => {
+					if (node.webhookId) {
+						node.webhookId = uuid();
+						changedNodes[node.name] = node.webhookId;
+					}
+					return node;
+				});
+			}
 			const rootStore = useRootStore();
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,
