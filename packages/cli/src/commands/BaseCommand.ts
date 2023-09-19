@@ -124,7 +124,8 @@ export abstract class BaseCommand extends Command {
 
 		// const filePath = '/Users/ivov/Downloads/happy-dog.jpg';
 		// const buffer = Buffer.from(await readFile(filePath));
-		// await objectStoreService.put('object-store-service-happy-dog.jpg', buffer);
+		// const res = await objectStoreService.put('object-store-service-dog.jpg', buffer);
+		// console.log('upload result', res.status);
 
 		await objectStoreService.checkConnection();
 

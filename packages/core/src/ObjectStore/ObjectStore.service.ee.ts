@@ -48,11 +48,10 @@ export class ObjectStoreService {
 
 		const headers = {
 			'Content-Length': buffer.length,
-			'Content-Type': 'image/jpg', // @TODO: Derive
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
 		};
 
-		return this.request('PUT', host, `/${filename}`, { body: buffer, headers });
+		return this.request('PUT', host, `/${filename}`, { headers, body: buffer });
 	}
 
 	/**
@@ -91,6 +90,7 @@ export class ObjectStoreService {
 		path = '',
 		{
 			headers,
+			body,
 			responseType,
 		}: {
 			headers?: Record<string, string | number>;
@@ -106,8 +106,10 @@ export class ObjectStoreService {
 			region: this.bucket.region,
 			host,
 			path: slashPath,
-			...headers,
 		};
+
+		if (headers) optionsToSign.headers = headers;
+		if (body) optionsToSign.body = body;
 
 		const signedOptions = sign(optionsToSign, this.credentials);
 
@@ -117,13 +119,13 @@ export class ObjectStoreService {
 			headers: signedOptions.headers,
 		};
 
+		if (body) config.data = body;
 		if (responseType) config.responseType = responseType;
-
-		console.log('Axios request config', config); // @TODO: Remove
 
 		try {
 			return await axios.request<unknown>(config);
 		} catch (error) {
+			console.log('Axios error', error);
 			if (error instanceof Error) console.log(error.message); // @TODO: Remove
 			throw error; // @TODO: Remove
 			// throw new ObjectStorageError.RequestFailed(config); // @TODO: Restore
