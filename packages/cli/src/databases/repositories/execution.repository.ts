@@ -76,11 +76,23 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
+	private logger = Logger;
+
 	deletionBatchSize = 100;
 
-	private pruningInterval: NodeJS.Timer | null = null;
+	private intervals: Record<string, NodeJS.Timer | undefined> = {
+		softDeletion: undefined,
+		hardDeletion: undefined,
+	};
 
-	private hardDeletionInterval: NodeJS.Timer | null = null;
+	private rates: Record<string, number> = {
+		softDeletion: 1 * TIME.HOUR,
+		hardDeletion: 15 * TIME.MINUTE,
+	};
+
+	private isMainInstance = config.get('generic.instanceType') === 'main';
+
+	private isPruningEnabled = config.getEnv('executions.pruneData');
 
 	constructor(
 		dataSource: DataSource,
@@ -88,36 +100,35 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
-		if (config.get('generic.instanceType') === 'main') this.setTimers();
-	}
+		if (!this.isMainInstance) return;
 
-	setTimers() {
-		if (config.getEnv('executions.pruneData')) this.setPruningInterval();
+		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
 		this.setHardDeletionInterval();
 	}
 
 	clearTimers() {
-		if (config.get('generic.instanceType') !== 'main') return;
+		if (!this.isMainInstance) return;
 
-		if (this.hardDeletionInterval) clearInterval(this.hardDeletionInterval);
-		if (this.pruningInterval) clearInterval(this.pruningInterval);
+		this.logger.info('Clearing soft-deletion and hard-deletion intervals for executions');
+
+		clearInterval(this.intervals.softDeletion);
+		clearInterval(this.intervals.hardDeletion);
 	}
 
-	setPruningInterval() {
-		this.pruningInterval = setInterval(async () => this.pruneBySoftDeleting(), 1 * TIME.HOUR);
+	setSoftDeletionInterval() {
+		this.logger.info('Setting soft-deletion interval (pruning) for executions');
+
+		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.hardDeletion);
 	}
 
 	setHardDeletionInterval() {
-		if (this.hardDeletionInterval) return;
+		this.logger.info('Setting hard-deletion interval for executions');
 
-		this.hardDeletionInterval = setInterval(async () => this.hardDelete(), 15 * TIME.MINUTE);
-	}
-
-	clearHardDeletionInterval() {
-		if (!this.hardDeletionInterval) return;
-
-		clearInterval(this.hardDeletionInterval);
+		this.intervals.hardDeletion = setInterval(
+			async () => this.hardDelete(),
+			this.rates.hardDeletion,
+		);
 	}
 
 	async findMultipleExecutions(
@@ -457,8 +468,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} while (executionIds.length > 0);
 	}
 
-	async pruneBySoftDeleting() {
-		Logger.verbose('Pruning (soft-deleting) execution data from database');
+	async prune() {
+		Logger.verbose('Soft-deleting (pruning) execution data from database');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
@@ -521,6 +532,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const binaryDataManager = BinaryDataManager.getInstance();
 		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
+		this.logger.info(`Hard-deleting ${executionIds.length} executions from database`, {
+			executionIds,
+		});
+
 		// Actually delete these executions
 		await this.delete({ id: In(executionIds) });
 
@@ -533,10 +548,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		 * the number of executions to prune is low enough to fit in a single batch.
 		 */
 		if (executionIds.length === this.deletionBatchSize) {
-			this.clearHardDeletionInterval();
+			clearInterval(this.intervals.hardDeletion);
 
 			setTimeout(async () => this.hardDelete(), 1 * TIME.SECOND);
 		} else {
+			if (this.intervals.hardDeletion) return;
+
 			this.setHardDeletionInterval();
 		}
 	}

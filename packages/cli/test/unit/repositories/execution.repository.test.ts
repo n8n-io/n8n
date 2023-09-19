@@ -51,7 +51,7 @@ describe('ExecutionRepository', () => {
 
 			jest.spyOn(ExecutionRepository.prototype, 'createQueryBuilder').mockReturnValueOnce(qb);
 
-			await executionRepository.pruneBySoftDeleting();
+			await executionRepository.prune();
 
 			expect(find.mock.calls[0][0]).toEqual(objectContaining({ skip: maxCount }));
 		});
@@ -70,7 +70,7 @@ describe('ExecutionRepository', () => {
 
 			const now = Date.now();
 
-			await executionRepository.pruneBySoftDeleting();
+			await executionRepository.prune();
 
 			const argDate = dateFormat.mock.calls[0][0];
 			const difference = now - argDate.valueOf();
