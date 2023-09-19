@@ -80,12 +80,10 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async delete(filename: string) {
+	async delete(path: string) {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
-		const path = `/${encodeURIComponent(filename)}`;
-
-		return this.request('DELETE', host, path);
+		return this.request('DELETE', host, `/${encodeURIComponent(path)}`);
 	}
 
 	private async request(
