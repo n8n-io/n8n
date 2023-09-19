@@ -11,6 +11,11 @@ import { NodeTypes } from '@/NodeTypes';
 import { CommunityPackageService } from '@/services/communityPackage.service';
 import Container from 'typedi';
 
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
+LoggerProxy.init(getLogger());
+
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
 mockInstance(NodeTypes);
