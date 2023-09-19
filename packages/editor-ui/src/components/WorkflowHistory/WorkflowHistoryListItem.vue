@@ -2,11 +2,20 @@
 import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import type { UserAction } from 'n8n-design-system';
-import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowHistoryActionTypes,
+	WorkflowHistoryUnsaved,
+} from '@/types/workflowHistory';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import { useI18n } from '@/composables';
+import { isWorkflowHistoryItemUnsaved } from '@/utils';
 
-const props = defineProps<{ item: WorkflowHistory; actions: UserAction[]; active: boolean }>();
+const props = defineProps<{
+	item: WorkflowHistory | WorkflowHistoryUnsaved;
+	actions: UserAction[];
+	active: boolean;
+}>();
 const emit = defineEmits<{
 	(
 		event: 'action',
@@ -19,17 +28,8 @@ const i18n = useI18n();
 
 const actionsVisible = ref(false);
 
-const onAction = (action: TupleToUnion<WorkflowHistoryActionTypes>) => {
-	emit('action', { action, id: props.item.id });
-};
-
-const onVisibleChange = (visible: boolean) => {
-	actionsVisible.value = visible;
-};
-
-const onItemClick = () => {
-	emit('preview', { id: props.item.id });
-};
+const isUnsaved = computed<boolean>(() => isWorkflowHistoryItemUnsaved(props.item));
+const isCurrent = computed<boolean>(() => isUnsaved.value);
 
 const formattedCreatedAtDate = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -58,6 +58,20 @@ const authors = computed<{ label: string; tooltip: string }>(() => {
 const idLabel = computed<string>(() =>
 	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.id } }),
 );
+
+const onAction = (action: TupleToUnion<WorkflowHistoryActionTypes>) => {
+	emit('action', { action, id: props.item.id });
+};
+
+const onVisibleChange = (visible: boolean) => {
+	actionsVisible.value = visible;
+};
+
+const onItemClick = () => {
+	if (!isCurrent.value && !props.active) {
+		emit('preview', { id: props.item.id });
+	}
+};
 </script>
 <template>
 	<li
@@ -65,9 +79,14 @@ const idLabel = computed<string>(() =>
 			[$style.item]: true,
 			[$style.active]: props.active,
 			[$style.actionsVisible]: actionsVisible,
+			[$style.current]: isCurrent,
 		}"
 	>
-		<p @click="onItemClick">
+		<p v-if="isUnsaved">
+			<strong>{{ props.item.title }}</strong>
+			<span>{{ props.item.authors }}</span>
+		</p>
+		<p v-else @click="onItemClick">
 			<strong>{{ formattedCreatedAtDate }}</strong>
 			<n8n-tooltip placement="right-end" :disabled="authors.size < 2">
 				<template #content>{{ props.item.authors }}</template>
@@ -75,7 +94,11 @@ const idLabel = computed<string>(() =>
 			</n8n-tooltip>
 			<small>{{ idLabel }}</small>
 		</p>
+		<n8n-badge v-if="isCurrent" class="mr-s">
+			{{ i18n.baseText('workflowHistory.item.current') }}
+		</n8n-badge>
 		<n8n-action-toggle
+			v-else
 			theme="dark"
 			:class="$style.actions"
 			:actions="props.actions"
@@ -126,6 +149,7 @@ const idLabel = computed<string>(() =>
 
 		p {
 			padding-left: calc(var(--spacing-s) - 1px);
+			cursor: default;
 		}
 	}
 
@@ -135,6 +159,12 @@ const idLabel = computed<string>(() =>
 
 		p {
 			padding-left: calc(var(--spacing-s) - 1px);
+		}
+	}
+
+	&.current {
+		p {
+			cursor: default;
 		}
 	}
 }

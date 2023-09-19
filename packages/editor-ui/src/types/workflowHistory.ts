@@ -1,7 +1,14 @@
-export type WorkflowHistory = {
+type WorkflowHistoryBase = {
 	id: string;
-	createdAt: string;
 	authors: string;
+};
+
+export type WorkflowHistory = WorkflowHistoryBase & {
+	createdAt: string;
+};
+
+export type WorkflowHistoryUnsaved = WorkflowHistoryBase & {
+	title: string;
 };
 
 export type WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];

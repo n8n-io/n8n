@@ -3,10 +3,12 @@ import { onBeforeMount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
-import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
-import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
-import type { WorkflowHistoryActionTypes, WorkflowHistory } from '@/types/workflowHistory';
 import type { TupleToUnion } from '@/utils/typeHelpers';
+import type { WorkflowHistoryActionTypes, WorkflowHistory } from '@/types/workflowHistory';
+import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
+import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useUIStore } from '@/stores/ui.store';
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
@@ -22,16 +24,27 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const uiStore = useUIStore();
+const usersStore = useUsersStore();
 
 onBeforeMount(async () => {
 	await workflowHistoryStore.getWorkflowHistory(route.params.workflowId);
+
 	if (!route.params.versionId) {
-		await router.push({
+		await router.replace({
 			name: VIEWS.WORKFLOW_HISTORY,
 			params: {
 				workflowId: route.params.workflowId,
 				versionId: workflowHistoryStore.workflowHistory[0].id,
 			},
+		});
+	}
+
+	if (uiStore.stateIsDirty) {
+		workflowHistoryStore.addUnsavedItem({
+			id: 'unsaved',
+			title: i18n.baseText('workflowHistory.item.unsaved.title'),
+			authors: usersStore.currentUser?.fullName ?? '',
 		});
 	}
 });
@@ -46,8 +59,14 @@ const onAction = ({
 	console.log('action', { action, id });
 };
 
-const onPreview = ({ id }: { id: WorkflowHistory['id'] }) => {
-	console.log('preview', { id });
+const onPreview = async ({ id }: { id: WorkflowHistory['id'] }) => {
+	await router.push({
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			workflowId: route.params.workflowId,
+			versionId: id,
+		},
+	});
 };
 </script>
 <template>

@@ -2,13 +2,17 @@
 import { computed } from 'vue';
 import type { UserAction } from 'n8n-design-system';
 import { useI18n } from '@/composables';
-import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowHistoryActionTypes,
+	WorkflowHistoryUnsaved,
+} from '@/types/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const props = withDefaults(
 	defineProps<{
-		items: WorkflowHistory[];
+		items: Array<WorkflowHistory | WorkflowHistoryUnsaved>;
 		activeItemId: WorkflowHistory['id'];
 		actionTypes: WorkflowHistoryActionTypes;
 	}>(),
