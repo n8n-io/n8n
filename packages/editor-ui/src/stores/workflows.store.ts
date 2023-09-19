@@ -1306,7 +1306,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				rootStore.getRestApiContext,
 				'POST',
 				'/workflows',
-				sendData as unknown as IDataObject,
+				workflowDataRequest as unknown as IDataObject,
 			);
 		},
 
