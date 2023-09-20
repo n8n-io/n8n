@@ -81,7 +81,7 @@
 			}
 		]
 	},
-	"alias": ["_HTTP", "API", "Build", "WH"],
+	"alias": ["HTTP", "API", "Build", "WH"],
 	"subcategories": {
 		"Core Nodes": ["Flow"]
 	}
