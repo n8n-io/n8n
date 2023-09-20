@@ -1,11 +1,11 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class AddWorkflowMetadata1695128658538 implements ReversibleMigration {
-	async up({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query(`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "meta" text`);
+	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
+		await addColumns('workflow_entity', [column('meta').json]);
 	}
 
-	async down({ queryRunner, tablePrefix }: MigrationContext) {
-		await queryRunner.query(`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN "meta"`);
+	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
+		await dropColumns('workflow_entity', ['meta']);
 	}
 }
