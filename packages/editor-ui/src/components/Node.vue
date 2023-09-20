@@ -1,7 +1,7 @@
 <template>
 	<div
 		:class="nodeWrapperClass"
-		:style="nodePosition"
+		:style="nodeWrapperStyles"
 		:id="nodeId"
 		data-test-id="canvas-node"
 		:ref="data.name"
@@ -337,6 +337,29 @@ export default defineComponent({
 
 			return classes;
 		},
+		nodeWrapperStyles(): object {
+			const styles: {
+				[key: string]: string | number;
+			} = {
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
+			};
+
+			const nonMainInputs = this.inputs.filter((input) => input !== 'main');
+			if (nonMainInputs.length) {
+				const requiredNonMainInputs = this.inputs.filter(
+					(input) => typeof input !== 'string' && input.required,
+				);
+				const requiredNonMainInputsCount = requiredNonMainInputs.length;
+				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+				const spacerCount =
+					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+
+				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
+			}
+
+			return styles;
+		},
 		nodeClass(): object {
 			return {
 				'node-box': true,
@@ -382,16 +405,6 @@ export default defineComponent({
 		},
 		showDisabledLinethrough(): boolean {
 			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
-		},
-		nodePosition(): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				left: this.position[0] + 'px',
-				top: this.position[1] + 'px',
-			};
-
-			return returnStyles;
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -884,7 +897,10 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		$configurable-node-width: 250px;
+		$configurable-node-width: var(
+			--configurable-node-width,
+			calc(max(var(--configurable-node-input-count, 5), 4) * 65px)
+		);
 		$configurable-node-icon-offset: 40px;
 		$configurable-node-icon-size: 30px;
 
@@ -1288,6 +1304,8 @@ export default defineComponent({
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
+	--node-endpoint-label--transition-duration: 0.15s;
+
 	background-color: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -1298,6 +1316,7 @@ export default defineComponent({
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	transition: color var(--node-endpoint-label--transition-duration) ease;
 
 	@each $node-type in $supplemental-node-types {
 		&.node-connection-type-#{$node-type} {
