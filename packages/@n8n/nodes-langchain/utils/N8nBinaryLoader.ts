@@ -54,7 +54,7 @@ export class N8nBinaryLoader {
 
 				throw new NodeOperationError(
 					this.context.getNode(),
-					`Mime type doesn't match selected loader. Please select Type Loader: ${neededLoader}`,
+					`Mime type doesn't match selected loader. Please select under "Loader Type": ${neededLoader}`,
 				);
 			}
 
