@@ -202,6 +202,14 @@ export class E2eTest implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const operation = this.getNodeParameter('operation', 0);
+		// For resource mapper testing, return actual node values
+		if (operation === 'resourceMapper') {
+			const rmValue = this.getNodeParameter('resourceMapper.value', 0);
+			if (rmValue) {
+				return [[{ json: rmValue as INodeExecutionData }]];
+			}
+		}
 		return [returnData];
 	}
 }
