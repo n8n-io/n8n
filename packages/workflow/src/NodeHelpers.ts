@@ -40,6 +40,7 @@ import type {
 	INodeTypeDescription,
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
+	GenericValue,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
@@ -1144,7 +1145,7 @@ export const validateFieldType = (
 	options?: INodePropertyOptions[],
 ): ValidationResult => {
 	if (value === null || value === undefined) return { valid: true };
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'.`;
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
 	switch (type.toLowerCase()) {
 		case 'number': {
 			try {
@@ -1232,12 +1233,16 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		return value.toLowerCase() === 'true';
 	}
 
-	const num = Number(value);
-	if (num === 0) {
-		return false;
-	} else if (num === 1) {
-		return true;
+	// If value is not a empty string, try to parse it to a number
+	if (!(typeof value === 'string' && value.trim() === '')) {
+		const num = Number(value);
+		if (num === 0) {
+			return false;
+		} else if (num === 1) {
+			return true;
+		}
 	}
+
 	throw new Error(`Could not parse '${String(value)}' to boolean.`);
 };
 
@@ -1277,7 +1282,17 @@ export const tryToParseTime = (value: unknown): string => {
 
 export const tryToParseArray = (value: unknown): unknown[] => {
 	try {
-		const parsed = JSON.parse(String(value));
+		if (typeof value === 'object' && Array.isArray(value)) {
+			return value;
+		}
+
+		let parsed;
+		try {
+			parsed = JSON.parse(String(value));
+		} catch (e) {
+			parsed = JSON.parse(String(value).replace(/'/g, '"'));
+		}
+
 		if (!Array.isArray(parsed)) {
 			throw new Error(`The value "${String(value)}" is not a valid array.`);
 		}
@@ -1367,6 +1382,30 @@ export const validateResourceMapperParameter = (
 		}
 	});
 	return issues;
+};
+
+export const validateParameter = (
+	nodeProperties: INodeProperties,
+	value: GenericValue,
+	type: FieldType,
+): string | undefined => {
+	const nodeName = nodeProperties.name;
+	const options = type === 'options' ? nodeProperties.options : undefined;
+
+	if (!value?.toString().startsWith('=')) {
+		const validationResult = validateFieldType(
+			nodeName,
+			value,
+			type,
+			options as INodePropertyOptions[],
+		);
+
+		if (!validationResult.valid && validationResult.errorMessage) {
+			return validationResult.errorMessage;
+		}
+	}
+
+	return undefined;
 };
 
 /**
@@ -1492,6 +1531,19 @@ export function getParameterIssues(
 				}
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
+		}
+	} else if (nodeProperties.validateType) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		const error = validateParameter(nodeProperties, value, nodeProperties.validateType);
+		if (error) {
+			if (foundIssues.parameters === undefined) {
+				foundIssues.parameters = {};
+			}
+			if (foundIssues.parameters[nodeProperties.name] === undefined) {
+				foundIssues.parameters[nodeProperties.name] = [];
+			}
+
+			foundIssues.parameters[nodeProperties.name].push(error);
 		}
 	}
 

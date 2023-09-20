@@ -141,8 +141,8 @@ export default defineComponent({
 		return {
 			outputMode: 'regular',
 			outputTypes: [
-				{ name: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
 				{ name: this.$locale.baseText('ndv.output.outType.ai'), value: 'ai' },
+				{ name: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
 			],
 		};
 	},

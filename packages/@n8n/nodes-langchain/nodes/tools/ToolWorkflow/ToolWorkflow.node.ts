@@ -7,8 +7,11 @@ import type {
 	IWorkflowBase,
 	SupplyData,
 	ExecutionError,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
 import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
@@ -128,6 +131,151 @@ export class ToolWorkflow implements INodeType {
 				default: 'response',
 				description: 'The name of the property of the last node that will be returned as response',
 			},
+
+			// ----------------------------------
+			//         For all
+			// ----------------------------------
+			{
+				displayName: 'Workflow Values',
+				name: 'fields',
+				placeholder: 'Add Value',
+				type: 'fixedCollection',
+				description: 'Set the values which should be made available in the workflow',
+				typeOptions: {
+					multipleValues: true,
+					sortable: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'values',
+						displayName: 'Values',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. fieldName',
+								description:
+									'Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name.',
+								requiresDataPath: 'single',
+							},
+							{
+								displayName: 'Type',
+								name: 'type',
+								type: 'options',
+								description: 'The field value type',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+								options: [
+									{
+										name: 'String',
+										value: 'stringValue',
+									},
+									{
+										name: 'Number',
+										value: 'numberValue',
+									},
+									{
+										name: 'Boolean',
+										value: 'booleanValue',
+									},
+									{
+										name: 'Array',
+										value: 'arrayValue',
+									},
+									{
+										name: 'Object',
+										value: 'objectValue',
+									},
+								],
+								default: 'stringValue',
+							},
+							{
+								displayName: 'Value',
+								name: 'stringValue',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										type: ['stringValue'],
+									},
+								},
+								validateType: 'string',
+								ignoreValidationDuringExecution: true,
+							},
+							{
+								displayName: 'Value',
+								name: 'numberValue',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										type: ['numberValue'],
+									},
+								},
+								validateType: 'number',
+								ignoreValidationDuringExecution: true,
+							},
+							{
+								displayName: 'Value',
+								name: 'booleanValue',
+								type: 'options',
+								default: 'true',
+								options: [
+									{
+										name: 'True',
+										value: 'true',
+									},
+									{
+										name: 'False',
+										value: 'false',
+									},
+								],
+								displayOptions: {
+									show: {
+										type: ['booleanValue'],
+									},
+								},
+								validateType: 'boolean',
+								ignoreValidationDuringExecution: true,
+							},
+							{
+								displayName: 'Value',
+								name: 'arrayValue',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. [ arrayItem1, arrayItem2, arrayItem3 ]',
+								displayOptions: {
+									show: {
+										type: ['arrayValue'],
+									},
+								},
+								validateType: 'array',
+								ignoreValidationDuringExecution: true,
+							},
+							{
+								displayName: 'Value',
+								name: 'objectValue',
+								type: 'string',
+								default: '={}',
+								typeOptions: {
+									editor: 'json',
+									editorLanguage: 'json',
+									rows: 2,
+								},
+								displayOptions: {
+									show: {
+										type: ['objectValue'],
+									},
+								},
+								validateType: 'object',
+								ignoreValidationDuringExecution: true,
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -138,45 +286,60 @@ export class ToolWorkflow implements INodeType {
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
 		const runFunction = async (query: string): Promise<string> => {
-			try {
-				const source = this.getNodeParameter('source', itemIndex) as string;
-				const responsePropertyName = this.getNodeParameter(
-					'responsePropertyName',
-					itemIndex,
-				) as string;
+			const source = this.getNodeParameter('source', itemIndex) as string;
+			const responsePropertyName = this.getNodeParameter(
+				'responsePropertyName',
+				itemIndex,
+			) as string;
 
-				const workflowInfo: IExecuteWorkflowInfo = {};
-				if (source === 'database') {
-					// Read workflow from database
-					workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
-				} else if (source === 'parameter') {
-					// ReworkflowInfoad workflow from parameter
-					const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
-					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-				}
-
-				const items = [{ json: { query } }] as INodeExecutionData[];
-
-				const receivedData = (await this.executeWorkflow(
-					workflowInfo,
-					items,
-				)) as INodeExecutionData;
-
-				let response: string | undefined = get(receivedData, [
-					0,
-					0,
-					'json',
-					responsePropertyName,
-				]) as string | undefined;
-				if (response === undefined) {
-					response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
-				}
-
-				return response;
-			} catch (error) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-				return `There was an error: "${error.message}"`;
+			const workflowInfo: IExecuteWorkflowInfo = {};
+			if (source === 'database') {
+				// Read workflow from database
+				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
+			} else if (source === 'parameter') {
+				// Read workflow from parameter
+				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
+				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
 			}
+
+			const rawData: IDataObject = { query };
+
+			const workflowFieldsJson = this.getNodeParameter('fields.values', 0, [], {
+				rawExpressions: true,
+			}) as SetField[];
+
+			// Copied from Set Node v2
+			for (const entry of workflowFieldsJson) {
+				if (entry.type === 'objectValue' && (entry.objectValue as string).startsWith('=')) {
+					rawData[entry.name] = (entry.objectValue as string).replace(/^=+/, '');
+				}
+			}
+
+			const options: SetNodeOptions = {
+				include: 'all',
+			};
+
+			const newItem = await manual.execute.call(
+				this,
+				{ json: { query } },
+				itemIndex,
+				options,
+				rawData,
+				this.getNode(),
+			);
+
+			const items = [{ json: newItem }] as INodeExecutionData[];
+
+			const receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
+
+			let response: string | undefined = get(receivedData, [0, 0, 'json', responsePropertyName]) as
+				| string
+				| undefined;
+			if (response === undefined) {
+				response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
+			}
+
+			return response;
 		};
 
 		return {
@@ -213,7 +376,7 @@ export class ToolWorkflow implements INodeType {
 					}
 
 					if (executionError) {
-						void this.addOutputData('tool', [[{ json: { error: executionError } }]]);
+						void this.addOutputData('tool', executionError);
 					} else {
 						void this.addOutputData('tool', [[{ json: { response } }]]);
 					}

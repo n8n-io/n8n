@@ -37,11 +37,11 @@
       "dist/credentials/HuggingFaceApi.credentials.js",
       "dist/credentials/MotorheadApi.credentials.js",
       "dist/credentials/OllamaApi.credentials.js",
-      "dist/credentials/SerpApi.credentials.js",
-      "dist/credentials/XataApi.credentials.js",
       "dist/credentials/PineconeApi.credentials.js",
+      "dist/credentials/SerpApi.credentials.js",
+      "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/WolframAlphaApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/agents/ConversationalAgent/ConversationalAgent.node.js",
@@ -70,6 +70,7 @@
       "dist/nodes/memory/MemoryRedisChat/MemoryRedisChat.node.js",
       "dist/nodes/memory/MemoryChatRetriever/MemoryChatRetriever.node.js",
       "dist/nodes/memory/MemoryXata/MemoryXata.node.js",
+      "dist/nodes/memory/MemoryZep/MemoryZep.node.js",
       "dist/nodes/output_parser/OutputParserAutofixing/OutputParserAutofixing.node.js",
       "dist/nodes/output_parser/OutputParserItemList/OutputParserItemList.node.js",
       "dist/nodes/output_parser/OutputParserStructured/OutputParserStructured.node.js",
@@ -88,7 +89,9 @@
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
       "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
-      "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js"
+      "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
+      "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
     ]
   },
   "devDependencies": {
@@ -101,6 +104,7 @@
     "n8n-core": "*"
   },
   "dependencies": {
+    "@getzep/zep-js": "^0.7.1",
     "@gxl/epub-parser": "^2.0.4",
     "@huggingface/inference": "2.6.1",
     "@pinecone-database/pinecone": "^0.1.6",

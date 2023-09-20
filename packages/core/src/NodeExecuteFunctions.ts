@@ -66,6 +66,10 @@ import type {
 	ITaskData,
 	ExecutionError,
 	INodeOutputConfiguration,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	FieldType,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -1986,36 +1990,139 @@ const validateResourceMapperValue = (
 	return result;
 };
 
-const validateValueAgainstSchema = (
+const validateCollection = (
+	node: INode,
+	runIndex: number,
+	itemIndex: number,
+	propertyDescription: INodeProperties,
+	parameterPath: string[],
+	validationResult: ExtendedValidationResult,
+): ExtendedValidationResult => {
+	let nestedDescriptions: INodeProperties[] | undefined;
+
+	if (propertyDescription.type === 'fixedCollection') {
+		nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
+			(entry) => entry.name === parameterPath[1],
+		)?.values;
+	}
+
+	if (propertyDescription.type === 'collection') {
+		nestedDescriptions = propertyDescription.options as INodeProperties[];
+	}
+
+	if (!nestedDescriptions) {
+		return validationResult;
+	}
+
+	const validationMap: {
+		[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
+	} = {};
+
+	for (const prop of nestedDescriptions) {
+		if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
+
+		validationMap[prop.name] = {
+			type: prop.validateType,
+			displayName: prop.displayName,
+			options:
+				prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
+		};
+	}
+
+	if (!Object.keys(validationMap).length) {
+		return validationResult;
+	}
+
+	for (const value of Array.isArray(validationResult.newValue)
+		? (validationResult.newValue as IDataObject[])
+		: [validationResult.newValue as IDataObject]) {
+		for (const key of Object.keys(value)) {
+			if (!validationMap[key]) continue;
+
+			const fieldValidationResult = validateFieldType(
+				key,
+				value[key],
+				validationMap[key].type,
+				validationMap[key].options,
+			);
+
+			if (!fieldValidationResult.valid) {
+				throw new ExpressionError(
+					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+					{
+						description: fieldValidationResult.errorMessage,
+						runIndex,
+						itemIndex,
+						nodeCause: node.name,
+					},
+				);
+			}
+			value[key] = fieldValidationResult.newValue;
+		}
+	}
+
+	return validationResult;
+};
+
+export const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
-	inputValues: string | number | boolean | object | null | undefined,
+	parameterValue: string | number | boolean | object | null | undefined,
 	parameterName: string,
 	runIndex: number,
 	itemIndex: number,
 ) => {
-	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
-	// Currently only validate resource mapper values
-	const resourceMapperField = nodeType.description.properties.find(
+	const parameterPath = parameterName.split('.');
+
+	const propertyDescription = nodeType.description.properties.find(
 		(prop) =>
-			NodeHelpers.displayParameter(node.parameters, prop, node) &&
-			prop.type === 'resourceMapper' &&
-			parameterName === `${prop.name}.value`,
+			parameterPath[0] === prop.name && NodeHelpers.displayParameter(node.parameters, prop, node),
 	);
 
-	if (resourceMapperField && typeof inputValues === 'object') {
+	if (!propertyDescription) {
+		return parameterValue;
+	}
+
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
+
+	if (
+		parameterPath.length === 1 &&
+		propertyDescription.validateType &&
+		!propertyDescription.ignoreValidationDuringExecution
+	) {
+		validationResult = validateFieldType(
+			parameterName,
+			parameterValue,
+			propertyDescription.validateType,
+		);
+	} else if (
+		propertyDescription.type === 'resourceMapper' &&
+		parameterPath[1] === 'value' &&
+		typeof parameterValue === 'object'
+	) {
 		validationResult = validateResourceMapperValue(
 			parameterName,
-			inputValues as { [key: string]: unknown },
+			parameterValue as { [key: string]: unknown },
 			node,
-			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
+		);
+	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
+		validationResult = validateCollection(
+			node,
+			runIndex,
+			itemIndex,
+			propertyDescription,
+			parameterPath,
+			validationResult,
 		);
 	}
 
 	if (!validationResult.valid) {
 		throw new ExpressionError(
 			`Invalid input for '${
-				String(validationResult.fieldName) || parameterName
+				validationResult.fieldName
+					? String(validationResult.fieldName)
+					: propertyDescription.displayName
 			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
@@ -2059,6 +2166,10 @@ export function getNodeParameter(
 		throw new Error(`Could not get parameter "${parameterName}"!`);
 	}
 
+	if (options?.rawExpressions) {
+		return value;
+	}
+
 	let returnData;
 	try {
 		returnData = workflow.expression.getParameterValue(
@@ -2093,7 +2204,7 @@ export function getNodeParameter(
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
-	// Validate parameter value if it has a schema defined
+	// Validate parameter value if it has a schema defined(RMC) or validateType defined
 	returnData = validateValueAgainstSchema(
 		node,
 		nodeType,
