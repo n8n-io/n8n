@@ -5,6 +5,7 @@ import * as react from './react.operation';
 import * as send from './send.operation';
 import * as deleteMessage from './deleteMessage.operation';
 import * as get from './get.operation';
+import { guildRLC } from '../common.description';
 
 export { getAll, react, send, deleteMessage, get };
 
@@ -53,6 +54,15 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'send',
+	},
+	{
+		...guildRLC,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				authentication: ['botToken'],
+			},
+		},
 	},
 	...getAll.description,
 	...react.description,

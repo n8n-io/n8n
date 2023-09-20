@@ -19,11 +19,10 @@ export async function discordApiRequest(
 	body?: IDataObject,
 	qs?: IDataObject,
 ) {
-	const headers: IDataObject = {};
 	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
+	const credentialType = authentication === 'botToken' ? 'discordBotApi' : 'discordWebhookApi';
 
 	const options: OptionsWithUrl = {
-		headers,
 		method,
 		qs,
 		body,
@@ -31,16 +30,16 @@ export async function discordApiRequest(
 		json: true,
 	};
 
-	if (authentication === 'botToken') {
-		const credentials = await this.getCredentials('discordBotApi');
-		headers.Authorization = `Bot ${credentials.botToken}`;
-	} else {
+	if (credentialType === 'discordWebhookApi') {
 		const credentials = await this.getCredentials('discordWebhookApi');
 		options.url = credentials.webhookUri as string;
 	}
 
 	try {
-		const response = await this.helpers.request({ ...options, resolveWithFullResponse: true });
+		const response = await this.helpers.requestWithAuthentication.call(this, credentialType, {
+			...options,
+			resolveWithFullResponse: true,
+		});
 
 		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
 		const remaining = Number(response.headers['x-ratelimit-remaining']);
@@ -68,6 +67,8 @@ export async function discordApiMultiPartRequest(
 	};
 	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
 
+	const credentialType = authentication === 'botToken' ? 'discordBotApi' : 'discordWebhookApi';
+
 	const options: OptionsWithUrl = {
 		headers,
 		method,
@@ -75,16 +76,16 @@ export async function discordApiMultiPartRequest(
 		url: `https://discord.com/api/v10/${endpoint}`,
 	};
 
-	if (authentication === 'botToken') {
-		const credentials = await this.getCredentials('discordBotApi');
-		headers.Authorization = `Bot ${credentials.botToken}`;
-	} else {
+	if (credentialType === 'discordWebhookApi') {
 		const credentials = await this.getCredentials('discordWebhookApi');
 		options.url = credentials.webhookUri as string;
 	}
 
 	try {
-		const response = await this.helpers.request({ ...options, resolveWithFullResponse: true });
+		const response = await this.helpers.requestWithAuthentication.call(this, credentialType, {
+			...options,
+			resolveWithFullResponse: true,
+		});
 
 		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
 		const remaining = Number(response.headers['x-ratelimit-remaining']);

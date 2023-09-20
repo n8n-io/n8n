@@ -5,7 +5,6 @@ import * as message from './message';
 import * as channel from './channel';
 import * as member from './member';
 import * as webhook from './webhook';
-import { guildRLC } from './common.description';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',
@@ -80,17 +79,6 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'channel',
-		},
-		{
-			...guildRLC,
-			displayOptions: {
-				show: {
-					authentication: ['botToken'],
-				},
-				hide: {
-					resource: ['webhook'],
-				},
-			},
 		},
 		{
 			displayName: 'You need to use Webhook credentials to access this resource',

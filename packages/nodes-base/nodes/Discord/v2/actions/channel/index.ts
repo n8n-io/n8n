@@ -5,6 +5,7 @@ import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import * as deleteChannel from './deleteChannel.operation';
+import { guildRLC } from '../common.description';
 
 export { create, get, getAll, update, deleteChannel };
 
@@ -53,6 +54,15 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'create',
+	},
+	{
+		...guildRLC,
+		displayOptions: {
+			show: {
+				resource: ['channel'],
+				authentication: ['botToken'],
+			},
+		},
 	},
 	...create.description,
 	...deleteChannel.description,

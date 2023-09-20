@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import * as getAll from './getAll.operation';
 import * as roleAdd from './roleAdd.operation';
 import * as roleRemove from './roleRemove.operation';
+import { guildRLC } from '../common.description';
 
 export { getAll, roleAdd, roleRemove };
 
@@ -39,6 +40,15 @@ export const description: INodeProperties[] = [
 			},
 		],
 		default: 'getAll',
+	},
+	{
+		...guildRLC,
+		displayOptions: {
+			show: {
+				resource: ['member'],
+				authentication: ['botToken'],
+			},
+		},
 	},
 	...getAll.description,
 	...roleAdd.description,

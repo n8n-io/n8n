@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class DiscordBotApi implements ICredentialType {
 	name = 'discordBotApi';
@@ -18,4 +23,20 @@ export class DiscordBotApi implements ICredentialType {
 			},
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bot {{$credentials.botToken}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://discord.com/api/v10/',
+			url: '/users/@me/guilds',
+		},
+	};
 }
