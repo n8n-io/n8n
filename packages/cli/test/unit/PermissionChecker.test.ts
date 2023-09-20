@@ -25,6 +25,11 @@ import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockInstance } from '../integration/shared/utils/';
 import { OwnershipService } from '@/services/ownership.service';
 
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
+LoggerProxy.init(getLogger());
+
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
