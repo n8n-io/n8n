@@ -114,6 +114,8 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
+		config.set('generic.instanceType', instanceType);
+
 		const license = Container.get(License);
 		await license.init(this.instanceId, instanceType);
 
