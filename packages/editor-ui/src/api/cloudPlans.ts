@@ -14,5 +14,5 @@ export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.
 }
 
 export async function confirmEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {
-	return post(context.baseUrl, '/cloud/proxy/admin/user/confirm-email');
+	return post(context.baseUrl, '/cloud/proxy/admin/user/resend-confirmation-email');
 }

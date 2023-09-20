@@ -1533,15 +1533,10 @@ export declare namespace Cloud {
 	}
 
 	export type UserAccount = {
-		id: number;
 		confirmed: boolean;
-		createdAt?: string;
 		username: string;
 		email: string;
 		hasEarlyAccess?: boolean;
-		accountId?: number;
-		// TODO: add full typing if needed in the future
-		account?: object;
 	};
 }
 
