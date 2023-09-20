@@ -600,9 +600,11 @@ export default defineComponent({
 				returnClasses.push('do-not-select');
 			}
 
-			if (this.connectionDragScope) {
+			if (this.connectionDragScope.type) {
+				returnClasses.push(`connection-drag-scope-active`);
+				returnClasses.push(`connection-drag-scope-active-type-${this.connectionDragScope.type}`);
 				returnClasses.push(
-					`connection-drag-scope-active connection-drag-scope-active-${this.connectionDragScope}`,
+					`connection-drag-scope-active-connection-${this.connectionDragScope.connection}`,
 				);
 			}
 
@@ -664,7 +666,10 @@ export default defineComponent({
 			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
-			connectionDragScope: '',
+			connectionDragScope: {
+				type: null,
+				connection: null,
+			} as { type: string | null; connection: 'source' | 'target' | null },
 			renamingActive: false,
 			showStickyButton: false,
 			isExecutionPreview: false,
@@ -2728,7 +2733,10 @@ export default defineComponent({
 					window.removeEventListener('mousemove', onMouseMove);
 					window.removeEventListener('mouseup', onMouseUp);
 
-					this.connectionDragScope = '';
+					this.connectionDragScope = {
+						type: null,
+						connection: null,
+					};
 				};
 
 				window.addEventListener('mousemove', onMouseMove);
@@ -2736,7 +2744,10 @@ export default defineComponent({
 				window.addEventListener('mouseup', onMouseUp);
 				window.addEventListener('touchend', onMouseMove);
 
-				this.connectionDragScope = connection.parameters.type;
+				this.connectionDragScope = {
+					type: connection.parameters.type,
+					connection: connection.parameters.connection,
+				};
 			} catch (e) {
 				console.error(e);
 			}
@@ -4531,26 +4542,78 @@ export default defineComponent({
 
 <style lang="scss">
 .node-view-wrapper {
-	&.connection-drag-scope-active {
-		--drag-scope-active-disabled-color: var(--color-foreground-dark);
+	--drag-scope-active-disabled-color: var(--color-foreground-dark);
 
+	&.connection-drag-scope-active {
 		@each $node-type in $supplemental-node-types {
-			&:not(.connection-drag-scope-active-#{$node-type}) {
+			// Grey out incompatible node type endpoints
+			&:not(.connection-drag-scope-active-type-#{$node-type}) {
 				.diamond-output-endpoint,
 				.jtk-connector,
 				.add-input-endpoint {
 					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
 				}
+
+				.node-input-endpoint-label,
+				.node-output-endpoint-label {
+					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+				}
 			}
 
-			&.connection-drag-scope-active-#{$node-type} {
-				.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
-					transform: scale(1.375) rotate(45deg);
+			&.connection-drag-scope-active-type-#{$node-type} {
+				// Dragging input
+				&.connection-drag-scope-active-connection-target {
+					// Apply style to compatible output endpoints
+					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						transform: scale(1.375) rotate(45deg);
+					}
+
+					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						// Apply style to dragged compatible input endpoint
+						&.jtk-dragging {
+							.add-input-endpoint-default {
+								transform: translate(-4px, -4px) scale(1.375);
+							}
+						}
+
+						// Apply style to non-dragged compatible input endpoints
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
+
+					.node-input-endpoint-label {
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
 				}
 
-				.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
-					.add-input-endpoint-default {
-						transform: translate(-4px, -4px) scale(1.375);
+				// Dragging output
+				&.connection-drag-scope-active-connection-source {
+					// Apply style to dragged compatible output endpoint
+					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						&.jtk-dragging {
+							transform: scale(1.375) rotate(45deg);
+						}
+
+						// Apply style to non-dragged compatible input endpoints
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
+
+					// Apply style to compatible output endpoints
+					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						.add-input-endpoint-default {
+							transform: translate(-4px, -4px) scale(1.375);
+						}
+					}
+
+					.node-output-endpoint-label {
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
 					}
 				}
 			}

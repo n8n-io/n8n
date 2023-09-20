@@ -13,6 +13,7 @@ export class OutputParserItemList implements INodeType {
 		description: 'Return the results as separate items',
 		defaults: {
 			name: 'Item List Output Parser',
+			color: '#27D2DD',
 		},
 
 		codex: {

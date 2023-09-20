@@ -1,11 +1,10 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
-import { isNumber } from '@/utils';
+import { isNumber, closestNumberDivisibleBy } from '@/utils';
 import { NODE_OUTPUT_DEFAULT_KEY, SCOPED_ENDPOINT_TYPES, STICKY_NODE_TYPE } from '@/constants';
-import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type { EndpointStyle, IBounds, INodeUi, XYPosition, NodeConnectionType } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import type { Endpoint, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
-import { closestNumberDivisibleBy } from '@/utils';
 import type {
 	ConnectionTypes,
 	IConnection,
@@ -17,7 +16,6 @@ import type {
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores';
-import type { NodeConnectionType } from '@/Interface';
 
 /*
 	Canvas constants and functions.
@@ -77,12 +75,11 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 		loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
 		getEndpointOffset(endpoint: Endpoint) {
 			const indexOffset = 10; // stub offset between different endpoints of same node
-			const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
-			const totalEndpoints = endpoint && endpoint.__meta ? endpoint.__meta.totalEndpoints : 0;
+			const index = endpoint?.__meta ? endpoint.__meta.index : 0;
+			const totalEndpoints = endpoint?.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 			const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
-			const labelOffset =
-				outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+			const labelOffset = outputOverlay?.label && outputOverlay.label.length > 1 ? 10 : 0;
 			const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
 			return index * indexOffset + labelOffset + outputsOffset;
@@ -195,6 +192,7 @@ export const getAnchorPosition = (
 	connectionType: ConnectionTypes,
 	type: 'input' | 'output',
 	amount: number,
+	spacerIndexes: number[] = [],
 ): ArrayAnchorSpec[] => {
 	if (connectionType === 'main') {
 		const positions = {
@@ -243,13 +241,15 @@ export const getAnchorPosition = (
 	const oy = type === 'input' ? 1 : -1;
 	const ox = 0;
 
+	const spacedAmount = amount + spacerIndexes.length;
 	const returnPositions: ArrayAnchorSpec[] = [];
-	for (let i = 0; i < amount; i++) {
-		const stepSize = 1 / (amount + 1);
+	for (let i = 0; i < spacedAmount; i++) {
+		const stepSize = 1 / (spacedAmount + 1);
 		let x = stepSize * i;
+		x += stepSize;
 
-		if (connectionType !== 'main') {
-			x += stepSize;
+		if (spacerIndexes.includes(i)) {
+			continue;
 		}
 
 		returnPositions.push([x, y, ox, oy]);
@@ -275,7 +275,7 @@ export const getInputEndpointStyle = (
 	let height = nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20;
 
 	if (connectionType !== 'main') {
-		let temp = width;
+		const temp = width;
 		width = height;
 		height = temp;
 	}
@@ -308,6 +308,7 @@ export const getInputNameOverlay = (
 			label.classList.add('node-input-endpoint-label');
 			if (inputName !== 'main') {
 				label.classList.add('node-input-endpoint-label--data');
+				label.classList.add(`node-connection-type-${inputName}`);
 			}
 			return label;
 		},
@@ -334,7 +335,8 @@ export const getOutputNameOverlay = (labelText: string, outputName: string): Ove
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
 			if (outputName !== 'main') {
-				label.classList.add(`node-output-endpoint-label--data`);
+				label.classList.add('node-output-endpoint-label--data');
+				label.classList.add(`node-connection-type-${outputName}`);
 			}
 			return label;
 		},
@@ -418,7 +420,7 @@ export const hideOverlay = (item: Connection | Endpoint, overlayId: string) => {
 };
 
 export const showOrHideMidpointArrow = (connection: Connection) => {
-	if (!connection || !connection.endpoints || connection.endpoints.length !== 2) {
+	if (!connection?.endpoints || connection.endpoints.length !== 2) {
 		return;
 	}
 	const hasItemsLabel = !!getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
@@ -492,7 +494,7 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	const isHidden = diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL;
 
 	overlay.setVisible(!isHidden);
-	const innerElement = overlay.canvas && overlay.canvas.querySelector('span');
+	const innerElement = overlay.canvas?.querySelector('span');
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
 			innerElement.classList.add('floating');
@@ -550,30 +552,20 @@ export const getNewNodePosition = (
 			}
 		}
 
-		if (conflictFound === true) {
+		if (conflictFound) {
 			targetPosition[0] += movePosition[0];
 			targetPosition[1] += movePosition[1];
 		}
-	} while (conflictFound === true);
+	} while (conflictFound);
 
 	return targetPosition;
 };
 
 export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
 	// @ts-ignore
-	const x =
-		e.pageX !== undefined
-			? e.pageX
-			: e.touches && e.touches[0] && e.touches[0].pageX
-			? e.touches[0].pageX
-			: 0;
+	const x = e.pageX !== undefined ? e.pageX : e.touches?.[0]?.pageX ? e.touches[0].pageX : 0;
 	// @ts-ignore
-	const y =
-		e.pageY !== undefined
-			? e.pageY
-			: e.touches && e.touches[0] && e.touches[0].pageY
-			? e.touches[0].pageY
-			: 0;
+	const y = e.pageY !== undefined ? e.pageY : e.touches?.[0]?.pageY ? e.touches[0].pageY : 0;
 
 	return [x, y];
 };
@@ -667,7 +659,7 @@ export const getOutputSummary = (
 	} = {};
 
 	data.forEach((run: ITaskData) => {
-		if (!run.data || !run.data[connectionType]) {
+		if (!run.data?.[connectionType]) {
 			return;
 		}
 

@@ -1,12 +1,7 @@
 <template>
 	<div
-		:class="{
-			'node-wrapper': true,
-			'node-wrapper--trigger': isTriggerNode,
-			'node-wrapper--configurable': isConfigurableNode,
-			'node-wrapper--config': isConfigNode,
-		}"
-		:style="nodePosition"
+		:class="nodeWrapperClass"
+		:style="nodeWrapperStyles"
 		:id="nodeId"
 		data-test-id="canvas-node"
 		:ref="data.name"
@@ -177,8 +172,8 @@ import { mapStores } from 'pinia';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-	WAIT_TIME_UNLIMITED,
 	MANUAL_TRIGGER_NODE_TYPE,
+	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -322,23 +317,55 @@ export default defineComponent({
 		sameTypeNodes(): INodeUi[] {
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
-		nodeClass(): object {
+		nodeWrapperClass(): object {
 			const classes = {
-				'node-box': true,
-				disabled: this.data.disabled,
-				executing: this.isExecuting,
+				'node-wrapper': true,
+				'node-wrapper--trigger': this.isTriggerNode,
+				'node-wrapper--configurable': this.isConfigurableNode,
+				'node-wrapper--config': this.isConfigNode,
 			};
 
 			if (this.outputs.length) {
 				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
-
 				const otherOutputs = outputTypes.filter((outputName) => outputName !== 'main');
 				if (otherOutputs.length) {
-					classes['node-other'] = true;
+					otherOutputs.forEach((outputName) => {
+						classes[`node-wrapper--connection-type-${outputName}`] = true;
+					});
 				}
 			}
 
 			return classes;
+		},
+		nodeWrapperStyles(): object {
+			const styles: {
+				[key: string]: string | number;
+			} = {
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
+			};
+
+			const nonMainInputs = this.inputs.filter((input) => input !== 'main');
+			if (nonMainInputs.length) {
+				const requiredNonMainInputs = this.inputs.filter(
+					(input) => typeof input !== 'string' && input.required,
+				);
+				const requiredNonMainInputsCount = requiredNonMainInputs.length;
+				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+				const spacerCount =
+					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+
+				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
+			}
+
+			return styles;
+		},
+		nodeClass(): object {
+			return {
+				'node-box': true,
+				disabled: this.data.disabled,
+				executing: this.isExecuting,
+			};
 		},
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
@@ -378,16 +405,6 @@ export default defineComponent({
 		},
 		showDisabledLinethrough(): boolean {
 			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
-		},
-		nodePosition(): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				left: this.position[0] + 'px',
-				top: this.position[1] + 'px',
-			};
-
-			return returnStyles;
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -717,16 +734,6 @@ export default defineComponent({
 				.node-executing-info {
 					display: inline-block;
 				}
-
-				&.node-other {
-					background-color: $node-background-executing-other !important;
-				}
-			}
-
-			&.node-other {
-				background-color: $node-background-type-other;
-				border-radius: 50px;
-				border: 0;
 			}
 		}
 
@@ -848,14 +855,52 @@ export default defineComponent({
 			}
 		}
 
+		.node-default {
+			.node-box {
+				border: 2px solid var(--color-foreground-xdark);
+				//background-color: $node-background-type-other;
+				border-radius: 50px;
+
+				&.executing {
+					background-color: $node-background-executing-other !important;
+				}
+			}
+		}
+
+		@each $node-type in $supplemental-node-types {
+			&.node-wrapper--connection-type-#{$node-type} {
+				.node-default .node-box {
+					background: var(--node-type-#{$node-type}-background);
+				}
+
+				.node-description {
+					.node-subtitle {
+						color: var(--node-type-#{$node-type}-color);
+					}
+				}
+			}
+		}
+
 		.node-info-icon {
-			bottom: 0px !important;
-			right: 1px !important;
+			bottom: 8px !important;
+			right: 50% !important;
+			transform: translateX(50%);
+		}
+
+		&.node-wrapper--configurable {
+			.node-info-icon {
+				bottom: 1px !important;
+				right: 1px !important;
+				transform: none;
+			}
 		}
 	}
 
 	&--configurable {
-		$configurable-node-width: 250px;
+		$configurable-node-width: var(
+			--configurable-node-width,
+			calc(max(var(--configurable-node-input-count, 5), 4) * 65px)
+		);
 		$configurable-node-icon-offset: 40px;
 		$configurable-node-icon-size: 30px;
 
@@ -1259,6 +1304,8 @@ export default defineComponent({
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
+	--node-endpoint-label--transition-duration: 0.15s;
+
 	background-color: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -1269,6 +1316,13 @@ export default defineComponent({
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	transition: color var(--node-endpoint-label--transition-duration) ease;
+
+	@each $node-type in $supplemental-node-types {
+		&.node-connection-type-#{$node-type} {
+			color: var(--node-type-#{$node-type}-color);
+		}
+	}
 }
 
 .node-output-endpoint-label {

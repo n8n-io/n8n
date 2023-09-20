@@ -24,7 +24,7 @@ export class ToolCode implements INodeType {
 		description: 'Create a tool via code',
 		defaults: {
 			name: 'Code Tool',
-			color: '#400080',
+			color: '#9B13A7',
 		},
 		codex: {
 			categories: ['AI'],

@@ -117,7 +117,24 @@ export const nodeBase = defineComponent({
 				NodeHelpers.getNodeInputs(workflow, this.data!, nodeTypeData) || [];
 			this.inputs = inputs;
 
-			inputs.forEach((value, i) => {
+			const sortedInputs = [...inputs];
+			sortedInputs.sort((a, b) => {
+				if (typeof a === 'string') {
+					return 1;
+				} else if (typeof b === 'string') {
+					return -1;
+				}
+
+				if (a.required && !b.required) {
+					return -1;
+				} else if (!a.required && b.required) {
+					return 1;
+				}
+
+				return 0;
+			});
+
+			sortedInputs.forEach((value, i) => {
 				let inputConfiguration: INodeInputConfiguration;
 				if (typeof value === 'string') {
 					inputConfiguration = {
@@ -152,11 +169,23 @@ export const nodeBase = defineComponent({
 					return inputName === 'main' ? thisInputName === 'main' : thisInputName !== 'main';
 				});
 
+				const nonMainInputs = inputsOfSameRootType.filter((inputData) => {
+					return inputData !== 'main';
+				});
+				const requiredNonMainInputs = nonMainInputs.filter((inputData) => {
+					return typeof inputData !== 'string' && inputData.required;
+				});
+				const requiredNonMainInputsCount = requiredNonMainInputs.length;
+				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					inputName,
 					'input',
 					inputsOfSameRootType.length,
+					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0
+						? [requiredNonMainInputsCount]
+						: [],
 				)[rootTypeIndex];
 
 				const scope = NodeViewUtils.getEndpointScope(inputName as NodeConnectionType);
@@ -229,7 +258,7 @@ export const nodeBase = defineComponent({
 				// 	this.instance.makeTarget(this.nodeId, newEndpointData);
 				// }
 			});
-			if (inputs.length === 0) {
+			if (sortedInputs.length === 0) {
 				this.instance.manage(this.$refs[this.data.name] as Element);
 			}
 		},

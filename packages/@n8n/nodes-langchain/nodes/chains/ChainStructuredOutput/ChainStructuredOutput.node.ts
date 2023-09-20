@@ -36,7 +36,7 @@ export class ChainStructuredOutput implements INodeType {
 			'Processes input text and structures the output according to a specified JSON schema',
 		defaults: {
 			name: 'Structured Output Chain',
-			color: '#432032',
+			color: '#BCA5A5',
 		},
 		codex: {
 			categories: ['AI'],

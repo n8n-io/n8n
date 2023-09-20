@@ -20,6 +20,8 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		description: 'Load data from Supabase Vector Store index',
 		defaults: {
 			name: 'Supabase: Load',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			color: '#F1538C',
 		},
 		codex: {
 			categories: ['AI'],

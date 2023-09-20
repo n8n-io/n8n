@@ -13,7 +13,7 @@ export class TextSplitterTokenSplitter implements INodeType {
 		description: 'Split text into chunks by tokens',
 		defaults: {
 			name: 'Token Splitter',
-			color: '#400080',
+			color: '#D04EDB',
 		},
 		codex: {
 			categories: ['AI'],
