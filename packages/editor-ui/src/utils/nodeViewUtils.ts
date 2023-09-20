@@ -192,6 +192,7 @@ export const getAnchorPosition = (
 	connectionType: ConnectionTypes,
 	type: 'input' | 'output',
 	amount: number,
+	spacerIndexes: number[] = [],
 ): ArrayAnchorSpec[] => {
 	if (connectionType === 'main') {
 		const positions = {
@@ -240,13 +241,15 @@ export const getAnchorPosition = (
 	const oy = type === 'input' ? 1 : -1;
 	const ox = 0;
 
+	const spacedAmount = amount + spacerIndexes.length;
 	const returnPositions: ArrayAnchorSpec[] = [];
-	for (let i = 0; i < amount; i++) {
-		const stepSize = 1 / (amount + 1);
+	for (let i = 0; i < spacedAmount; i++) {
+		const stepSize = 1 / (spacedAmount + 1);
 		let x = stepSize * i;
+		x += stepSize;
 
-		if (connectionType !== 'main') {
-			x += stepSize;
+		if (spacerIndexes.includes(i)) {
+			continue;
 		}
 
 		returnPositions.push([x, y, ox, oy]);
