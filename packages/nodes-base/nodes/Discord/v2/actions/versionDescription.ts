@@ -31,15 +31,6 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
-			name: 'discordOAuth2Api',
-			required: true,
-			displayOptions: {
-				show: {
-					authentication: ['oAuth2'],
-				},
-			},
-		},
-		{
 			name: 'discordWebhookApi',
 			displayOptions: {
 				show: {
@@ -59,41 +50,11 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'botToken',
 				},
 				{
-					name: 'OAuth2',
-					value: 'oAuth2',
-				},
-				{
 					name: 'Webhook',
 					value: 'webhook',
 				},
 			],
-			default: 'oAuth2',
-		},
-		{
-			displayName: 'Resource',
-			name: 'resource',
-			type: 'options',
-			noDataExpression: true,
-			options: [
-				{
-					name: 'Webhook',
-					value: 'webhook',
-				},
-			],
-			default: 'webhook',
-			displayOptions: {
-				show: {
-					authentication: ['webhook'],
-				},
-			},
-		},
-		{
-			...guildRLC,
-			displayOptions: {
-				show: {
-					authentication: ['oAuth2', 'botToken'],
-				},
-			},
+			default: 'botToken',
 		},
 		{
 			displayName: 'Resource',
@@ -113,15 +74,36 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Member',
 					value: 'member',
 				},
+				{
+					name: 'Webhook',
+					value: 'webhook',
+				},
 			],
 			default: 'channel',
+		},
+		{
+			...guildRLC,
 			displayOptions: {
 				show: {
-					authentication: ['oAuth2', 'botToken'],
+					authentication: ['botToken'],
+				},
+				hide: {
+					resource: ['webhook'],
 				},
 			},
 		},
-
+		{
+			displayName: 'You need to use Webhook credentials to access this resource',
+			name: 'webhookAuthRequired',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['botToken'],
+					resource: ['webhook'],
+				},
+			},
+		},
 		...message.description,
 		...channel.description,
 		...member.description,

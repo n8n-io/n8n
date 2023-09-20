@@ -89,7 +89,6 @@
       "dist/credentials/DeepLApi.credentials.js",
       "dist/credentials/DemioApi.credentials.js",
       "dist/credentials/DhlApi.credentials.js",
-      "dist/credentials/DiscordOAuth2Api.credentials.js",
       "dist/credentials/DiscordBotApi.credentials.js",
       "dist/credentials/DiscordWebhookApi.credentials.js",
       "dist/credentials/DiscourseApi.credentials.js",

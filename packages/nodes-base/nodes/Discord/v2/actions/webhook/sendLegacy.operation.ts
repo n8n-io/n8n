@@ -95,7 +95,9 @@ const displayOptions = {
 	show: {
 		resource: ['webhook'],
 		operation: ['sendLegacy'],
-		authentication: ['webhook'],
+	},
+	hide: {
+		authentication: ['botToken'],
 	},
 };
 
