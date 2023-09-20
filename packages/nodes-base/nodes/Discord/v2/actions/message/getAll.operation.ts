@@ -57,23 +57,40 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const qs: IDataObject = {};
 
-			if (!returnAll) {
-				const limit = this.getNodeParameter('limit', i);
-				qs.limit = limit;
-			}
+			let response: IDataObject[] = [];
 
-			let response = await discordApiRequest.call(
-				this,
-				'GET',
-				`/channels/${channelId}/messages`,
-				undefined,
-				qs,
-			);
+			if (!returnAll) {
+				const limit = this.getNodeParameter('limit', 0);
+				qs.limit = limit;
+				response = await discordApiRequest.call(
+					this,
+					'GET',
+					`/channels/${channelId}/messages`,
+					undefined,
+					qs,
+				);
+			} else {
+				let responseData;
+				qs.limit = 100;
+
+				do {
+					responseData = await discordApiRequest.call(
+						this,
+						'GET',
+						`/channels/${channelId}/messages`,
+						undefined,
+						qs,
+					);
+					if (!responseData?.length) break;
+					qs.before = responseData[responseData.length - 1].id;
+					response.push(...responseData);
+				} while (responseData.length);
+			}
 
 			const simplify = this.getNodeParameter('options.simplify', i, false) as boolean;
 
 			if (simplify) {
-				response = (response as IDataObject[]).map(simplifyResponse);
+				response = response.map(simplifyResponse);
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

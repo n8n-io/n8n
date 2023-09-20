@@ -65,14 +65,6 @@ export async function execute(
 	let response: IDataObject[] = [];
 
 	try {
-		// let response = await discordApiRequest.call(
-		// 	this,
-		// 	'GET',
-		// 	`/guilds/${guildId}/members`,
-		// 	undefined,
-		// 	qs,
-		// );
-
 		if (!returnAll) {
 			const limit = this.getNodeParameter('limit', 0);
 			qs.limit = limit;
