@@ -104,6 +104,18 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			displayName: 'You need to use Bot Token credentials to access this resource',
+			name: 'webhookAuthRequired',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: ['webhook'],
+					resource: ['channel', 'message', 'member'],
+				},
+			},
+		},
 		...message.description,
 		...channel.description,
 		...member.description,

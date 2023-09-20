@@ -17,6 +17,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['channel'],
+				authentication: ['botToken'],
 			},
 		},
 		options: [
