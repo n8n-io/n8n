@@ -1,9 +1,14 @@
 import type { Readable } from 'stream';
-import type { BinaryMetadata } from 'n8n-workflow';
 import type { BINARY_DATA_MODES } from './utils';
 
 export namespace BinaryData {
 	export type Mode = (typeof BINARY_DATA_MODES)[number];
+
+	export type Metadata = {
+		fileName?: string;
+		mimeType?: string;
+		fileSize: number;
+	};
 
 	type ConfigBase = {
 		mode: Mode;
@@ -14,30 +19,33 @@ export namespace BinaryData {
 
 	export type FileSystemConfig = ConfigBase & { mode: 'filesystem'; localStoragePath: string };
 
-	export type Config = InMemoryConfig | FileSystemConfig;
+	export type ObjectStoreConfig = ConfigBase & { mode: 'objectStore'; localStoragePath: string };
+
+	export type Config = InMemoryConfig | FileSystemConfig | ObjectStoreConfig;
 
 	export interface Manager {
 		init(): Promise<void>;
 
-		store(binaryData: Buffer | Readable, executionId: string): Promise<string>;
+		store(
+			binaryData: Buffer | Readable,
+			executionId: string,
+			metadata: { mimeType: string; fileName?: string },
+		): Promise<{ fileId: string; fileSize: number }>;
+
 		getPath(identifier: string): string;
-
-		getSize(identifier: string): Promise<number>;
-
 		getBuffer(identifier: string): Promise<Buffer>;
 		getStream(identifier: string, chunkSize?: number): Readable;
+		getMetadata(identifier: string): Promise<Metadata>;
 
-		// @TODO: Refactor out - not needed for object storage
-		storeMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
-
-		// @TODO: Refactor out - not needed for object storage
-		getMetadata(identifier: string): Promise<BinaryMetadata>;
+		copyByFileId(identifier: string, prefix: string): Promise<string>;
 
 		// @TODO: Refactor to also use `workflowId` to support full path-like identifier:
 		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
-		copyByPath(path: string, executionId: string): Promise<string>;
-
-		copyByIdentifier(identifier: string, prefix: string): Promise<string>;
+		copyByFilePath(
+			path: string,
+			executionId: string,
+			metadata: { mimeType: string; fileName?: string },
+		): Promise<{ fileId: string; fileSize: number }>;
 
 		deleteOne(identifier: string): Promise<void>;
 

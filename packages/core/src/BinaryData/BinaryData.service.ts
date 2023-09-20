@@ -5,7 +5,7 @@ import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
-import { InvalidBinaryDataManagerError, InvalidBinaryDataModeError, areValidModes } from './utils';
+import { InvalidBinaryDataManager, InvalidBinaryDataMode, areValidModes } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -20,7 +20,7 @@ export class BinaryDataService {
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataModeError();
+		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataMode();
 
 		this.availableModes = config.availableModes;
 		this.mode = config.mode;
@@ -37,24 +37,20 @@ export class BinaryDataService {
 
 		if (!manager) {
 			const { size } = await stat(path);
-			binaryData.fileSize = prettyBytes(size);
 			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
+			binaryData.fileSize = prettyBytes(size);
 
 			return binaryData;
 		}
 
-		const identifier = await manager.copyByPath(path, executionId);
-		binaryData.id = this.createIdentifier(identifier);
-		binaryData.data = this.mode; // clear binary data from memory
-
-		const fileSize = await manager.getSize(identifier);
-		binaryData.fileSize = prettyBytes(fileSize);
-
-		await manager.storeMetadata(identifier, {
+		const { fileId, fileSize } = await manager.copyByFilePath(path, executionId, {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-			fileSize,
 		});
+
+		binaryData.id = this.createBinaryDataId(fileId);
+		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
 	}
@@ -70,18 +66,14 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const identifier = await manager.store(input, executionId);
-		binaryData.id = this.createIdentifier(identifier);
-		binaryData.data = this.mode; // clear binary data from memory
-
-		const fileSize = await manager.getSize(identifier);
-		binaryData.fileSize = prettyBytes(fileSize);
-
-		await manager.storeMetadata(identifier, {
+		const { fileId, fileSize } = await manager.store(input, executionId, {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-			fileSize,
 		});
+
+		binaryData.id = this.createBinaryDataId(fileId);
+		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
 	}
@@ -94,7 +86,7 @@ export class BinaryDataService {
 	}
 
 	getAsStream(identifier: string, chunkSize?: number) {
-		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		const { mode, id } = this.splitModeFileId(identifier);
 
 		return this.getManager(mode).getStream(id, chunkSize);
 	}
@@ -106,19 +98,19 @@ export class BinaryDataService {
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string) {
-		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		const { mode, id } = this.splitModeFileId(identifier);
 
 		return this.getManager(mode).getBuffer(id);
 	}
 
 	getPath(identifier: string) {
-		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		const { mode, id } = this.splitModeFileId(identifier);
 
 		return this.getManager(mode).getPath(id);
 	}
 
 	async getMetadata(identifier: string) {
-		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		const { mode, id } = this.splitModeFileId(identifier);
 
 		return this.getManager(mode).getMetadata(id);
 	}
@@ -157,12 +149,15 @@ export class BinaryDataService {
 	//         private methods
 	// ----------------------------------
 
-	private createIdentifier(filename: string) {
-		return `${this.mode}:${filename}`;
+	/**
+	 * Create an identifier `${mode}:{fileId}` for `IBinaryData['id']`.
+	 */
+	private createBinaryDataId(fileId: string) {
+		return `${this.mode}:${fileId}`;
 	}
 
-	private splitBinaryModeFileId(fileId: string) {
-		const [mode, id] = fileId.split(':');
+	private splitModeFileId(identifier: string) {
+		const [mode, id] = identifier.split(':');
 
 		return { mode, id };
 	}
@@ -185,12 +180,12 @@ export class BinaryDataService {
 					return { key, newId: undefined };
 				}
 
-				return manager
-					?.copyByIdentifier(this.splitBinaryModeFileId(binaryDataId).id, executionId)
-					.then((filename) => ({
-						newId: this.createIdentifier(filename),
-						key,
-					}));
+				const fileId = this.splitModeFileId(binaryDataId).id;
+
+				return manager?.copyByFileId(fileId, executionId).then((newFileId) => ({
+					newId: this.createBinaryDataId(newFileId),
+					key,
+				}));
 			});
 
 			return Promise.all(bdPromises).then((b) => {
@@ -212,6 +207,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new InvalidBinaryDataManagerError();
+		throw new InvalidBinaryDataManager();
 	}
 }

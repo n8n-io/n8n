@@ -58,7 +58,6 @@ import type {
 	IPollFunctions,
 	ITriggerFunctions,
 	IWebhookFunctions,
-	BinaryMetadata,
 	FileSystemHelperFunctions,
 	INodeType,
 } from 'n8n-workflow';
@@ -138,6 +137,7 @@ import {
 import { getSecretsProxy } from './Secrets';
 import { getUserN8nFolderPath } from './UserSettings';
 import Container from 'typedi';
+import type { BinaryData } from './BinaryData/types';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -880,7 +880,7 @@ export function getBinaryPath(binaryDataId: string): string {
 /**
  * Returns binary file metadata
  */
-export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
 	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 

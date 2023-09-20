@@ -12,13 +12,13 @@ export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
 	return modes.every((m) => BINARY_DATA_MODES.includes(m as BinaryData.Mode));
 }
 
-export class InvalidBinaryDataModeError extends Error {
+export class InvalidBinaryDataMode extends Error {
 	constructor() {
 		super(`Invalid binary data mode. Valid modes: ${BINARY_DATA_MODES.join(', ')}`);
 	}
 }
 
-export class InvalidBinaryDataManagerError extends Error {
+export class InvalidBinaryDataManager extends Error {
 	constructor() {
 		super('No binary data manager found');
 	}

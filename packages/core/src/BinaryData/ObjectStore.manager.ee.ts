@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { BinaryMetadata } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 
@@ -11,15 +10,15 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		throw new Error('TODO');
 	}
 
-	async store(binaryData: Buffer | Readable, executionId: string): Promise<string> {
+	async store(
+		binaryData: Buffer | Readable,
+		executionId: string,
+		metadata: { mimeType: string; fileName?: string },
+	): Promise<{ fileId: string; fileSize: number }> {
 		throw new Error('TODO');
 	}
 
 	getPath(identifier: string): string {
-		throw new Error('TODO');
-	}
-
-	async getSize(identifier: string): Promise<number> {
 		throw new Error('TODO');
 	}
 
@@ -31,23 +30,22 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		throw new Error('TODO');
 	}
 
-	async storeMetadata(identifier: string, metadata: BinaryMetadata): Promise<void> {
+	async getMetadata(identifier: string): Promise<BinaryData.Metadata> {
 		throw new Error('TODO');
 	}
 
-	async getMetadata(identifier: string): Promise<BinaryMetadata> {
+	async copyByFileId(fileId: string, executionId: string): Promise<string> {
 		throw new Error('TODO');
 	}
 
-	async copyByPath(path: string, executionId: string): Promise<string> {
+	async copyByFilePath(
+		path: string,
+		executionId: string,
+	): Promise<{ fileId: string; fileSize: number }> {
 		throw new Error('TODO');
 	}
 
-	async copyByIdentifier(identifier: string, executionId: string): Promise<string> {
-		throw new Error('TODO');
-	}
-
-	async deleteOne(identifier: string): Promise<void> {
+	async deleteOne(fileId: string): Promise<void> {
 		throw new Error('TODO');
 	}
 
