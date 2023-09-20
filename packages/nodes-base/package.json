@@ -188,6 +188,7 @@
       "dist/credentials/Ldap.credentials.js",
       "dist/credentials/LemlistApi.credentials.js",
       "dist/credentials/LinearApi.credentials.js",
+      "dist/credentials/LinearOAuth2Api.credentials.js",
       "dist/credentials/LineNotifyOAuth2Api.credentials.js",
       "dist/credentials/LingvaNexApi.credentials.js",
       "dist/credentials/LinkedInOAuth2Api.credentials.js",
