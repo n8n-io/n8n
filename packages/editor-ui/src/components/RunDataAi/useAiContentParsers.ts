@@ -22,12 +22,14 @@ type AllowedEndpointType = Exclude<NodeConnectionType, ExcludedKeys>;
 const fallbackParser = (execData: IDataObject) => ({
 	type: 'json' as 'json' | 'text' | 'markdown',
 	data: execData,
+	parsed: false,
 });
 
 const outputTypeParsers: {
 	[key in AllowedEndpointType]: (execData: IDataObject) => {
 		type: 'json' | 'text' | 'markdown';
 		data: unknown;
+		parsed: boolean;
 	};
 } = {
 	[NodeConnectionType.LanguageModel](execData: IDataObject) {
@@ -43,6 +45,7 @@ const outputTypeParsers: {
 			return {
 				type: 'text',
 				data: response.messages[0],
+				parsed: true,
 			};
 		}
 		// Use the memory parser if the response is a memory-like(chat) object
@@ -68,12 +71,14 @@ const outputTypeParsers: {
 			return {
 				type: 'json',
 				data: content,
+				parsed: true,
 			};
 		}
 
 		return {
 			type: 'json',
 			data: response,
+			parsed: true,
 		};
 	},
 	[NodeConnectionType.Tool]: fallbackParser,
@@ -106,6 +111,7 @@ const outputTypeParsers: {
 			return {
 				type: 'markdown',
 				data: responseText,
+				parsed: true,
 			};
 		}
 
@@ -118,6 +124,7 @@ const outputTypeParsers: {
 			return {
 				type: 'json',
 				data: execData.documents,
+				parsed: true,
 			};
 		}
 
@@ -128,6 +135,7 @@ const outputTypeParsers: {
 			return {
 				type: 'json',
 				data: execData.documents,
+				parsed: true,
 			};
 		}
 
@@ -138,6 +146,7 @@ const outputTypeParsers: {
 			return {
 				type: 'json',
 				data: execData.documents,
+				parsed: true,
 			};
 		}
 
@@ -150,6 +159,7 @@ const outputTypeParsers: {
 		return {
 			type: 'text',
 			data: arrayData.join('\n\n'),
+			parsed: true,
 		};
 	},
 };
@@ -158,6 +168,7 @@ export type ParsedAiContent = Array<{
 	parsedContent: {
 		type: 'json' | 'text' | 'markdown';
 		data: unknown;
+		parsed: boolean;
 	} | null;
 }>;
 
