@@ -7,10 +7,10 @@ import type {
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
-import { maxResultsNumber } from '../common.description';
+import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
-	maxResultsNumber,
+	...returnAllOrLimit,
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -61,12 +61,12 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 
 	try {
+		const returnAll = this.getNodeParameter('returnAll', 0, false);
 		let response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
 
-		const maxResults = this.getNodeParameter('maxResults', 0, 50) as number;
-
-		if (maxResults) {
-			response = (response as IDataObject[]).slice(0, maxResults);
+		if (!returnAll) {
+			const limit = this.getNodeParameter('limit', 0);
+			response = (response as IDataObject[]).slice(0, limit);
 		}
 
 		const options = this.getNodeParameter('options', 0, {});

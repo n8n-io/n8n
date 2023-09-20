@@ -35,22 +35,10 @@ const properties: INodeProperties[] = [
 				name: 'Guild Voice',
 				value: '2',
 			},
-			// {
-			// 	name: 'DM',
-			// 	value: '1',
-			// },
-			// {
-			// 	name: 'Group DM',
-			// 	value: '3',
-			// },
 			{
 				name: 'Guild Category',
 				value: '4',
 			},
-			// {
-			// 	name: 'Guild Store',
-			// 	value: '6',
-			// },
 		],
 	},
 	{
@@ -66,6 +54,11 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether the content of the channel might be nsfw (not safe for work)',
+				displayOptions: {
+					hide: {
+						'/type': ['4'],
+					},
+				},
 			},
 			{
 				displayName: 'Bitrate',
@@ -83,7 +76,14 @@ const properties: INodeProperties[] = [
 					},
 				},
 			},
-			categoryRLC,
+			{
+				...categoryRLC,
+				displayOptions: {
+					hide: {
+						'/type': ['4'],
+					},
+				},
+			},
 			{
 				displayName: 'Position',
 				name: 'position',
@@ -96,6 +96,11 @@ const properties: INodeProperties[] = [
 				type: 'number',
 				default: 0,
 				description: 'Amount of seconds a user has to wait before sending another message',
+				displayOptions: {
+					hide: {
+						'/type': ['4'],
+					},
+				},
 			},
 			{
 				displayName: 'Topic',
@@ -107,6 +112,11 @@ const properties: INodeProperties[] = [
 				},
 				description: 'The channel topic description (0-1024 characters)',
 				placeholder: 'e.g. This channel is about…',
+				displayOptions: {
+					hide: {
+						'/type': ['4'],
+					},
+				},
 			},
 			{
 				displayName: 'User Limit',
@@ -180,7 +190,7 @@ export async function execute(
 
 			returnData.push(...executionData);
 		} catch (error) {
-			const err = parseDiscordError.call(this, error);
+			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
 				returnData.push(...prepareErrorData.call(this, err, i));

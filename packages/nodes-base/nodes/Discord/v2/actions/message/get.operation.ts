@@ -4,7 +4,18 @@ import { createSimplifyFunction, parseDiscordError, prepareErrorData } from '../
 import { discordApiRequest } from '../../transport';
 import { channelRLC, messageIdString, simplifyBoolean } from '../common.description';
 
-const properties: INodeProperties[] = [channelRLC, messageIdString, simplifyBoolean];
+const properties: INodeProperties[] = [
+	channelRLC,
+	messageIdString,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [simplifyBoolean],
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -44,7 +55,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				`/channels/${channelId}/messages/${messageId}`,
 			);
 
-			const simplify = this.getNodeParameter('simplify', i) as boolean;
+			const simplify = this.getNodeParameter('options.simplify', i, false) as boolean;
 
 			if (simplify) {
 				response = simplifyResponse(response);
@@ -57,7 +68,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			returnData.push(...executionData);
 		} catch (error) {
-			const err = parseDiscordError.call(this, error);
+			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
 				returnData.push(...prepareErrorData.call(this, err, i));

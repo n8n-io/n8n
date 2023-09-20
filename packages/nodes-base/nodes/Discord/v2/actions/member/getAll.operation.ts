@@ -7,10 +7,11 @@ import type {
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { createSimplifyFunction, parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
-import { maxResultsNumber, simplifyBoolean } from '../common.description';
+import { simplifyBoolean } from '../common.description';
+import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
 const properties: INodeProperties[] = [
-	maxResultsNumber,
+	...returnAllOrLimit,
 	{
 		displayName: 'After',
 		name: 'after',
@@ -19,7 +20,14 @@ const properties: INodeProperties[] = [
 		placeholder: 'e.g. 786953432728469534',
 		description: 'The ID of the user after which to return the members',
 	},
-	simplifyBoolean,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [simplifyBoolean],
+	},
 ];
 
 const displayOptions = {
@@ -40,30 +48,65 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 
-	const maxResults = this.getNodeParameter('maxResults', 0, 50);
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const after = this.getNodeParameter('after', 0);
 
-	const qs: IDataObject = { limit: maxResults };
+	const qs: IDataObject = {};
+
+	if (!returnAll) {
+		const limit = this.getNodeParameter('limit', 0);
+		qs.limit = limit;
+	}
 
 	if (after) {
 		qs.after = after;
 	}
 
-	try {
-		let response = await discordApiRequest.call(
-			this,
-			'GET',
-			`/guilds/${guildId}/members`,
-			undefined,
-			qs,
-		);
+	let response: IDataObject[] = [];
 
-		const simplify = this.getNodeParameter('simplify', 0, false);
+	try {
+		// let response = await discordApiRequest.call(
+		// 	this,
+		// 	'GET',
+		// 	`/guilds/${guildId}/members`,
+		// 	undefined,
+		// 	qs,
+		// );
+
+		if (!returnAll) {
+			const limit = this.getNodeParameter('limit', 0);
+			qs.limit = limit;
+			response = await discordApiRequest.call(
+				this,
+				'GET',
+				`/guilds/${guildId}/members`,
+				undefined,
+				qs,
+			);
+		} else {
+			let responseData;
+			qs.limit = 100;
+
+			do {
+				responseData = await discordApiRequest.call(
+					this,
+					'GET',
+					`/guilds/${guildId}/members`,
+					undefined,
+					qs,
+				);
+				if (!responseData?.length) break;
+				qs.after = responseData[responseData.length - 1].user.id;
+				response.push(...responseData);
+			} while (responseData.length);
+		}
+
+		const simplify = this.getNodeParameter('options.simplify', 0, false) as boolean;
 
 		if (simplify) {
 			const simplifyResponse = createSimplifyFunction(['user', 'roles', 'permissions']);
 
-			response = (response as IDataObject[]).map(simplifyResponse);
+			response = response.map(simplifyResponse);
 		}
 
 		const executionData = this.helpers.constructExecutionMetaData(

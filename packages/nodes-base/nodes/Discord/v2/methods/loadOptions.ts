@@ -8,8 +8,10 @@ export async function getRoles(this: ILoadOptionsFunctions): Promise<INodeProper
 
 	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/roles`);
 
-	return response.map((role: IDataObject) => ({
-		name: role.name as string,
-		value: role.id as string,
-	}));
+	return response
+		.filter((role: IDataObject) => role.name !== '@everyone')
+		.map((role: IDataObject) => ({
+			name: role.name as string,
+			value: role.id as string,
+		}));
 }

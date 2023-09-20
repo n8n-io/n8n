@@ -1,11 +1,12 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as create from './create.operation';
+import * as get from './get.operation';
 import * as getAll from './getAll.operation';
 import * as update from './update.operation';
 import * as deleteChannel from './deleteChannel.operation';
 
-export { create, getAll, update, deleteChannel };
+export { create, get, getAll, update, deleteChannel };
 
 export const description: INodeProperties[] = [
 	{
@@ -32,12 +33,17 @@ export const description: INodeProperties[] = [
 				action: 'Delete a channel',
 			},
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a channel',
+				action: 'Get a channel',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve the channels of a server',
 				action: 'Get many channels',
 			},
-
 			{
 				name: 'Update',
 				value: 'update',
@@ -49,6 +55,7 @@ export const description: INodeProperties[] = [
 	},
 	...create.description,
 	...deleteChannel.description,
+	...get.description,
 	...getAll.description,
 	...update.description,
 ];

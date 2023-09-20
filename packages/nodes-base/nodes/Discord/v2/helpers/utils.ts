@@ -7,6 +7,8 @@ import type {
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { isEmpty } from 'lodash';
 import FormData from 'form-data';
+import { capitalize } from '../../../../utils/utilities';
+import { extension } from 'mime-types';
 
 export const createSimplifyFunction =
 	(includedFields: string[]) =>
@@ -22,22 +24,40 @@ export const createSimplifyFunction =
 		return result;
 	};
 
-export function parseDiscordError(this: IExecuteFunctions, error: any) {
-	if ((error?.message as string)?.toLowerCase()?.includes('bad request') && error?.cause?.error) {
-		const errorData = error.cause.error as IDataObject;
-		const errorOptions: IDataObject = {};
+export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex = 0) {
+	const errorData = error.cause.error;
+	const errorOptions: IDataObject = { itemIndex };
 
+	if ((error?.message as string)?.toLowerCase()?.includes('bad request') && errorData) {
 		if (errorData?.message) {
 			errorOptions.message = errorData.message;
 		}
 
-		if (errorData?.errors) {
-			errorOptions.description = JSON.stringify(errorData.errors as string);
+		if (errorData?.errors?.embeds) {
+			const embedErrors = errorData.errors.embeds?.[0];
+			const embedErrorsKeys = Object.keys(embedErrors).map((key) => capitalize(key));
+
+			if (embedErrorsKeys.length) {
+				const message =
+					embedErrorsKeys.length === 1
+						? `The parameter ${embedErrorsKeys[0]} is not properly formatted`
+						: `The parameters ${embedErrorsKeys.join(', ')} are not properly formatted`;
+				errorOptions.message = message;
+				errorOptions.description = 'Review the formatting or clear it';
+			}
+
+			return new NodeOperationError(this.getNode(), errorData.errors, errorOptions);
 		}
 
-		return new NodeOperationError(this.getNode(), error, errorOptions);
+		if (errorData?.errors?.message_reference) {
+			errorOptions.message = "The message to reply to ID can't be found";
+			errorOptions.description =
+				'Check the "Message to Reply to" parameter and remove it if you don\'t want to reply to an existing message';
+
+			return new NodeOperationError(this.getNode(), errorData.errors, errorOptions);
+		}
 	}
-	return error;
+	return new NodeOperationError(this.getNode(), errorData || error, errorOptions);
 }
 
 export function prepareErrorData(this: IExecuteFunctions, error: any, i: number) {
@@ -103,6 +123,9 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 					name: embedReturnData.author,
 				};
 			}
+			if (embedReturnData.color && typeof embedReturnData.color === 'string') {
+				embedReturnData.color = parseInt(embedReturnData.color.replace('#', ''), 16);
+			}
 			if (embedReturnData.video) {
 				embedReturnData.video = {
 					url: embedReturnData.video,
@@ -146,13 +169,26 @@ export async function prepareMultiPartForm(
 				`Input item [${i}] does not contain binary data on property ${file.inputFieldName}`,
 			);
 		}
+
+		let filename = binaryData.fileName as string;
+
+		if (!filename.includes('.')) {
+			if (binaryData.fileExtension) {
+				filename += `.${binaryData.fileExtension}`;
+			}
+			if (binaryData.mimeType) {
+				filename += `.${extension(binaryData.mimeType)}`;
+			}
+		}
+
 		attachments.push({
 			id: index,
-			filename: binaryData.fileName,
+			filename,
 		});
+
 		filesData.push({
 			data: await this.helpers.getBinaryDataBuffer(i, file.inputFieldName as string),
-			name: binaryData.fileName,
+			name: filename,
 			mime: binaryData.mimeType,
 		});
 	}

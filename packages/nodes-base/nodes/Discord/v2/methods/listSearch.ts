@@ -102,7 +102,7 @@ export async function userSearch(
 
 	return {
 		results: (response as Array<{ user: IDataObject }>).map(({ user }) => ({
-			name: `${user.username}#${user.discriminator}`,
+			name: user.username as string,
 			value: user.id as string,
 		})),
 		paginationToken: lastUserId,

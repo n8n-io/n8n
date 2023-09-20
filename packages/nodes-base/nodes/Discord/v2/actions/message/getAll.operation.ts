@@ -7,9 +7,21 @@ import type {
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { createSimplifyFunction, parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
-import { channelRLC, maxResultsNumber, simplifyBoolean } from '../common.description';
+import { channelRLC, simplifyBoolean } from '../common.description';
+import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
-const properties: INodeProperties[] = [channelRLC, maxResultsNumber, simplifyBoolean];
+const properties: INodeProperties[] = [
+	channelRLC,
+	...returnAllOrLimit,
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [simplifyBoolean],
+	},
+];
 
 const displayOptions = {
 	show: {
@@ -41,9 +53,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				extractValue: true,
 			}) as string;
 
-			const maxResults = this.getNodeParameter('maxResults', 0, 50);
+			const returnAll = this.getNodeParameter('returnAll', i, false);
 
-			const qs: IDataObject = { limit: maxResults };
+			const qs: IDataObject = {};
+
+			if (!returnAll) {
+				const limit = this.getNodeParameter('limit', i);
+				qs.limit = limit;
+			}
 
 			let response = await discordApiRequest.call(
 				this,
@@ -53,7 +70,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs,
 			);
 
-			const simplify = this.getNodeParameter('simplify', 0, false);
+			const simplify = this.getNodeParameter('options.simplify', i, false) as boolean;
 
 			if (simplify) {
 				response = (response as IDataObject[]).map(simplifyResponse);
@@ -66,7 +83,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			returnData.push(...executionData);
 		} catch (error) {
-			const err = parseDiscordError.call(this, error);
+			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
 				returnData.push(...prepareErrorData.call(this, err, i));

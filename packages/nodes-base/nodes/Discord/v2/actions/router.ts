@@ -1,10 +1,10 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import * as message from './message/Message.resource';
-import * as channel from './channel/Channel.resource';
-import * as member from './member/Member.resource';
-import * as webhook from './webhook/Webhook.resource';
+import * as message from './message';
+import * as channel from './channel';
+import * as member from './member';
+import * as webhook from './webhook';
 import type { Discord } from './node.type';
 
 export async function router(this: IExecuteFunctions) {

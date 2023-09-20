@@ -37,7 +37,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			returnData.push(...executionData);
 		} catch (error) {
-			const err = parseDiscordError.call(this, error);
+			const err = parseDiscordError.call(this, error, i);
 
 			if (this.continueOnFail()) {
 				returnData.push(...prepareErrorData.call(this, err, i));

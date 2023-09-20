@@ -2,14 +2,14 @@ import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
 import { discordApiRequest } from '../../transport';
-import { roleMultiOptions, userRLC } from '../common.description';
+import { channelRLC } from '../common.description';
 
-const properties: INodeProperties[] = [userRLC, roleMultiOptions];
+const properties: INodeProperties[] = [channelRLC];
 
 const displayOptions = {
 	show: {
-		resource: ['member'],
-		operation: ['roleRemove'],
+		resource: ['channel'],
+		operation: ['get'],
 	},
 	hide: {
 		authentication: ['webhook'],
@@ -18,31 +18,20 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	guildId: string,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const userId = this.getNodeParameter('userId', i, undefined, {
+			const channelId = this.getNodeParameter('channelId', i, undefined, {
 				extractValue: true,
 			}) as string;
 
-			const roles = this.getNodeParameter('role', i, []) as string[];
-
-			for (const roleId of roles) {
-				await discordApiRequest.call(
-					this,
-					'DELETE',
-					`/guilds/${guildId}/members/${userId}/roles/${roleId}`,
-				);
-			}
+			const response = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray({ success: true }),
+				this.helpers.returnJsonArray(response),
 				{ itemData: { item: i } },
 			);
 

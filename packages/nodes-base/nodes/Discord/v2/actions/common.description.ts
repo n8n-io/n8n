@@ -289,7 +289,7 @@ export const simplifyBoolean: INodeProperties = {
 	displayName: 'Simplify',
 	name: 'simplify',
 	type: 'boolean',
-	default: false,
+	default: true,
 	description: 'Whether to return a simplified version of the response instead of the raw data',
 };
 
@@ -307,7 +307,7 @@ const embedFields: INodeProperties[] = [
 		displayName: 'Color',
 		name: 'color',
 		// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
-		type: 'string',
+		type: 'color',
 		default: '',
 		description: 'Color code of the embed',
 		placeholder: 'e.g. 12123432',
@@ -326,7 +326,7 @@ const embedFields: INodeProperties[] = [
 	{
 		displayName: 'Timestamp',
 		name: 'timestamp',
-		type: 'string',
+		type: 'dateTime',
 		default: '',
 		description: 'The time displayed at the bottom of the embed. Provide in ISO8601 format.',
 		placeholder: 'e.g. 2023-02-08 09:30:26',
@@ -413,11 +413,13 @@ export const embedsFixedCollection: INodeProperties = {
 					default: 'fields',
 				},
 				{
-					displayName: 'JSON',
+					displayName: 'Value',
 					name: 'json',
-					type: 'json',
-					default: [],
+					type: 'string',
+					default: '={}',
 					typeOptions: {
+						editor: 'json',
+						editorLanguage: 'json',
 						rows: 2,
 					},
 					displayOptions: {
