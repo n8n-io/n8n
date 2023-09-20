@@ -100,7 +100,7 @@ export class Code implements INodeType {
 		defaults: {
 			name: 'LangChain Code',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#9B13A7',
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

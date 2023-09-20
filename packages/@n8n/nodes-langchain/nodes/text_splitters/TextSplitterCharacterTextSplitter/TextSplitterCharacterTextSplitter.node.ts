@@ -14,7 +14,7 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 		description: 'Split text into chunks by characters',
 		defaults: {
 			name: 'Character Text Splitter',
-			color: '#D04EDB',
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

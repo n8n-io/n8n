@@ -15,7 +15,7 @@ export class VectorStorePineconeLoad implements INodeType {
 		defaults: {
 			name: 'Pinecone: Load',
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#F1538C',
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

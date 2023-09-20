@@ -41,7 +41,7 @@ export class MemoryChatRetriever implements INodeType {
 		description: 'Retrieve chat messages from memory and use them in the workflow',
 		defaults: {
 			name: 'Memory Chat Retriever',
-			color: '#6613A7',
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

@@ -26,7 +26,7 @@ export class ToolWorkflow implements INodeType {
 		description: 'Create a tool via a workflow',
 		defaults: {
 			name: 'Workflow Tool',
-			color: '#9B13A7',
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],
