@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -35,8 +35,6 @@
   ],
   "devDependencies": {
     "@types/concat-stream": "^2.0.0",
-    "@types/content-disposition": "^0.5.5",
-    "@types/content-type": "^1.1.5",
     "@types/cron": "~1.7.1",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
@@ -52,8 +50,6 @@
     "@n8n/client-oauth2": "workspace:*",
     "axios": "^0.21.1",
     "concat-stream": "^2.0.0",
-    "content-disposition": "^0.5.4",
-    "content-type": "^1.0.4",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
     "fast-glob": "^3.2.5",

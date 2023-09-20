@@ -521,7 +521,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id }) => id);
 
-		await this.binaryDataService.deleteManyByExecutionIds(executionIds);
+		const binaryDataManager = BinaryDataManager.getInstance();
+		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,
