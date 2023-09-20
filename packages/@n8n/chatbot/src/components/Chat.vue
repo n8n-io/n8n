@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Layout, PoweredBy, MessagesList, GetStarted } from '@/components';
+import { Layout, PoweredBy, MessagesList, GetStarted, Input } from '@/components';
 import { computed, onMounted, toRefs } from 'vue';
 import { useI18n, useOptions } from '@/composables';
 import { useChatStore } from '@/stores/chat';
@@ -39,7 +39,8 @@ onMounted(() => {
 			<div v-if="te('footer')">
 				{{ t('footer') }}
 			</div>
-			<PoweredBy v-if="options.poweredBy" />
+			<Input v-if="currentSessionId" />
+			<PoweredBy v-else-if="options.poweredBy" />
 		</template>
 	</Layout>
 </template>

@@ -46,6 +46,8 @@
 		display: flex;
 		flex-direction: column;
 		overflow-y: auto;
+		position: relative;
+		padding-bottom: var(--chat--input--height, var(--chat--spacing));
 	}
 
 	.chat-footer {
