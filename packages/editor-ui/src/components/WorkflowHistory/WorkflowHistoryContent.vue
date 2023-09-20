@@ -2,7 +2,7 @@
 import type { WorkflowVersion } from '@/types/workflowHistory';
 
 const props = defineProps<{
-	workflowVersion: WorkflowVersion;
+	workflowVersion: WorkflowVersion | null;
 }>();
 </script>
 
