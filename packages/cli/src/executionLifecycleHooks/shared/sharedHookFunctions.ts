@@ -1,5 +1,5 @@
 import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
-import type { IExecutionDb } from '@/Interfaces';
+import type { ExecutionPayload, IExecutionDb } from '@/Interfaces';
 import pick from 'lodash/pick';
 import { isWorkflowIdValid } from '@/utils';
 import { LoggerProxy } from 'n8n-workflow';
@@ -24,7 +24,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	workflowData: IWorkflowBase;
 	workflowStatusFinal: ExecutionStatus;
 	retryOf?: string;
-}): IExecutionDb {
+}) {
 	const { runData, workflowData, workflowStatusFinal, retryOf } = parameters;
 	// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
 	// As a result, we should create an IWorkflowBase object with only the data we want to save in it.
@@ -41,7 +41,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'pinData',
 	]);
 
-	const fullExecutionData: IExecutionDb = {
+	const fullExecutionData: ExecutionPayload = {
 		data: runData.data,
 		mode: runData.mode,
 		finished: runData.finished ? runData.finished : false,

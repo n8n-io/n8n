@@ -3,12 +3,12 @@ import {
 	MANUAL_TRIGGER_NODE_NAME,
 	META_KEY,
 	SCHEDULE_TRIGGER_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { getVisibleSelect } from '../utils';
-import { WorkflowExecutionsTab } from "../pages";
+import { WorkflowExecutionsTab } from '../pages';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const IMPORT_WORKFLOW_URL =
@@ -259,10 +259,10 @@ describe('Workflow Actions', () => {
 		cy.intercept('GET', '/rest/executions-current?filter=*').as('getCurrentExecutions');
 
 		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 
-		WorkflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
+		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		cy.get('body').type('{esc}');
 
@@ -271,7 +271,7 @@ describe('Workflow Actions', () => {
 		cy.wait(500);
 		executionsTab.actions.switchToEditorTab();
 
-		WorkflowPage.getters.canvasNodePlusEndpointByName(SET_NODE_NAME).click();
+		WorkflowPage.getters.canvasNodePlusEndpointByName(EDIT_FIELDS_SET_NODE_NAME).click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 	});
 });
