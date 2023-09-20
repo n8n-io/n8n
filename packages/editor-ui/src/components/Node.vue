@@ -682,22 +682,26 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .node-wrapper {
+	--node-width: 100px;
+	--node-height: 100px;
+
 	--configurable-node-min-input-count: 4;
+	--configurable-node-input-width: 65px;
 
 	position: absolute;
-	width: 100px;
-	height: 100px;
+	width: var(--node-width);
+	height: var(--node-height);
 
 	.node-description {
 		position: absolute;
-		top: 100px;
-		left: -50px;
+		top: var(--node-height);
+		left: calc(var(--node-width) / 2 * -1);
 		line-height: 1.5;
 		text-align: center;
 		cursor: default;
 		padding: 8px;
 		width: 100%;
-		min-width: 200px;
+		min-width: calc(var(--node-width) * 2);
 		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p {
@@ -816,7 +820,7 @@ export default defineComponent({
 			position: absolute;
 			top: -25px;
 			left: -10px;
-			width: 120px;
+			width: calc(var(--node-width) + 20px);
 			height: 26px;
 			font-size: 0.9em;
 			z-index: 10;
@@ -854,6 +858,10 @@ export default defineComponent({
 	}
 
 	&--config {
+		--configurable-node-input-width: 55px;
+		--node-width: 75px;
+		--node-height: 75px;
+
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -869,6 +877,10 @@ export default defineComponent({
 
 				&.executing {
 					background-color: $node-background-executing-other !important;
+				}
+
+				.node-executing-info {
+					font-size: 2.85em;
 				}
 			}
 		}
@@ -894,6 +906,8 @@ export default defineComponent({
 		}
 
 		&.node-wrapper--configurable {
+			--configurable-node-icon-offset: 20px;
+
 			.node-info-icon {
 				bottom: 1px !important;
 				right: 1px !important;
@@ -903,35 +917,36 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		$configurable-node-width: var(
+		--node-width: var(
 			--configurable-node-width,
 			calc(
 				max(var(--configurable-node-input-count, 5), var(--configurable-node-min-input-count)) *
-					65px
+					var(--configurable-node-input-width)
 			)
 		);
-		$configurable-node-icon-offset: 40px;
-		$configurable-node-icon-size: 30px;
-
-		width: $configurable-node-width;
+		--configurable-node-icon-offset: 40px;
+		--configurable-node-icon-size: 30px;
 
 		.node-description {
 			top: calc(50%);
 			transform: translateY(-50%);
-			left: calc($configurable-node-icon-offset + $configurable-node-icon-size + var(--spacing-s));
+			left: calc(
+				var(--configurable-node-icon-offset) + var(--configurable-node-icon-size) + var(--spacing-s)
+			);
 			text-align: left;
 			overflow: auto;
 			white-space: normal;
 			min-width: unset;
 			max-width: calc(
-				$configurable-node-width - $configurable-node-icon-offset - $configurable-node-icon-size - 2 *
-					var(--spacing-s)
+				var(--node-width) - var(--configurable-node-icon-offset) - var(
+						--configurable-node-icon-size
+					) - 2 * var(--spacing-s)
 			);
 		}
 
 		.node-default {
 			.node-icon {
-				left: $configurable-node-icon-offset;
+				left: var(--configurable-node-icon-offset);
 			}
 
 			.node-options {
