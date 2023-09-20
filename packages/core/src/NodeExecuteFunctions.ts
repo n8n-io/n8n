@@ -39,7 +39,6 @@ import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
-	BinaryMetadata,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,

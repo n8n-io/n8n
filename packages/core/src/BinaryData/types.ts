@@ -10,6 +10,12 @@ export namespace BinaryData {
 		localStoragePath: string;
 	};
 
+	export type Metadata = {
+		fileName?: string;
+		mimeType?: string;
+		fileSize: number;
+	};
+
 	export interface Manager {
 		init(): Promise<void>;
 
