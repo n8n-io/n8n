@@ -1213,7 +1213,7 @@ export const schema = {
 			env: 'N8N_EXPRESSION_EVALUATOR',
 		},
 		reportDifference: {
-			doc: 'Expression evaluator to use',
+			doc: 'Whether to report differences in the evaluator outputs',
 			format: Boolean,
 			default: false,
 			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',

@@ -337,7 +337,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			expressions: {
-				evaluator: config.get('expression.evaluator') as 'tmpl' | 'tournament',
+				evaluator: config.getEnv('expression.evaluator'),
 			},
 			banners: {
 				dismissed: [],

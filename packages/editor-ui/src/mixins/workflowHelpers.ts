@@ -30,7 +30,6 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type {
@@ -163,10 +162,6 @@ export function resolveParameter(
 		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
 	}
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
-
-	ExpressionEvaluatorProxy.setEvaluator(
-		useSettingsStore().settings.expressions?.evaluator ?? 'tournament',
-	);
 
 	return workflow.expression.getParameterValue(
 		parameter,

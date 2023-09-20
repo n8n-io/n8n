@@ -67,7 +67,7 @@ export const checkEvaluatorDifferences = (expr: string): TmplDifference | null =
 	let diff: TmplDifference | null;
 	try {
 		diff = tournamentEvaluator.tmplDiff(expr);
-	} catch (e) {
+	} catch {
 		// We don't include the expression for privacy reasons
 		try {
 			differenceHandler('ERROR');
