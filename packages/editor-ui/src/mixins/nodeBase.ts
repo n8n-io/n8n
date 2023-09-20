@@ -175,28 +175,13 @@ export const nodeBase = defineComponent({
 				const requiredNonMainInputs = nonMainInputs.filter((inputData) => {
 					return typeof inputData !== 'string' && inputData.required;
 				});
-				const requiredNonMainInputsCount = requiredNonMainInputs.length;
-				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
-				const spacerIndexes = [];
-				const minimumInputsCount = 3;
-
-				if (requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0) {
-					spacerIndexes.push(requiredNonMainInputsCount);
-				} else if (
-					requiredNonMainInputsCount > 0 &&
-					requiredNonMainInputsCount < minimumInputsCount &&
-					optionalNonMainInputsCount === 0
-				) {
-					for (
-						let spacerIndex = 0;
-						spacerIndex < minimumInputsCount - requiredNonMainInputsCount;
-						spacerIndex++
-					) {
-						spacerIndexes.push(spacerIndex + requiredNonMainInputsCount);
-					}
-				}
-
-				console.log(requiredNonMainInputsCount, spacerIndexes);
+				const optionalNonMainInputs = nonMainInputs.filter((inputData) => {
+					return typeof inputData !== 'string' && !inputData.required;
+				});
+				const spacerIndexes = this.getSpacerIndexes(
+					requiredNonMainInputs.length,
+					optionalNonMainInputs.length,
+				);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
@@ -279,6 +264,43 @@ export const nodeBase = defineComponent({
 			if (sortedInputs.length === 0) {
 				this.instance.manage(this.$refs[this.data.name] as Element);
 			}
+		},
+		getSpacerIndexes(
+			leftGroupItemsCount: number,
+			rightGroupItemsCount: number,
+			minItemsCount = 3,
+		): number[] {
+			const spacerIndexes = [];
+
+			if (leftGroupItemsCount > 0 && rightGroupItemsCount > 0) {
+				spacerIndexes.push(leftGroupItemsCount);
+			} else if (
+				leftGroupItemsCount > 0 &&
+				leftGroupItemsCount < minItemsCount &&
+				rightGroupItemsCount === 0
+			) {
+				for (
+					let spacerIndex = 0;
+					spacerIndex < minItemsCount - leftGroupItemsCount;
+					spacerIndex++
+				) {
+					spacerIndexes.push(spacerIndex + leftGroupItemsCount);
+				}
+			} else if (
+				leftGroupItemsCount === 0 &&
+				rightGroupItemsCount > 0 &&
+				rightGroupItemsCount < minItemsCount
+			) {
+				for (
+					let spacerIndex = 0;
+					spacerIndex < minItemsCount - rightGroupItemsCount;
+					spacerIndex++
+				) {
+					spacerIndexes.push(spacerIndex);
+				}
+			}
+
+			return spacerIndexes;
 		},
 		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			const rootTypeIndexData: {
