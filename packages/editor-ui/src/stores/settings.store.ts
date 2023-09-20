@@ -207,6 +207,11 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			if (settings.enterprise?.showNonProdBanner) {
 				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
 			}
+
+			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
+			if (!isV1BannerDismissedPermanently && settings.versionCli.startsWith('1.')) {
+				useUIStore().pushBannerToStack('V1');
+			}
 		},
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
@@ -232,15 +237,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-
-			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes('V1');
-			if (
-				!isV1BannerDismissedPermanently &&
-				useRootStore().versionCli.startsWith('1.') &&
-				!useCloudPlanStore().userIsTrialing
-			) {
-				useUIStore().pushBannerToStack('V1');
-			}
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
