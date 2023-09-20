@@ -177,15 +177,33 @@ export const nodeBase = defineComponent({
 				});
 				const requiredNonMainInputsCount = requiredNonMainInputs.length;
 				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+				const spacerIndexes = [];
+				const minimumInputsCount = 3;
+
+				if (requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0) {
+					spacerIndexes.push(requiredNonMainInputsCount);
+				} else if (
+					requiredNonMainInputsCount > 0 &&
+					requiredNonMainInputsCount < minimumInputsCount &&
+					optionalNonMainInputsCount === 0
+				) {
+					for (
+						let spacerIndex = 0;
+						spacerIndex < minimumInputsCount - requiredNonMainInputsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex + requiredNonMainInputsCount);
+					}
+				}
+
+				console.log(requiredNonMainInputsCount, spacerIndexes);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					inputName,
 					'input',
 					inputsOfSameRootType.length,
-					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0
-						? [requiredNonMainInputsCount]
-						: [],
+					spacerIndexes,
 				)[rootTypeIndex];
 
 				const scope = NodeViewUtils.getEndpointScope(inputName as NodeConnectionType);

@@ -678,6 +678,8 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .node-wrapper {
+	--configurable-node-min-input-count: 3;
+
 	position: absolute;
 	width: 100px;
 	height: 100px;
@@ -899,7 +901,10 @@ export default defineComponent({
 	&--configurable {
 		$configurable-node-width: var(
 			--configurable-node-width,
-			calc(max(var(--configurable-node-input-count, 5), 4) * 65px)
+			calc(
+				max(var(--configurable-node-input-count, 5), var(--configurable-node-min-input-count)) *
+					65px
+			)
 		);
 		$configurable-node-icon-offset: 40px;
 		$configurable-node-icon-size: 30px;
