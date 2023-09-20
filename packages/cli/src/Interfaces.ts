@@ -171,7 +171,7 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
-	id?: string;
+	id: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
@@ -188,6 +188,11 @@ export interface IExecutionDb extends IExecutionBase {
 	waitTill?: Date | null;
 	workflowData?: IWorkflowBase;
 }
+
+/**
+ * Payload for creating or updating an execution.
+ */
+export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
 
 export interface IExecutionPushResponse {
 	executionId?: string;
