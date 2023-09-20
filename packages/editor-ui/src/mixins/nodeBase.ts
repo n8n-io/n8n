@@ -4,7 +4,11 @@ import { mapStores } from 'pinia';
 
 import type { INodeUi, EndpointType } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import { NO_OP_NODE_TYPE } from '@/constants';
+import {
+	NO_OP_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	NODE_MIN_INPUT_ITEMS_COUNT,
+} from '@/constants';
 
 import { NodeHelpers } from 'n8n-workflow';
 import type {
@@ -183,6 +187,8 @@ export const nodeBase = defineComponent({
 					optionalNonMainInputs.length,
 				);
 
+				console.log(requiredNonMainInputs, optionalNonMainInputs, spacerIndexes);
+
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					inputName,
@@ -268,35 +274,48 @@ export const nodeBase = defineComponent({
 		getSpacerIndexes(
 			leftGroupItemsCount: number,
 			rightGroupItemsCount: number,
-			minItemsCount = 3,
+			insertSpacerBetweenGroups = NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+			minItemsCount = NODE_MIN_INPUT_ITEMS_COUNT,
 		): number[] {
 			const spacerIndexes = [];
 
 			if (leftGroupItemsCount > 0 && rightGroupItemsCount > 0) {
-				spacerIndexes.push(leftGroupItemsCount);
-			} else if (
-				leftGroupItemsCount > 0 &&
-				leftGroupItemsCount < minItemsCount &&
-				rightGroupItemsCount === 0
-			) {
-				for (
-					let spacerIndex = 0;
-					spacerIndex < minItemsCount - leftGroupItemsCount;
-					spacerIndex++
-				) {
-					spacerIndexes.push(spacerIndex + leftGroupItemsCount);
+				if (insertSpacerBetweenGroups) {
+					spacerIndexes.push(leftGroupItemsCount);
+				} else if (leftGroupItemsCount + rightGroupItemsCount < minItemsCount) {
+					for (
+						let spacerIndex = leftGroupItemsCount;
+						spacerIndex < minItemsCount - rightGroupItemsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex);
+					}
 				}
-			} else if (
-				leftGroupItemsCount === 0 &&
-				rightGroupItemsCount > 0 &&
-				rightGroupItemsCount < minItemsCount
-			) {
-				for (
-					let spacerIndex = 0;
-					spacerIndex < minItemsCount - rightGroupItemsCount;
-					spacerIndex++
+			} else {
+				if (
+					leftGroupItemsCount > 0 &&
+					leftGroupItemsCount < minItemsCount &&
+					rightGroupItemsCount === 0
 				) {
-					spacerIndexes.push(spacerIndex);
+					for (
+						let spacerIndex = 0;
+						spacerIndex < minItemsCount - leftGroupItemsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex + leftGroupItemsCount);
+					}
+				} else if (
+					leftGroupItemsCount === 0 &&
+					rightGroupItemsCount > 0 &&
+					rightGroupItemsCount < minItemsCount
+				) {
+					for (
+						let spacerIndex = 0;
+						spacerIndex < minItemsCount - rightGroupItemsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex);
+					}
 				}
 			}
 

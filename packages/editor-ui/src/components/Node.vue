@@ -173,6 +173,7 @@ import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -350,10 +351,13 @@ export default defineComponent({
 				const requiredNonMainInputs = this.inputs.filter(
 					(input) => typeof input !== 'string' && input.required,
 				);
-				const requiredNonMainInputsCount = requiredNonMainInputs.length;
-				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
-				const spacerCount =
-					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+
+				let spacerCount = 0;
+				if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+					const requiredNonMainInputsCount = requiredNonMainInputs.length;
+					const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+					spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+				}
 
 				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 			}
@@ -678,7 +682,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .node-wrapper {
-	--configurable-node-min-input-count: 3;
+	--configurable-node-min-input-count: 4;
 
 	position: absolute;
 	width: 100px;
