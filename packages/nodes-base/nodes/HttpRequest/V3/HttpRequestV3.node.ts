@@ -14,11 +14,11 @@ import type {
 
 import {
 	BINARY_ENCODING,
-	jsonParse,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
+	jsonParse,
 	removeCircularRefs,
+	sleep,
 } from 'n8n-workflow';
 
 import { keysToLowercase } from '@utils/utilities';
@@ -1152,8 +1152,8 @@ export class HttpRequestV3 implements INodeType {
 			if (timeout) {
 				requestOptions.timeout = timeout;
 			} else {
-				// set default timeout to 1 hour
-				requestOptions.timeout = 3600000;
+				// set default timeout to 5 minutes
+				requestOptions.timeout = 300_000;
 			}
 			if (sendQuery && queryParameterArrays) {
 				Object.assign(requestOptions, {

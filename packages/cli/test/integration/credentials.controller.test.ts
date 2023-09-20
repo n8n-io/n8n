@@ -38,8 +38,8 @@ describe('GET /credentials', () => {
 
 			response.body.data.forEach(validateCredential);
 
-			const savedIds = [id1, id2];
-			const returnedIds = response.body.data.map((c) => c.id);
+			const savedIds = [id1, id2].sort();
+			const returnedIds = response.body.data.map((c) => c.id).sort();
 
 			expect(savedIds).toEqual(returnedIds);
 		});
