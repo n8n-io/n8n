@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useLoadingService } from '@/composables';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore, useWorkflowsStore } from '@/stores';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const loadingService = useLoadingService();
 const templateStore = useTemplatesStore();
 const workfowStore = useWorkflowsStore();
 const router = useRouter();
@@ -42,7 +44,9 @@ onMounted(async () => {
 		return;
 	}
 
+	loadingService.startLoading();
 	await openWorkflowTemplate(templateId);
+	loadingService.stopLoading();
 });
 </script>
 
