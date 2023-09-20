@@ -6,7 +6,7 @@ import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, UserSettings, ObjectStoreService } from 'n8n-core';
+import { BinaryDataService, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
@@ -111,23 +111,23 @@ export abstract class BaseCommand extends Command {
 		 * @TODO: Only for dev, remove later
 		 */
 
-		const objectStoreService = new ObjectStoreService(
-			{
-				name: config.getEnv('externalStorage.s3.bucket.name'),
-				region: config.getEnv('externalStorage.s3.bucket.region'),
-			},
-			{
-				accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
-				secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
-			},
-		);
+		// const objectStoreService = new ObjectStoreService(
+		// 	{
+		// 		name: config.getEnv('externalStorage.s3.bucket.name'),
+		// 		region: config.getEnv('externalStorage.s3.bucket.region'),
+		// 	},
+		// 	{
+		// 		accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
+		// 		secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
+		// 	},
+		// );
 
 		// const filePath = '/Users/ivov/Downloads/happy-dog.jpg';
 		// const buffer = Buffer.from(await readFile(filePath));
 		// const res = await objectStoreService.put('object-store-service-dog.jpg', buffer);
 		// console.log('upload result', res.status);
 
-		await objectStoreService.checkConnection();
+		// await objectStoreService.checkConnection();
 
 		// const res = await objectStoreService.deleteMany('uploaded');
 		// console.log('res', res);

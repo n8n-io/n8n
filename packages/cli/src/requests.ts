@@ -490,7 +490,7 @@ export declare namespace LicenseRequest {
 }
 
 export type BinaryDataRequest = AuthenticatedRequest<
-	{ path: string },
+	{ workflowId: string; path: string },
 	{},
 	{},
 	{

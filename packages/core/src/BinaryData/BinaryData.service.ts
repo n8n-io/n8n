@@ -32,7 +32,12 @@ export class BinaryDataService {
 		}
 	}
 
-	async copyBinaryFile(binaryData: IBinaryData, path: string, executionId: string) {
+	async copyBinaryFile(
+		workflowId: string,
+		binaryData: IBinaryData,
+		path: string,
+		executionId: string,
+	) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
@@ -43,7 +48,7 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.copyByFilePath(path, executionId, {
+		const { fileId, fileSize } = await manager.copyByFilePath(workflowId, executionId, path, {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
 		});
@@ -55,7 +60,12 @@ export class BinaryDataService {
 		return binaryData;
 	}
 
-	async store(binaryData: IBinaryData, input: Buffer | Readable, executionId: string) {
+	async store(
+		binaryData: IBinaryData,
+		input: Buffer | Readable,
+		workflowId: string,
+		executionId: string,
+	) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
@@ -66,7 +76,7 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.store(input, executionId, {
+		const { fileId, fileSize } = await manager.store(workflowId, executionId, input, {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
 		});
@@ -85,41 +95,45 @@ export class BinaryDataService {
 		});
 	}
 
-	getAsStream(identifier: string, chunkSize?: number) {
+	getAsStream(workflowId: string, identifier: string, chunkSize?: number) {
 		const { mode, id } = this.splitModeFileId(identifier);
 
-		return this.getManager(mode).getStream(id, chunkSize);
+		return this.getManager(mode).getStream(workflowId, id, chunkSize);
 	}
 
-	async getBinaryDataBuffer(binaryData: IBinaryData) {
-		if (binaryData.id) return this.retrieveBinaryDataByIdentifier(binaryData.id);
+	async getBinaryDataBuffer(workflowId: string, binaryData: IBinaryData) {
+		if (binaryData.id) return this.retrieveBinaryDataByIdentifier(workflowId, binaryData.id);
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	async retrieveBinaryDataByIdentifier(identifier: string) {
+	async retrieveBinaryDataByIdentifier(workflowId: string, identifier: string) {
 		const { mode, id } = this.splitModeFileId(identifier);
 
-		return this.getManager(mode).getBuffer(id);
+		return this.getManager(mode).getBuffer(workflowId, id);
 	}
 
-	getPath(identifier: string) {
+	getPath(workflowId: string, identifier: string) {
 		const { mode, id } = this.splitModeFileId(identifier);
 
-		return this.getManager(mode).getPath(id);
+		return this.getManager(mode).getPath(workflowId, id);
 	}
 
-	async getMetadata(identifier: string) {
+	async getMetadata(workflowId: string, identifier: string) {
 		const { mode, id } = this.splitModeFileId(identifier);
 
-		return this.getManager(mode).getMetadata(id);
+		return this.getManager(mode).getMetadata(workflowId, id);
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
 		await this.getManager(this.mode).deleteManyByExecutionIds(executionIds);
 	}
 
-	async duplicateBinaryData(inputData: Array<INodeExecutionData[] | null>, executionId: string) {
+	async duplicateBinaryData(
+		workflowId: string,
+		inputData: Array<INodeExecutionData[] | null>,
+		executionId: string,
+	) {
 		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
 				async (executionDataArray) => {
@@ -127,7 +141,7 @@ export class BinaryDataService {
 						return Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return this.duplicateBinaryDataInExecData(executionData, executionId);
+									return this.duplicateBinaryDataInExecData(workflowId, executionData, executionId);
 								}
 
 								return executionData;
@@ -163,6 +177,7 @@ export class BinaryDataService {
 	}
 
 	private async duplicateBinaryDataInExecData(
+		workflowId: string,
 		executionData: INodeExecutionData,
 		executionId: string,
 	) {
@@ -182,7 +197,7 @@ export class BinaryDataService {
 
 				const fileId = this.splitModeFileId(binaryDataId).id;
 
-				return manager?.copyByFileId(fileId, executionId).then((newFileId) => ({
+				return manager?.copyByFileId(workflowId, fileId, executionId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));

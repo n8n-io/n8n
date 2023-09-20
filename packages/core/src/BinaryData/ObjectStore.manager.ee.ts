@@ -11,37 +11,40 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	async store(
-		binaryData: Buffer | Readable,
+		workflowId: string,
 		executionId: string,
+		binaryData: Buffer | Readable,
 		metadata: { mimeType: string; fileName?: string },
 	): Promise<{ fileId: string; fileSize: number }> {
 		throw new Error('TODO');
 	}
 
-	getPath(identifier: string): string {
+	getPath(workflowId: string, fileId: string): string {
 		throw new Error('TODO');
 	}
 
-	async getBuffer(identifier: string): Promise<Buffer> {
+	async getBuffer(workflowId: string, fileId: string): Promise<Buffer> {
 		throw new Error('TODO');
 	}
 
-	getStream(identifier: string, chunkSize?: number): Readable {
+	getStream(workflowId: string, fileId: string, chunkSize?: number): Readable {
 		throw new Error('TODO');
 	}
 
-	async getMetadata(identifier: string): Promise<BinaryData.Metadata> {
+	async getMetadata(workflowId: string, fileId: string): Promise<BinaryData.Metadata> {
 		throw new Error('TODO');
 	}
 
-	async copyByFileId(fileId: string, executionId: string): Promise<string> {
+	async copyByFileId(workflowId: string, fileId: string, prefix: string): Promise<string> {
 		throw new Error('TODO');
 	}
 
 	async copyByFilePath(
-		path: string,
+		workflowId: string,
 		executionId: string,
-	): Promise<{ fileId: string; fileSize: number }> {
+		filePath: string,
+		metadata: { mimeType: string; fileName?: string },
+	): Promise<BinaryData.WriteResult> {
 		throw new Error('TODO');
 	}
 
