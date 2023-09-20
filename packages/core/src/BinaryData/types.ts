@@ -4,24 +4,11 @@ import type { BINARY_DATA_MODES } from './utils';
 export namespace BinaryData {
 	export type Mode = (typeof BINARY_DATA_MODES)[number];
 
-	export type Metadata = {
-		fileName?: string;
-		mimeType?: string;
-		fileSize: number;
-	};
-
-	type ConfigBase = {
-		mode: Mode;
+	export type Config = {
+		mode: 'default' | 'filesystem';
 		availableModes: string[];
+		localStoragePath: string;
 	};
-
-	type InMemoryConfig = ConfigBase & { mode: 'default' };
-
-	export type FileSystemConfig = ConfigBase & { mode: 'filesystem'; localStoragePath: string };
-
-	export type ObjectStoreConfig = ConfigBase & { mode: 'objectStore'; localStoragePath: string };
-
-	export type Config = InMemoryConfig | FileSystemConfig | ObjectStoreConfig;
 
 	export interface Manager {
 		init(): Promise<void>;
