@@ -1,3 +1,30 @@
+# [1.8.0](https://github.com/n8n-io/n8n/compare/n8n@1.7.0...n8n@1.8.0) (2023-09-20)
+
+
+### Bug Fixes
+
+* **core:** Make parsing of content-type and content-disposition headers more flexible ([#7217](https://github.com/n8n-io/n8n/issues/7217)) ([d41546b](https://github.com/n8n-io/n8n/commit/d41546b899e75c0decbf2fe2f0841b33c9b39bc9)), closes [#7149](https://github.com/n8n-io/n8n/issues/7149)
+* **core:** Resolve domains to IPv4 first ([#7206](https://github.com/n8n-io/n8n/issues/7206)) ([e9ce531](https://github.com/n8n-io/n8n/commit/e9ce5312106e550c15eb4adc049e4b0151a7c40c))
+* **editor:** Add ssh key type selection to source control settings when regenerating key ([#7172](https://github.com/n8n-io/n8n/issues/7172)) ([54bf66d](https://github.com/n8n-io/n8n/commit/54bf66d335060e866b4f120269b156c4690a8246))
+* **editor:** No need to add click emitting click events, VUE delegates the handler to the root element of the component ([#7182](https://github.com/n8n-io/n8n/issues/7182)) ([3c055e4](https://github.com/n8n-io/n8n/commit/3c055e4d8d77addea014d8da363518c4c14c9a98))
+* **editor:** Prevent duplicate creation of credential for OAuth2 ([#7163](https://github.com/n8n-io/n8n/issues/7163)) ([07a6417](https://github.com/n8n-io/n8n/commit/07a6417f0f52988e3dfac4583aab84426fc471cc))
+* **editor:** Testing flaky resource mapper feature in e2e tests ([#7165](https://github.com/n8n-io/n8n/issues/7165)) ([aaf87c3](https://github.com/n8n-io/n8n/commit/aaf87c3edd434ab464f3ec4a4001c07895370cb0))
+* **HTML Node:** Add pairedItem support for 'Convert to HTML Table' operation ([#7196](https://github.com/n8n-io/n8n/issues/7196)) ([6bc477b](https://github.com/n8n-io/n8n/commit/6bc477b50ebcb31eae6068b2218fea56349a64a9))
+* **HTTP Request Node:** Decrease default timeout to 5min ([#7177](https://github.com/n8n-io/n8n/issues/7177)) ([321780d](https://github.com/n8n-io/n8n/commit/321780d4a2a1f7e5e7ab0ea23e0b2fc28d539330))
+* **seven Node:** Rename sms77 to seven, fix credentials test ([#7180](https://github.com/n8n-io/n8n/issues/7180)) ([cf776b8](https://github.com/n8n-io/n8n/commit/cf776b8f1756c3e20ed39fe882ebaba05f12eb6a))
+* **X (Formerly Twitter) Node:** Rename Twitter to X (keep Twitter alias) ([#7179](https://github.com/n8n-io/n8n/issues/7179)) ([d317e09](https://github.com/n8n-io/n8n/commit/d317e09c597a37fbb099ed1f032d27225e655eb9))
+
+
+### Features
+
+* **core:** Add command to trigger license refresh on workers ([#7184](https://github.com/n8n-io/n8n/issues/7184)) ([9f797b9](https://github.com/n8n-io/n8n/commit/9f797b96d818a5ae74ad82917347c99f3c249688))
+* **core:** Add rsa option to ssh key generation ([#7154](https://github.com/n8n-io/n8n/issues/7154)) ([fdac2c8](https://github.com/n8n-io/n8n/commit/fdac2c85729e19be0fd18f6807a7f5f99dfca002))
+* **Linear Node:** Add support for OAuth2 ([#7201](https://github.com/n8n-io/n8n/issues/7201)) ([12a3168](https://github.com/n8n-io/n8n/commit/12a3168367e3208665ab78fe52b00cf508f7a50d))
+* **Microsoft Outlook Node:** Node overhaul ([#4449](https://github.com/n8n-io/n8n/issues/4449)) ([556a613](https://github.com/n8n-io/n8n/commit/556a6132bafc3eeb574fbd753a438a5e0f2c466d))
+* **Set Node:** Overhaul ([#6348](https://github.com/n8n-io/n8n/issues/6348)) ([3a47455](https://github.com/n8n-io/n8n/commit/3a474552b211fad8939a19492f34c5e7b3137002))
+
+
+
 # [1.7.0](https://github.com/n8n-io/n8n/compare/n8n@1.6.0...n8n@1.7.0) (2023-09-13)
 
 
