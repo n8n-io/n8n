@@ -62,7 +62,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useUsersStore } from '@/stores/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
 
