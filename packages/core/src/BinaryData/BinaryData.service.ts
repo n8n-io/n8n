@@ -25,7 +25,7 @@ export class BinaryDataService {
 		this.availableModes = config.availableModes;
 		this.mode = config.mode;
 
-		if (this.availableModes.includes('filesystem') && config.mode === 'filesystem') {
+		if (this.availableModes.includes('filesystem')) {
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
