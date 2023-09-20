@@ -1242,6 +1242,7 @@ export default defineComponent({
 
 	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
 	transform: rotate(45deg);
+	z-index: 10;
 }
 
 .add-input-endpoint {
@@ -1249,6 +1250,10 @@ export default defineComponent({
 
 	&:not(.jtk-endpoint-connected) {
 		cursor: pointer;
+	}
+
+	&.jtk-endpoint-connected {
+		z-index: 10;
 	}
 
 	.add-input-endpoint-default {

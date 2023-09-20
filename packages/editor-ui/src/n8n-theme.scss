@@ -8,6 +8,7 @@
 	--node-type-supplemental-color-s: 80%;
 	--node-type-supplemental-color-l: 36%;
 	--node-type-supplemental-color: hsl(var(--node-type-supplemental-color-h), var(--node-type-supplemental-color-s), var(--node-type-supplemental-color-l));
+	--node-type-supplemental-connector-color: var(--color-foreground-dark);
 	--node-type-chain-color-h: var(--node-type-supplemental-color-h);
 	--node-type-chain-color-s: var(--node-type-supplemental-color-s);
 	--node-type-chain-color-l: var(--node-type-supplemental-color-l);

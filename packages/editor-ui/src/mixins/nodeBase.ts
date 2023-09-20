@@ -27,7 +27,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
 import type { NodeConnectionType } from '@/Interface';
-import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
+import { ENDPOINT_COLOR } from '@/utils/nodeViewUtils';
 
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 	type: 'N8nAddInput',
@@ -497,7 +497,7 @@ export const nodeBase = defineComponent({
 			const createSupplementalConnectionType = (
 				connectionName: ConnectionTypes,
 			): EndpointOptions => ({
-				endpoint: createAddInputEndpointSpec(CONNECTOR_COLOR[connectionName]),
+				endpoint: createAddInputEndpointSpec(ENDPOINT_COLOR[connectionName]),
 			});
 
 			const connectionTypes: {
@@ -507,7 +507,7 @@ export const nodeBase = defineComponent({
 				main: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
-						CONNECTOR_COLOR.main,
+						ENDPOINT_COLOR.main,
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,
@@ -541,12 +541,12 @@ export const nodeBase = defineComponent({
 				endpoint: createDiamondOutputEndpointSpec(),
 				paintStyle: NodeViewUtils.getOutputEndpointStyle(
 					nodeTypeData,
-					CONNECTOR_COLOR[connectionName],
+					ENDPOINT_COLOR[connectionName],
 					connectionType,
 				),
 				hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 					nodeTypeData,
-					CONNECTOR_COLOR[connectionName],
+					ENDPOINT_COLOR[connectionName],
 					connectionType,
 				),
 			});
@@ -558,7 +558,7 @@ export const nodeBase = defineComponent({
 				main: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						CONNECTOR_COLOR['main'],
+						ENDPOINT_COLOR['main'],
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,
