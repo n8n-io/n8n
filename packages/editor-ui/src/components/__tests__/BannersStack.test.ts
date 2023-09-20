@@ -10,6 +10,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
+import { waitFor } from '@testing-library/vue';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let usersStore: ReturnType<typeof useUsersStore>;
@@ -19,7 +20,7 @@ const initialState = {
 		settings: merge({}, SETTINGS_STORE_DEFAULT_STATE.settings),
 	},
 	[STORES.UI]: {
-		bannerStack: ['V1', 'TRIAL_OVER', 'EMAIL_CONFIRMATION', 'NON_PRODUCTION_LICENSE'],
+		bannerStack: ['TRIAL_OVER', 'V1', 'NON_PRODUCTION_LICENSE', 'EMAIL_CONFIRMATION'],
 	},
 	[STORES.USERS]: {
 		currentUserId: 'aaa-bbb',
@@ -106,6 +107,47 @@ describe('BannerStack', () => {
 			}),
 		});
 		expect(queryByTestId('banner-confirm-v1')).not.toBeInTheDocument();
+	});
+
+	it('should send email confirmation request from the banner', async () => {
+		const { getByTestId, getByText } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: ['EMAIL_CONFIRMATION'],
+					},
+				},
+			}),
+		});
+		const confirmEmailSpy = vi.spyOn(useUsersStore(), 'confirmEmail');
+		getByTestId('confirm-email-button').click();
+		await waitFor(() => expect(confirmEmailSpy).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(getByText('Confirmation email sent')).toBeInTheDocument();
+		});
+	});
+
+	it('should show error message if email confirmation fails', async () => {
+		const ERROR_MESSAGE = 'Something went wrong';
+		const { getByTestId, getByText } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					...initialState,
+					[STORES.UI]: {
+						bannerStack: ['EMAIL_CONFIRMATION'],
+					},
+				},
+			}),
+		});
+		const confirmEmailSpy = vi.spyOn(useUsersStore(), 'confirmEmail').mockImplementation(() => {
+			throw new Error(ERROR_MESSAGE);
+		});
+		getByTestId('confirm-email-button').click();
+		await waitFor(() => expect(confirmEmailSpy).toHaveBeenCalled());
+		await waitFor(() => {
+			expect(getByText(ERROR_MESSAGE)).toBeInTheDocument();
+		});
 	});
 
 	it('should render empty banner stack when there are no banners to display', async () => {

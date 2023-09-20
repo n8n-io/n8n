@@ -8,8 +8,8 @@ import { computed } from 'vue';
 const toast = useToast();
 
 const userEmail = computed(() => {
-	const { currentUser } = useUsersStore();
-	return currentUser?.email ?? '';
+	const { currentUserCloudInfo } = useUsersStore();
+	return currentUserCloudInfo?.email ?? '';
 });
 
 async function onConfirmEmailClick() {
@@ -40,7 +40,13 @@ async function onConfirmEmailClick() {
 			</span>
 		</template>
 		<template #trailingContent>
-			<n8n-button type="success" @click="onConfirmEmailClick" icon="envelope" size="small">
+			<n8n-button
+				type="success"
+				@click="onConfirmEmailClick"
+				icon="envelope"
+				size="small"
+				data-test-id="confirm-email-button"
+			>
 				{{ locale.baseText('banners.confirmEmail.button') }}
 			</n8n-button>
 		</template>

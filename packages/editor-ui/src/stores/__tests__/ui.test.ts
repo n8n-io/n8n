@@ -3,15 +3,21 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { merge } from 'lodash-es';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
+let rootStore: ReturnType<typeof useRootStore>;
+let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
 describe('UI store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		uiStore = useUIStore();
 		settingsStore = useSettingsStore();
+		rootStore = useRootStore();
+		cloudPlanStore = useCloudPlanStore();
 	});
 
 	test.each([
@@ -42,4 +48,15 @@ describe('UI store', () => {
 			expect(uiStore.upgradeLinkUrl('test_source', 'utm-test-campaign')).toBe(expectation);
 		},
 	);
+
+	it('should render non-production license banner based on enterprise settings', () => {
+		settingsStore.setSettings(
+			merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
+				enterprise: {
+					showNonProdBanner: true,
+				},
+			}),
+		);
+		expect(uiStore.bannerStack).toStrictEqual(['NON_PRODUCTION_LICENSE']);
+	});
 });
