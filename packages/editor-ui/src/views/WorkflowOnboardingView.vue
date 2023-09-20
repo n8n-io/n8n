@@ -13,6 +13,7 @@ const route = useRoute();
 
 const openWorkflowTemplate = async (templateId: string) => {
 	try {
+		loadingService.startLoading();
 		const template = await templateStore.getFixedWorkflowTemplate(templateId);
 		if (!template) {
 			throw new Error();
@@ -32,8 +33,13 @@ const openWorkflowTemplate = async (templateId: string) => {
 			params: { name: workflow.id },
 			query: { onboardingId: templateId },
 		});
+
+		loadingService.stopLoading();
 	} catch (e) {
 		await router.replace({ name: VIEWS.NEW_WORKFLOW });
+		loadingService.stopLoading();
+
+		throw new Error(`Could not load onboarding template ${templateId}`); // sentry reporing
 	}
 };
 
@@ -44,9 +50,7 @@ onMounted(async () => {
 		return;
 	}
 
-	loadingService.startLoading();
 	await openWorkflowTemplate(templateId);
-	loadingService.stopLoading();
 });
 </script>
 
