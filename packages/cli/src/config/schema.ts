@@ -923,7 +923,6 @@ export const schema = {
 					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_NAME',
 					doc: 'Name of the n8n bucket in S3-compatible external storage',
 				},
-				// @TODO: Is region AWS-specific?
 				region: {
 					format: String,
 					default: '',

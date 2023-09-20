@@ -1,7 +1,11 @@
-import nock from 'nock';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { readFileSync, mkdtempSync } from 'fs';
+import {
+	getBinaryDataBuffer,
+	parseIncomingMessage,
+	proxyRequestToAxios,
+	setBinaryDataBuffer,
+} from '@/NodeExecuteFunctions';
+import { mkdtempSync, readFileSync } from 'fs';
+import type { IncomingMessage } from 'http';
 import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
@@ -12,11 +16,9 @@ import type {
 	WorkflowHooks,
 } from 'n8n-workflow';
 import { BinaryDataService } from '@/BinaryData/BinaryData.service';
-import {
-	setBinaryDataBuffer,
-	getBinaryDataBuffer,
-	proxyRequestToAxios,
-} from '@/NodeExecuteFunctions';
+import nock from 'nock';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { initLogger } from './helpers/utils';
 import Container from 'typedi';
 
@@ -31,6 +33,7 @@ describe('NodeExecuteFunctions', () => {
 			await Container.get(BinaryDataService).init({
 				mode: 'default',
 				availableModes: ['default'],
+				localStoragePath: temporaryDir,
 			});
 
 			// Set our binary data buffer
@@ -130,6 +133,75 @@ describe('NodeExecuteFunctions', () => {
 			);
 
 			expect(getBinaryDataBufferResponse).toEqual(inputData);
+		});
+	});
+
+	describe('parseIncomingMessage', () => {
+		it('parses valid content-type header', () => {
+			const message = mock<IncomingMessage>({
+				headers: { 'content-type': 'application/json', 'content-disposition': undefined },
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentType).toEqual('application/json');
+		});
+
+		it('parses valid content-type header with parameters', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': 'application/json; charset=utf-8',
+					'content-disposition': undefined,
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentType).toEqual('application/json');
+		});
+
+		it('parses valid content-disposition header with filename*', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition':
+						'attachment; filename="screenshot%20(1).png"; filename*=UTF-8\'\'screenshot%20(1).png',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'screenshot (1).png',
+				type: 'attachment',
+			});
+		});
+
+		it('parses valid content-disposition header with filename and trailing ";"', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition': 'inline; filename="screenshot%20(1).png";',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'screenshot (1).png',
+				type: 'inline',
+			});
+		});
+
+		it('parses non standard content-disposition with missing type', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition': 'filename="screenshot%20(1).png";',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'screenshot (1).png',
+				type: 'attachment',
+			});
 		});
 	});
 
