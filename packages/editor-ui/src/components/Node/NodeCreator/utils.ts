@@ -64,7 +64,7 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 	const result = (
 		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.displayName', weight: 1 },
+			{ key: 'properties.displayName', weight: 1.2 },
 			{ key: 'properties.codex.alias', weight: 1 },
 		]) || []
 	).map(({ item }) => item);
