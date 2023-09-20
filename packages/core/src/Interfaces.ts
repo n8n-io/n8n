@@ -38,7 +38,6 @@ export interface IBinaryDataConfig {
 	mode: 'default' | 'filesystem';
 	availableModes: string;
 	localStoragePath: string;
-	binaryDataTTL: number;
 }
 
 export interface IBinaryDataManager {
@@ -51,8 +50,6 @@ export interface IBinaryDataManager {
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	getBinaryPath(identifier: string): string;
 	getBinaryStream(identifier: string, chunkSize?: number): Readable;
-	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
-	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 	deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<string[]>;
