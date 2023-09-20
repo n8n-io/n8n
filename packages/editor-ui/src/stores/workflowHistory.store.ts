@@ -2,12 +2,17 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import * as whApi from '@/api/workflowHistory';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import type { WorkflowHistory, WorkflowHistoryUnsaved } from '@/types/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowHistoryUnsaved,
+	WorkflowVersion,
+} from '@/types/workflowHistory';
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
 
 	const workflowHistory = ref<Array<WorkflowHistory | WorkflowHistoryUnsaved>>([]);
+	const workflowVersion = ref<WorkflowVersion | null>(null);
 
 	const getWorkflowHistory = async (workflowId: string) => {
 		workflowHistory.value = await whApi
@@ -15,6 +20,14 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			.catch((error) => {
 				console.error(error);
 				return [];
+			});
+	};
+	const getWorkflowVersion = async (workflowId: string, versionId: string) => {
+		workflowVersion.value = await whApi
+			.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId)
+			.catch((error) => {
+				console.error(error);
+				return null;
 			});
 	};
 
@@ -25,6 +38,8 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	return {
 		getWorkflowHistory,
 		addUnsavedItem,
+		getWorkflowVersion,
 		workflowHistory,
+		workflowVersion,
 	};
 });

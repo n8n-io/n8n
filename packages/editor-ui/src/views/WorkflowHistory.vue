@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onBeforeMount } from 'vue';
+import { onBeforeMount, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import type { WorkflowHistoryActionTypes, WorkflowHistory } from '@/types/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
+import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
@@ -49,6 +50,12 @@ onBeforeMount(async () => {
 	}
 });
 
+watchEffect(async () => {
+	if (route.params.versionId) {
+		await workflowHistoryStore.getWorkflowVersion(route.params.workflowId, route.params.versionId);
+	}
+});
+
 const onAction = ({
 	action,
 	id,
@@ -71,14 +78,19 @@ const onPreview = async ({ id }: { id: WorkflowHistory['id'] }) => {
 </script>
 <template>
 	<div :class="$style.view">
-		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>Workflow name</n8n-heading>
+		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
+			{{ workflowHistoryStore.workflowVersion?.workflow.name }}
+		</n8n-heading>
 		<div :class="$style.corner">
 			<n8n-heading tag="h2" size="medium" bold>{{
 				i18n.baseText('workflowHistory.title')
 			}}</n8n-heading>
 			<n8n-button type="tertiary" icon="times" size="small" text square />
 		</div>
-		<div :class="$style.content"></div>
+		<workflow-history-content
+			:class="$style.contentComponent"
+			:workflow-version="workflowHistoryStore.workflowVersion"
+		/>
 		<workflow-history-list
 			:class="$style.listComponent"
 			:items="workflowHistoryStore.workflowHistory"
@@ -118,7 +130,7 @@ const onPreview = async ({ id }: { id: WorkflowHistory['id'] }) => {
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
-.content {
+.contentComponent {
 	grid-area: content;
 }
 
