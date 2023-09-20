@@ -206,9 +206,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			if (settings.enterprise?.showNonProdBanner) {
 				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
 			}
+			if (settings.versionCli) {
+				useRootStore().setVersionCli(settings.versionCli);
+			}
 
 			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
-			if (!isV1BannerDismissedPermanently && settings.versionCli.startsWith('1.')) {
+			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
 				useUIStore().pushBannerToStack('V1');
 			}
 		},
