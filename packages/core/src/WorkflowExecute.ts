@@ -1403,7 +1403,6 @@ export class WorkflowExecute {
 										checkNode,
 										requiredInputs,
 										this.mode,
-										this.additionalData.timezone,
 										{ $version: checkNode.typeVersion },
 										undefined,
 										[],

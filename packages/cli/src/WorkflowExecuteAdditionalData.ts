@@ -1006,7 +1006,6 @@ export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 
 /**
  * Returns the base additional data without webhooks
- *
  */
 export async function getBase(
 	userId: string,
@@ -1015,7 +1014,6 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
-	const timezone = config.getEnv('generic.timezone');
 	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
@@ -1026,7 +1024,6 @@ export async function getBase(
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
-		timezone,
 		instanceBaseUrl: urlBaseWebhook,
 		webhookBaseUrl,
 		webhookWaitingBaseUrl,
