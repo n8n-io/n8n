@@ -28,6 +28,10 @@ export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex
 	const errorData = error.cause.error;
 	const errorOptions: IDataObject = { itemIndex };
 
+	if (errorData?.message) {
+		errorOptions.message = errorData.message;
+	}
+
 	if ((error?.message as string)?.toLowerCase()?.includes('bad request') && errorData) {
 		if (errorData?.message) {
 			errorOptions.message = errorData.message;

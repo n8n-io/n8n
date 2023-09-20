@@ -6,7 +6,23 @@ export async function getRoles(this: ILoadOptionsFunctions): Promise<INodeProper
 		extractValue: true,
 	}) as string;
 
-	const response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/roles`);
+	let response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/roles`);
+
+	const operations = this.getNodeParameter('operation') as string;
+
+	if (operations === 'roleRemove') {
+		const userId = this.getNodeParameter('userId', undefined, {
+			extractValue: true,
+		}) as string;
+
+		const userRoles = ((
+			await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/members/${userId}`)
+		).roles || []) as string[];
+
+		response = response.filter((role: IDataObject) => {
+			return userRoles.includes(role.id as string);
+		});
+	}
 
 	return response
 		.filter((role: IDataObject) => role.name !== '@everyone')
