@@ -48,7 +48,7 @@ export class ChainStructuredOutput implements INodeType {
 		inputs: [
 			'main',
 			{
-				displayName: 'Language Model',
+				displayName: 'Model',
 				maxConnections: 1,
 				type: 'languageModel',
 				filter: {
@@ -91,7 +91,9 @@ export class ChainStructuredOutput implements INodeType {
 				description: 'JSON Schema to structure the output',
 				default: '',
 				typeOptions: {
-					rows: 4,
+					rows: 10,
+					editor: 'json',
+					editorLanguage: 'json',
 				},
 				required: true,
 			},
@@ -112,17 +114,20 @@ export class ChainStructuredOutput implements INodeType {
 			const inputText = this.getNodeParameter('inputText', i) as string;
 			const schema = this.getNodeParameter('jsonSchema', i) as string;
 
+			let parameters: {
+				[key: string]: unknown;
+			};
 			try {
-				jsonParse(schema);
+				parameters = jsonParse(schema);
 			} catch (error) {
-				throw new NodeOperationError(this.getNode(), 'Error whinl parsing JSON Schema.');
+				throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 			}
 			const functionCallingModel = model.bind({
 				functions: [
 					{
 						name: 'output_formatter',
 						description: 'Should always be used to properly format output',
-						parameters: jsonParse(schema),
+						parameters,
 					},
 				],
 				function_call: { name: 'output_formatter' },

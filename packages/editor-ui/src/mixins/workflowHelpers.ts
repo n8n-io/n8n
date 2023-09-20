@@ -30,6 +30,7 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type {
@@ -49,7 +50,7 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast, useMessage } from '@/composables';
 
-import { isEqual } from 'lodash-es';
+import { get, isEqual } from 'lodash-es';
 
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
@@ -62,23 +63,18 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
 	if (nodeType) {
-		if (
-			nodeType.inputs.length === 0 ||
-			!!nodeType.inputs.find((input) => {
-				if (typeof input === 'string') {
-					return input !== 'main';
-				}
-				return input.type !== 'main';
-			})
-		) {
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+
+		if (!!outputs.find((output) => output !== 'main')) {
 			// Get the first node which is connected to a non-main output
-			const nonMainNodesConnected = nodeType.outputs?.reduce((acc, outputName) => {
+			const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
 				const parentNodes = workflow.getChildNodes(node.name, outputName);
 				if (parentNodes.length > 0) {
 					acc.push(...parentNodes);
@@ -208,6 +204,10 @@ export function resolveParameter(
 		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
 	}
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
+
+	ExpressionEvaluatorProxy.setEvaluator(
+		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+	);
 
 	return workflow.expression.getParameterValue(
 		parameter,
@@ -353,7 +353,7 @@ function connectionInputData(
 }
 
 function executeData(
-	parentNode: string[],
+	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
@@ -364,12 +364,10 @@ function executeData(
 		source: null,
 	} as IExecuteData;
 
-	if (parentNode.length) {
-		// Add the input data to be able to also resolve the short expression format
-		// which does not use the node name
-		const parentNodeName = parentNode[0];
-		const workflowsStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore();
 
+	// Find the parent node which has data
+	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
 			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
@@ -384,7 +382,6 @@ function executeData(
 		}
 
 		// populate `executeData` from `runData`
-
 		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
@@ -406,15 +403,35 @@ function executeData(
 					[inputName]: workflowRunData[currentNode][runIndex].source,
 				};
 			} else {
+				const workflow = getCurrentWorkflow();
+
+				let previousNodeOutput: number | undefined;
+				// As the node can be connected through either of the outputs find the correct one
+				// and set it to make pairedItem work on not executed nodes
+				if (workflow.connectionsByDestinationNode[currentNode].main) {
+					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
+						currentNode
+					].main) {
+						for (const connection of mainConnections) {
+							if (connection.type === 'main' && connection.node === parentNodeName) {
+								previousNodeOutput = connection.index;
+								break mainConnections;
+							}
+						}
+					}
+				}
+
 				// The current node did not get executed in UI yet so build data manually
 				executeData.source = {
 					[inputName]: [
 						{
 							previousNode: parentNodeName,
+							previousNodeOutput,
 						},
 					],
 				};
 			}
+			return executeData;
 		}
 	}
 

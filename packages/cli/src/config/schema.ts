@@ -164,6 +164,12 @@ export const schema = {
 				default: 'database.sqlite',
 				env: 'DB_SQLITE_DATABASE',
 			},
+			enableWAL: {
+				doc: 'Enable SQLite WAL mode',
+				format: Boolean,
+				default: false,
+				env: 'DB_SQLITE_ENABLE_WAL',
+			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
 				format: Boolean,
@@ -1196,6 +1202,30 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+	},
+
+	expression: {
+		evaluator: {
+			doc: 'Expression evaluator to use',
+			format: ['tmpl', 'tournament'] as const,
+			default: 'tournament',
+			env: 'N8N_EXPRESSION_EVALUATOR',
+		},
+		reportDifference: {
+			doc: 'Expression evaluator to use',
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+		},
+	},
+
+	sourceControl: {
+		defaultKeyPairType: {
+			doc: 'Default SSH key type to use when generating SSH keys',
+			format: ['rsa', 'ed25519'] as const,
+			default: 'ed25519',
+			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
 		},
 	},
 };

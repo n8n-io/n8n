@@ -17,7 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores';
-import type { EndpointType } from '@/Interface';
+import type { NodeConnectionType } from '@/Interface';
 
 /*
 	Canvas constants and functions.
@@ -91,7 +91,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 };
 
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark'),
+	stroke: getStyleTokenValue('--color-foreground-dark', true),
 	strokeWidth: 2,
 	outlineWidth: 12,
 	outlineStroke: 'transparent',
@@ -99,35 +99,59 @@ export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 
 export const CONNECTOR_PAINT_STYLE_PULL: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-foreground-xdark'),
+	stroke: getStyleTokenValue('--color-foreground-xdark', true),
 };
 
 export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-primary'),
+	stroke: getStyleTokenValue('--color-primary', true),
 };
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark'),
-	strokeWidth: 2,
-	outlineWidth: 12,
-	outlineStroke: 'transparent',
+	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	stroke: getStyleTokenValue('--color-foreground-dark', true),
 	dashstyle: '2 2',
 };
 
 export const CONNECTOR_COLOR: {
 	[K in ConnectionTypes]: string;
 } = {
-	chain: '--color-json-string',
-	document: '--color-success-light',
-	embedding: '--color-json-default',
-	languageModel: '--color-primary',
-	main: '--color-foreground-xdark',
-	memory: '--color-primary-tint-1',
-	textSplitter: '--color-secondary-tint-2',
-	tool: '--color-danger',
-	vectorRetriever: '--color-avatar-accent-2',
-	vectorStore: '--color-json-null',
+	chain: '--node-type-chain-color',
+	document: '--node-type-document-color',
+	embedding: '--node-type-embedding-color',
+	languageModel: '--node-type-languageModel-color',
+	main: '--node-type-main-color',
+	memory: '--node-type-memory-color',
+	outputParser: '--node-type-outputParser-color',
+	textSplitter: '--node-type-textSplitter-color',
+	tool: '--node-type-tool-color',
+	vectorRetriever: '--node-type-vectorRetriever-color',
+	vectorStore: '--node-type-vectorStore-color',
+};
+
+export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
+	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	return {
+		...CONNECTOR_PAINT_STYLE_PULL,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connection.parameters.type === 'main' ? {} : { dashstyle: '2 2' }),
+	};
+};
+
+export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
+	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	return {
+		...CONNECTOR_PAINT_STYLE_DEFAULT,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+	};
+};
+
+export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
+	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	return {
+		...CONNECTOR_PAINT_STYLE_DATA,
+		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+	};
 };
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
@@ -234,7 +258,7 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getEndpointScope = (endpointType: EndpointType): string | undefined => {
+export const getEndpointScope = (endpointType: NodeConnectionType): string | undefined => {
 	if (SCOPED_ENDPOINT_TYPES.includes(endpointType)) {
 		return endpointType;
 	}
@@ -279,11 +303,11 @@ export const getInputNameOverlay = (
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			if (required) {
-				label.innerHTML += ` <strong style="color: var(--color-primary)">*</strong>`;
+				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
 			if (inputName !== 'main') {
-				label.classList.add(`node-input-endpoint-label--data`);
+				label.classList.add('node-input-endpoint-label--data');
 			}
 			return label;
 		},
@@ -296,7 +320,7 @@ export const getOutputEndpointStyle = (
 	connectionType: ConnectionTypes = 'main',
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-	fill: getStyleTokenValue(color),
+	fill: getStyleTokenValue(color, true),
 	outlineStroke: 'none',
 });
 
@@ -716,7 +740,7 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
-	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+	connection.setPaintStyle(getConnectorPaintStyleDefault(connection));
 };
 
 export const recoveredConnection = (connection: Connection) => {
@@ -839,7 +863,7 @@ export const showPullConnectionState = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PULL);
+		connection.setPaintStyle(getConnectorPaintStylePull(connection));
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 	}
 };
@@ -848,7 +872,7 @@ export const resetConnectionAfterPull = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
+		connection.setPaintStyle(getConnectorPaintStyleDefault(connection));
 	}
 };
 

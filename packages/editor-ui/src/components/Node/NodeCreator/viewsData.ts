@@ -19,6 +19,7 @@ import {
 	AI_CATEGORY_DOCUMENT_LOADERS,
 	AI_CATEGORY_LANGUAGE_MODELS,
 	AI_CATEGORY_MEMORY,
+	AI_CATEGORY_OUTPUTPARSER,
 	AI_CATEGORY_RETRIEVERS,
 	AI_CATEGORY_TEXT_SPLITTERS,
 	AI_CATEGORY_TOOLS,
@@ -28,6 +29,7 @@ import {
 } from '@/constants';
 import { useI18n } from '@/composables';
 import type { SimplifiedNodeType } from '@/Interface';
+import { NodeConnectionType } from '@/Interface';
 
 interface NodeViewItem {
 	key: string;
@@ -36,6 +38,11 @@ interface NodeViewItem {
 		name?: string;
 		title: string;
 		icon: string;
+		iconProps?: {
+			color?: string;
+		};
+		connectionType?: NodeConnectionType;
+		panelClass?: string;
 		group?: string[];
 		description?: string;
 		forceIncludeNodes?: string[];
@@ -53,17 +60,39 @@ interface NodeView {
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 
+	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionType) {
+		return {
+			connectionType: nodeConnectionType,
+			iconProps: {
+				color: `var(--node-type-${nodeConnectionType}-color)`,
+			},
+			panelClass: `nodes-list-panel-${nodeConnectionType}`,
+		};
+	}
+
 	return {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			{
+				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+				type: 'node',
+				properties: {
+					group: [],
+					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
+					displayName: 'Manual Chat Trigger',
+					description: 'Runs the flow on new manual chat message',
+					icon: 'fa:comments',
+				},
+			},
+			{
 				key: AI_CATEGORY_AGENTS,
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_AGENTS,
 					icon: 'robot',
+					...getAISubcategoryProperties(NodeConnectionType.Agent),
 				},
 			},
 			{
@@ -72,6 +101,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_CHAINS,
 					icon: 'link',
+					...getAISubcategoryProperties(NodeConnectionType.Chain),
 				},
 			},
 			{
@@ -80,6 +110,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_DOCUMENT_LOADERS,
 					icon: 'file-import',
+					...getAISubcategoryProperties(NodeConnectionType.Document),
 				},
 			},
 			{
@@ -88,6 +119,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_LANGUAGE_MODELS,
 					icon: 'language',
+					...getAISubcategoryProperties(NodeConnectionType.LanguageModel),
 				},
 			},
 			{
@@ -96,6 +128,16 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_MEMORY,
 					icon: 'brain',
+					...getAISubcategoryProperties(NodeConnectionType.Memory),
+				},
+			},
+			{
+				key: AI_CATEGORY_OUTPUTPARSER,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_OUTPUTPARSER,
+					icon: 'list',
+					...getAISubcategoryProperties(NodeConnectionType.OutputParser),
 				},
 			},
 			{
@@ -104,6 +146,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_RETRIEVERS,
 					icon: 'search',
+					...getAISubcategoryProperties(NodeConnectionType.VectorRetriever),
 				},
 			},
 			{
@@ -112,6 +155,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
 					icon: 'remove-format',
+					...getAISubcategoryProperties(NodeConnectionType.TextSplitter),
 				},
 			},
 			{
@@ -120,6 +164,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_TOOLS,
 					icon: 'tools',
+					...getAISubcategoryProperties(NodeConnectionType.Tool),
 				},
 			},
 			{
@@ -128,18 +173,7 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 				properties: {
 					title: AI_CATEGORY_VECTOR_STORES,
 					icon: 'project-diagram',
-				},
-			},
-			{
-				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-				type: 'node',
-				// category: [CORE_NODES_CATEGORY],
-				properties: {
-					group: [],
-					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-					displayName: 'Manual Chat Trigger',
-					description: 'Runs the flow on new manual chat message',
-					icon: 'fa:comments',
+					...getAISubcategoryProperties(NodeConnectionType.VectorStore),
 				},
 			},
 		],

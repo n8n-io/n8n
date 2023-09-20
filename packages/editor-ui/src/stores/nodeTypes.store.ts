@@ -18,16 +18,18 @@ import type {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchResult,
+	INodeOutputConfiguration,
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ResourceMapperFields,
+	Workflow,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
-import { ConnectionTypes } from 'n8n-workflow';
+import { ConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
@@ -75,19 +77,27 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			};
 		},
 		isConfigNode() {
-			return (nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
 				const nodeType = this.getNodeType(nodeTypeName);
-				return nodeType?.outputs
-					? nodeType?.outputs.filter((output) => output !== 'main').length > 0
-					: false;
+				if (!nodeType) {
+					return false;
+				}
+				const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+				return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
 			};
 		},
 		isConfigurableNode() {
-			return (nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
 				const nodeType = this.getNodeType(nodeTypeName);
-				return nodeType?.inputs
-					? nodeType?.inputs.filter((input) => input !== 'main').length > 0
-					: false;
+				if (nodeType === null) {
+					return false;
+				}
+				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+				return inputTypes ? inputTypes.filter((input) => input !== 'main').length > 0 : false;
 			};
 		},
 		isTriggerNode() {
@@ -113,21 +123,27 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				return acc;
 			}, []);
 		},
-		visibleNodeTypesByOutputConnectionTypeNames(): {[key:string]: string[]} {
-			const nodesByOutputType = this.visibleNodeTypes.reduce((acc, node) => {
-				const outputTypes = node.outputs;
-				outputTypes.forEach((outputType: ConnectionTypes) => {
-					if (!acc[outputType]) {
-						acc[outputType] = [];
+		visibleNodeTypesByOutputConnectionTypeNames(): { [key: string]: string[] } {
+			const nodesByOutputType = this.visibleNodeTypes.reduce(
+				(acc, node) => {
+					const outputTypes = node.outputs;
+					if (Array.isArray(outputTypes)) {
+						outputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						});
 					}
-					acc[outputType].push(node.name);
-				});
 
-				return acc;
-			}, {} as { [key:string]: string[]});
+					return acc;
+				},
+				{} as { [key: string]: string[] },
+			);
 
 			return nodesByOutputType;
-		}
+		},
 	},
 	actions: {
 		setNodeTypes(newNodeTypes: INodeTypeDescription[] = []): void {

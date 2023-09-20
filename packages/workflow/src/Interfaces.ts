@@ -571,7 +571,11 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 }
 
 export interface IGetNodeParameterOptions {
+	contextNode?: INode;
+	// extract value from regex, works only when parameter type is resourceLocator
 	extractValue?: boolean;
+	// get raw value of parameter with unresolved expressions
+	rawExpressions?: boolean;
 }
 
 namespace ExecuteFunctions {
@@ -773,13 +777,20 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			nodeNameOverride?: string,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+		getNodeOutputs(): INodeOutputConfiguration[];
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
 
 		// TODO: Make this one then only available in the new config one
-		addInputData(connectionType: ConnectionTypes, data: INodeExecutionData[][]): Promise<void>;
-		addOutputData(connectionType: ConnectionTypes, data: INodeExecutionData[][]): Promise<void>;
+		addInputData(
+			connectionType: ConnectionTypes,
+			data: INodeExecutionData[][] | ExecutionError,
+		): void;
+		addOutputData(
+			connectionType: ConnectionTypes,
+			data: INodeExecutionData[][] | ExecutionError,
+		): void;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
@@ -1130,6 +1141,12 @@ export interface INodeProperties {
 	modes?: INodePropertyMode[];
 	requiresDataPath?: 'single' | 'multiple';
 	doNotInherit?: boolean;
+	// set expected type for the value which would be used for validation and type casting
+	validateType?: FieldType;
+	// works only if validateType is set
+	// allows to skip validation during execution or set custom validation/casting logic inside node
+	// inline error messages would still be shown in UI
+	ignoreValidationDuringExecution?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -1217,7 +1234,6 @@ export interface INodePropertyValueExtractorFunction {
 		value: string | NodeParameterValue,
 	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
-
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 
 export interface IParameterDependencies {
@@ -1485,6 +1501,7 @@ export type ConnectionTypes =
 	| 'languageModel'
 	| 'main'
 	| 'memory'
+	| 'outputParser'
 	| 'tool'
 	| 'textSplitter'
 	| 'vectorRetriever'
@@ -1504,15 +1521,22 @@ export interface INodeInputConfiguration {
 	filter?: INodeInputFilter;
 	type: ConnectionTypes;
 }
+
+export interface INodeOutputConfiguration {
+	displayName?: string;
+	required?: boolean;
+	type: ConnectionTypes;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
 	eventTriggerDescription?: string;
 	activationMessage?: string;
-	inputs: Array<ConnectionTypes | INodeInputConfiguration>;
+	inputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
 	requiredInputs?: string | number[] | number; // Ony available with executionOrder => "v1"
 	inputNames?: string[];
-	outputs: ConnectionTypes[];
+	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
 	outputNames?: string[];
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
@@ -2168,6 +2192,8 @@ export interface IPublicApiSettings {
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 
+export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -2245,6 +2271,7 @@ export interface IN8nUISettings {
 		externalSecrets: boolean;
 		showNonProdBanner: boolean;
 		debugInEditor: boolean;
+		workflowHistory: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -2252,6 +2279,9 @@ export interface IN8nUISettings {
 	};
 	variables: {
 		limit: number;
+	};
+	expressions: {
+		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;

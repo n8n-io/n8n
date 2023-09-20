@@ -20,8 +20,9 @@ import type {
 	INodePropertyOptions,
 	IDataObject,
 	Workflow,
+	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -211,7 +212,7 @@ export const nodeHelpers = defineComponent({
 				this.workflowsStore.setNodeIssue({
 					node: node.name,
 					type: 'input',
-					value: nodeInputIssues && nodeInputIssues.input ? nodeInputIssues.input : null,
+					value: nodeInputIssues?.input ? nodeInputIssues.input : null,
 				});
 			}
 		},
@@ -298,7 +299,13 @@ export const nodeHelpers = defineComponent({
 		): INodeIssues | null {
 			const foundIssues: INodeIssueObjectProperty = {};
 
-			nodeType?.inputs?.forEach((input) => {
+			const workflowNode = workflow.getNode(node.name);
+			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			if (nodeType && workflowNode) {
+				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
+			}
+
+			inputs.forEach((input) => {
 				if (typeof input === 'string' || input.required !== true) {
 					return;
 				}
@@ -632,6 +639,9 @@ export const nodeHelpers = defineComponent({
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
 				try {
+					ExpressionEvaluatorProxy.setEvaluator(
+						useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+					);
 					return workflow.expression.getSimpleParameterValue(
 						data as INode,
 						nodeType.subtitle,

@@ -1,3 +1,17 @@
+:root {
+	--node-type-main-color: var(--color-foreground-xdark);
+	--node-type-chain-color: #BCA5A5;
+	--node-type-document-color: #27A6DD;
+	--node-type-embedding-color: #137BA7;
+	--node-type-languageModel-color: #1321A7;
+	--node-type-memory-color: #6613A7;
+	--node-type-outputParser-color: #27D2DD;
+	--node-type-tool-color: #9B13A7;
+	--node-type-textSplitter-color: #D04EDB;
+	--node-type-vectorRetriever-color: #DD20BF;
+	--node-type-vectorStore-color: #F1538C;
+}
+
 .clickable {
 	cursor: pointer !important;
 }

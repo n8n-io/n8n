@@ -65,6 +65,11 @@ import type {
 	INodeType,
 	ITaskData,
 	ExecutionError,
+	INodeOutputConfiguration,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	FieldType,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	createDeferredPromise,
@@ -83,10 +88,11 @@ import {
 	validateFieldType,
 	NodeSSLError,
 } from 'n8n-workflow';
-
+import { parse as parseContentDisposition } from 'content-disposition';
+import { parse as parseContentType } from 'content-type';
 import pick from 'lodash/pick';
 import { Agent } from 'https';
-import { IncomingMessage } from 'http';
+import { IncomingMessage, type IncomingHttpHeaders } from 'http';
 import { stringify } from 'qs';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -105,7 +111,6 @@ import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
 import FileType from 'file-type';
 import { lookup, extension } from 'mime-types';
-import type { IncomingHttpHeaders } from 'http';
 import type {
 	AxiosError,
 	AxiosPromise,
@@ -605,6 +610,29 @@ type ConfigObject = {
 	simple?: boolean;
 };
 
+export function parseIncomingMessage(message: IncomingMessage) {
+	if ('content-type' in message.headers) {
+		const { type: contentType, parameters } = (() => {
+			try {
+				return parseContentType(message);
+			} catch {
+				return { type: undefined, parameters: undefined };
+			}
+		})();
+		message.contentType = contentType;
+		message.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
+	}
+
+	const contentDispositionHeader = message.headers['content-disposition'];
+	if (contentDispositionHeader?.length) {
+		const {
+			type,
+			parameters: { filename },
+		} = parseContentDisposition(contentDispositionHeader);
+		message.contentDisposition = { type, filename };
+	}
+}
+
 export async function proxyRequestToAxios(
 	workflow: Workflow | undefined,
 	additionalData: IWorkflowExecuteAdditionalData | undefined,
@@ -659,35 +687,22 @@ export async function proxyRequestToAxios(
 
 	try {
 		const response = await requestFn();
-		if (configObject.resolveWithFullResponse === true) {
-			let body = response.data;
-			if (response.data === '') {
-				if (axiosConfig.responseType === 'arraybuffer') {
-					body = Buffer.alloc(0);
-				} else {
-					body = undefined;
-				}
-			}
-			await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
-			return {
-				body,
-				headers: response.headers,
-				statusCode: response.status,
-				statusMessage: response.statusText,
-				request: response.request,
-			};
-		} else {
-			let body = response.data;
-			if (response.data === '') {
-				if (axiosConfig.responseType === 'arraybuffer') {
-					body = Buffer.alloc(0);
-				} else {
-					body = undefined;
-				}
-			}
-			await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
-			return body;
+		let body = response.data;
+		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
+			parseIncomingMessage(body);
+		} else if (body === '') {
+			body = axiosConfig.responseType === 'arraybuffer' ? Buffer.alloc(0) : undefined;
 		}
+		await additionalData?.hooks?.executeHookFunctions('nodeFetchedData', [workflow?.id, node]);
+		return configObject.resolveWithFullResponse
+			? {
+					body,
+					headers: response.headers,
+					statusCode: response.status,
+					statusMessage: response.statusText,
+					request: response.request,
+			  }
+			: body;
 	} catch (error) {
 		const { config, response } = error;
 
@@ -1003,6 +1018,20 @@ async function prepareBinaryData(
 	mimeType?: string,
 ): Promise<IBinaryData> {
 	let fileExtension: string | undefined;
+	if (binaryData instanceof IncomingMessage) {
+		if (!filePath) {
+			try {
+				const { responseUrl } = binaryData;
+				filePath =
+					binaryData.contentDisposition?.filename ??
+					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
+			} catch {}
+		}
+		if (!mimeType) {
+			mimeType = binaryData.contentType;
+		}
+	}
+
 	if (!mimeType) {
 		// If no mime type is given figure it out
 
@@ -1961,36 +1990,139 @@ const validateResourceMapperValue = (
 	return result;
 };
 
-const validateValueAgainstSchema = (
+const validateCollection = (
+	node: INode,
+	runIndex: number,
+	itemIndex: number,
+	propertyDescription: INodeProperties,
+	parameterPath: string[],
+	validationResult: ExtendedValidationResult,
+): ExtendedValidationResult => {
+	let nestedDescriptions: INodeProperties[] | undefined;
+
+	if (propertyDescription.type === 'fixedCollection') {
+		nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
+			(entry) => entry.name === parameterPath[1],
+		)?.values;
+	}
+
+	if (propertyDescription.type === 'collection') {
+		nestedDescriptions = propertyDescription.options as INodeProperties[];
+	}
+
+	if (!nestedDescriptions) {
+		return validationResult;
+	}
+
+	const validationMap: {
+		[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
+	} = {};
+
+	for (const prop of nestedDescriptions) {
+		if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
+
+		validationMap[prop.name] = {
+			type: prop.validateType,
+			displayName: prop.displayName,
+			options:
+				prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
+		};
+	}
+
+	if (!Object.keys(validationMap).length) {
+		return validationResult;
+	}
+
+	for (const value of Array.isArray(validationResult.newValue)
+		? (validationResult.newValue as IDataObject[])
+		: [validationResult.newValue as IDataObject]) {
+		for (const key of Object.keys(value)) {
+			if (!validationMap[key]) continue;
+
+			const fieldValidationResult = validateFieldType(
+				key,
+				value[key],
+				validationMap[key].type,
+				validationMap[key].options,
+			);
+
+			if (!fieldValidationResult.valid) {
+				throw new ExpressionError(
+					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+					{
+						description: fieldValidationResult.errorMessage,
+						runIndex,
+						itemIndex,
+						nodeCause: node.name,
+					},
+				);
+			}
+			value[key] = fieldValidationResult.newValue;
+		}
+	}
+
+	return validationResult;
+};
+
+export const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
-	inputValues: string | number | boolean | object | null | undefined,
+	parameterValue: string | number | boolean | object | null | undefined,
 	parameterName: string,
 	runIndex: number,
 	itemIndex: number,
 ) => {
-	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
-	// Currently only validate resource mapper values
-	const resourceMapperField = nodeType.description.properties.find(
+	const parameterPath = parameterName.split('.');
+
+	const propertyDescription = nodeType.description.properties.find(
 		(prop) =>
-			NodeHelpers.displayParameter(node.parameters, prop, node) &&
-			prop.type === 'resourceMapper' &&
-			parameterName === `${prop.name}.value`,
+			parameterPath[0] === prop.name && NodeHelpers.displayParameter(node.parameters, prop, node),
 	);
 
-	if (resourceMapperField && typeof inputValues === 'object') {
+	if (!propertyDescription) {
+		return parameterValue;
+	}
+
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
+
+	if (
+		parameterPath.length === 1 &&
+		propertyDescription.validateType &&
+		!propertyDescription.ignoreValidationDuringExecution
+	) {
+		validationResult = validateFieldType(
+			parameterName,
+			parameterValue,
+			propertyDescription.validateType,
+		);
+	} else if (
+		propertyDescription.type === 'resourceMapper' &&
+		parameterPath[1] === 'value' &&
+		typeof parameterValue === 'object'
+	) {
 		validationResult = validateResourceMapperValue(
 			parameterName,
-			inputValues as { [key: string]: unknown },
+			parameterValue as { [key: string]: unknown },
 			node,
-			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
+		);
+	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
+		validationResult = validateCollection(
+			node,
+			runIndex,
+			itemIndex,
+			propertyDescription,
+			parameterPath,
+			validationResult,
 		);
 	}
 
 	if (!validationResult.valid) {
 		throw new ExpressionError(
 			`Invalid input for '${
-				String(validationResult.fieldName) || parameterName
+				validationResult.fieldName
+					? String(validationResult.fieldName)
+					: propertyDescription.displayName
 			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
@@ -2034,6 +2166,10 @@ export function getNodeParameter(
 		throw new Error(`Could not get parameter "${parameterName}"!`);
 	}
 
+	if (options?.rawExpressions) {
+		return value;
+	}
+
 	let returnData;
 	try {
 		returnData = workflow.expression.getParameterValue(
@@ -2047,6 +2183,9 @@ export function getNodeParameter(
 			timezone,
 			additionalKeys,
 			executeData,
+			false,
+			{},
+			options?.contextNode?.name,
 		);
 		cleanupParameterData(returnData);
 	} catch (e) {
@@ -2065,7 +2204,7 @@ export function getNodeParameter(
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
-	// Validate parameter value if it has a schema defined
+	// Validate parameter value if it has a schema defined(RMC) or validateType defined
 	returnData = validateValueAgainstSchema(
 		node,
 		nodeType,
@@ -2175,7 +2314,7 @@ export function getWebhookDescription(
 }
 
 // TODO: Change options to an object
-const addExecutionDataFunctions = (
+const addExecutionDataFunctions = async (
 	type: 'input' | 'output',
 	nodeName: string,
 	data: INodeExecutionData[][] | ExecutionBaseError,
@@ -2184,7 +2323,7 @@ const addExecutionDataFunctions = (
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
-) => {
+): Promise<void> => {
 	if (connectionType === 'main') {
 		throw new Error(`Setting the ${type} is not supported for the main connection!`);
 	}
@@ -2680,7 +2819,10 @@ export function getExecuteFunctions(
 			): Promise<unknown> {
 				const node = this.getNode();
 				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-				let inputConfiguration = nodeType.description.inputs.find((input) => {
+
+				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
+
+				let inputConfiguration = inputs.find((input) => {
 					if (typeof input === 'string') {
 						return input === inputName;
 					}
@@ -2740,7 +2882,7 @@ export function getExecuteFunctions(
 								getAdditionalKeys(additionalData, mode, runExecutionData),
 								executeData,
 								fallbackValue,
-								options,
+								{ ...(options || {}), contextNode: node },
 							) as any;
 						};
 
@@ -2764,7 +2906,7 @@ export function getExecuteFunctions(
 								);
 							} catch (error) {
 								// Display the error on the node which is causing it
-								addExecutionDataFunctions(
+								await addExecutionDataFunctions(
 									'input',
 									connectedNode.name,
 									error,
@@ -2775,14 +2917,7 @@ export function getExecuteFunctions(
 									runIndex,
 								);
 
-								// Display on the calling node which node has the error
-								throw new NodeOperationError(
-									connectedNode,
-									`Error on node "${connectedNode.name}" connected via input "${inputName}"`,
-									{
-										itemIndex,
-									},
-								);
+								throw error;
 							}
 						};
 
@@ -2796,7 +2931,7 @@ export function getExecuteFunctions(
 							}
 
 							// Display the error on the node which is causing it
-							addExecutionDataFunctions(
+							await addExecutionDataFunctions(
 								'input',
 								connectedNode.name,
 								error,
@@ -2837,6 +2972,17 @@ export function getExecuteFunctions(
 				return inputConfiguration.maxConnections === 1
 					? (nodes || [])[0]?.response
 					: nodes.map((node) => node.response);
+			},
+			getNodeOutputs(): INodeOutputConfiguration[] {
+				const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				return NodeHelpers.getNodeOutputs(workflow, node, nodeType.description).map((output) => {
+					if (typeof output === 'string') {
+						return {
+							type: output,
+						};
+					}
+					return output;
+				});
 			},
 			getInputData: (inputIndex = 0, inputName = 'main') => {
 				if (!inputData.hasOwnProperty(inputName)) {
@@ -2938,11 +3084,11 @@ export function getExecuteFunctions(
 				await additionalData.hooks?.executeHookFunctions('sendResponse', [response]);
 			},
 
-			async addInputData(
+			addInputData(
 				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionError,
-			): Promise<void> {
-				return addExecutionDataFunctions(
+			): void {
+				addExecutionDataFunctions(
 					'input',
 					this.getNode().name,
 					data,
@@ -2951,13 +3097,19 @@ export function getExecuteFunctions(
 					additionalData,
 					node.name,
 					runIndex,
-				);
+				).catch((error) => {
+					Logger.warn(
+						`There was a problem logging input data of node "${this.getNode().name}": ${
+							error.message
+						}`,
+					);
+				});
 			},
-			async addOutputData(
+			addOutputData(
 				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionError,
-			): Promise<void> {
-				return addExecutionDataFunctions(
+			): void {
+				addExecutionDataFunctions(
 					'output',
 					this.getNode().name,
 					data,
@@ -2966,7 +3118,13 @@ export function getExecuteFunctions(
 					additionalData,
 					node.name,
 					runIndex,
-				);
+				).catch((error) => {
+					Logger.warn(
+						`There was a problem logging output data of node "${this.getNode().name}": ${
+							error.message
+						}`,
+					);
+				});
 			},
 			helpers: {
 				createDeferredPromise,

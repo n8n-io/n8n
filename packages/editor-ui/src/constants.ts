@@ -1,5 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
-import { EndpointType } from './Interface';
+import { NodeConnectionType } from './Interface';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -92,21 +92,23 @@ export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger'
 
 // Node endpoint types
 export const SCOPED_ENDPOINT_TYPES = [
-	EndpointType.Chain,
-	EndpointType.Tool,
-	EndpointType.Memory,
-	EndpointType.LanguageModel,
-	EndpointType.VectorRetriever,
-	EndpointType.VectorStore,
-	EndpointType.Embedding,
-	EndpointType.Document,
-	EndpointType.TextSplitter,
+	NodeConnectionType.Chain,
+	NodeConnectionType.Tool,
+	NodeConnectionType.Memory,
+	NodeConnectionType.OutputParser,
+	NodeConnectionType.LanguageModel,
+	NodeConnectionType.VectorRetriever,
+	NodeConnectionType.VectorStore,
+	NodeConnectionType.Embedding,
+	NodeConnectionType.Document,
+	NodeConnectionType.TextSplitter,
 ];
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
+export const AI_CODE_NODE_TYPE = '@n8n/nodes-langchain.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
@@ -152,6 +154,7 @@ export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
 export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
+export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger';
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
@@ -210,6 +213,7 @@ export const AI_CATEGORY_AGENTS = 'Agents';
 export const AI_CATEGORY_CHAINS = 'Chains';
 export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
 export const AI_CATEGORY_MEMORY = 'Memory';
+export const AI_CATEGORY_OUTPUTPARSER = 'Output Parsers';
 export const AI_CATEGORY_TOOLS = 'Tools';
 export const AI_CATEGORY_VECTOR_STORES = 'Vector Stores';
 export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
@@ -418,6 +422,7 @@ export const enum VIEWS {
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
+	WORKFLOW_HISTORY = 'WorkflowHistory',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -489,6 +494,7 @@ export const enum EnterpriseEditionFeature {
 	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
+	WorkflowHistory = 'workflowHistory',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

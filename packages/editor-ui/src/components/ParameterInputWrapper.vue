@@ -18,7 +18,7 @@
 			:expressionEvaluated="expressionValueComputed"
 			:additionalExpressionData="resolvedAdditionalExpressionData"
 			:label="label"
-			:data-test-id="`parameter-input-${parameter.name}`"
+			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
 			@blur="onBlur"
@@ -61,7 +61,7 @@ import type {
 import { isResourceLocatorValue } from 'n8n-workflow';
 import type { INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { isValueExpression } from '@/utils';
+import { isValueExpression, parseResourceMapperFieldName } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useEnvironmentsStore, useExternalSecretsStore } from '@/stores';
 
@@ -225,6 +225,9 @@ export default defineComponent({
 					: {}),
 				...this.additionalExpressionData,
 			};
+		},
+		parsedParameterName() {
+			return parseResourceMapperFieldName(this.parameter?.name ?? '');
 		},
 	},
 	methods: {

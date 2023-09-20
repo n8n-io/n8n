@@ -16,11 +16,15 @@ import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { initExpressionEvaluator } from '@/ExpressionEvalator';
+
+export const UM_FIX_INSTRUCTION =
+	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -39,6 +43,7 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		await initErrorHandling();
+		initExpressionEvaluator();
 
 		process.once('SIGTERM', async () => this.stopProcess());
 		process.once('SIGINT', async () => this.stopProcess());
@@ -103,19 +108,19 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
-	protected async initBinaryManager() {
+	async initBinaryManager() {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
 	}
 
-	protected async initExternalHooks() {
+	async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
 	}
 
-	async initLicense(): Promise<void> {
+	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
 		const license = Container.get(License);
-		await license.init(this.instanceId);
+		await license.init(this.instanceId, instanceType);
 
 		const activationKey = config.getEnv('license.activationKey');
 

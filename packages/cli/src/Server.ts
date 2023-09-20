@@ -177,6 +177,7 @@ import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
+import { OrchestrationController } from './controllers/orchestration.controller';
 
 const exec = promisify(callbackExec);
 
@@ -323,6 +324,7 @@ export class Server extends AbstractServer {
 				externalSecrets: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
+				workflowHistory: false,
 			},
 			mfa: {
 				enabled: false,
@@ -333,6 +335,9 @@ export class Server extends AbstractServer {
 			},
 			variables: {
 				limit: 0,
+			},
+			expressions: {
+				evaluator: config.get('expression.evaluator') as 'tmpl' | 'tournament',
 			},
 			banners: {
 				dismissed: [],
@@ -551,6 +556,7 @@ export class Server extends AbstractServer {
 			Container.get(SourceControlController),
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
+			Container.get(OrchestrationController),
 		];
 
 		if (isLdapEnabled()) {
@@ -1467,7 +1473,9 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
+			await eventBus.initialize({
+				uniqueInstanceId: this.uniqueInstanceId,
+			});
 		}
 
 		if (this.endpointPresetCredentials !== '') {

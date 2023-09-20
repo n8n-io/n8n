@@ -16,7 +16,11 @@
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
 				<div class="messages ignore-key-press" ref="messagesContainer">
-					<div :class="['message', message.sender]" v-for="message in messages">
+					<div
+						v-for="message in messages"
+						:key="`${message.executionId}__${message.sender}`"
+						:class="['message', message.sender]"
+					>
 						<div :class="['content', message.sender]">
 							{{ message.text }}
 
@@ -60,7 +64,7 @@
 					</div>
 				</div>
 				<div class="logs">
-					<run-data-ai v-if="node" :node="node" />
+					<run-data-ai v-if="node" :node="node" hide-title slim />
 					<div v-else class="no-node-connected">
 						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 							$locale.baseText('chat.window.noExecution')
@@ -103,6 +107,7 @@ import Modal from '@/components/Modal.vue';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_CHAINS,
+	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
 	NODE_TRIGGER_CHAT_BUTTON,
 	VIEWS,
@@ -114,10 +119,10 @@ import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { INode, INodeType, ITaskData } from 'n8n-workflow';
+import { type INode, type INodeType, type ITaskData, NodeHelpers } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
-const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi.vue'));
+const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
 interface ChatMessage {
 	text: string;
@@ -238,14 +243,31 @@ export default defineComponent({
 				const isChain =
 					nodeType.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(AI_CATEGORY_CHAINS);
 
-				if (!isAgent && !isChain) return false;
+				let isCustomChainOrAgent = false;
+				if (nodeType.name === AI_CODE_NODE_TYPE) {
+					const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
+					const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+					const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+					if (
+						inputTypes.includes('languageModel') &&
+						inputTypes.includes('main') &&
+						outputTypes.includes('main')
+					) {
+						isCustomChainOrAgent = true;
+					}
+				}
+
+				if (!isAgent && !isChain && !isCustomChainOrAgent) return false;
 
 				const parentNodes = workflow.getParentNodes(node.name);
 				const isChatChild = parentNodes.some(
 					(parentNodeName) => parentNodeName === triggerNode[0].name,
 				);
 
-				return Boolean(isChatChild && (isAgent || isChain));
+				return Boolean(isChatChild && (isAgent || isChain || isCustomChainOrAgent));
 			});
 
 			if (!chatNode) {
@@ -274,7 +296,7 @@ export default defineComponent({
 				memoryConnection.node,
 			);
 
-			let memoryOutputData = nodeResultData
+			const memoryOutputData = nodeResultData
 				?.map(
 					(
 						data,
@@ -397,18 +419,32 @@ export default defineComponent({
 
 					const lastNodeExecuted =
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.lastNodeExecuted;
-					const responseData = get(
+
+					const nodeResponseDataArray = get(
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
-						`[${lastNodeExecuted}][0].data.main[0][0].json`,
-					) as object & { output?: string };
+						`[${lastNodeExecuted}]`,
+					) as ITaskData[];
+
+					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 
 					let responseMessage: string;
-					if (responseData.output !== undefined) {
-						responseMessage = responseData.output;
-					} else if (Object.keys(responseData).length === 0) {
-						responseMessage = '<NO RESPONSE FOUND>';
+
+					if (get(nodeResponseData, ['error'])) {
+						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
 					} else {
-						responseMessage = JSON.stringify(responseData, null, 2);
+						const responseData = get(nodeResponseData, 'data.main[0][0].json');
+						if (responseData) {
+							const responseObj = responseData as object & { output?: string };
+							if (responseObj.output !== undefined) {
+								responseMessage = responseObj.output;
+							} else if (Object.keys(responseObj).length === 0) {
+								responseMessage = '<NO RESPONSE FOUND>';
+							} else {
+								responseMessage = JSON.stringify(responseObj, null, 2);
+							}
+						} else {
+							responseMessage = '<NO RESPONSE FOUND>';
+						}
 					}
 
 					this.messages.push({
@@ -455,6 +491,7 @@ export default defineComponent({
 		height: 100%;
 		overflow-y: auto;
 		width: 100%;
+		padding: var(--spacing-xs) 0;
 	}
 	.messages {
 		background-color: var(--color-background-base);

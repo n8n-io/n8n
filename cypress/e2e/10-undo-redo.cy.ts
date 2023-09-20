@@ -1,4 +1,4 @@
-import { CODE_NODE_NAME, SET_NODE_NAME } from './../constants';
+import { CODE_NODE_NAME, SET_NODE_NAME, EDIT_FIELDS_SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { NDV } from '../pages/ndv';
@@ -274,7 +274,8 @@ describe('Undo/Redo', () => {
 
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		// WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
 
@@ -287,7 +288,7 @@ describe('Undo/Redo', () => {
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], { clickToFinish: true });
 		WorkflowPage.getters.canvasNodes().first().should('have.attr', 'style', movedPosition);
 		// Delete the set node
-		WorkflowPage.getters.canvasNodeByName(SET_NODE_NAME).click().click();
+		WorkflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).click().click();
 		cy.get('body').type('{backspace}');
 
 		// First undo: Should return deleted node

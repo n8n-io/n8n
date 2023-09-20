@@ -1,5 +1,6 @@
 import * as LoggerProxy from './LoggerProxy';
 export * as ErrorReporterProxy from './ErrorReporterProxy';
+export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
@@ -57,5 +58,11 @@ declare module 'http' {
 		rawBody: Buffer;
 		readRawBody(): Promise<void>;
 		_body: boolean;
+
+		// This gets added by the `follow-redirects` package
+		responseUrl?: string;
+
+		// This is added to response objects for all outgoing requests
+		req?: ClientRequest;
 	}
 }
