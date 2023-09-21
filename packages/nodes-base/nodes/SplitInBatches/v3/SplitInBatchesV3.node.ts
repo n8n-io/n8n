@@ -8,13 +8,13 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
-export class SplitInBatchesV2 implements INodeType {
+export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Loop Over Items',
 		name: 'splitInBatches',
 		icon: 'fa:sync',
 		group: ['organization'],
-		version: 2,
+		version: 3,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
 			name: 'Loop Over Items',
@@ -23,7 +23,7 @@ export class SplitInBatchesV2 implements INodeType {
 		inputs: ['main'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main'],
-		outputNames: ['loop', 'done'],
+		outputNames: ['done', 'loop'],
 		properties: [
 			{
 				displayName:
@@ -39,7 +39,7 @@ export class SplitInBatchesV2 implements INodeType {
 				typeOptions: {
 					minValue: 1,
 				},
-				default: 10,
+				default: 1,
 				description: 'The number of items to return with each call',
 			},
 			{
@@ -154,11 +154,11 @@ export class SplitInBatchesV2 implements INodeType {
 
 		if (returnItems.length === 0) {
 			nodeContext.done = true;
-			return [[], nodeContext.processedItems];
+			return [nodeContext.processedItems, []];
 		}
 
 		nodeContext.done = false;
 
-		return [returnItems, []];
+		return [[], returnItems];
 	}
 }

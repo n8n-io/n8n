@@ -3,6 +3,7 @@ import { VersionedNodeType } from 'n8n-workflow';
 
 import { SplitInBatchesV1 } from './v1/SplitInBatchesV1.node';
 import { SplitInBatchesV2 } from './v2/SplitInBatchesV2.node';
+import { SplitInBatchesV3 } from './v3/SplitInBatchesV3.node';
 
 export class SplitInBatches extends VersionedNodeType {
 	constructor() {
@@ -18,6 +19,7 @@ export class SplitInBatches extends VersionedNodeType {
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SplitInBatchesV1(),
 			2: new SplitInBatchesV2(),
+			3: new SplitInBatchesV3(),
 		};
 
 		super(nodeVersions, baseDescription);
