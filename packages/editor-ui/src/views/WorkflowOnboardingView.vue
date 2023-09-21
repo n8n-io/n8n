@@ -28,6 +28,8 @@ const openWorkflowTemplate = async (templateId: string) => {
 			name,
 			connections: template.workflow.connections,
 			nodes: template.workflow.nodes,
+			pinData: template.workflow.pinData,
+			settings: template.workflow.settings,
 			meta: {
 				onboardingId: templateId,
 			},

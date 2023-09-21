@@ -225,10 +225,7 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: {
-		nodes: INodeUi[];
-		connections: IConnections;
-	};
+	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
 }
 
 export interface INewWorkflowData {
