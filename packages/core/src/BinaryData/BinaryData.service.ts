@@ -1,11 +1,10 @@
 import { readFile, stat } from 'fs/promises';
-import concatStream from 'concat-stream';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
-import { areValidModes } from './utils';
+import { areValidModes, toBuffer } from './utils';
 import { BinaryDataManagerNotFound, InvalidBinaryDataMode } from './errors';
 
 import type { Readable } from 'stream';
@@ -70,7 +69,7 @@ export class BinaryDataService {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
-			const buffer = await this.binaryToBuffer(bufferOrStream);
+			const buffer = await this.toBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
 
@@ -89,11 +88,8 @@ export class BinaryDataService {
 		return binaryData;
 	}
 
-	async binaryToBuffer(body: Buffer | Readable) {
-		return new Promise<Buffer>((resolve) => {
-			if (Buffer.isBuffer(body)) resolve(body);
-			else body.pipe(concatStream(resolve));
-		});
+	async toBuffer(bufferOrStream: Buffer | Readable) {
+		return toBuffer(bufferOrStream);
 	}
 
 	async getAsStream(binaryDataId: string, chunkSize?: number) {
@@ -116,8 +112,8 @@ export class BinaryDataService {
 	 * Get the path to the binary data file, e.g. `/Users/{user}/.n8n/binaryData/{uuid}`
 	 * or `/workflows/{workflowId}/executions/{executionId}/binary_data/{uuid}`.
 	 *
-	 * Used to allow nodes access to user-written binary files, e.g. Read PDF node, and
-	 * to support download of execution-written binary files.
+	 * Used to allow nodes to access user-written binary files (e.g. Read PDF node)
+	 * and to support download of execution-written binary files.
 	 */
 	getPath(binaryDataId: string) {
 		const [mode, fileId] = binaryDataId.split(':');
@@ -131,8 +127,8 @@ export class BinaryDataService {
 		return this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteManyByExecutionIds(executionIds: string[]) {
-		await this.getManager(this.mode).deleteManyByExecutionIds(executionIds);
+	async deleteManyByExecutionIds(ids: BinaryData.IdsForDeletion) {
+		await this.getManager(this.mode).deleteMany(ids);
 	}
 
 	async duplicateBinaryData(

@@ -11,8 +11,9 @@ import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 
 /**
- * `_workflowId` arguments on write are for compatibility with the
- * `BinaryData.Manager` interface. Unused in filesystem mode.
+ * @note The `workflowId` arguments on write are for compatibility with the
+ * `BinaryData.Manager` interface. Unused in filesystem mode until we refactor
+ * how we store binary data files in the `/binaryData` dir.
  */
 
 const EXECUTION_ID_EXTRACTOR =
@@ -57,7 +58,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		bufferOrStream: Buffer | Readable,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const fileId = this.createFileId(executionId);
+		const fileId = this.toFileId(executionId);
 		const filePath = this.getPath(fileId);
 
 		await fs.writeFile(filePath, bufferOrStream);
@@ -75,7 +76,9 @@ export class FileSystemManager implements BinaryData.Manager {
 		return fs.rm(filePath);
 	}
 
-	async deleteManyByExecutionIds(executionIds: string[]) {
+	async deleteMany(ids: BinaryData.IdsForDeletion) {
+		const executionIds = ids.map((o) => o.executionId); // ignore workflow IDs
+
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
 		const deletedIds = [];
@@ -91,8 +94,6 @@ export class FileSystemManager implements BinaryData.Manager {
 				deletedIds.push(executionId);
 			}
 		}
-
-		return deletedIds;
 	}
 
 	async copyByFilePath(
@@ -101,7 +102,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		filePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const newFileId = this.createFileId(executionId);
+		const newFileId = this.toFileId(executionId);
 
 		await fs.cp(filePath, this.getPath(newFileId));
 
@@ -112,19 +113,21 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId: newFileId, fileSize };
 	}
 
-	async copyByFileId(_workflowId: string, fileId: string, executionId: string) {
-		const newFileId = this.createFileId(executionId);
+	async copyByFileId(_workflowId: string, executionId: string, sourceFileId: string) {
+		const targetFileId = this.toFileId(executionId);
+		const sourcePath = this.resolvePath(sourceFileId);
+		const targetPath = this.resolvePath(targetFileId);
 
-		await fs.copyFile(this.resolvePath(fileId), this.resolvePath(newFileId));
+		await fs.copyFile(sourcePath, targetPath);
 
-		return newFileId;
+		return targetFileId;
 	}
 
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
 
-	private createFileId(executionId: string) {
+	private toFileId(executionId: string) {
 		return [executionId, uuid()].join('');
 	}
 

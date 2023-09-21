@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
-import type { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
+import { FileSystemManager } from './FileSystem.manager';
+import { toBuffer } from './utils';
 
-import type { Readable } from 'stream';
+import type { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
+import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
-import concatStream from 'concat-stream';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
@@ -22,8 +23,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		bufferOrStream: Buffer | Readable,
 		_metadata: BinaryData.PreWriteMetadata, // @TODO: Use metadata
 	) {
-		const fileId = `/workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
-		const buffer = await this.binaryToBuffer(bufferOrStream);
+		const fileId = this.toFileId(workflowId, executionId);
+		const buffer = await this.toBuffer(bufferOrStream);
 
 		await this.objectStoreService.put(fileId, buffer);
 
@@ -42,40 +43,70 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return this.objectStoreService.get(fileId, { mode: 'stream' });
 	}
 
+	// @TODO
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
 		throw new Error('TODO');
 	}
 
-	async copyByFileId(workflowId: string, fileId: string, executionId: string): Promise<string> {
-		throw new Error('TODO');
+	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
+		const targetFileId = this.toFileId(workflowId, executionId);
+
+		const sourceFile = await this.objectStoreService.get(sourceFileId, { mode: 'buffer' });
+
+		await this.objectStoreService.put(targetFileId, sourceFile);
+
+		return targetFileId;
 	}
 
+	/**
+	 * Create a copy of a file in the filesystem. Used by Webhook, FTP, SSH nodes.
+	 *
+	 * This delegates to FS manager because the object store manager does not support
+	 * storage and access of user-written data, only execution-written data.
+	 */
 	async copyByFilePath(
 		workflowId: string,
 		executionId: string,
-		path: string,
+		filePath: string,
 		metadata: BinaryData.PreWriteMetadata,
-	): Promise<BinaryData.WriteResult> {
-		throw new Error('TODO');
+	) {
+		return Container.get(FileSystemManager).copyByFilePath(
+			workflowId,
+			executionId,
+			filePath,
+			metadata,
+		);
 	}
 
-	async deleteOne(fileId: string): Promise<void> {
-		throw new Error('TODO');
+	async deleteOne(fileId: string) {
+		await this.objectStoreService.deleteOne(fileId);
 	}
 
-	async deleteManyByExecutionIds(executionIds: string[]): Promise<string[]> {
-		throw new Error('TODO');
+	async deleteMany(ids: BinaryData.IdsForDeletion) {
+		const prefixes = ids.map(
+			(o) => `/workflows/${o.workflowId}/executions/${o.executionId}/binary_data/`,
+		);
+
+		await this.deleteManyByPrefixes(prefixes);
+	}
+
+	private async deleteManyByPrefixes(prefixes: string[]) {
+		await Promise.all(
+			prefixes.map(async (prefix) => {
+				await this.objectStoreService.deleteMany(prefix);
+			}),
+		);
 	}
 
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
 
-	// @TODO: Duplicated from BinaryData service
-	private async binaryToBuffer(body: Buffer | Readable) {
-		return new Promise<Buffer>((resolve) => {
-			if (Buffer.isBuffer(body)) resolve(body);
-			else body.pipe(concatStream(resolve));
-		});
+	private toFileId(workflowId: string, executionId: string) {
+		return `/workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+	}
+
+	private async toBuffer(bufferOrStream: Buffer | Readable) {
+		return toBuffer(bufferOrStream);
 	}
 }
