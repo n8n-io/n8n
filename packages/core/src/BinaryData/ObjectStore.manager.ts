@@ -17,19 +17,19 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		throw new Error('TODO');
 	}
 
-	getPath(workflowId: string, fileId: string): string {
+	getPath(fileId: string): string {
 		throw new Error('TODO');
 	}
 
-	async getAsBuffer(workflowId: string, fileId: string): Promise<Buffer> {
+	async getAsBuffer(fileId: string): Promise<Buffer> {
 		throw new Error('TODO');
 	}
 
-	getAsStream(workflowId: string, fileId: string, chunkSize?: number): Readable {
+	getAsStream(fileId: string, chunkSize?: number): Readable {
 		throw new Error('TODO');
 	}
 
-	async getMetadata(workflowId: string, fileId: string): Promise<BinaryData.Metadata> {
+	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
 		throw new Error('TODO');
 	}
 
@@ -46,7 +46,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		throw new Error('TODO');
 	}
 
-	async deleteOne(workflowId: string, fileId: string): Promise<void> {
+	async deleteOne(fileId: string): Promise<void> {
 		throw new Error('TODO');
 	}
 
