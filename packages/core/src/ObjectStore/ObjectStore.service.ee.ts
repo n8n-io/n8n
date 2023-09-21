@@ -5,9 +5,9 @@ import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml } from './utils';
 import { createHash } from 'node:crypto';
-import type { AxiosRequestConfig, Method, ResponseType } from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
-import type { ListPage, RawListPage } from './types';
+import type { ListPage, ObjectStore, RawListPage } from './types';
 import type { Readable } from 'stream';
 
 // @TODO: Decouple host from AWS
@@ -182,17 +182,7 @@ export class ObjectStoreService {
 		method: Method,
 		host: string,
 		rawPath = '',
-		{
-			qs,
-			headers,
-			body,
-			responseType,
-		}: {
-			qs?: Record<string, string | number>;
-			headers?: Record<string, string | number>;
-			body?: string | Buffer;
-			responseType?: ResponseType;
-		} = {},
+		{ qs, headers, body, responseType }: ObjectStore.RequestOptions = {},
 	) {
 		const path = this.toRequestPath(rawPath, qs);
 

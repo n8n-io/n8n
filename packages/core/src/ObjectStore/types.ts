@@ -1,3 +1,5 @@
+import type { ResponseType } from 'axios';
+
 export type RawListPage = {
 	listBucketResult: {
 		name: string;
@@ -19,3 +21,12 @@ type Item = {
 };
 
 export type ListPage = Omit<RawListPage['listBucketResult'], 'contents'> & { contents: Item[] };
+
+export namespace ObjectStore {
+	export type RequestOptions = {
+		qs?: Record<string, string | number>;
+		headers?: Record<string, string | number>;
+		body?: string | Buffer;
+		responseType?: ResponseType;
+	};
+}
