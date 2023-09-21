@@ -1429,6 +1429,7 @@ export class Server extends AbstractServer {
 				const identifier = req.params.path;
 				const workflowId = req.params.workflowId;
 				try {
+					// @TODO: Decouple from FS
 					const binaryPath = this.binaryDataService.getPath(workflowId, identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {

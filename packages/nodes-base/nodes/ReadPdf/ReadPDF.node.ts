@@ -93,6 +93,7 @@ export class ReadPDF implements INodeType {
 				}
 
 				if (binaryData.id) {
+					// @TODO: Decouple from FS
 					const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 					params.url = new URL(`file://${binaryPath}`);
 				} else {

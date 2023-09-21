@@ -76,6 +76,7 @@ export class SpreadsheetFileV1 implements INodeType {
 					if (options.readAsString) xlsxOptions.type = 'string';
 
 					if (binaryData.id) {
+						// @TODO: Decouple from FS
 						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
 						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {
