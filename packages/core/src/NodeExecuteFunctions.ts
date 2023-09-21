@@ -1000,7 +1000,7 @@ export async function getBinaryDataBuffer(
 	workflowId: string,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataService).getBinaryDataBuffer(workflowId, binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(workflowId, binaryData);
 }
 
 /**

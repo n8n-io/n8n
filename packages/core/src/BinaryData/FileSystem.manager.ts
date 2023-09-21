@@ -4,7 +4,8 @@ import path from 'path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
 
-import { FileNotFoundError } from '../errors';
+import { FileNotFound } from './errors';
+import { ensureDirExists } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -21,7 +22,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	constructor(private storagePath: string) {}
 
 	async init() {
-		await this.ensureDirExists(this.storagePath);
+		await ensureDirExists(this.storagePath);
 	}
 
 	getPath(_workflowId: string, fileId: string) {
@@ -35,13 +36,13 @@ export class FileSystemManager implements BinaryData.Manager {
 		return stats.size;
 	}
 
-	getStream(workflowId: string, fileId: string, chunkSize?: number) {
+	getAsStream(workflowId: string, fileId: string, chunkSize?: number) {
 		const filePath = this.getPath(workflowId, fileId);
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
 	}
 
-	async getBuffer(workflowId: string, fileId: string) {
+	async getAsBuffer(workflowId: string, fileId: string) {
 		const filePath = this.getPath(workflowId, fileId);
 
 		try {
@@ -130,17 +131,6 @@ export class FileSystemManager implements BinaryData.Manager {
 	//         private methods
 	// ----------------------------------
 
-	private async ensureDirExists(dir: string) {
-		try {
-			await fs.access(dir);
-		} catch {
-			await fs.mkdir(dir, { recursive: true });
-		}
-	}
-
-	/**
-	 * Create an identifier `${executionId}{uuid}` for a binary data file.
-	 */
 	private createFileId(executionId: string) {
 		return [executionId, uuid()].join('');
 	}
@@ -149,7 +139,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const returnPath = path.join(this.storagePath, ...args);
 
 		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
-			throw new FileNotFoundError('Invalid path detected');
+			throw new FileNotFound('Invalid path detected');
 		}
 
 		return returnPath;
