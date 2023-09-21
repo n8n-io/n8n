@@ -14,7 +14,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	private readonly objectStoreService: ObjectStoreService;
 
 	constructor() {
-		this.objectStoreService = Container.get(ObjectStoreService);
+		this.objectStoreService = Container.get(ObjectStoreService); // @TODO: Inject
 	}
 
 	async init() {
