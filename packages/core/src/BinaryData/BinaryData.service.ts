@@ -86,8 +86,8 @@ export class BinaryDataService {
 		});
 	}
 
-	getAsStream(identifier: string, chunkSize?: number) {
-		const [mode, uuid] = identifier.split(':');
+	getAsStream(binaryDataId: string, chunkSize?: number) {
+		const [mode, uuid] = binaryDataId.split(':');
 
 		return this.getManager(mode).getStream(uuid, chunkSize);
 	}
@@ -98,20 +98,20 @@ export class BinaryDataService {
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	async retrieveBinaryDataByIdentifier(identifier: string) {
-		const [mode, uuid] = identifier.split(':');
+	async retrieveBinaryDataByIdentifier(binaryDataId: string) {
+		const [mode, uuid] = binaryDataId.split(':');
 
 		return this.getManager(mode).getBuffer(uuid);
 	}
 
-	getPath(identifier: string) {
-		const [mode, uuid] = identifier.split(':');
+	getPath(binaryDataId: string) {
+		const [mode, uuid] = binaryDataId.split(':');
 
 		return this.getManager(mode).getPath(uuid);
 	}
 
-	async getMetadata(identifier: string) {
-		const [mode, uuid] = identifier.split(':');
+	async getMetadata(binaryDataId: string) {
+		const [mode, uuid] = binaryDataId.split(':');
 
 		return this.getManager(mode).getMetadata(uuid);
 	}
