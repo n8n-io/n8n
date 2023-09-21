@@ -353,9 +353,6 @@ export default defineComponent({
 				rawValues = get(this.nodeValues, this.path);
 			}
 
-			if (!rawValues) {
-				return false;
-			}
 			// Resolve expressions
 			const resolveKeys = Object.keys(rawValues);
 			let key: string;

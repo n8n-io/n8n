@@ -99,7 +99,6 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
-					:rows="getArgument('rows')"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@update:modelValue="valueChangedDebounced"
 				/>
@@ -119,20 +118,7 @@
 					:modelValue="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
-					:rows="getArgument('rows')"
-					@valueChanged="valueChangedDebounced"
-				/>
-
-				<code-node-editor
-					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
-					:mode="node.parameters.mode"
-					:modelValue="modelValue"
-					:defaultValue="parameter.default"
-					:language="editorLanguage"
-					:isReadOnly="isReadOnly"
-					:aiButtonEnabled="false"
 					@update:modelValue="valueChangedDebounced"
-					:rows="getArgument('rows')"
 				/>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
@@ -141,7 +127,6 @@
 						:modelValue="modelValue"
 						:language="editorLanguage"
 						:isReadOnly="true"
-						:rows="getArgument('rows')"
 					/>
 				</div>
 
@@ -399,14 +384,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-
-import {
-	CODE_NODE_TYPE,
-	CUSTOM_API_CALL_KEY,
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	HTML_NODE_TYPE,
-} from '@/constants';
-
+import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -1056,9 +1034,6 @@ export default defineComponent({
 		},
 		isHtmlNode(node: INodeUi): boolean {
 			return node.type === HTML_NODE_TYPE;
-		},
-		isExecuteWorkflowNode(node: INodeUi): boolean {
-			return node.type === EXECUTE_WORKFLOW_NODE_TYPE;
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
