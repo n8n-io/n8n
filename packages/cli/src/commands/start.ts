@@ -197,7 +197,7 @@ export class Start extends BaseCommand {
 		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
-		await this.initLicense('main');
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();

@@ -1,9 +1,4 @@
-export type RedisServiceCommand =
-	| 'getStatus'
-	| 'getId'
-	| 'restartEventBus'
-	| 'stopWorker'
-	| 'reloadLicense';
+export type RedisServiceCommand = 'getStatus' | 'getId' | 'restartEventBus' | 'stopWorker'; // TODO: add more commands
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -12,7 +7,7 @@ export type RedisServiceCommand =
  * @field payload: Optional arguments to be sent with the command.
  */
 type RedisServiceBaseCommand = {
-	senderId?: string;
+	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
 		[key: string]: string | number | boolean | string[] | number[] | boolean[];

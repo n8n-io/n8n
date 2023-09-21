@@ -77,7 +77,7 @@ export class Webhook extends BaseCommand {
 		await this.initCrashJournal();
 		await super.init();
 
-		await this.initLicense('webhook');
+		await this.initLicense();
 		await this.initBinaryManager();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
