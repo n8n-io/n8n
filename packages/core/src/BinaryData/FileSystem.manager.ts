@@ -29,13 +29,6 @@ export class FileSystemManager implements BinaryData.Manager {
 		return this.resolvePath(fileId);
 	}
 
-	async getSize(workflowId: string, fileId: string) {
-		const filePath = this.getPath(workflowId, fileId);
-		const stats = await fs.stat(filePath);
-
-		return stats.size;
-	}
-
 	getAsStream(workflowId: string, fileId: string, chunkSize?: number) {
 		const filePath = this.getPath(workflowId, fileId);
 
@@ -61,13 +54,13 @@ export class FileSystemManager implements BinaryData.Manager {
 	async store(
 		workflowId: string,
 		executionId: string,
-		binaryData: Buffer | Readable,
+		bufferOrStream: Buffer | Readable,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = this.createFileId(executionId);
 		const filePath = this.getPath(workflowId, fileId);
 
-		await fs.writeFile(filePath, binaryData);
+		await fs.writeFile(filePath, bufferOrStream);
 
 		const fileSize = await this.getSize(workflowId, fileId);
 
@@ -149,5 +142,12 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(`${fileId}.metadata`);
 
 		await fs.writeFile(filePath, JSON.stringify(metadata), { encoding: 'utf-8' });
+	}
+
+	private async getSize(workflowId: string, fileId: string) {
+		const filePath = this.getPath(workflowId, fileId);
+		const stats = await fs.stat(filePath);
+
+		return stats.size;
 	}
 }
