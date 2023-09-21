@@ -1,3 +1,20 @@
+## [1.8.1](https://github.com/n8n-io/n8n/compare/n8n@1.8.0...n8n@1.8.1) (2023-09-21)
+
+
+### Bug Fixes
+
+* **Airtable Node:** Attachments field type fix ([#7227](https://github.com/n8n-io/n8n/issues/7227)) ([ebfcc87](https://github.com/n8n-io/n8n/commit/ebfcc879ca8750d402f20079f945dfc3931b5419))
+* **core:** Handle filename* with quotes in Content-Disposition header ([#7229](https://github.com/n8n-io/n8n/issues/7229)) ([fb36b0a](https://github.com/n8n-io/n8n/commit/fb36b0a1d4c107ebb7f00462543bf84a5071cd6c))
+* Ensure new Set node is on top of search list ([#7215](https://github.com/n8n-io/n8n/issues/7215)) ([c8fb06f](https://github.com/n8n-io/n8n/commit/c8fb06ff6dcfecda0bea10c97d84336b91a18674))
+* Issue enforcing user limits on start plan ([#7188](https://github.com/n8n-io/n8n/issues/7188)) ([50a4c5e](https://github.com/n8n-io/n8n/commit/50a4c5eb88fc02409ebe50d8761851b86cbd40b9))
+
+
+### Reverts
+
+* **core:** Add command to trigger license refresh on workers ([#7184](https://github.com/n8n-io/n8n/issues/7184)) ([6ac19a5](https://github.com/n8n-io/n8n/commit/6ac19a57f2648807945a393d371539c455c71a55))
+
+
+
 # [1.8.0](https://github.com/n8n-io/n8n/compare/n8n@1.7.0...n8n@1.8.0) (2023-09-20)
 
 
