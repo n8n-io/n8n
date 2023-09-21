@@ -25,7 +25,7 @@ const emit = defineEmits<{
 		event: 'action',
 		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['id'] },
 	): void;
-	(event: 'preview', value: { id: WorkflowHistory['id'] }): void;
+	(event: 'preview', value: { event: Event; id: WorkflowHistory['id'] }): void;
 }>();
 
 const i18n = useI18n();
@@ -48,16 +48,17 @@ const onAction = ({
 	emit('action', { action, id });
 };
 
-const onPreview = ({ id }: { id: WorkflowHistory['id'] }) => {
-	emit('preview', { id });
+const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['id'] }) => {
+	emit('preview', { event, id });
 };
 </script>
 
 <template>
 	<ul :class="$style.list">
 		<workflow-history-list-item
-			v-for="item in props.items"
+			v-for="(item, index) in props.items"
 			:key="item.id"
+			:index="index"
 			:item="item"
 			:active="item.id === props.activeItemId"
 			:actions="actions"

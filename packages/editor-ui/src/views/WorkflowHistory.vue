@@ -11,15 +11,20 @@ import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useUIStore } from '@/stores/ui.store';
 
+type WorkflowHistoryActionRecord = {
+	[K in Uppercase<TupleToUnion<WorkflowHistoryActionTypes>>]: Lowercase<K>;
+};
+
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
 	'clone',
 	'open',
 	'download',
 ];
-const workflowHistoryActionsRecord = workflowHistoryActionTypes.map((value) => ({
-	[value.toUpperCase()]: value,
-}));
+const WORKFLOW_HISTORY_ACTIONS: WorkflowHistoryActionRecord = workflowHistoryActionTypes.reduce(
+	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
+	{} as WorkflowHistoryActionRecord,
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -56,6 +61,17 @@ watchEffect(async () => {
 	}
 });
 
+const openInNewTab = (id: WorkflowHistory['id']) => {
+	const { href } = router.resolve({
+		name: VIEWS.WORKFLOW_HISTORY,
+		params: {
+			workflowId: route.params.workflowId,
+			versionId: id,
+		},
+	});
+	window.open(href, '_blank');
+};
+
 const onAction = ({
 	action,
 	id,
@@ -63,17 +79,24 @@ const onAction = ({
 	action: TupleToUnion<WorkflowHistoryActionTypes>;
 	id: WorkflowHistory['id'];
 }) => {
+	if (action === WORKFLOW_HISTORY_ACTIONS.OPEN) {
+		openInNewTab(id);
+	}
 	console.log('action', { action, id });
 };
 
-const onPreview = async ({ id }: { id: WorkflowHistory['id'] }) => {
-	await router.push({
-		name: VIEWS.WORKFLOW_HISTORY,
-		params: {
-			workflowId: route.params.workflowId,
-			versionId: id,
-		},
-	});
+const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['id'] }) => {
+	if (event.metaKey || event.ctrlKey) {
+		openInNewTab(id);
+	} else {
+		await router.push({
+			name: VIEWS.WORKFLOW_HISTORY,
+			params: {
+				workflowId: route.params.workflowId,
+				versionId: id,
+			},
+		});
+	}
 };
 </script>
 <template>

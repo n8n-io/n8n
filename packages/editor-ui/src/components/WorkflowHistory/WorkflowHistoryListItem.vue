@@ -13,6 +13,7 @@ import { isWorkflowHistoryItemUnsaved } from '@/utils';
 
 const props = defineProps<{
 	item: WorkflowHistory | WorkflowHistoryUnsaved;
+	index: number;
 	actions: UserAction[];
 	active: boolean;
 }>();
@@ -21,7 +22,7 @@ const emit = defineEmits<{
 		event: 'action',
 		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['id'] },
 	): void;
-	(event: 'preview', value: { id: WorkflowHistory['id'] }): void;
+	(event: 'preview', value: { event: Event; id: WorkflowHistory['id'] }): void;
 }>();
 
 const i18n = useI18n();
@@ -29,7 +30,7 @@ const i18n = useI18n();
 const actionsVisible = ref(false);
 
 const isUnsaved = computed<boolean>(() => isWorkflowHistoryItemUnsaved(props.item));
-const isCurrent = computed<boolean>(() => isUnsaved.value);
+const isCurrent = computed<boolean>(() => props.index === 0);
 
 const formattedCreatedAtDate = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -67,9 +68,9 @@ const onVisibleChange = (visible: boolean) => {
 	actionsVisible.value = visible;
 };
 
-const onItemClick = () => {
+const onItemClick = (event: Event) => {
 	if (!isCurrent.value && !props.active) {
-		emit('preview', { id: props.item.id });
+		emit('preview', { event, id: props.item.id });
 	}
 };
 </script>
