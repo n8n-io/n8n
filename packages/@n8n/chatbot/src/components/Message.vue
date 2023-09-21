@@ -22,7 +22,7 @@ const classes = computed(() => {
 </script>
 <template>
 	<div class="chat-message" :class="classes">
-		{{ message.text }}
+		<pre>{{ message.text }}</pre>
 	</div>
 </template>
 
@@ -46,6 +46,12 @@ const classes = computed(() => {
 		background-color: var(--chat--message--bot--background, var(--chat--color-secondary));
 		margin-left: auto;
 		border-bottom-right-radius: 0;
+	}
+
+	pre {
+		font-family: inherit;
+		font-size: inherit;
+		margin: 0;
 	}
 }
 </style>

@@ -9,7 +9,8 @@ export interface ChatbotOptions {
 			title: string;
 			subtitle: string;
 			footer: string;
-			button: string;
+			getStarted: string;
+			inputPlaceholder: string;
 			[message: string]: string;
 		}
 	>;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Layout, PoweredBy, MessagesList, GetStarted, Input } from '@/components';
-import { computed, onMounted, toRefs } from 'vue';
+import { Layout, MessagesList, GetStarted, GetStartedFooter, Input } from '@/components';
+import { computed, nextTick, onMounted, ref, toRefs } from 'vue';
 import { useI18n, useOptions } from '@/composables';
 import { useChatStore } from '@/stores/chat';
+import { chatEventBus } from '@/event-buses';
 
 const { options } = useOptions();
 const { t, te } = useI18n();
@@ -16,10 +17,16 @@ const footerVisible = computed<boolean>(() => {
 
 async function initialize() {
 	await chatStore.loadPreviousSession();
+	void nextTick(() => {
+		chatEventBus.emit('scrollToBottom');
+	});
 }
 
 async function getStarted() {
 	void chatStore.startNewSession();
+	void nextTick(() => {
+		chatEventBus.emit('scrollToBottom');
+	});
 }
 
 onMounted(() => {
@@ -29,29 +36,15 @@ onMounted(() => {
 
 <template>
 	<Layout class="chat-wrapper">
-		<template #header>
+		<template #header v-if="!currentSessionId">
 			<h1>{{ t('title') }}</h1>
 			<p>{{ t('subtitle') }}</p>
 		</template>
 		<GetStarted v-if="!currentSessionId" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
 		<template v-if="footerVisible" #footer>
-			<div v-if="te('footer')">
-				{{ t('footer') }}
-			</div>
 			<Input v-if="currentSessionId" />
-			<PoweredBy v-else-if="options.poweredBy" />
+			<GetStartedFooter v-else />
 		</template>
 	</Layout>
 </template>
-
-<style lang="scss" scoped>
-.chat-wrapper {
-	.chat-get-started {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		height: 100%;
-	}
-}
-</style>

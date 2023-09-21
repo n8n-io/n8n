@@ -1,10 +1,30 @@
-<script setup></script>
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { chatEventBus } from '@/event-buses';
+
+const chatBodyRef = ref<HTMLElement | null>(null);
+
+function scrollToBottom() {
+	const element = chatBodyRef.value as HTMLElement;
+	if (element) {
+		element.scrollTop = element.scrollHeight;
+	}
+}
+
+onMounted(() => {
+	chatEventBus.on('scrollToBottom', scrollToBottom);
+});
+
+onBeforeUnmount(() => {
+	chatEventBus.off('scrollToBottom', scrollToBottom);
+});
+</script>
 <template>
 	<main class="chat-layout">
 		<div v-if="$slots.header" class="chat-header">
 			<slot name="header" />
 		</div>
-		<div v-if="$slots.default" class="chat-body">
+		<div v-if="$slots.default" class="chat-body" ref="chatBodyRef">
 			<slot />
 		</div>
 		<div v-if="$slots.footer" class="chat-footer">
@@ -47,12 +67,10 @@
 		flex-direction: column;
 		overflow-y: auto;
 		position: relative;
-		padding-bottom: var(--chat--input--height, var(--chat--spacing));
 	}
 
 	.chat-footer {
 		border-top: 1px solid var(--chat--color-light-shade-100);
-		padding: var(--chat--footer--padding, var(--chat--spacing));
 		background: var(--chat--footer--background, var(--chat--color-light));
 		color: var(--chat--footer--color, var(--chat--color-dark));
 	}

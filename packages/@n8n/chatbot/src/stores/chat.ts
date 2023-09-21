@@ -52,17 +52,24 @@ const dummyMessages: ChatMessage[] = [
 export const useChatStore = defineStore('chat', () => {
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string | null>(null);
+	const waitingForResponse = ref(false);
 
-	async function sendMessage() {
+	async function sendMessage(message: string) {
 		messages.value.push({
-			text: 'Hello',
+			id: uuidv4(),
+			text: message,
+			sender: 'user',
+			createdAt: new Date().toISOString(),
 		});
+
+		waitingForResponse.value = true;
 	}
 
 	async function loadPreviousSession() {
 		const sessionId = localStorage.getItem(localStorageSessionIdKey);
 
 		messages.value.push(...dummyMessages);
+		// currentSessionId.value = sessionId; // @TODO Uncomment this to load previous session
 
 		return sessionId;
 	}
@@ -73,5 +80,12 @@ export const useChatStore = defineStore('chat', () => {
 		localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
 	}
 
-	return { messages, currentSessionId, loadPreviousSession, startNewSession, sendMessage };
+	return {
+		messages,
+		currentSessionId,
+		waitingForResponse,
+		loadPreviousSession,
+		startNewSession,
+		sendMessage,
+	};
 });

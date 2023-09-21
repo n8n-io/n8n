@@ -9,7 +9,9 @@ export const defaultOptions: ChatbotOptions = {
 		en: {
 			title: 'Hi there! 👋',
 			subtitle: "Start a chat. We're here to help you 24/7.",
-			button: 'New Conversation',
+			footer: '',
+			getStarted: 'New Conversation',
+			inputPlaceholder: 'Type your question..',
 		},
 	},
 	theme: {},
