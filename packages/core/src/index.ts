@@ -13,7 +13,6 @@ export * from './LoadMappingOptions';
 export * from './LoadNodeParameterOptions';
 export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
-export * from './ObjectStore/ObjectStore.service.ee';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };
 export * from './errors';
