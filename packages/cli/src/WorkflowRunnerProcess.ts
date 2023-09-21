@@ -123,7 +123,7 @@ class WorkflowRunnerProcess {
 		await Container.get(PostHogClient).init(instanceId);
 		await Container.get(InternalHooks).init(instanceId);
 
-		const binaryDataConfig = config.getEnv('binaryDataService');
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);

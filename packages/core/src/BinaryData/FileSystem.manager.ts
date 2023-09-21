@@ -4,7 +4,7 @@ import path from 'path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
 
-import { FileNotFound } from './errors';
+import { FileNotFoundError } from '../errors';
 import { ensureDirExists } from './utils';
 
 import type { Readable } from 'stream';
@@ -139,7 +139,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const returnPath = path.join(this.storagePath, ...args);
 
 		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
-			throw new FileNotFound('Invalid path detected');
+			throw new FileNotFoundError('Invalid path detected');
 		}
 
 		return returnPath;

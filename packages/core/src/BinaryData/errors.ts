@@ -11,9 +11,3 @@ export class BinaryDataManagerNotFound extends Error {
 		super(`No binary data manager found for: ${mode}`);
 	}
 }
-
-export class FileNotFound extends Error {
-	constructor(filePath: string) {
-		super(`File not found: ${filePath}`);
-	}
-}
