@@ -138,9 +138,9 @@ export const binaryContentTypes = [
 export type BodyParametersReducer = (
 	acc: IDataObject,
 	cur: { name: string; value: string },
-) => IDataObject;
+) => Promise<IDataObject>;
 
-export const prepareRequestBody = (
+export const prepareRequestBody = async (
 	parameters: BodyParameter[],
 	bodyType: string,
 	version: number,
@@ -153,6 +153,12 @@ export const prepareRequestBody = (
 			return acc;
 		}, {} as IDataObject);
 	} else {
-		return parameters.reduce(defaultReducer, {});
+		return parameters.reduce(
+			async (acc, entry) => {
+				const result = await acc; // Wait for the promise to resolve
+				return defaultReducer(result, entry);
+			},
+			Promise.resolve({} as IDataObject),
+		);
 	}
 };

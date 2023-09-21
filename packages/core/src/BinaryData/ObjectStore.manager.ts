@@ -1,20 +1,34 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import { Service } from 'typedi';
+import { v4 as uuid } from 'uuid';
+import type { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
+
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
+import concatStream from 'concat-stream';
 
+@Service()
 export class ObjectStoreManager implements BinaryData.Manager {
+	constructor(private objectStoreService: ObjectStoreService) {}
+
 	async init() {
-		throw new Error('TODO');
+		await this.objectStoreService.checkConnection();
 	}
 
 	async store(
 		workflowId: string,
 		executionId: string,
-		binaryData: Buffer | Readable,
-		metadata: BinaryData.PreWriteMetadata,
-	): Promise<BinaryData.WriteResult> {
-		throw new Error('TODO');
+		bufferOrStream: Buffer | Readable,
+		_metadata: BinaryData.PreWriteMetadata,
+	) {
+		const fileId = `/workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+		const buffer = await this.binaryToBuffer(bufferOrStream);
+
+		// @TODO: Set incoming metadata
+		await this.objectStoreService.put(fileId, buffer);
+
+		return { fileId, fileSize: buffer.length };
 	}
 
 	getPath(fileId: string): string {
@@ -22,11 +36,12 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	async getAsBuffer(fileId: string): Promise<Buffer> {
-		throw new Error('TODO');
+		return this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
-	getAsStream(fileId: string, chunkSize?: number): Readable {
-		throw new Error('TODO');
+	// @TODO: Use chunkSize
+	async getAsStream(fileId: string, chunkSize?: number): Promise<Readable> {
+		return this.objectStoreService.get(fileId, { mode: 'stream' });
 	}
 
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
@@ -52,5 +67,17 @@ export class ObjectStoreManager implements BinaryData.Manager {
 
 	async deleteManyByExecutionIds(executionIds: string[]): Promise<string[]> {
 		throw new Error('TODO');
+	}
+
+	// ----------------------------------
+	//         private methods
+	// ----------------------------------
+
+	// @TODO: Duplicated from BinaryData service
+	private async binaryToBuffer(body: Buffer | Readable) {
+		return new Promise<Buffer>((resolve) => {
+			if (Buffer.isBuffer(body)) resolve(body);
+			else body.pipe(concatStream(resolve));
+		});
 	}
 }

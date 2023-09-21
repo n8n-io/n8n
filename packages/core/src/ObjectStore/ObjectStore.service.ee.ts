@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import type { AxiosRequestConfig, Method, ResponseType } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import type { ListPage, RawListPage } from './types';
+import type { Readable } from 'stream';
 
 // @TODO: Decouple host from AWS
 
@@ -57,6 +58,8 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
+	async get(path: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
+	async get(path: string, { mode }: { mode: 'stream' }): Promise<Readable>;
 	async get(path: string, { mode }: { mode: 'stream' | 'buffer' }) {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 

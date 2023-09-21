@@ -92,7 +92,7 @@ export class SpreadsheetFileV2 implements INodeType {
 							},
 						});
 						if (binaryData.id) {
-							const stream = this.helpers.getBinaryStream(binaryData.id);
+							const stream = await this.helpers.getBinaryStream(binaryData.id);
 							await pipeline(stream, parser);
 						} else {
 							parser.write(binaryData.data, BINARY_ENCODING);

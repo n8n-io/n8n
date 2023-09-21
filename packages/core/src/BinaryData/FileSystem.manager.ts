@@ -29,7 +29,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		return this.resolvePath(fileId);
 	}
 
-	getAsStream(fileId: string, chunkSize?: number) {
+	async getAsStream(fileId: string, chunkSize?: number) {
 		const filePath = this.getPath(fileId);
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });

@@ -32,7 +32,7 @@ export namespace BinaryData {
 
 		getPath(fileId: string): string;
 		getAsBuffer(fileId: string): Promise<Buffer>;
-		getAsStream(fileId: string, chunkSize?: number): Readable;
+		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
 		copyByFileId(workflowId: string, fileId: string, prefix: string): Promise<string>;
