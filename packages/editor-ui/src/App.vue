@@ -143,9 +143,6 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
-		async initBanners() {
-			return this.uiStore.initBanners();
-		},
 		async checkForCloudPlanData() {
 			return this.cloudPlanStore.checkForCloudPlanData();
 		},
@@ -239,7 +236,6 @@ export default defineComponent({
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
 		await this.checkForCloudPlanData();
-		void this.initBanners();
 		void this.postAuthenticate();
 
 		this.loading = false;
