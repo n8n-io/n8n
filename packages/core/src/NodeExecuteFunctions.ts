@@ -12,105 +12,11 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 
 import type {
-	ConnectionTypes,
-	GenericValue,
-	IAdditionalCredentialOptions,
-	IAllExecuteFunctions,
-	IBinaryData,
-	IContextObject,
-	ICredentialDataDecryptedObject,
-	ICredentialsExpressionResolveValues,
-	IDataObject,
-	IExecuteResponsePromiseData,
-	IExecuteWorkflowInfo,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	IN8nHttpResponse,
-	INode,
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	INodeExecutionData,
-	INodeInputConfiguration,
-	IOAuth2Options,
-	IRunExecutionData,
-	ISourceData,
-	ITaskDataConnections,
-	IWebhookData,
-	IWebhookDescription,
-	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowDataProxyData,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
-	IExecuteData,
-	IGetNodeParameterOptions,
-	NodeParameterValueType,
-	NodeExecutionWithMetadata,
-	IPairedItemData,
-	ICredentialTestFunctions,
-	BinaryHelperFunctions,
-	NodeHelperFunctions,
-	RequestHelperFunctions,
-	FunctionsBase,
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IPollFunctions,
-	ITriggerFunctions,
-	IWebhookFunctions,
-	BinaryMetadata,
-	FileSystemHelperFunctions,
-	INodeType,
-	ITaskData,
-	ExecutionError,
-	INodeOutputConfiguration,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	FieldType,
-	INodeProperties,
-} from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	isObjectEmpty,
-	isResourceMapperValue,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
-	WorkflowDataProxy,
-	LoggerProxy as Logger,
-	OAuth2GrantType,
-	deepCopy,
-	fileTypeFromMimeType,
-	ExpressionError,
-	ExecutionBaseError,
-	validateFieldType,
-	NodeSSLError,
-} from 'n8n-workflow';
-import { parse as parseContentDisposition } from 'content-disposition';
-import { parse as parseContentType } from 'content-type';
-import pick from 'lodash/pick';
-import { Agent } from 'https';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
-import { stringify } from 'qs';
-import type { Token } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
-import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
 	ClientOAuth2TokenData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import crypto, { createHmac } from 'crypto';
-import get from 'lodash/get';
-import type { Request, Response } from 'express';
-import FormData from 'form-data';
-import path from 'path';
-import type { OptionsWithUri, OptionsWithUrl } from 'request';
-import type { RequestPromiseOptions } from 'request-promise-native';
-import FileType from 'file-type';
-import { lookup, extension } from 'mime-types';
 import type {
 	AxiosError,
 	AxiosPromise,
@@ -120,34 +26,126 @@ import type {
 	Method,
 } from 'axios';
 import axios from 'axios';
-import url, { URL, URLSearchParams } from 'url';
-import { Readable } from 'stream';
-import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
+import crypto, { createHmac } from 'crypto';
+import type { Request, Response } from 'express';
+import FileType from 'file-type';
+import FormData from 'form-data';
 import { createReadStream } from 'fs';
+import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
+import { IncomingMessage, type IncomingHttpHeaders } from 'http';
+import { Agent } from 'https';
+import get from 'lodash/get';
+import pick from 'lodash/pick';
+import { extension, lookup } from 'mime-types';
+import {
+	BinaryHelperFunctions,
+	BinaryMetadata,
+	ConnectionTypes,
+	ExecutionBaseError,
+	ExecutionError,
+	FieldType,
+	FileSystemHelperFunctions,
+	FunctionsBase,
+	GenericValue,
+	IAdditionalCredentialOptions,
+	IAllExecuteFunctions,
+	IBinaryData,
+	IContextObject,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	ICredentialsExpressionResolveValues,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	IExecuteResponsePromiseData,
+	IExecuteSingleFunctions,
+	IExecuteWorkflowInfo,
+	IGetNodeParameterOptions,
+	IHookFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	IN8nHttpResponse,
+	INode,
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
+	INodeExecutionData,
+	INodeInputConfiguration,
+	INodeOutputConfiguration,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	INodeType,
+	IOAuth2Options,
+	IPairedItemData,
+	IPollFunctions,
+	IRunExecutionData,
+	ISourceData,
+	ITaskData,
+	ITaskDataConnections,
+	ITriggerFunctions,
+	IWebhookData,
+	IWebhookDescription,
+	IWebhookFunctions,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
+	IWorkflowExecuteAdditionalData,
+	NodeExecutionWithMetadata,
+	NodeHelperFunctions,
+	NodeParameterValueType,
+	RequestHelperFunctions,
+	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	ExpressionError,
+	LoggerProxy as Logger,
+	NodeApiError,
+	NodeHelpers,
+	NodeOperationError,
+	NodeSSLError,
+	OAuth2GrantType,
+	WorkflowDataProxy,
+	createDeferredPromise,
+	deepCopy,
+	fileTypeFromMimeType,
+	isObjectEmpty,
+	isResourceMapperValue,
+	validateFieldType,
+} from 'n8n-workflow';
+import type { Token } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
+import path from 'path';
+import { stringify } from 'qs';
+import type { OptionsWithUri, OptionsWithUrl } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import { Readable } from 'stream';
+import url, { URL, URLSearchParams } from 'url';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
-import { extractValue } from './ExtractValue';
-import { getClientCredentialsToken } from './OAuth2Helper';
+import { binaryToBuffer } from './BinaryDataManager/utils';
 import {
+	BINARY_DATA_STORAGE_PATH,
+	BLOCK_FILE_ACCESS_TO_N8N_FILES,
+	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
-	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	RESTRICT_FILE_ACCESS_TO,
-	CONFIG_FILES,
-	BINARY_DATA_STORAGE_PATH,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
-import { binaryToBuffer } from './BinaryDataManager/utils';
+import { extractValue } from './ExtractValue';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
+import { getClientCredentialsToken } from './OAuth2Helper';
+import { getSecretsProxy } from './Secrets';
+import { getUserN8nFolderPath } from './UserSettings';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
-import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath } from './UserSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -610,26 +608,91 @@ type ConfigObject = {
 	simple?: boolean;
 };
 
-export function parseIncomingMessage(message: IncomingMessage) {
-	if ('content-type' in message.headers) {
-		const { type: contentType, parameters } = (() => {
-			try {
-				return parseContentType(message);
-			} catch {
-				return { type: undefined, parameters: undefined };
-			}
-		})();
-		message.contentType = contentType;
-		message.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
+interface IContentType {
+	type: string;
+	parameters: {
+		charset: string;
+		[key: string]: string;
+	};
+}
+
+interface IContentDisposition {
+	type: string;
+	filename?: string;
+}
+
+function parseHeaderParameters(parameters: string[]): Record<string, string> {
+	return parameters.reduce(
+		(acc, param) => {
+			const [key, value] = param.split('=');
+			acc[key.toLowerCase().trim()] = decodeURIComponent(value);
+			return acc;
+		},
+		{} as Record<string, string>,
+	);
+}
+
+function parseContentType(contentType?: string): IContentType | null {
+	if (!contentType) {
+		return null;
 	}
 
-	const contentDispositionHeader = message.headers['content-disposition'];
-	if (contentDispositionHeader?.length) {
-		const {
-			type,
-			parameters: { filename },
-		} = parseContentDisposition(contentDispositionHeader);
-		message.contentDisposition = { type, filename };
+	const [type, ...parameters] = contentType.split(';');
+
+	return {
+		type: type.toLowerCase(),
+		parameters: { charset: 'utf-8', ...parseHeaderParameters(parameters) },
+	};
+}
+
+function parseFileName(filename?: string): string | undefined {
+	if (filename?.startsWith('"') && filename?.endsWith('"')) {
+		return filename.slice(1, -1);
+	}
+
+	return filename;
+}
+
+// https://datatracker.ietf.org/doc/html/rfc5987
+function parseFileNameStar(filename?: string): string | undefined {
+	const [_encoding, _locale, content] = parseFileName(filename)?.split("'") ?? [];
+
+	return content;
+}
+
+function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
+	if (!contentDisposition) {
+		return null;
+	}
+
+	// This is invalid syntax, but common
+	// Example 'filename="example.png"' (instead of 'attachment; filename="example.png"')
+	if (!contentDisposition.startsWith('attachment') && !contentDisposition.startsWith('inline')) {
+		contentDisposition = `attachment; ${contentDisposition}`;
+	}
+
+	const [type, ...parameters] = contentDisposition.split(';');
+
+	const parsedParameters = parseHeaderParameters(parameters);
+
+	return {
+		type,
+		filename:
+			parseFileNameStar(parsedParameters['filename*']) ?? parseFileName(parsedParameters.filename),
+	};
+}
+
+export function parseIncomingMessage(message: IncomingMessage) {
+	const contentType = parseContentType(message.headers['content-type']);
+	if (contentType) {
+		const { type, parameters } = contentType;
+		message.contentType = type;
+		message.encoding = parameters.charset.toLowerCase() as BufferEncoding;
+	}
+
+	const contentDisposition = parseContentDisposition(message.headers['content-disposition']);
+	if (contentDisposition) {
+		message.contentDisposition = contentDisposition;
 	}
 }
 

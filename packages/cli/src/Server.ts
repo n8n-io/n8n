@@ -337,7 +337,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			expressions: {
-				evaluator: config.get('expression.evaluator') as 'tmpl' | 'tournament',
+				evaluator: config.getEnv('expression.evaluator'),
 			},
 			banners: {
 				dismissed: [],
@@ -399,7 +399,6 @@ export class Server extends AbstractServer {
 				),
 				executions_data_prune: config.getEnv('executions.pruneData'),
 				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binaryDataConfig.mode,

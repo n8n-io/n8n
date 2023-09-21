@@ -41,6 +41,7 @@ export const isExpressionError = (error: unknown): error is ExpressionError =>
 export const isTypeError = (error: unknown): error is TypeError =>
 	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
+// Make sure that error get forwarded
 setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
