@@ -20,22 +20,21 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		workflowId: string,
 		executionId: string,
 		bufferOrStream: Buffer | Readable,
-		_metadata: BinaryData.PreWriteMetadata,
+		_metadata: BinaryData.PreWriteMetadata, // @TODO: Use metadata
 	) {
 		const fileId = `/workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 		const buffer = await this.binaryToBuffer(bufferOrStream);
 
-		// @TODO: Set incoming metadata
 		await this.objectStoreService.put(fileId, buffer);
 
 		return { fileId, fileSize: buffer.length };
 	}
 
-	getPath(fileId: string): string {
-		throw new Error('TODO');
+	getPath(fileId: string) {
+		return fileId;
 	}
 
-	async getAsBuffer(fileId: string): Promise<Buffer> {
+	async getAsBuffer(fileId: string) {
 		return this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
