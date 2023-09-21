@@ -95,7 +95,7 @@ export class ObjectStoreService {
 
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
-		const innerXml = objects.map((o) => `<Object><Key>${o.key}</Key></Object>`).join('\n');
+		const innerXml = objects.map(({ key }) => `<Object><Key>${key}</Key></Object>`).join('\n');
 
 		const body = ['<Delete>', innerXml, '</Delete>'].join('\n');
 
