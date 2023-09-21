@@ -108,11 +108,11 @@ export class BinaryDataService {
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	async getAsBuffer(binaryData: IBinaryData) {
+	async getAsBuffer(workflowId: string, binaryData: IBinaryData) {
 		if (binaryData.id) {
 			const [mode, uuid] = binaryData.id.split(':');
 
-			return this.getManager(mode).getAsBuffer(uuid);
+			return this.getManager(mode).getAsBuffer(workflowId, uuid);
 		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
