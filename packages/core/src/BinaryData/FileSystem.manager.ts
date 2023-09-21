@@ -106,7 +106,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		workflowId: string,
 		executionId: string,
 		filePath: string,
-		{ mimeType, fileName }: { mimeType: string; fileName?: string },
+		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const newFileId = this.createFileId(executionId);
 
