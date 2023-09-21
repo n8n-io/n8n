@@ -2630,7 +2630,7 @@ export default defineComponent({
 
 						if (workflow.meta?.onboardingId) {
 							this.$telemetry.track(
-								`User opened workflow from ${workflow.meta.onboardingId} onboarding template`,
+								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
 								{
 									workflow_id: workflow.id,
 								},

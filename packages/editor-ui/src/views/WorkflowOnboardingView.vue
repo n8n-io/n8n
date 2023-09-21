@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useLoadingService } from '@/composables';
+import { useLoadingService, useI18n } from '@/composables';
 import { VIEWS } from '@/constants';
 import { useTemplatesStore, useWorkflowsStore } from '@/stores';
 import { onMounted } from 'vue';
@@ -10,6 +10,7 @@ const templateStore = useTemplatesStore();
 const workfowStore = useWorkflowsStore();
 const router = useRouter();
 const route = useRoute();
+const i18n = useI18n();
 
 const openWorkflowTemplate = async (templateId: string) => {
 	try {
@@ -19,8 +20,12 @@ const openWorkflowTemplate = async (templateId: string) => {
 			throw new Error();
 		}
 
+		const name: string = i18n.baseText('onboarding.title', {
+			interpolate: { name: template.name },
+		});
+
 		const workflow = await workfowStore.createNewWorkflow({
-			name: template.name,
+			name,
 			connections: template.workflow.connections,
 			nodes: template.workflow.nodes,
 			meta: {
