@@ -22,6 +22,7 @@ import {
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
+	Cloud,
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
@@ -39,6 +40,7 @@ import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
 import { useCloudPlanStore } from './cloudPlan.store';
 import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
+import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -52,6 +54,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
 		currentUserId: null,
 		users: {},
+		currentUserCloudInfo: null,
 	}),
 	getters: {
 		allUsers(): IUser[] {
@@ -194,7 +197,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			this.currentUserId = null;
 			useCloudPlanStore().reset();
 			usePostHog().reset();
-			await useUIStore().dismissAllBanners();
+			this.currentUserCloudInfo = null;
+			useUIStore().clearBannerStack();
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -364,6 +368,18 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (currentUser) {
 				currentUser.mfaEnabled = false;
 			}
+		},
+		async fetchUserCloudAccount() {
+			let cloudUser: Cloud.UserAccount | null = null;
+			try {
+				cloudUser = await getCloudUserInfo(useRootStore().getRestApiContext);
+				this.currentUserCloudInfo = cloudUser;
+			} catch (error) {
+				throw new Error(error);
+			}
+		},
+		async confirmEmail() {
+			await confirmEmail(useRootStore().getRestApiContext);
 		},
 	},
 });
