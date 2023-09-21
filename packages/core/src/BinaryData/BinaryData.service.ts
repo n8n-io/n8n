@@ -38,8 +38,8 @@ export class BinaryDataService {
 
 		if (!manager) {
 			const { size } = await stat(path);
-			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
 			binaryData.fileSize = prettyBytes(size);
+			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
 
 			return binaryData;
 		}
