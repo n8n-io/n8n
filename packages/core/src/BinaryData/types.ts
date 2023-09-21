@@ -16,31 +16,33 @@ export namespace BinaryData {
 		fileSize: number;
 	};
 
+	type PreStoreMetadata = Omit<Metadata, 'fileSize'>;
+
 	export interface Manager {
 		init(): Promise<void>;
 
 		store(
 			binaryData: Buffer | Readable,
 			executionId: string,
-			metadata: { mimeType: string; fileName?: string },
+			preStoreMetadata: PreStoreMetadata,
 		): Promise<{ fileId: string; fileSize: number }>;
 
-		getPath(identifier: string): string;
-		getAsBuffer(identifier: string): Promise<Buffer>;
-		getAsStream(identifier: string, chunkSize?: number): Readable;
-		getMetadata(identifier: string): Promise<Metadata>;
+		getPath(fileId: string): string;
+		getAsBuffer(fileId: string): Promise<Buffer>;
+		getAsStream(fileId: string, chunkSize?: number): Readable;
+		getMetadata(fileId: string): Promise<Metadata>;
 
 		// @TODO: Refactor to also use `workflowId` to support full path-like identifier:
 		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
 		copyByFilePath(
 			path: string,
 			executionId: string,
-			metadata: { mimeType: string; fileName?: string },
+			metadata: PreStoreMetadata,
 		): Promise<{ fileId: string; fileSize: number }>;
 
-		copyByFileId(identifier: string, prefix: string): Promise<string>;
+		copyByFileId(fileId: string, prefix: string): Promise<string>;
 
-		deleteOne(identifier: string): Promise<void>;
+		deleteOne(fileId: string): Promise<void>;
 
 		// @TODO: Refactor to also receive `workflowId` to support full path-like identifier:
 		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
