@@ -5,7 +5,8 @@ import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
-import { MissingBinaryDataManager, InvalidBinaryDataMode, areValidModes } from './utils';
+import { areValidModes } from './utils';
+import { MissingBinaryDataManager, InvalidBinaryDataMode } from './errors';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
