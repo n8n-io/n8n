@@ -4,7 +4,6 @@ import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
@@ -16,12 +15,10 @@ import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
+import type { IExternalHooksClass } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
-import { License } from '@/License';
-import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { initExpressionEvaluator } from '@/ExpressionEvaluator';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -35,8 +32,6 @@ export abstract class BaseCommand extends Command {
 	protected userSettings: IUserSettings;
 
 	protected instanceId: string;
-
-	protected server?: AbstractServer;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -59,8 +54,10 @@ export abstract class BaseCommand extends Command {
 			this.exitWithCrash('There was an error initializing DB', error),
 		);
 
-		await this.server?.init();
+		await this.postInit();
+	}
 
+	protected async postInit() {
 		await Db.migrate().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error running database migrations', error),
 		);
@@ -113,35 +110,6 @@ export abstract class BaseCommand extends Command {
 	async initExternalHooks() {
 		this.externalHooks = Container.get(ExternalHooks);
 		await this.externalHooks.init();
-	}
-
-	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
-		config.set('generic.instanceType', instanceType);
-
-		const license = Container.get(License);
-		await license.init(this.instanceId, instanceType);
-
-		const activationKey = config.getEnv('license.activationKey');
-
-		if (activationKey) {
-			const hasCert = (await license.loadCertStr()).length > 0;
-
-			if (hasCert) {
-				return LoggerProxy.debug('Skipping license activation');
-			}
-
-			try {
-				LoggerProxy.debug('Attempting license activation');
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e as Error);
-			}
-		}
-	}
-
-	async initExternalSecrets() {
-		const secretsManager = Container.get(ExternalSecretsManager);
-		await secretsManager.init();
 	}
 
 	async finally(error: Error | undefined) {

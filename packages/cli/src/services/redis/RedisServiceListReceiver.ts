@@ -6,9 +6,7 @@ import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
 @Service()
 export class RedisServiceListReceiver extends RedisServiceBaseReceiver {
-	async init(): Promise<void> {
-		await super.init('list-receiver');
-	}
+	readonly type = 'list-receiver';
 
 	async popFromHead(list: string): Promise<string | null | undefined> {
 		if (!this.redisClient) {

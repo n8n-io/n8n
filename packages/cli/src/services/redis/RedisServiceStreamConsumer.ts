@@ -14,13 +14,11 @@ type StreamDetails = {
 
 @Service()
 export class RedisServiceStreamConsumer extends RedisServiceBaseReceiver {
+	readonly type = 'consumer';
+
 	// while actively listening, the stream name and last id are stored here
 	// removing the entry will stop the listener
 	streams: Map<StreamName, StreamDetails> = new Map();
-
-	async init(): Promise<void> {
-		await super.init('consumer');
-	}
 
 	async listenToStream(stream: StreamName, lastId = '$'): Promise<void> {
 		if (!this.redisClient) {

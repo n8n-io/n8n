@@ -8,7 +8,7 @@ import {
 	validateWorkflowCredentialUsage,
 } from '@/WorkflowHelpers';
 import { getLogger } from '@/Logger';
-import type { IWorkflowExecutionDataProcess } from '../../src/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FIRST_CREDENTIAL_ID = '1';
 const SECOND_CREDENTIAL_ID = '2';

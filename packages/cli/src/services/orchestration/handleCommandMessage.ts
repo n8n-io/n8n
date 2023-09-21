@@ -1,15 +1,17 @@
+import { Container } from 'typedi';
 import { LoggerProxy } from 'n8n-workflow';
-import { messageToRedisServiceCommandObject } from './helpers';
-import Container from 'typedi';
+import config from '@/config';
 import { License } from '@/License';
+import { messageToRedisServiceCommandObject } from './helpers';
 
 // this function handles commands sent to the MAIN instance. the workers handle their own commands
-export async function handleCommandMessage(messageString: string, uniqueInstanceId: string) {
+export async function handleCommandMessage(messageString: string) {
+	const queueModeId = config.get('redis.queueModeId');
 	const message = messageToRedisServiceCommandObject(messageString);
 	if (message) {
 		if (
-			message.senderId === uniqueInstanceId ||
-			(message.targets && !message.targets.includes(uniqueInstanceId))
+			message.senderId === queueModeId ||
+			(message.targets && !message.targets.includes(queueModeId))
 		) {
 			LoggerProxy.debug(
 				`Skipping command message ${message.command} because it's not for this instance.`,

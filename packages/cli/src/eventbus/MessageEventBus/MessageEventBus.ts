@@ -50,7 +50,6 @@ export interface MessageWithCallback {
 export interface MessageEventBusInitializeOptions {
 	skipRecoveryPass?: boolean;
 	workerId?: string;
-	uniqueInstanceId?: string;
 }
 
 @Service()
@@ -58,8 +57,6 @@ export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
-
-	uniqueInstanceId: string;
 
 	redisPublisher: RedisServicePubSubPublisher;
 
@@ -93,12 +90,10 @@ export class MessageEventBus extends EventEmitter {
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
-	async initialize(options: MessageEventBusInitializeOptions): Promise<void> {
+	async initialize(options: MessageEventBusInitializeOptions = {}): Promise<void> {
 		if (this.isInitialized) {
 			return;
 		}
-
-		this.uniqueInstanceId = options?.uniqueInstanceId ?? '';
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
@@ -266,11 +261,12 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	async handleRedisCommandMessage(messageString: string) {
+		const queueModeId = config.get('redis.queueModeId');
 		const message = messageToRedisServiceCommandObject(messageString);
 		if (message) {
 			if (
-				message.senderId === this.uniqueInstanceId ||
-				(message.targets && !message.targets.includes(this.uniqueInstanceId))
+				message.senderId === queueModeId ||
+				(message.targets && !message.targets.includes(queueModeId))
 			) {
 				LoggerProxy.debug(
 					`Skipping command message ${message.command} because it's not for this instance.`,
@@ -291,7 +287,6 @@ export class MessageEventBus extends EventEmitter {
 	async broadcastRestartEventbusAfterDestinationUpdate() {
 		if (config.getEnv('executions.mode') === 'queue') {
 			await this.redisPublisher.publishToCommandChannel({
-				senderId: this.uniqueInstanceId,
 				command: 'restartEventBus',
 			});
 		}

@@ -10,20 +10,13 @@ import { handleCommandMessage } from './orchestration/handleCommandMessage';
 export class OrchestrationService {
 	private initialized = false;
 
-	private _uniqueInstanceId = '';
-
-	get uniqueInstanceId(): string {
-		return this._uniqueInstanceId;
-	}
-
 	redisPublisher: RedisServicePubSubPublisher;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
 	constructor(readonly redisService: RedisService) {}
 
-	async init(uniqueInstanceId: string) {
-		this._uniqueInstanceId = uniqueInstanceId;
+	async init() {
 		await this.initPublisher();
 		await this.initSubscriber();
 		this.initialized = true;
@@ -50,7 +43,7 @@ export class OrchestrationService {
 				if (channel === WORKER_RESPONSE_REDIS_CHANNEL) {
 					await handleWorkerResponseMessage(messageString);
 				} else if (channel === COMMAND_REDIS_CHANNEL) {
-					await handleCommandMessage(messageString, this.uniqueInstanceId);
+					await handleCommandMessage(messageString);
 				}
 			},
 		);
@@ -61,7 +54,6 @@ export class OrchestrationService {
 			throw new Error('OrchestrationService not initialized');
 		}
 		await this.redisPublisher.publishToCommandChannel({
-			senderId: this.uniqueInstanceId,
 			command: 'getStatus',
 			targets: id ? [id] : undefined,
 		});
@@ -72,32 +64,7 @@ export class OrchestrationService {
 			throw new Error('OrchestrationService not initialized');
 		}
 		await this.redisPublisher.publishToCommandChannel({
-			senderId: this.uniqueInstanceId,
 			command: 'getId',
-		});
-	}
-
-	// TODO: not implemented yet on worker side
-	async stopWorker(id?: string) {
-		if (!this.initialized) {
-			throw new Error('OrchestrationService not initialized');
-		}
-		await this.redisPublisher.publishToCommandChannel({
-			senderId: this.uniqueInstanceId,
-			command: 'stopWorker',
-			targets: id ? [id] : undefined,
-		});
-	}
-
-	// reload the license on workers after it was changed on the main instance
-	async reloadLicense(id?: string) {
-		if (!this.initialized) {
-			throw new Error('OrchestrationService not initialized');
-		}
-		await this.redisPublisher.publishToCommandChannel({
-			senderId: this.uniqueInstanceId,
-			command: 'reloadLicense',
-			targets: id ? [id] : undefined,
 		});
 	}
 }

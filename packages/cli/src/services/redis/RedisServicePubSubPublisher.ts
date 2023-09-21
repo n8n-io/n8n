@@ -5,18 +5,12 @@ import {
 	EVENT_BUS_REDIS_CHANNEL,
 	WORKER_RESPONSE_REDIS_CHANNEL,
 } from './RedisServiceHelper';
-import type {
-	RedisServiceCommandObject,
-	RedisServiceWorkerResponseObject,
-} from './RedisServiceCommands';
+import type { RedisServiceCommandObject } from './RedisServiceCommands';
 import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 
 @Service()
 export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
-	async init(senderId?: string): Promise<void> {
-		await super.init('publisher');
-		this.setSenderId(senderId);
-	}
+	readonly type = 'publisher';
 
 	async publish(channel: string, message: string): Promise<void> {
 		if (!this.redisClient) {
@@ -29,11 +23,21 @@ export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 		await this.publish(EVENT_BUS_REDIS_CHANNEL, message.toString());
 	}
 
-	async publishToCommandChannel(message: RedisServiceCommandObject): Promise<void> {
-		await this.publish(COMMAND_REDIS_CHANNEL, JSON.stringify(message));
+	async publishToCommandChannel(
+		message: Omit<RedisServiceCommandObject, 'senderId'>,
+	): Promise<void> {
+		await this.publish(
+			COMMAND_REDIS_CHANNEL,
+			JSON.stringify({ ...message, senderId: this.senderId }),
+		);
 	}
 
-	async publishToWorkerChannel(message: RedisServiceWorkerResponseObject): Promise<void> {
-		await this.publish(WORKER_RESPONSE_REDIS_CHANNEL, JSON.stringify(message));
+	async publishToWorkerChannel(
+		message: Omit<RedisServiceCommandObject, 'senderId'>,
+	): Promise<void> {
+		await this.publish(
+			WORKER_RESPONSE_REDIS_CHANNEL,
+			JSON.stringify({ ...message, senderId: this.senderId }),
+		);
 	}
 }

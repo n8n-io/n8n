@@ -26,20 +26,21 @@ import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
-import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
-import { generateHostInstanceId } from '@/databases/utils/generators';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { eventBus } from '../eventbus';
-import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
-import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
-import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
+import { eventBus } from '@/eventbus';
+import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { getWorkerCommandReceivedHandler } from '@/worker/workerCommandHandler';
+import { ServerCommand } from './ServerCommand';
 
-export class Worker extends BaseCommand {
+export class Worker extends ServerCommand {
+	readonly instanceType = 'worker';
+
 	static description = '\nStarts a n8n worker';
 
 	static examples = ['$ n8n worker --concurrency=5'];
@@ -57,8 +58,6 @@ export class Worker extends BaseCommand {
 	} = {};
 
 	static jobQueue: JobQueue;
-
-	readonly uniqueInstanceId = generateHostInstanceId('worker');
 
 	redisPublisher: RedisServicePubSubPublisher;
 
@@ -251,25 +250,10 @@ export class Worker extends BaseCommand {
 	}
 
 	async init() {
-		await this.initCrashJournal();
 		await super.init();
-		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
-		this.logger.debug('Starting n8n worker...');
-
-		await this.initLicense('worker');
-		await this.initBinaryManager();
-		await this.initExternalHooks();
-		await this.initExternalSecrets();
-		await this.initEventBus();
+		await eventBus.initialize({ workerId: this.queueModeId });
 		await this.initRedis();
 		await this.initQueue();
-	}
-
-	async initEventBus() {
-		await eventBus.initialize({
-			workerId: this.uniqueInstanceId,
-			uniqueInstanceId: this.uniqueInstanceId,
-		});
 	}
 
 	/**
@@ -286,16 +270,14 @@ export class Worker extends BaseCommand {
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
-					workerId: this.uniqueInstanceId,
+					workerId: this.queueModeId,
 				},
 			}),
 		);
 		await this.redisSubscriber.subscribeToCommandChannel();
 		this.redisSubscriber.addMessageHandler(
 			'WorkerCommandReceivedHandler',
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			getWorkerCommandReceivedHandler({
-				uniqueInstanceId: this.uniqueInstanceId,
 				instanceId: this.instanceId,
 				redisPublisher: this.redisPublisher,
 				getRunningJobIds: () => Object.keys(Worker.runningJobs),
@@ -363,7 +345,7 @@ export class Worker extends BaseCommand {
 		});
 	}
 
-	async setupHealthMonitor() {
+	private async setupHealthMonitor() {
 		const port = config.getEnv('queue.health.port');
 
 		const app = express();

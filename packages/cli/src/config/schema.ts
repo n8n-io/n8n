@@ -1145,6 +1145,12 @@ export const schema = {
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
 		},
+
+		queueModeId: {
+			doc: 'Identifier for redis senders in queue mode',
+			format: String,
+			default: '',
+		},
 	},
 
 	cache: {

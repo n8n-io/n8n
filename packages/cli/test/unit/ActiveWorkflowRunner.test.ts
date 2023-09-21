@@ -26,7 +26,7 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { NodeTypes } from '@/NodeTypes';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { WebhookService } from '@/services/webhook.service';
-import { VariablesService } from '../../src/environments/variables/variables.service';
+import { VariablesService } from '@/environments/variables/variables.service';
 
 /**
  * TODO:

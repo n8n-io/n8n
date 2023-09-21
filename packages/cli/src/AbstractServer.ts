@@ -10,7 +10,6 @@ import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import { N8nInstanceType } from '@/Interfaces';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
@@ -18,8 +17,6 @@ import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
-import { generateHostInstanceId } from './databases/utils/generators';
-import { OrchestrationService } from './services/orchestration.service';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -52,9 +49,7 @@ export abstract class AbstractServer {
 
 	protected testWebhooksEnabled = false;
 
-	readonly uniqueInstanceId: string;
-
-	constructor(instanceType: N8nInstanceType = 'main') {
+	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
@@ -68,8 +63,6 @@ export abstract class AbstractServer {
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
-
-		this.uniqueInstanceId = generateHostInstanceId(instanceType);
 	}
 
 	async configure(): Promise<void> {
@@ -117,7 +110,9 @@ export abstract class AbstractServer {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			// will start the redis connections
-			await Container.get(OrchestrationService).init(this.uniqueInstanceId);
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { OrchestrationService } = await import('./services/orchestration.service');
+			await Container.get(OrchestrationService).init();
 		}
 	}
 

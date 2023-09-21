@@ -21,16 +21,18 @@ export type RedisServiceMessageHandler =
 	| ((channel: string, message: string) => void)
 	| ((stream: string, id: string, message: string[]) => void);
 
-class RedisServiceBase {
+abstract class RedisServiceBase {
 	redisClient: Redis | Cluster | undefined;
 
 	isInitialized = false;
 
-	async init(type: RedisClientType = 'client'): Promise<void> {
+	abstract type: RedisClientType;
+
+	async init(): Promise<void> {
 		if (this.redisClient && this.isInitialized) {
 			return;
 		}
-		this.redisClient = await getDefaultRedisClient(undefined, type);
+		this.redisClient = await getDefaultRedisClient(undefined, this.type);
 
 		this.redisClient.on('close', () => {
 			LoggerProxy.warn('Redis unavailable - trying to reconnect...');
@@ -55,10 +57,8 @@ class RedisServiceBase {
 }
 
 export abstract class RedisServiceBaseSender extends RedisServiceBase {
-	senderId: string;
-
-	setSenderId(senderId?: string): void {
-		this.senderId = senderId ?? '';
+	constructor(readonly senderId: string) {
+		super();
 	}
 }
 

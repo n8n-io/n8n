@@ -1,6 +1,6 @@
+import { Service } from 'typedi';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
-import { Service } from 'typedi';
 import { OrchestrationService } from '@/services/orchestration.service';
 
 @Authorized(['global', 'owner'])
@@ -10,7 +10,7 @@ export class OrchestrationController {
 	constructor(private readonly orchestrationService: OrchestrationService) {}
 
 	/**
-	 * These endpoint currently do not return anything, they just trigger the messsage to
+	 * These endpoint currently do not return anything, they just trigger the message to
 	 * the workers to respond on Redis with their status.
 	 * TODO: these responses need to be forwarded to and handled by the frontend
 	 */

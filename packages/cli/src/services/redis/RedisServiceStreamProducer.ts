@@ -14,10 +14,7 @@ import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 
 @Service()
 export class RedisServiceStreamProducer extends RedisServiceBaseSender {
-	async init(senderId?: string): Promise<void> {
-		await super.init('producer');
-		this.setSenderId(senderId);
-	}
+	readonly type = 'producer';
 
 	async add(streamName: string, values: RedisValue[]): Promise<void> {
 		await this.redisClient?.xadd(streamName, '*', 'senderId', this.senderId, ...values);

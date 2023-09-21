@@ -26,7 +26,7 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { CommunityPackageService } from '@/services/communityPackage.service';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
-import { BaseCommand } from './BaseCommand';
+import { ServerCommand } from './ServerCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
@@ -35,7 +35,9 @@ import { ExecutionRepository } from '@/databases/repositories/execution.reposito
 const open = require('open');
 const pipeline = promisify(stream.pipeline);
 
-export class Start extends BaseCommand {
+export class Start extends ServerCommand {
+	readonly instanceType = 'main';
+
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
 
 	static examples = [
@@ -194,16 +196,8 @@ export class Start extends BaseCommand {
 	}
 
 	async init() {
-		await this.initCrashJournal();
-
 		await super.init();
-		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
-
-		await this.initLicense('main');
-		await this.initBinaryManager();
-		await this.initExternalHooks();
-		await this.initExternalSecrets();
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
