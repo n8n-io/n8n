@@ -4,11 +4,11 @@ import path from 'path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
 
-import { FileNotFoundError } from '../errors';
+import { FileNotFound } from './errors';
+import { ensureDirExists } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
-import { ensureDirExists } from './utils';
 
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
@@ -132,7 +132,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const returnPath = path.join(this.storagePath, ...args);
 
 		if (path.relative(this.storagePath, returnPath).startsWith('..')) {
-			throw new FileNotFoundError('Invalid path detected');
+			throw new FileNotFound('Invalid path detected');
 		}
 
 		return returnPath;

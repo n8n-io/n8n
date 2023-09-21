@@ -6,8 +6,14 @@ export class InvalidBinaryDataMode extends Error {
 	}
 }
 
-export class MissingBinaryDataManager extends Error {
-	constructor() {
-		super('No binary data manager found');
+export class BinaryDataManagerNotFound extends Error {
+	constructor(mode: string) {
+		super(`No binary data manager found for: ${mode}`);
+	}
+}
+
+export class FileNotFound extends Error {
+	constructor(filePath: string) {
+		super(`File not found: ${filePath}`);
 	}
 }
