@@ -940,29 +940,22 @@ async function httpRequest(
 	return result.data;
 }
 
-export function getBinaryPath(workflowId: string, binaryDataId: string): string {
-	return Container.get(BinaryDataService).getPath(workflowId, binaryDataId);
+export function getBinaryPath(binaryDataId: string): string {
+	return Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
-export async function getBinaryMetadata(
-	workflowId: string,
-	binaryDataId: string,
-): Promise<BinaryData.Metadata> {
-	return Container.get(BinaryDataService).getMetadata(workflowId, binaryDataId);
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
+	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
-export function getBinaryStream(
-	workflowId: string,
-	binaryDataId: string,
-	chunkSize?: number,
-): Readable {
-	return Container.get(BinaryDataService).getAsStream(workflowId, binaryDataId, chunkSize);
+export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
+	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -1000,7 +993,7 @@ export async function getBinaryDataBuffer(
 	workflowId: string,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataService).getAsBuffer(workflowId, binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**
@@ -2588,9 +2581,9 @@ const getBinaryHelperFunctions = (
 	{ executionId }: IWorkflowExecuteAdditionalData,
 	workflowId: string,
 ): BinaryHelperFunctions => ({
-	getBinaryPath: (binaryDataId) => getBinaryPath(workflowId, binaryDataId),
-	getBinaryStream: (binaryDataId) => getBinaryStream(workflowId, binaryDataId),
-	getBinaryMetadata: async (binaryDataId) => getBinaryMetadata(workflowId, binaryDataId),
+	getBinaryPath,
+	getBinaryStream,
+	getBinaryMetadata,
 	binaryToBuffer: async (body: Buffer | Readable) =>
 		Container.get(BinaryDataService).binaryToBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
