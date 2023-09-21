@@ -34,7 +34,7 @@ export class FormTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: 'onReceived',
+				responseMode: '={{$parameter["responseMode"]}}',
 				path: FORM_TRIGGER_PATH_IDENTIFIER,
 			},
 		],
@@ -120,6 +120,30 @@ export class FormTrigger implements INodeType {
 								required: true,
 							},
 							{
+								displayName: 'Date Format',
+								name: 'dateFormat',
+								type: 'options',
+								default: 'en-GB',
+								description: 'You can use expression to specify required locale, e.g. de-DE',
+								options: [
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'dd/mm/yyyy',
+										value: 'en-GB',
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'mm/dd/yyyy',
+										value: 'en-US',
+									},
+								],
+								displayOptions: {
+									show: {
+										fieldType: ['date'],
+									},
+								},
+							},
+							{
 								displayName: 'Field Options',
 								name: 'fieldOptions',
 								placeholder: 'Add Field Option',
@@ -163,6 +187,68 @@ export class FormTrigger implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Respond',
+				name: 'responseMode',
+				type: 'options',
+				options: [
+					{
+						name: 'Form Is Submitted',
+						value: 'onReceived',
+						description: 'As soon as this node receives the form',
+					},
+					{
+						name: 'Workflow Finishes',
+						value: 'lastNode',
+						description: 'Returns data of the last-executed node',
+					},
+				],
+				default: 'onReceived',
+				description: 'When and how to respond to the form submission',
+			},
+			{
+				displayName: 'Respond With',
+				name: 'respondWith',
+				type: 'options',
+				options: [
+					{
+						name: 'Default Confirmation',
+						value: 'default',
+					},
+					{
+						name: 'Custom Text',
+						value: 'text',
+					},
+					{
+						name: 'Redirection to URL',
+						value: 'redirect',
+					},
+				],
+				default: 'default',
+			},
+			{
+				displayName: 'Custom Text',
+				name: 'customText',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						respondWith: ['text'],
+					},
+				},
+			},
+			{
+				displayName: 'Redirect URL',
+				name: 'redirectUrl',
+				type: 'string',
+				default: '',
+				placeholder: 'https://example.com',
+				displayOptions: {
+					show: {
+						respondWith: ['redirect'],
+					},
+				},
+			},
 		],
 	};
 
@@ -189,24 +275,55 @@ export class FormTrigger implements INodeType {
 		const bodyData = (this.getBodyData().data as IDataObject) ?? {};
 
 		const returnData: IDataObject = {};
-		returnData['form url'] = mode;
 
 		const regexp = new RegExp(WHITE_SPACE_PLACEHOLDER, 'g');
 		Object.keys(bodyData).map((key) => {
 			let value = bodyData[key];
 			const escapedKey = key.replace(regexp, ' ');
-			const expectedType = formFields.find((field) => field.fieldLabel === escapedKey)?.fieldType;
-			if (expectedType === 'number') {
+			const fieldData = formFields.find((field) => field.fieldLabel === escapedKey);
+			if (fieldData?.fieldType === 'number') {
 				value = Number(value);
 			}
-			if (expectedType === 'text') {
+			if (fieldData?.fieldType === 'text') {
 				value = String(value).trim();
+			}
+			if (fieldData?.fieldType === 'date') {
+				value = new Intl.DateTimeFormat(fieldData.dateFormat ?? 'en-GB').format(
+					new Date(value as string),
+				);
 			}
 			returnData[escapedKey] = value;
 		});
 
+		returnData.formMode = mode;
+
+		const respondWith = this.getNodeParameter('respondWith', '') as string;
+
+		const webhookResponse: IDataObject = { status: 200 };
+		const triggerSettings: IDataObject = {};
+
+		if (respondWith === 'redirect') {
+			triggerSettings.redirectUrl = this.getNodeParameter('redirectUrl', '') as string;
+		}
+
+		if (respondWith === 'text') {
+			triggerSettings.customText = this.getNodeParameter('customText', '') as string;
+		}
+
+		if (Object.keys(triggerSettings).length) {
+			const responseMode = this.getNodeParameter('responseMode', '') as string;
+
+			if (responseMode === 'onReceived') {
+				webhookResponse.triggerSettings = triggerSettings;
+			}
+
+			if (responseMode === 'lastNode') {
+				returnData.triggerSettings = triggerSettings;
+			}
+		}
+
 		return {
-			webhookResponse: { status: 200 },
+			webhookResponse,
 			workflowData: [this.helpers.returnJsonArray(returnData)],
 		};
 	}

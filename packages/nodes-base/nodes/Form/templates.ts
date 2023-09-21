@@ -221,8 +221,8 @@ const submittedTestMessage = (testRun: boolean) => {
 	return `
 	<div class="card" id="submitted-form" style="display: none;">
 	<div class="form-header">
-		<h1>Form Submited</h1>
-		<p>
+		<h1 id="submitted-header">Form Submited</h1>
+		<p id="submitted-content">
 			${
 				testRun
 					? 'Close this window and go back to the n8n editor'
@@ -368,19 +368,37 @@ export const createPage = (
 
 				if (valid) {
 					var formData = new FormData(form);
+					formData.append("submittedAt", (new Date()).toISOString());
 					fetch('#', {
 						method: 'POST',
 						body: formData
 					})
-						.then(function (response) {
-							if (response.status === 200) {
-								form.style.display = 'none';
-								document.querySelector('#submitted-form').style.display = 'block';
+					.then(function (response) {
+						const data = response.json();
+						data.status = response.status;
+						return data;
+					})
+					.then(function (data) {
+						if (data.status === 200) {
+							form.style.display = 'none';
+							document.querySelector('#submitted-form').style.display = 'block';
+							if (data?.triggerSettings?.customText) {
+								document.querySelector('#submitted-content').textContent = data.triggerSettings.customText;
 							}
-						})
-						.catch(function (error) {
-							console.error('Error:', error);
-						});
+							if (data?.triggerSettings?.redirectUrl) {
+								window.location.href = data.triggerSettings.redirectUrl;
+							}
+						} else {
+							form.style.display = 'none';
+							document.querySelector('#submitted-form').style.display = 'block';
+							document.querySelector('#submitted-content').textContent = data.message;
+							document.querySelector('#submitted-content').style.color = 'red';
+							document.querySelector('#submitted-header').textContent = 'Error:';
+						}
+					})
+					.catch(function (error) {
+						console.error('Error:', error);
+					});
 				}
 			});
 		</script>
