@@ -11,10 +11,8 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import Container, { Service } from 'typedi';
-import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
-import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
-import { RedisService } from './services/redis.service';
+import { Service } from 'typedi';
+import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces';
 
 type FeatureReturnType = Partial<
 	{
@@ -28,28 +26,18 @@ export class License {
 
 	private manager: LicenseManager | undefined;
 
-	instanceId: string | undefined;
-
-	private redisPublisher: RedisServicePubSubPublisher;
-
 	constructor() {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
+	async init(instanceId: string) {
 		if (this.manager) {
 			return;
 		}
 
-		this.instanceId = instanceId;
-		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
-		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
-		const offlineMode = !isMainInstance;
+		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
-		const saveCertStr = isMainInstance
-			? async (value: TLicenseBlock) => this.saveCertStr(value)
-			: async () => {};
 
 		try {
 			this.manager = new LicenseManager({
@@ -59,10 +47,9 @@ export class License {
 				autoRenewEnabled,
 				renewOnInit: autoRenewEnabled,
 				autoRenewOffset,
-				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => this.loadCertStr(),
-				saveCertStr,
+				saveCertStr: async (value: TLicenseBlock) => this.saveCertStr(value),
 				deviceFingerprint: () => instanceId,
 			});
 
@@ -100,15 +87,6 @@ export class License {
 			},
 			['key'],
 		);
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (!this.redisPublisher) {
-				this.logger.debug('Initializing Redis publisher for License Service');
-				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
-			}
-			await this.redisPublisher.publishToCommandChannel({
-				command: 'reloadLicense',
-			});
-		}
 	}
 
 	async activate(activationKey: string): Promise<void> {
@@ -117,14 +95,6 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
-	}
-
-	async reload(): Promise<void> {
-		if (!this.manager) {
-			return;
-		}
-		this.logger.debug('Reloading license');
-		await this.manager.reload();
 	}
 
 	async renew() {

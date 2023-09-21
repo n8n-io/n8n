@@ -6,11 +6,9 @@ import { OrchestrationService } from '@/services/orchestration.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import { eventBus } from '@/eventbus';
+import * as EventHelpers from '@/eventbus/EventMessageClasses/Helpers';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
-import { handleWorkerResponseMessage } from '../../../src/services/orchestration/handleWorkerResponseMessage';
-import { handleCommandMessage } from '../../../src/services/orchestration/handleCommandMessage';
-import { License } from '../../../src/License';
 
 const os = Container.get(OrchestrationService);
 
@@ -79,7 +77,6 @@ describe('Orchestration Service', () => {
 	afterAll(async () => {
 		jest.mock('../../../src/services/redis/RedisServicePubSubPublisher').restoreAllMocks();
 		jest.mock('../../../src/services/redis/RedisServicePubSubSubscriber').restoreAllMocks();
-		await os.shutdown();
 	});
 
 	test('should initialize', async () => {
@@ -90,35 +87,38 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should handle worker responses', async () => {
-		const response = await handleWorkerResponseMessage(
+		const response = await os.handleWorkerResponseMessage(
 			JSON.stringify(workerRestartEventbusResponse),
 		);
 		expect(response.command).toEqual('restartEventBus');
 	});
 
+	test('should handle event messages', async () => {
+		const response = await os.handleEventBusMessage(JSON.stringify(eventBusMessage));
+		jest.spyOn(eventBus, 'send');
+		jest.spyOn(EventHelpers, 'getEventMessageObjectByType');
+		expect(eventBus.send).toHaveBeenCalled();
+		expect(response.eventName).toEqual('n8n.workflow.success');
+		jest.spyOn(eventBus, 'send').mockRestore();
+		jest.spyOn(EventHelpers, 'getEventMessageObjectByType').mockRestore();
+	});
+
 	test('should handle command messages from others', async () => {
-		const license = Container.get(License);
-		license.instanceId = 'test';
-		jest.spyOn(license, 'reload');
-		const responseFalseId = await handleCommandMessage(
-			JSON.stringify({
-				senderId: 'test',
-				command: 'reloadLicense',
-			}),
-			os.uniqueInstanceId,
+		jest.spyOn(eventBus, 'restart');
+		const responseFalseId = await os.handleCommandMessage(
+			JSON.stringify(workerRestartEventbusResponse),
 		);
 		expect(responseFalseId).toBeDefined();
-		expect(responseFalseId!.command).toEqual('reloadLicense');
+		expect(responseFalseId!.command).toEqual('restartEventBus');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(license.reload).toHaveBeenCalled();
-		jest.spyOn(license, 'reload').mockRestore();
+		expect(eventBus.restart).toHaveBeenCalled();
+		jest.spyOn(eventBus, 'restart').mockRestore();
 	});
 
 	test('should reject command messages from iteslf', async () => {
 		jest.spyOn(eventBus, 'restart');
-		const response = await handleCommandMessage(
+		const response = await os.handleCommandMessage(
 			JSON.stringify({ ...workerRestartEventbusResponse, senderId: os.uniqueInstanceId }),
-			os.uniqueInstanceId,
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
@@ -132,5 +132,9 @@ describe('Orchestration Service', () => {
 		await os.getWorkerIds();
 		expect(os.redisPublisher.publishToCommandChannel).toHaveBeenCalled();
 		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockRestore();
+	});
+
+	afterAll(async () => {
+		await os.shutdown();
 	});
 });
