@@ -156,22 +156,6 @@ export class BinaryDataManager {
 		throw new Error('Storage mode used to store binary data not available');
 	}
 
-	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
-		if (this.managers[this.binaryDataMode]) {
-			await this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(executionId);
-		}
-	}
-
-	async markDataForDeletionByExecutionIds(executionIds: string[]): Promise<void> {
-		if (this.managers[this.binaryDataMode]) {
-			await Promise.all(
-				executionIds.map(async (id) =>
-					this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(id),
-				),
-			);
-		}
-	}
-
 	async deleteBinaryDataByExecutionIds(executionIds: string[]): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
 			await this.managers[this.binaryDataMode].deleteBinaryDataByExecutionIds(executionIds);
