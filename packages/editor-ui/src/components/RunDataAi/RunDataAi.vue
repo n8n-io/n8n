@@ -64,7 +64,7 @@
 
 <script lang="ts" setup>
 import type { Ref } from 'vue';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { ITaskAIRunMetadata, ITaskDataConnections } from 'n8n-workflow';
 import type { NodeConnectionType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
@@ -251,6 +251,13 @@ const executionTree = computed<TreeNode[]>(() => {
 
 	const tree = getTreeNodeData(rootNode.name, 0);
 	return tree || [];
+});
+
+onMounted(() => {
+	// Automatically set the first child as active
+	if (executionTree.value.length && executionTree.value[0].children.length) {
+		onItemClick(executionTree.value[0].children[0]);
+	}
 });
 </script>
 
