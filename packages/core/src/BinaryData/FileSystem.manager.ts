@@ -8,6 +8,7 @@ import { FileNotFoundError } from '../errors';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
+import { ensureDirExists } from './utils';
 
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
@@ -16,7 +17,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	constructor(private storagePath: string) {}
 
 	async init() {
-		await this.ensureDirExists(this.storagePath);
+		await ensureDirExists(this.storagePath);
 	}
 
 	getPath(fileId: string) {
@@ -122,14 +123,6 @@ export class FileSystemManager implements BinaryData.Manager {
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
-
-	private async ensureDirExists(dir: string) {
-		try {
-			await fs.access(dir);
-		} catch {
-			await fs.mkdir(dir, { recursive: true });
-		}
-	}
 
 	private createFileId(executionId: string) {
 		return [executionId, uuid()].join('');
