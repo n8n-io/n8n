@@ -1,14 +1,16 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
+import type { WorkflowHistory, WorkflowVersion } from '@/types/workflowHistory';
 
 export const getWorkflowHistory = async (
 	context: IRestApiContext,
 	workflowId: string,
-): Promise<any> => makeRestApiRequest(context, 'POST', `/workflow/${workflowId}/history`);
+): Promise<WorkflowHistory[]> =>
+	makeRestApiRequest(context, 'POST', `/workflow/${workflowId}/history`);
 
 export const getWorkflowVersion = async (
 	context: IRestApiContext,
 	workflowId: string,
 	versionId: string,
-): Promise<any> =>
+): Promise<WorkflowVersion> =>
 	makeRestApiRequest(context, 'POST', `/workflow/${workflowId}/history/${versionId}`);

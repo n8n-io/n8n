@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { saveAs } from 'file-saver';
 import { onBeforeMount, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
@@ -57,7 +58,11 @@ onBeforeMount(async () => {
 
 watchEffect(async () => {
 	if (route.params.versionId) {
-		await workflowHistoryStore.getWorkflowVersion(route.params.workflowId, route.params.versionId);
+		const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
+			route.params.workflowId,
+			route.params.versionId,
+		);
+		workflowHistoryStore.setWorkflowVersion(workflowVersion);
 	}
 });
 
@@ -72,17 +77,35 @@ const openInNewTab = (id: WorkflowHistory['id']) => {
 	window.open(href, '_blank');
 };
 
-const onAction = ({
+const downloadVersion = async (id: WorkflowHistory['id']) => {
+	const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
+		route.params.workflowId,
+		id,
+	);
+	if (workflowVersion?.workflow) {
+		const { workflow } = workflowVersion;
+		const blob = new Blob([JSON.stringify(workflow, null, 2)], {
+			type: 'application/json;charset=utf-8',
+		});
+		saveAs(blob, workflow.name.replace(/[^a-z0-9]/gi, '_') + '.json');
+	}
+};
+
+const onAction = async ({
 	action,
 	id,
 }: {
 	action: TupleToUnion<WorkflowHistoryActionTypes>;
 	id: WorkflowHistory['id'];
 }) => {
-	if (action === WORKFLOW_HISTORY_ACTIONS.OPEN) {
-		openInNewTab(id);
+	switch (action) {
+		case WORKFLOW_HISTORY_ACTIONS.OPEN:
+			openInNewTab(id);
+			break;
+		case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
+			await downloadVersion(id);
+			break;
 	}
-	console.log('action', { action, id });
 };
 
 const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['id'] }) => {

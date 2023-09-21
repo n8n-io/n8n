@@ -14,21 +14,25 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const workflowHistory = ref<Array<WorkflowHistory | WorkflowHistoryUnsaved>>([]);
 	const workflowVersion = ref<WorkflowVersion | null>(null);
 
-	const getWorkflowHistory = async (workflowId: string) => {
+	const getWorkflowHistory = async (workflowId: string): Promise<WorkflowHistory[]> => {
 		workflowHistory.value = await whApi
 			.getWorkflowHistory(rootStore.getRestApiContext, workflowId)
 			.catch((error) => {
 				console.error(error);
-				return [];
+				return [] as WorkflowHistory[];
 			});
 	};
-	const getWorkflowVersion = async (workflowId: string, versionId: string) => {
-		workflowVersion.value = await whApi
-			.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId)
-			.catch((error) => {
-				console.error(error);
-				return null;
-			});
+	const getWorkflowVersion = async (
+		workflowId: string,
+		versionId: string,
+	): Promise<WorkflowVersion | null> =>
+		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId).catch((error) => {
+			console.error(error);
+			return null;
+		});
+
+	const setWorkflowVersion = (version: WorkflowVersion | null) => {
+		workflowVersion.value = version;
 	};
 
 	const addUnsavedItem = (item: WorkflowHistoryUnsaved) => {
@@ -39,6 +43,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		getWorkflowHistory,
 		addUnsavedItem,
 		getWorkflowVersion,
+		setWorkflowVersion,
 		workflowHistory,
 		workflowVersion,
 	};
