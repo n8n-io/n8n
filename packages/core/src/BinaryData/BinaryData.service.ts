@@ -89,19 +89,17 @@ export class BinaryDataService {
 	getAsStream(binaryDataId: string, chunkSize?: number) {
 		const [mode, uuid] = binaryDataId.split(':');
 
-		return this.getManager(mode).getStream(uuid, chunkSize);
+		return this.getManager(mode).getAsStream(uuid, chunkSize);
 	}
 
-	async getBinaryDataBuffer(binaryData: IBinaryData) {
-		if (binaryData.id) return this.retrieveBinaryDataByIdentifier(binaryData.id);
+	async getAsBuffer(binaryData: IBinaryData) {
+		if (binaryData.id) {
+			const [mode, uuid] = binaryData.id.split(':');
+
+			return this.getManager(mode).getAsBuffer(uuid);
+		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
-	}
-
-	async retrieveBinaryDataByIdentifier(binaryDataId: string) {
-		const [mode, uuid] = binaryDataId.split(':');
-
-		return this.getManager(mode).getBuffer(uuid);
 	}
 
 	getPath(binaryDataId: string) {

@@ -992,7 +992,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataService).getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**

@@ -30,13 +30,13 @@ export class FileSystemManager implements BinaryData.Manager {
 		return stats.size;
 	}
 
-	getStream(fileId: string, chunkSize?: number) {
+	getAsStream(fileId: string, chunkSize?: number) {
 		const filePath = this.getPath(fileId);
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
 	}
 
-	async getBuffer(fileId: string) {
+	async getAsBuffer(fileId: string) {
 		const filePath = this.getPath(fileId);
 
 		try {

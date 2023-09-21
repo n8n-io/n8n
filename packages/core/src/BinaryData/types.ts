@@ -26,8 +26,8 @@ export namespace BinaryData {
 		): Promise<{ fileId: string; fileSize: number }>;
 
 		getPath(identifier: string): string;
-		getBuffer(identifier: string): Promise<Buffer>;
-		getStream(identifier: string, chunkSize?: number): Readable;
+		getAsBuffer(identifier: string): Promise<Buffer>;
+		getAsStream(identifier: string, chunkSize?: number): Readable;
 		getMetadata(identifier: string): Promise<Metadata>;
 
 		// @TODO: Refactor to also use `workflowId` to support full path-like identifier:
