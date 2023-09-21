@@ -18,7 +18,7 @@ export namespace BinaryData {
 
 	export type WriteResult = { fileId: string; fileSize: number };
 
-	type PreStoreMetadata = Omit<Metadata, 'fileSize'>;
+	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
 	export interface Manager {
 		init(): Promise<void>;
@@ -27,7 +27,7 @@ export namespace BinaryData {
 			workflowId: string,
 			executionId: string,
 			binaryData: Buffer | Readable,
-			metadata: PreStoreMetadata,
+			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
 
 		getPath(workflowId: string, fileId: string): string;
@@ -41,7 +41,7 @@ export namespace BinaryData {
 			workflowId: string,
 			executionId: string,
 			filePath: string,
-			metadata: { mimeType: string; fileName?: string },
+			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
 
 		deleteOne(workflowId: string, fileId: string): Promise<void>;
