@@ -176,6 +176,21 @@ describe('NodeExecuteFunctions', () => {
 			});
 		});
 
+		it('parses valid content-disposition header with filename* (quoted)', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition': ' attachment;filename*="utf-8\' \'test-unsplash.jpg"',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'test-unsplash.jpg',
+				type: 'attachment',
+			});
+		});
+
 		it('parses valid content-disposition header with filename and trailing ";"', () => {
 			const message = mock<IncomingMessage>({
 				headers: {
