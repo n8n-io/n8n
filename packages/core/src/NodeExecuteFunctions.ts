@@ -990,7 +990,6 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	propertyName: string,
 	inputIndex: number,
-	workflowId: string,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
 	return Container.get(BinaryDataService).getAsBuffer(binaryData);
@@ -2888,7 +2887,7 @@ export function getExecuteFunctions(
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0, workflow.id),
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
 
 				returnJsonArray,
 				normalizeItems,
@@ -3031,7 +3030,7 @@ export function getExecuteSingleFunctions(
 				assertBinaryData: (propertyName, inputIndex = 0) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex, workflow.id),
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
