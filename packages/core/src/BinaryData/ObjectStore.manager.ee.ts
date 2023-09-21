@@ -32,14 +32,14 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		throw new Error('TODO');
 	}
 
-	async copyByFileId(fileId: string, executionId: string): Promise<string> {
-		throw new Error('TODO');
-	}
-
 	async copyByFilePath(
 		path: string,
 		executionId: string,
 	): Promise<{ fileId: string; fileSize: number }> {
+		throw new Error('TODO');
+	}
+
+	async copyByFileId(fileId: string, executionId: string): Promise<string> {
 		throw new Error('TODO');
 	}
 

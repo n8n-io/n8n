@@ -30,8 +30,6 @@ export namespace BinaryData {
 		getStream(identifier: string, chunkSize?: number): Readable;
 		getMetadata(identifier: string): Promise<Metadata>;
 
-		copyByFileId(identifier: string, prefix: string): Promise<string>;
-
 		// @TODO: Refactor to also use `workflowId` to support full path-like identifier:
 		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
 		copyByFilePath(
@@ -39,6 +37,8 @@ export namespace BinaryData {
 			executionId: string,
 			metadata: { mimeType: string; fileName?: string },
 		): Promise<{ fileId: string; fileSize: number }>;
+
+		copyByFileId(identifier: string, prefix: string): Promise<string>;
 
 		deleteOne(identifier: string): Promise<void>;
 
