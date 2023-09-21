@@ -59,6 +59,7 @@ import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
 import { useExternalHooks } from '@/composables';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'App',
@@ -148,6 +149,7 @@ export default defineComponent({
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
+			ExpressionEvaluatorProxy.setEvaluator(useSettingsStore().settings.expressions.evaluator);
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {
