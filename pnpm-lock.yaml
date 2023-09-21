@@ -649,9 +649,6 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
-      '@types/xml2js':
-        specifier: ^0.4.11
-        version: 0.4.11
 
   packages/design-system:
     dependencies:
