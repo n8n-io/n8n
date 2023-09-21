@@ -96,44 +96,32 @@ export class BinaryDataService {
 		});
 	}
 
-	getAsStream(workflowId: string, binaryDataId: string, chunkSize?: number) {
+	getAsStream(binaryDataId: string, chunkSize?: number) {
 		const [mode, fileId] = binaryDataId.split(':');
 
-		return this.getManager(mode).getAsStream(workflowId, fileId, chunkSize);
+		return this.getManager(mode).getAsStream(fileId, chunkSize);
 	}
 
-	async getBinaryDataBuffer(workflowId: string, binaryData: IBinaryData) {
-		if (binaryData.id) return this.retrieveBinaryDataByIdentifier(workflowId, binaryData.id);
-
-		return Buffer.from(binaryData.data, BINARY_ENCODING);
-	}
-
-	async getAsBuffer(workflowId: string, binaryData: IBinaryData) {
+	async getAsBuffer(binaryData: IBinaryData) {
 		if (binaryData.id) {
 			const [mode, fileId] = binaryData.id.split(':');
 
-			return this.getManager(mode).getAsBuffer(workflowId, fileId);
+			return this.getManager(mode).getAsBuffer(fileId);
 		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	async retrieveBinaryDataByIdentifier(workflowId: string, binaryDataId: string) {
+	getPath(binaryDataId: string) {
 		const [mode, fileId] = binaryDataId.split(':');
 
-		return this.getManager(mode).getAsBuffer(workflowId, fileId);
+		return this.getManager(mode).getPath(fileId);
 	}
 
-	getPath(workflowId: string, binaryDataId: string) {
+	async getMetadata(binaryDataId: string) {
 		const [mode, fileId] = binaryDataId.split(':');
 
-		return this.getManager(mode).getPath(workflowId, fileId);
-	}
-
-	async getMetadata(workflowId: string, binaryDataId: string) {
-		const [mode, fileId] = binaryDataId.split(':');
-
-		return this.getManager(mode).getMetadata(workflowId, fileId);
+		return this.getManager(mode).getMetadata(fileId);
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {

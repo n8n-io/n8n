@@ -1423,18 +1423,16 @@ export class Server extends AbstractServer {
 
 		// Download binary
 		this.app.get(
-			`/${this.restEndpoint}/data/:workflowId/:path`,
+			`/${this.restEndpoint}/data/:path`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
-				const workflowId = req.params.workflowId;
 				try {
-					// @TODO: Decouple from FS
-					const binaryPath = this.binaryDataService.getPath(workflowId, identifier);
+					const binaryPath = this.binaryDataService.getPath(identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await this.binaryDataService.getMetadata(workflowId, identifier);
+							const metadata = await this.binaryDataService.getMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);

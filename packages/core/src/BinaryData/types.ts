@@ -26,17 +26,16 @@ export namespace BinaryData {
 		store(
 			workflowId: string,
 			executionId: string,
-			binaryData: Buffer | Readable,
+			bufferOrStream: Buffer | Readable,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
 
-		getPath(workflowId: string, fileId: string): string;
-		getAsBuffer(workflowId: string, fileId: string): Promise<Buffer>;
-		getAsStream(workflowId: string, fileId: string, chunkSize?: number): Readable;
-		getMetadata(workflowId: string, fileId: string): Promise<Metadata>;
+		getPath(fileId: string): string;
+		getAsBuffer(fileId: string): Promise<Buffer>;
+		getAsStream(fileId: string, chunkSize?: number): Readable;
+		getMetadata(fileId: string): Promise<Metadata>;
 
 		copyByFileId(workflowId: string, fileId: string, prefix: string): Promise<string>;
-
 		copyByFilePath(
 			workflowId: string,
 			executionId: string,
@@ -44,7 +43,7 @@ export namespace BinaryData {
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
 
-		deleteOne(workflowId: string, fileId: string): Promise<void>;
+		deleteOne(fileId: string): Promise<void>;
 		deleteManyByExecutionIds(executionIds: string[]): Promise<string[]>;
 	}
 }

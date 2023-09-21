@@ -940,29 +940,22 @@ async function httpRequest(
 	return result.data;
 }
 
-export function getBinaryPath(workflowId: string, binaryDataId: string): string {
-	return Container.get(BinaryDataService).getPath(workflowId, binaryDataId);
+export function getBinaryPath(binaryDataId: string): string {
+	return Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
-export async function getBinaryMetadata(
-	workflowId: string,
-	binaryDataId: string,
-): Promise<BinaryData.Metadata> {
-	return Container.get(BinaryDataService).getMetadata(workflowId, binaryDataId);
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
+	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
-export function getBinaryStream(
-	workflowId: string,
-	binaryDataId: string,
-	chunkSize?: number,
-): Readable {
-	return Container.get(BinaryDataService).getAsStream(workflowId, binaryDataId, chunkSize);
+export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
+	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -997,10 +990,9 @@ export async function getBinaryDataBuffer(
 	itemIndex: number,
 	propertyName: string,
 	inputIndex: number,
-	workflowId: string,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataService).getAsBuffer(workflowId, binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**
@@ -2588,9 +2580,9 @@ const getBinaryHelperFunctions = (
 	{ executionId }: IWorkflowExecuteAdditionalData,
 	workflowId: string,
 ): BinaryHelperFunctions => ({
-	getBinaryPath: (binaryDataId) => getBinaryPath(workflowId, binaryDataId),
-	getBinaryStream: (binaryDataId) => getBinaryStream(workflowId, binaryDataId),
-	getBinaryMetadata: async (binaryDataId) => getBinaryMetadata(workflowId, binaryDataId),
+	getBinaryPath,
+	getBinaryStream,
+	getBinaryMetadata,
 	binaryToBuffer: async (body: Buffer | Readable) =>
 		Container.get(BinaryDataService).binaryToBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
@@ -2895,7 +2887,7 @@ export function getExecuteFunctions(
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0, workflow.id),
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
 
 				returnJsonArray,
 				normalizeItems,
@@ -3038,7 +3030,7 @@ export function getExecuteSingleFunctions(
 				assertBinaryData: (propertyName, inputIndex = 0) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
 				getBinaryDataBuffer: async (propertyName, inputIndex = 0) =>
-					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex, workflow.id),
+					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 			},
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node, itemIndex);
