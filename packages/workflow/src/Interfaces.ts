@@ -2119,6 +2119,8 @@ export interface IPublicApiSettings {
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 
+export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -2204,6 +2206,9 @@ export interface IN8nUISettings {
 	};
 	variables: {
 		limit: number;
+	};
+	expressions: {
+		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;
