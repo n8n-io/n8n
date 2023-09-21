@@ -16,7 +16,7 @@ export namespace BinaryData {
 		fileSize: number;
 	};
 
-	type PreStoreMetadata = Omit<Metadata, 'fileSize'>;
+	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
 	export interface Manager {
 		init(): Promise<void>;
@@ -24,7 +24,7 @@ export namespace BinaryData {
 		store(
 			binaryData: Buffer | Readable,
 			executionId: string,
-			preStoreMetadata: PreStoreMetadata,
+			preStoreMetadata: PreWriteMetadata,
 		): Promise<{ fileId: string; fileSize: number }>;
 
 		getPath(fileId: string): string;
@@ -37,7 +37,7 @@ export namespace BinaryData {
 		copyByFilePath(
 			path: string,
 			executionId: string,
-			metadata: PreStoreMetadata,
+			metadata: PreWriteMetadata,
 		): Promise<{ fileId: string; fileSize: number }>;
 
 		copyByFileId(fileId: string, prefix: string): Promise<string>;

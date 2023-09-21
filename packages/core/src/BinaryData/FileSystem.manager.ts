@@ -56,7 +56,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	async store(
 		binaryData: Buffer | Readable,
 		executionId: string,
-		{ mimeType, fileName }: { mimeType: string; fileName?: string },
+		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = this.createFileId(executionId);
 		const filePath = this.getPath(fileId);
@@ -99,7 +99,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	async copyByFilePath(
 		filePath: string,
 		executionId: string,
-		{ mimeType, fileName }: { mimeType: string; fileName?: string },
+		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const newFileId = this.createFileId(executionId);
 
