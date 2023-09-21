@@ -19,7 +19,7 @@ export class ChainRetrievalQa implements INodeType {
 		description: 'Retrieves answers to queries based on retrieved documents',
 		defaults: {
 			name: 'Retrieval QA Chain',
-			color: '#1321A7',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],

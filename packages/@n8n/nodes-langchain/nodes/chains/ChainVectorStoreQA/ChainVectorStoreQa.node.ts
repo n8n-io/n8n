@@ -20,7 +20,7 @@ export class ChainVectorStoreQa implements INodeType {
 			'Performs a question-answering operation on a vector store based on the input query',
 		defaults: {
 			name: 'Vector Store QA',
-			color: '#1321A7',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
