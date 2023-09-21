@@ -9,7 +9,7 @@ import concatStream from 'concat-stream';
  * - `filesystem` (on disk)
  * - `object` (S3)
  */
-export const BINARY_DATA_MODES = ['default', 'filesystem', 'object'] as const;
+export const BINARY_DATA_MODES = ['default', 'filesystem', 'objectStore'] as const;
 
 export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
 	return modes.every((m) => BINARY_DATA_MODES.includes(m as BinaryData.Mode));

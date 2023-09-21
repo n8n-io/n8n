@@ -5,13 +5,17 @@ import { v4 as uuid } from 'uuid';
 import { FileSystemManager } from './FileSystem.manager';
 import { toBuffer } from './utils';
 
-import type { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
+import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
 import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
-	constructor(private objectStoreService: ObjectStoreService) {}
+	private readonly objectStoreService: ObjectStoreService;
+
+	constructor() {
+		this.objectStoreService = Container.get(ObjectStoreService);
+	}
 
 	async init() {
 		await this.objectStoreService.checkConnection();

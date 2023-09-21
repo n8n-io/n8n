@@ -4,8 +4,9 @@ import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
+import { ObjectStoreManager } from './ObjectStore.manager';
 import { areValidModes, toBuffer } from './utils';
-import { BinaryDataManagerNotFound, InvalidBinaryDataMode } from './errors';
+import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -13,8 +14,6 @@ import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
-	private availableModes: BinaryData.Mode[] = [];
-
 	private mode: BinaryData.Mode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
@@ -22,13 +21,18 @@ export class BinaryDataService {
 	async init(config: BinaryData.Config) {
 		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataMode();
 
-		this.availableModes = config.availableModes;
 		this.mode = config.mode;
 
-		if (this.availableModes.includes('filesystem')) {
+		if (config.availableModes.includes('filesystem')) {
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
+		}
+
+		if (config.availableModes.includes('objectStore')) {
+			this.managers.objectStore = new ObjectStoreManager();
+
+			await this.managers.objectStore.init();
 		}
 	}
 
@@ -218,6 +222,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new BinaryDataManagerNotFound(mode);
+		throw new UnknownBinaryDataManager(mode);
 	}
 }
