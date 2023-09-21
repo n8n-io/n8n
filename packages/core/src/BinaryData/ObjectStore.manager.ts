@@ -31,15 +31,14 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	getPath(fileId: string) {
-		return fileId;
+		return fileId; // already full path
 	}
 
 	async getAsBuffer(fileId: string) {
 		return this.objectStoreService.get(fileId, { mode: 'buffer' });
 	}
 
-	// @TODO: Use chunkSize
-	async getAsStream(fileId: string, chunkSize?: number): Promise<Readable> {
+	async getAsStream(fileId: string) {
 		return this.objectStoreService.get(fileId, { mode: 'stream' });
 	}
 

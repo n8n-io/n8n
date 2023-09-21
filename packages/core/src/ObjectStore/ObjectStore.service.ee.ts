@@ -166,7 +166,7 @@ export class ObjectStoreService {
 		return page as ListPage;
 	}
 
-	private toPath(rawPath: string, qs?: Record<string, string | number>) {
+	private toRequestPath(rawPath: string, qs?: Record<string, string | number>) {
 		const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
 
 		if (!qs) return path;
@@ -178,7 +178,7 @@ export class ObjectStoreService {
 		return path.concat(`?${qsParams}`);
 	}
 
-	private async request(
+	private async request<T = unknown>(
 		method: Method,
 		host: string,
 		rawPath = '',
@@ -194,7 +194,7 @@ export class ObjectStoreService {
 			responseType?: ResponseType;
 		} = {},
 	) {
-		const path = this.toPath(rawPath, qs);
+		const path = this.toRequestPath(rawPath, qs);
 
 		const optionsToSign: Aws4Options = {
 			method,
@@ -221,7 +221,7 @@ export class ObjectStoreService {
 		// console.log(config);
 
 		try {
-			return await axios.request<unknown>(config);
+			return await axios.request<T>(config);
 		} catch (error) {
 			// console.log(error);
 			throw new Error('Request to external object storage failed', {
