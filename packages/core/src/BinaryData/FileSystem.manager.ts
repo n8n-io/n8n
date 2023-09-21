@@ -62,7 +62,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		workflowId: string,
 		executionId: string,
 		binaryData: Buffer | Readable,
-		{ mimeType, fileName }: { mimeType: string; fileName?: string },
+		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = this.createFileId(executionId);
 		const filePath = this.getPath(workflowId, fileId);
