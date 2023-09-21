@@ -46,6 +46,18 @@ export class N8nBinaryLoader {
 
 			const { data, mimeType } = binaryData;
 
+			// Check if loader matches the mime-type of the data
+			if (!SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType)) {
+				const neededLoader = Object.keys(SUPPORTED_MIME_TYPES).find((loader) =>
+					SUPPORTED_MIME_TYPES[loader as keyof typeof SUPPORTED_MIME_TYPES].includes(mimeType),
+				);
+
+				throw new NodeOperationError(
+					this.context.getNode(),
+					`Mime type doesn't match selected loader. Please select under "Loader Type": ${neededLoader}`,
+				);
+			}
+
 			if (!Object.values(SUPPORTED_MIME_TYPES).flat().includes(mimeType)) {
 				throw new NodeOperationError(this.context.getNode(), `Unsupported mime type: ${mimeType}`);
 			}

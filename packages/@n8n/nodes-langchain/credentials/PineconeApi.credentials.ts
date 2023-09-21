@@ -10,7 +10,7 @@ export class PineconeApi implements ICredentialType {
 
 	displayName = 'PineconeApi';
 
-	documentationUrl = 'pineconeApi';
+	documentationUrl = 'pinecone';
 
 	properties: INodeProperties[] = [
 		{

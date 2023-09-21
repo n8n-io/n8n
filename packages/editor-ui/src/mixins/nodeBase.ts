@@ -187,8 +187,6 @@ export const nodeBase = defineComponent({
 					optionalNonMainInputs.length,
 				);
 
-				console.log(requiredNonMainInputs, optionalNonMainInputs, spacerIndexes);
-
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					inputName,

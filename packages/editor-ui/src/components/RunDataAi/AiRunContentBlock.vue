@@ -6,7 +6,13 @@
 			</button>
 			<p :class="$style.blockTitle">{{ capitalize(runData.inOut) }}</p>
 			<!-- @click.stop to prevent event from bubbling to blockHeader and toggling expanded state when clicking on rawSwitch -->
-			<el-switch @click.stop :class="$style.rawSwitch" active-text="RAW JSON" v-model="isShowRaw" />
+			<el-switch
+				v-if="contentParsed"
+				@click.stop
+				:class="$style.rawSwitch"
+				active-text="RAW JSON"
+				v-model="isShowRaw"
+			/>
 		</header>
 		<main
 			:class="{
@@ -58,7 +64,8 @@
 <script lang="ts" setup>
 import { NodeConnectionType, type IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
-import { ref, computed } from 'vue';
+import { ref, onMounted } from 'vue';
+import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
 import { useCopyToClipboard, useI18n, useToast } from '@/composables';
@@ -73,6 +80,8 @@ const contentParsers = useAiContentParsers();
 // eslint-disable-next-line @typescript-eslint/no-use-before-define
 const isExpanded = ref(getInitialExpandedState());
 const isShowRaw = ref(false);
+const contentParsed = ref(false);
+const parsedRun = ref(undefined as ParsedAiContent | undefined);
 
 function getInitialExpandedState() {
 	const collapsedTypes = {
@@ -131,6 +140,15 @@ function jsonToMarkdown(data: JsonMarkdown): string {
 	return formatToJsonMarkdown(JSON.stringify(data, null, 2));
 }
 
+function setContentParsed(content: ParsedAiContent): void {
+	contentParsed.value = !!content.find((item) => {
+		if (item.parsedContent?.parsed === true) {
+			return true;
+		}
+		return false;
+	});
+}
+
 function onBlockHeaderClick() {
 	isExpanded.value = !isExpanded.value;
 }
@@ -147,8 +165,12 @@ function copyToClipboard(content: IDataObject | IDataObject[]) {
 		});
 	} catch (err) {}
 }
-const parsedRun = computed(() => {
-	return parseAiRunData(props.runData);
+
+onMounted(() => {
+	parsedRun.value = parseAiRunData(props.runData);
+	if (parsedRun.value) {
+		setContentParsed(parsedRun.value);
+	}
 });
 </script>
 
