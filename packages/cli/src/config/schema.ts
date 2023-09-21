@@ -914,6 +914,40 @@ export const schema = {
 		},
 	},
 
+	externalStorage: {
+		s3: {
+			// @TODO: service name
+			bucket: {
+				name: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_NAME',
+					doc: 'Name of the n8n bucket in S3-compatible external storage',
+				},
+				region: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_REGION',
+					doc: 'Region of the n8n bucket in S3-compatible external storage',
+				},
+			},
+			credentials: {
+				accountId: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_OBJECT_STORAGE_ACCOUNT_ID',
+					doc: 'Account ID in S3-compatible external storage',
+				},
+				secretKey: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_OBJECT_STORAGE_SECRET_KEY',
+					doc: 'Secret key in S3-compatible external storage',
+				},
+			},
+		},
+	},
+
 	deployment: {
 		type: {
 			format: String,
