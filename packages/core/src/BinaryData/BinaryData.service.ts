@@ -87,31 +87,31 @@ export class BinaryDataService {
 	}
 
 	getAsStream(binaryDataId: string, chunkSize?: number) {
-		const [mode, uuid] = binaryDataId.split(':');
+		const [mode, fileId] = binaryDataId.split(':');
 
-		return this.getManager(mode).getAsStream(uuid, chunkSize);
+		return this.getManager(mode).getAsStream(fileId, chunkSize);
 	}
 
 	async getAsBuffer(binaryData: IBinaryData) {
 		if (binaryData.id) {
-			const [mode, uuid] = binaryData.id.split(':');
+			const [mode, fileId] = binaryData.id.split(':');
 
-			return this.getManager(mode).getAsBuffer(uuid);
+			return this.getManager(mode).getAsBuffer(fileId);
 		}
 
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
 	getPath(binaryDataId: string) {
-		const [mode, uuid] = binaryDataId.split(':');
+		const [mode, fileId] = binaryDataId.split(':');
 
-		return this.getManager(mode).getPath(uuid);
+		return this.getManager(mode).getPath(fileId);
 	}
 
 	async getMetadata(binaryDataId: string) {
-		const [mode, uuid] = binaryDataId.split(':');
+		const [mode, fileId] = binaryDataId.split(':');
 
-		return this.getManager(mode).getMetadata(uuid);
+		return this.getManager(mode).getMetadata(fileId);
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
@@ -173,9 +173,9 @@ export class BinaryDataService {
 					return { key, newId: undefined };
 				}
 
-				const [_mode, uuid] = binaryDataId.split(':');
+				const [_mode, fileId] = binaryDataId.split(':');
 
-				return manager?.copyByFileId(uuid, executionId).then((newFileId) => ({
+				return manager?.copyByFileId(fileId, executionId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));
