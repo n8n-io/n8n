@@ -163,7 +163,6 @@ import {
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useCloudPlanStore } from '@/stores';
 import { nodeViewEventBus } from '@/event-bus';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
@@ -223,7 +222,6 @@ export default defineComponent({
 			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
-			useCloudPlanStore,
 			useSourceControlStore,
 		),
 		currentUser(): IUser | null {
