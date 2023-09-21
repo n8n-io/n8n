@@ -77,7 +77,7 @@ export async function initNodeTypes() {
 export async function initBinaryDataService() {
 	const binaryDataService = new BinaryDataService();
 
-	await binaryDataService.init(config.getEnv('binaryDataService'));
+	await binaryDataService.init(config.getEnv('binaryDataManager'));
 
 	Container.set(BinaryDataService, binaryDataService);
 }
