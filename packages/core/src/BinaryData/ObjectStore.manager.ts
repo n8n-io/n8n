@@ -87,10 +87,6 @@ export class ObjectStoreManager implements BinaryData.Manager {
 			(o) => `/workflows/${o.workflowId}/executions/${o.executionId}/binary_data/`,
 		);
 
-		await this.deleteManyByPrefixes(prefixes);
-	}
-
-	private async deleteManyByPrefixes(prefixes: string[]) {
 		await Promise.all(
 			prefixes.map(async (prefix) => {
 				await this.objectStoreService.deleteMany(prefix);
