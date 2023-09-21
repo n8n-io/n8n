@@ -366,7 +366,7 @@ export class Server extends AbstractServer {
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataService');
+		const binaryDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(

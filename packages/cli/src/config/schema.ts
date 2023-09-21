@@ -893,7 +893,7 @@ export const schema = {
 		},
 	},
 
-	binaryDataService: {
+	binaryDataManager: {
 		availableModes: {
 			format: 'comma-separated-list',
 			default: 'filesystem',
