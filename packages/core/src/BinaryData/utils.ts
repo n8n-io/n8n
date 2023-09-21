@@ -18,7 +18,7 @@ export class InvalidBinaryDataMode extends Error {
 	}
 }
 
-export class InvalidBinaryDataManager extends Error {
+export class MissingBinaryDataManager extends Error {
 	constructor() {
 		super('No binary data manager found');
 	}
