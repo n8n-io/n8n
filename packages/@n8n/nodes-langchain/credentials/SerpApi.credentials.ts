@@ -10,7 +10,7 @@ export class SerpApi implements ICredentialType {
 
 	displayName = 'SerpAPI';
 
-	documentationUrl = 'serpAi';
+	documentationUrl = 'serpapi';
 
 	properties: INodeProperties[] = [
 		{

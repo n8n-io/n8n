@@ -10,7 +10,7 @@ export class XataApi implements ICredentialType {
 
 	displayName = 'Xata Api';
 
-	documentationUrl = 'xataApi';
+	documentationUrl = 'xata';
 
 	properties: INodeProperties[] = [
 		{

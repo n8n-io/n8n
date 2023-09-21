@@ -10,7 +10,7 @@ export class MotorheadApi implements ICredentialType {
 
 	displayName = 'MotorheadApi';
 
-	documentationUrl = 'motorheadApi';
+	documentationUrl = 'motorhead';
 
 	properties: INodeProperties[] = [
 		{
