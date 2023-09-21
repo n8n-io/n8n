@@ -322,12 +322,6 @@ export const schema = {
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
-		pruneDataTimeout: {
-			doc: 'Timeout (seconds) after execution data has been pruned',
-			format: Number,
-			default: 3600,
-			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
-		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
@@ -437,6 +431,12 @@ export const schema = {
 			format: '*',
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
+		},
+
+		instanceType: {
+			doc: 'Type of n8n instance',
+			format: ['main', 'webhook', 'worker'] as const,
+			default: 'main',
 		},
 	},
 
@@ -918,12 +918,6 @@ export const schema = {
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-		binaryDataTTL: {
-			format: Number,
-			default: 60,
-			env: 'N8N_BINARY_DATA_TTL',
-			doc: 'TTL for binary data of unsaved executions in minutes',
 		},
 	},
 
