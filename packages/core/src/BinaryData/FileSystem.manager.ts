@@ -131,9 +131,6 @@ export class FileSystemManager implements BinaryData.Manager {
 		}
 	}
 
-	/**
-	 * Create an identifier `${executionId}{uuid}` for a binary data file.
-	 */
 	private createFileId(executionId: string) {
 		return [executionId, uuid()].join('');
 	}
