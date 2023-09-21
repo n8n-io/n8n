@@ -51,6 +51,7 @@ import { useToast, useMessage } from '@/composables';
 
 import { isEqual } from 'lodash-es';
 
+import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -877,6 +878,25 @@ export const workflowHelpers = defineComponent({
 
 				const workflowDataRequest: IWorkflowDataUpdate =
 					data || (await this.getWorkflowDataToSave());
+				const changedNodes = {} as IDataObject;
+
+				if (resetNodeIds) {
+					workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
+						node.id = uuid();
+
+						return node;
+					});
+				}
+
+				if (resetWebhookUrls) {
+					workflowDataRequest.nodes = workflowDataRequest.nodes!.map((node) => {
+						if (node.webhookId) {
+							node.webhookId = uuid();
+							changedNodes[node.name] = node.webhookId;
+						}
+						return node;
+					});
+				}
 
 				if (name) {
 					workflowDataRequest.name = name.trim();
@@ -885,10 +905,7 @@ export const workflowHelpers = defineComponent({
 				if (tags) {
 					workflowDataRequest.tags = tags;
 				}
-				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest, {
-					resetWebhookUrls,
-					resetNodeIds,
-				});
+				const workflowData = await this.workflowsStore.createNewWorkflow(workflowDataRequest);
 
 				this.workflowsStore.addWorkflow(workflowData);
 

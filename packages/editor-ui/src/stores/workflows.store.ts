@@ -86,7 +86,6 @@ import { useNDVStore } from './ndv.store';
 import { useNodeTypesStore } from './nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { v4 as uuid } from 'uuid';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
@@ -1272,41 +1271,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		// Creates a new workflow
-		async createNewWorkflow(
-			sendData: IWorkflowDataUpdate,
-			{
-				resetNodeIds,
-				resetWebhookUrls,
-			}: { resetNodeIds?: boolean; resetWebhookUrls?: boolean } = {},
-		): Promise<IWorkflowDb> {
-			const workflowDataRequest = deepCopy(sendData);
+		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
 			// make sure that the new ones are not active
-			workflowDataRequest.active = false;
-			const changedNodes = {} as IDataObject;
+			sendData.active = false;
 
-			if (resetNodeIds) {
-				workflowDataRequest.nodes = (workflowDataRequest.nodes || []).map((node) => {
-					node.id = uuid();
-
-					return node;
-				});
-			}
-
-			if (resetWebhookUrls) {
-				workflowDataRequest.nodes = (workflowDataRequest.nodes || []).map((node) => {
-					if (node.webhookId) {
-						node.webhookId = uuid();
-						changedNodes[node.name] = node.webhookId;
-					}
-					return node;
-				});
-			}
 			const rootStore = useRootStore();
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,
 				'POST',
 				'/workflows',
-				workflowDataRequest as unknown as IDataObject,
+				sendData as unknown as IDataObject,
 			);
 		},
 

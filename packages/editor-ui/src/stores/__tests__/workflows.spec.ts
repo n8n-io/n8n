@@ -97,24 +97,5 @@ describe('worklfows store', () => {
 				},
 			);
 		});
-
-		it('resets node ids', async () => {
-			const workflowsStore = useWorkflowsStore();
-			await workflowsStore.createNewWorkflow(MOCK_WORKFLOW_SIMPLE, { resetNodeIds: true });
-
-			const workflow = makeRestApiRequest.mock.calls[0][3];
-
-			expect(workflow.nodes[0].id).not.toBe(MOCK_WORKFLOW_SIMPLE.nodes![0].id);
-			expect(workflow.nodes[1].id).not.toBe(MOCK_WORKFLOW_SIMPLE.nodes![1].id);
-		});
-
-		it('resets webhook urls', async () => {
-			const workflowsStore = useWorkflowsStore();
-			await workflowsStore.createNewWorkflow(MOCK_WORKFLOW_SIMPLE, { resetWebhookUrls: true });
-
-			const workflow = makeRestApiRequest.mock.calls[0][3];
-
-			expect(workflow.nodes[0].webhookId).not.toBe(MOCK_WORKFLOW_SIMPLE.nodes![0].webhookId);
-		});
 	});
 });
