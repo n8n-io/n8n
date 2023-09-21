@@ -92,7 +92,7 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id as string; // @TODO: Why is this optional?
+		this.id = parameters.id as string; // @TODO: Why is this arg optional?
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;

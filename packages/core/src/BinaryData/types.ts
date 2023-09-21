@@ -27,7 +27,6 @@ export namespace BinaryData {
 			workflowId: string,
 			executionId: string,
 			binaryData: Buffer | Readable,
-
 			metadata: PreStoreMetadata,
 		): Promise<WriteResult>;
 
