@@ -8,7 +8,7 @@ export const getWorkflowHistory = async (
 	context: IRestApiContext,
 	workflowId: string,
 ): Promise<WorkflowHistory[]> =>
-	makeRestApiRequest(context, 'POST', `${workflowHistoryApiRoot}/workflow/${workflowId}`);
+	makeRestApiRequest(context, 'GET', `${workflowHistoryApiRoot}/workflow/${workflowId}`);
 
 export const getWorkflowVersion = async (
 	context: IRestApiContext,
@@ -17,6 +17,6 @@ export const getWorkflowVersion = async (
 ): Promise<WorkflowVersion> =>
 	makeRestApiRequest(
 		context,
-		'POST',
+		'GET',
 		`${workflowHistoryApiRoot}/workflow/${workflowId}/version/${versionId}`,
 	);

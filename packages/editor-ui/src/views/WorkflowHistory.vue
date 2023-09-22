@@ -9,8 +9,6 @@ import type { WorkflowHistoryActionTypes, WorkflowHistory } from '@/types/workfl
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useUIStore } from '@/stores/ui.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<TupleToUnion<WorkflowHistoryActionTypes>>]: Lowercase<K>;
@@ -31,11 +29,10 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
-const uiStore = useUIStore();
-const usersStore = useUsersStore();
 
 onBeforeMount(async () => {
-	await workflowHistoryStore.getWorkflowHistory(route.params.workflowId);
+	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId);
+	workflowHistoryStore.addWorkflowHistory(history);
 
 	if (!route.params.versionId) {
 		await router.replace({
@@ -44,14 +41,6 @@ onBeforeMount(async () => {
 				workflowId: route.params.workflowId,
 				versionId: workflowHistoryStore.workflowHistory[0].versionId,
 			},
-		});
-	}
-
-	if (uiStore.stateIsDirty) {
-		workflowHistoryStore.addUnsavedItem({
-			id: 'unsaved',
-			title: i18n.baseText('workflowHistory.item.unsaved.title'),
-			authors: usersStore.currentUser?.fullName ?? '',
 		});
 	}
 });
