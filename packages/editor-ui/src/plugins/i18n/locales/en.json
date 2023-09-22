@@ -574,7 +574,7 @@
 	"executionsList.debug.button.debugInEditor": "Debug in editor",
 	"executionsList.debug.paywall.content": "Debug in Editor allows you to debug a previous execution with the actual data pinned, right in your editor.",
 	"executionsList.debug.paywall.link.text": "Read more in the docs",
-	"executionsList.debug.paywall.link.url": "#",
+	"executionsList.debug.paywall.link.url": "https://docs.n8n.io/workflows/executions/debug/",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",
