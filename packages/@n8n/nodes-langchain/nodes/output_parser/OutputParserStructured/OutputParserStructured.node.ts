@@ -24,7 +24,6 @@ export class OutputParserStructured implements INodeType {
 		description: 'Returns data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
-			color: '#1321A7',
 		},
 
 		codex: {

@@ -19,8 +19,6 @@ export class DocumentGithubLoader implements INodeType {
 		description: 'Load files from a Github repository as documents',
 		defaults: {
 			name: 'Github repo to Document',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

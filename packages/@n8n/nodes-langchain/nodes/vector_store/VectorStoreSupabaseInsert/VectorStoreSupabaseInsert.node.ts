@@ -22,8 +22,6 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			'Insert data into Supabase Vector Store index [https://supabase.com/docs/guides/ai/langchain]',
 		defaults: {
 			name: 'Supabase: Insert',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

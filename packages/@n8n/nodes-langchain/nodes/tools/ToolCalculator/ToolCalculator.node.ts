@@ -13,7 +13,6 @@ export class ToolCalculator implements INodeType {
 		description: 'Use Calculator',
 		defaults: {
 			name: 'Calculator',
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

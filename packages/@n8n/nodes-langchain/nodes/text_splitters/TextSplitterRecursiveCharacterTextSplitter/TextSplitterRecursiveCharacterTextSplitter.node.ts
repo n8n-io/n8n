@@ -14,7 +14,6 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		description: 'Split text into chunks by characters recursively',
 		defaults: {
 			name: 'Recursive Character Text Splitter',
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

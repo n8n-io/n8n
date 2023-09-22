@@ -67,7 +67,6 @@ export class MemoryBufferWindow implements INodeType {
 		description: 'Stores the chat history in a windowed buffer. Refreshes on restart.',
 		defaults: {
 			name: 'Window Buffer Memory',
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

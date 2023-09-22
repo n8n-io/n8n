@@ -96,6 +96,7 @@
 					:nodeType="nodeType"
 					:size="40"
 					:shrink="false"
+					:colorDefault="iconColorDefault"
 					:disabled="this.data.disabled"
 				/>
 			</div>
@@ -226,6 +227,12 @@ export default defineComponent({
 		},
 		isScheduledGroup(): boolean {
 			return this.nodeType?.group.includes('schedule') === true;
+		},
+		iconColorDefault(): string | undefined {
+			if (this.isConfigNode) {
+				return 'var(--color-text-base)';
+			}
+			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
@@ -455,6 +462,10 @@ export default defineComponent({
 			} = {};
 
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.isConfigurableNode || this.isConfigNode) {
+				borderColor = getStyleTokenValue('--color-foreground-dark');
+			}
 
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
