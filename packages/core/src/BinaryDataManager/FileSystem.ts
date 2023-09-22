@@ -6,7 +6,8 @@ import type { Readable } from 'stream';
 import type { BinaryMetadata } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import { IBinaryDataConfig } from '../Interfaces';
+import type { IBinaryDataManager } from '../Interfaces';
 import { FileNotFoundError } from '../errors';
 
 const executionExtractionRegexp =
