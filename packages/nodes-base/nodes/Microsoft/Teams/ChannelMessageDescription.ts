@@ -121,7 +121,7 @@ export const channelMessageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Link To Workflow',
+				displayName: 'Include Link to Workflow',
 				name: 'includeLinkToWorkflow',
 				type: 'boolean',
 				default: true,
