@@ -1818,7 +1818,7 @@ export interface IWorkflowSettings {
 	executionOrder?: 'v0' | 'v1';
 }
 
-export interface WorkflowMeta {
+export interface WorkflowFEMeta {
 	onboardingId?: string;
 }
 
