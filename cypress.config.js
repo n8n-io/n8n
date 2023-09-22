@@ -18,5 +18,6 @@ module.exports = defineConfig({
 		screenshotOnRunFailure: true,
 		experimentalInteractiveRunEvents: true,
 		experimentalSessionAndOrigin: true,
+		experimentalStudio: true,
 	},
 });
