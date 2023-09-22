@@ -2125,6 +2125,13 @@ export default defineComponent({
 		) {
 			this.uiStore.stateIsDirty = true;
 
+			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
+			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
+
+			if (!this.checkNodeConnectionAllowed(sourceNode, targetNode, type)) {
+				return;
+			}
+
 			if (
 				this.getConnection(
 					sourceNodeName,
@@ -2187,7 +2194,13 @@ export default defineComponent({
 			// Handle connection of scoped_endpoint types
 			if (lastSelectedNodeEndpointUuid) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
-				if (SCOPED_ENDPOINT_TYPES.includes(lastSelectedEndpoint.scope as NodeConnectionType)) {
+				if (
+					!this.checkNodeConnectionAllowed(
+						lastSelectedNode!,
+						newNodeData,
+						lastSelectedEndpoint.scope as NodeConnectionType,
+					)
+				) {
 					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
@@ -2286,8 +2299,10 @@ export default defineComponent({
 			const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
 			const isScopedConnection = type !== 'main' && SCOPED_ENDPOINT_TYPES.includes(type);
 
-			if (isScopedConnection && !isOutput) {
-				useViewStacks().gotoCompatibleConnectionView(type, filter);
+			if (isScopedConnection) {
+				useViewStacks()
+					.gotoCompatibleConnectionView(type, isOutput, filter)
+					.catch((e) => {});
 			}
 		},
 		onEventConnectionAbort(connection: Connection) {
@@ -2316,11 +2331,6 @@ export default defineComponent({
 					return;
 				}
 
-				const isOutput = connection.endpoints[0].parameters.connection === 'source';
-
-				// Non main output connections shouldn't open node creator as they couldn't map 1:1
-				if (connection.parameters.type !== 'main' && isOutput) return;
-
 				this.insertNodeAfterSelected({
 					sourceId: connection.parameters.nodeId,
 					index: connection.parameters.index,
@@ -2331,6 +2341,41 @@ export default defineComponent({
 			} catch (e) {
 				console.error(e);
 			}
+		},
+		checkNodeConnectionAllowed(
+			sourceNode: INodeUi,
+			targetNode: INodeUi,
+			targetInfoType: NodeConnectionType,
+		): boolean {
+			const targetNodeType = this.nodeTypesStore.getNodeType(
+				targetNode.type,
+				targetNode.typeVersion,
+			);
+
+			if (targetNodeType?.inputs?.length) {
+				for (const input of targetNodeType?.inputs || []) {
+					if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
+						// No filters defined or wrong connection type
+						continue;
+					}
+
+					if (input.filter.nodes.length) {
+						if (!input.filter.nodes.includes(sourceNode.type)) {
+							this.dropPrevented = true;
+							this.showToast({
+								title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
+								message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
+									interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+								}),
+								type: 'error',
+								duration: 5000,
+							});
+							return false;
+						}
+					}
+				}
+			}
+			return true;
 		},
 		onInterceptBeforeDrop(info: BeforeDropParams) {
 			try {
@@ -2359,34 +2404,8 @@ export default defineComponent({
 				const targetNodeName = targetNode?.name || '';
 
 				if (sourceNode && targetNode) {
-					const targetNodeType = this.nodeTypesStore.getNodeType(
-						targetNode.type,
-						targetNode.typeVersion,
-					);
-
-					if (targetNodeType?.inputs?.length) {
-						for (const input of targetNodeType?.inputs || []) {
-							if (typeof input === 'string' || input.type !== targetInfo.type || !input.filter) {
-								// No filters defined or wrong connection type
-								continue;
-							}
-
-							if (input.filter.nodes.length) {
-								if (!input.filter.nodes.includes(sourceNode.type)) {
-									this.dropPrevented = true;
-									this.showToast({
-										title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
-										message: this.$locale.baseText(
-											'nodeView.showError.nodeNodeCompatible.message',
-											{ interpolate: { sourceNodeName, targetNodeName } },
-										),
-										type: 'error',
-										duration: 5000,
-									});
-									return false;
-								}
-							}
-						}
+					if (!this.checkNodeConnectionAllowed(sourceNode, targetNode, targetInfo.type)) {
+						return false;
 					}
 				}
 

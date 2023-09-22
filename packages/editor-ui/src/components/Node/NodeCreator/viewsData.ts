@@ -31,7 +31,7 @@ import { useI18n } from '@/composables';
 import type { SimplifiedNodeType } from '@/Interface';
 import { NodeConnectionType } from '@/Interface';
 
-interface NodeViewItem {
+export interface NodeViewItem {
 	key: string;
 	type: string;
 	properties: {

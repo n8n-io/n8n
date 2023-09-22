@@ -18,11 +18,11 @@ import {
 	sortNodeCreateElements,
 	searchNodes,
 } from '../utils';
-import { ConnectionTypes, INodeInputFilter, INodeTypeDescription } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/stores';
 import { useI18n } from '@/composables';
-import { BaseTextKey } from '@/plugins/i18n';
-import { AIView } from '@/components/Node/NodeCreator/viewsData';
+
+import type { INodeInputFilter } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores';
+import { AIView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
 
 interface ViewStack {
 	uuid?: string;
@@ -110,12 +110,29 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
+		isOutput?: boolean,
 		filter?: INodeInputFilter,
 	) {
-		const nodesByOutputType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
-		const relatedAIView = AIView([]).items.find(
-			(item) => item.properties.connectionType === connectionType,
-		);
+		const i18n = useI18n();
+
+		let nodesByConnectionType: { [key: string]: string[] };
+		let relatedAIView: NodeViewItem | { properties: { title: string; icon: string } } | undefined;
+		if (isOutput === true) {
+			console.log('gotoCompatibleConnectionView: 2');
+			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByInputConnectionTypeNames;
+			relatedAIView = {
+				properties: {
+					title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
+					icon: 'robot',
+				},
+			};
+		} else {
+			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
+
+			relatedAIView = AIView([]).items.find(
+				(item) => item.properties.connectionType === connectionType,
+			);
+		}
 
 		await nextTick();
 		pushViewStack({
@@ -130,8 +147,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			},
 			panelClass: relatedAIView?.properties.panelClass,
 			baseFilter: (i: INodeCreateElement) => {
-				const displayNode = nodesByOutputType[connectionType].includes(i.key);
+				const displayNode = nodesByConnectionType[connectionType].includes(i.key);
 
+				// TODO: Filtering works currently fine for displaying compatible node when dropping
+				//       input connections. However, it does not work for output connections.
+				//       For that reason does it currently display nodes that are maybe not compatible
+				//       but then errors once it got selected by the user.
 				if (displayNode && filter?.nodes?.length) {
 					return filter.nodes.includes(i.key);
 				}
