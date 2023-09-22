@@ -19,7 +19,7 @@ export class InvalidBinaryDataModeError extends Error {
 }
 
 export class InvalidBinaryDataManagerError extends Error {
-	constructor() {
-		super('No binary data manager found');
+	constructor(mode: string) {
+		super('No binary data manager found for mode: ' + mode);
 	}
 }

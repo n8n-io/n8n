@@ -218,6 +218,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new InvalidBinaryDataManagerError();
+		throw new InvalidBinaryDataManagerError(mode);
 	}
 }
