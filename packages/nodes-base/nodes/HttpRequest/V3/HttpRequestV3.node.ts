@@ -1264,7 +1264,15 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
+					async function toQs() {
+						return queryParameters.reduce<Promise<IDataObject>>(async (acc, p) => {
+							const result = await acc;
+
+							return parametersToKeyValue(result, p);
+						}, Promise.resolve({}));
+					}
+
+					requestOptions.qs = await toQs();
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
