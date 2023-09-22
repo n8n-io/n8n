@@ -1818,6 +1818,10 @@ export interface IWorkflowSettings {
 	executionOrder?: 'v0' | 'v1';
 }
 
+export interface WorkflowMeta {
+	onboardingId?: string;
+}
+
 export interface WorkflowTestData {
 	description: string;
 	input: {

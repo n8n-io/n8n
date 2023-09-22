@@ -1,7 +1,7 @@
 import { Length } from 'class-validator';
 
 import { IConnections, IDataObject, IWorkflowSettings } from 'n8n-workflow';
-import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
+import type { IBinaryKeyData, INode, IPairedItemData, WorkflowMeta } from 'n8n-workflow';
 
 import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
@@ -51,7 +51,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 		nullable: true,
 		transformer: objectRetriever,
 	})
-	meta?: IDataObject;
+	meta?: WorkflowMeta;
 
 	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
