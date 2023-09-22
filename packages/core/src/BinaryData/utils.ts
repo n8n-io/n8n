@@ -4,9 +4,9 @@ import type { BinaryData } from './types';
  * Modes for storing binary data:
  * - `default` (in memory)
  * - `filesystem` (on disk)
- * - `object` (S3)
+ * - `s3` (S3-compatible storage)
  */
-export const BINARY_DATA_MODES = ['default', 'filesystem', 'object'] as const;
+export const BINARY_DATA_MODES = ['default', 'filesystem', 's3'] as const;
 
 export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
 	return modes.every((m) => BINARY_DATA_MODES.includes(m as BinaryData.Mode));
