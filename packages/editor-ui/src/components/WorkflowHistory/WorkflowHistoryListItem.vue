@@ -158,11 +158,11 @@ const onItemClick = (event: Event) => {
 		}
 	}
 
-  &:first-child {
-    .badge {
-      display: inline;
-    }
-  }
+	&:first-child {
+		.badge {
+			display: inline;
+		}
+	}
 }
 
 .actions {
