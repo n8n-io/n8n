@@ -2,7 +2,7 @@ import { readFile, stat } from 'fs/promises';
 import concatStream from 'concat-stream';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
-import { BINARY_ENCODING } from 'n8n-workflow';
+import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
 import { areValidModes } from './utils';
@@ -10,7 +10,8 @@ import { BinaryDataManagerNotFound, InvalidBinaryDataMode } from './errors';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
-import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { LogCatch } from '../decorators/LogCatch.decorator';
 
 @Service()
 export class BinaryDataService {
@@ -33,6 +34,7 @@ export class BinaryDataService {
 		}
 	}
 
+	@LogCatch((error) => Logger.error('Failed to copy binary data file', { error }))
 	async copyBinaryFile(
 		workflowId: string,
 		binaryData: IBinaryData,
@@ -61,6 +63,7 @@ export class BinaryDataService {
 		return binaryData;
 	}
 
+	@LogCatch((error) => Logger.error('Failed to write binary data file', { error }))
 	async store(
 		binaryData: IBinaryData,
 		bufferOrStream: Buffer | Readable,
@@ -128,6 +131,9 @@ export class BinaryDataService {
 		await this.getManager(this.mode).deleteManyByExecutionIds(executionIds);
 	}
 
+	@LogCatch((error) =>
+		Logger.error('Failed to copy all binary data files for execution', { error }),
+	)
 	async duplicateBinaryData(
 		workflowId: string,
 		inputData: Array<INodeExecutionData[] | null>,
