@@ -1,10 +1,10 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import { readFile, stat } from 'fs/promises';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING } from 'n8n-workflow';
 
-import { FileSystemManager } from './FileSystem.manager';
-import { ObjectStoreManager } from './ObjectStore.manager';
 import { areValidModes, toBuffer } from './utils';
 import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
 
@@ -24,12 +24,14 @@ export class BinaryDataService {
 		this.mode = config.mode;
 
 		if (config.availableModes.includes('filesystem')) {
+			const { FileSystemManager } = await import('./FileSystem.manager');
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
 		}
 
 		if (config.availableModes.includes('objectStore')) {
+			const { ObjectStoreManager } = await import('./ObjectStore.manager');
 			this.managers.objectStore = new ObjectStoreManager();
 
 			await this.managers.objectStore.init();

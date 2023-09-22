@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import { FileSystemManager } from './FileSystem.manager';
 import { toBuffer } from './utils';
 
-import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
+import { ObjectStoreService } from '../ObjectStore/ObjectStore.service.ee';
 import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
 
