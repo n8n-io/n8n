@@ -1,4 +1,9 @@
-import { WHITE_SPACE_PLACEHOLDER, type FormField } from './interfaces';
+import {
+	WHITE_SPACE_PLACEHOLDER,
+	type FormField,
+	DOUBLE_QUOTE_PLACEHOLDER,
+	QUOTE_PLACEHOLDER,
+} from './interfaces';
 
 const n8nLogo = `
 <svg width="73" height="20" viewBox="0 0 73 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -111,8 +116,26 @@ form input:focus {
 	border-color: #EA1F30;
 }
 
-form select.form-input {
+.select-input {
+	border: 1px solid #DBDFE7;
+	border-radius: 6px;
+}
+
+.select-input:focus-within {
+	border: 1px solid #EA1F30;
+}
+
+form select {
+	outline: transparent;
+	border: none;
+	border-radius: 6px;
+	width: 100%;
+	font-size: 14px;
+	color: #909399;
+	font-weight: 400;
 	background-color: white;
+	padding: 12px;
+	border-right: 12px solid transparent;
 }
 
 input[type="date"] {
@@ -196,7 +219,10 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 	for (const [index, field] of formFields.entries()) {
 		const { fieldType, requiredField } = field;
-		const fieldLabel = (field.fieldLabel ?? '').replace(/ /g, WHITE_SPACE_PLACEHOLDER);
+		const fieldLabel = (field.fieldLabel ?? '')
+			.replace(/"/g, DOUBLE_QUOTE_PLACEHOLDER)
+			.replace(/'/g, QUOTE_PLACEHOLDER)
+			.replace(/ /g, WHITE_SPACE_PLACEHOLDER);
 
 		const required = requiredField ? 'required' : '';
 
@@ -206,12 +232,14 @@ const prepareFormGroups = (formFields: FormField[]) => {
 			const fieldOptions = field.fieldOptions?.values ?? [];
 
 			formHtml += `<label class="form-label" for="${fieldLabel}">${field.fieldLabel}</label>`;
-			formHtml += `<select class="form-input" id="${fieldLabel}" name="${fieldLabel}" ${required}>`;
+			formHtml += '<div class="select-input">';
+			formHtml += `<select id="${fieldLabel}" name="${fieldLabel}" ${required}>`;
 			formHtml += '<option value="" disabled selected>Select an option ...</option>';
 			for (const entry of fieldOptions) {
 				formHtml += `<option value="${entry.option}">${entry.option}</option>`;
 			}
 			formHtml += '</select>';
+			formHtml += '</div>';
 		} else {
 			formHtml += `<label class="form-label" for="${fieldLabel}">${field.fieldLabel}</label>`;
 			formHtml += `<input class="form-input" type="${fieldType}" id="${fieldLabel}" name="${fieldLabel}" ${required}/>`;
@@ -224,11 +252,14 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 		if (requiredField) {
 			variables += `
-				const input${index} = document.querySelector('#${fieldLabel}');
-				const error${index} = document.querySelector('.error-${fieldLabel}');
+				const input${index} = document.querySelector(\`#${fieldLabel}\`);
+				const error${index} = document.querySelector(\`.error-${fieldLabel}\`);
 				input${index}.addEventListener('blur', () => {
 					validateInput(input${index}, error${index});
 				});
+				input${index}.addEventListener('input', () => {
+					error${index}.classList.remove('error-show');
+			});
 			`;
 
 			validationCases += `
