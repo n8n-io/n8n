@@ -155,6 +155,27 @@ input[type="date"] {
 	cursor: pointer;
 }
 
+#submit-btn span {
+	padding-right: 6px;
+	display: none;
+}
+
+#submit-btn span svg {
+	display: inline-block;
+	vertical-align: middle;
+	fill: #FFFFFF;
+	animation: lds-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+@keyframes lds-ring {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
 #submit-btn:hover {
 	opacity: 0.7;
 }
@@ -200,13 +221,9 @@ const submittedTestMessage = (testRun: boolean) => {
 	<div class="card" id="submitted-form" style="display: none;">
 	<div class="form-header">
 		<h1 id="submitted-header">Form Submited</h1>
-		${
-			testRun
-				? `<p id="submitted-content">
-						Close this window and go back to the n8n editor
-					</p>`
-				: ''
-		}
+		<p id="submitted-content">
+			${testRun ? 'Close this window and go back to the n8n editor' : ''}
+		</p>
 	</div>
 	</div>
 	`;
@@ -287,7 +304,14 @@ const createForm = (formTitle: string, formDescription: string, form: string) =>
 			${form}
 		</div>
 
-		<button id="submit-btn" type="submit">Submit form</button>
+		<button id="submit-btn" type="submit">
+		<span><svg xmlns="http://www.w3.org/2000/svg" height="18px"
+				viewBox="0 0 512 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2023 Fonticons, Inc. -->
+				<path
+					d="M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z" />
+			</svg></span>
+		Submit form
+		</button>
 	</form>
 	`;
 };
@@ -355,12 +379,15 @@ export const createPage = (
 				if (valid) {
 					var formData = new FormData(form);
 					formData.append("submittedAt", (new Date()).toISOString());
+					document.querySelector('#submit-btn').disabled = true;
+					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
+					document.querySelector('#submit-btn span').style.display = 'inline-block';
 					fetch('#', {
 						method: 'POST',
 						body: formData
 					})
-					.then(function (response) {
-						const data = response.json();
+					.then(async function (response) {
+						const data = await response.json();
 						data.status = response.status;
 						return data;
 					})
