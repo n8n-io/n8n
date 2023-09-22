@@ -132,14 +132,14 @@ import {
 import { extractValue } from './ExtractValue';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath, getInstanceId } from './UserSettings';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getSecretsProxy } from './Secrets';
+import { getUserN8nFolderPath, getInstanceId } from './UserSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
