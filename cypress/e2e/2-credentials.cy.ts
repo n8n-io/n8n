@@ -51,7 +51,7 @@ describe('Credentials', () => {
 
 		credentialsModal.getters.newCredentialTypeButton().click();
 		credentialsModal.getters.editCredentialModal().should('be.visible');
-		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
+		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('Airtable Account');
 		credentialsModal.actions.save();
