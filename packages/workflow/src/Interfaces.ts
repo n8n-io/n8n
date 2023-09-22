@@ -790,8 +790,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		): { index: number };
 		addOutputData(
 			connectionType: ConnectionTypes,
-			data: INodeExecutionData[][] | ExecutionError,
 			currentNodeRunIndex: number,
+			data: INodeExecutionData[][] | ExecutionError,
 		): void;
 
 		nodeHelpers: NodeHelperFunctions;

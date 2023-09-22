@@ -3197,8 +3197,8 @@ export function getExecuteFunctions(
 			},
 			addOutputData(
 				connectionType: ConnectionTypes,
-				data: INodeExecutionData[][] | ExecutionError,
 				currentNodeRunIndex: number,
+				data: INodeExecutionData[][] | ExecutionError,
 			): void {
 				addExecutionDataFunctions(
 					'output',

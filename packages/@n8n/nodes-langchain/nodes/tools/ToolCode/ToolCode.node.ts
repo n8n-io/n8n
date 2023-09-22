@@ -166,7 +166,7 @@ export class ToolCode implements INodeType {
 				description,
 
 				func: async (query: string): Promise<string> => {
-					void this.addInputData('tool', [[{ json: { query } }]]);
+					const { index } = this.addInputData('tool', [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
@@ -191,9 +191,9 @@ export class ToolCode implements INodeType {
 					}
 
 					if (executionError) {
-						void this.addOutputData('tool', executionError);
+						void this.addOutputData('tool', index, executionError);
 					} else {
-						void this.addOutputData('tool', [[{ json: { response } }]]);
+						void this.addOutputData('tool', index, [[{ json: { response } }]]);
 					}
 					return response;
 				},
