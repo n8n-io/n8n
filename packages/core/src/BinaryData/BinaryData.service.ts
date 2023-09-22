@@ -127,7 +127,11 @@ export class BinaryDataService {
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
-		await this.getManager(this.mode).deleteManyByExecutionIds(executionIds);
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return;
+
+		await manager.deleteManyByExecutionIds(executionIds);
 	}
 
 	@LogCatch((error) =>
