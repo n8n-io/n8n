@@ -153,6 +153,8 @@ export const prepareRequestBody = async (
 			return acc;
 		}, {} as IDataObject);
 	} else {
+		// @TODO: Fix
+		// return parameters.reduce(defaultReducer, {});
 		return parameters.reduce(
 			async (acc, entry) => {
 				const result = await acc; // Wait for the promise to resolve
