@@ -5,13 +5,13 @@ import { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
-import { areValidModes } from './utils';
 import { BinaryDataManagerNotFound, InvalidBinaryDataMode } from './errors';
+import { LogCatch } from '../decorators/LogCatch.decorator';
+import { areValidModes } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 import type { INodeExecutionData } from 'n8n-workflow';
-import { LogCatch } from '../decorators/LogCatch.decorator';
 
 @Service()
 export class BinaryDataService {
