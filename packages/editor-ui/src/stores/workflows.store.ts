@@ -1372,7 +1372,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Binary data
 		getBinaryUrl(
 			dataPath: string,
-			mode: 'view' | 'download',
+			action: 'view' | 'download',
 			fileName: string,
 			mimeType: string,
 		): string {
@@ -1380,7 +1380,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			let restUrl = rootStore.getRestUrl;
 			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
 			const url = new URL(`${restUrl}/data/${dataPath}`);
-			url.searchParams.append('mode', mode);
+			url.searchParams.append('action', action);
 			if (fileName) url.searchParams.append('fileName', fileName);
 			if (mimeType) url.searchParams.append('mimeType', mimeType);
 			return url.toString();

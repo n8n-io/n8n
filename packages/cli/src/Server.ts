@@ -1425,24 +1425,35 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				// TODO UM: check if this needs permission check for UM
-				const identifier = req.params.path;
+				const { path: binaryDataId } = req.params;
+				const [mode] = binaryDataId.split(':') as ['filesystem' | 'object', string];
+				let { action, fileName, mimeType } = req.query;
+
 				try {
-					const binaryPath = this.binaryDataService.getPath(identifier);
-					let { mode, fileName, mimeType } = req.query;
+					const binaryPath = this.binaryDataService.getPath(binaryDataId);
+
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await this.binaryDataService.getMetadata(identifier);
+							const metadata = await this.binaryDataService.getMetadata(binaryDataId);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
 						} catch {}
 					}
+
 					if (mimeType) res.setHeader('Content-Type', mimeType);
-					if (mode === 'download') {
+
+					if (action === 'download') {
 						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 					}
-					res.sendFile(binaryPath);
+
+					if (mode === 'object') {
+						const readStream = await this.binaryDataService.getAsStream(binaryPath);
+						readStream.pipe(res);
+						return;
+					} else {
+						res.sendFile(binaryPath);
+					}
 				} catch (error) {
 					if (error instanceof FileNotFoundError) res.writeHead(404).end();
 					else throw error;
