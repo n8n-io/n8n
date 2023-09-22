@@ -6,7 +6,7 @@ import path from 'path';
 
 describe('Test Read Binary Files Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataManager();
+		await Helpers.initBinaryDataService();
 	});
 
 	const workflow = Helpers.readJsonFileSync(
