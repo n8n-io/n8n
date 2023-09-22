@@ -13,7 +13,8 @@
 		:data-test-id="dataTestId"
 	>
 		<template #icon>
-			<node-icon :nodeType="nodeType" />
+			<div v-if="isAi" :class="$style.subNodeBackground"></div>
+			<node-icon :class="$style.nodeIcon" :nodeType="nodeType" />
 		</template>
 
 		<template #tooltip v-if="isCommunityNode">
@@ -176,6 +177,19 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	user-select: none;
 }
 
+.nodeIcon {
+	z-index: 2;
+}
+
+.subNodeBackground {
+	background-color: var(--node-type-languageModel-background);
+	border-radius: 50%;
+	height: 40px;
+	position: absolute;
+	transform: translate(-7px, -7px);
+	width: 40px;
+	z-index: 1;
+}
 .communityNodeIcon {
 	vertical-align: top;
 }
