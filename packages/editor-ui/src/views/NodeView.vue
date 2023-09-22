@@ -3779,7 +3779,7 @@ export default defineComponent({
 			nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>,
 			dragAndDrop: boolean,
 		) {
-			nodeTypes
+			const enrichedNodeTypes = nodeTypes
 				.map((nodeType): Array<{ nodeTypeName: string; position: XYPosition; name?: string }> => {
 					if (nodeType.nodeTypeName === SPLIT_IN_BATCHES_NODE_TYPE) {
 						return [
@@ -3789,52 +3789,53 @@ export default defineComponent({
 					}
 					return [nodeType];
 				})
-				.flat()
-				.forEach(({ nodeTypeName, position, name }, index) => {
-					const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
-					const openNDV = !isManualTrigger && index === 0;
-					void this.addNode(
-						nodeTypeName,
-						{ position, dragAndDrop, name },
-						openNDV,
-						true,
-						index !== 0,
-					);
+				.flat();
 
-					if (index === 0) return;
-					// If there's more than one node, we want to connect them
-					// this has to be done in mutation subscriber to make sure both nodes already
-					// exist
-					const unsubscribeActionWatcher = this.workflowsStore.$onAction(
-						({ name, after, args }) => {
-							if (name === 'addNode' && args[0].type === nodeTypeName) {
-								after(async () => {
-									const lastAddedNode = this.nodes[this.nodes.length - 1];
-									const previouslyAddedNode = this.nodes[this.nodes.length - 2];
+			const openNDVForIndex = enrichedNodeTypes.findIndex(
+				({ nodeTypeName }) => nodeTypeName !== MANUAL_TRIGGER_NODE_TYPE,
+			);
 
-									// Position the added node to the right side of the previously added one
-									lastAddedNode.position = [
-										previouslyAddedNode.position[0] +
-											NodeViewUtils.NODE_SIZE * 2 +
-											NodeViewUtils.GRID_SIZE,
-										previouslyAddedNode.position[1],
-									];
-									await this.$nextTick();
+			enrichedNodeTypes.forEach(({ nodeTypeName, position, name }, index) => {
+				void this.addNode(
+					nodeTypeName,
+					{ position, dragAndDrop, name },
+					openNDVForIndex === index,
+					true,
+					index !== 0,
+				);
 
-									// For Split In Batches Node, connect the following node's output to its input (close the loop)
-									if (previouslyAddedNode.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-										this.connectTwoNodes(previouslyAddedNode.name, 1, lastAddedNode.name, 0);
-										this.connectTwoNodes(lastAddedNode.name, 0, previouslyAddedNode.name, 0);
-									} else {
-										this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
-									}
+				if (index === 0) return;
+				// If there's more than one node, we want to connect them
+				// this has to be done in mutation subscriber to make sure both nodes already
+				// exist
+				const unsubscribeActionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
+					if (name === 'addNode' && args[0].type === nodeTypeName) {
+						after(async () => {
+							const lastAddedNode = this.nodes[this.nodes.length - 1];
+							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
 
-									unsubscribeActionWatcher();
-								});
+							// Position the added node to the right side of the previously added one
+							lastAddedNode.position = [
+								previouslyAddedNode.position[0] +
+									NodeViewUtils.NODE_SIZE * 2 +
+									NodeViewUtils.GRID_SIZE,
+								previouslyAddedNode.position[1],
+							];
+							await this.$nextTick();
+
+							// For Split In Batches Node, connect the following node's output to its input (close the loop)
+							if (previouslyAddedNode.type === SPLIT_IN_BATCHES_NODE_TYPE) {
+								this.connectTwoNodes(previouslyAddedNode.name, 1, lastAddedNode.name, 0);
+								this.connectTwoNodes(lastAddedNode.name, 0, previouslyAddedNode.name, 0);
+							} else {
+								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
 							}
-						},
-					);
+
+							unsubscribeActionWatcher();
+						});
+					}
 				});
+			});
 		},
 		async saveCurrentWorkflowExternal(callback: () => void) {
 			await this.saveCurrentWorkflow();
