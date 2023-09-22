@@ -3784,7 +3784,7 @@ export default defineComponent({
 					if (nodeType.nodeTypeName === SPLIT_IN_BATCHES_NODE_TYPE) {
 						return [
 							nodeType,
-							{ nodeTypeName: NO_OP_NODE_TYPE, position: nodeType.position, name: 'Replace me' },
+							{ nodeTypeName: NO_OP_NODE_TYPE, position: nodeType.position, name: 'Replace Me' },
 						];
 					}
 					return [nodeType];

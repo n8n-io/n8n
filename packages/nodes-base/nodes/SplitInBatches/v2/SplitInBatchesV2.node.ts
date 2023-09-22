@@ -10,14 +10,14 @@ import { deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV2 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Loop Over Items',
+		displayName: 'Split In Batches',
 		name: 'splitInBatches',
-		icon: 'fa:sync',
+		icon: 'fa:th-large',
 		group: ['organization'],
 		version: 2,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
-			name: 'Loop Over Items',
+			name: 'Split In Batches',
 			color: '#007755',
 		},
 		inputs: ['main'],
