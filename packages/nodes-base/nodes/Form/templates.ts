@@ -78,10 +78,10 @@ body {
 	color: #525356;
 	font-size: 20px;
 	font-weight: 400;
-	padding-bottom: 8px;
 }
 
 .form-header p {
+	padding-top: 8px;
 	color: #7E8186;
 	font-size: 14px;
 	font-weight: 400;
@@ -200,13 +200,13 @@ const submittedTestMessage = (testRun: boolean) => {
 	<div class="card" id="submitted-form" style="display: none;">
 	<div class="form-header">
 		<h1 id="submitted-header">Form Submited</h1>
-		<p id="submitted-content">
-			${
-				testRun
-					? 'Close this window and go back to the n8n editor'
-					: 'Refresh this page to make another submission'
-			}
-		</p>
+		${
+			testRun
+				? `<p id="submitted-content">
+						Close this window and go back to the n8n editor
+					</p>`
+				: ''
+		}
 	</div>
 	</div>
 	`;
