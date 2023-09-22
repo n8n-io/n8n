@@ -17,6 +17,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 	icon = 'file:icons/Cisco.svg';
 
 	httpRequestNodeVariant = {
+		name: 'Cisco Umbrella',
 		docsUrl: 'https://developer.cisco.com/docs/cloud-security/',
 		apiBaseUrl: 'https://api.umbrella.com/',
 	};

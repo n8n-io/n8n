@@ -10,6 +10,7 @@ export class SekoiaApi implements ICredentialType {
 	documentationUrl = 'sekoia';
 
 	httpRequestNodeVariant = {
+		name: 'Sekoia',
 		docsUrl: 'https://docs.sekoia.io/cti/features/integrations/api/',
 		apiBaseUrl: 'https://api.sekoia.io/',
 	};

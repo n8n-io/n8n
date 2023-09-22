@@ -10,6 +10,7 @@ export class FortiGateApi implements ICredentialType {
 	icon = 'file:icons/Fortinet.svg';
 
 	httpRequestNodeVariant = {
+		name: 'Fortinet FortiGate',
 		docsUrl:
 			'https://docs.fortinet.com/document/fortigate/7.4.1/administration-guide/940602/using-apis',
 		apiBaseUrl: '',

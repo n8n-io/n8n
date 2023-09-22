@@ -10,6 +10,7 @@ export class ImpervaWafApi implements ICredentialType {
 	icon = 'file:icons/Imperva.svg';
 
 	httpRequestNodeVariant = {
+		name: 'Imperva WAF',
 		docsUrl: 'https://docs.imperva.com/bundle/api-docs',
 		apiBaseUrl: 'https://api.imperva.com/',
 	};

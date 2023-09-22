@@ -10,6 +10,7 @@ export class RecordedFutureApi implements ICredentialType {
 	icon = 'file:icons/RecordedFuture.svg';
 
 	httpRequestNodeVariant = {
+		name: 'Recorded Future',
 		docsUrl: 'https://api.recordedfuture.com',
 		apiBaseUrl: 'https://api.recordedfuture.com/v2/',
 	};

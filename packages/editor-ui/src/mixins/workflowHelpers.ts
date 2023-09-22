@@ -1,69 +1,69 @@
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WEBHOOK_NODE_TYPE,
-	VIEWS,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 import type {
 	IConnections,
 	IDataObject,
+	IExecuteData,
 	INode,
+	INodeConnection,
+	INodeCredentials,
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
-	NodeParameterValue,
-	INodeCredentials,
+	INodeProperties,
 	INodeType,
 	INodeTypes,
 	IRunExecutionData,
-	IWorkflowIssues,
-	IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-	IExecuteData,
-	INodeConnection,
 	IWebhookDescription,
-	INodeProperties,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowIssues,
 	IWorkflowSettings,
+	NodeParameterValue,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type {
+	ICredentialsResponse,
 	INodeTypesMaxCount,
 	INodeUi,
-	IWorkflowData,
-	IWorkflowDb,
-	IWorkflowDataUpdate,
-	XYPosition,
 	ITag,
+	IWorkflowData,
+	IWorkflowDataUpdate,
+	IWorkflowDb,
 	TargetItem,
-	ICredentialsResponse,
+	XYPosition,
 } from '../Interface';
 
+import { useMessage, useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useToast, useMessage } from '@/composables';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { isEqual } from 'lodash-es';
 
-import { v4 as uuid } from 'uuid';
-import { getSourceItems } from '@/utils';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
-import { getWorkflowPermissions } from '@/permissions';
-import type { IPermissions } from '@/permissions';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getSourceItems } from '@/utils';
+import { v4 as uuid } from 'uuid';
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -587,7 +587,7 @@ export const workflowHelpers = defineComponent({
 				const nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
 					node.parameters,
-					false,
+					true,
 					false,
 					node,
 				);

@@ -10,6 +10,7 @@ export class CarbonBlackApi implements ICredentialType {
 	documentationUrl = 'carbonblack';
 
 	httpRequestNodeVariant = {
+		name: 'Carbon Black',
 		docsUrl: 'https://developer.carbonblack.com/reference',
 		apiBaseUrl: '',
 	};

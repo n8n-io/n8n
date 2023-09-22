@@ -36,18 +36,15 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 			const credentialType = credential.type;
 			const hasSupportedNodes = knownCredentials[credential.name]?.supportedNodes?.length > 0;
 			const httpIcon = httpNode.description.iconUrl;
-			const nodeName = credentialType.displayName.replace(/ API$/, '');
-			const httpNodeClone = new httpNode.constructor().getNodeType(4.1);
-			const { docsUrl, apiBaseUrl } = credentialType.httpRequestNodeVariant;
+			const httpNodeClone = new httpNode.constructor().getNodeType(version);
+			const { docsUrl, apiBaseUrl, name: nodeName } = credentialType.httpRequestNodeVariant;
 
 			httpNodeClone.hidden = hasSupportedNodes;
 			httpNodeClone.description.codex = httpNode.description.codex;
-			httpNodeClone.description.credentials = [{ name: credentialType.name, required: true }];
 			httpNodeClone.description.name = `${httpNode.description.name}:${credentialType.name}`;
+			httpNodeClone.description.credentials = [{ name: credentialType.name, required: true }];
 			httpNodeClone.description.displayName = nodeName;
-			httpNodeClone.description.icon = credentialType.icon;
-			httpNodeClone.description.iconUrl = credentialType.iconUrl;
-			httpNodeClone.description.badgeIconUrl = httpIcon;
+
 			httpNodeClone.description.defaults.name = `${nodeName} HTTP Request`;
 			httpNodeClone.description.description = 'Make raw HTTP request';
 			httpNodeClone.description.codex.categories = ['Core Variant Nodes'];
@@ -55,6 +52,15 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 			httpNodeClone.description.codex.subcategories = {
 				'Core Variant Nodes': ['Http'],
 			};
+
+			if (credentialType.icon || credentialType.iconUrl) {
+				httpNodeClone.description.icon = credentialType.icon;
+				httpNodeClone.description.iconUrl = credentialType.iconUrl;
+				httpNodeClone.description.badgeIconUrl = httpIcon;
+			} else {
+				httpNodeClone.description.iconUrl = httpIcon;
+			}
+
 			httpNodeClone.description.properties = httpNodeClone.description.properties.map((prop) => {
 				switch (prop.name) {
 					case 'authentication':
@@ -62,7 +68,11 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 					case 'nodeCredentialType':
 						return { ...prop, type: 'hidden', default: credentialType.name };
 					case 'url':
-						return { ...prop, default: apiBaseUrl, placeholder: `e.g. ${apiBaseUrl}` };
+						return {
+							...prop,
+							default: apiBaseUrl,
+							placeholder: apiBaseUrl ? `e.g. ${apiBaseUrl}` : prop.placeholder,
+						};
 					default:
 						return prop;
 				}
@@ -72,6 +82,12 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 				displayName: `Use the <a target="_blank" href="${docsUrl}">${nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a ${nodeName} credential below.`,
 				name: 'httpVariantWarning',
 				type: 'notice',
+			});
+
+			httpNodeClone.description.properties.splice(4, 0, {
+				displayName: '',
+				name: '',
+				type: 'credentials',
 			});
 
 			return httpNodeClone.description;
@@ -111,7 +127,7 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 		knownCredentials,
 		loader.credentialTypes,
 		httpRequestNodeType,
-		4.1, // If a new HTTP request node version releases, keep v4.1 variants for compatibility
+		4.1, // If a new HTTP request node version releases, keep v4.1 variants for backwards compatibility
 	);
 
 	const nodeTypes = loaderNodeTypes

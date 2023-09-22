@@ -15,6 +15,7 @@ export class VirusTotalApi implements ICredentialType {
 	icon = 'file:icons/VirusTotal.svg';
 
 	httpRequestNodeVariant = {
+		name: 'VirusTotal',
 		docsUrl: 'https://developers.virustotal.com/reference/overview',
 		apiBaseUrl: 'https://www.virustotal.com/api/v3/',
 	};

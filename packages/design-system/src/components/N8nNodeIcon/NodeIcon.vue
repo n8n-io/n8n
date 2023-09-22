@@ -171,7 +171,7 @@ export default defineComponent({
 
 .badge {
 	position: absolute;
-	background: #fff;
+	background: var(--node-badge-bg-color, #fff);
 	border-radius: 50%;
 }
 

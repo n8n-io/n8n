@@ -1028,7 +1028,8 @@ export type NodePropertyTypes =
 	| 'credentialsSelect'
 	| 'resourceLocator'
 	| 'curlImport'
-	| 'resourceMapper';
+	| 'resourceMapper'
+	| 'credentials';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 

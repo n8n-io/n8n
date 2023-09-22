@@ -12,95 +12,11 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 
 import type {
-	GenericValue,
-	IAdditionalCredentialOptions,
-	IAllExecuteFunctions,
-	IBinaryData,
-	IContextObject,
-	ICredentialDataDecryptedObject,
-	ICredentialsExpressionResolveValues,
-	IDataObject,
-	IExecuteResponsePromiseData,
-	IExecuteWorkflowInfo,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	IN8nHttpResponse,
-	INode,
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	INodeExecutionData,
-	IOAuth2Options,
-	IRunExecutionData,
-	ISourceData,
-	ITaskDataConnections,
-	IWebhookData,
-	IWebhookDescription,
-	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowDataProxyData,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
-	IExecuteData,
-	IGetNodeParameterOptions,
-	NodeParameterValueType,
-	NodeExecutionWithMetadata,
-	IPairedItemData,
-	ICredentialTestFunctions,
-	BinaryHelperFunctions,
-	NodeHelperFunctions,
-	RequestHelperFunctions,
-	FunctionsBase,
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IPollFunctions,
-	ITriggerFunctions,
-	IWebhookFunctions,
-	BinaryMetadata,
-	FileSystemHelperFunctions,
-	INodeType,
-} from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	isObjectEmpty,
-	isResourceMapperValue,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
-	WorkflowDataProxy,
-	LoggerProxy as Logger,
-	OAuth2GrantType,
-	deepCopy,
-	fileTypeFromMimeType,
-	ExpressionError,
-	validateFieldType,
-	NodeSSLError,
-} from 'n8n-workflow';
-import { parse as parseContentDisposition } from 'content-disposition';
-import { parse as parseContentType } from 'content-type';
-import pick from 'lodash/pick';
-import { Agent } from 'https';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
-import { stringify } from 'qs';
-import type { Token } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
-import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
 	ClientOAuth2TokenData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import crypto, { createHmac } from 'crypto';
-import get from 'lodash/get';
-import type { Request, Response } from 'express';
-import FormData from 'form-data';
-import path from 'path';
-import type { OptionsWithUri, OptionsWithUrl } from 'request';
-import type { RequestPromiseOptions } from 'request-promise-native';
-import FileType from 'file-type';
-import { lookup, extension } from 'mime-types';
 import type {
 	AxiosError,
 	AxiosPromise,
@@ -110,34 +26,118 @@ import type {
 	Method,
 } from 'axios';
 import axios from 'axios';
-import url, { URL, URLSearchParams } from 'url';
-import { Readable } from 'stream';
-import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
+import { parse as parseContentDisposition } from 'content-disposition';
+import { parse as parseContentType } from 'content-type';
+import crypto, { createHmac } from 'crypto';
+import type { Request, Response } from 'express';
+import FileType from 'file-type';
+import FormData from 'form-data';
 import { createReadStream } from 'fs';
+import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
+import { IncomingMessage, type IncomingHttpHeaders } from 'http';
+import { Agent } from 'https';
+import get from 'lodash/get';
+import pick from 'lodash/pick';
+import { extension, lookup } from 'mime-types';
+import type {
+	BinaryHelperFunctions,
+	BinaryMetadata,
+	FileSystemHelperFunctions,
+	FunctionsBase,
+	GenericValue,
+	IAdditionalCredentialOptions,
+	IAllExecuteFunctions,
+	IBinaryData,
+	IContextObject,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	ICredentialsExpressionResolveValues,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	IExecuteResponsePromiseData,
+	IExecuteSingleFunctions,
+	IExecuteWorkflowInfo,
+	IGetNodeParameterOptions,
+	IHookFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	IN8nHttpResponse,
+	INode,
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
+	INodeExecutionData,
+	INodeType,
+	IOAuth2Options,
+	IPairedItemData,
+	IPollFunctions,
+	IRunExecutionData,
+	ISourceData,
+	ITaskDataConnections,
+	ITriggerFunctions,
+	IWebhookData,
+	IWebhookDescription,
+	IWebhookFunctions,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
+	IWorkflowExecuteAdditionalData,
+	NodeExecutionWithMetadata,
+	NodeHelperFunctions,
+	NodeParameterValueType,
+	RequestHelperFunctions,
+	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	ExpressionError,
+	LoggerProxy as Logger,
+	NodeApiError,
+	NodeHelpers,
+	NodeOperationError,
+	NodeSSLError,
+	OAuth2GrantType,
+	WorkflowDataProxy,
+	createDeferredPromise,
+	deepCopy,
+	fileTypeFromMimeType,
+	isObjectEmpty,
+	isResourceMapperValue,
+	validateFieldType,
+} from 'n8n-workflow';
+import type { Token } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
+import path from 'path';
+import { stringify } from 'qs';
+import type { OptionsWithUri, OptionsWithUrl } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import { Readable } from 'stream';
+import url, { URL, URLSearchParams } from 'url';
 
 import { BinaryDataManager } from './BinaryDataManager';
-import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
-import { extractValue } from './ExtractValue';
-import { getClientCredentialsToken } from './OAuth2Helper';
+import { binaryToBuffer } from './BinaryDataManager/utils';
 import {
+	BINARY_DATA_STORAGE_PATH,
+	BLOCK_FILE_ACCESS_TO_N8N_FILES,
+	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
-	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	RESTRICT_FILE_ACCESS_TO,
-	CONFIG_FILES,
-	BINARY_DATA_STORAGE_PATH,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
-import { binaryToBuffer } from './BinaryDataManager/utils';
+import { extractValue } from './ExtractValue';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
+import { getClientCredentialsToken } from './OAuth2Helper';
+import { getSecretsProxy } from './Secrets';
+import { getUserN8nFolderPath } from './UserSettings';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
-import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath } from './UserSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1786,7 +1786,7 @@ export async function getCredentials(
 
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
+	const fullAccess = node.type.startsWith('n8n-nodes-base.httpRequest');
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {

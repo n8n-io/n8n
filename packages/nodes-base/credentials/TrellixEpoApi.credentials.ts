@@ -10,6 +10,7 @@ export class TrellixEpoApi implements ICredentialType {
 	icon = 'file:icons/Trellix.svg';
 
 	httpRequestNodeVariant = {
+		name: 'Trellix (McAfee) ePolicy Orchestrator',
 		docsUrl: 'https://docs.trellix.com/en/bundle/epolicy-orchestrator-web-api-reference-guide',
 		apiBaseUrl: '',
 	};

@@ -23,7 +23,7 @@
 			</div>
 
 			<import-parameter
-				v-else-if="parameter.type === 'curlImport' && isHttpRequestNode && nodeTypeVersion >= 3"
+				v-else-if="parameter.type === 'curlImport'"
 				:isReadOnly="isReadOnly"
 				@valueChanged="valueChanged"
 			/>
@@ -89,7 +89,10 @@
 				labelSize="small"
 				@valueChanged="valueChanged"
 			/>
-			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
+			<div
+				v-else-if="displayNodeParameter(parameter) && credentialsParameterIndex !== index"
+				class="parameter-item"
+			>
 				<div
 					class="delete-option clickable"
 					:title="$locale.baseText('parameterInputList.delete')"
@@ -141,7 +144,7 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import MultipleParameter from '@/components/MultipleParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import { HTTP_REQUEST_NODE_TYPE, KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -228,15 +231,20 @@ export default defineComponent({
 		nodeAuthFields(): INodeProperties[] {
 			return getNodeAuthFields(this.nodeType);
 		},
+		credentialsParameterIndex(): number {
+			return this.filteredParameters.findIndex((parameter) => parameter.type === 'credentials');
+		},
 		indexToShowSlotAt(): number {
+			const credentialsParameterIndex = this.credentialsParameterIndex;
+
+			if (credentialsParameterIndex !== -1) {
+				return credentialsParameterIndex;
+			}
+
 			let index = 0;
 			// For nodes that use old credentials UI, keep credentials below authentication field in NDV
 			// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
-			const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.some(
-				(type) => this.nodeType?.name?.startsWith(type),
-			)
-				? 1
-				: 0;
+			const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.nodeType?.name || '') ? 1 : 0;
 			const credentialsDependencies = this.getCredentialsDependencies();
 
 			this.filteredParameters.forEach((prop, propIndex) => {
@@ -245,17 +253,10 @@ export default defineComponent({
 				}
 			});
 
-			if (this.isHttpRequestNode && index === 0) {
-				return 3;
-			}
-
-			return Math.max(index, this.filteredParameters.length - 1);
+			return Math.min(index, this.filteredParameters.length - 1);
 		},
 		mainNodeAuthField(): INodeProperties | null {
 			return getMainAuthField(this.nodeType || null);
-		},
-		isHttpRequestNode(): boolean {
-			return this.nodeTypeName.startsWith(HTTP_REQUEST_NODE_TYPE);
 		},
 	},
 	methods: {
@@ -341,7 +342,7 @@ export default defineComponent({
 
 			// Hide authentication related fields since it will now be part of credentials modal
 			if (
-				!KEEP_AUTH_IN_NDV_FOR_NODES.some((type) => this.node?.type?.startsWith(type)) &&
+				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
 				this.mainNodeAuthField &&
 				(parameter.name === this.mainNodeAuthField?.name ||
 					this.shouldHideAuthRelatedParameter(parameter))
@@ -360,6 +361,9 @@ export default defineComponent({
 				rawValues = get(this.nodeValues, this.path);
 			}
 
+			if (!rawValues) {
+				return false;
+			}
 			// Resolve expressions
 			const resolveKeys = Object.keys(rawValues);
 			let key: string;
