@@ -26,9 +26,13 @@ export class FileSystemManager implements BinaryData.Manager {
 
 	async getSize(identifier: string) {
 		const filePath = this.getPath(identifier);
-		const stats = await fs.stat(filePath);
 
-		return stats.size;
+		try {
+			const stats = await fs.stat(filePath);
+			return stats.size;
+		} catch (error) {
+			throw new Error('Failed to find binary data file in filesystem', { cause: error });
+		}
 	}
 
 	getStream(identifier: string, chunkSize?: number) {
