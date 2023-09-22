@@ -878,6 +878,10 @@ export default defineComponent({
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
 				height: 25px;
 			}
+
+			.node-icon {
+				scale: 0.75;
+			}
 		}
 
 		.node-default {
@@ -911,9 +915,9 @@ export default defineComponent({
 		}
 
 		.node-info-icon {
-			bottom: 8px !important;
+			bottom: 4px !important;
 			right: 50% !important;
-			transform: translateX(50%);
+			transform: translateX(50%) scale(0.75);
 		}
 
 		&.node-wrapper--configurable {
