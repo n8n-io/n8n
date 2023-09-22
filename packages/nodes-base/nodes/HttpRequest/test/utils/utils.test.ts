@@ -14,9 +14,7 @@ describe('HTTP Node Utils, prepareRequestBody', () => {
 		await prepareRequestBody(bodyParameters, 'json', 3, defaultReducer);
 
 		expect(defaultReducer).toBeCalledTimes(1);
-		expect(defaultReducer).toBeCalledWith({}, { name: 'foo.bar', value: 'baz' }, 0, [
-			{ name: 'foo.bar', value: 'baz' },
-		]);
+		expect(defaultReducer).toBeCalledWith({}, { name: 'foo.bar', value: 'baz' });
 	});
 
 	it('should call process dot notations', async () => {
