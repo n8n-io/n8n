@@ -336,6 +336,9 @@ export class Server extends AbstractServer {
 			variables: {
 				limit: 0,
 			},
+			expressions: {
+				evaluator: config.getEnv('expression.evaluator'),
+			},
 			banners: {
 				dismissed: [],
 			},
@@ -396,7 +399,6 @@ export class Server extends AbstractServer {
 				),
 				executions_data_prune: config.getEnv('executions.pruneData'),
 				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binaryDataConfig.mode,
@@ -1470,7 +1472,9 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize();
+			await eventBus.initialize({
+				uniqueInstanceId: this.uniqueInstanceId,
+			});
 		}
 
 		if (this.endpointPresetCredentials !== '') {

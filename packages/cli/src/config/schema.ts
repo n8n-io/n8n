@@ -322,12 +322,6 @@ export const schema = {
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
-		pruneDataTimeout: {
-			doc: 'Timeout (seconds) after execution data has been pruned',
-			format: Number,
-			default: 3600,
-			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
-		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
@@ -437,6 +431,12 @@ export const schema = {
 			format: '*',
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
+		},
+
+		instanceType: {
+			doc: 'Type of n8n instance',
+			format: ['main', 'webhook', 'worker'] as const,
+			default: 'main',
 		},
 	},
 
@@ -919,12 +919,6 @@ export const schema = {
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
-		binaryDataTTL: {
-			format: Number,
-			default: 60,
-			env: 'N8N_BINARY_DATA_TTL',
-			doc: 'TTL for binary data of unsaved executions in minutes',
-		},
 	},
 
 	deployment: {
@@ -1202,6 +1196,21 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+	},
+
+	expression: {
+		evaluator: {
+			doc: 'Expression evaluator to use',
+			format: ['tmpl', 'tournament'] as const,
+			default: 'tournament',
+			env: 'N8N_EXPRESSION_EVALUATOR',
+		},
+		reportDifference: {
+			doc: 'Whether to report differences in the evaluator outputs',
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
 		},
 	},
 

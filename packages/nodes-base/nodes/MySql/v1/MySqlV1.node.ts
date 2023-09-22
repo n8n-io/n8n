@@ -78,6 +78,7 @@ const versionDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			typeOptions: {
 				editor: 'sqlEditor',
+				rows: 5,
 				sqlDialect: 'MySQL',
 			},
 			displayOptions: {

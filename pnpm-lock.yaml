@@ -195,8 +195,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.5.1
-        version: 2.5.1
+        specifier: ~2.6.0
+        version: 2.6.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -576,12 +576,6 @@ importers:
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
-      content-disposition:
-        specifier: ^0.5.4
-        version: 0.5.4
-      content-type:
-        specifier: ^1.0.4
-        version: 1.0.4
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -631,12 +625,6 @@ importers:
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
-      '@types/content-disposition':
-        specifier: ^0.5.5
-        version: 0.5.5
-      '@types/content-type':
-        specifier: ^1.1.5
-        version: 1.1.5
       '@types/cron':
         specifier: ~1.7.1
         version: 1.7.3
@@ -1289,6 +1277,9 @@ importers:
 
   packages/workflow:
     dependencies:
+      '@n8n/tournament':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@n8n_io/riot-tmpl':
         specifier: ^4.0.0
         version: 4.0.0
@@ -4647,6 +4638,16 @@ packages:
       - '@lezer/common'
     dev: false
 
+  /@n8n/tournament@1.0.2:
+    resolution: {integrity: sha512-fTpi7F8ra5flGSVfRzohPyG7czAAKCZPlLjdKdwbLJivLoI/Ekhgodov1jfVSCVFVbwQ06gRQRxLEDzl2jl8ig==}
+    engines: {node: '>=18.10', pnpm: '>=8.6'}
+    dependencies:
+      '@n8n_io/riot-tmpl': 4.0.1
+      ast-types: 0.16.1
+      esprima-next: 5.8.4
+      recast: 0.22.0
+    dev: false
+
   /@n8n/vm2@3.9.20:
     resolution: {integrity: sha512-qk2oJYkuFRVSTxoro4obX/sv/wT1pViZjHh/isjOvFB93D52QIg3TCjMPsHOfHTmkxCKJffjLrUvjIwvWzSMCQ==}
     engines: {node: '>=18.10', pnpm: '>=8.6.12'}
@@ -4656,8 +4657,8 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.5.1:
-    resolution: {integrity: sha512-CL4JVJS8nvI8qPFQ1jSG7CiPnNkeKJSgbDxWOLVX4MRjTKrwL8Cpd1LeYMx5g5StmHzkoxz2TDqL8WT6qyMlrQ==}
+  /@n8n_io/license-sdk@2.6.0:
+    resolution: {integrity: sha512-jPUn8xKAZMWgFw8w6BwqbdlZ1Et4tZcPUdOfEzxpWxEmgtCEAdbl3V0ygP3pTXyWY0hblvv8QzbHOUrK25hQSA==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -4668,6 +4669,12 @@ packages:
 
   /@n8n_io/riot-tmpl@4.0.0:
     resolution: {integrity: sha512-/xw8HQgYQlBCrt3IKpNSSB1CgpP7XArw1QTRjP+KEw+OHT8XGvHxXrW9VGdUu9RwDnzm/LFu+dNLeDmwJMeOwQ==}
+    dependencies:
+      eslint-config-riot: 1.0.0
+    dev: false
+
+  /@n8n_io/riot-tmpl@4.0.1:
+    resolution: {integrity: sha512-/zdRbEfTFjsm1NqnpPQHgZTkTdbp5v3VUxGeMA9098sps8jRCTraQkc3AQstJgHUm7ylBXJcIVhnVeLUMWAfwQ==}
     dependencies:
       eslint-config-riot: 1.0.0
     dev: false
@@ -6968,14 +6975,6 @@ packages:
     dependencies:
       '@types/node': 18.16.16
 
-  /@types/content-disposition@0.5.5:
-    resolution: {integrity: sha512-v6LCdKfK6BwcqMo+wYW05rLS12S0ZO0Fl4w1h4aaZMD7bqT3gVUns6FvLJKGZHQmYn3SX55JWGpziwJRwVgutA==}
-    dev: true
-
-  /@types/content-type@1.1.5:
-    resolution: {integrity: sha512-dgMN+syt1xb7Hk8LU6AODOfPlvz5z1CbXpPuJE5ZrX9STfBOIXF09pEB8N7a97WT9dbngt3ksDCm6GW6yMrxfQ==}
-    dev: true
-
   /@types/convict@6.1.1:
     resolution: {integrity: sha512-R+JLaTvhsD06p4jyjUDtbd5xMtZTRE3c0iI+lrFWZogSVEjgTWPYwvJPVf+t92E+yrlbXa4X4Eg9ro6gPdUt4w==}
     dependencies:
@@ -8910,7 +8909,6 @@ packages:
       is-nan: 1.3.2
       object-is: 1.1.5
       util: 0.12.5
-    dev: true
 
   /assertion-error@1.1.0:
     resolution: {integrity: sha512-jgsaNduz+ndvGyFt3uSuWqvy4lCnIJiovtouQN5JZHOKCS2QuhEdbcQHFhVksz2N2U9hXJo8odG7ETyWlEeuDw==}
@@ -8939,7 +8937,6 @@ packages:
     engines: {node: '>=4'}
     dependencies:
       tslib: 2.6.1
-    dev: true
 
   /astral-regex@2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
@@ -11503,7 +11500,6 @@ packages:
 
   /es6-object-assign@1.1.0:
     resolution: {integrity: sha512-MEl9uirslVwqQU369iHNWZXsI8yaZYGg/D65aOgZkeyFJwHYSxilf7rQzXKI7DdDuBPrBXbfk3sl9hJhmd5AUw==}
-    dev: true
 
   /es6-symbol@3.1.3:
     resolution: {integrity: sha512-NJ6Yn3FuDinBaBRWl/q5X/s4koRHBrgKAu+yGI6JCBeiu3qrcbJhwT2GeR/EXVfylRk8dpQVJoLEFhK+Mu31NA==}
@@ -18657,7 +18653,6 @@ packages:
       esprima: 4.0.1
       source-map: 0.6.1
       tslib: 2.6.1
-    dev: true
 
   /recast@0.23.3:
     resolution: {integrity: sha512-HbCVFh2ANP6a09nzD4lx7XthsxMOJWKX5pIcUwtLrmeEIl3I0DwjCoVXDE0Aobk+7k/mS3H50FK4iuYArpcT6Q==}

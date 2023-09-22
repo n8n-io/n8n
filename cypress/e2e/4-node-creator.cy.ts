@@ -314,4 +314,153 @@ describe('Node Creator', () => {
 			WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		});
 	});
+
+	it('should have most relevenat nodes on top when searching', () => {
+		nodeCreatorFeature.getters.canvasAddButton().click();
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Email Trigger (IMAP)');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('IF');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'IF');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Switch');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('swit');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Switch');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('red');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Redis');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Reddit');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('redd');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Reddit');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wh');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Webhook');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('web');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Webflow');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Webhook');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('webh');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Webhook');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('func');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Code');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('cod');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Coda');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Code');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('code');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Code');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('js');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Code');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Item Lists');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('fi');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Filter');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('filt');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Filter');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('manu');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Manual Trigger');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sse');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'SSE Trigger');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('cmpar');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Compare Datasets');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('fb');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Facebook Trigger');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('crn');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('cron');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sch');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Schedule Trigger');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('time');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Schedule Trigger');
+		nodeCreatorFeature.getters.nodeItemName().eq(2).should('have.text', 'Wait');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('mail');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Mailgun');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('mailc');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Mailcheck');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Mailchimp');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('api');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'HTTP Request');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('s3');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'S3');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('no op');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'No Operation, do nothing');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('do no');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'No Operation, do nothing');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('htt');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'HTTP Request');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Webhook');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('http');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'HTTP Request');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Webhook');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wa');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Merge');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('wait');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Wait');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Merge');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('spreadsheet');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Spreadsheet File');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Google Sheets');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sheets');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Google Sheets');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('ggle she');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Google Sheets');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('hub');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'HubSpot');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('git');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Git');
+		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'GitHub');
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('gith');
+		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'GitHub');
+	});
 });

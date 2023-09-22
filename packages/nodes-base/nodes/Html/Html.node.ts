@@ -411,7 +411,16 @@ export class Html implements INodeType {
 			table += '</tbody>';
 			table += '</table>';
 
-			return [[{ json: { table } }]];
+			return [
+				[
+					{
+						json: { table },
+						pairedItem: items.map((_item, index) => ({
+							item: index,
+						})),
+					},
+				],
+			];
 		}
 
 		let item: INodeExecutionData;
