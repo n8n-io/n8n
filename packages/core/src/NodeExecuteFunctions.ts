@@ -117,8 +117,7 @@ import type { RequestPromiseOptions } from 'request-promise-native';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
-import { BinaryDataManager } from './BinaryDataManager';
-import { binaryToBuffer } from './BinaryDataManager/utils';
+import { BinaryDataService } from './BinaryData/BinaryData.service';
 import {
 	BINARY_DATA_STORAGE_PATH,
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
@@ -132,14 +131,15 @@ import {
 import { extractValue } from './ExtractValue';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath } from './UserSettings';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getSecretsProxy } from './Secrets';
+import { getUserN8nFolderPath } from './UserSettings';
+import Container from 'typedi';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -774,9 +774,9 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToBuffer(responseData).then((buffer) =>
-						buffer.toString('utf-8'),
-					);
+					responseData = await Container.get(BinaryDataService)
+						.binaryToBuffer(responseData)
+						.then((buffer) => buffer.toString('utf-8'));
 				}
 
 				if (configObject.simple === false) {
@@ -941,21 +941,21 @@ async function httpRequest(
 }
 
 export function getBinaryPath(binaryDataId: string): string {
-	return BinaryDataManager.getInstance().getBinaryPath(binaryDataId);
+	return Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
 export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
-	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
 export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
-	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -992,7 +992,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataService).getBinaryDataBuffer(binaryData);
 }
 
 /**
@@ -1008,7 +1008,7 @@ export async function setBinaryDataBuffer(
 	binaryData: Buffer | Readable,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
+	return Container.get(BinaryDataService).store(data, binaryData, executionId);
 }
 
 export async function copyBinaryFile(
@@ -1061,7 +1061,7 @@ export async function copyBinaryFile(
 		returnData.fileName = path.parse(filePath).base;
 	}
 
-	return BinaryDataManager.getInstance().copyBinaryFile(returnData, filePath, executionId);
+	return Container.get(BinaryDataService).copyBinaryFile(returnData, filePath, executionId);
 }
 
 /**
@@ -2573,7 +2573,8 @@ const getBinaryHelperFunctions = ({
 	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToBuffer,
+	binaryToBuffer: async (body: Buffer | Readable) =>
+		Container.get(BinaryDataService).binaryToBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -2761,7 +2762,7 @@ export function getExecuteFunctions(
 						parentWorkflowSettings: workflow.settings,
 					})
 					.then(async (result) =>
-						BinaryDataManager.getInstance().duplicateBinaryData(
+						Container.get(BinaryDataService).duplicateBinaryData(
 							result,
 							additionalData.executionId!,
 						),
@@ -2833,7 +2834,8 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			binaryToBuffer,
+			binaryToBuffer: async (body: Buffer | Readable) =>
+				Container.get(BinaryDataService).binaryToBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
