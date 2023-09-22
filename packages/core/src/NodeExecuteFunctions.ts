@@ -649,7 +649,7 @@ function parseFileName(filename?: string): string | undefined {
 
 // https://datatracker.ietf.org/doc/html/rfc5987
 function parseFileNameStar(filename?: string): string | undefined {
-	const [_encoding, _locale, content] = filename?.split("'") ?? [];
+	const [_encoding, _locale, content] = parseFileName(filename)?.split("'") ?? [];
 
 	return content;
 }

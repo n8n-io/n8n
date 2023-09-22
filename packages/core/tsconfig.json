@@ -7,6 +7,8 @@
 		"paths": {
 			"@/*": ["./*"]
 		},
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},

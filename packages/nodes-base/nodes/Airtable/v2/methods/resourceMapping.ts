@@ -40,9 +40,9 @@ const airtableTypesMap: TypesMap = {
 	boolean: ['checkbox'],
 	dateTime: ['dateTime', 'date'],
 	time: [],
-	object: ['multipleAttachments'],
+	object: [],
 	options: ['singleSelect'],
-	array: ['multipleSelects'],
+	array: ['multipleSelects', 'multipleAttachments'],
 };
 
 function mapForeignType(foreignType: string, typesMap: TypesMap): FieldType {

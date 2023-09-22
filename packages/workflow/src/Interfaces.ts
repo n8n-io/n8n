@@ -2117,6 +2117,8 @@ export interface IPublicApiSettings {
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 
+export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -2203,6 +2205,9 @@ export interface IN8nUISettings {
 	variables: {
 		limit: number;
 	};
+	expressions: {
+		evaluator: ExpressionEvaluatorType;
+	};
 	mfa: {
 		enabled: boolean;
 	};
@@ -2225,4 +2230,9 @@ export interface SecretsHelpersBase {
 	listSecrets(provider: string): string[];
 }
 
-export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';
+export type BannerName =
+	| 'V1'
+	| 'TRIAL_OVER'
+	| 'TRIAL'
+	| 'NON_PRODUCTION_LICENSE'
+	| 'EMAIL_CONFIRMATION';
