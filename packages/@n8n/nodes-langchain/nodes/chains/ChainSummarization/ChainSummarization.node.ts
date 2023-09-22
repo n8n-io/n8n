@@ -22,7 +22,7 @@ export class ChainSummarization implements INodeType {
 
 		defaults: {
 			name: 'Summarization Chain',
-			color: '#BCA5A5',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -79,17 +79,14 @@ export class ChainSummarization implements INodeType {
 					{
 						name: 'Map Reduce',
 						value: 'map_reduce',
-						description: 'Loop over documents and compress & combine',
 					},
 					{
 						name: 'Refine',
 						value: 'refine',
-						description: 'Loop over the documents and iteratively update the answer',
 					},
 					{
 						name: 'Stuff',
 						value: 'stuff',
-						description: 'Send all documents in a single request (small documents only)',
 					},
 				],
 			},

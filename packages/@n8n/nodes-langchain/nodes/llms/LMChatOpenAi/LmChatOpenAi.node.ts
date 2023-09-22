@@ -15,8 +15,6 @@ export class LmChatOpenAi implements INodeType {
 		description: 'Language Model Chat OpenAI',
 		defaults: {
 			name: 'Chat OpenAI',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

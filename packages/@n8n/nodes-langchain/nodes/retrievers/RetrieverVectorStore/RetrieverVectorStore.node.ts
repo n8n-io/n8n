@@ -13,7 +13,6 @@ export class RetrieverVectorStore implements INodeType {
 		description: 'Outputs Vector Store as Retriever',
 		defaults: {
 			name: 'Vector Store Retriever',
-			color: '#DD20BF',
 		},
 		codex: {
 			categories: ['AI'],

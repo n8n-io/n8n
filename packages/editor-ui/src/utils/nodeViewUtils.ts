@@ -107,10 +107,9 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
 	stroke: getStyleTokenValue('--color-foreground-dark', true),
-	dashstyle: '2 2',
 };
 
-export const CONNECTOR_COLOR: {
+export const ENDPOINT_COLOR: {
 	[K in ConnectionTypes]: string;
 } = {
 	chain: '--node-type-chain-color',
@@ -126,12 +125,27 @@ export const CONNECTOR_COLOR: {
 	vectorStore: '--node-type-vectorStore-color',
 };
 
+export const CONNECTOR_COLOR: {
+	[K in ConnectionTypes]: string;
+} = {
+	chain: '--node-type-supplemental-connector-color',
+	document: '--node-type-supplemental-connector-color',
+	embedding: '--node-type-supplemental-connector-color',
+	languageModel: '--node-type-supplemental-connector-color',
+	main: '--node-type-main-color',
+	memory: '--node-type-supplemental-connector-color',
+	outputParser: '--node-type-supplemental-connector-color',
+	textSplitter: '--node-type-supplemental-connector-color',
+	tool: '--node-type-supplemental-connector-color',
+	vectorRetriever: '--node-type-supplemental-connector-color',
+	vectorStore: '--node-type-supplemental-connector-color',
+};
+
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
 	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
 	return {
 		...CONNECTOR_PAINT_STYLE_PULL,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
-		...(connection.parameters.type === 'main' ? {} : { dashstyle: '2 2' }),
 	};
 };
 

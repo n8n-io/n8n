@@ -16,8 +16,6 @@ export class LmChatAnthropic implements INodeType {
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Chat Anthropic',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],

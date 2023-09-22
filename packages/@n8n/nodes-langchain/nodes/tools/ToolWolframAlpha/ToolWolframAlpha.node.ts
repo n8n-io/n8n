@@ -13,8 +13,6 @@ export class ToolWolframAlpha implements INodeType {
 		description: "Connects to WolframAlpha's computational intelligence engine.",
 		defaults: {
 			name: 'Wolfram Alpha',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#9B13A7',
 		},
 		credentials: [
 			{

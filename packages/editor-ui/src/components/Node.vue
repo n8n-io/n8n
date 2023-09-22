@@ -96,6 +96,7 @@
 					:nodeType="nodeType"
 					:size="40"
 					:shrink="false"
+					:colorDefault="iconColorDefault"
 					:disabled="this.data.disabled"
 				/>
 			</div>
@@ -173,6 +174,7 @@ import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -225,6 +227,12 @@ export default defineComponent({
 		},
 		isScheduledGroup(): boolean {
 			return this.nodeType?.group.includes('schedule') === true;
+		},
+		iconColorDefault(): string | undefined {
+			if (this.isConfigNode) {
+				return 'var(--color-text-base)';
+			}
+			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
@@ -350,10 +358,13 @@ export default defineComponent({
 				const requiredNonMainInputs = this.inputs.filter(
 					(input) => typeof input !== 'string' && input.required,
 				);
-				const requiredNonMainInputsCount = requiredNonMainInputs.length;
-				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
-				const spacerCount =
-					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+
+				let spacerCount = 0;
+				if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+					const requiredNonMainInputsCount = requiredNonMainInputs.length;
+					const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+					spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+				}
 
 				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 			}
@@ -451,6 +462,10 @@ export default defineComponent({
 			} = {};
 
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.isConfigurableNode || this.isConfigNode) {
+				borderColor = getStyleTokenValue('--color-foreground-dark');
+			}
 
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
@@ -678,20 +693,26 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .node-wrapper {
+	--node-width: 100px;
+	--node-height: 100px;
+
+	--configurable-node-min-input-count: 4;
+	--configurable-node-input-width: 65px;
+
 	position: absolute;
-	width: 100px;
-	height: 100px;
+	width: var(--node-width);
+	height: var(--node-height);
 
 	.node-description {
 		position: absolute;
-		top: 100px;
-		left: -50px;
+		top: var(--node-height);
+		left: calc(var(--node-width) / 2 * -1);
 		line-height: 1.5;
 		text-align: center;
 		cursor: default;
 		padding: 8px;
 		width: 100%;
-		min-width: 200px;
+		min-width: calc(var(--node-width) * 2);
 		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p {
@@ -810,7 +831,7 @@ export default defineComponent({
 			position: absolute;
 			top: -25px;
 			left: -10px;
-			width: 120px;
+			width: calc(var(--node-width) + 20px);
 			height: 26px;
 			font-size: 0.9em;
 			z-index: 10;
@@ -848,6 +869,10 @@ export default defineComponent({
 	}
 
 	&--config {
+		--configurable-node-input-width: 55px;
+		--node-width: 75px;
+		--node-height: 75px;
+
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -863,6 +888,10 @@ export default defineComponent({
 
 				&.executing {
 					background-color: $node-background-executing-other !important;
+				}
+
+				.node-executing-info {
+					font-size: 2.85em;
 				}
 			}
 		}
@@ -888,6 +917,8 @@ export default defineComponent({
 		}
 
 		&.node-wrapper--configurable {
+			--configurable-node-icon-offset: 20px;
+
 			.node-info-icon {
 				bottom: 1px !important;
 				right: 1px !important;
@@ -897,32 +928,36 @@ export default defineComponent({
 	}
 
 	&--configurable {
-		$configurable-node-width: var(
+		--node-width: var(
 			--configurable-node-width,
-			calc(max(var(--configurable-node-input-count, 5), 4) * 65px)
+			calc(
+				max(var(--configurable-node-input-count, 5), var(--configurable-node-min-input-count)) *
+					var(--configurable-node-input-width)
+			)
 		);
-		$configurable-node-icon-offset: 40px;
-		$configurable-node-icon-size: 30px;
-
-		width: $configurable-node-width;
+		--configurable-node-icon-offset: 40px;
+		--configurable-node-icon-size: 30px;
 
 		.node-description {
 			top: calc(50%);
 			transform: translateY(-50%);
-			left: calc($configurable-node-icon-offset + $configurable-node-icon-size + var(--spacing-s));
+			left: calc(
+				var(--configurable-node-icon-offset) + var(--configurable-node-icon-size) + var(--spacing-s)
+			);
 			text-align: left;
 			overflow: auto;
 			white-space: normal;
 			min-width: unset;
 			max-width: calc(
-				$configurable-node-width - $configurable-node-icon-offset - $configurable-node-icon-size - 2 *
-					var(--spacing-s)
+				var(--node-width) - var(--configurable-node-icon-offset) - var(
+						--configurable-node-icon-size
+					) - 2 * var(--spacing-s)
 			);
 		}
 
 		.node-default {
 			.node-icon {
-				left: $configurable-node-icon-offset;
+				left: var(--configurable-node-icon-offset);
 			}
 
 			.node-options {
@@ -1233,6 +1268,7 @@ export default defineComponent({
 
 	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
 	transform: rotate(45deg);
+	z-index: 10;
 }
 
 .add-input-endpoint {
@@ -1240,6 +1276,10 @@ export default defineComponent({
 
 	&:not(.jtk-endpoint-connected) {
 		cursor: pointer;
+	}
+
+	&.jtk-endpoint-connected {
+		z-index: 10;
 	}
 
 	.add-input-endpoint-default {

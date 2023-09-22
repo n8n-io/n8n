@@ -4,7 +4,11 @@ import { mapStores } from 'pinia';
 
 import type { INodeUi, EndpointType } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import { NO_OP_NODE_TYPE } from '@/constants';
+import {
+	NO_OP_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	NODE_MIN_INPUT_ITEMS_COUNT,
+} from '@/constants';
 
 import { NodeHelpers } from 'n8n-workflow';
 import type {
@@ -23,7 +27,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
 import type { NodeConnectionType } from '@/Interface';
-import { CONNECTOR_COLOR } from '@/utils/nodeViewUtils';
+import { ENDPOINT_COLOR } from '@/utils/nodeViewUtils';
 
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 	type: 'N8nAddInput',
@@ -175,17 +179,20 @@ export const nodeBase = defineComponent({
 				const requiredNonMainInputs = nonMainInputs.filter((inputData) => {
 					return typeof inputData !== 'string' && inputData.required;
 				});
-				const requiredNonMainInputsCount = requiredNonMainInputs.length;
-				const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+				const optionalNonMainInputs = nonMainInputs.filter((inputData) => {
+					return typeof inputData !== 'string' && !inputData.required;
+				});
+				const spacerIndexes = this.getSpacerIndexes(
+					requiredNonMainInputs.length,
+					optionalNonMainInputs.length,
+				);
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = NodeViewUtils.getAnchorPosition(
 					inputName,
 					'input',
 					inputsOfSameRootType.length,
-					requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0
-						? [requiredNonMainInputsCount]
-						: [],
+					spacerIndexes,
 				)[rootTypeIndex];
 
 				const scope = NodeViewUtils.getEndpointScope(inputName as NodeConnectionType);
@@ -261,6 +268,56 @@ export const nodeBase = defineComponent({
 			if (sortedInputs.length === 0) {
 				this.instance.manage(this.$refs[this.data.name] as Element);
 			}
+		},
+		getSpacerIndexes(
+			leftGroupItemsCount: number,
+			rightGroupItemsCount: number,
+			insertSpacerBetweenGroups = NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+			minItemsCount = NODE_MIN_INPUT_ITEMS_COUNT,
+		): number[] {
+			const spacerIndexes = [];
+
+			if (leftGroupItemsCount > 0 && rightGroupItemsCount > 0) {
+				if (insertSpacerBetweenGroups) {
+					spacerIndexes.push(leftGroupItemsCount);
+				} else if (leftGroupItemsCount + rightGroupItemsCount < minItemsCount) {
+					for (
+						let spacerIndex = leftGroupItemsCount;
+						spacerIndex < minItemsCount - rightGroupItemsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex);
+					}
+				}
+			} else {
+				if (
+					leftGroupItemsCount > 0 &&
+					leftGroupItemsCount < minItemsCount &&
+					rightGroupItemsCount === 0
+				) {
+					for (
+						let spacerIndex = 0;
+						spacerIndex < minItemsCount - leftGroupItemsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex + leftGroupItemsCount);
+					}
+				} else if (
+					leftGroupItemsCount === 0 &&
+					rightGroupItemsCount > 0 &&
+					rightGroupItemsCount < minItemsCount
+				) {
+					for (
+						let spacerIndex = 0;
+						spacerIndex < minItemsCount - rightGroupItemsCount;
+						spacerIndex++
+					) {
+						spacerIndexes.push(spacerIndex);
+					}
+				}
+			}
+
+			return spacerIndexes;
 		},
 		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			const rootTypeIndexData: {
@@ -438,7 +495,7 @@ export const nodeBase = defineComponent({
 			const createSupplementalConnectionType = (
 				connectionName: ConnectionTypes,
 			): EndpointOptions => ({
-				endpoint: createAddInputEndpointSpec(CONNECTOR_COLOR[connectionName]),
+				endpoint: createAddInputEndpointSpec(ENDPOINT_COLOR[connectionName]),
 			});
 
 			const connectionTypes: {
@@ -448,7 +505,7 @@ export const nodeBase = defineComponent({
 				main: {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
-						CONNECTOR_COLOR.main,
+						ENDPOINT_COLOR.main,
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,
@@ -482,12 +539,12 @@ export const nodeBase = defineComponent({
 				endpoint: createDiamondOutputEndpointSpec(),
 				paintStyle: NodeViewUtils.getOutputEndpointStyle(
 					nodeTypeData,
-					CONNECTOR_COLOR[connectionName],
+					ENDPOINT_COLOR[connectionName],
 					connectionType,
 				),
 				hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 					nodeTypeData,
-					CONNECTOR_COLOR[connectionName],
+					ENDPOINT_COLOR[connectionName],
 					connectionType,
 				),
 			});
@@ -499,7 +556,7 @@ export const nodeBase = defineComponent({
 				main: {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						CONNECTOR_COLOR['main'],
+						ENDPOINT_COLOR['main'],
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,

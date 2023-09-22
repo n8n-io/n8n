@@ -15,7 +15,6 @@ export class OutputParserAutofixing implements INodeType {
 		description: 'Tries to automatically fix fixReturn a list of comma separated values',
 		defaults: {
 			name: 'Auto-fixing Output Parser',
-			color: '#27D2DD',
 		},
 
 		codex: {

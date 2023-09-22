@@ -3,61 +3,151 @@
 	--node-type-main-color-h: var(--color-foreground-xdark-h);
 	--node-type-main-color-s: var(--color-foreground-xdark-s);
 	--node-type-main-color-l: var(--color-foreground-xdark-l);
-	--node-type-main-color: hsl(var(--node-type-main-color-h), var(--node-type-main-color-s), var(--node-type-main-color-l));
-	--node-type-supplemental-color-h: 234;
-	--node-type-supplemental-color-s: 80%;
+	--node-type-main-color: hsl(
+		var(--node-type-main-color-h),
+		var(--node-type-main-color-s),
+		var(--node-type-main-color-l)
+	);
+	--node-type-supplemental-color-h: 235;
+	--node-type-supplemental-color-s: 49%;
 	--node-type-supplemental-color-l: 36%;
-	--node-type-supplemental-color: hsl(var(--node-type-supplemental-color-h), var(--node-type-supplemental-color-s), var(--node-type-supplemental-color-l));
+	--node-type-supplemental-icon: var(--color-foreground-dark);
+	--node-type-supplemental-color: hsl(
+		var(--node-type-supplemental-color-h),
+		var(--node-type-supplemental-color-s),
+		var(--node-type-supplemental-color-l)
+	);
+	--node-type-supplemental-connector-color: var(--color-foreground-dark);
 	--node-type-chain-color-h: var(--node-type-supplemental-color-h);
 	--node-type-chain-color-s: var(--node-type-supplemental-color-s);
 	--node-type-chain-color-l: var(--node-type-supplemental-color-l);
-	--node-type-chain-color: hsl(var(--node-type-chain-color-h), var(--node-type-chain-color-s), var(--node-type-chain-color-l));
-	--node-type-chain-background: hsl(var(--node-type-chain-color-h), var(--node-type-chain-color-s), var(--node-type-background-l));
+	--node-type-chain-color: hsl(
+		var(--node-type-chain-color-h),
+		var(--node-type-chain-color-s),
+		var(--node-type-chain-color-l)
+	);
+	--node-type-chain-background: hsl(
+		var(--node-type-chain-color-h),
+		var(--node-type-chain-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-document-color-h: var(--node-type-supplemental-color-h);
 	--node-type-document-color-s: var(--node-type-supplemental-color-s);
 	--node-type-document-color-l: var(--node-type-supplemental-color-l);
-	--node-type-document-color: hsl(var(--node-type-document-color-h), var(--node-type-document-color-s), var(--node-type-document-color-l));
-	--node-type-document-background: hsl(var(--node-type-document-color-h), var(--node-type-document-color-s), var(--node-type-background-l));
+	--node-type-document-color: hsl(
+		var(--node-type-document-color-h),
+		var(--node-type-document-color-s),
+		var(--node-type-document-color-l)
+	);
+	--node-type-document-background: hsl(
+		var(--node-type-document-color-h),
+		var(--node-type-document-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-embedding-color-h: var(--node-type-supplemental-color-h);
 	--node-type-embedding-color-s: var(--node-type-supplemental-color-s);
 	--node-type-embedding-color-l: var(--node-type-supplemental-color-l);
-	--node-type-embedding-color: hsl(var(--node-type-embedding-color-h), var(--node-type-embedding-color-s), var(--node-type-embedding-color-l));
-	--node-type-embedding-background: hsl(var(--node-type-embedding-color-h), var(--node-type-embedding-color-s), var(--node-type-background-l));
+	--node-type-embedding-color: hsl(
+		var(--node-type-embedding-color-h),
+		var(--node-type-embedding-color-s),
+		var(--node-type-embedding-color-l)
+	);
+	--node-type-embedding-background: hsl(
+		var(--node-type-embedding-color-h),
+		var(--node-type-embedding-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-languageModel-color-h: var(--node-type-supplemental-color-h);
 	--node-type-languageModel-color-s: var(--node-type-supplemental-color-s);
 	--node-type-languageModel-color-l: var(--node-type-supplemental-color-l);
-	--node-type-languageModel-color: hsl(var(--node-type-languageModel-color-h), var(--node-type-languageModel-color-s), var(--node-type-languageModel-color-l));
-	--node-type-languageModel-background: hsl(var(--node-type-languageModel-color-h), var(--node-type-languageModel-color-s), var(--node-type-background-l));
+	--node-type-languageModel-color: hsl(
+		var(--node-type-languageModel-color-h),
+		var(--node-type-languageModel-color-s),
+		var(--node-type-languageModel-color-l)
+	);
+	--node-type-languageModel-background: hsl(
+		var(--node-type-languageModel-color-h),
+		var(--node-type-languageModel-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-memory-color-h: var(--node-type-supplemental-color-h);
 	--node-type-memory-color-s: var(--node-type-supplemental-color-s);
 	--node-type-memory-color-l: var(--node-type-supplemental-color-l);
-	--node-type-memory-color: hsl(var(--node-type-memory-color-h), var(--node-type-memory-color-s), var(--node-type-memory-color-l));
-	--node-type-memory-background: hsl(var(--node-type-memory-color-h), var(--node-type-memory-color-s), var(--node-type-background-l));
+	--node-type-memory-color: hsl(
+		var(--node-type-memory-color-h),
+		var(--node-type-memory-color-s),
+		var(--node-type-memory-color-l)
+	);
+	--node-type-memory-background: hsl(
+		var(--node-type-memory-color-h),
+		var(--node-type-memory-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-outputParser-color-h: var(--node-type-supplemental-color-h);
 	--node-type-outputParser-color-s: var(--node-type-supplemental-color-s);
 	--node-type-outputParser-color-l: var(--node-type-supplemental-color-l);
-	--node-type-outputParser-color: hsl(var(--node-type-outputParser-color-h), var(--node-type-outputParser-color-s), var(--node-type-outputParser-color-l));
-	--node-type-outputParser-background: hsl(var(--node-type-outputParser-color-h), var(--node-type-outputParser-color-s), var(--node-type-background-l));
+	--node-type-outputParser-color: hsl(
+		var(--node-type-outputParser-color-h),
+		var(--node-type-outputParser-color-s),
+		var(--node-type-outputParser-color-l)
+	);
+	--node-type-outputParser-background: hsl(
+		var(--node-type-outputParser-color-h),
+		var(--node-type-outputParser-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-tool-color-h: var(--node-type-supplemental-color-h);
 	--node-type-tool-color-s: var(--node-type-supplemental-color-s);
 	--node-type-tool-color-l: var(--node-type-supplemental-color-l);
-	--node-type-tool-color: hsl(var(--node-type-tool-color-h), var(--node-type-tool-color-s), var(--node-type-tool-color-l));
-	--node-type-tool-background: hsl(var(--node-type-tool-color-h), var(--node-type-tool-color-s), var(--node-type-background-l));
+	--node-type-tool-color: hsl(
+		var(--node-type-tool-color-h),
+		var(--node-type-tool-color-s),
+		var(--node-type-tool-color-l)
+	);
+	--node-type-tool-background: hsl(
+		var(--node-type-tool-color-h),
+		var(--node-type-tool-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-textSplitter-color-h: var(--node-type-supplemental-color-h);
 	--node-type-textSplitter-color-s: var(--node-type-supplemental-color-s);
 	--node-type-textSplitter-color-l: var(--node-type-supplemental-color-l);
-	--node-type-textSplitter-color: hsl(var(--node-type-textSplitter-color-h), var(--node-type-textSplitter-color-s), var(--node-type-textSplitter-color-l));
-	--node-type-textSplitter-background: hsl(var(--node-type-textSplitter-color-h), var(--node-type-textSplitter-color-s), var(--node-type-background-l));
+	--node-type-textSplitter-color: hsl(
+		var(--node-type-textSplitter-color-h),
+		var(--node-type-textSplitter-color-s),
+		var(--node-type-textSplitter-color-l)
+	);
+	--node-type-textSplitter-background: hsl(
+		var(--node-type-textSplitter-color-h),
+		var(--node-type-textSplitter-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-vectorRetriever-color-h: var(--node-type-supplemental-color-h);
 	--node-type-vectorRetriever-color-s: var(--node-type-supplemental-color-s);
 	--node-type-vectorRetriever-color-l: var(--node-type-supplemental-color-l);
-	--node-type-vectorRetriever-color: hsl(var(--node-type-vectorRetriever-color-h), var(--node-type-vectorRetriever-color-s), var(--node-type-vectorRetriever-color-l));
-	--node-type-vectorRetriever-background: hsl(var(--node-type-vectorRetriever-color-h), var(--node-type-vectorRetriever-color-s), var(--node-type-background-l));
+	--node-type-vectorRetriever-color: hsl(
+		var(--node-type-vectorRetriever-color-h),
+		var(--node-type-vectorRetriever-color-s),
+		var(--node-type-vectorRetriever-color-l)
+	);
+	--node-type-vectorRetriever-background: hsl(
+		var(--node-type-vectorRetriever-color-h),
+		var(--node-type-vectorRetriever-color-s),
+		var(--node-type-background-l)
+	);
 	--node-type-vectorStore-color-h: var(--node-type-supplemental-color-h);
 	--node-type-vectorStore-color-s: var(--node-type-supplemental-color-s);
 	--node-type-vectorStore-color-l: var(--node-type-supplemental-color-l);
-	--node-type-vectorStore-color: hsl(var(--node-type-vectorStore-color-h), var(--node-type-vectorStore-color-s), var(--node-type-vectorStore-color-l));
-	--node-type-vectorStore-background: hsl(var(--node-type-vectorStore-color-h), var(--node-type-vectorStore-color-s), var(--node-type-background-l));
+	--node-type-vectorStore-color: hsl(
+		var(--node-type-vectorStore-color-h),
+		var(--node-type-vectorStore-color-s),
+		var(--node-type-vectorStore-color-l)
+	);
+	--node-type-vectorStore-background: hsl(
+		var(--node-type-vectorStore-color-h),
+		var(--node-type-vectorStore-color-s),
+		var(--node-type-background-l)
+	);
 }
 
 .clickable {

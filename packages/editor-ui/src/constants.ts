@@ -104,6 +104,9 @@ export const SCOPED_ENDPOINT_TYPES = [
 	NodeConnectionType.TextSplitter,
 ];
 
+export const NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS = false;
+export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
+
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';

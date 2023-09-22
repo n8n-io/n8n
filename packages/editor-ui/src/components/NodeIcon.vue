@@ -42,6 +42,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		colorDefault: {
+			type: String,
+			required: false,
+		},
 		showTooltip: {
 			type: Boolean,
 			default: false,
@@ -66,6 +70,9 @@ export default defineComponent({
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
 			if (nodeType && nodeType.defaults && nodeType.defaults.color) {
 				return nodeType.defaults.color.toString();
+			}
+			if (this.colorDefault) {
+				return this.colorDefault;
 			}
 			return '';
 		},
