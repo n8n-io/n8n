@@ -1,9 +1,9 @@
-// import {
-// 	HTTP_REQUEST_NODE_NAME,
-// 	MANUAL_TRIGGER_NODE_NAME,
-// 	PIPEDRIVE_NODE_NAME,
-// 	EDIT_FIELDS_SET_NODE_NAME,
-// } from '../constants';
+import {
+	HTTP_REQUEST_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	PIPEDRIVE_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+} from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
@@ -69,35 +69,33 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
-	//TODO: Update Edit Fields (Set) node to a new version
-	// it('Should be able to reference paired items in a node located before pinned data', () => {
-	// 	workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-	// 	workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
-	// 	ndv.actions.setPinnedData([{ http: 123 }]);
-	// 	ndv.actions.close();
+	it('Should be able to reference paired items in a node located before pinned data', () => {
+		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
+		ndv.actions.setPinnedData([{ http: 123 }]);
+		ndv.actions.close();
 
-	// 	workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
-	// 	ndv.actions.setPinnedData(Array(3).fill({ pipedrive: 123 }));
-	// 	ndv.actions.close();
+		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
+		ndv.actions.setPinnedData(Array(3).fill({ pipedrive: 123 }));
+		ndv.actions.close();
 
-	// 	workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
-	// 	setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
-	// 	const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
+		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
 
-	// 	cy.get('div').contains(output).should('be.visible');
-	// });
+		cy.get('div').contains(output).should('be.visible');
+	});
 });
 
-// function setExpressionOnStringValueInSet(expression: string) {
-// 	cy.get('button').contains('Execute node').click();
-// 	cy.get('input[placeholder="Add Value"]').click();
-// 	cy.get('span').contains('String').click();
+function setExpressionOnStringValueInSet(expression: string) {
+	cy.get('button').contains('Execute node').click();
+	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
-// 	ndv.getters.nthParam(3).contains('Expression').invoke('show').click();
+	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
 
-// 	ndv.getters
-// 		.inlineExpressionEditorInput()
-// 		.clear()
-// 		.type(expression, { parseSpecialCharSequences: false });
-// }
+	ndv.getters
+		.inlineExpressionEditorInput()
+		.clear()
+		.type(expression, { parseSpecialCharSequences: false });
+}
