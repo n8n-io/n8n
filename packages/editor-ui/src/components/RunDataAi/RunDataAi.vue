@@ -228,22 +228,22 @@ const aiData = computed<AIResult[] | undefined>(() => {
 		return;
 	}
 
-	const aiRun = resultData[resultData.length - 1].metadata?.aiRun;
-	if (!Array.isArray(aiRun)) {
+	const subRun = resultData[resultData.length - 1].metadata?.subRun;
+	if (!Array.isArray(subRun)) {
 		return;
 	}
-	// Extend the aiRun with the data and sort by adding execution time + startTime and comparing them
-	const aiRunWithData = aiRun.flatMap((run) =>
+	// Extend the subRun with the data and sort by adding execution time + startTime and comparing them
+	const subRunWithData = subRun.flatMap((run) =>
 		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
 	);
 
-	aiRunWithData.sort((a, b) => {
+	subRunWithData.sort((a, b) => {
 		const aTime = a.data?.metadata?.startTime || 0;
 		const bTime = b.data?.metadata?.startTime || 0;
 		return aTime - bTime;
 	});
 
-	return aiRunWithData;
+	return subRunWithData;
 });
 
 const executionTree = computed<TreeNode[]>(() => {

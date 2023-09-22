@@ -2465,11 +2465,11 @@ const addExecutionDataFunctions = async (
 
 		if (!sourceTaskData[sourceNodeRunIndex]) {
 			sourceTaskData[sourceNodeRunIndex] = {
-				aiRun: [],
+				subRun: [],
 			};
 		}
 
-		sourceTaskData[sourceNodeRunIndex]!.aiRun!.push({
+		sourceTaskData[sourceNodeRunIndex]!.subRun!.push({
 			node: nodeName,
 			runIndex: currentNodeRunIndex,
 		});

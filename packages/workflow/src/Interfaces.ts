@@ -1734,13 +1734,13 @@ export interface IRunData {
 	[key: string]: ITaskData[];
 }
 
-export interface ITaskAIRunMetadata {
+export interface ITaskSubRunMetadata {
 	node: string;
 	runIndex: number;
 }
 
 export interface ITaskMetadata {
-	aiRun?: ITaskAIRunMetadata[];
+	subRun?: ITaskSubRunMetadata[];
 }
 
 // The data that gets returned when a node runs
