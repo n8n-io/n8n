@@ -98,7 +98,8 @@ export function logWrapper(
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {
 					return async (values: InputValues): Promise<MemoryVariables> => {
 						connectionType = 'memory';
-						executeFunctions.addInputData(connectionType, [
+
+						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'loadMemoryVariables', values } }],
 						]);
 
@@ -109,9 +110,11 @@ export function logWrapper(
 							arguments: [values],
 						})) as MemoryVariables;
 
-						executeFunctions.addOutputData(connectionType, [
-							[{ json: { action: 'loadMemoryVariables', response } }],
-						]);
+						executeFunctions.addOutputData(
+							connectionType,
+							[[{ json: { action: 'loadMemoryVariables', response } }]],
+							index,
+						);
 						return response;
 					};
 				} else if (
@@ -120,7 +123,9 @@ export function logWrapper(
 					target.constructor.name === 'BufferWindowMemory'
 				) {
 					connectionType = 'memory';
-					executeFunctions.addInputData(connectionType, [[{ json: { action: 'chatHistory' } }]]);
+					const { index } = executeFunctions.addInputData(connectionType, [
+						[{ json: { action: 'chatHistory' } }],
+					]);
 					const response = target[prop];
 
 					target.chatHistory
@@ -128,11 +133,13 @@ export function logWrapper(
 						.then((messages) => {
 							executeFunctions.addOutputData('memory', [
 								[{ json: { action: 'chatHistory', chatHistory: messages } }],
+								index,
 							]);
 						})
 						.catch((error: Error) => {
 							executeFunctions.addOutputData('memory', [
 								[{ json: { action: 'chatHistory', error } }],
+								index,
 							]);
 						});
 					return response;
@@ -144,7 +151,9 @@ export function logWrapper(
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
 						connectionType = 'memory';
-						executeFunctions.addInputData(connectionType, [[{ json: { action: 'getMessages' } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'getMessages' } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -155,13 +164,14 @@ export function logWrapper(
 
 						executeFunctions.addOutputData(connectionType, [
 							[{ json: { action: 'getMessages', response } }],
+							index,
 						]);
 						return response;
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
 						connectionType = 'memory';
-						executeFunctions.addInputData(connectionType, [
+						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'addMessage', message } }],
 						]);
 
@@ -172,7 +182,11 @@ export function logWrapper(
 							arguments: [message],
 						});
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { action: 'addMessage' } }]]);
+						executeFunctions.addOutputData(
+							connectionType,
+							[[{ json: { action: 'addMessage' } }]],
+							index,
+						);
 					};
 				}
 			}
@@ -186,7 +200,9 @@ export function logWrapper(
 						runManager?: CallbackManagerForLLMRun,
 					): Promise<ChatResult> => {
 						connectionType = 'languageModel';
-						executeFunctions.addInputData(connectionType, [[{ json: { messages, options } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { messages, options } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -195,7 +211,7 @@ export function logWrapper(
 							arguments: [messages, options, runManager],
 						})) as ChatResult;
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -206,7 +222,7 @@ export function logWrapper(
 				if (prop === 'getFormatInstructions' && 'getFormatInstructions' in target) {
 					return (options?: FormatInstructionsOptions): string => {
 						connectionType = 'outputParser';
-						executeFunctions.addInputData(connectionType, [
+						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'getFormatInstructions' } }],
 						]);
 
@@ -218,15 +234,19 @@ export function logWrapper(
 							arguments: [options],
 						}) as string;
 
-						executeFunctions.addOutputData(connectionType, [
-							[{ json: { action: 'getFormatInstructions', response } }],
-						]);
+						executeFunctions.addOutputData(
+							connectionType,
+							[[{ json: { action: 'getFormatInstructions', response } }]],
+							index,
+						);
 						return response;
 					};
 				} else if (prop === 'parse' && 'parse' in target) {
 					return async (text: string): Promise<any> => {
 						connectionType = 'outputParser';
-						executeFunctions.addInputData(connectionType, [[{ json: { action: 'parse', text } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'parse', text } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -237,6 +257,7 @@ export function logWrapper(
 
 						executeFunctions.addOutputData(connectionType, [
 							[{ json: { action: 'parse', response } }],
+							index,
 						]);
 						return response;
 					};
@@ -251,7 +272,9 @@ export function logWrapper(
 						runManager?: CallbackManagerForRetrieverRun,
 					): Promise<Document[]> => {
 						connectionType = 'vectorRetriever';
-						executeFunctions.addInputData(connectionType, [[{ json: { query } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -260,7 +283,7 @@ export function logWrapper(
 							arguments: [query, runManager],
 						})) as Array<Document<Record<string, any>>>;
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -272,7 +295,9 @@ export function logWrapper(
 				if (prop === 'embedDocuments' && 'embedDocuments' in target) {
 					return async (documents: string[]): Promise<number[][]> => {
 						connectionType = 'embedding';
-						executeFunctions.addInputData(connectionType, [[{ json: { documents } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { documents } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -281,7 +306,7 @@ export function logWrapper(
 							arguments: [documents],
 						})) as number[][];
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -289,7 +314,9 @@ export function logWrapper(
 				if (prop === 'embedQuery' && 'embedQuery' in target) {
 					return async (query: string): Promise<number[]> => {
 						connectionType = 'embedding';
-						executeFunctions.addInputData(connectionType, [[{ json: { query } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -298,7 +325,7 @@ export function logWrapper(
 							arguments: [query],
 						})) as number[];
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -313,7 +340,7 @@ export function logWrapper(
 				if (prop === 'process' && 'process' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
 						connectionType = 'document';
-						executeFunctions.addInputData(connectionType, [items]);
+						const { index } = executeFunctions.addInputData(connectionType, [items]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -322,7 +349,7 @@ export function logWrapper(
 							arguments: [items],
 						})) as number[];
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -333,7 +360,9 @@ export function logWrapper(
 				if (prop === 'splitText' && 'splitText' in target) {
 					return async (text: string): Promise<string[]> => {
 						connectionType = 'textSplitter';
-						executeFunctions.addInputData(connectionType, [[{ json: { textSplitter: text } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { textSplitter: text } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -342,7 +371,7 @@ export function logWrapper(
 							arguments: [text],
 						})) as string[];
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -353,7 +382,9 @@ export function logWrapper(
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
 						connectionType = 'tool';
-						executeFunctions.addInputData(connectionType, [[{ json: { query } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -362,7 +393,7 @@ export function logWrapper(
 							arguments: [query],
 						})) as string;
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 						return response;
 					};
 				}
@@ -379,7 +410,9 @@ export function logWrapper(
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {
 						connectionType = 'vectorStore';
-						executeFunctions.addInputData(connectionType, [[{ json: { query, k, filter } }]]);
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query, k, filter } }],
+						]);
 
 						const response = (await callMethodAsync.call(target, {
 							executeFunctions,
@@ -388,7 +421,7 @@ export function logWrapper(
 							arguments: [query, k, filter, _callbacks],
 						})) as Array<Document<Record<string, any>>>;
 
-						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]]);
+						executeFunctions.addOutputData(connectionType, [[{ json: { response } }]], index);
 
 						return response;
 					};

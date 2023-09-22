@@ -786,10 +786,12 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		addInputData(
 			connectionType: ConnectionTypes,
 			data: INodeExecutionData[][] | ExecutionError,
-		): void;
+			runIndex?: number,
+		): { index: number };
 		addOutputData(
 			connectionType: ConnectionTypes,
 			data: INodeExecutionData[][] | ExecutionError,
+			currentNodeRunIndex: number,
 		): void;
 
 		nodeHelpers: NodeHelperFunctions;

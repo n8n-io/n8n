@@ -2386,12 +2386,13 @@ const addExecutionDataFunctions = async (
 	additionalData: IWorkflowExecuteAdditionalData,
 	sourceNodeName: string,
 	sourceNodeRunIndex: number,
+	currentNodeRunIndex: number,
 ): Promise<void> => {
 	if (connectionType === 'main') {
 		throw new Error(`Setting the ${type} is not supported for the main connection!`);
 	}
 
-	let taskData: ITaskData;
+	let taskData: ITaskData | undefined;
 	if (type === 'input') {
 		taskData = {
 			startTime: new Date().getTime(),
@@ -2401,12 +2402,16 @@ const addExecutionDataFunctions = async (
 		};
 	} else {
 		// At the moment we expect that there is always an input sent before the output
-		const runDataArray = get(runExecutionData, `resultData.runData[${nodeName}]`, []);
-		if (runDataArray.length === 0) {
+		taskData = get(
+			runExecutionData,
+			['resultData', 'runData', nodeName, currentNodeRunIndex],
+			undefined,
+		);
+		if (taskData === undefined) {
 			return;
 		}
-		taskData = runDataArray[runDataArray.length - 1];
 	}
+	taskData = taskData!;
 
 	if (data instanceof Error) {
 		// TODO: Or "failed", what is the difference
@@ -2432,7 +2437,7 @@ const addExecutionDataFunctions = async (
 			runExecutionData.resultData.runData[nodeName] = [];
 		}
 
-		runExecutionData.resultData.runData[nodeName].push(taskData);
+		runExecutionData.resultData.runData[nodeName][currentNodeRunIndex] = taskData;
 		if (additionalData.sendDataToUI) {
 			additionalData.sendDataToUI('nodeExecuteBefore', {
 				executionId: additionalData.executionId,
@@ -2466,7 +2471,7 @@ const addExecutionDataFunctions = async (
 
 		sourceTaskData[sourceNodeRunIndex]!.aiRun!.push({
 			node: nodeName,
-			runIndex: runExecutionData.resultData.runData[nodeName].length - 1,
+			runIndex: currentNodeRunIndex,
 		});
 	}
 };
@@ -2969,6 +2974,12 @@ export function getExecuteFunctions(
 								);
 							} catch (error) {
 								// Display the error on the node which is causing it
+
+								let currentNodeRunIndex = 0;
+								if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
+									currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
+								}
+
 								await addExecutionDataFunctions(
 									'input',
 									connectedNode.name,
@@ -2978,6 +2989,7 @@ export function getExecuteFunctions(
 									additionalData,
 									node.name,
 									runIndex,
+									currentNodeRunIndex,
 								);
 
 								throw error;
@@ -2993,6 +3005,11 @@ export function getExecuteFunctions(
 								});
 							}
 
+							let currentNodeRunIndex = 0;
+							if (runExecutionData.resultData.runData.hasOwnProperty(node.name)) {
+								currentNodeRunIndex = runExecutionData.resultData.runData[node.name].length;
+							}
+
 							// Display the error on the node which is causing it
 							await addExecutionDataFunctions(
 								'input',
@@ -3003,6 +3020,7 @@ export function getExecuteFunctions(
 								additionalData,
 								node.name,
 								runIndex,
+								currentNodeRunIndex,
 							);
 
 							// Display on the calling node which node has the error
@@ -3150,7 +3168,13 @@ export function getExecuteFunctions(
 			addInputData(
 				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionError,
-			): void {
+			): { index: number } {
+				const nodeName = this.getNode().name;
+				let currentNodeRunIndex = 0;
+				if (runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
+					currentNodeRunIndex = runExecutionData.resultData.runData[nodeName].length;
+				}
+
 				addExecutionDataFunctions(
 					'input',
 					this.getNode().name,
@@ -3160,6 +3184,7 @@ export function getExecuteFunctions(
 					additionalData,
 					node.name,
 					runIndex,
+					currentNodeRunIndex,
 				).catch((error) => {
 					Logger.warn(
 						`There was a problem logging input data of node "${this.getNode().name}": ${
@@ -3167,10 +3192,13 @@ export function getExecuteFunctions(
 						}`,
 					);
 				});
+
+				return { index: currentNodeRunIndex };
 			},
 			addOutputData(
 				connectionType: ConnectionTypes,
 				data: INodeExecutionData[][] | ExecutionError,
+				currentNodeRunIndex: number,
 			): void {
 				addExecutionDataFunctions(
 					'output',
@@ -3181,6 +3209,7 @@ export function getExecuteFunctions(
 					additionalData,
 					node.name,
 					runIndex,
+					currentNodeRunIndex,
 				).catch((error) => {
 					Logger.warn(
 						`There was a problem logging output data of node "${this.getNode().name}": ${
