@@ -338,6 +338,9 @@ export class Server extends AbstractServer {
 			variables: {
 				limit: 0,
 			},
+			expressions: {
+				evaluator: config.getEnv('expression.evaluator'),
+			},
 			banners: {
 				dismissed: [],
 			},

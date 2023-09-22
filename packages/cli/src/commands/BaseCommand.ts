@@ -24,6 +24,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { initExpressionEvaluator } from '@/ExpressionEvalator';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -42,6 +43,7 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		await initErrorHandling();
+		initExpressionEvaluator();
 
 		process.once('SIGTERM', async () => this.stopProcess());
 		process.once('SIGINT', async () => this.stopProcess());
