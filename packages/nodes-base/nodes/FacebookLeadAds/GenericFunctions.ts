@@ -40,7 +40,9 @@ export async function facebookApiRequest(
 	try {
 		return await this.helpers.requestOAuth2.call(this, 'facebookLeadAdsOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error as JsonObject, {
+			message: error?.error?.error?.message,
+		});
 	}
 }
 
