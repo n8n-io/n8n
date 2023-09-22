@@ -2128,7 +2128,11 @@ export default defineComponent({
 			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
 			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
 
-			if (!this.checkNodeConnectionAllowed(sourceNode, targetNode, type)) {
+			if (
+				sourceNode &&
+				targetNode &&
+				!this.checkNodeConnectionAllowed(sourceNode, targetNode, type)
+			) {
 				return;
 			}
 
@@ -2195,7 +2199,7 @@ export default defineComponent({
 			if (lastSelectedNodeEndpointUuid) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
-					!this.checkNodeConnectionAllowed(
+					this.checkNodeConnectionAllowed(
 						lastSelectedNode!,
 						newNodeData,
 						lastSelectedEndpoint.scope as NodeConnectionType,

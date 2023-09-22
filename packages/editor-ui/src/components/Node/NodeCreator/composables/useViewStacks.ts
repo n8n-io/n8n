@@ -118,7 +118,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		let nodesByConnectionType: { [key: string]: string[] };
 		let relatedAIView: NodeViewItem | { properties: { title: string; icon: string } } | undefined;
 		if (isOutput === true) {
-			console.log('gotoCompatibleConnectionView: 2');
 			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByInputConnectionTypeNames;
 			relatedAIView = {
 				properties: {
