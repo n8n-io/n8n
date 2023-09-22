@@ -147,20 +147,15 @@ export const prepareRequestBody = async (
 	defaultReducer: BodyParametersReducer,
 ) => {
 	if (bodyType === 'json' && version >= 4) {
-		return parameters.reduce((acc, entry) => {
-			const value = entry.value;
-			set(acc, entry.name, value);
-			return acc;
-		}, {} as IDataObject);
+		return parameters.reduce<Promise<IDataObject>>(async (acc, p) => {
+			const result = await acc;
+			set(result, p.name, p.value);
+			return result;
+		}, Promise.resolve({}));
 	} else {
-		// @TODO: Fix
-		// return parameters.reduce(defaultReducer, {});
-		return parameters.reduce(
-			async (acc, entry) => {
-				const result = await acc; // Wait for the promise to resolve
-				return defaultReducer(result, entry);
-			},
-			Promise.resolve({} as IDataObject),
-		);
+		return parameters.reduce<Promise<IDataObject>>(async (acc, p) => {
+			const result = await acc;
+			return defaultReducer(result, p);
+		}, Promise.resolve({}));
 	}
 };
