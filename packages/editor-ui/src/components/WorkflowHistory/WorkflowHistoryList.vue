@@ -52,8 +52,9 @@ const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId
 <template>
 	<ul :class="$style.list">
 		<workflow-history-list-item
-			v-for="item in props.items"
+			v-for="(item, index) in props.items"
 			:key="item.versionId"
+			:index="index"
 			:item="item"
 			:active="item.versionId === props.activeItemId"
 			:actions="actions"

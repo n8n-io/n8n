@@ -8,6 +8,7 @@ import { useI18n } from '@/composables';
 
 const props = defineProps<{
 	item: WorkflowHistory;
+	index: number;
 	actions: UserAction[];
 	active: boolean;
 }>();
@@ -80,7 +81,7 @@ const onItemClick = (event: Event) => {
 			<small>{{ idLabel }}</small>
 		</p>
 		<div :class="$style.tail">
-			<n8n-badge :class="$style.badge">
+			<n8n-badge v-if="props.index === 0">
 				{{ i18n.baseText('workflowHistory.item.latest') }}
 			</n8n-badge>
 			<n8n-action-toggle
@@ -118,10 +119,6 @@ const onItemClick = (event: Event) => {
 		justify-content: space-between;
 	}
 
-	.badge {
-		display: none;
-	}
-
 	strong,
 	small {
 		display: block;
@@ -155,12 +152,6 @@ const onItemClick = (event: Event) => {
 
 		p {
 			padding-left: calc(var(--spacing-s) - 1px);
-		}
-	}
-
-	&:first-child {
-		.badge {
-			display: inline;
 		}
 	}
 }
