@@ -2,6 +2,26 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.9.0
+
+### What changed?
+
+In nodes, `this.helpers.getBinaryStream()` is now async.
+
+### When is action necessary?
+
+If your node uses `this.helpers.getBinaryStream()`, add `await` when calling it.
+
+Example:
+
+```typescript
+// Before 1.9.0:
+const binaryStream = this.helpers.getBinaryStream(id);
+
+// From 1.9.0:
+const binaryStream = await this.helpers.getBinaryStream(id);
+```
+
 ## 1.5.0
 
 ### What changed?
