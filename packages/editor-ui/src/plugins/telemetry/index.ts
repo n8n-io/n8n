@@ -75,7 +75,11 @@ export class Telemetry {
 
 	identify(instanceId: string, userId?: string, versionCli?: string) {
 		const settingsStore = useSettingsStore();
-		const traits = { instance_id: instanceId, version_cli: versionCli, userCloudId: '' };
+		const traits: { instance_id_id?: string; version_cli?: string; userCloudId?: string } = {
+			instance_id: instanceId,
+			version_cli: versionCli,
+		};
+
 		if (settingsStore.isCloudDeployment) {
 			traits.userCloudId = settingsStore.settings?.n8nMetadata?.userId ?? '';
 		}
