@@ -47,8 +47,8 @@
     "n8n-nodes-base": "workspace:*"
   },
   "dependencies": {
-    "axios": "^0.21.1",
     "@n8n/client-oauth2": "workspace:*",
+    "axios": "^0.21.1",
     "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
@@ -63,6 +63,7 @@
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",
     "qs": "^6.10.1",
+    "typedi": "^0.10.0",
     "uuid": "^8.3.2"
   }
 }
