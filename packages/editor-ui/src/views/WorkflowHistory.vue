@@ -42,7 +42,7 @@ onBeforeMount(async () => {
 			name: VIEWS.WORKFLOW_HISTORY,
 			params: {
 				workflowId: route.params.workflowId,
-				versionId: workflowHistoryStore.workflowHistory[0].id,
+				versionId: workflowHistoryStore.workflowHistory[0].versionId,
 			},
 		});
 	}
@@ -66,7 +66,7 @@ watchEffect(async () => {
 	}
 });
 
-const openInNewTab = (id: WorkflowHistory['id']) => {
+const openInNewTab = (id: WorkflowHistory['versionId']) => {
 	const { href } = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
@@ -77,7 +77,7 @@ const openInNewTab = (id: WorkflowHistory['id']) => {
 	window.open(href, '_blank');
 };
 
-const downloadVersion = async (id: WorkflowHistory['id']) => {
+const downloadVersion = async (id: WorkflowHistory['versionId']) => {
 	const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
 		route.params.workflowId,
 		id,
@@ -96,7 +96,7 @@ const onAction = async ({
 	id,
 }: {
 	action: TupleToUnion<WorkflowHistoryActionTypes>;
-	id: WorkflowHistory['id'];
+	id: WorkflowHistory['versionId'];
 }) => {
 	switch (action) {
 		case WORKFLOW_HISTORY_ACTIONS.OPEN:
@@ -108,7 +108,7 @@ const onAction = async ({
 	}
 };
 
-const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['id'] }) => {
+const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
 	} else {

@@ -2,35 +2,26 @@
 import { computed, ref } from 'vue';
 import dateformat from 'dateformat';
 import type { UserAction } from 'n8n-design-system';
-import type {
-	WorkflowHistory,
-	WorkflowHistoryActionTypes,
-	WorkflowHistoryUnsaved,
-} from '@/types/workflowHistory';
+import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 import { useI18n } from '@/composables';
-import { isWorkflowHistoryItemUnsaved } from '@/utils';
 
 const props = defineProps<{
-	item: WorkflowHistory | WorkflowHistoryUnsaved;
-	index: number;
+	item: WorkflowHistory;
 	actions: UserAction[];
 	active: boolean;
 }>();
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['id'] },
+		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['versionId'] },
 	): void;
-	(event: 'preview', value: { event: Event; id: WorkflowHistory['id'] }): void;
+	(event: 'preview', value: { event: Event; id: WorkflowHistory['versionId'] }): void;
 }>();
 
 const i18n = useI18n();
 
 const actionsVisible = ref(false);
-
-const isUnsaved = computed<boolean>(() => isWorkflowHistoryItemUnsaved(props.item));
-const isCurrent = computed<boolean>(() => props.index === 0);
 
 const formattedCreatedAtDate = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -57,11 +48,11 @@ const authors = computed<{ label: string; tooltip: string }>(() => {
 });
 
 const idLabel = computed<string>(() =>
-	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.id } }),
+	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
 );
 
 const onAction = (action: TupleToUnion<WorkflowHistoryActionTypes>) => {
-	emit('action', { action, id: props.item.id });
+	emit('action', { action, id: props.item.versionId });
 };
 
 const onVisibleChange = (visible: boolean) => {
@@ -69,9 +60,7 @@ const onVisibleChange = (visible: boolean) => {
 };
 
 const onItemClick = (event: Event) => {
-	if (!isCurrent.value && !props.active) {
-		emit('preview', { event, id: props.item.id });
-	}
+	emit('preview', { event, id: props.item.versionId });
 };
 </script>
 <template>
@@ -80,14 +69,9 @@ const onItemClick = (event: Event) => {
 			[$style.item]: true,
 			[$style.active]: props.active,
 			[$style.actionsVisible]: actionsVisible,
-			[$style.current]: isCurrent,
 		}"
 	>
-		<p v-if="isUnsaved">
-			<strong>{{ props.item.title }}</strong>
-			<span>{{ props.item.authors }}</span>
-		</p>
-		<p v-else @click="onItemClick">
+		<p @click="onItemClick">
 			<strong>{{ formattedCreatedAtDate }}</strong>
 			<n8n-tooltip placement="right-end" :disabled="authors.size < 2">
 				<template #content>{{ props.item.authors }}</template>
@@ -95,19 +79,20 @@ const onItemClick = (event: Event) => {
 			</n8n-tooltip>
 			<small>{{ idLabel }}</small>
 		</p>
-		<n8n-badge v-if="isCurrent" class="mr-s">
-			{{ i18n.baseText('workflowHistory.item.current') }}
-		</n8n-badge>
-		<n8n-action-toggle
-			v-else
-			theme="dark"
-			:class="$style.actions"
-			:actions="props.actions"
-			@action="onAction"
-			@click.stop
-			@visible-change="onVisibleChange"
-			data-test-id="workflow-history-list-item-actions"
-		/>
+		<div :class="$style.tail">
+			<n8n-badge :class="$style.badge">
+				{{ i18n.baseText('workflowHistory.item.latest') }}
+			</n8n-badge>
+			<n8n-action-toggle
+				theme="dark"
+				:class="$style.actions"
+				:actions="props.actions"
+				@action="onAction"
+				@click.stop
+				@visible-change="onVisibleChange"
+				data-test-id="workflow-history-list-item-actions"
+			/>
+		</div>
 	</li>
 </template>
 <style module lang="scss">
@@ -125,6 +110,16 @@ const onItemClick = (event: Event) => {
 		flex: 1 1 auto;
 		line-height: unset;
 		cursor: pointer;
+	}
+
+	.tail {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+
+	.badge {
+		display: none;
 	}
 
 	strong,
@@ -163,11 +158,11 @@ const onItemClick = (event: Event) => {
 		}
 	}
 
-	&.current {
-		p {
-			cursor: default;
-		}
-	}
+  &:first-child {
+    .badge {
+      display: inline;
+    }
+  }
 }
 
 .actions {

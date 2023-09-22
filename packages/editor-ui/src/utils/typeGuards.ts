@@ -1,6 +1,5 @@
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import type { ICredentialsResponse, NewCredentialsModal } from '@/Interface';
-import type { WorkflowHistoryUnsaved } from '@/types/workflowHistory';
 
 /*
 	Type guards used in editor-ui project
@@ -39,8 +38,4 @@ export const isCredentialModalState = (value: unknown): value is NewCredentialsM
 
 export const isResourceMapperValue = (value: unknown): value is string | number | boolean => {
 	return ['string', 'number', 'boolean'].includes(typeof value);
-};
-
-export const isWorkflowHistoryItemUnsaved = (value: unknown): value is WorkflowHistoryUnsaved => {
-	return typeof value === 'object' && value !== null && 'title' in value;
 };

@@ -1,19 +1,14 @@
 import type { IWorkflowDb } from '@/Interface';
 
-type WorkflowHistoryBase = {
-	id: string;
+export type WorkflowHistory = {
+	versionId: string;
 	authors: string;
-};
-
-export type WorkflowHistory = WorkflowHistoryBase & {
 	createdAt: string;
 };
 
-export type WorkflowHistoryUnsaved = WorkflowHistoryBase & {
-	title: string;
-};
-
 export type WorkflowVersion = WorkflowHistory & {
+	nodes: IWorkflowDb['nodes'];
+	connection: IWorkflowDb['connections'];
 	workflow: IWorkflowDb;
 };
 

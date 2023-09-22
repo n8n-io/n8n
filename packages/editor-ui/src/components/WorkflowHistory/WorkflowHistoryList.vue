@@ -2,18 +2,14 @@
 import { computed } from 'vue';
 import type { UserAction } from 'n8n-design-system';
 import { useI18n } from '@/composables';
-import type {
-	WorkflowHistory,
-	WorkflowHistoryActionTypes,
-	WorkflowHistoryUnsaved,
-} from '@/types/workflowHistory';
+import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const props = withDefaults(
 	defineProps<{
-		items: Array<WorkflowHistory | WorkflowHistoryUnsaved>;
-		activeItemId: WorkflowHistory['id'];
+		items: WorkflowHistory[];
+		activeItemId: WorkflowHistory['versionId'];
 		actionTypes: WorkflowHistoryActionTypes;
 	}>(),
 	{
@@ -23,9 +19,9 @@ const props = withDefaults(
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['id'] },
+		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['versionId'] },
 	): void;
-	(event: 'preview', value: { event: Event; id: WorkflowHistory['id'] }): void;
+	(event: 'preview', value: { event: Event; id: WorkflowHistory['versionId'] }): void;
 }>();
 
 const i18n = useI18n();
@@ -43,12 +39,12 @@ const onAction = ({
 	id,
 }: {
 	action: TupleToUnion<WorkflowHistoryActionTypes>;
-	id: WorkflowHistory['id'];
+	id: WorkflowHistory['versionId'];
 }) => {
 	emit('action', { action, id });
 };
 
-const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['id'] }) => {
+const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
 	emit('preview', { event, id });
 };
 </script>
@@ -56,11 +52,10 @@ const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['id'] }) =
 <template>
 	<ul :class="$style.list">
 		<workflow-history-list-item
-			v-for="(item, index) in props.items"
-			:key="item.id"
-			:index="index"
+			v-for="item in props.items"
+			:key="item.versionId"
 			:item="item"
-			:active="item.id === props.activeItemId"
+			:active="item.versionId === props.activeItemId"
 			:actions="actions"
 			@action="onAction"
 			@preview="onPreview"

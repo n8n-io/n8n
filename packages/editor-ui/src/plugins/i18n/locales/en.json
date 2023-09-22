@@ -1761,7 +1761,7 @@
 	"workflowHistory.item.actions.open": "Open version in new tab",
 	"workflowHistory.item.actions.download": "Download",
 	"workflowHistory.item.unsaved.title": "Unsaved version",
-	"workflowHistory.item.current": "Current version",
+	"workflowHistory.item.latest": "Latest saved",
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",
