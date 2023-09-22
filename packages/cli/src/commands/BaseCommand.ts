@@ -125,6 +125,12 @@ export abstract class BaseCommand extends Command {
 		await objectStoreService.checkConnection();
 
 		/**
+		 * Test metadata retrieval
+		 */
+		// const md = await objectStoreService.getMetadata('happy-dog.jpg');
+		// console.log('md', md);
+
+		/**
 		 * Test upload
 		 */
 

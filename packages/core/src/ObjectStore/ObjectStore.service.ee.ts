@@ -9,6 +9,7 @@ import type { AxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import type { ListPage, ObjectStore, RawListPage } from './types';
 import type { Readable } from 'stream';
+import type { BinaryData } from '..';
 
 // @TODO: Decouple host from AWS
 
@@ -42,13 +43,16 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
-	async put(filename: string, buffer: Buffer) {
+	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
 		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
-		const headers = {
+		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
 		};
+
+		if (metadata.fileName) headers['x-amz-meta-filename'] = metadata.fileName;
+		if (metadata.mimeType) headers['Content-Type'] = metadata.mimeType;
 
 		return this.request('PUT', host, `/${filename}`, { headers, body: buffer });
 	}
@@ -72,6 +76,27 @@ export class ObjectStoreService {
 		if (mode === 'buffer' && Buffer.isBuffer(data)) return data;
 
 		throw new TypeError(`Expected ${mode} but received ${typeof data}.`);
+	}
+
+	/**
+	 * Retrieve metadata for an object in the configured bucket.
+	 *
+	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
+	 */
+	async getMetadata(path: string) {
+		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
+
+		type Response = {
+			headers: {
+				'content-length': string;
+				'content-type'?: string;
+				'x-amz-meta-filename'?: string;
+			} & Record<string, string | number>;
+		};
+
+		const response: Response = await this.request('HEAD', host, path);
+
+		return response.headers;
 	}
 
 	/**

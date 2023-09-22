@@ -25,12 +25,12 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		workflowId: string,
 		executionId: string,
 		bufferOrStream: Buffer | Readable,
-		_metadata: BinaryData.PreWriteMetadata, // @TODO: Use metadata
+		metadata: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = this.toFileId(workflowId, executionId);
 		const buffer = await this.toBuffer(bufferOrStream);
 
-		await this.objectStoreService.put(fileId, buffer);
+		await this.objectStoreService.put(fileId, buffer, metadata);
 
 		return { fileId, fileSize: buffer.length };
 	}
@@ -47,9 +47,19 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return this.objectStoreService.get(fileId, { mode: 'stream' });
 	}
 
-	// @TODO
 	async getMetadata(fileId: string): Promise<BinaryData.Metadata> {
-		throw new Error('TODO');
+		const {
+			'content-length': contentLength,
+			'content-type': contentType,
+			'x-amz-meta-filename': fileName,
+		} = await this.objectStoreService.getMetadata(fileId);
+
+		const metadata: BinaryData.Metadata = { fileSize: Number(contentLength) };
+
+		if (contentType) metadata.mimeType = contentType;
+		if (fileName) metadata.fileName = fileName;
+
+		return metadata;
 	}
 
 	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
