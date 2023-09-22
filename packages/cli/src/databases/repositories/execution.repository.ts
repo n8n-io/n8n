@@ -10,7 +10,7 @@ import type {
 import { parse, stringify } from 'flatted';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
-import { BinaryDataManager } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -89,6 +89,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
@@ -520,8 +521,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id }) => id);
 
-		const binaryDataManager = BinaryDataManager.getInstance();
-		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
+		await this.binaryDataService.deleteManyByExecutionIds(executionIds);
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,
