@@ -257,7 +257,7 @@ export class Worker extends BaseCommand {
 		this.logger.debug('Starting n8n worker...');
 
 		await this.initLicense('worker');
-		await this.initBinaryManager();
+		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
 		await this.initEventBus();

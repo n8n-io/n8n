@@ -27,8 +27,8 @@ beforeAll(async () => {
 	user1 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 	user2 = await testDb.createUser({ globalRole: globalUserRole, apiKey: randomApiKey() });
 
-	// TODO: mock BinaryDataManager instead
-	await utils.initBinaryManager();
+	// TODO: mock BinaryDataService instead
+	await utils.initBinaryDataService();
 	await utils.initNodeTypes();
 
 	workflowRunner = await utils.initActiveWorkflowRunner();

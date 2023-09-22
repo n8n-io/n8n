@@ -120,7 +120,7 @@
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
 					:rows="getArgument('rows')"
-					@valueChanged="valueChangedDebounced"
+					@update:modelValue="valueChangedDebounced"
 				/>
 
 				<code-node-editor
