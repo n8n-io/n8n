@@ -901,7 +901,7 @@ export const schema = {
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: ['default', 'filesystem'] as const,
+			format: ['default', 'filesystem', 's3'] as const,
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',

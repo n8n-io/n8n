@@ -31,7 +31,7 @@ export class BinaryDataService {
 			await this.managers.filesystem.init();
 		}
 
-		if (config.availableModes.includes('objectStore')) {
+		if (config.availableModes.includes('s3')) {
 			const { ObjectStoreManager } = await import('./ObjectStore.manager');
 			this.managers.objectStore = new ObjectStoreManager();
 
