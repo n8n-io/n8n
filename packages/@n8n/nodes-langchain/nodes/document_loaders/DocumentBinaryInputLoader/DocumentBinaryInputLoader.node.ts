@@ -6,14 +6,14 @@ import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Binary to Document',
+		displayName: 'Binary Input Loader',
 		name: 'documentBinaryInputLoader',
 		icon: 'file:binary.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Converts binary data to Document object(s)',
+		description: 'Use the binary input to this chain',
 		defaults: {
-			name: 'Binary to Document',
+			name: 'Binary Input Loader',
 		},
 		codex: {
 			categories: ['AI'],

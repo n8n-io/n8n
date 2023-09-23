@@ -11,14 +11,14 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Github Document Loader',
+		displayName: 'GitHub Document Loader',
 		name: 'documentGithubLoader',
 		icon: 'file:github.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Load files from a Github repository as documents',
+		description: 'Use GitHub data as input to this chain',
 		defaults: {
-			name: 'Github repo to Document',
+			name: 'GitHub Document Loader',
 		},
 		codex: {
 			categories: ['AI'],

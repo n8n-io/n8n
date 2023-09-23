@@ -6,14 +6,14 @@ import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 
 export class DocumentJsonInputLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Workflow Input to JSON Document',
+		displayName: 'JSON Input Loader',
 		name: 'documentJsonInputLoader',
 		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Converts workflow JSON data to Document object(s)',
+		description: 'Use the JSON input to this chain',
 		defaults: {
-			name: 'Workflow Input to JSON Document',
+			name: 'JSON Input Loader',
 		},
 		codex: {
 			categories: ['AI'],
