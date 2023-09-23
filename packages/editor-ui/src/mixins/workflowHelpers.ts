@@ -269,6 +269,34 @@ function getCurrentWorkflow(copyData?: boolean): Workflow {
 	return useWorkflowsStore().getCurrentWorkflow(copyData);
 }
 
+function getConnectedNodes(
+	direction: 'upstream' | 'downstream',
+	workflow: Workflow,
+	nodeName: string,
+): string[] {
+	let checkNodes: string[];
+	if (direction === 'downstream') {
+		checkNodes = workflow.getChildNodes(nodeName);
+	} else if (direction === 'upstream') {
+		checkNodes = workflow.getParentNodes(nodeName);
+	} else {
+		throw new Error(`The direction "${direction}" is not supported!`);
+	}
+
+	// Find also all nodes which are connected to the child nodes via a non-main input
+	let connectedNodes: string[] = [];
+	checkNodes.forEach((checkNode) => {
+		connectedNodes = [
+			...connectedNodes,
+			checkNode,
+			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+		];
+	});
+
+	// Remove duplicates
+	return [...new Set(connectedNodes)];
+}
+
 function getNodes(): INodeUi[] {
 	return useWorkflowsStore().getNodes();
 }
@@ -465,6 +493,7 @@ export const workflowHelpers = defineComponent({
 		resolveParameter,
 		resolveRequiredParameters,
 		getCurrentWorkflow,
+		getConnectedNodes,
 		getNodes,
 		getParentMainInputNode,
 		getWorkflow,

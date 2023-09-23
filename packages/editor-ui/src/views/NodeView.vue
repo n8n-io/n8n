@@ -1360,7 +1360,9 @@ export default defineComponent({
 
 			// Get all upstream nodes and select them
 			const workflow = this.getCurrentWorkflow();
-			for (const nodeName of workflow.getParentNodes(lastSelectedNode.name)) {
+
+			const checkNodes = this.getConnectedNodes('upstream', workflow, lastSelectedNode.name);
+			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
 
@@ -1377,7 +1379,9 @@ export default defineComponent({
 
 			// Get all downstream nodes and select them
 			const workflow = this.getCurrentWorkflow();
-			for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
+
+			const checkNodes = this.getConnectedNodes('downstream', workflow, lastSelectedNode.name);
+			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
 
@@ -1387,22 +1391,10 @@ export default defineComponent({
 
 		pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
 			const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
+
 			const workflow = this.getCurrentWorkflow();
-			const childNodes = workflow.getChildNodes(sourceNodeName);
 
-			// Find also all nodes which are connected to the child nodes via a non-main input
-			let checkNodes: string[] = [];
-			childNodes.forEach((childNode) => {
-				checkNodes = [
-					...checkNodes,
-					childNode,
-					...workflow.getParentNodes(childNode, 'ALL_NON_MAIN'),
-				];
-			});
-
-			// Remove duplicates
-			checkNodes = [...new Set(checkNodes)];
-
+			const checkNodes = this.getConnectedNodes('downstream', workflow, sourceNodeName);
 			for (const nodeName of checkNodes) {
 				const node = this.workflowsStore.nodesByName[nodeName];
 				const oldPosition = node.position;
