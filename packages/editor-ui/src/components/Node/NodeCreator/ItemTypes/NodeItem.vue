@@ -13,7 +13,7 @@
 		:data-test-id="dataTestId"
 	>
 		<template #icon>
-			<div v-if="isAi" :class="$style.subNodeBackground"></div>
+			<div v-if="isSubNode" :class="$style.subNodeBackground"></div>
 			<node-icon :class="$style.nodeIcon" :nodeType="nodeType" />
 		</template>
 
@@ -52,6 +52,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
 import { useI18n, useTelemetry } from '@/composables';
+import { NodeHelpers } from 'n8n-workflow';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -113,6 +114,14 @@ const displayName = computed<any>(() => {
 
 const isAi = computed<boolean>(() => {
 	return (props.nodeType.codex?.categories?.includes('AI') ?? false) && !hasActions.value;
+});
+
+const isSubNode = computed<boolean>(() => {
+	if (!props.nodeType.outputs || typeof props.nodeType.outputs === 'string') {
+		return false;
+	}
+	const outputTypes = NodeHelpers.getConnectionTypes(props.nodeType.outputs);
+	return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
 });
 
 const isTrigger = computed<boolean>(() => {

@@ -16,6 +16,7 @@ import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils';
 import type {
 	ILoadOptions,
+	INode,
 	INodeCredentials,
 	INodeListSearchResult,
 	INodeOutputConfiguration,
@@ -77,7 +78,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			};
 		},
 		isConfigNode() {
-			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
 				const nodeType = this.getNodeType(nodeTypeName);
 				if (!nodeType) {
 					return false;
@@ -89,7 +90,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			};
 		},
 		isConfigurableNode() {
-			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
 				const nodeType = this.getNodeType(nodeTypeName);
 				if (nodeType === null) {
 					return false;

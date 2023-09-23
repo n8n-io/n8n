@@ -770,7 +770,15 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 
 export type SimplifiedNodeType = Pick<
 	INodeTypeDescription,
-	'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+	| 'displayName'
+	| 'description'
+	| 'name'
+	| 'group'
+	| 'icon'
+	| 'iconUrl'
+	| 'codex'
+	| 'defaults'
+	| 'outputs'
 >;
 export interface SubcategoryItemProps {
 	description?: string;
