@@ -926,7 +926,6 @@ export default defineComponent({
 			.node-info-icon {
 				bottom: 1px !important;
 				right: 1px !important;
-				transform: none;
 			}
 		}
 	}
