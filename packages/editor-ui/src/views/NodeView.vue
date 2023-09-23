@@ -1389,7 +1389,21 @@ export default defineComponent({
 			const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
 			const workflow = this.getCurrentWorkflow();
 			const childNodes = workflow.getChildNodes(sourceNodeName);
-			for (const nodeName of childNodes) {
+
+			// Find also all nodes which are connected to the child nodes via a non-main input
+			let checkNodes: string[] = [];
+			childNodes.forEach((childNode) => {
+				checkNodes = [
+					...checkNodes,
+					childNode,
+					...workflow.getParentNodes(childNode, 'ALL_NON_MAIN'),
+				];
+			});
+
+			// Remove duplicates
+			checkNodes = [...new Set(checkNodes)];
+
+			for (const nodeName of checkNodes) {
 				const node = this.workflowsStore.nodesByName[nodeName];
 				const oldPosition = node.position;
 
