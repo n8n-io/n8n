@@ -12,6 +12,8 @@ import type { ListPage, ObjectStore, RawListPage } from './types';
 import type { Readable } from 'stream';
 import type { BinaryData } from '..';
 
+// @TODO: Decouple host from AWS
+
 @Service()
 export class ObjectStoreService {
 	private credentials: Aws4Credentials;

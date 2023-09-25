@@ -30,6 +30,13 @@ export class BinaryDataService {
 
 			await this.managers.filesystem.init();
 		}
+
+		if (config.availableModes.includes('s3')) {
+			const { ObjectStoreManager } = await import('./ObjectStore.manager');
+			this.managers.objectStore = new ObjectStoreManager();
+
+			await this.managers.objectStore.init();
+		}
 	}
 
 	@LogCatch((error) => Logger.error('Failed to copy binary data file', { error }))
