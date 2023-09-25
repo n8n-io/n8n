@@ -123,9 +123,14 @@ export const getConnectorColor = (type: ConnectionTypes): string => {
 
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
 	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const additionalStyles: PaintStyle = {};
+	if (connection.parameters.type !== NodeConnectionType.Main) {
+		additionalStyles.dashstyle = '5 3';
+	}
 	return {
 		...CONNECTOR_PAINT_STYLE_PULL,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...additionalStyles,
 	};
 };
 
