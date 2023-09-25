@@ -5,9 +5,9 @@ import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
-import { areValidModes, toBuffer } from './utils';
 import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
 import { LogCatch } from '../decorators/LogCatch.decorator';
+import { areValidModes, toBuffer } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -29,13 +29,6 @@ export class BinaryDataService {
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
-		}
-
-		if (config.availableModes.includes('s3')) {
-			const { ObjectStoreManager } = await import('./ObjectStore.manager');
-			this.managers.objectStore = new ObjectStoreManager();
-
-			await this.managers.objectStore.init();
 		}
 	}
 

@@ -29,15 +29,3 @@ export async function toBuffer(body: Buffer | Readable) {
 		else body.pipe(concatStream(resolve));
 	});
 }
-
-export class InvalidBinaryDataModeError extends Error {
-	constructor() {
-		super(`Invalid binary data mode selected. Valid modes: ${BINARY_DATA_MODES.join(', ')}`);
-	}
-}
-
-export class UnknownBinaryDataManager extends Error {
-	constructor(mode: string) {
-		super('No binary data manager found for unknown mode: ' + mode);
-	}
-}

@@ -901,7 +901,7 @@ export const schema = {
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: ['default', 'filesystem', 's3'] as const,
+			format: ['default', 'filesystem'] as const,
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',
@@ -911,47 +911,6 @@ export const schema = {
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-	},
-
-	externalStorage: {
-		enabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_EXTERNAL_OBJECT_STORAGE_ENABLED',
-			doc: 'Whether the external object storage feature is enabled',
-		},
-
-		s3: {
-			// @TODO: service name
-			bucket: {
-				name: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_NAME',
-					doc: 'Name of the n8n bucket in S3-compatible external storage',
-				},
-				region: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_REGION',
-					doc: 'Region of the n8n bucket in S3-compatible external storage',
-				},
-			},
-			credentials: {
-				accountId: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_ACCOUNT_ID',
-					doc: 'Account ID in S3-compatible external storage',
-				},
-				secretKey: {
-					format: String,
-					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_SECRET_KEY',
-					doc: 'Secret key in S3-compatible external storage',
-				},
-			},
 		},
 	},
 

@@ -495,7 +495,7 @@ export type BinaryDataRequest = AuthenticatedRequest<
 	{},
 	{},
 	{
-		action: 'view' | 'download';
+		mode: 'view' | 'download';
 		fileName?: string;
 		mimeType?: string;
 	}

@@ -327,7 +327,6 @@ export class Server extends AbstractServer {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				workflowHistory: false,
-				externalStorage: false,
 			},
 			mfa: {
 				enabled: false,
@@ -471,9 +470,6 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
-			externalStorage:
-				config.getEnv('externalStorage.enabled') &&
-				Container.get(License).isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_OBJECT_STORAGE),
 		});
 
 		if (isLdapEnabled()) {
@@ -1432,16 +1428,14 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				const { path: binaryDataId } = req.params;
-				const [mode] = binaryDataId.split(':') as ['filesystem' | 's3', string];
-				let { action, fileName, mimeType } = req.query;
-
+				// TODO UM: check if this needs permission check for UM
+				const identifier = req.params.path;
 				try {
-					const binaryPath = this.binaryDataService.getPath(binaryDataId);
-
+					const binaryPath = this.binaryDataService.getPath(identifier);
+					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await this.binaryDataService.getMetadata(binaryDataId);
+							const metadata = await this.binaryDataService.getMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
@@ -1450,17 +1444,11 @@ export class Server extends AbstractServer {
 
 					if (mimeType) res.setHeader('Content-Type', mimeType);
 
-					if (action === 'download') {
+					if (mode === 'download') {
 						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 					}
 
-					if (mode === 's3') {
-						const readStream = await this.binaryDataService.getAsStream(binaryPath);
-						readStream.pipe(res);
-						return;
-					} else {
-						res.sendFile(binaryPath);
-					}
+					res.sendFile(binaryPath);
 				} catch (error) {
 					if (error instanceof FileNotFoundError) res.writeHead(404).end();
 					else throw error;

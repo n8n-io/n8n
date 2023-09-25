@@ -109,67 +109,6 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initBinaryDataService() {
-		/**
-		 * @TODO: Remove - only for testing in dev
-		 */
-
-		const objectStoreService = new ObjectStoreService(
-			{
-				name: config.getEnv('externalStorage.s3.bucket.name'),
-				region: config.getEnv('externalStorage.s3.bucket.region'),
-			},
-			{
-				accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
-				secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
-			},
-		);
-
-		await objectStoreService.checkConnection();
-
-		/**
-		 * Test metadata retrieval
-		 */
-		// const md = await objectStoreService.getMetadata('happy-dog.jpg');
-		// console.log('md', md);
-
-		/**
-		 * Test upload
-		 */
-
-		// const filePath = '/Users/ivov/Downloads/happy-dog.jpg';
-		// const buffer = Buffer.from(await readFile(filePath));
-		// const res = await objectStoreService.put('object-store-service-dog.jpg', buffer);
-		// console.log('upload result', res.status);
-
-		/**
-		 * Test deletion
-		 */
-
-		// const res = await objectStoreService.deleteMany('uploaded');
-		// console.log('res', res);
-
-		// await objectStoreService.deleteOne('object-store-service-dog.jpg');
-
-		/**
-		 * Test listing
-		 */
-
-		// const res = await objectStoreService.list('happy');
-		// console.log('res', res);
-
-		/**
-		 * Test download
-		 */
-
-		// const stream = await objectStoreService.get('happy-dog.jpg', { mode: 'stream' });
-		// try {
-		// 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		// 	await pipeline(stream as any, fs.createWriteStream('happy-dog.jpg'));
-		// 	console.log('✅ Pipeline succeeded');
-		// } catch (error) {
-		// 	console.log('❌ Pipeline failed', error);
-		// }
-
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}
