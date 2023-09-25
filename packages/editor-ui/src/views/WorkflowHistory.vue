@@ -31,7 +31,9 @@ const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
 onBeforeMount(async () => {
-	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId);
+	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
+		take: 20,
+	});
 	workflowHistoryStore.addWorkflowHistory(history);
 
 	if (!route.params.versionId) {
@@ -42,16 +44,6 @@ onBeforeMount(async () => {
 				versionId: workflowHistoryStore.workflowHistory[0].versionId,
 			},
 		});
-	}
-});
-
-watchEffect(async () => {
-	if (route.params.versionId) {
-		const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
-			route.params.workflowId,
-			route.params.versionId,
-		);
-		workflowHistoryStore.setWorkflowVersion(workflowVersion);
 	}
 });
 
@@ -110,6 +102,21 @@ const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['ver
 		});
 	}
 };
+
+const loadMore = async ({ take }: { take: number }) => {
+	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, { take });
+	workflowHistoryStore.addWorkflowHistory(history);
+};
+
+watchEffect(async () => {
+	if (route.params.versionId) {
+		const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
+			route.params.workflowId,
+			route.params.versionId,
+		);
+		workflowHistoryStore.setWorkflowVersion(workflowVersion);
+	}
+});
 </script>
 <template>
 	<div :class="$style.view">
@@ -129,10 +136,11 @@ const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['ver
 		<workflow-history-list
 			:class="$style.listComponent"
 			:items="workflowHistoryStore.workflowHistory"
+			:active-item="workflowHistoryStore.workflowVersion"
 			:action-types="workflowHistoryActionTypes"
-			:active-item-id="route.params.versionId"
 			@action="onAction"
 			@preview="onPreview"
+			@load-more="loadMore"
 		/>
 	</div>
 </template>

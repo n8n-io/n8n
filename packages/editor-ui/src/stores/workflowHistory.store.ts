@@ -10,11 +10,16 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const workflowHistory = ref<WorkflowHistory[]>([]);
 	const workflowVersion = ref<WorkflowVersion | null>(null);
 
-	const getWorkflowHistory = async (workflowId: string): Promise<WorkflowHistory[]> =>
-		whApi.getWorkflowHistory(rootStore.getRestApiContext, workflowId).catch((error) => {
-			console.error(error);
-			return [] as WorkflowHistory[];
-		});
+	const getWorkflowHistory = async (
+		workflowId: string,
+		queryParams: Parameters<typeof whApi.getWorkflowHistory>[2],
+	): Promise<WorkflowHistory[]> =>
+		whApi
+			.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams)
+			.catch((error) => {
+				console.error(error);
+				return [] as WorkflowHistory[];
+			});
 	const addWorkflowHistory = (history: WorkflowHistory[]) => {
 		workflowHistory.value = workflowHistory.value.concat(history);
 	};

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import dateformat from 'dateformat';
 import type { UserAction } from 'n8n-design-system';
 import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
@@ -18,11 +18,13 @@ const emit = defineEmits<{
 		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['versionId'] },
 	): void;
 	(event: 'preview', value: { event: Event; id: WorkflowHistory['versionId'] }): void;
+	(event: 'autoScroll', value: { offsetTop: number }): void;
 }>();
 
 const i18n = useI18n();
 
 const actionsVisible = ref(false);
+const itemElement = ref<HTMLElement | null>(null);
 
 const formattedCreatedAtDate = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -63,9 +65,16 @@ const onVisibleChange = (visible: boolean) => {
 const onItemClick = (event: Event) => {
 	emit('preview', { event, id: props.item.versionId });
 };
+
+onMounted(() => {
+	if (props.active && itemElement.value) {
+		emit('autoScroll', { offsetTop: itemElement.value.offsetTop });
+	}
+});
 </script>
 <template>
 	<li
+		ref="itemElement"
 		:class="{
 			[$style.item]: true,
 			[$style.active]: props.active,
@@ -107,33 +116,36 @@ const onItemClick = (event: Event) => {
 	font-size: var(--font-size-2xs);
 
 	p {
+		display: grid;
 		padding: var(--spacing-s);
-		flex: 1 1 auto;
 		line-height: unset;
 		cursor: pointer;
+
+		strong {
+			padding: 0 0 var(--spacing-2xs);
+			color: var(--color-text-dark);
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-bold);
+		}
+
+		span {
+			justify-self: start;
+		}
+
+		small {
+			max-width: 160px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			padding: var(--spacing-4xs) 0 0;
+			font-size: var(--font-size-2xs);
+		}
 	}
 
 	.tail {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-	}
-
-	strong,
-	small {
-		display: block;
-	}
-
-	small {
-		padding: var(--spacing-4xs) 0 0;
-		font-size: var(--font-size-2xs);
-	}
-
-	strong {
-		padding: 0 0 var(--spacing-2xs);
-		color: var(--color-text-dark);
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-bold);
 	}
 
 	&.active {
