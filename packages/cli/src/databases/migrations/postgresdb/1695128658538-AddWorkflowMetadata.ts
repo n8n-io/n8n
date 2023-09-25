@@ -1,6 +1,8 @@
 import type { MigrationContext, ReversibleMigration } from '@db/types';
 
 export class AddWorkflowMetadata1695128658538 implements ReversibleMigration {
+	transaction = false as const;
+
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns('workflow_entity', [column('meta').json]);
 	}
