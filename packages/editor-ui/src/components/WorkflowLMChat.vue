@@ -119,7 +119,13 @@ import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import { type INode, type INodeType, type ITaskData, NodeHelpers } from 'n8n-workflow';
+import {
+	type INode,
+	type INodeType,
+	type ITaskData,
+	NodeHelpers,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
@@ -254,9 +260,9 @@ export default defineComponent({
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 					if (
-						inputTypes.includes('languageModel') &&
-						inputTypes.includes('main') &&
-						outputTypes.includes('main')
+						inputTypes.includes(NodeConnectionType.AiLanguageModel) &&
+						inputTypes.includes(NodeConnectionType.Main) &&
+						outputTypes.includes(NodeConnectionType.Main)
 					) {
 						isCustomChainOrAgent = true;
 					}

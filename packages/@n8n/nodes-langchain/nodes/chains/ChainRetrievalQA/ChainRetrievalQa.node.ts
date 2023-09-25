@@ -1,4 +1,5 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -30,21 +31,21 @@ export class ChainRetrievalQa implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Vector Retriever',
 				maxConnections: 1,
-				type: 'vectorRetriever',
+				type: NodeConnectionType.AiVectorRetriever,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -78,10 +79,13 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
 
 		const vectorRetriever = (await this.getInputConnectionData(
-			'vectorRetriever',
+			NodeConnectionType.AiVectorRetriever,
 			0,
 		)) as BaseRetriever;
 

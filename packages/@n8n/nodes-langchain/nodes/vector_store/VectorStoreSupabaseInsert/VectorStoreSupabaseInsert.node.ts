@@ -1,8 +1,9 @@
-import type {
-	IExecuteFunctions,
-	INodeType,
-	INodeTypeDescription,
-	INodeExecutionData,
+import {
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeExecutionData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
@@ -11,6 +12,7 @@ import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+
 export class VectorStoreSupabaseInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supabase: Insert',
@@ -36,21 +38,21 @@ export class VectorStoreSupabaseInsert implements INodeType {
 			},
 		],
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Document',
 				maxConnections: 1,
-				type: 'document',
+				type: NodeConnectionType.AiDocument,
 				required: true,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: 'embedding',
+				type: NodeConnectionType.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:
@@ -86,11 +88,14 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		const queryName = this.getNodeParameter('queryName', 0) as string;
 		const credentials = await this.getCredentials('supabaseApi');
 
-		const documentInput = (await this.getInputConnectionData('document', 0)) as
+		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
-		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
 		let processedDocuments: Document[];

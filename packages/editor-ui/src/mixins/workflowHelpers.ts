@@ -30,6 +30,7 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -72,7 +73,7 @@ export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	if (nodeType) {
 		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
 
-		if (!!outputs.find((output) => output !== 'main')) {
+		if (!!outputs.find((output) => output !== NodeConnectionType.Main)) {
 			// Get the first node which is connected to a non-main output
 			const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
 				const parentNodes = workflow.getChildNodes(node.name, outputName);
@@ -114,7 +115,7 @@ export function resolveParameter(
 ): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
-	const inputName = 'main';
+	const inputName = NodeConnectionType.Main;
 	let activeNode = useNDVStore().activeNode;
 
 	const workflow = getCurrentWorkflow();
@@ -441,7 +442,10 @@ function executeData(
 						currentNode
 					].main) {
 						for (const connection of mainConnections) {
-							if (connection.type === 'main' && connection.node === parentNodeName) {
+							if (
+								connection.type === NodeConnectionType.Main &&
+								connection.node === parentNodeName
+							) {
 								previousNodeOutput = connection.index;
 								break mainConnections;
 							}

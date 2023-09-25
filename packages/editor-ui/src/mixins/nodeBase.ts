@@ -2,7 +2,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { INodeUi, EndpointType } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import {
 	NO_OP_NODE_TYPE,
@@ -10,12 +10,12 @@ import {
 	NODE_MIN_INPUT_ITEMS_COUNT,
 } from '@/constants';
 
-import { NodeHelpers } from 'n8n-workflow';
-import type {
-	INodeOutputConfiguration,
+import { INodeOutputConfiguration, NodeHelpers } from 'n8n-workflow';
+import {
 	type ConnectionTypes,
 	type INodeInputConfiguration,
 	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -26,8 +26,6 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
-import type { NodeConnectionType } from '@/Interface';
-import { ENDPOINT_COLOR } from '@/utils/nodeViewUtils';
 
 const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 	type: 'N8nAddInput',
@@ -41,8 +39,8 @@ const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
 const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 	type: 'Rectangle',
 	options: {
-		height: 12,
-		width: 12,
+		height: 10,
+		width: 10,
 		cssClass: 'diamond-output-endpoint',
 	},
 });
@@ -150,7 +148,8 @@ export const nodeBase = defineComponent({
 
 				const inputName: ConnectionTypes = inputConfiguration.type;
 
-				const rootCategoryInputName = inputName === 'main' ? 'main' : 'other';
+				const rootCategoryInputName =
+					inputName === NodeConnectionType.Main ? NodeConnectionType.Main : 'other';
 
 				// Increment the index for inputs with current name
 				if (rootTypeIndexData.hasOwnProperty(rootCategoryInputName)) {
@@ -170,11 +169,13 @@ export const nodeBase = defineComponent({
 
 				const inputsOfSameRootType = inputs.filter((inputData) => {
 					const thisInputName: string = typeof inputData === 'string' ? inputData : inputData.type;
-					return inputName === 'main' ? thisInputName === 'main' : thisInputName !== 'main';
+					return inputName === NodeConnectionType.Main
+						? thisInputName === NodeConnectionType.Main
+						: thisInputName !== NodeConnectionType.Main;
 				});
 
 				const nonMainInputs = inputsOfSameRootType.filter((inputData) => {
-					return inputData !== 'main';
+					return inputData !== NodeConnectionType.Main;
 				});
 				const requiredNonMainInputs = nonMainInputs.filter((inputData) => {
 					return typeof inputData !== 'string' && inputData.required;
@@ -214,8 +215,8 @@ export const nodeBase = defineComponent({
 						'--color-primary',
 						inputName,
 					),
-					scope,
-					source: inputName !== 'main',
+					scope: NodeViewUtils.getScope(scope),
+					source: inputName !== NodeConnectionType.Main,
 					target: !this.isReadOnly && inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
 						connection: 'target',
@@ -260,7 +261,7 @@ export const nodeBase = defineComponent({
 				//       different to the regular one (have different ids). So that seems to make
 				//       problems when hiding the input-name.
 
-				// if (index === 0 && inputName === 'main') {
+				// if (index === 0 && inputName === NodeConnectionType.Main) {
 				// 	// Make the first main-input the default one to connect to when connection gets dropped on node
 				// 	this.instance.makeTarget(this.nodeId, newEndpointData);
 				// }
@@ -346,7 +347,8 @@ export const nodeBase = defineComponent({
 
 				const outputName: ConnectionTypes = outputConfiguration.type;
 
-				const rootCategoryOutputName = outputName === 'main' ? 'main' : 'other';
+				const rootCategoryOutputName =
+					outputName === NodeConnectionType.Main ? NodeConnectionType.Main : 'other';
 
 				// Increment the index for outputs with current name
 				if (rootTypeIndexData.hasOwnProperty(rootCategoryOutputName)) {
@@ -367,7 +369,9 @@ export const nodeBase = defineComponent({
 				const outputsOfSameRootType = outputs.filter((outputData) => {
 					const thisOutputName: string =
 						typeof outputData === 'string' ? outputData : outputData.type;
-					return outputName === 'main' ? thisOutputName === 'main' : thisOutputName !== 'main';
+					return outputName === NodeConnectionType.Main
+						? thisOutputName === NodeConnectionType.Main
+						: thisOutputName !== NodeConnectionType.Main;
 				});
 
 				// Get the position of the anchor depending on how many it has
@@ -392,7 +396,7 @@ export const nodeBase = defineComponent({
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					scope,
 					source: true,
-					target: outputName !== 'main',
+					target: outputName !== NodeConnectionType.Main,
 					enabled: !this.isReadOnly,
 					parameters: {
 						connection: 'source',
@@ -429,7 +433,7 @@ export const nodeBase = defineComponent({
 					};
 				}
 
-				if (!this.isReadOnly && outputName === 'main') {
+				if (!this.isReadOnly && outputName === NodeConnectionType.Main) {
 					const plusEndpointData: EndpointOptions = {
 						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, outputName, typeIndex),
 						anchor: anchorPosition,
@@ -486,46 +490,37 @@ export const nodeBase = defineComponent({
 			this.__addInputEndpoints(node, nodeTypeData);
 			this.__addOutputEndpoints(node, nodeTypeData);
 		},
+		__getEndpointColor(connectionType: ConnectionTypes) {
+			return `--node-type-${connectionType}-color`;
+		},
 		__getInputConnectionStyle(
 			connectionType: ConnectionTypes,
 			nodeTypeData: INodeTypeDescription,
 		): EndpointOptions {
 			const type = 'input';
 
-			const createSupplementalConnectionType = (
-				connectionName: ConnectionTypes,
-			): EndpointOptions => ({
-				endpoint: createAddInputEndpointSpec(ENDPOINT_COLOR[connectionName]),
-			});
-
-			const connectionTypes: {
-				[key: string]: EndpointOptions;
-			} = {
-				languageModel: createSupplementalConnectionType('languageModel'),
-				main: {
+			if (connectionType === NodeConnectionType.Main) {
+				return {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
 						nodeTypeData,
-						ENDPOINT_COLOR.main,
+						this.__getEndpointColor(NodeConnectionType.Main),
 						connectionType,
 					),
 					cssClass: `dot-${type}-endpoint`,
-				},
-				memory: createSupplementalConnectionType('memory'),
-				outputParser: createSupplementalConnectionType('outputParser'),
-				tool: createSupplementalConnectionType('tool'),
-				vectorRetriever: createSupplementalConnectionType('vectorRetriever'),
-				vectorStore: createSupplementalConnectionType('vectorStore'),
-				embedding: createSupplementalConnectionType('embedding'),
-				document: createSupplementalConnectionType('document'),
-				textSplitter: createSupplementalConnectionType('textSplitter'),
-				chain: createSupplementalConnectionType('chain'),
-			};
+				};
+			}
 
-			if (!connectionTypes.hasOwnProperty(connectionType)) {
+			if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
 				return {};
 			}
 
-			return connectionTypes[connectionType];
+			const createSupplementalConnectionType = (
+				connectionName: ConnectionTypes,
+			): EndpointOptions => ({
+				endpoint: createAddInputEndpointSpec(this.__getEndpointColor(connectionName)),
+			});
+
+			return createSupplementalConnectionType(connectionType);
 		},
 		__getOutputConnectionStyle(
 			connectionType: ConnectionTypes,
@@ -539,44 +534,29 @@ export const nodeBase = defineComponent({
 				endpoint: createDiamondOutputEndpointSpec(),
 				paintStyle: NodeViewUtils.getOutputEndpointStyle(
 					nodeTypeData,
-					ENDPOINT_COLOR[connectionName],
-					connectionType,
+					this.__getEndpointColor(connectionName),
 				),
 				hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(
 					nodeTypeData,
-					ENDPOINT_COLOR[connectionName],
-					connectionType,
+					this.__getEndpointColor(connectionName),
 				),
 			});
 
-			const connectionTypes: {
-				[key: string]: EndpointOptions;
-			} = {
-				languageModel: createSupplementalConnectionType('languageModel'),
-				main: {
+			if (connectionType === NodeConnectionType.Main) {
+				return {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
-						ENDPOINT_COLOR['main'],
-						connectionType,
+						this.__getEndpointColor(NodeConnectionType.Main),
 					),
 					cssClass: `dot-${type}-endpoint`,
-				},
-				memory: createSupplementalConnectionType('memory'),
-				outputParser: createSupplementalConnectionType('outputParser'),
-				tool: createSupplementalConnectionType('tool'),
-				vectorRetriever: createSupplementalConnectionType('vectorRetriever'),
-				vectorStore: createSupplementalConnectionType('vectorStore'),
-				embedding: createSupplementalConnectionType('embedding'),
-				document: createSupplementalConnectionType('document'),
-				textSplitter: createSupplementalConnectionType('textSplitter'),
-				chain: createSupplementalConnectionType('chain'),
-			};
+				};
+			}
 
-			if (!connectionTypes.hasOwnProperty(connectionType)) {
+			if (!Object.values(NodeConnectionType).includes(connectionType as NodeConnectionType)) {
 				return {};
 			}
 
-			return connectionTypes[connectionType];
+			return createSupplementalConnectionType(connectionType);
 		},
 		touchEnd(e: MouseEvent) {
 			if (this.isTouchDevice) {

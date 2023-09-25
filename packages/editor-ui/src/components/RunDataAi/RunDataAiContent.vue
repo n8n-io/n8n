@@ -72,9 +72,14 @@
 </template>
 
 <script lang="ts" setup>
-import type { NodeConnectionType, IAiData, IAiDataContent } from '@/Interface';
+import type { IAiData, IAiDataContent } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
-import type { IDataObject, INodeExecutionData, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import AiRunContentBlock from './AiRunContentBlock.vue';

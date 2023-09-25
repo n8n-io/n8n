@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	NodeOperationError,
 	jsonParse,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -46,18 +47,18 @@ export class ChainStructuredOutput implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				filter: {
 					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
 				},
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -102,7 +103,10 @@ export class ChainStructuredOutput implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Structured Output Chain');
-		const model = (await this.getInputConnectionData('languageModel', 0)) as ChatOpenAI;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as ChatOpenAI;
 
 		const outputParser = new JsonOutputFunctionsParser();
 

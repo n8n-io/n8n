@@ -1,10 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseMessage } from 'langchain/schema';
@@ -50,16 +51,16 @@ export class MemoryChatRetriever implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Memory',
 				maxConnections: 1,
-				type: 'memory',
+				type: NodeConnectionType.AiMemory,
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Simplify Output',
@@ -74,7 +75,9 @@ export class MemoryChatRetriever implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Chat Memory Retriever');
 
-		const memory = (await this.getInputConnectionData('memory', 0)) as BaseChatMemory | undefined;
+		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			| BaseChatMemory
+			| undefined;
 		const simplifyOutput = this.getNodeParameter('simplifyOutput', 0) as boolean;
 
 		const messages = await memory?.chatHistory.getMessages();

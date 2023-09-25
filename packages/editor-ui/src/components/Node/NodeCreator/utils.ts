@@ -36,7 +36,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 		// Only some subcategories are allowed
 		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
 
-		WHITE_LISTED_SUBCATEGORIES.forEach(category => {
+		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
 			if (item.codex?.categories?.includes(category)) {
 				subcategories = item.codex?.subcategories?.[category] ?? [];
 			}

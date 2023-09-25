@@ -52,7 +52,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 
 import { useActions } from '../composables/useActions';
 import { useI18n, useTelemetry } from '@/composables';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 export interface Props {
 	nodeType: SimplifiedNodeType;
@@ -121,7 +121,9 @@ const isSubNode = computed<boolean>(() => {
 		return false;
 	}
 	const outputTypes = NodeHelpers.getConnectionTypes(props.nodeType.outputs);
-	return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
+	return outputTypes
+		? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+		: false;
 });
 
 const isTrigger = computed<boolean>(() => {
@@ -191,7 +193,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 }
 
 .subNodeBackground {
-	background-color: var(--node-type-languageModel-background);
+	background-color: var(--node-type-supplemental-background);
 	border-radius: 50%;
 	height: 40px;
 	position: absolute;

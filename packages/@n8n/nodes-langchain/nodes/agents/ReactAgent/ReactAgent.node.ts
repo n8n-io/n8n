@@ -1,4 +1,5 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -35,25 +36,25 @@ export class ReactAgent implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Language Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Tools',
-				type: 'tool',
+				type: NodeConnectionType.AiTool,
 				required: false,
 			},
 			{
 				displayName: 'Output Parser',
-				type: 'outputParser',
+				type: NodeConnectionType.AiOutputParser,
 				required: false,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -88,13 +89,13 @@ export class ReactAgent implements INodeType {
 		this.logger.verbose('Executing ReAct Agent');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as
+		const model = (await this.getInputConnectionData(NodeConnectionType.AiLanguageModel, 0)) as
 			| BaseLanguageModel
 			| BaseChatModel;
 
-		const tools = (await this.getInputConnectionData('tool', 0)) as Tool[];
+		const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
 		const outputParsers = (await this.getInputConnectionData(
-			'outputParser',
+			NodeConnectionType.AiOutputParser,
 			0,
 		)) as BaseOutputParser[];
 

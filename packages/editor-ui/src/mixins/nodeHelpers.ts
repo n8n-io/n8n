@@ -1,6 +1,7 @@
 import { EnableNodeToggleCommand } from './../models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
 
 import type {
 	ConnectionTypes,
@@ -22,7 +23,7 @@ import type {
 	Workflow,
 	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -509,7 +510,7 @@ export const nodeHelpers = defineComponent({
 			runIndex = 0,
 			outputIndex = 0,
 			paneType: NodePanelType = 'output',
-			connectionType: ConnectionTypes = 'main',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			if (node === null) {
 				return [];
@@ -546,7 +547,7 @@ export const nodeHelpers = defineComponent({
 		getInputData(
 			connectionsData: ITaskDataConnections,
 			outputIndex: number,
-			connectionType: ConnectionTypes = 'main',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			if (
 				!connectionsData ||
@@ -566,7 +567,7 @@ export const nodeHelpers = defineComponent({
 			node: string | null,
 			runIndex: number,
 			outputIndex: number,
-			connectionType: ConnectionTypes = 'main',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): IBinaryKeyData[] {
 			if (node === null) {
 				return [];
@@ -632,10 +633,12 @@ export const nodeHelpers = defineComponent({
 		// @ts-ignore
 		getNodeSubtitle(data, nodeType, workflow): string | undefined {
 			const otherOutputs = (nodeType.outputs || []).filter(
-				(outputName: string) => outputName !== 'main',
+				(outputName: string) => outputName !== NodeConnectionType.Main,
 			);
 			if (otherOutputs.length > 0) {
-				return useI18n().baseText(`node.connectionType.${otherOutputs[0]}` as BaseTextKey);
+				return useI18n().baseText(
+					`node.connectionType.${NodeViewUtils.getScope(otherOutputs[0])}` as BaseTextKey,
+				);
 			}
 
 			if (!data) {

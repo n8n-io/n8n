@@ -65,8 +65,9 @@
 <script lang="ts" setup>
 import type { Ref } from 'vue';
 import { computed, onMounted, ref } from 'vue';
-import type { ITaskAIRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import type { NodeConnectionType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
@@ -91,7 +92,7 @@ function isTreeNodeSelected(node: TreeNode) {
 }
 
 function getReferencedData(
-	reference: ITaskAIRunMetadata,
+	reference: ITaskSubRunMetadata,
 	withInput: boolean,
 	withOutput: boolean,
 ): IAiDataContent[] {
@@ -207,7 +208,9 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 		return resultData.map((d) => createNode(nodeName, currentDepth, d));
 	}
 
-	const nonMainConnectionsKeys = Object.keys(connections).filter((key) => key !== 'main');
+	const nonMainConnectionsKeys = Object.keys(connections).filter(
+		(key) => key !== NodeConnectionType.Main,
+	);
 	const children = nonMainConnectionsKeys.flatMap((key) =>
 		connections[key][0].flatMap((node) => getTreeNodeData(node.node, currentDepth + 1)),
 	);

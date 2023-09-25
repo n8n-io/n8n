@@ -1,11 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { XataChatMessageHistory } from 'langchain/stores/message/xata';
 import { BufferMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
-
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xata',
@@ -28,7 +27,7 @@ export class MemoryXata implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['memory'],
+		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [
 			{

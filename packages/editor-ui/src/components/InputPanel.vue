@@ -130,13 +130,8 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi } from '@/Interface';
-import {
-	NodeHelpers,
-	type IConnectedNode,
-	type INodeTypeDescription,
-	type Workflow,
-	ConnectionTypes,
-} from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import type { ConnectionTypes, IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -225,8 +220,9 @@ export default defineComponent({
 			}
 
 			if (
-				(inputs.length === 0 || inputs.find((inputName) => inputName !== 'main')) &&
-				outputs.find((outputName) => outputName !== 'main')
+				(inputs.length === 0 ||
+					inputs.find((inputName) => inputName !== NodeConnectionType.Main)) &&
+				outputs.find((outputName) => outputName !== NodeConnectionType.Main)
 			) {
 				return true;
 			}
@@ -320,8 +316,7 @@ export default defineComponent({
 				!nodeName ||
 				!this.isMultiInputNode ||
 				!this.activeNode ||
-				this.activeNodeType === null ||
-				this.activeNodeType.inputNames === undefined
+				this.activeNodeType?.inputNames === undefined
 			)
 				return '';
 
@@ -335,10 +330,7 @@ export default defineComponent({
 
 			// Match connected input indexes to their names specified by active node
 			const connectedInputs = connectedInputIndexes.map(
-				(inputIndex) =>
-					this.activeNodeType &&
-					this.activeNodeType.inputNames &&
-					this.activeNodeType.inputNames[inputIndex],
+				(inputIndex) => this.activeNodeType?.inputNames?.[inputIndex],
 			);
 
 			if (connectedInputs.length === 0) return '';

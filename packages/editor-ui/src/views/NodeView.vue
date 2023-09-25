@@ -264,7 +264,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -341,8 +341,6 @@ import {
 	OVERLAY_REVERSE_ARROW_ID,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { SCOPED_ENDPOINT_TYPES } from '@/constants';
-import type { NodeConnectionType } from '@/Interface';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1997,7 +1995,7 @@ export default defineComponent({
 					// If node has only scoped outputs, position it below the last selected node
 					if (
 						outputTypes.every((outputName) =>
-							SCOPED_ENDPOINT_TYPES.includes(outputName as NodeConnectionType),
+							Object.values(NodeConnectionType).includes(outputName as NodeConnectionType),
 						)
 					) {
 						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
@@ -2238,11 +2236,23 @@ export default defineComponent({
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, 'main');
+					this.connectTwoNodes(
+						newNodeData.name,
+						0,
+						targetNodeName,
+						targetOutputIndex,
+						NodeConnectionType.Main,
+					);
 				}
 
 				// Connect active node to the newly created one
-				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, 'main');
+				this.connectTwoNodes(
+					lastSelectedNode.name,
+					outputIndex,
+					newNodeData.name,
+					0,
+					NodeConnectionType.Main,
+				);
 			}
 			this.historyStore.stopRecordingUndo();
 		},
@@ -2255,7 +2265,7 @@ export default defineComponent({
 			outputType?: NodeConnectionType;
 			endpointUuid?: string;
 		}) {
-			const type = info.outputType || 'main';
+			const type = info.outputType || NodeConnectionType.Main;
 
 			let filter;
 			// Get the node and set it as active that new nodes
@@ -2307,7 +2317,8 @@ export default defineComponent({
 			// TODO: The animation is a bit glitchy because we're updating view stack immediately
 			// after the node creator is opened
 			const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
-			const isScopedConnection = type !== 'main' && SCOPED_ENDPOINT_TYPES.includes(type);
+			const isScopedConnection =
+				type !== NodeConnectionType.Main && Object.values(NodeConnectionType).includes(type);
 
 			if (isScopedConnection) {
 				useViewStacks()
@@ -2333,7 +2344,7 @@ export default defineComponent({
 							outputIndex,
 							this.pullConnActiveNodeName,
 							0,
-							'main',
+							NodeConnectionType.Main,
 						);
 						this.pullConnActiveNodeName = null;
 						this.dropPrevented = true;
@@ -2518,7 +2529,7 @@ export default defineComponent({
 						OVERLAY_ENDPOINT_ARROW_ID,
 					);
 					const reverseArrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
-					if (sourceInfo.type === 'main') {
+					if (sourceInfo.type === NodeConnectionType.Main) {
 						// For some reason the arrow is visible by default, so hide it
 						reverseArrow?.setVisible(false);
 					} else {
@@ -2674,7 +2685,13 @@ export default defineComponent({
 					if (connectionInfo) {
 						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
 					}
-					this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, 'main');
+					this.connectTwoNodes(
+						sourceNodeName,
+						outputIndex,
+						this.pullConnActiveNodeName,
+						0,
+						NodeConnectionType.Main,
+					);
 					this.pullConnActiveNodeName = null;
 					await this.$nextTick();
 					this.historyStore.stopRecordingUndo();
@@ -3036,7 +3053,8 @@ export default defineComponent({
 					sourceNode.type,
 					sourceNode.typeVersion,
 				);
-				const sourceNodeOutput = sourceNodeType?.outputs?.[connection[0].index] || 'main';
+				const sourceNodeOutput =
+					sourceNodeType?.outputs?.[connection[0].index] || NodeConnectionType.Main;
 				const sourceNodeOutputName =
 					typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 				const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
@@ -3076,12 +3094,12 @@ export default defineComponent({
 					{
 						index: connection.__meta?.sourceOutputIndex,
 						node: connection.__meta.sourceNodeName,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					{
 						index: connection.__meta?.targetOutputIndex,
 						node: connection.__meta.targetNodeName,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				];
 				const removeCommand = new RemoveConnectionCommand(connectionData, this);
@@ -3209,7 +3227,8 @@ export default defineComponent({
 				sourceNode.type,
 				sourceNode.typeVersion,
 			);
-			const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] || 'main';
+			const sourceNodeOutput =
+				sourceNodeType?.outputs?.[sourceOutputIndex] || NodeConnectionType.Main;
 			const sourceNodeOutputName =
 				typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 			const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
@@ -3445,7 +3464,7 @@ export default defineComponent({
 								sourceNodeOutputIndex,
 								targetNodeName,
 								targetNodeOuputIndex,
-								'main',
+								NodeConnectionType.Main,
 							);
 
 							if (waitForNewConnection) {
@@ -4208,7 +4227,13 @@ export default defineComponent({
 								previouslyAddedNode.position[1],
 							];
 							await this.$nextTick();
-							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0, 'main');
+							this.connectTwoNodes(
+								previouslyAddedNode.name,
+								0,
+								lastAddedNode.name,
+								0,
+								NodeConnectionType.Main,
+							);
 
 							actionWatcher();
 						});

@@ -3,6 +3,7 @@ import {
 	type ConnectionTypes,
 	type IExecuteFunctions,
 	type INodeExecutionData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
@@ -107,7 +108,7 @@ export function logWrapper(
 			if (originalInstance instanceof BaseChatMemory) {
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {
 					return async (values: InputValues): Promise<MemoryVariables> => {
-						connectionType = 'memory';
+						connectionType = NodeConnectionType.AiMemory;
 
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'loadMemoryVariables', values } }],
@@ -131,7 +132,7 @@ export function logWrapper(
 					'outputKey' in target &&
 					target.constructor.name === 'BufferWindowMemory'
 				) {
-					connectionType = 'memory';
+					connectionType = NodeConnectionType.AiMemory;
 					const { index } = executeFunctions.addInputData(connectionType, [
 						[{ json: { action: 'chatHistory' } }],
 					]);
@@ -140,12 +141,12 @@ export function logWrapper(
 					target.chatHistory
 						.getMessages()
 						.then((messages) => {
-							executeFunctions.addOutputData('memory', index, [
+							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
 								[{ json: { action: 'chatHistory', chatHistory: messages } }],
 							]);
 						})
 						.catch((error: Error) => {
-							executeFunctions.addOutputData('memory', index, [
+							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
 								[{ json: { action: 'chatHistory', error } }],
 							]);
 						});
@@ -157,7 +158,7 @@ export function logWrapper(
 			if (originalInstance instanceof BaseChatMessageHistory) {
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
-						connectionType = 'memory';
+						connectionType = NodeConnectionType.AiMemory;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'getMessages' } }],
 						]);
@@ -177,7 +178,7 @@ export function logWrapper(
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
-						connectionType = 'memory';
+						connectionType = NodeConnectionType.AiMemory;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'addMessage', message } }],
 						]);
@@ -205,7 +206,7 @@ export function logWrapper(
 						options: any,
 						runManager?: CallbackManagerForLLMRun,
 					): Promise<ChatResult> => {
-						connectionType = 'languageModel';
+						connectionType = NodeConnectionType.AiLanguageModel;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { messages, options } }],
 						]);
@@ -228,7 +229,7 @@ export function logWrapper(
 			if (originalInstance instanceof BaseOutputParser) {
 				if (prop === 'getFormatInstructions' && 'getFormatInstructions' in target) {
 					return (options?: FormatInstructionsOptions): string => {
-						connectionType = 'outputParser';
+						connectionType = NodeConnectionType.AiOutputParser;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'getFormatInstructions' } }],
 						]);
@@ -249,7 +250,7 @@ export function logWrapper(
 					};
 				} else if (prop === 'parse' && 'parse' in target) {
 					return async (text: string): Promise<any> => {
-						connectionType = 'outputParser';
+						connectionType = NodeConnectionType.AiOutputParser;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'parse', text } }],
 						]);
@@ -277,7 +278,7 @@ export function logWrapper(
 						query: string,
 						runManager?: CallbackManagerForRetrieverRun,
 					): Promise<Document[]> => {
-						connectionType = 'vectorRetriever';
+						connectionType = NodeConnectionType.AiVectorRetriever;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query } }],
 						]);
@@ -301,7 +302,7 @@ export function logWrapper(
 				// Docs -> Embeddings
 				if (prop === 'embedDocuments' && 'embedDocuments' in target) {
 					return async (documents: string[]): Promise<number[][]> => {
-						connectionType = 'embedding';
+						connectionType = NodeConnectionType.AiEmbedding;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { documents } }],
 						]);
@@ -321,7 +322,7 @@ export function logWrapper(
 				// Query -> Embeddings
 				if (prop === 'embedQuery' && 'embedQuery' in target) {
 					return async (query: string): Promise<number[]> => {
-						connectionType = 'embedding';
+						connectionType = NodeConnectionType.AiEmbedding;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query } }],
 						]);
@@ -348,7 +349,7 @@ export function logWrapper(
 				// JSON Input -> Documents
 				if (prop === 'process' && 'process' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
-						connectionType = 'document';
+						connectionType = NodeConnectionType.AiDocument;
 						const { index } = executeFunctions.addInputData(connectionType, [items]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -369,7 +370,7 @@ export function logWrapper(
 			if (originalInstance instanceof TextSplitter) {
 				if (prop === 'splitText' && 'splitText' in target) {
 					return async (text: string): Promise<string[]> => {
-						connectionType = 'textSplitter';
+						connectionType = NodeConnectionType.AiTextSplitter;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { textSplitter: text } }],
 						]);
@@ -392,7 +393,7 @@ export function logWrapper(
 			if (originalInstance instanceof Tool) {
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
-						connectionType = 'tool';
+						connectionType = NodeConnectionType.AiTool;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query } }],
 						]);
@@ -421,7 +422,7 @@ export function logWrapper(
 						filter?: BiquadFilterType | undefined,
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {
-						connectionType = 'vectorStore';
+						connectionType = NodeConnectionType.AiVectorStore;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query, k, filter } }],
 						]);

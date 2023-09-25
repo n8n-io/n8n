@@ -118,5 +118,5 @@ $version-card-box-shadow-color: hsla(
 );
 
 // supplemental node types
-$supplemental-node-types: chain document embedding languageModel memory outputParser tool textSplitter vectorRetriever vectorStore;
-
+$supplemental-node-types: ai_chain ai_document ai_embedding ai_languageModel ai_memory
+	ai_outputParser ai_tool ai_textSplitter ai_vectorRetriever ai_vectorStore;

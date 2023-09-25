@@ -184,7 +184,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
 import type { IExecutionsSummary, INodeTypeDescription, ITaskData } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -335,7 +335,9 @@ export default defineComponent({
 
 			if (this.outputs.length) {
 				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
-				const otherOutputs = outputTypes.filter((outputName) => outputName !== 'main');
+				const otherOutputs = outputTypes.filter(
+					(outputName) => outputName !== NodeConnectionType.Main,
+				);
 				if (otherOutputs.length) {
 					otherOutputs.forEach((outputName) => {
 						classes[`node-wrapper--connection-type-${outputName}`] = true;
@@ -353,7 +355,7 @@ export default defineComponent({
 				top: this.position[1] + 'px',
 			};
 
-			const nonMainInputs = this.inputs.filter((input) => input !== 'main');
+			const nonMainInputs = this.inputs.filter((input) => input !== NodeConnectionType.Main);
 			if (nonMainInputs.length) {
 				const requiredNonMainInputs = this.inputs.filter(
 					(input) => typeof input !== 'string' && input.required,

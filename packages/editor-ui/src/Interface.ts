@@ -113,21 +113,6 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export const enum NodeConnectionType {
-	Agent = 'agent',
-	Chain = 'chain',
-	Main = 'main',
-	Tool = 'tool',
-	Memory = 'memory',
-	OutputParser = 'outputParser',
-	LanguageModel = 'languageModel',
-	VectorRetriever = 'vectorRetriever',
-	VectorStore = 'vectorStore',
-	Embedding = 'embedding',
-	Document = 'document',
-	TextSplitter = 'textSplitter',
-}
-
 export interface IUpdateInformation {
 	name: string;
 	key?: string;

@@ -62,14 +62,14 @@
 </template>
 
 <script lang="ts" setup>
-import { NodeConnectionType, type IAiDataContent } from '@/Interface';
+import type { IAiDataContent } from '@/Interface';
 import { capitalize } from 'lodash-es';
 import { ref, onMounted } from 'vue';
 import type { ParsedAiContent } from './useAiContentParsers';
 import { useAiContentParsers } from './useAiContentParsers';
 import VueMarkdown from 'vue-markdown-render';
 import { useCopyToClipboard, useI18n, useToast } from '@/composables';
-import type { IDataObject } from 'n8n-workflow';
+import { NodeConnectionType, type IDataObject } from 'n8n-workflow';
 
 const props = defineProps<{
 	runData: IAiDataContent;
@@ -85,12 +85,12 @@ const parsedRun = ref(undefined as ParsedAiContent | undefined);
 
 function getInitialExpandedState() {
 	const collapsedTypes = {
-		input: [NodeConnectionType.Document, NodeConnectionType.TextSplitter],
+		input: [NodeConnectionType.AiDocument, NodeConnectionType.AiTextSplitter],
 		output: [
-			NodeConnectionType.Document,
-			NodeConnectionType.Embedding,
-			NodeConnectionType.TextSplitter,
-			NodeConnectionType.VectorStore,
+			NodeConnectionType.AiDocument,
+			NodeConnectionType.AiEmbedding,
+			NodeConnectionType.AiTextSplitter,
+			NodeConnectionType.AiVectorStore,
 		],
 	};
 

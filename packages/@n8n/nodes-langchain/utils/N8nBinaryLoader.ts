@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
+import { NodeOperationError, BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -112,9 +112,10 @@ export class N8nBinaryLoader {
 					);
 			}
 
-			const textSplitter = (await this.context.getInputConnectionData('textSplitter', 0)) as
-				| TextSplitter
-				| undefined;
+			const textSplitter = (await this.context.getInputConnectionData(
+				NodeConnectionType.AiTextSplitter,
+				0,
+			)) as TextSplitter | undefined;
 
 			const loadedDoc = textSplitter
 				? await loader.loadAndSplit(textSplitter)

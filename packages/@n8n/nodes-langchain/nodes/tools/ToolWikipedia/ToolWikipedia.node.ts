@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import { WikipediaQueryRun } from 'langchain/tools';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -23,7 +29,7 @@ export class ToolWikipedia implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['tool'],
+		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [],
 	};

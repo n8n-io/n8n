@@ -504,7 +504,7 @@ import type {
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	IExecutionResponse,
@@ -541,7 +541,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
-import RunDataAi from '@/components/RunDataAi/RunDataAi.vue';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -559,7 +558,6 @@ export default defineComponent({
 		BinaryDataDisplay,
 		NodeErrorView,
 		CodeNodeEditor,
-		RunDataAi,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
@@ -621,7 +619,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			connectionType: 'main' as ConnectionTypes,
+			connectionType: NodeConnectionType.Main,
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -705,10 +703,10 @@ export default defineComponent({
 
 			const nonMainInputs = !!inputs.find((input) => {
 				if (typeof input === 'string') {
-					return input !== 'main';
+					return input !== NodeConnectionType.Main;
 				}
 
-				return input.type !== 'main';
+				return input.type !== NodeConnectionType.Main;
 			});
 
 			return (
@@ -1243,7 +1241,11 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
-		getDataCount(runIndex: number, outputIndex: number, connectionType: ConnectionTypes = 'main') {
+		getDataCount(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		) {
 			if (this.pinData) {
 				return this.pinData.length;
 			}
@@ -1293,7 +1295,7 @@ export default defineComponent({
 				const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
 				outputTypes = NodeHelpers.getConnectionTypes(outputs);
 			}
-			this.connectionType = outputTypes.length === 0 ? 'main' : outputTypes[0];
+			this.connectionType = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
 			if (this.binaryData.length > 0) {
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',

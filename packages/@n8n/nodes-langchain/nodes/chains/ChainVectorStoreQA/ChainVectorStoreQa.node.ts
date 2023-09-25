@@ -1,4 +1,5 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -31,21 +32,21 @@ export class ChainVectorStoreQa implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: 'vectorStore',
+				type: NodeConnectionType.AiVectorStore,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -87,9 +88,15 @@ export class ChainVectorStoreQa implements INodeType {
 		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
 
-		const vectorStore = (await this.getInputConnectionData('vectorStore', 0)) as VectorStore;
+		const vectorStore = (await this.getInputConnectionData(
+			NodeConnectionType.AiVectorStore,
+			0,
+		)) as VectorStore;
 
 		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
 		const items = this.getInputData();

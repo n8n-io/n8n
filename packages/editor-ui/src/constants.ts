@@ -1,5 +1,4 @@
 import type { NodeCreatorOpenSource } from './Interface';
-import { NodeConnectionType } from './Interface';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -89,20 +88,6 @@ export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expres
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
 export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger';
-
-// Node endpoint types
-export const SCOPED_ENDPOINT_TYPES = [
-	NodeConnectionType.Chain,
-	NodeConnectionType.Tool,
-	NodeConnectionType.Memory,
-	NodeConnectionType.OutputParser,
-	NodeConnectionType.LanguageModel,
-	NodeConnectionType.VectorRetriever,
-	NodeConnectionType.VectorStore,
-	NodeConnectionType.Embedding,
-	NodeConnectionType.Document,
-	NodeConnectionType.TextSplitter,
-];
 
 export const NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS = false;
 export const NODE_MIN_INPUT_ITEMS_COUNT = 4;

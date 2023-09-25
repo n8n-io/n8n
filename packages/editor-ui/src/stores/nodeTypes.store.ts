@@ -26,11 +26,12 @@ import type {
 	INodeTypeNameVersion,
 	ResourceMapperFields,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
-import { ConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
@@ -86,7 +87,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-				return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
+				return outputTypes
+					? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+					: false;
 			};
 		},
 		isConfigurableNode() {
@@ -98,7 +101,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-				return inputTypes ? inputTypes.filter((input) => input !== 'main').length > 0 : false;
+				return inputTypes
+					? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+					: false;
 			};
 		},
 		isTriggerNode() {

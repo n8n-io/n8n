@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import type { Document } from 'langchain/document';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { Embeddings } from 'langchain/embeddings/base';
@@ -26,25 +32,31 @@ export class InMemoryVectorStore implements INodeType {
 		inputs: [
 			{
 				displayName: 'Document',
-				type: 'document',
+				type: NodeConnectionType.AiDocument,
 				required: false,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: 'embedding',
+				type: NodeConnectionType.AiEmbedding,
 				required: false,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['vectorRetriever'],
+		outputs: [NodeConnectionType.AiVectorRetriever],
 		outputNames: ['Vector Retriever'],
 		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const documents = (await this.getInputConnectionData('document', 0)) as Document[];
-		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
+		const documents = (await this.getInputConnectionData(
+			NodeConnectionType.AiDocument,
+			0,
+		)) as Document[];
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
 

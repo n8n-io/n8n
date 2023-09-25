@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -37,12 +38,12 @@ export class DocumentGithubLoader implements INodeType {
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: 'textSplitter',
+				type: NodeConnectionType.AiTextSplitter,
 			},
 		],
 		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['document'],
+		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
 			{
@@ -94,9 +95,10 @@ export class DocumentGithubLoader implements INodeType {
 			ignorePaths: string;
 		};
 
-		const textSplitter = (await this.getInputConnectionData('textSplitter', 0)) as
-			| CharacterTextSplitter
-			| undefined;
+		const textSplitter = (await this.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as CharacterTextSplitter | undefined;
 
 		const docs = new GithubRepoLoader(repository, {
 			branch,

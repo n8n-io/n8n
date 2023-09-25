@@ -6,7 +6,7 @@ import type {
 	SupplyData,
 	ExecutionError,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { Sandbox } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
@@ -34,7 +34,7 @@ export class ToolCode implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['tool'],
+		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [
 			{
@@ -165,7 +165,7 @@ export class ToolCode implements INodeType {
 				description,
 
 				func: async (query: string): Promise<string> => {
-					const { index } = this.addInputData('tool', [[{ json: { query } }]]);
+					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
@@ -190,9 +190,9 @@ export class ToolCode implements INodeType {
 					}
 
 					if (executionError) {
-						void this.addOutputData('tool', index, executionError);
+						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
 					} else {
-						void this.addOutputData('tool', index, [[{ json: { response } }]]);
+						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
 					}
 					return response;
 				},

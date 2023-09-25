@@ -1,9 +1,10 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from 'langchain/base_language';
@@ -12,9 +13,12 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 
 async function getChain(context: IExecuteFunctions, query: string): Promise<unknown[]> {
-	const llm = (await context.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+	const llm = (await context.getInputConnectionData(
+		NodeConnectionType.AiLanguageModel,
+		0,
+	)) as BaseLanguageModel;
 	const outputParsers = (await context.getInputConnectionData(
-		'outputParser',
+		NodeConnectionType.AiOutputParser,
 		0,
 	)) as BaseOutputParser[];
 
@@ -70,20 +74,20 @@ export class ChainLlm implements INodeType {
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Output Parser',
-				type: 'outputParser',
+				type: NodeConnectionType.AiOutputParser,
 				required: false,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{

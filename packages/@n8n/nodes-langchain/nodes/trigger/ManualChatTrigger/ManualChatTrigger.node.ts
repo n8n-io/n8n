@@ -1,8 +1,9 @@
-import type {
-	ITriggerFunctions,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
+import {
+	type ITriggerFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type ITriggerResponse,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 export class ManualChatTrigger implements INodeType {
@@ -21,7 +22,7 @@ export class ManualChatTrigger implements INodeType {
 		},
 
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName:
