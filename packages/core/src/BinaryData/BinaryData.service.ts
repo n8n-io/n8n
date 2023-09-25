@@ -65,10 +65,10 @@ export class BinaryDataService {
 
 	@LogCatch((error) => Logger.error('Failed to write binary data file', { error }))
 	async store(
-		binaryData: IBinaryData,
-		bufferOrStream: Buffer | Readable,
 		workflowId: string,
 		executionId: string,
+		bufferOrStream: Buffer | Readable,
+		binaryData: IBinaryData,
 	) {
 		const manager = this.managers[this.mode];
 
@@ -80,10 +80,17 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.store(workflowId, executionId, bufferOrStream, {
+		const metadata = {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-		});
+		};
+
+		const { fileId, fileSize } = await manager.store(
+			workflowId,
+			executionId,
+			bufferOrStream,
+			metadata,
+		);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
