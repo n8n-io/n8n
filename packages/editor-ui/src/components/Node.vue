@@ -1020,7 +1020,12 @@ export default defineComponent({
 	.node-wrapper--config & {
 		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
-		background-color: var(--color-foreground-dark);
+		background-color: hsla(
+			var(--color-foreground-base-h),
+			60%,
+			var(--color-foreground-base-l),
+			80%
+		);
 	}
 }
 
