@@ -1,3 +1,9 @@
+/**
+ * @tech_debt The `workflowId` arguments on write are for compatibility with the
+ * `BinaryData.Manager` interface. Unused in filesystem mode until we refactor
+ * how we store binary data files in the `/binaryData` dir.
+ */
+
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
@@ -9,12 +15,6 @@ import { ensureDirExists } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
-
-/**
- * @note The `workflowId` arguments on write and delete are intentionally unused.
- * They are for compatibility with `BinaryData.Manager` and will be removed
- * when we refactor binary data file storage in the `/binaryData` dir.
- */
 
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;

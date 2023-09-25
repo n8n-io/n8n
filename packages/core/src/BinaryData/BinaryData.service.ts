@@ -7,11 +7,11 @@ import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflo
 
 import { areValidModes, toBuffer } from './utils';
 import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
+import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 import type { INodeExecutionData } from 'n8n-workflow';
-import { LogCatch } from '../decorators/LogCatch.decorator';
 
 @Service()
 export class BinaryDataService {
@@ -42,24 +42,31 @@ export class BinaryDataService {
 	@LogCatch((error) => Logger.error('Failed to copy binary data file', { error }))
 	async copyBinaryFile(
 		workflowId: string,
-		binaryData: IBinaryData,
-		path: string,
 		executionId: string,
+		binaryData: IBinaryData,
+		filePath: string,
 	) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
-			const { size } = await stat(path);
+			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
-			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
+			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.copyByFilePath(workflowId, executionId, path, {
+		const metadata = {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-		});
+		};
+
+		const { fileId, fileSize } = await manager.copyByFilePath(
+			workflowId,
+			executionId,
+			filePath,
+			metadata,
+		);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
@@ -70,10 +77,10 @@ export class BinaryDataService {
 
 	@LogCatch((error) => Logger.error('Failed to write binary data file', { error }))
 	async store(
-		binaryData: IBinaryData,
-		bufferOrStream: Buffer | Readable,
 		workflowId: string,
 		executionId: string,
+		bufferOrStream: Buffer | Readable,
+		binaryData: IBinaryData,
 	) {
 		const manager = this.managers[this.mode];
 
@@ -85,10 +92,17 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.store(workflowId, executionId, bufferOrStream, {
+		const metadata = {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-		});
+		};
+
+		const { fileId, fileSize } = await manager.store(
+			workflowId,
+			executionId,
+			bufferOrStream,
+			metadata,
+		);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
@@ -137,6 +151,10 @@ export class BinaryDataService {
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return;
+
 		await this.getManager(this.mode).deleteMany(ids);
 	}
 
@@ -145,8 +163,8 @@ export class BinaryDataService {
 	)
 	async duplicateBinaryData(
 		workflowId: string,
-		inputData: Array<INodeExecutionData[] | null>,
 		executionId: string,
+		inputData: Array<INodeExecutionData[] | null>,
 	) {
 		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
@@ -155,7 +173,7 @@ export class BinaryDataService {
 						return Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return this.duplicateBinaryDataInExecData(workflowId, executionData, executionId);
+									return this.duplicateBinaryDataInExecData(workflowId, executionId, executionData);
 								}
 
 								return executionData;
@@ -186,8 +204,8 @@ export class BinaryDataService {
 
 	private async duplicateBinaryDataInExecData(
 		workflowId: string,
-		executionData: INodeExecutionData,
 		executionId: string,
+		executionData: INodeExecutionData,
 	) {
 		const manager = this.managers[this.mode];
 
@@ -205,7 +223,7 @@ export class BinaryDataService {
 
 				const [_mode, fileId] = binaryDataId.split(':');
 
-				return manager?.copyByFileId(workflowId, fileId, executionId).then((newFileId) => ({
+				return manager?.copyByFileId(workflowId, executionId, fileId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));

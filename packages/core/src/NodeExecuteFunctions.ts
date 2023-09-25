@@ -999,17 +999,22 @@ export async function getBinaryDataBuffer(
  * Store an incoming IBinaryData & related buffer using the configured binary data manager.
  *
  * @export
- * @param {IBinaryData} data
- * @param {Buffer | Readable} binaryData
+ * @param {IBinaryData} binaryData
+ * @param {Buffer | Readable} bufferOrStream
  * @returns {Promise<IBinaryData>}
  */
 export async function setBinaryDataBuffer(
-	data: IBinaryData,
-	binaryData: Buffer | Readable,
+	binaryData: IBinaryData,
+	bufferOrStream: Buffer | Readable,
 	workflowId: string,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return Container.get(BinaryDataService).store(data, binaryData, workflowId, executionId);
+	return Container.get(BinaryDataService).store(
+		workflowId,
+		executionId,
+		bufferOrStream,
+		binaryData,
+	);
 }
 
 export async function copyBinaryFile(
@@ -1065,9 +1070,9 @@ export async function copyBinaryFile(
 
 	return Container.get(BinaryDataService).copyBinaryFile(
 		workflowId,
+		executionId,
 		returnData,
 		filePath,
-		executionId,
 	);
 }
 
@@ -2774,8 +2779,8 @@ export function getExecuteFunctions(
 					.then(async (result) =>
 						Container.get(BinaryDataService).duplicateBinaryData(
 							workflow.id,
-							result,
 							additionalData.executionId!,
+							result,
 						),
 					);
 			},
