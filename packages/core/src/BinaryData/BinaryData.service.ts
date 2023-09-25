@@ -118,7 +118,7 @@ export class BinaryDataService {
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
-		const manager = this.getManager(this.mode);
+		const manager = this.managers[this.mode];
 
 		if (!manager) return;
 
