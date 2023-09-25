@@ -521,7 +521,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
 
-		await this.binaryDataService.deleteManyByExecutionIds(workflowIdsAndExecutionIds);
+		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
 		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
 

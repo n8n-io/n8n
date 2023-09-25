@@ -11,9 +11,9 @@ import type { Readable } from 'stream';
 import type { BinaryData } from './types';
 
 /**
- * @note The `workflowId` arguments on write are for compatibility with the
- * `BinaryData.Manager` interface. Unused in filesystem mode until we refactor
- * how we store binary data files in the `/binaryData` dir.
+ * @note The `workflowId` arguments on write and delete are intentionally unused.
+ * They are for compatibility with `BinaryData.Manager` and will be removed
+ * when we refactor binary data file storage in the `/binaryData` dir.
  */
 
 const EXECUTION_ID_EXTRACTOR =
@@ -77,11 +77,10 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
-		const executionIds = ids.map((o) => o.executionId); // ignore workflow IDs
+		const executionIds = ids.map((o) => o.executionId);
 
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
-		const deletedIds = [];
 
 		for (const fileName of fileNames) {
 			const executionId = fileName.match(EXECUTION_ID_EXTRACTOR)?.[1];
@@ -90,8 +89,6 @@ export class FileSystemManager implements BinaryData.Manager {
 				const filePath = this.resolvePath(fileName);
 
 				await Promise.all([fs.rm(filePath), fs.rm(`${filePath}.metadata`)]);
-
-				deletedIds.push(executionId);
 			}
 		}
 	}

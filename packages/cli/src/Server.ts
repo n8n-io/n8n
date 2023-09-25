@@ -1429,7 +1429,7 @@ export class Server extends AbstractServer {
 			`/${this.restEndpoint}/data/:path`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				const { path: binaryDataId } = req.params;
-				const [mode] = binaryDataId.split(':') as ['filesystem' | 'object', string];
+				const [mode] = binaryDataId.split(':') as ['filesystem' | 's3', string];
 				let { action, fileName, mimeType } = req.query;
 
 				try {
@@ -1450,7 +1450,7 @@ export class Server extends AbstractServer {
 						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 					}
 
-					if (mode === 'object') {
+					if (mode === 's3') {
 						const readStream = await this.binaryDataService.getAsStream(binaryPath);
 						readStream.pipe(res);
 						return;

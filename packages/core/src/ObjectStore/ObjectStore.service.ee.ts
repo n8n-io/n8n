@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
+import { createHash } from 'node:crypto';
 import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml } from './utils';
-import { createHash } from 'node:crypto';
+
 import type { AxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import type { ListPage, ObjectStore, RawListPage } from './types';
@@ -159,7 +160,7 @@ export class ObjectStoreService {
 	/**
 	 * Fetch a page of objects with a common prefix in the configured bucket. Max 1000 per page.
 	 */
-	private async getListPage(prefix: string, nextPageToken?: string) {
+	async getListPage(prefix: string, nextPageToken?: string) {
 		const host = `s3.${this.bucket.region}.amazonaws.com`;
 
 		const qs: Record<string, string | number> = { 'list-type': 2, prefix };

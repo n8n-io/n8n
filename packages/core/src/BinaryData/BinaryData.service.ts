@@ -136,7 +136,7 @@ export class BinaryDataService {
 		return this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteManyByExecutionIds(ids: BinaryData.IdsForDeletion) {
+	async deleteMany(ids: BinaryData.IdsForDeletion) {
 		await this.getManager(this.mode).deleteMany(ids);
 	}
 
