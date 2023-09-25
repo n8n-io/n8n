@@ -12,8 +12,8 @@ const FAILED_REQUEST_ERROR_MESSAGE = 'Request to external object storage failed'
 const EXPECTED_HOST = `${MOCK_BUCKET.name}.s3.${MOCK_BUCKET.region}.amazonaws.com`;
 const MOCK_S3_ERROR = new Error('Something went wrong!');
 
-const toDeleteManyXml = (filename: string) => `<Delete>
-<Object><Key>example-file.txt</Key></Object>
+const toMultipleDeletionXml = (filename: string) => `<Delete>
+<Object><Key>${filename}</Key></Object>
 </Delete>`;
 
 describe('ObjectStoreService', () => {
@@ -87,7 +87,7 @@ describe('ObjectStoreService', () => {
 
 	describe('put()', () => {
 		it('should send a PUT request to upload an object', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 			const buffer = Buffer.from('Test content');
 			const metadata = { fileName: path, mimeType: 'text/plain' };
 
@@ -111,7 +111,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 			const buffer = Buffer.from('Test content');
 			const metadata = { fileName: path, mimeType: 'text/plain' };
 
@@ -125,7 +125,7 @@ describe('ObjectStoreService', () => {
 
 	describe('get()', () => {
 		it('should send a GET request to download an object as a buffer', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 200, data: Buffer.from('Test content') });
 
@@ -143,7 +143,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should send a GET request to download an object as a stream', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 200, data: new Readable() });
 
@@ -161,7 +161,7 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 
 			mockAxios.request.mockRejectedValue(MOCK_S3_ERROR);
 
@@ -173,7 +173,7 @@ describe('ObjectStoreService', () => {
 
 	describe('deleteOne()', () => {
 		it('should send a DELETE request to delete an object', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 204 });
 
@@ -188,20 +188,20 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			const path = 'test-file.txt';
+			const path = 'file.txt';
 
-			mockAxios.request.mockRejectedValue(new Error('Test error'));
+			mockAxios.request.mockRejectedValue(MOCK_S3_ERROR);
 
-			await expect(objectStoreService.deleteOne(path)).rejects.toThrowError(
-				'Request to external object storage failed',
-			);
+			const promise = objectStoreService.deleteOne(path);
+
+			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
 		});
 	});
 
 	describe('deleteMany()', () => {
 		it('should send a POST request to delete multiple objects', async () => {
 			const prefix = 'test-dir/';
-			const fileName = 'example-file.txt';
+			const fileName = 'file.txt';
 
 			const mockList = [
 				{
@@ -228,7 +228,7 @@ describe('ObjectStoreService', () => {
 						'Content-Length': expect.any(Number),
 						'Content-MD5': expect.any(String),
 					}),
-					data: toDeleteManyXml(fileName),
+					data: toMultipleDeletionXml(fileName),
 				}),
 			);
 		});
