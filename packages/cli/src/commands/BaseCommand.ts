@@ -1,12 +1,9 @@
-// import fs from 'node:fs';
-// import { pipeline } from 'node:stream/promises';
-// import { readFile } from 'node:fs/promises';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, UserSettings, ObjectStoreService } from 'n8n-core';
+import { BinaryDataService, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';

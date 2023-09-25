@@ -1441,13 +1441,10 @@ export class Server extends AbstractServer {
 							res.setHeader('Content-Length', metadata.fileSize);
 						} catch {}
 					}
-
 					if (mimeType) res.setHeader('Content-Type', mimeType);
-
 					if (mode === 'download') {
 						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 					}
-
 					res.sendFile(binaryPath);
 				} catch (error) {
 					if (error instanceof FileNotFoundError) res.writeHead(404).end();

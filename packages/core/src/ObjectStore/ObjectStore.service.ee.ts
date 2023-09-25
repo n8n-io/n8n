@@ -232,12 +232,9 @@ export class ObjectStoreService {
 		if (body) config.data = body;
 		if (responseType) config.responseType = responseType;
 
-		// console.log(config);
-
 		try {
 			return await axios.request<T>(config);
 		} catch (error) {
-			// console.log(error);
 			throw new Error('Request to external object storage failed', {
 				cause: { error: error as unknown, details: config },
 			});
