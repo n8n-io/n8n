@@ -14,7 +14,7 @@ export class WolframAlphaApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'APP ID',
+			displayName: 'App ID',
 			name: 'appId',
 			type: 'string',
 			typeOptions: { password: true },
