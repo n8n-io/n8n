@@ -16,7 +16,7 @@ import type { OpenAIChat } from 'langchain/dist/llms/openai-chat';
 
 export class OpenAiFunctionsAgent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OpenAi Functions Agent',
+		displayName: 'OpenAI Functions Agent',
 		name: 'openAiFunctionsAgent',
 		icon: 'fa:robot',
 		group: ['transform'],
