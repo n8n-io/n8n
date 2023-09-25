@@ -2498,6 +2498,9 @@ export default defineComponent({
 				if (!this.suspendRecordingDetachedConnections) {
 					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 				}
+
+				NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
+
 				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
@@ -2672,6 +2675,8 @@ export default defineComponent({
 
 				const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 				NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
+				NodeViewUtils.showOutputNameLabel(info.sourceEndpoint, info.connection);
+
 				info.connection.removeOverlays();
 				this.__removeConnectionByConnectionInfo(info, false, false);
 

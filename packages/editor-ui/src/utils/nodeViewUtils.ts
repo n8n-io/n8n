@@ -875,6 +875,23 @@ export const resetInputLabelPosition = (targetEndpoint: Connection | Endpoint) =
 	}
 };
 
+export const hideOutputNameLabel = (sourceEndpoint: Connection | Endpoint) => {
+	hideOverlay(sourceEndpoint, OVERLAY_OUTPUT_NAME_LABEL);
+};
+
+export const showOutputNameLabel = (
+	sourceEndpoint: Connection | Endpoint,
+	connection: Connection,
+) => {
+	const outputNameOverlay = getOverlay(sourceEndpoint, OVERLAY_OUTPUT_NAME_LABEL);
+	if (outputNameOverlay) {
+		outputNameOverlay.setVisible(true);
+		(connection.endpoints || []).forEach((endpoint) => {
+			connection.instance.repaint(endpoint.element);
+		});
+	}
+};
+
 export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 	const inputNameOverlay = getOverlay(targetEndpoint, OVERLAY_INPUT_NAME_LABEL);
 	if (inputNameOverlay) {
