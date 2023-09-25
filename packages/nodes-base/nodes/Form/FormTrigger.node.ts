@@ -8,12 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { createPage } from './templates';
-import {
-	WHITE_SPACE_PLACEHOLDER,
-	type FormField,
-	QUOTE_PLACEHOLDER,
-	DOUBLE_QUOTE_PLACEHOLDER,
-} from './interfaces';
+import type { FormField } from './interfaces';
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -280,17 +275,16 @@ export class FormTrigger implements INodeType {
 		const bodyData = (this.getBodyData().data as IDataObject) ?? {};
 
 		const returnData: IDataObject = {};
+		for (const key of Object.keys(bodyData)) {
+			if (key === 'submittedAt') {
+				returnData.submittedAt = bodyData[key];
+				continue;
+			}
 
-		const whiteSpaceRegex = new RegExp(WHITE_SPACE_PLACEHOLDER, 'g');
-		const doubleQuotaRegex = new RegExp(DOUBLE_QUOTE_PLACEHOLDER, 'g');
-		const singleQuotaRegex = new RegExp(QUOTE_PLACEHOLDER, 'g');
-		Object.keys(bodyData).map((key) => {
+			const fieldIndex = Number(key.split('-')[1]);
+			const fieldData = formFields[fieldIndex];
+
 			let value = bodyData[key];
-			const originalKey = key
-				.replace(doubleQuotaRegex, '"')
-				.replace(singleQuotaRegex, "'")
-				.replace(whiteSpaceRegex, ' ');
-			const fieldData = formFields.find((field) => field.fieldLabel === originalKey);
 			if (fieldData?.fieldType === 'number') {
 				value = Number(value);
 			}
@@ -302,8 +296,9 @@ export class FormTrigger implements INodeType {
 					new Date(value as string),
 				);
 			}
-			returnData[originalKey] = value;
-		});
+
+			returnData[fieldData.fieldLabel] = value;
+		}
 
 		returnData.formMode = mode;
 
