@@ -735,7 +735,7 @@ export class Server extends AbstractServer {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
+						undefined,
 						currentNodeParameters,
 					);
 
@@ -796,7 +796,7 @@ export class Server extends AbstractServer {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
+						undefined,
 						currentNodeParameters,
 					);
 
@@ -852,7 +852,7 @@ export class Server extends AbstractServer {
 					);
 
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(
-						req.user.id,
+						undefined,
 						currentNodeParameters,
 					);
 
@@ -962,7 +962,7 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.InternalServerError(error.message);
 				}
 
-				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+				const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 				const mode: WorkflowExecuteMode = 'internal';
 				const timezone = config.getEnv('generic.timezone');
@@ -1112,7 +1112,7 @@ export class Server extends AbstractServer {
 						throw new ResponseHelper.InternalServerError(error.message);
 					}
 
-					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+					const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const timezone = config.getEnv('generic.timezone');

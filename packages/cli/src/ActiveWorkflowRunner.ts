@@ -226,7 +226,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const workflowData = await Db.collections.Workflow.findOne({
 			where: { id: webhook.workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 
 		if (workflowData === null) {
@@ -246,9 +245,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
@@ -453,7 +450,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	async removeWorkflowWebhooks(workflowId: string): Promise<void> {
 		const workflowData = await Db.collections.Workflow.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === null) {
 			throw new Error(`Could not find workflow with id "${workflowId}"`);
@@ -472,9 +468,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 

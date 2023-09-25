@@ -299,20 +299,24 @@ export class WorkflowRunner {
 				true,
 			);
 
-			try {
-				await PermissionChecker.check(workflow, data.userId);
-			} catch (error) {
-				ErrorReporter.error(error);
-				// Create a failed execution with the data for the node
-				// save it and abort execution
-				const failedExecution = generateFailedExecutionFromError(
-					data.executionMode,
-					error,
-					error.node,
-				);
-				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-				this.activeExecutions.remove(executionId, failedExecution);
-				return executionId;
+			if (additionalData.userId) {
+				try {
+					await PermissionChecker.check(workflow, additionalData.userId);
+				} catch (error) {
+					ErrorReporter.error(error);
+					// Create a failed execution with the data for the node
+					// save it and abort execution
+					const failedExecution = generateFailedExecutionFromError(
+						data.executionMode,
+						error,
+						error.node,
+					);
+					await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [
+						failedExecution,
+					]);
+					this.activeExecutions.remove(executionId, failedExecution);
+					return executionId;
+				}
 			}
 
 			additionalData.hooks.hookFunctions.sendResponse = [

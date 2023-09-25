@@ -13,14 +13,12 @@ import type {
 } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories';
-import { OwnershipService } from './services/ownership.service';
 
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
 	constructor(
 		private nodeTypes: NodeTypes,
 		private executionRepository: ExecutionRepository,
-		private ownershipService: OwnershipService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -73,19 +71,12 @@ export class WaitingWebhooks implements IWebhookManager {
 			settings: workflowData.settings,
 		});
 
-		let workflowOwner;
-		try {
-			workflowOwner = await this.ownershipService.getWorkflowOwnerCached(workflowData.id!);
-		} catch (error) {
-			throw new ResponseHelper.NotFoundError('Could not find workflow');
-		}
-
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 		if (workflowStartNode === null) {
 			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
+		const additionalData = await WorkflowExecuteAdditionalData.getBase();
 		const webhookData = NodeHelpers.getNodeWebhooks(
 			workflow,
 			workflowStartNode,

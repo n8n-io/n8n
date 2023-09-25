@@ -677,9 +677,8 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 export async function getRunData(
 	workflowData: IWorkflowBase,
-	userId: string,
+	userId?: string,
 	inputData?: INodeExecutionData[],
-	parentWorkflowId?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
@@ -799,9 +798,9 @@ async function executeWorkflow(
 		settings: workflowData.settings,
 	});
 
+	const userId = additionalData.userId;
 	const runData =
-		options.loadedRunData ??
-		(await getRunData(workflowData, additionalData.userId, options.inputData));
+		options.loadedRunData ?? (await getRunData(workflowData, userId, options.inputData));
 
 	let executionId;
 
@@ -818,16 +817,18 @@ async function executeWorkflow(
 
 	let data;
 	try {
-		await PermissionChecker.check(workflow, additionalData.userId);
-		await PermissionChecker.checkSubworkflowExecutePolicy(
-			workflow,
-			additionalData.userId,
-			options.parentWorkflowId,
-		);
+		if (userId) {
+			await PermissionChecker.check(workflow, userId);
+			await PermissionChecker.checkSubworkflowExecutePolicy(
+				workflow,
+				userId,
+				options.parentWorkflowId,
+			);
+		}
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
-		const additionalDataIntegrated = await getBase(additionalData.userId);
+		const additionalDataIntegrated = await getBase(userId);
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
 			executionId,
@@ -979,7 +980,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
  *
  */
 export async function getBase(
-	userId: string,
+	userId?: string,
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {

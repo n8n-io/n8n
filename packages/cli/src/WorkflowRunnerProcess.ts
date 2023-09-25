@@ -148,22 +148,26 @@ class WorkflowRunnerProcess {
 			settings: this.data.workflowData.settings,
 			pinData: this.data.pinData,
 		});
-		try {
-			await PermissionChecker.check(this.workflow, userId);
-		} catch (error) {
-			const caughtError = error as NodeOperationError;
-			const failedExecutionData = generateFailedExecutionFromError(
-				this.data.executionMode,
-				caughtError,
-				caughtError.node,
-			);
 
-			// Force the `workflowExecuteAfter` hook to run since
-			// it's the one responsible for saving the execution
-			await this.sendHookToParentProcess('workflowExecuteAfter', [failedExecutionData]);
-			// Interrupt the workflow execution since we don't have all necessary creds.
-			return failedExecutionData;
+		if (userId) {
+			try {
+				await PermissionChecker.check(this.workflow, userId);
+			} catch (error) {
+				const caughtError = error as NodeOperationError;
+				const failedExecutionData = generateFailedExecutionFromError(
+					this.data.executionMode,
+					caughtError,
+					caughtError.node,
+				);
+
+				// Force the `workflowExecuteAfter` hook to run since
+				// it's the one responsible for saving the execution
+				await this.sendHookToParentProcess('workflowExecuteAfter', [failedExecutionData]);
+				// Interrupt the workflow execution since we don't have all necessary creds.
+				return failedExecutionData;
+			}
 		}
+
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			userId,
 			undefined,
@@ -219,7 +223,6 @@ class WorkflowRunnerProcess {
 				workflowData,
 				additionalData.userId,
 				options?.inputData,
-				options?.parentWorkflowId,
 			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {

@@ -6,29 +6,20 @@ import { Container } from 'typedi';
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
-import type {
-	ExecutionError,
-	ExecutionStatus,
-	IExecuteResponsePromiseData,
-	INodeTypes,
-	IRun,
-} from 'n8n-workflow';
-import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
+import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import { Workflow, LoggerProxy, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
 import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
-import { OwnershipService } from '@/services/ownership.service';
 import { generateHostInstanceId } from '@/databases/utils/generators';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -133,8 +124,6 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
-		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
-
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
 			const workflowData = await Db.collections.Workflow.findOne({
@@ -175,7 +164,7 @@ export class Worker extends BaseCommand {
 		});
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowOwner.id,
+			undefined,
 			undefined,
 			executionTimeoutTimestamp,
 		);
@@ -187,20 +176,6 @@ export class Worker extends BaseCommand {
 				retryOf: fullExecutionData.retryOf as string,
 			},
 		);
-
-		try {
-			await PermissionChecker.check(workflow, workflowOwner.id);
-		} catch (error) {
-			if (error instanceof NodeOperationError) {
-				const failedExecution = generateFailedExecutionFromError(
-					fullExecutionData.mode,
-					error,
-					error.node,
-				);
-				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
-			}
-			return { success: true, error: error as ExecutionError };
-		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
