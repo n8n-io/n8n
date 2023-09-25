@@ -16,6 +16,12 @@ const spinnerIcon = `
 		d="M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z" />
 </svg>`;
 
+const downArrowIcon = `
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 13.229 13.229">
+<path fill="#909399"
+	d="M2.03 2.055.063 4.438l6.55 6.726V6.546L2.03 2.055Zm4.585 4.491v4.618l6.55-6.726L11.2 2.055 6.615 6.546Z" />
+</svg>`;
+
 const styles = `
 *,
 ::after,
@@ -215,14 +221,12 @@ input[type="date"] {
 	padding: 12px;
 	display: flex;
 	justify-content: space-between;
+	align-items: center;
 }
 
-.multiselect-button-icon {
-	display: inline-block;
-	vertical-align: middle;
-	float: right;
-	width: 18px;
-	height: 18px;
+.multiselect-button svg {
+	width: 10px;
+	height: 10px;
 	fill: #909399;
 }
 
@@ -333,9 +337,7 @@ const addMultiselectInput = (field: FormField, fieldIndex: string) => {
 		<div class="multiselect select-input" id="${fieldIndex}">
 			<div class="multiselect-button">
 				<span>Select options ...</span>
-				<svg class="multiselect-button-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path d="M7 10l5 5 5-5z" />
-				</svg>
+				${downArrowIcon}
 			</div>
 
 			<div class="multiselect-dropdown">
@@ -498,7 +500,7 @@ export const createPage = (
 		</head>
 
 		<body>
-		<div class="modal"></div>
+			<div class="modal"></div>
 			<div class="container">
 				<section>
 					${testRun ? testNotice : ''}
