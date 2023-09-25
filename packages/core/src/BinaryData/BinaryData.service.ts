@@ -37,9 +37,9 @@ export class BinaryDataService {
 	@LogCatch((error) => Logger.error('Failed to copy binary data file', { error }))
 	async copyBinaryFile(
 		workflowId: string,
+		executionId: string,
 		binaryData: IBinaryData,
 		path: string,
-		executionId: string,
 	) {
 		const manager = this.managers[this.mode];
 

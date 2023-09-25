@@ -1065,9 +1065,9 @@ export async function copyBinaryFile(
 
 	return Container.get(BinaryDataService).copyBinaryFile(
 		workflowId,
+		executionId,
 		returnData,
 		filePath,
-		executionId,
 	);
 }
 
