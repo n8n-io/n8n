@@ -124,13 +124,6 @@ export class BinaryDataService {
 		return Buffer.from(binaryData.data, BINARY_ENCODING);
 	}
 
-	/**
-	 * Get the path to the binary data file, e.g. `/Users/{user}/.n8n/binaryData/{uuid}`
-	 * or `/workflows/{workflowId}/executions/{executionId}/binary_data/{uuid}`.
-	 *
-	 * Used to allow nodes to access user-written binary files (e.g. Read PDF node)
-	 * and to support download of execution-written binary files.
-	 */
 	getPath(binaryDataId: string) {
 		const [mode, fileId] = binaryDataId.split(':');
 
