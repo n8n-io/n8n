@@ -6,7 +6,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'HuggingFaceInference',
+		displayName: 'Hugging Face Inference',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenHuggingFaceInference',
 		icon: 'file:huggingface.svg',
