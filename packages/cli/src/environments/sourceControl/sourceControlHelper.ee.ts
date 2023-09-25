@@ -11,6 +11,7 @@ import {
 } from './constants';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import path from 'path';
+import type { KeyPairType } from './types/keyPairType';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -63,7 +64,7 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
-export async function generateSshKeyPair(keyType: 'ed25519' | 'rsa' = 'ed25519') {
+export async function generateSshKeyPair(keyType: KeyPairType) {
 	const sshpk = await import('sshpk');
 	const keyPair: KeyPair = {
 		publicKey: '',

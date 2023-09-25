@@ -91,7 +91,9 @@ beforeAll(async () => {
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', 1);
 
-	await eventBus.initialize();
+	await eventBus.initialize({
+		uniqueInstanceId: 'test',
+	});
 });
 
 afterAll(async () => {

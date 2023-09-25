@@ -134,6 +134,7 @@ export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
 export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
+export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger';
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
@@ -383,6 +384,7 @@ export const enum VIEWS {
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
+	WORKFLOW_HISTORY = 'WorkflowHistory',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -454,6 +456,7 @@ export const enum EnterpriseEditionFeature {
 	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
 	DebugInEditor = 'debugInEditor',
+	WorkflowHistory = 'workflowHistory',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -512,6 +515,7 @@ export const enum STORES {
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
+	CLOUD_PLAN = 'cloudPlan',
 }
 
 export const enum SignInType {

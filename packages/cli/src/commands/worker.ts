@@ -6,7 +6,13 @@ import { Container } from 'typedi';
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
-import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	ExecutionStatus,
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+} from 'n8n-workflow';
 import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -31,7 +37,7 @@ import { eventBus } from '../eventbus';
 import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
 import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
-import { getWorkerCommandReceivedHandler } from './workerCommandHandler';
+import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -177,7 +183,9 @@ export class Worker extends BaseCommand {
 			fullExecutionData.mode,
 			job.data.executionId,
 			fullExecutionData.workflowData,
-			{ retryOf: fullExecutionData.retryOf as string },
+			{
+				retryOf: fullExecutionData.retryOf as string,
+			},
 		);
 
 		try {
@@ -191,7 +199,7 @@ export class Worker extends BaseCommand {
 				);
 				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
 			}
-			return { success: true };
+			return { success: true, error: error as ExecutionError };
 		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
@@ -234,6 +242,9 @@ export class Worker extends BaseCommand {
 
 		delete Worker.runningJobs[job.id];
 
+		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
+		// already!
+
 		return {
 			success: true,
 		};
@@ -245,8 +256,8 @@ export class Worker extends BaseCommand {
 		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
 		this.logger.debug('Starting n8n worker...');
 
-		await this.initLicense();
-		await this.initBinaryManager();
+		await this.initLicense('worker');
+		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
 		await this.initEventBus();
@@ -257,6 +268,7 @@ export class Worker extends BaseCommand {
 	async initEventBus() {
 		await eventBus.initialize({
 			workerId: this.uniqueInstanceId,
+			uniqueInstanceId: this.uniqueInstanceId,
 		});
 	}
 
@@ -284,6 +296,7 @@ export class Worker extends BaseCommand {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			getWorkerCommandReceivedHandler({
 				uniqueInstanceId: this.uniqueInstanceId,
+				instanceId: this.instanceId,
 				redisPublisher: this.redisPublisher,
 				getRunningJobIds: () => Object.keys(Worker.runningJobs),
 			}),

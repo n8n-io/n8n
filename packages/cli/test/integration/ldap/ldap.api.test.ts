@@ -17,12 +17,17 @@ import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
 
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
+
+LoggerProxy.init(getLogger());
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
