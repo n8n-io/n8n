@@ -157,7 +157,7 @@ export class ActiveWebhooks {
 	 *
 	 */
 	async removeWorkflow(workflow: Workflow): Promise<boolean> {
-		const workflowId = workflow.id!.toString();
+		const workflowId = workflow.id;
 
 		if (this.workflowWebhooks[workflowId] === undefined) {
 			// If it did not exist then there is nothing to remove
