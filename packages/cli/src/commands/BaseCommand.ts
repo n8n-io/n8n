@@ -43,7 +43,7 @@ export abstract class BaseCommand extends Command {
 
 	protected server?: AbstractServer;
 
-	async init(): Promise<void> {
+	async init(instanceType?: N8nInstanceType): Promise<void> {
 		await initErrorHandling();
 		initExpressionEvaluator();
 
@@ -52,6 +52,12 @@ export abstract class BaseCommand extends Command {
 
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
+
+		if (instanceType) {
+			this.instanceType = instanceType;
+			this.setQueueModeId();
+			config.set('generic.instanceType', instanceType);
+		}
 
 		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await this.loadNodesAndCredentials.init();
@@ -131,13 +137,9 @@ export abstract class BaseCommand extends Command {
 		await this.externalHooks.init();
 	}
 
-	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
-		this.instanceType = instanceType;
-		this.setQueueModeId();
-		config.set('generic.instanceType', instanceType);
-
+	async initLicense(): Promise<void> {
 		const license = Container.get(License);
-		await license.init(this.instanceId, instanceType);
+		await license.init(this.instanceId, this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 

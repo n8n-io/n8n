@@ -196,11 +196,11 @@ export class Start extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 
-		await super.init();
+		await super.init('main');
 		this.logger.info('Initializing n8n process');
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
-		await this.initLicense('main');
+		await this.initLicense();
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();

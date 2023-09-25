@@ -249,11 +249,13 @@ export class Worker extends BaseCommand {
 
 	async init() {
 		await this.initCrashJournal();
-		await super.init();
+		await super.init('worker');
+
 		this.logger.debug(`Worker ID: ${this.queueModeId}`);
 		this.logger.debug('Starting n8n worker...');
 
-		await this.initLicense('worker');
+		await this.initLicense();
+
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
