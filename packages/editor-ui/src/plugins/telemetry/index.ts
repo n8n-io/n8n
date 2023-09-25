@@ -74,7 +74,15 @@ export class Telemetry {
 	}
 
 	identify(instanceId: string, userId?: string, versionCli?: string) {
-		const traits = { instance_id: instanceId, version_cli: versionCli };
+		const settingsStore = useSettingsStore();
+		const traits: { instance_id: string; version_cli?: string; user_cloud_id?: string } = {
+			instance_id: instanceId,
+			version_cli: versionCli,
+		};
+
+		if (settingsStore.isCloudDeployment) {
+			traits.user_cloud_id = settingsStore.settings?.n8nMetadata?.userId ?? '';
+		}
 		if (userId) {
 			this.rudderStack.identify(`${instanceId}#${userId}`, traits);
 		} else {

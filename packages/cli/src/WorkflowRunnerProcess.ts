@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-shadow */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
 import 'reflect-metadata';
+import { setDefaultResultOrder } from 'dns';
+setDefaultResultOrder('ipv4first');
+
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataService, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -123,7 +124,7 @@ class WorkflowRunnerProcess {
 		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig);
+		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);
 		await license.init(instanceId);

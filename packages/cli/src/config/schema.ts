@@ -2,28 +2,21 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { ensureStringArray } from './utils';
 
 convict.addFormat({
-	name: 'nodes-list',
-	// @ts-ignore
-	validate(values: string[], { env }: { env: string }): void {
-		try {
-			if (!Array.isArray(values)) {
-				throw new Error();
-			}
+	name: 'json-string-array',
+	coerce: (rawStr: string) =>
+		jsonParse<string[]>(rawStr, {
+			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
+		}),
+	validate: ensureStringArray,
+});
 
-			for (const value of values) {
-				if (typeof value !== 'string') {
-					throw new Error();
-				}
-			}
-		} catch (error) {
-			throw new TypeError(`${env} is not a valid Array of strings.`);
-		}
-	},
-	coerce(rawValue: string): string[] {
-		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
-	},
+convict.addFormat({
+	name: 'comma-separated-list',
+	coerce: (rawStr: string) => rawStr.split(','),
+	validate: ensureStringArray,
 });
 
 export const schema = {
@@ -322,12 +315,6 @@ export const schema = {
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
-		pruneDataTimeout: {
-			doc: 'Timeout (seconds) after execution data has been pruned',
-			format: Number,
-			default: 3600,
-			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
-		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
@@ -437,6 +424,12 @@ export const schema = {
 			format: '*',
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
+		},
+
+		instanceType: {
+			doc: 'Type of n8n instance',
+			format: ['main', 'webhook', 'worker'] as const,
+			default: 'main',
 		},
 	},
 
@@ -788,13 +781,13 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: 'nodes-list',
+			format: 'json-string-array',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: 'nodes-list',
+			format: 'json-string-array',
 			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
@@ -902,7 +895,7 @@ export const schema = {
 
 	binaryDataManager: {
 		availableModes: {
-			format: String,
+			format: 'comma-separated-list',
 			default: 'filesystem',
 			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
 			doc: 'Available modes of binary data storage, as comma separated strings',
@@ -918,12 +911,6 @@ export const schema = {
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
-		},
-		binaryDataTTL: {
-			format: Number,
-			default: 60,
-			env: 'N8N_BINARY_DATA_TTL',
-			doc: 'TTL for binary data of unsaved executions in minutes',
 		},
 	},
 
@@ -1202,6 +1189,21 @@ export const schema = {
 			format: Boolean,
 			default: false,
 			env: 'N8N_AI_ENABLED',
+		},
+	},
+
+	expression: {
+		evaluator: {
+			doc: 'Expression evaluator to use',
+			format: ['tmpl', 'tournament'] as const,
+			default: 'tournament',
+			env: 'N8N_EXPRESSION_EVALUATOR',
+		},
+		reportDifference: {
+			doc: 'Whether to report differences in the evaluator outputs',
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
 		},
 	},
 

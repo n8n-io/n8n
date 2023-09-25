@@ -1,7 +1,11 @@
-import nock from 'nock';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { readFileSync, mkdtempSync } from 'fs';
+import {
+	getBinaryDataBuffer,
+	parseIncomingMessage,
+	proxyRequestToAxios,
+	setBinaryDataBuffer,
+} from '@/NodeExecuteFunctions';
+import { mkdtempSync, readFileSync } from 'fs';
+import type { IncomingMessage } from 'http';
 import { mock } from 'jest-mock-extended';
 import type {
 	IBinaryData,
@@ -11,30 +15,25 @@ import type {
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
-import { BinaryDataManager } from '@/BinaryDataManager';
-import {
-	setBinaryDataBuffer,
-	getBinaryDataBuffer,
-	proxyRequestToAxios,
-} from '@/NodeExecuteFunctions';
+import { BinaryDataService } from '@/BinaryData/BinaryData.service';
+import nock from 'nock';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { initLogger } from './helpers/utils';
+import Container from 'typedi';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
 describe('NodeExecuteFunctions', () => {
 	describe('test binary data helper methods', () => {
-		// Reset BinaryDataManager for each run. This is a dirty operation, as individual managers are not cleaned.
-		beforeEach(() => {
-			BinaryDataManager.instance = undefined;
-		});
-
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 			// Setup a 'default' binary data manager instance
-			await BinaryDataManager.init({
+			Container.set(BinaryDataService, new BinaryDataService());
+
+			await Container.get(BinaryDataService).init({
 				mode: 'default',
-				availableModes: 'default',
+				availableModes: ['default'],
 				localStoragePath: temporaryDir,
-				binaryDataTTL: 1,
 			});
 
 			// Set our binary data buffer
@@ -79,12 +78,13 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
+			Container.set(BinaryDataService, new BinaryDataService());
+
 			// Setup a 'filesystem' binary data manager instance
-			await BinaryDataManager.init({
+			await Container.get(BinaryDataService).init({
 				mode: 'filesystem',
-				availableModes: 'filesystem',
+				availableModes: ['filesystem'],
 				localStoragePath: temporaryDir,
-				binaryDataTTL: 1,
 			});
 
 			// Set our binary data buffer
@@ -133,6 +133,90 @@ describe('NodeExecuteFunctions', () => {
 			);
 
 			expect(getBinaryDataBufferResponse).toEqual(inputData);
+		});
+	});
+
+	describe('parseIncomingMessage', () => {
+		it('parses valid content-type header', () => {
+			const message = mock<IncomingMessage>({
+				headers: { 'content-type': 'application/json', 'content-disposition': undefined },
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentType).toEqual('application/json');
+		});
+
+		it('parses valid content-type header with parameters', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': 'application/json; charset=utf-8',
+					'content-disposition': undefined,
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentType).toEqual('application/json');
+		});
+
+		it('parses valid content-disposition header with filename*', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition':
+						'attachment; filename="screenshot%20(1).png"; filename*=UTF-8\'\'screenshot%20(1).png',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'screenshot (1).png',
+				type: 'attachment',
+			});
+		});
+
+		it('parses valid content-disposition header with filename* (quoted)', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition': ' attachment;filename*="utf-8\' \'test-unsplash.jpg"',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'test-unsplash.jpg',
+				type: 'attachment',
+			});
+		});
+
+		it('parses valid content-disposition header with filename and trailing ";"', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition': 'inline; filename="screenshot%20(1).png";',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'screenshot (1).png',
+				type: 'inline',
+			});
+		});
+
+		it('parses non standard content-disposition with missing type', () => {
+			const message = mock<IncomingMessage>({
+				headers: {
+					'content-type': undefined,
+					'content-disposition': 'filename="screenshot%20(1).png";',
+				},
+			});
+			parseIncomingMessage(message);
+
+			expect(message.contentDisposition).toEqual({
+				filename: 'screenshot (1).png',
+				type: 'attachment',
+			});
 		});
 	});
 

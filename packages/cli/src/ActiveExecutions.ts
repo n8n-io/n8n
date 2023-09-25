@@ -12,6 +12,7 @@ import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
 import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
 import type {
+	ExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
@@ -38,7 +39,7 @@ export class ActiveExecutions {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
-			const fullExecutionData: IExecutionDb = {
+			const fullExecutionData: ExecutionPayload = {
 				data: executionData.executionData!,
 				mode: executionData.executionMode,
 				finished: false,

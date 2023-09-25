@@ -5,13 +5,13 @@ import {
 	getResultNodeData,
 	setup,
 	readJsonFileSync,
-	initBinaryDataManager,
+	initBinaryDataService,
 } from '@test/nodes/Helpers';
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 
 describe('Execute iCalendar Node', () => {
 	beforeEach(async () => {
-		await initBinaryDataManager();
+		await initBinaryDataService();
 	});
 	const workflowData = readJsonFileSync('nodes/ICalendar/test/node/workflow.iCalendar.json');
 
