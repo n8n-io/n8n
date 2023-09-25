@@ -113,7 +113,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId: newFileId, fileSize };
 	}
 
-	async copyByFileId(_workflowId: string, fileId: string, executionId: string) {
+	async copyByFileId(_workflowId: string, executionId: string, fileId: string) {
 		const newFileId = this.createFileId(executionId);
 
 		await fs.copyFile(this.resolvePath(fileId), this.resolvePath(newFileId));

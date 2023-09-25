@@ -214,7 +214,7 @@ export class BinaryDataService {
 
 				const [_mode, fileId] = binaryDataId.split(':');
 
-				return manager?.copyByFileId(workflowId, fileId, executionId).then((newFileId) => ({
+				return manager?.copyByFileId(workflowId, executionId, fileId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));
