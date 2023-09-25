@@ -687,7 +687,7 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryPath(binaryDataId: string): string;
-	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
+	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	getBinaryMetadata(binaryDataId: string): Promise<{
 		fileName?: string;
 		mimeType?: string;
