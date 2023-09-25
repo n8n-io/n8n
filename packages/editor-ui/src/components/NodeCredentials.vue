@@ -99,9 +99,6 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import { mapStores } from 'pinia';
 import type {
 	ICredentialsResponse,
 	INodeUi,
@@ -116,26 +113,29 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
+import { useToast } from '@/composables';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { useToast } from '@/composables';
 
 import TitledList from '@/components/TitledList.vue';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
+	getAllNodeCredentialForAuthType,
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
 	getNodeCredentialForSelectedAuthType,
-	getAllNodeCredentialForAuthType,
-	updateNodeAuthType,
 	isRequiredCredential,
+	updateNodeAuthType,
 } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
@@ -551,7 +551,9 @@ export default defineComponent({
 			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			const isRequired = isRequiredCredential(nodeType, credentialType);
 
-			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
+			return (
+				!KEEP_AUTH_IN_NDV_FOR_NODES.some((type) => this.node.type.startsWith(type)) && isRequired
+			);
 		},
 		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
 			const credentialTypeName = this.credentialTypeNames[credentialType.name];
