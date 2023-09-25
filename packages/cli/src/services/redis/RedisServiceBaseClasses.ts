@@ -60,7 +60,7 @@ export abstract class RedisServiceBaseSender extends RedisServiceBase {
 
 	async init(type: RedisClientType = 'client'): Promise<void> {
 		await super.init(type);
-		this.senderId = config.get('redis.queueModeId') as string;
+		this.senderId = config.get('redis.queueModeId');
 	}
 }
 

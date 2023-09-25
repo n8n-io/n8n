@@ -4,7 +4,6 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { OrchestrationService } from '@/services/orchestration.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
-import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
@@ -67,7 +66,7 @@ describe('Orchestration Service', () => {
 			});
 		});
 		setDefaultConfig();
-		queueModeId = config.get('redis.queueModeId') as string;
+		queueModeId = config.get('redis.queueModeId');
 	});
 
 	afterAll(async () => {

@@ -32,13 +32,9 @@ import { ExecutionRepository, WorkflowRepository } from '@/databases/repositorie
 import { RedisService } from '@/services/redis.service';
 import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
-import {
-	COMMAND_REDIS_CHANNEL,
-	EVENT_BUS_REDIS_CHANNEL,
-} from '@/services/redis/RedisServiceHelper';
+import { EVENT_BUS_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { messageToRedisServiceCommandObject } from '@/services/orchestration/helpers';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 

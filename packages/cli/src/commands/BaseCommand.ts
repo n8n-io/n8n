@@ -22,7 +22,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
-import { generateHostInstanceId, generateNanoId } from '../databases/utils/generators';
+import { generateHostInstanceId } from '../databases/utils/generators';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -91,7 +91,7 @@ export abstract class BaseCommand extends Command {
 	protected setQueueModeId() {
 		if (config.getEnv('executions.mode') === 'queue') {
 			if (config.get('redis.queueModeId')) {
-				this.queueModeId = config.get('redis.queueModeId') as string;
+				this.queueModeId = config.get('redis.queueModeId');
 				return;
 			}
 			this.queueModeId = generateHostInstanceId(this.instanceType);

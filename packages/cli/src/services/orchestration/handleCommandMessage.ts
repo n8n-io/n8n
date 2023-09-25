@@ -6,7 +6,7 @@ import Container from 'typedi';
 
 // this function handles commands sent to the MAIN instance. the workers handle their own commands
 export async function handleCommandMessage(messageString: string) {
-	const queueModeId = config.get('redis.queueModeId') as string;
+	const queueModeId = config.get('redis.queueModeId');
 	const message = messageToRedisServiceCommandObject(messageString);
 	if (message) {
 		if (
