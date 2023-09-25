@@ -29,7 +29,6 @@ import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
-import { generateHostInstanceId } from '@/databases/utils/generators';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
@@ -57,8 +56,6 @@ export class Worker extends BaseCommand {
 	} = {};
 
 	static jobQueue: JobQueue;
-
-	readonly uniqueInstanceId = generateHostInstanceId('worker');
 
 	redisPublisher: RedisServicePubSubPublisher;
 
@@ -253,7 +250,7 @@ export class Worker extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 		await super.init();
-		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Worker ID: ${this.queueModeId}`);
 		this.logger.debug('Starting n8n worker...');
 
 		await this.initLicense('worker');
@@ -267,8 +264,7 @@ export class Worker extends BaseCommand {
 
 	async initEventBus() {
 		await eventBus.initialize({
-			workerId: this.uniqueInstanceId,
-			uniqueInstanceId: this.uniqueInstanceId,
+			workerId: this.queueModeId,
 		});
 	}
 
@@ -286,7 +282,7 @@ export class Worker extends BaseCommand {
 			new EventMessageGeneric({
 				eventName: 'n8n.worker.started',
 				payload: {
-					workerId: this.uniqueInstanceId,
+					workerId: this.queueModeId,
 				},
 			}),
 		);
@@ -295,7 +291,7 @@ export class Worker extends BaseCommand {
 			'WorkerCommandReceivedHandler',
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			getWorkerCommandReceivedHandler({
-				uniqueInstanceId: this.uniqueInstanceId,
+				queueModeId: this.queueModeId,
 				instanceId: this.instanceId,
 				redisPublisher: this.redisPublisher,
 				getRunningJobIds: () => Object.keys(Worker.runningJobs),

@@ -14,6 +14,8 @@ import { License } from '../../../src/License';
 
 const os = Container.get(OrchestrationService);
 
+let queueModeId: string;
+
 function setDefaultConfig() {
 	config.set('executions.mode', 'queue');
 }
@@ -26,15 +28,6 @@ const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
 		result: 'success',
 	},
 };
-
-const eventBusMessage = new EventMessageWorkflow({
-	eventName: 'n8n.workflow.success',
-	id: 'test',
-	message: 'test',
-	payload: {
-		test: 'test',
-	},
-});
 
 describe('Orchestration Service', () => {
 	beforeAll(async () => {
@@ -74,6 +67,7 @@ describe('Orchestration Service', () => {
 			});
 		});
 		setDefaultConfig();
+		queueModeId = config.get('redis.queueModeId') as string;
 	});
 
 	afterAll(async () => {
@@ -83,10 +77,10 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should initialize', async () => {
-		await os.init('test-orchestration-service');
+		await os.init();
 		expect(os.redisPublisher).toBeDefined();
 		expect(os.redisSubscriber).toBeDefined();
-		expect(os.uniqueInstanceId).toBeDefined();
+		expect(queueModeId).toBeDefined();
 	});
 
 	test('should handle worker responses', async () => {
@@ -105,7 +99,6 @@ describe('Orchestration Service', () => {
 				senderId: 'test',
 				command: 'reloadLicense',
 			}),
-			os.uniqueInstanceId,
 		);
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
@@ -117,12 +110,11 @@ describe('Orchestration Service', () => {
 	test('should reject command messages from iteslf', async () => {
 		jest.spyOn(eventBus, 'restart');
 		const response = await handleCommandMessage(
-			JSON.stringify({ ...workerRestartEventbusResponse, senderId: os.uniqueInstanceId }),
-			os.uniqueInstanceId,
+			JSON.stringify({ ...workerRestartEventbusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
-		expect(response!.senderId).toEqual(os.uniqueInstanceId);
+		expect(response!.senderId).toEqual(queueModeId);
 		expect(eventBus.restart).not.toHaveBeenCalled();
 		jest.spyOn(eventBus, 'restart').mockRestore();
 	});

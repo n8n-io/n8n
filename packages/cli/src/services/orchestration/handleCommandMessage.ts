@@ -1,15 +1,15 @@
 import { LoggerProxy } from 'n8n-workflow';
 import { messageToRedisServiceCommandObject } from './helpers';
-import Container from 'typedi';
-import { License } from '@/License';
+import config from '@/config';
 
 // this function handles commands sent to the MAIN instance. the workers handle their own commands
-export async function handleCommandMessage(messageString: string, uniqueInstanceId: string) {
+export async function handleCommandMessage(messageString: string) {
+	const queueModeId = config.get('redis.queueModeId') as string;
 	const message = messageToRedisServiceCommandObject(messageString);
 	if (message) {
 		if (
-			message.senderId === uniqueInstanceId ||
-			(message.targets && !message.targets.includes(uniqueInstanceId))
+			message.senderId === queueModeId ||
+			(message.targets && !message.targets.includes(queueModeId))
 		) {
 			LoggerProxy.debug(
 				`Skipping command message ${message.command} because it's not for this instance.`,
@@ -18,7 +18,13 @@ export async function handleCommandMessage(messageString: string, uniqueInstance
 		}
 		switch (message.command) {
 			case 'reloadLicense':
-				await Container.get(License).reload();
+				// at this point in time, only a single main instance is supported, thus this
+				// command _should_ never be caught currently (which is why we log a warning)
+				LoggerProxy.warn(
+					'Received command to reload license via Redis, but this should not have happened and is not supported on the main instance yet.',
+				);
+				// once multiple main instances are supported, this command should be handled
+				// await Container.get(License).reload();
 				break;
 			default:
 				break;

@@ -7,7 +7,7 @@ import Container from 'typedi';
 import { License } from '@/License';
 
 export function getWorkerCommandReceivedHandler(options: {
-	uniqueInstanceId: string;
+	queueModeId: string;
 	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
@@ -25,16 +25,16 @@ export function getWorkerCommandReceivedHandler(options: {
 				return;
 			}
 			if (message) {
-				if (message.targets && !message.targets.includes(options.uniqueInstanceId)) {
+				if (message.targets && !message.targets.includes(options.queueModeId)) {
 					return; // early return if the message is not for this worker
 				}
 				switch (message.command) {
 					case 'getStatus':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 							payload: {
-								workerId: options.uniqueInstanceId,
+								workerId: options.queueModeId,
 								runningJobs: options.getRunningJobIds(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
@@ -53,13 +53,13 @@ export function getWorkerCommandReceivedHandler(options: {
 						break;
 					case 'getId':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 						});
 						break;
 					case 'restartEventBus':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 							payload: {
 								result: 'success',

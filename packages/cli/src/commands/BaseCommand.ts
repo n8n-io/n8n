@@ -22,6 +22,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { generateHostInstanceId, generateNanoId } from '../databases/utils/generators';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -35,6 +36,10 @@ export abstract class BaseCommand extends Command {
 	protected userSettings: IUserSettings;
 
 	protected instanceId: string;
+
+	instanceType: N8nInstanceType;
+
+	queueModeId: string;
 
 	protected server?: AbstractServer;
 
@@ -83,6 +88,17 @@ export abstract class BaseCommand extends Command {
 		await Container.get(InternalHooks).init(this.instanceId);
 	}
 
+	protected setQueueModeId() {
+		if (config.getEnv('executions.mode') === 'queue') {
+			if (config.get('redis.queueModeId')) {
+				this.queueModeId = config.get('redis.queueModeId') as string;
+				return;
+			}
+			this.queueModeId = generateHostInstanceId(this.instanceType);
+			config.set('redis.queueModeId', this.queueModeId);
+		}
+	}
+
 	protected async stopProcess() {
 		// This needs to be overridden
 	}
@@ -116,6 +132,8 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
+		this.instanceType = instanceType;
+		this.setQueueModeId();
 		config.set('generic.instanceType', instanceType);
 
 		const license = Container.get(License);
