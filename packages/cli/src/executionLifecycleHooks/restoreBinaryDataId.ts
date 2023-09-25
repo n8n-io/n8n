@@ -35,8 +35,7 @@ export async function restoreBinaryDataId(run: IRun, executionId: string) {
 
 		await Container.get(BinaryDataService).rename(incorrectFileId, correctFileId);
 
-		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-		// @ts-ignore Validated at the top
+		// @ts-expect-error Validated at the top
 		run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id = correctBinaryDataId;
 	});
 
