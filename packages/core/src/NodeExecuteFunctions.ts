@@ -39,7 +39,6 @@ import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
-	BinaryMetadata,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -140,6 +139,7 @@ import {
 import { getSecretsProxy } from './Secrets';
 import { getUserN8nFolderPath } from './UserSettings';
 import Container from 'typedi';
+import type { BinaryData } from './BinaryData/types';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -947,7 +947,7 @@ export function getBinaryPath(binaryDataId: string): string {
 /**
  * Returns binary file metadata
  */
-export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
 	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
@@ -992,7 +992,7 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return Container.get(BinaryDataService).getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**
