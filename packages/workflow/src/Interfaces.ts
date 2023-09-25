@@ -48,12 +48,6 @@ export interface IBinaryData {
 	id?: string;
 }
 
-export interface BinaryMetadata {
-	fileName?: string;
-	mimeType?: string;
-	fileSize: number;
-}
-
 // All properties in this interface except for
 // "includeCredentialsOnRefreshOnBody" will get
 // removed once we add the OAuth2 hooks to the
@@ -694,7 +688,11 @@ export interface BinaryHelperFunctions {
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryPath(binaryDataId: string): string;
 	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
-	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+	getBinaryMetadata(binaryDataId: string): Promise<{
+		fileName?: string;
+		mimeType?: string;
+		fileSize: number;
+	}>;
 }
 
 export interface NodeHelperFunctions {
@@ -2139,6 +2137,7 @@ export interface IN8nUISettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	n8nMetadata?: {
+		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
