@@ -71,7 +71,11 @@ const findActiveListItemIfNotInTheInitialList = () => {
 		stopSearchingForActiveItem?.();
 	}
 
-	if (!activeListItemElement?.value?.$el && props.items.length < MAX_ITEMS_UNTIL_ACTIVE_FOUND) {
+	if (
+		activeListItemElement?.value &&
+		!activeListItemElement.value?.$el &&
+		props.items.length < MAX_ITEMS_UNTIL_ACTIVE_FOUND
+	) {
 		emit('loadMore', { take: 50 });
 	}
 };
