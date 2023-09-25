@@ -2135,6 +2135,7 @@ export interface IN8nUISettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	n8nMetadata?: {
+		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
