@@ -81,6 +81,7 @@ export const LICENSE_FEATURES = {
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
+	EXTERNAL_OBJECT_STORAGE: 'feat:externalStorage',
 } as const;
 
 export const LICENSE_QUOTAS = {

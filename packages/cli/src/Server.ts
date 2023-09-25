@@ -327,6 +327,7 @@ export class Server extends AbstractServer {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				workflowHistory: false,
+				externalStorage: false,
 			},
 			mfa: {
 				enabled: false,
@@ -470,6 +471,9 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
+			externalStorage:
+				config.getEnv('externalStorage.enabled') &&
+				Container.get(License).isFeatureEnabled(LICENSE_FEATURES.EXTERNAL_OBJECT_STORAGE),
 		});
 
 		if (isLdapEnabled()) {

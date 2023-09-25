@@ -915,6 +915,13 @@ export const schema = {
 	},
 
 	externalStorage: {
+		enabled: {
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXTERNAL_OBJECT_STORAGE_ENABLED',
+			doc: 'Whether the external object storage feature is enabled',
+		},
+
 		s3: {
 			// @TODO: service name
 			bucket: {
