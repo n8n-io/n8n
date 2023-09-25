@@ -2,16 +2,16 @@ import { readFile, stat } from 'fs/promises';
 import concatStream from 'concat-stream';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
-import type { INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
-import { areValidModes } from './utils';
 import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
 import { LogCatch } from '../decorators/LogCatch.decorator';
+import { areValidModes } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
+import type { INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
@@ -39,22 +39,29 @@ export class BinaryDataService {
 		workflowId: string,
 		executionId: string,
 		binaryData: IBinaryData,
-		path: string,
+		filePath: string,
 	) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
-			const { size } = await stat(path);
+			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
-			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
+			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.copyByFilePath(workflowId, executionId, path, {
+		const metadata = {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-		});
+		};
+
+		const { fileId, fileSize } = await manager.copyByFilePath(
+			workflowId,
+			executionId,
+			filePath,
+			metadata,
+		);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
