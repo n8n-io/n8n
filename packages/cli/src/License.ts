@@ -94,7 +94,6 @@ export class License {
 	}
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
-		console.log('onFeatureChange', _features);
 		if (config.getEnv('executions.mode') === 'queue') {
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');
