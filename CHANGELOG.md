@@ -1,3 +1,18 @@
+## [1.8.2](https://github.com/n8n-io/n8n/compare/n8n@1.8.1...n8n@1.8.2) (2023-09-25)
+
+
+### Bug Fixes
+
+* **editor:** Add debug feature docs link ([#7240](https://github.com/n8n-io/n8n/issues/7240)) ([1b2ccca](https://github.com/n8n-io/n8n/commit/1b2cccabc294571e7c02551073d0e066f3c74dca))
+* **editor:** Fix SQL editor issue ([#7236](https://github.com/n8n-io/n8n/issues/7236)) ([539f954](https://github.com/n8n-io/n8n/commit/539f9543a1e92546a449c59e286bd2c1d0df6047))
+
+
+### Reverts
+
+* Revert "fix: Issue enforcing user limits on start plan (#7188)" ([6589580](https://github.com/n8n-io/n8n/commit/658958086659a2b4ade3f59cb9fbdbddcb9ddd79)), closes [#7188](https://github.com/n8n-io/n8n/issues/7188)
+
+
+
 ## [1.8.1](https://github.com/n8n-io/n8n/compare/n8n@1.8.0...n8n@1.8.1) (2023-09-21)
 
 
