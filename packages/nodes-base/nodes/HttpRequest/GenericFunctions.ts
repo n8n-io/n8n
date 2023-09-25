@@ -140,6 +140,16 @@ export type BodyParametersReducer = (
 	cur: { name: string; value: string },
 ) => Promise<IDataObject>;
 
+export async function reduceAsync<T, R>(
+	arr: T[],
+	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
+	init: Promise<R> = Promise.resolve({} as R),
+): Promise<R> {
+	return arr.reduce(async (promiseAcc, item) => {
+		return reducer(await promiseAcc, item);
+	}, init);
+}
+
 export const prepareRequestBody = async (
 	parameters: BodyParameter[],
 	bodyType: string,
@@ -147,15 +157,12 @@ export const prepareRequestBody = async (
 	defaultReducer: BodyParametersReducer,
 ) => {
 	if (bodyType === 'json' && version >= 4) {
-		return parameters.reduce<Promise<IDataObject>>(async (acc, p) => {
+		return parameters.reduce(async (acc, entry) => {
 			const result = await acc;
-			set(result, p.name, p.value);
+			set(result, entry.name, entry.value);
 			return result;
 		}, Promise.resolve({}));
 	} else {
-		return parameters.reduce<Promise<IDataObject>>(async (acc, p) => {
-			const result = await acc;
-			return defaultReducer(result, p);
-		}, Promise.resolve({}));
+		return reduceAsync(parameters, defaultReducer);
 	}
 };

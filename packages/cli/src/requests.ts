@@ -85,6 +85,7 @@ export declare namespace WorkflowRequest {
 		active: boolean;
 		tags: string[];
 		hash: string;
+		meta: Record<string, unknown>;
 	}>;
 
 	type ManualRunPayload = {

@@ -9,6 +9,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
+import { rename } from 'node:fs/promises';
 
 import { FileNotFoundError } from '../errors';
 import { ensureDirExists } from './utils';
@@ -118,6 +119,16 @@ export class FileSystemManager implements BinaryData.Manager {
 		await fs.copyFile(sourcePath, targetPath);
 
 		return targetFileId;
+	}
+
+	async rename(oldFileId: string, newFileId: string) {
+		const oldPath = this.getPath(oldFileId);
+		const newPath = this.getPath(newFileId);
+
+		await Promise.all([
+			rename(oldPath, newPath),
+			rename(`${oldPath}.metadata`, `${newPath}.metadata`),
+		]);
 	}
 
 	// ----------------------------------

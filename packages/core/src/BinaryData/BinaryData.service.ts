@@ -151,11 +151,11 @@ export class BinaryDataService {
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
-		const manager = this.getManager(this.mode);
+		const manager = this.managers[this.mode];
 
 		if (!manager) return;
 
-		await this.getManager(this.mode).deleteMany(ids);
+		await manager.deleteMany(ids);
 	}
 
 	@LogCatch((error) =>
@@ -189,6 +189,14 @@ export class BinaryDataService {
 		}
 
 		return inputData as INodeExecutionData[][];
+	}
+
+	async rename(oldFileId: string, newFileId: string) {
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return;
+
+		await manager.rename(oldFileId, newFileId);
 	}
 
 	// ----------------------------------

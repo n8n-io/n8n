@@ -31,6 +31,7 @@ import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
 	prepareRequestBody,
+	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -1264,15 +1265,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					async function toQs() {
-						return queryParameters.reduce<Promise<IDataObject>>(async (acc, p) => {
-							const result = await acc;
-
-							return parametersToKeyValue(result, p);
-						}, Promise.resolve({}));
-					}
-
-					requestOptions.qs = await toQs();
+					requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1295,15 +1288,7 @@ export class HttpRequestV3 implements INodeType {
 			if (sendHeaders && headerParameters) {
 				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					async function toHeaders() {
-						return headerParameters.reduce<Promise<IDataObject>>(async (acc, p) => {
-							const result = await acc;
-
-							return parametersToKeyValue(result, p);
-						}, Promise.resolve({}));
-					}
-
-					additionalHeaders = await toHeaders();
+					additionalHeaders = await reduceAsync(headerParameters, parametersToKeyValue);
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {

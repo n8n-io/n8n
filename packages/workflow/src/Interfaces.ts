@@ -1816,6 +1816,10 @@ export interface IWorkflowSettings {
 	executionOrder?: 'v0' | 'v1';
 }
 
+export interface WorkflowFEMeta {
+	onboardingId?: string;
+}
+
 export interface WorkflowTestData {
 	description: string;
 	input: {
@@ -2135,6 +2139,7 @@ export interface IN8nUISettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	n8nMetadata?: {
+		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;

@@ -15,11 +15,8 @@ If your node uses `this.helpers.getBinaryStream()`, add `await` when calling it.
 Example:
 
 ```typescript
-// Before 1.9.0:
-const binaryStream = this.helpers.getBinaryStream(id);
-
-// From 1.9.0:
-const binaryStream = await this.helpers.getBinaryStream(id);
+const binaryStream = this.helpers.getBinaryStream(id); // until 1.9.0
+const binaryStream = await this.helpers.getBinaryStream(id); // since 1.9.0
 ```
 
 ## 1.5.0
