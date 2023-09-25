@@ -197,6 +197,87 @@ input[type="date"] {
 .error-show {
 	visibility: visible;
 }
+
+/* multiselect ----------------------------------- */
+.multiselect {
+	position: relative;
+}
+
+.multiselect-button {
+	width: 100%;
+	border: transparent;
+	border-radius: 6px;
+	width: 100%;
+	font-size: 14px;
+	color: #909399;
+	font-weight: 400;
+	background-color: white;
+	padding: 12px;
+	display: flex;
+	justify-content: space-between;
+}
+
+.multiselect-button-icon {
+	display: inline-block;
+	vertical-align: middle;
+	float: right;
+	width: 18px;
+	height: 18px;
+	fill: #909399;
+}
+
+.multiselect-dropdown {
+	position: absolute;
+	z-index: 10;
+	top: 110%;
+	left: 0;
+	width: 100%;
+	min-width: 100px;
+	background-color: #fff;
+	border: 1px solid #DBDFE7;
+	box-shadow: 0px 4px 16px 0px #634DFF0F;
+	display: none;
+}
+
+.multiselect-option {
+	color: #7E8186;
+	padding: 2px 12px;
+	cursor: pointer;
+	display: flex;
+	justify-content: space-between;
+}
+
+.multiselect-option label {
+	color: #7E8186;
+}
+
+.multiselect-checkbox {
+	vertical-align: middle;
+}
+
+.multiselect-option:hover {
+	background-color: #f5f5f5;
+}
+
+.multiselect-option.is-selected label {
+	color: #FF6D5A;
+}
+
+.is-active {
+	display: block;
+}
+
+.modal {
+	display: none;
+	position: fixed;
+	z-index: 5;
+	left: 0;
+	top: 0;
+	height: 100%;
+	width: 100%;
+	overflow: auto;
+	background-color: transparent;
+}
 `;
 
 const testNotice = `
@@ -299,6 +380,37 @@ const createForm = (formTitle: string, formDescription: string, form: string) =>
 		</div>
 
 		<div class="inputs-wrapper">
+
+		<!-- ------------------------------------------------ -->
+		<label class="form-label">Multiselect Field</label>
+		<div class="multiselect select-input" id="multiselect-1">
+			<div class="multiselect-button">
+				<span> Select options ... </span>
+				<svg class="multiselect-button-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+					<path d="M7 10l5 5 5-5z" />
+				</svg>
+			</div>
+
+			<div class="multiselect-dropdown">
+				<div class="multiselect-option">
+					<label for="multiselect-option-1">Option 1</label>
+					<input type="checkbox" class="multiselect-checkbox" id="multiselect-option-1" />
+				</div>
+				<div class="multiselect-option">
+					<label for="multiselect-option-2">Option 2</label>
+					<input type="checkbox" class="multiselect-checkbox" />
+				</div>
+				<div class="multiselect-option">
+					<label for="multiselect-option-3">Option 3</label>
+					<input type="checkbox" class="multiselect-checkbox" />
+				</div>
+			</div>
+		</div>
+		<p class="error-field-3 error-hidden">
+			This field is required
+		</p>
+		<!-- ------------------------------------------------ -->
+
 			${form}
 		</div>
 
@@ -331,6 +443,7 @@ export const createPage = (
 		</head>
 
 		<body>
+		<div class="modal"></div>
 			<div class="container">
 				<section>
 					${testRun ? testNotice : ''}
@@ -340,6 +453,77 @@ export const createPage = (
 				</section>
 			</div>
 			<script>
+
+			//multiselect -------------------------------------------------------------------
+			const multiselect1 = document.querySelector('#multiselect-1');
+			const multiselectButton1 = multiselect1.querySelector('.multiselect-button');
+			const multiselectDropdown1 = multiselect1.querySelector('.multiselect-dropdown');
+
+			const error3 = document.querySelector('.error-field-3');
+
+			document.querySelector('.modal').addEventListener('click', () => {
+				multiselectDropdown1.classList.remove('is-active');
+				validateMultiselect(multiselect1, error3);
+				document.querySelector('.modal').style.display = 'none';
+			});
+
+			multiselectButton1.addEventListener('click', () => {
+				multiselectDropdown1.classList.add('is-active');
+				document.querySelector('.modal').style.display = 'block';
+				validateMultiselect(multiselect1, error3);
+			});
+
+			multiselectDropdown1.addEventListener('click', (e) => {
+				const checkbox = e.target.closest('.multiselect-option').querySelector('.multiselect-checkbox');
+
+				if (checkbox) {
+					checkbox.checked = !checkbox.checked;
+
+					if (checkbox.checked) {
+						e.target.closest('.multiselect-option').classList.add('is-selected');
+					} else {
+						e.target.closest('.multiselect-option').classList.remove('is-selected');
+					}
+				}
+
+				const selectedValues = getSelectedValues(multiselect1);
+				const multiselectButtonText = multiselect1.querySelector('span');
+
+				if (!selectedValues.length) {
+					multiselectButtonText.textContent = 'Select options ...';
+				} else {
+					multiselectButtonText.textContent = selectedValues.join(', ');
+				}
+			});
+
+			// Get the selected values when needed
+			function getSelectedValues(input) {
+				const selectedValues = [];
+				const checkboxes = input.querySelectorAll('.multiselect-checkbox');
+
+				checkboxes.forEach((checkbox, index) => {
+					if (checkbox.checked) {
+						const label = input.querySelectorAll('label')[index];
+						selectedValues.push(label.textContent.trim());
+					}
+				});
+
+				return selectedValues;
+			}
+
+			function validateMultiselect(input, errorElement) {
+				const selectedValues = getSelectedValues(input);
+
+				if (!selectedValues.length) {
+					errorElement.classList.add('error-show');
+					return false;
+				} else {
+					errorElement.classList.remove('error-show');
+					return true;
+				}
+			}
+			//--------------------------------------------------------------------------------
+
 			function validateInput(input, errorElement) {
 				if (input.type === 'number' && input.value !== '') {
 					const value = input.value.trim();
@@ -369,10 +553,19 @@ export const createPage = (
 				e.preventDefault();
 
 				${validationCases}
+				//valida multiselect
+				valid = validateMultiselect(multiselect1, error3);
 
 				if (valid) {
 					var formData = new FormData(form);
+
+					document.querySelectorAll('.multiselect').forEach((multiselect) => {
+						const selectedValues = getSelectedValues(multiselect);
+						formData.append(multiselect.id, JSON.stringify(selectedValues));
+					});
+
 					formData.append("submittedAt", (new Date()).toISOString());
+
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';
