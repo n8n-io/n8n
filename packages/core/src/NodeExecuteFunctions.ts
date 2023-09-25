@@ -2779,8 +2779,8 @@ export function getExecuteFunctions(
 					.then(async (result) =>
 						Container.get(BinaryDataService).duplicateBinaryData(
 							workflow.id,
-							result,
 							additionalData.executionId!,
+							result,
 						),
 					);
 			},

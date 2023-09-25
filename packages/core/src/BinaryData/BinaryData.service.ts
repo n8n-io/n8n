@@ -147,8 +147,8 @@ export class BinaryDataService {
 	)
 	async duplicateBinaryData(
 		workflowId: string,
-		inputData: Array<INodeExecutionData[] | null>,
 		executionId: string,
+		inputData: Array<INodeExecutionData[] | null>,
 	) {
 		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
@@ -157,7 +157,7 @@ export class BinaryDataService {
 						return Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return this.duplicateBinaryDataInExecData(workflowId, executionData, executionId);
+									return this.duplicateBinaryDataInExecData(workflowId, executionId, executionData);
 								}
 
 								return executionData;
@@ -188,8 +188,8 @@ export class BinaryDataService {
 
 	private async duplicateBinaryDataInExecData(
 		workflowId: string,
-		executionData: INodeExecutionData,
 		executionId: string,
+		executionData: INodeExecutionData,
 	) {
 		const manager = this.managers[this.mode];
 
