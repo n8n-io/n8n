@@ -5,6 +5,7 @@ import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServiceP
 import * as os from 'os';
 import Container from 'typedi';
 import { License } from '@/License';
+import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
 
 export function getWorkerCommandReceivedHandler(options: {
 	queueModeId: string;
@@ -58,6 +59,7 @@ export function getWorkerCommandReceivedHandler(options: {
 						});
 						break;
 					case 'restartEventBus':
+						await Container.get(MessageEventBus).restart();
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,

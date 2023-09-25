@@ -1,6 +1,8 @@
 import { LoggerProxy } from 'n8n-workflow';
 import { messageToRedisServiceCommandObject } from './helpers';
 import config from '@/config';
+import { MessageEventBus } from '../../eventbus/MessageEventBus/MessageEventBus';
+import Container from 'typedi';
 
 // this function handles commands sent to the MAIN instance. the workers handle their own commands
 export async function handleCommandMessage(messageString: string) {
@@ -11,6 +13,7 @@ export async function handleCommandMessage(messageString: string) {
 			message.senderId === queueModeId ||
 			(message.targets && !message.targets.includes(queueModeId))
 		) {
+			// Skipping command message because it's not for this instance
 			LoggerProxy.debug(
 				`Skipping command message ${message.command} because it's not for this instance.`,
 			);
@@ -26,6 +29,8 @@ export async function handleCommandMessage(messageString: string) {
 				// once multiple main instances are supported, this command should be handled
 				// await Container.get(License).reload();
 				break;
+			case 'restartEventBus':
+				await Container.get(MessageEventBus).restart();
 			default:
 				break;
 		}

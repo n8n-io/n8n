@@ -99,14 +99,11 @@ export class MessageEventBus extends EventEmitter {
 			this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
 			this.redisSubscriber = await Container.get(RedisService).getPubSubSubscriber();
 			await this.redisSubscriber.subscribeToEventLog();
-			await this.redisSubscriber.subscribeToCommandChannel();
 			this.redisSubscriber.addMessageHandler(
 				'MessageEventBusMessageReceiver',
 				async (channel: string, messageString: string) => {
 					if (channel === EVENT_BUS_REDIS_CHANNEL) {
 						await this.handleRedisEventBusMessage(messageString);
-					} else if (channel === COMMAND_REDIS_CHANNEL) {
-						await this.handleRedisCommandMessage(messageString);
 					}
 				},
 			);
@@ -260,30 +257,6 @@ export class MessageEventBus extends EventEmitter {
 		return eventData;
 	}
 
-	async handleRedisCommandMessage(messageString: string) {
-		const message = messageToRedisServiceCommandObject(messageString);
-		const queueModeId = config.get('redis.queueModeId') as string;
-		if (message) {
-			if (
-				message.senderId === queueModeId ||
-				(message.targets && !message.targets.includes(queueModeId))
-			) {
-				LoggerProxy.debug(
-					`Skipping command message ${message.command} because it's not for this instance.`,
-				);
-				return message;
-			}
-			switch (message.command) {
-				case 'restartEventBus':
-					await this.restart();
-				default:
-					break;
-			}
-			return message;
-		}
-		return;
-	}
-
 	async broadcastRestartEventbusAfterDestinationUpdate() {
 		if (config.getEnv('executions.mode') === 'queue') {
 			await this.redisPublisher.publishToCommandChannel({
@@ -312,7 +285,6 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
-		await this.redisSubscriber?.unSubscribeFromCommandChannel();
 		await this.redisSubscriber?.unSubscribeFromEventLog();
 		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
