@@ -45,7 +45,7 @@ import { AddMfaColumns1690000000030 } from './1690000000040-AddMfaColumns';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
 import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftDelete';
-import { AddWorkflowMetadata1695128658538 } from './1695128658538-AddWorkflowMetadata';
+import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
