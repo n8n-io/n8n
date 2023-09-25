@@ -32,7 +32,7 @@ export namespace BinaryData {
 
 		getPath(fileId: string): string;
 		getAsBuffer(fileId: string): Promise<Buffer>;
-		getAsStream(fileId: string, chunkSize?: number): Readable;
+		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
 		copyByFileId(workflowId: string, executionId: string, fileId: string): Promise<string>;
@@ -45,5 +45,7 @@ export namespace BinaryData {
 
 		deleteOne(fileId: string): Promise<void>;
 		deleteManyByExecutionIds(executionIds: string[]): Promise<string[]>;
+
+		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
 }

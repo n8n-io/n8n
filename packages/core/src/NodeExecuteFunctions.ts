@@ -954,7 +954,7 @@ export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryDat
 /**
  * Returns binary file stream for piping
  */
-export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
+export async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable> {
 	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 

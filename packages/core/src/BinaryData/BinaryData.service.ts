@@ -113,7 +113,7 @@ export class BinaryDataService {
 		});
 	}
 
-	getAsStream(binaryDataId: string, chunkSize?: number) {
+	async getAsStream(binaryDataId: string, chunkSize?: number) {
 		const [mode, fileId] = binaryDataId.split(':');
 
 		return this.getManager(mode).getAsStream(fileId, chunkSize);
@@ -142,7 +142,7 @@ export class BinaryDataService {
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
-		const manager = this.getManager(this.mode);
+		const manager = this.managers[this.mode];
 
 		if (!manager) return;
 
@@ -180,6 +180,14 @@ export class BinaryDataService {
 		}
 
 		return inputData as INodeExecutionData[][];
+	}
+
+	async rename(oldFileId: string, newFileId: string) {
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return;
+
+		await manager.rename(oldFileId, newFileId);
 	}
 
 	// ----------------------------------

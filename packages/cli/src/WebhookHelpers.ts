@@ -506,7 +506,7 @@ export async function executeWebhook(
 			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
 			responsePromise
 				.promise()
-				.then((response: IN8nHttpFullResponse) => {
+				.then(async (response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
 						return;
 					}
@@ -514,10 +514,9 @@ export async function executeWebhook(
 					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 					if (binaryData?.id) {
 						res.header(response.headers);
-						const stream = Container.get(BinaryDataService).getAsStream(binaryData.id);
-						void pipeline(stream, res).then(() =>
-							responseCallback(null, { noWebhookResponse: true }),
-						);
+						const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+						await pipeline(stream, res);
+						responseCallback(null, { noWebhookResponse: true });
 					} else if (Buffer.isBuffer(response.body)) {
 						res.header(response.headers);
 						res.end(response.body);
@@ -734,7 +733,7 @@ export async function executeWebhook(
 								// Send the webhook response manually
 								res.setHeader('Content-Type', binaryData.mimeType);
 								if (binaryData.id) {
-									const stream = Container.get(BinaryDataService).getAsStream(binaryData.id);
+									const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 									await pipeline(stream, res);
 								} else {
 									res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
