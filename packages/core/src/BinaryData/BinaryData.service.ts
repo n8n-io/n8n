@@ -154,6 +154,14 @@ export class BinaryDataService {
 		return inputData as INodeExecutionData[][];
 	}
 
+	async rename(oldFileId: string, newFileId: string) {
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return;
+
+		await manager.rename(oldFileId, newFileId);
+	}
+
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------

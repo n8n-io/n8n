@@ -47,5 +47,7 @@ export namespace BinaryData {
 		// @TODO: Refactor to also receive `workflowId` to support full path-like identifier:
 		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
 		deleteManyByExecutionIds(executionIds: string[]): Promise<string[]>;
+
+		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
 }
