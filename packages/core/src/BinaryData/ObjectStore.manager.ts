@@ -106,6 +106,10 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		);
 	}
 
+	async rename() {
+		throw new Error('TODO');
+	}
+
 	// ----------------------------------
 	//         private methods
 	// ----------------------------------
