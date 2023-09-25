@@ -8,6 +8,14 @@
 		var(--node-type-main-color-s),
 		var(--node-type-main-color-l)
 	);
+	--node-type-supplemental-label-color-h: 235;
+	--node-type-supplemental-label-color-s: 28%;
+	--node-type-supplemental-label-color-l: 40%;
+	--node-type-supplemental-label-color: hsl(
+		var(--node-type-supplemental-label-color-h),
+		var(--node-type-supplemental-label-color-s),
+		var(--node-type-supplemental-label-color-l)
+	);
 	--node-type-supplemental-color-h: 235;
 	--node-type-supplemental-color-s: 28%;
 	--node-type-supplemental-color-l: 60%;

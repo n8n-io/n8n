@@ -1370,7 +1370,7 @@ export default defineComponent({
 
 	@each $node-type in $supplemental-node-types {
 		&.node-connection-type-#{$node-type} {
-			color: var(--node-type-#{$node-type}-color);
+			color: var(--node-type-supplemental-label-color);
 		}
 	}
 }
