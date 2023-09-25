@@ -632,15 +632,6 @@ export const nodeHelpers = defineComponent({
 		},
 		// @ts-ignore
 		getNodeSubtitle(data, nodeType, workflow): string | undefined {
-			const otherOutputs = (nodeType.outputs || []).filter(
-				(outputName: string) => outputName !== NodeConnectionType.Main,
-			);
-			if (otherOutputs.length > 0) {
-				return useI18n().baseText(
-					`node.connectionType.${NodeViewUtils.getScope(otherOutputs[0])}` as BaseTextKey,
-				);
-			}
-
 			if (!data) {
 				return undefined;
 			}
