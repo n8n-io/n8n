@@ -2,16 +2,16 @@ import { readFile, stat } from 'fs/promises';
 import concatStream from 'concat-stream';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
+import type { INodeExecutionData } from 'n8n-workflow';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
 import { FileSystemManager } from './FileSystem.manager';
 import { areValidModes } from './utils';
-import { BinaryDataManagerNotFound, InvalidBinaryDataMode } from './errors';
+import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
+import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
-import type { INodeExecutionData } from 'n8n-workflow';
-import { LogCatch } from '../decorators/LogCatch.decorator';
 
 @Service()
 export class BinaryDataService {
@@ -128,7 +128,11 @@ export class BinaryDataService {
 	}
 
 	async deleteManyByExecutionIds(executionIds: string[]) {
-		await this.getManager(this.mode).deleteManyByExecutionIds(executionIds);
+		const manager = this.getManager(this.mode);
+
+		if (!manager) return;
+
+		await manager.deleteManyByExecutionIds(executionIds);
 	}
 
 	@LogCatch((error) =>
@@ -221,6 +225,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new BinaryDataManagerNotFound(mode);
+		throw new UnknownBinaryDataManager(mode);
 	}
 }
