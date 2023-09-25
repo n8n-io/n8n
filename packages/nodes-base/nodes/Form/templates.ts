@@ -312,21 +312,55 @@ const submittedTestMessage = (testRun: boolean) => {
 	`;
 };
 
+const addMultiselectInput = (field: FormField, fieldIndex: string) => {
+	const fieldOptions = field.fieldOptions?.values ?? [];
+
+	let dropdownOptions = '';
+
+	for (const [index, entry] of fieldOptions.entries()) {
+		const optionIndex = `option${index}`;
+		dropdownOptions += `
+		<div class="multiselect-option">
+			<label for="${optionIndex}">${entry.option}</label>
+			<input type="checkbox" class="multiselect-checkbox" id="${optionIndex}" />
+		</div>
+		`;
+	}
+
+	return `
+	<div>
+		<label class="form-label">${field.fieldLabel}</label>
+		<div class="multiselect select-input" id="${fieldIndex}">
+			<div class="multiselect-button">
+				<span>Select options ...</span>
+				<svg class="multiselect-button-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+					<path d="M7 10l5 5 5-5z" />
+				</svg>
+			</div>
+
+			<div class="multiselect-dropdown">
+				${dropdownOptions}
+			</div>
+		</div>
+	`;
+};
+
 const prepareFormGroups = (formFields: FormField[]) => {
 	let formHtml = '';
 	let variables = '';
 	let validationCases = '';
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField } = field;
+		const { fieldType, requiredField, multiselect } = field;
 		const fieldIndex = `field-${index}`;
 		const required = requiredField ? 'required' : '';
 
-		formHtml += '<div class="form-group">';
-
-		if (fieldType === 'dropdown') {
+		if (multiselect) {
+			formHtml += addMultiselectInput(field, fieldIndex);
+		} else if (fieldType === 'dropdown') {
 			const fieldOptions = field.fieldOptions?.values ?? [];
 
+			formHtml += '<div class="form-group">';
 			formHtml += `<label class="form-label" for="${fieldIndex}">${field.fieldLabel}</label>`;
 			formHtml += '<div class="select-input">';
 			formHtml += `<select id="${fieldIndex}" name="${fieldIndex}" ${required}>`;
@@ -337,6 +371,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 			formHtml += '</select>';
 			formHtml += '</div>';
 		} else {
+			formHtml += '<div class="form-group">';
 			formHtml += `<label class="form-label" for="${fieldIndex}">${field.fieldLabel}</label>`;
 			formHtml += `<input class="form-input" type="${fieldType}" id="${fieldIndex}" name="${fieldIndex}" ${required}/>`;
 		}
@@ -346,24 +381,75 @@ const prepareFormGroups = (formFields: FormField[]) => {
 			This field is required
 		</p>`;
 
-		if (requiredField) {
-			variables += `
-				const input${index} = document.querySelector(\`#${fieldIndex}\`);
-				const error${index} = document.querySelector(\`.error-${fieldIndex}\`);
-				input${index}.addEventListener('blur', () => {
-					validateInput(input${index}, error${index});
-				});
-				input${index}.addEventListener('input', () => {
-					error${index}.classList.remove('error-show');
-			});
-			`;
+		formHtml += '</div>';
 
-			validationCases += `
-				valid = validateInput(input${index}, error${index});
+		if (multiselect) {
+			const input = `input${index}`;
+			variables += `
+				const ${input} = document.querySelector(\`#${fieldIndex}\`);
+				const dropdown${index} = ${input}.querySelector('.multiselect-dropdown');
+
+				${requiredField ? `const error${index} = document.querySelector(\`.error-${fieldIndex}\`);` : ''}
+
+				document.querySelector('.modal').addEventListener('click', () => {
+					dropdown${index}.classList.remove('is-active');
+					${requiredField ? `validateMultiselect(${input}, error${index});` : ''}
+					document.querySelector('.modal').style.display = 'none';
+				});
+
+				${input}.querySelector('.multiselect-button').addEventListener('click', () => {
+					dropdown${index}.classList.add('is-active');
+					document.querySelector('.modal').style.display = 'block';
+					${requiredField ? `validateMultiselect(${input}, error${index});` : ''}
+				});
+
+				dropdown${index}.addEventListener('click', (e) => {
+					const checkbox = e.target.closest('.multiselect-option').querySelector('.multiselect-checkbox');
+
+					if (checkbox) {
+						checkbox.checked = !checkbox.checked;
+
+						if (checkbox.checked) {
+							e.target.closest('.multiselect-option').classList.add('is-selected');
+						} else {
+							e.target.closest('.multiselect-option').classList.remove('is-selected');
+						}
+					}
+
+					const selectedValues = getSelectedValues(${input});
+					const multiselectButtonText = ${input}.querySelector('span');
+
+					if (!selectedValues.length) {
+						multiselectButtonText.textContent = 'Select options ...';
+					} else {
+						multiselectButtonText.textContent = selectedValues.join(', ');
+					}
+				});
 			`;
 		}
 
-		formHtml += '</div>';
+		if (requiredField) {
+			if (multiselect) {
+				validationCases += `
+					valid = validateMultiselect(input${index}, error${index});
+				`;
+			} else {
+				variables += `
+					const input${index} = document.querySelector(\`#${fieldIndex}\`);
+					const error${index} = document.querySelector(\`.error-${fieldIndex}\`);
+					input${index}.addEventListener('blur', () => {
+						validateInput(input${index}, error${index});
+					});
+					input${index}.addEventListener('input', () => {
+						error${index}.classList.remove('error-show');
+				});
+				`;
+
+				validationCases += `
+					valid = validateInput(input${index}, error${index});
+				`;
+			}
+		}
 	}
 
 	return { formHtml, variables, validationCases };
@@ -380,37 +466,6 @@ const createForm = (formTitle: string, formDescription: string, form: string) =>
 		</div>
 
 		<div class="inputs-wrapper">
-
-		<!-- ------------------------------------------------ -->
-		<label class="form-label">Multiselect Field</label>
-		<div class="multiselect select-input" id="multiselect-1">
-			<div class="multiselect-button">
-				<span> Select options ... </span>
-				<svg class="multiselect-button-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-					<path d="M7 10l5 5 5-5z" />
-				</svg>
-			</div>
-
-			<div class="multiselect-dropdown">
-				<div class="multiselect-option">
-					<label for="multiselect-option-1">Option 1</label>
-					<input type="checkbox" class="multiselect-checkbox" id="multiselect-option-1" />
-				</div>
-				<div class="multiselect-option">
-					<label for="multiselect-option-2">Option 2</label>
-					<input type="checkbox" class="multiselect-checkbox" />
-				</div>
-				<div class="multiselect-option">
-					<label for="multiselect-option-3">Option 3</label>
-					<input type="checkbox" class="multiselect-checkbox" />
-				</div>
-			</div>
-		</div>
-		<p class="error-field-3 error-hidden">
-			This field is required
-		</p>
-		<!-- ------------------------------------------------ -->
-
 			${form}
 		</div>
 
@@ -453,50 +508,27 @@ export const createPage = (
 				</section>
 			</div>
 			<script>
+			function validateInput(input, errorElement) {
+				if (input.type === 'number' && input.value !== '') {
+					const value = input.value.trim();
 
-			//multiselect -------------------------------------------------------------------
-			const multiselect1 = document.querySelector('#multiselect-1');
-			const multiselectButton1 = multiselect1.querySelector('.multiselect-button');
-			const multiselectDropdown1 = multiselect1.querySelector('.multiselect-dropdown');
-
-			const error3 = document.querySelector('.error-field-3');
-
-			document.querySelector('.modal').addEventListener('click', () => {
-				multiselectDropdown1.classList.remove('is-active');
-				validateMultiselect(multiselect1, error3);
-				document.querySelector('.modal').style.display = 'none';
-			});
-
-			multiselectButton1.addEventListener('click', () => {
-				multiselectDropdown1.classList.add('is-active');
-				document.querySelector('.modal').style.display = 'block';
-				validateMultiselect(multiselect1, error3);
-			});
-
-			multiselectDropdown1.addEventListener('click', (e) => {
-				const checkbox = e.target.closest('.multiselect-option').querySelector('.multiselect-checkbox');
-
-				if (checkbox) {
-					checkbox.checked = !checkbox.checked;
-
-					if (checkbox.checked) {
-						e.target.closest('.multiselect-option').classList.add('is-selected');
+					if (value === '' || isNaN(value)) {
+						errorElement.textContent = 'Enter only numbers in this field';
+						errorElement.classList.add('error-show');
+						return false;
 					} else {
-						e.target.closest('.multiselect-option').classList.remove('is-selected');
+						errorElement.classList.remove('error-show');
+						return true;
 					}
-				}
-
-				const selectedValues = getSelectedValues(multiselect1);
-				const multiselectButtonText = multiselect1.querySelector('span');
-
-				if (!selectedValues.length) {
-					multiselectButtonText.textContent = 'Select options ...';
+				} else if (input.value === '') {
+					errorElement.classList.add('error-show');
+					return false;
 				} else {
-					multiselectButtonText.textContent = selectedValues.join(', ');
+					errorElement.classList.remove('error-show');
+					return true;
 				}
-			});
+			}
 
-			// Get the selected values when needed
 			function getSelectedValues(input) {
 				const selectedValues = [];
 				const checkboxes = input.querySelectorAll('.multiselect-checkbox');
@@ -522,28 +554,6 @@ export const createPage = (
 					return true;
 				}
 			}
-			//--------------------------------------------------------------------------------
-
-			function validateInput(input, errorElement) {
-				if (input.type === 'number' && input.value !== '') {
-					const value = input.value.trim();
-
-					if (value === '' || isNaN(value)) {
-						errorElement.textContent = 'Enter only numbers in this field';
-						errorElement.classList.add('error-show');
-						return false;
-					} else {
-						errorElement.classList.remove('error-show');
-						return true;
-					}
-				} else if (input.value === '') {
-					errorElement.classList.add('error-show');
-					return false;
-				} else {
-					errorElement.classList.remove('error-show');
-					return true;
-				}
-			}
 
 			const form = document.querySelector('#n8n-form');
 			${variables}
@@ -553,8 +563,6 @@ export const createPage = (
 				e.preventDefault();
 
 				${validationCases}
-				//valida multiselect
-				valid = validateMultiselect(multiselect1, error3);
 
 				if (valid) {
 					var formData = new FormData(form);

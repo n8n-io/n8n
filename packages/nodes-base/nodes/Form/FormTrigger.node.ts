@@ -1,5 +1,6 @@
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
+	jsonParse,
 	type IDataObject,
 	type INodeType,
 	type INodeTypeDescription,
@@ -176,6 +177,19 @@ export class FormTrigger implements INodeType {
 								],
 							},
 							{
+								displayName: 'Multiselect',
+								name: 'multiselect',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether to allow the user to select multiple options from the dropdown list',
+								displayOptions: {
+									show: {
+										fieldType: ['dropdown'],
+									},
+								},
+							},
+							{
 								displayName: 'Required Field',
 								name: 'requiredField',
 								type: 'boolean',
@@ -275,31 +289,30 @@ export class FormTrigger implements INodeType {
 		const bodyData = (this.getBodyData().data as IDataObject) ?? {};
 
 		const returnData: IDataObject = {};
-		for (const key of Object.keys(bodyData)) {
-			if (key === 'submittedAt') {
-				returnData.submittedAt = bodyData[key];
-				continue;
-			}
+		for (const [index, field] of formFields.entries()) {
+			const key = `field-${index}`;
+			let value = bodyData[key] ?? null;
 
-			const fieldIndex = Number(key.split('-')[1]);
-			const fieldData = formFields[fieldIndex];
+			if (value === null) returnData[field.fieldLabel] = null;
 
-			let value = bodyData[key];
-			if (fieldData?.fieldType === 'number') {
+			if (field.fieldType === 'number') {
 				value = Number(value);
 			}
-			if (fieldData?.fieldType === 'text') {
+			if (field.fieldType === 'text') {
 				value = String(value).trim();
 			}
-			if (fieldData?.fieldType === 'date') {
-				value = new Intl.DateTimeFormat(fieldData.dateFormat ?? 'en-GB').format(
+			if (field.fieldType === 'date') {
+				value = new Intl.DateTimeFormat(field.dateFormat ?? 'en-GB').format(
 					new Date(value as string),
 				);
 			}
+			if (field.multiselect && typeof value === 'string') {
+				value = jsonParse(value);
+			}
 
-			returnData[fieldData.fieldLabel] = value;
+			returnData[field.fieldLabel] = value;
 		}
-
+		returnData.submittedAt = bodyData.submittedAt;
 		returnData.formMode = mode;
 
 		const respondWith = this.getNodeParameter('respondWith', '') as string;
