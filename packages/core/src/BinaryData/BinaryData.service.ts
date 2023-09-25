@@ -89,7 +89,7 @@ export class BinaryDataService {
 		});
 	}
 
-	getAsStream(binaryDataId: string, chunkSize?: number) {
+	async getAsStream(binaryDataId: string, chunkSize?: number) {
 		const [mode, fileId] = binaryDataId.split(':');
 
 		return this.getManager(mode).getAsStream(fileId, chunkSize);

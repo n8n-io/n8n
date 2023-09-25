@@ -138,21 +138,31 @@ export const binaryContentTypes = [
 export type BodyParametersReducer = (
 	acc: IDataObject,
 	cur: { name: string; value: string },
-) => IDataObject;
+) => Promise<IDataObject>;
 
-export const prepareRequestBody = (
+export async function reduceAsync<T, R>(
+	arr: T[],
+	reducer: (acc: Awaited<Promise<R>>, cur: T) => Promise<R>,
+	init: Promise<R> = Promise.resolve({} as R),
+): Promise<R> {
+	return arr.reduce(async (promiseAcc, item) => {
+		return reducer(await promiseAcc, item);
+	}, init);
+}
+
+export const prepareRequestBody = async (
 	parameters: BodyParameter[],
 	bodyType: string,
 	version: number,
 	defaultReducer: BodyParametersReducer,
 ) => {
 	if (bodyType === 'json' && version >= 4) {
-		return parameters.reduce((acc, entry) => {
-			const value = entry.value;
-			set(acc, entry.name, value);
-			return acc;
-		}, {} as IDataObject);
+		return parameters.reduce(async (acc, entry) => {
+			const result = await acc;
+			set(result, entry.name, entry.value);
+			return result;
+		}, Promise.resolve({}));
 	} else {
-		return parameters.reduce(defaultReducer, {});
+		return reduceAsync(parameters, defaultReducer);
 	}
 };
