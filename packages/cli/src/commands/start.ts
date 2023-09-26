@@ -30,6 +30,7 @@ import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { IConfig } from '@oclif/config';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -64,6 +65,12 @@ export class Start extends BaseCommand {
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected server = new Server();
+
+	constructor(argv: string[], config: IConfig) {
+		super(argv, config);
+		this.setInstanceType('main');
+		this.setInstanceQueueModeId();
+	}
 
 	/**
 	 * Opens the UI in browser
@@ -196,8 +203,13 @@ export class Start extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 
-		await super.init('main');
 		this.logger.info('Initializing n8n process');
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.debug(`Main Instance running in queue mode`);
+			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		}
+
+		await super.init();
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();

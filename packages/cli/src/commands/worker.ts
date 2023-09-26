@@ -37,6 +37,7 @@ import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSu
 import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
 import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
 import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
+import { IConfig } from '@oclif/config';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -247,12 +248,19 @@ export class Worker extends BaseCommand {
 		};
 	}
 
+	constructor(argv: string[], config: IConfig) {
+		super(argv, config);
+		this.setInstanceType('worker');
+		this.setInstanceQueueModeId();
+	}
+
 	async init() {
 		await this.initCrashJournal();
-		await super.init('worker');
 
-		this.logger.debug(`Worker ID: ${this.queueModeId}`);
 		this.logger.debug('Starting n8n worker...');
+		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+
+		await super.init();
 
 		await this.initLicense();
 
