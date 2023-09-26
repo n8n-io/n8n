@@ -1,4 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -87,8 +88,6 @@ export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creati
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
-export const NODE_TRIGGER_CHAT_BUTTON = '@n8n/nodes-langchain.manualChatTrigger';
-
 export const NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS = false;
 export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
 
@@ -96,7 +95,7 @@ export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
-export const AI_CODE_NODE_TYPE = '@n8n/nodes-langchain.code';
+export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
@@ -119,7 +118,7 @@ export const JIRA_NODE_TYPE = 'n8n-nodes-base.jira';
 export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
-export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/nodes-langchain.manualChatTrigger';
+export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
@@ -161,10 +160,10 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	NODE_TRIGGER_CHAT_BUTTON,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 ];
 
-export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, '@n8n/nodes-langchain.codeTool'];
+export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE, '@n8n/n8n-nodes-langchain.codeTool'];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
@@ -210,6 +209,14 @@ export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
+
+// Node Connection Types
+export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.AiTool,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.Main,
+];
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';

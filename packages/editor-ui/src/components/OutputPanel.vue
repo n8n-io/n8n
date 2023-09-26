@@ -23,7 +23,11 @@
 		<template #header>
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
-					<n8n-radio-buttons :options="outputTypes" v-model="outputMode" />
+					<n8n-radio-buttons
+						:options="outputTypes"
+						v-model="outputMode"
+						@update:modelValue="onUpdateOutputMode"
+					/>
 				</template>
 				<span :class="$style.title" v-else>
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
@@ -115,8 +119,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import RunDataAi from './RunDataAi/RunDataAi.vue';
+import { ndvEventBus } from '@/event-bus';
 
 type RunDataRef = InstanceType<typeof RunData>;
+
+const OUTPUT_TYPE = {
+	REGULAR: 'regular',
+	LOGS: 'logs',
+};
 
 export default defineComponent({
 	name: 'OutputPanel',
@@ -126,8 +136,8 @@ export default defineComponent({
 		return {
 			outputMode: 'regular',
 			outputTypes: [
-				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
-				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: 'logs' },
+				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 			],
 		};
 	},
@@ -301,6 +311,13 @@ export default defineComponent({
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
+		},
+		onUpdateOutputMode(outputMode: (typeof OUTPUT_TYPE)[string]) {
+			if (outputMode === OUTPUT_TYPE.LOGS) {
+				ndvEventBus.emit('setPositionByName', 'minLeft');
+			} else {
+				ndvEventBus.emit('setPositionByName', 'initial');
+			}
 		},
 	},
 });

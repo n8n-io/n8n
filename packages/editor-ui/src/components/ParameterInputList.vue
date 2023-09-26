@@ -39,6 +39,15 @@
 				@action="onNoticeAction"
 			/>
 
+			<n8n-button
+				v-else-if="parameter.type === 'button'"
+				class="parameter-item"
+				block
+				@click="onButtonAction(parameter)"
+			>
+				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
+			</n8n-button>
+
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
@@ -136,6 +145,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValue,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
@@ -151,6 +161,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { ndvEventBus, nodeViewEventBus } from '@/event-bus';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -414,6 +425,16 @@ export default defineComponent({
 		onNoticeAction(action: string) {
 			if (action === 'activate') {
 				this.$emit('activate');
+			}
+		},
+		onButtonAction(parameter: INodeProperties) {
+			const action: string | undefined = parameter.typeOptions?.action;
+
+			switch (action) {
+				case 'openChat':
+					this.ndvStore.setActiveNodeName(null);
+					nodeViewEventBus.emit('openChat');
+					break;
 			}
 		},
 		isNodeAuthField(name: string): boolean {

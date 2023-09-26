@@ -1,4 +1,4 @@
-import type { EndpointHandler, Endpoint, Overlay } from '@jsplumb/core';
+import type { EndpointHandler, Endpoint } from '@jsplumb/core';
 import { EndpointRepresentation } from '@jsplumb/core';
 import type { AnchorPlacement, EndpointRepresentationParams } from '@jsplumb/common';
 import { EVENT_ENDPOINT_CLICK } from '@jsplumb/browser-ui';
@@ -9,6 +9,7 @@ interface N8nAddInputEndpointParams extends EndpointRepresentationParams {
 	width: number;
 	height: number;
 	color: string;
+	multiple: boolean;
 }
 export const N8nAddInputEndpointType = 'N8nAddInput';
 export const EVENT_ADD_INPUT_ENDPOINT_CLICK = 'eventAddInputEndpointClick';
@@ -19,8 +20,10 @@ export class N8nAddInputEndpoint extends EndpointRepresentation<ComputedN8nAddIn
 		super(endpoint, params);
 
 		this.params = params;
-		this.params.size = params.size || 18;
+		this.params.width = params.width || 18;
+		this.params.height = params.height || 48;
 		this.params.color = params.color || '--color-foreground-xdark';
+		this.params.multiple = params.multiple || false;
 
 		this.unbindEvents();
 		this.bindEvents();
@@ -64,6 +67,9 @@ export const N8nAddInputEndpointHandler: EndpointHandler<
 		ep.h = h;
 
 		ep.addClass('add-input-endpoint');
+		if (ep.params.multiple) {
+			ep.addClass('add-input-endpoint-multiple');
+		}
 		return [x, y, w, h, ep.params.width];
 	},
 
