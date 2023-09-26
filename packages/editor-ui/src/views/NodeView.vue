@@ -1991,18 +1991,13 @@ export default defineComponent({
 					const workflowNode = workflow.getNode(newNodeData.name);
 					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
+						lastSelectedNode.type,
+						lastSelectedNode.typeVersion,
+					);
 
 					// If node has only scoped outputs, position it below the last selected node
-					if (
-						outputTypes.every((outputName) =>
-							Object.values(NodeConnectionType).includes(outputName as NodeConnectionType),
-						)
-					) {
-						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
-							lastSelectedNode.type,
-							lastSelectedNode.typeVersion,
-						);
-
+					if (outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)) {
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
 							workflow,
@@ -2011,28 +2006,39 @@ export default defineComponent({
 						);
 						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
-						const scopedConnectionIndex = (lastSelectedInputTypes || []).findIndex(
-							(inputType) => outputs[0] === inputType,
-						);
+						const scopedConnectionIndex = (lastSelectedInputTypes || [])
+							.filter((input) => input !== NodeConnectionType.Main)
+							.findIndex((inputType) => outputs[0] === inputType);
 
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
 							[
 								lastSelectedNode.position[0] +
-									(NodeViewUtils.NODE_SIZE / (lastSelectedNodeType?.inputs?.length ?? 1)) *
+									(NodeViewUtils.NODE_SIZE /
+										(Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
 										scopedConnectionIndex,
 								lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
 							],
 							[100, 0],
 						);
 					} else {
+						const inputs = NodeHelpers.getNodeInputs(
+							workflow,
+							lastSelectedNode,
+							lastSelectedNodeType!,
+						);
+						const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
+
+						let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
+						if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
+							// If the node has scoped inputs, push it down a bit more
+							pushOffset += 150;
+						}
+
 						// If a node is active then add the new node directly after the current one
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
-							[
-								lastSelectedNode.position[0] + NodeViewUtils.PUSH_NODES_OFFSET,
-								lastSelectedNode.position[1] + yOffset,
-							],
+							[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
 						);
 					}
