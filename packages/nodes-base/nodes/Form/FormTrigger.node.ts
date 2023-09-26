@@ -177,7 +177,7 @@ export class FormTrigger implements INodeType {
 								],
 							},
 							{
-								displayName: 'Multiselect',
+								displayName: 'Multiple Choice',
 								name: 'multiselect',
 								type: 'boolean',
 								default: false,
