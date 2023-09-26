@@ -207,6 +207,7 @@ onMounted(() => {
 			border-radius: var(--border-radius-base);
 			line-height: var(--font-line-height-xloose);
 			padding: var(--spacing-s);
+			font-size: var(--font-size-s);
 			white-space: pre-wrap;
 		}
 	}
