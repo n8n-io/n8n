@@ -305,7 +305,7 @@ function connectionInputData(
 	return connectionInputData;
 }
 
-function executeData(
+export function executeData(
 	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
