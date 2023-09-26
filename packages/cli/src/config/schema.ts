@@ -921,13 +921,13 @@ export const schema = {
 				name: {
 					format: String,
 					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_NAME',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
 					doc: 'Name of the n8n bucket in S3-compatible external storage',
 				},
 				region: {
 					format: String,
 					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_BUCKET_REGION',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
 					doc: 'Region of the n8n bucket in S3-compatible external storage',
 				},
 			},
@@ -935,13 +935,13 @@ export const schema = {
 				accountId: {
 					format: String,
 					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_ACCOUNT_ID',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCOUNT_ID',
 					doc: 'Account ID in S3-compatible external storage',
 				},
 				secretKey: {
 					format: String,
 					default: '',
-					env: 'N8N_EXTERNAL_OBJECT_STORAGE_SECRET_KEY',
+					env: 'N8N_EXTERNAL_STORAGE_S3_SECRET_KEY',
 					doc: 'Secret key in S3-compatible external storage',
 				},
 			},
