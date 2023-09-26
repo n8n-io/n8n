@@ -102,7 +102,7 @@ export class ObjectStoreService {
 				'content-length': string;
 				'content-type'?: string;
 				'x-amz-meta-filename'?: string;
-			} & Record<string, string | number>;
+			} & BinaryData.PreWriteMetadata;
 		};
 
 		const response: Response = await this.request('HEAD', this.host, path);

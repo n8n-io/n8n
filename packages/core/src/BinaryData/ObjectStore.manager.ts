@@ -97,8 +97,10 @@ export class ObjectStoreManager implements BinaryData.Manager {
 
 	async rename(oldFileId: string, newFileId: string) {
 		const oldFile = await this.objectStoreService.get(oldFileId, { mode: 'buffer' });
+		const oldFileMetadata = await this.objectStoreService.getMetadata(oldFileId);
 
-		await this.objectStoreService.put(newFileId, oldFile);
+		await this.objectStoreService.put(newFileId, oldFile, oldFileMetadata);
+		await this.objectStoreService.deleteOne(oldFileId);
 	}
 
 	// ----------------------------------
