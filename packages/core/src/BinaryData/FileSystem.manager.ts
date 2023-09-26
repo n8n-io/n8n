@@ -1,3 +1,9 @@
+/**
+ * @tech_debt The `workflowId` arguments on write are for compatibility with the
+ * `BinaryData.Manager` interface. Unused in filesystem mode until we refactor
+ * how we store binary data files in the `/binaryData` dir.
+ */
+
 import { createReadStream } from 'fs';
 import fs from 'fs/promises';
 import path from 'path';
@@ -25,18 +31,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		return this.resolvePath(fileId);
 	}
 
-	async getSize(fileId: string) {
-		const filePath = this.getPath(fileId);
-
-		try {
-			const stats = await fs.stat(filePath);
-			return stats.size;
-		} catch (error) {
-			throw new Error('Failed to find binary data file in filesystem', { cause: error });
-		}
-	}
-
-	getAsStream(fileId: string, chunkSize?: number) {
+	async getAsStream(fileId: string, chunkSize?: number) {
 		const filePath = this.getPath(fileId);
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
@@ -59,14 +54,15 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async store(
-		binaryData: Buffer | Readable,
+		_workflowId: string,
 		executionId: string,
+		bufferOrStream: Buffer | Readable,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = this.createFileId(executionId);
 		const filePath = this.getPath(fileId);
 
-		await fs.writeFile(filePath, binaryData);
+		await fs.writeFile(filePath, bufferOrStream);
 
 		const fileSize = await this.getSize(fileId);
 
@@ -102,8 +98,9 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async copyByFilePath(
-		filePath: string,
+		_workflowId: string,
 		executionId: string,
+		filePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
 		const newFileId = this.createFileId(executionId);
@@ -117,7 +114,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId: newFileId, fileSize };
 	}
 
-	async copyByFileId(fileId: string, executionId: string) {
+	async copyByFileId(_workflowId: string, executionId: string, fileId: string) {
 		const newFileId = this.createFileId(executionId);
 
 		await fs.copyFile(this.resolvePath(fileId), this.resolvePath(newFileId));
@@ -157,5 +154,16 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(`${fileId}.metadata`);
 
 		await fs.writeFile(filePath, JSON.stringify(metadata), { encoding: 'utf-8' });
+	}
+
+	private async getSize(fileId: string) {
+		const filePath = this.getPath(fileId);
+
+		try {
+			const stats = await fs.stat(filePath);
+			return stats.size;
+		} catch (error) {
+			throw new Error('Failed to find binary data file in filesystem', { cause: error });
+		}
 	}
 }

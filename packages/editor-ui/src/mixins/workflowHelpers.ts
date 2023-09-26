@@ -878,8 +878,6 @@ export const workflowHelpers = defineComponent({
 
 				const workflowDataRequest: IWorkflowDataUpdate =
 					data || (await this.getWorkflowDataToSave());
-				// make sure that the new ones are not active
-				workflowDataRequest.active = false;
 				const changedNodes = {} as IDataObject;
 
 				if (resetNodeIds) {

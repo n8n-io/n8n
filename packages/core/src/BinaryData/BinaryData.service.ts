@@ -35,21 +35,33 @@ export class BinaryDataService {
 	}
 
 	@LogCatch((error) => Logger.error('Failed to copy binary data file', { error }))
-	async copyBinaryFile(binaryData: IBinaryData, path: string, executionId: string) {
+	async copyBinaryFile(
+		workflowId: string,
+		executionId: string,
+		binaryData: IBinaryData,
+		filePath: string,
+	) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
-			const { size } = await stat(path);
+			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
-			binaryData.data = await readFile(path, { encoding: BINARY_ENCODING });
+			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.copyByFilePath(path, executionId, {
+		const metadata = {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-		});
+		};
+
+		const { fileId, fileSize } = await manager.copyByFilePath(
+			workflowId,
+			executionId,
+			filePath,
+			metadata,
+		);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
@@ -59,7 +71,12 @@ export class BinaryDataService {
 	}
 
 	@LogCatch((error) => Logger.error('Failed to write binary data file', { error }))
-	async store(binaryData: IBinaryData, bufferOrStream: Buffer | Readable, executionId: string) {
+	async store(
+		workflowId: string,
+		executionId: string,
+		bufferOrStream: Buffer | Readable,
+		binaryData: IBinaryData,
+	) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
@@ -70,10 +87,17 @@ export class BinaryDataService {
 			return binaryData;
 		}
 
-		const { fileId, fileSize } = await manager.store(bufferOrStream, executionId, {
+		const metadata = {
 			fileName: binaryData.fileName,
 			mimeType: binaryData.mimeType,
-		});
+		};
+
+		const { fileId, fileSize } = await manager.store(
+			workflowId,
+			executionId,
+			bufferOrStream,
+			metadata,
+		);
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
@@ -89,7 +113,7 @@ export class BinaryDataService {
 		});
 	}
 
-	getAsStream(binaryDataId: string, chunkSize?: number) {
+	async getAsStream(binaryDataId: string, chunkSize?: number) {
 		const [mode, fileId] = binaryDataId.split(':');
 
 		return this.getManager(mode).getAsStream(fileId, chunkSize);
@@ -128,7 +152,11 @@ export class BinaryDataService {
 	@LogCatch((error) =>
 		Logger.error('Failed to copy all binary data files for execution', { error }),
 	)
-	async duplicateBinaryData(inputData: Array<INodeExecutionData[] | null>, executionId: string) {
+	async duplicateBinaryData(
+		workflowId: string,
+		executionId: string,
+		inputData: Array<INodeExecutionData[] | null>,
+	) {
 		if (inputData && this.managers[this.mode]) {
 			const returnInputData = (inputData as INodeExecutionData[][]).map(
 				async (executionDataArray) => {
@@ -136,7 +164,7 @@ export class BinaryDataService {
 						return Promise.all(
 							executionDataArray.map(async (executionData) => {
 								if (executionData.binary) {
-									return this.duplicateBinaryDataInExecData(executionData, executionId);
+									return this.duplicateBinaryDataInExecData(workflowId, executionId, executionData);
 								}
 
 								return executionData;
@@ -174,8 +202,9 @@ export class BinaryDataService {
 	}
 
 	private async duplicateBinaryDataInExecData(
-		executionData: INodeExecutionData,
+		workflowId: string,
 		executionId: string,
+		executionData: INodeExecutionData,
 	) {
 		const manager = this.managers[this.mode];
 
@@ -193,7 +222,7 @@ export class BinaryDataService {
 
 				const [_mode, fileId] = binaryDataId.split(':');
 
-				return manager?.copyByFileId(fileId, executionId).then((newFileId) => ({
+				return manager?.copyByFileId(workflowId, executionId, fileId).then((newFileId) => ({
 					newId: this.createBinaryDataId(newFileId),
 					key,
 				}));

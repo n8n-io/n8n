@@ -16,36 +16,34 @@ export namespace BinaryData {
 		fileSize: number;
 	};
 
+	export type WriteResult = { fileId: string; fileSize: number };
+
 	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
 	export interface Manager {
 		init(): Promise<void>;
 
 		store(
-			binaryData: Buffer | Readable,
+			workflowId: string,
 			executionId: string,
-			preStoreMetadata: PreWriteMetadata,
-		): Promise<{ fileId: string; fileSize: number }>;
+			bufferOrStream: Buffer | Readable,
+			metadata: PreWriteMetadata,
+		): Promise<WriteResult>;
 
 		getPath(fileId: string): string;
 		getAsBuffer(fileId: string): Promise<Buffer>;
-		getAsStream(fileId: string, chunkSize?: number): Readable;
+		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
-		// @TODO: Refactor to also use `workflowId` to support full path-like identifier:
-		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
+		copyByFileId(workflowId: string, executionId: string, fileId: string): Promise<string>;
 		copyByFilePath(
-			path: string,
+			workflowId: string,
 			executionId: string,
+			filePath: string,
 			metadata: PreWriteMetadata,
-		): Promise<{ fileId: string; fileSize: number }>;
-
-		copyByFileId(fileId: string, prefix: string): Promise<string>;
+		): Promise<WriteResult>;
 
 		deleteOne(fileId: string): Promise<void>;
-
-		// @TODO: Refactor to also receive `workflowId` to support full path-like identifier:
-		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
 		deleteManyByExecutionIds(executionIds: string[]): Promise<string[]>;
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
