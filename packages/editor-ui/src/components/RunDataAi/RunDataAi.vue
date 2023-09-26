@@ -1,11 +1,6 @@
 <template>
-	<div v-if="aiData" :class="{ [$style.container]: true }">
+	<div v-if="aiData" :class="$style.container">
 		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
-			<p
-				:class="$style.title"
-				v-text="$locale.baseText('ndv.output.ai.logTree')"
-				v-if="hideTitle === false"
-			/>
 			<el-tree
 				:data="executionTree"
 				:props="{ label: 'node' }"
@@ -64,25 +59,35 @@
 
 <script lang="ts" setup>
 import type { Ref } from 'vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
+import { ElTree } from 'element-plus';
 
 interface AIResult {
 	node: string;
 	runIndex: number;
 	data: IAiDataContent | undefined;
 }
-
-const props = defineProps<{
+interface TreeNode {
+	node: string;
+	id: string;
+	children: TreeNode[];
+	depth: number;
+	startTime: number;
+	runIndex: number;
+}
+export interface Props {
 	node: INodeUi;
+	runIndex: number;
 	hideTitle?: boolean;
 	slim?: boolean;
-}>();
+}
+const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const selectedRun: Ref<IAiData[]> = ref([]);
@@ -176,14 +181,13 @@ function getNodeType(nodeName: string) {
 
 	return nodeType;
 }
-interface TreeNode {
-	node: string;
-	id: string;
-	children: TreeNode[];
-	depth: number;
-	startTime: number;
-	runIndex: number;
+
+function selectFirst() {
+	if (executionTree.value.length && executionTree.value[0].children.length) {
+		onItemClick(executionTree.value[0].children[0]);
+	}
 }
+
 const createNode = (
 	nodeName: string,
 	currentDepth: number,
@@ -231,7 +235,7 @@ const aiData = computed<AIResult[] | undefined>(() => {
 		return;
 	}
 
-	const subRun = resultData[resultData.length - 1].metadata?.subRun;
+	const subRun = resultData[props.runIndex].metadata?.subRun;
 	if (!Array.isArray(subRun)) {
 		return;
 	}
@@ -256,12 +260,7 @@ const executionTree = computed<TreeNode[]>(() => {
 	return tree || [];
 });
 
-onMounted(() => {
-	// Automatically set the first child as active
-	if (executionTree.value.length && executionTree.value[0].children.length) {
-		onItemClick(executionTree.value[0].children[0]);
-	}
-});
+watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
 
 <style lang="scss" module>

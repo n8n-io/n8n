@@ -23,22 +23,7 @@
 		<template #header>
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
-					<n8n-select
-						:class="$style.outputTypeSelect"
-						teleported
-						size="medium"
-						v-model="outputMode"
-						:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
-						:placeholder="$locale.baseText('ndv.input.parentNodes')"
-						data-test-id="ndv-output-view-select"
-					>
-						<n8n-option
-							v-for="outputType in outputTypes"
-							:key="outputType.value"
-							:value="outputType.value"
-							:label="outputType.name"
-						/>
-					</n8n-select>
+					<n8n-radio-buttons :options="outputTypes" v-model="outputMode" />
 				</template>
 				<span :class="$style.title" v-else>
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
@@ -97,7 +82,7 @@
 			</n8n-text>
 		</template>
 
-		<template #content v-if="outputMode === 'ai'">
+		<template #content v-if="outputMode === 'logs'">
 			<run-data-ai :node="node" />
 		</template>
 		<template #recovered-artificial-output-data>
@@ -141,8 +126,8 @@ export default defineComponent({
 		return {
 			outputMode: 'regular',
 			outputTypes: [
-				{ name: this.$locale.baseText('ndv.output.outType.ai'), value: 'ai' },
-				{ name: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
+				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
+				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: 'logs' },
 			],
 		};
 	},
@@ -324,8 +309,8 @@ export default defineComponent({
 <style lang="scss" module>
 // The items count and displayModes are rendered in the RunData component
 // this is a workaround to hide it in the output panel(for ai type) to not add unnecessary one-time props
-:global([data-output-type='ai'] [class*='itemsCount']),
-:global([data-output-type='ai'] [class*='displayModes']) {
+:global([data-output-type='logs'] [class*='itemsCount']),
+:global([data-output-type='logs'] [class*='displayModes']) {
 	display: none;
 }
 .outputTypeSelect {
