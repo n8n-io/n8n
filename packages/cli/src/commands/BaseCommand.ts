@@ -9,7 +9,7 @@ import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { inTest } from '@/constants';
+import { LICENSE_FEATURES, inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
@@ -22,6 +22,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { ExternalStorageUnavailableError, ExternalStorageUnlicensedError } from '@/errors';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -106,18 +107,27 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initObjectStoreService() {
-		const isNeeded = config.get('binaryDataManager.availableModes').includes('s3');
+		const isSelected = config.get('binaryDataManager.mode') === 's3';
 
-		if (!isNeeded) return;
+		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
 
-		// @TODO: Re-enable later
-		// if (
-		// 	config.get('binaryDataManager.mode') === 's3' &&
-		// 	!Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3)
-		// ) {
-		// 	throw new BinaryDataS3NotLicensedError();
-		// }
+		if (!isSelected && !isAvailable) return;
 
+		if (isSelected && !isAvailable) throw new ExternalStorageUnavailableError();
+
+		if (!isSelected && isAvailable) {
+			await this._initObjectStoreService();
+			return;
+		}
+
+		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+
+		if (isSelected && isAvailable && !isLicensed) throw new ExternalStorageUnlicensedError();
+
+		await this._initObjectStoreService();
+	}
+
+	private async _initObjectStoreService() {
 		const objectStoreService = Container.get(ObjectStoreService);
 
 		const bucket = {
