@@ -1424,7 +1424,7 @@ export class Server extends AbstractServer {
 		// Binary data
 		// ----------------------------------------
 
-		// Download binary
+		// View or download binary file
 		this.app.get(
 			`/${this.restEndpoint}/data`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
