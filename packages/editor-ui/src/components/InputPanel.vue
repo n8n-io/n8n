@@ -55,13 +55,11 @@
 					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
-				<el-switch
+				<n8n-radio-buttons
 					v-if="isActiveNodeConfig && !readOnly"
-					:class="$style.mappingSwitch"
-					:modelValue="isMappingMode"
-					@update:modelValue="onMappingModeChange"
-					active-text="Mapping"
-					inactive-text="Debugging"
+					:options="inputModes"
+					:modelValue="inputMode"
+					@update:modelValue="onInputModeChange"
 				/>
 			</div>
 		</template>
@@ -79,8 +77,7 @@
 					@click.stop
 					teleported
 				>
-					<template #prepend>{{ $locale.baseText('ndv.input.parentNodes') }}</template>
-					<!-- v-for="option in maxRunIndex + 1" -->
+					<template #prepend>{{ $locale.baseText('ndv.input.previousNodes') }}</template>
 					<n8n-option
 						v-for="nodeName in rootNodesParents"
 						:key="nodeName"
@@ -178,6 +175,8 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
+type MappingMode = 'debugging' | 'mapping';
+
 export default defineComponent({
 	name: 'InputPanel',
 	mixins: [workflowHelpers],
@@ -211,8 +210,12 @@ export default defineComponent({
 		return {
 			showDraggableHintWithDelay: false,
 			draggableHintShown: false,
-			isMappingMode: false,
+			inputMode: 'mapping' as MappingMode,
 			mappedNode: null as string | null,
+			inputModes: [
+				{ value: 'mapping', label: this.$locale.baseText('ndv.input.mapping') },
+				{ value: 'debugging', label: this.$locale.baseText('ndv.input.debugging') },
+			],
 		};
 	},
 	computed: {
@@ -222,6 +225,9 @@ export default defineComponent({
 		},
 		isUserOnboarded(): boolean {
 			return this.ndvStore.isMappingOnboarded;
+		},
+		isMappingMode(): boolean {
+			return this.isActiveNodeConfig && this.inputMode === 'mapping';
 		},
 		showDraggableHint(): boolean {
 			const toIgnore = [
@@ -367,9 +373,9 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		onMappingModeChange(val: boolean) {
-			this.isMappingMode = val;
-			if (!val) {
+		onInputModeChange(val: MappingMode) {
+			this.inputMode = val;
+			if (val === 'debugging') {
 				this.mappedNode = null;
 			}
 		},
@@ -487,7 +493,7 @@ export default defineComponent({
 		margin-right: var(--spacing-2xs);
 	}
 }
-.mappingSwitch {
+.inputModeTab {
 	margin-left: auto;
 }
 .noOutputData {

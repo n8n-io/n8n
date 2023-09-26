@@ -743,10 +743,6 @@ export default defineComponent({
 				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
-			// const isNonMainConnection = this.connectionType !== 'main';
-			// if (this.isPaneTypeInput && isNonMainConnection) {
-			// 	defaults.unshift({ label: 'Mapper', value: 'mapper' });
-			// }
 			return defaults;
 		},
 		hasNodeRun(): boolean {

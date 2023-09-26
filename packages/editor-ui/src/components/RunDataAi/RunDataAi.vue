@@ -1,11 +1,6 @@
 <template>
 	<div v-if="aiData" :class="$style.container">
 		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
-			<p
-				:class="$style.title"
-				v-text="$locale.baseText('ndv.output.ai.logTree')"
-				v-if="hideTitle === false"
-			/>
 			<el-tree
 				:data="executionTree"
 				:props="{ label: 'node' }"
