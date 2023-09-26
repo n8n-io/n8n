@@ -1474,9 +1474,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize({
-				uniqueInstanceId: this.uniqueInstanceId,
-			});
+			await eventBus.initialize();
 		}
 
 		if (this.endpointPresetCredentials !== '') {
