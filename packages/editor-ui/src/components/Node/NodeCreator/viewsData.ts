@@ -26,6 +26,7 @@ import {
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
+	AI_CATEGORY_EMBEDDING,
 } from '@/constants';
 import { useI18n } from '@/composables';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -165,6 +166,15 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					title: AI_CATEGORY_TOOLS,
 					icon: 'tools',
 					...getAISubcategoryProperties(NodeConnectionType.AiTool),
+				},
+			},
+			{
+				key: AI_CATEGORY_EMBEDDING,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_EMBEDDING,
+					icon: 'vector-square',
+					...getAISubcategoryProperties(NodeConnectionType.AiEmbedding),
 				},
 			},
 			{

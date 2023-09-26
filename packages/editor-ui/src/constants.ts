@@ -204,7 +204,7 @@ export const AI_CATEGORY_OUTPUTPARSER = 'Output Parsers';
 export const AI_CATEGORY_TOOLS = 'Tools';
 export const AI_CATEGORY_VECTOR_STORES = 'Vector Stores';
 export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
-export const AI_CATEGORY_EMBEDDING = 'Embedding';
+export const AI_CATEGORY_EMBEDDING = 'Embeddings';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 

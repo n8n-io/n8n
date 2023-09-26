@@ -6,21 +6,20 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-
-import { ChatAnthropic } from 'langchain/chat_models/anthropic';
+import { ChatGooglePaLM } from 'langchain/chat_models/googlepalm';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class LmChatAnthropic implements INodeType {
+export class LmChatGooglePalm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Chat Anthropic',
+		displayName: 'Google PaLM Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
-		name: 'lmChatAnthropic',
-		icon: 'file:anthropic.svg',
+		name: 'lmChatGooglePalm',
+		icon: 'file:google.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Language Model Anthropic',
+		description: 'Chat Model Google PaLM',
 		defaults: {
-			name: 'Chat Anthropic',
+			name: 'Google PaLM Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -30,7 +29,7 @@ export class LmChatAnthropic implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatanthropic/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglepalm/',
 					},
 				],
 			},
@@ -42,28 +41,68 @@ export class LmChatAnthropic implements INodeType {
 		outputNames: ['Model'],
 		credentials: [
 			{
-				name: 'anthropicApi',
+				name: 'googlePalmApi',
 				required: true,
 			},
 		],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL: '={{ $credentials.host }}',
+		},
 		properties: [
 			{
 				displayName: 'Model',
-				name: 'model',
+				name: 'modelName',
 				type: 'options',
-				options: [
-					{
-						name: 'Claude',
-						value: 'claude-2',
-					},
-					{
-						name: 'Claude Instant',
-						value: 'claude-instant-1',
-					},
-				],
 				description:
-					'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/reference/selecting-a-model">Learn more</a>.',
-				default: 'claude-2',
+					'The model which will generate the completion. <a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list">Learn more</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/v1beta3/models',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'models',
+										},
+									},
+									{
+										type: 'filter',
+										properties: {
+											pass: "={{ $responseItem.name.startsWith('models/chat') }}",
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.name}}',
+											value: '={{$responseItem.name}}',
+											description: '={{$responseItem.description}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				default: 'models/chat-bison-001',
 			},
 			{
 				displayName: 'Options',
@@ -73,13 +112,6 @@ export class LmChatAnthropic implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
-					{
-						displayName: 'Maximum Number of Tokens',
-						name: 'maxTokensToSample',
-						default: 32768,
-						description: 'The maximum number of tokens to generate in the completion',
-						type: 'number',
-					},
 					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
@@ -92,7 +124,7 @@ export class LmChatAnthropic implements INodeType {
 					{
 						displayName: 'Top K',
 						name: 'topK',
-						default: -1,
+						default: 40,
 						typeOptions: { maxValue: 1, minValue: -1, numberPrecision: 1 },
 						description:
 							'Used to remove "long tail" low probability responses. Defaults to -1, which disables it.',
@@ -101,7 +133,7 @@ export class LmChatAnthropic implements INodeType {
 					{
 						displayName: 'Top P',
 						name: 'topP',
-						default: 1,
+						default: 0.9,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 						description:
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
@@ -113,16 +145,13 @@ export class LmChatAnthropic implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const credentials = await this.getCredentials('anthropicApi');
+		const credentials = await this.getCredentials('googlePalmApi');
 
-		const itemIndex = 0;
+		const modelName = this.getNodeParameter('modelName', 0) as string;
+		const options = this.getNodeParameter('options', 0, {}) as object;
 
-		// TODO: Should it get executed once per item or not?
-		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
-
-		const model = new ChatAnthropic({
-			anthropicApiKey: credentials.apiKey as string,
+		const model = new ChatGooglePaLM({
+			apiKey: credentials.apiKey as string,
 			modelName,
 			...options,
 		});
