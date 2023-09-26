@@ -5,11 +5,11 @@ import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml } from './utils';
-import { ExternalStorageRequestFailed } from './errors';
+import { ObjectStore } from './errors';
 
 import type { AxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
-import type { ListPage, ObjectStore, RawListPage } from './types';
+import type { Bucket, ListPage, RawListPage, RequestOptions } from './types';
 import type { Readable } from 'stream';
 import type { BinaryData } from '..';
 
@@ -19,11 +19,14 @@ import type { BinaryData } from '..';
 export class ObjectStoreService {
 	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
 
-	private bucket: ObjectStore.Bucket = { region: '', name: '' };
+	private bucket: Bucket = { region: '', name: '' };
+
+	private isReadOnly = false;
 
 	async init(
 		bucket: { region: string; name: string },
 		credentials: { accountId: string; secretKey: string },
+		options?: { isReadOnly: boolean },
 	) {
 		this.bucket = bucket;
 
@@ -31,6 +34,8 @@ export class ObjectStoreService {
 			accessKeyId: credentials.accountId,
 			secretAccessKey: credentials.secretKey,
 		};
+
+		if (options?.isReadOnly) this.isReadOnly = true;
 
 		await this.checkConnection();
 	}
@@ -54,6 +59,8 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
+		if (this.isReadOnly) throw new ObjectStore.WriteBlockedError(filename);
+
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
@@ -205,7 +212,7 @@ export class ObjectStoreService {
 		method: Method,
 		host: string,
 		rawPath = '',
-		{ qs, headers, body, responseType }: ObjectStore.RequestOptions = {},
+		{ qs, headers, body, responseType }: RequestOptions = {},
 	) {
 		const path = this.toPath(rawPath, qs);
 
@@ -234,7 +241,7 @@ export class ObjectStoreService {
 		try {
 			return await axios.request<T>(config);
 		} catch (error) {
-			throw new ExternalStorageRequestFailed(error, config);
+			throw new ObjectStore.RequestFailedError(error, config);
 		}
 	}
 }

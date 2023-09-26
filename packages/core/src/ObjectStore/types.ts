@@ -22,13 +22,11 @@ type Item = {
 
 export type ListPage = Omit<RawListPage['listBucketResult'], 'contents'> & { contents: Item[] };
 
-export namespace ObjectStore {
-	export type Bucket = { region: string; name: string };
+export type Bucket = { region: string; name: string };
 
-	export type RequestOptions = {
-		qs?: Record<string, string | number>;
-		headers?: Record<string, string | number>;
-		body?: string | Buffer;
-		responseType?: ResponseType;
-	};
-}
+export type RequestOptions = {
+	qs?: Record<string, string | number>;
+	headers?: Record<string, string | number>;
+	body?: string | Buffer;
+	responseType?: ResponseType;
+};

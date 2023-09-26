@@ -22,7 +22,6 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
-import { ExternalStorageUnavailableError } from '@/errors';
 import { generateHostInstanceId } from '../databases/utils/generators';
 
 export abstract class BaseCommand extends Command {
@@ -141,25 +140,25 @@ export abstract class BaseCommand extends Command {
 		}
 
 		if (isSelected && isAvailable && !isLicensed) {
-			// allow reads from anywhere, block writes to S3
-			await this._initObjectStoreService(); // @TODO
+			// allow reads from anywhere, block writes to s3
+			await this._initObjectStoreService({ isReadOnly: true });
 			return;
 		}
 
 		if (!isSelected && isAvailable) {
-			// allow reads from anywhere, writes do not go to S3
+			// allow reads from anywhere, no writes to S3 will occur
 			await this._initObjectStoreService();
 			return;
 		}
 
-		if (!isSelected && !isAvailable) return;
-
 		if (isSelected && !isAvailable) {
-			throw new ExternalStorageUnavailableError();
+			throw new Error(
+				'External storage selected but unavailable. Please make external storage available, e.g. `export N8N_AVAILABLE_BINARY_DATA_MODES=filesystem,s3`',
+			);
 		}
 	}
 
-	private async _initObjectStoreService() {
+	private async _initObjectStoreService(options = { isReadOnly: false }) {
 		const objectStoreService = Container.get(ObjectStoreService);
 
 		const bucket = {
@@ -172,7 +171,7 @@ export abstract class BaseCommand extends Command {
 			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
 		};
 
-		await objectStoreService.init(bucket, credentials);
+		await objectStoreService.init(bucket, credentials, options);
 	}
 
 	async initBinaryDataService() {
