@@ -248,8 +248,8 @@ export class Worker extends BaseCommand {
 		};
 	}
 
-	constructor(argv: string[], config: IConfig) {
-		super(argv, config);
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
 		this.setInstanceType('worker');
 		this.setInstanceQueueModeId();
 	}

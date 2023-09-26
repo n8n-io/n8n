@@ -9,7 +9,6 @@ import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
 import { handleWorkerResponseMessage } from '../../../src/services/orchestration/handleWorkerResponseMessage';
 import { handleCommandMessage } from '../../../src/services/orchestration/handleCommandMessage';
-import { License } from '../../../src/License';
 
 const os = Container.get(OrchestrationService);
 

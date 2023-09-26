@@ -66,8 +66,8 @@ export class Start extends BaseCommand {
 
 	protected server = new Server();
 
-	constructor(argv: string[], config: IConfig) {
-		super(argv, config);
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
 		this.setInstanceType('main');
 		this.setInstanceQueueModeId();
 	}
@@ -205,7 +205,7 @@ export class Start extends BaseCommand {
 
 		this.logger.info('Initializing n8n process');
 		if (config.getEnv('executions.mode') === 'queue') {
-			this.logger.debug(`Main Instance running in queue mode`);
+			this.logger.debug('Main Instance running in queue mode');
 			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
 		}
 
