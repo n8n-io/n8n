@@ -896,7 +896,7 @@ export const schema = {
 	binaryDataManager: {
 		availableModes: {
 			format: 'comma-separated-list',
-			default: 'filesystem',
+			default: 'filesystem,s3',
 			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
@@ -915,13 +915,6 @@ export const schema = {
 	},
 
 	externalStorage: {
-		enabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_EXTERNAL_OBJECT_STORAGE_ENABLED',
-			doc: 'Whether the external object storage feature is enabled',
-		},
-
 		s3: {
 			// @TODO: service name
 			bucket: {

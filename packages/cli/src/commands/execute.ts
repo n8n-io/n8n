@@ -33,6 +33,7 @@ export class Execute extends BaseCommand {
 
 	async init() {
 		await super.init();
+		await this.initObjectStoreService();
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 	}

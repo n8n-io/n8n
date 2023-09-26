@@ -17,16 +17,22 @@ import type { BinaryData } from '..';
 
 @Service()
 export class ObjectStoreService {
-	private credentials: Aws4Credentials;
+	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
 
-	constructor(
-		private bucket: { region: string; name: string },
+	private bucket: ObjectStore.Bucket = { region: '', name: '' };
+
+	async init(
+		bucket: { region: string; name: string },
 		credentials: { accountId: string; secretKey: string },
 	) {
+		this.bucket = bucket;
+
 		this.credentials = {
 			accessKeyId: credentials.accountId,
 			secretAccessKey: credentials.secretKey,
 		};
+
+		await this.checkConnection();
 	}
 
 	get host() {

@@ -96,7 +96,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
 		const prefixes = ids.map(
-			(o) => `/workflows/${o.workflowId}/executions/${o.executionId}/binary_data/`,
+			({ workflowId, executionId }) =>
+				`workflows/${workflowId}/executions/${executionId}/binary_data/`,
 		);
 
 		await Promise.all(
@@ -107,7 +108,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	async rename() {
-		throw new Error('TODO');
+		throw new Error('TODO'); // @TODO
 	}
 
 	// ----------------------------------
@@ -115,7 +116,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	// ----------------------------------
 
 	private toFileId(workflowId: string, executionId: string) {
-		return `/workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 	}
 
 	private async toBuffer(bufferOrStream: Buffer | Readable) {

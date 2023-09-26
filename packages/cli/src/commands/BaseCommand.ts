@@ -3,13 +3,13 @@ import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, UserSettings } from 'n8n-core';
+import { BinaryDataService, ObjectStoreService, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { inTest } from '@/constants';
+import { LICENSE_FEATURES, inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
@@ -22,6 +22,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { BinaryDataS3NotLicensedError } from '../errors';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -103,6 +104,33 @@ export abstract class BaseCommand extends Command {
 		ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
 		await sleep(2000);
 		process.exit(1);
+	}
+
+	async initObjectStoreService() {
+		const isS3Enabled =
+			config.get('binaryDataManager.mode') === 's3' &&
+			config.get('binaryDataManager.availableModes').includes('s3');
+
+		if (!isS3Enabled) return;
+
+		// @TODO: Re-enable later
+		if (false || !Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3)) {
+			throw new BinaryDataS3NotLicensedError();
+		}
+
+		const objectStoreService = Container.get(ObjectStoreService);
+
+		const bucket = {
+			name: config.getEnv('externalStorage.s3.bucket.name'),
+			region: config.getEnv('externalStorage.s3.bucket.region'),
+		};
+
+		const credentials = {
+			accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
+			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
+		};
+
+		await objectStoreService.init(bucket, credentials);
 	}
 
 	async initBinaryDataService() {
