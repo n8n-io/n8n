@@ -114,16 +114,19 @@ export abstract class BaseCommand extends Command {
 		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 
 		if (isSelected && isAvailable && isLicensed) {
+			// allow reads from anywhere, allow writes to S3
 			await this._initObjectStoreService();
 			return;
 		}
 
 		if (isSelected && isAvailable && !isLicensed) {
-			await this._initObjectStoreService(); // @TODO: readonly mode, block writes
+			// allow reads from anywhere, block writes to S3
+			await this._initObjectStoreService(); // @TODO
 			return;
 		}
 
 		if (!isSelected && isAvailable) {
+			// allow reads from anywhere, writes do not go to S3
 			await this._initObjectStoreService();
 			return;
 		}
