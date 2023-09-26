@@ -107,6 +107,8 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initObjectStoreService() {
+		if (inTest) return; // @TODO: Only for worker.cmd.test.ts
+
 		const isSelected = config.get('binaryDataManager.mode') === 's3';
 
 		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
