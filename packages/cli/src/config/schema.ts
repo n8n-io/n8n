@@ -1142,7 +1142,6 @@ export const schema = {
 			doc: 'Unique ID for this n8n instance, is usually set automatically by n8n during startup',
 			format: String,
 			default: '',
-			env: 'N8N_QUEUE_MODE_ID',
 		},
 	},
 
