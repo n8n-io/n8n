@@ -46,7 +46,7 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 			httpNodeClone.description.displayName = nodeName;
 
 			httpNodeClone.description.defaults.name = `${nodeName} HTTP Request`;
-			httpNodeClone.description.description = 'Make raw HTTP request';
+			httpNodeClone.description.description = 'HTTP request';
 			httpNodeClone.description.codex.categories = ['Core Variant Nodes'];
 			httpNodeClone.description.codex.alias = [];
 			httpNodeClone.description.codex.subcategories = {
