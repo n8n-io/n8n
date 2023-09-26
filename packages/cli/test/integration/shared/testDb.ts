@@ -528,6 +528,10 @@ export async function getAllWorkflows() {
 	return Db.collections.Workflow.find();
 }
 
+export async function getAllExecutions() {
+	return Db.collections.Execution.find();
+}
+
 // ----------------------------------
 //        workflow sharing
 // ----------------------------------

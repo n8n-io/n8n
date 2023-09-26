@@ -6,7 +6,7 @@ import path from 'path';
 
 describe('Test Write Binary File Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataManager();
+		await Helpers.initBinaryDataService();
 	});
 
 	const temporaryDir = Helpers.createTemporaryDir();

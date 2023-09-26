@@ -121,7 +121,7 @@
 			}
 		]
 	},
-	"alias": ["JSON", "Filter", "Transform", "Map"],
+	"alias": ["JSON", "Filter", "Transform", "Map", "Set"],
 	"subcategories": {
 		"Core Nodes": ["Data Transformation"]
 	}
