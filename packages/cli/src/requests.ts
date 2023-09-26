@@ -491,10 +491,11 @@ export declare namespace LicenseRequest {
 }
 
 export type BinaryDataRequest = AuthenticatedRequest<
-	{ path: string },
+	{},
 	{},
 	{},
 	{
+		id: string;
 		action: 'view' | 'download';
 		fileName?: string;
 		mimeType?: string;

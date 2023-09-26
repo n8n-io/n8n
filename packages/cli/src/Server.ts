@@ -1426,11 +1426,11 @@ export class Server extends AbstractServer {
 
 		// Download binary
 		this.app.get(
-			`/${this.restEndpoint}/data/:path`,
+			`/${this.restEndpoint}/data`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				const { path: binaryDataId } = req.params;
+				const { id: binaryDataId, action } = req.query;
+				let { fileName, mimeType } = req.query;
 				const [mode] = binaryDataId.split(':') as ['filesystem' | 's3', string];
-				let { action, fileName, mimeType } = req.query;
 
 				try {
 					const binaryPath = this.binaryDataService.getPath(binaryDataId);
@@ -1451,7 +1451,7 @@ export class Server extends AbstractServer {
 					}
 
 					if (mode === 's3') {
-						const readStream = await this.binaryDataService.getAsStream(binaryPath);
+						const readStream = await this.binaryDataService.getAsStream(binaryDataId);
 						readStream.pipe(res);
 						return;
 					} else {
