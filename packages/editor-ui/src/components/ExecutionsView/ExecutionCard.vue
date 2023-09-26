@@ -158,7 +158,7 @@ export default defineComponent({
 	&:hover,
 	&.active {
 		.executionLink {
-			background-color: var(--color-foreground-light);
+			background-color: var(--color-foreground-xdark);
 		}
 	}
 
