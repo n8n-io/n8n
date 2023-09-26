@@ -19,8 +19,10 @@ const toMultipleDeletionXml = (filename: string) => `<Delete>
 describe('ObjectStoreService', () => {
 	let objectStoreService: ObjectStoreService;
 
-	beforeEach(() => {
-		objectStoreService = new ObjectStoreService(MOCK_BUCKET, MOCK_CREDENTIALS);
+	beforeEach(async () => {
+		objectStoreService = new ObjectStoreService();
+		mockAxios.request.mockResolvedValueOnce({ status: 200 }); // for checkConnection
+		await objectStoreService.init(MOCK_BUCKET, MOCK_CREDENTIALS);
 		jest.restoreAllMocks();
 	});
 
