@@ -23,6 +23,7 @@ import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { ExternalStorageUnavailableError } from '@/errors';
+import { generateHostInstanceId } from '../databases/utils/generators';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -36,6 +37,10 @@ export abstract class BaseCommand extends Command {
 	protected userSettings: IUserSettings;
 
 	protected instanceId: string;
+
+	instanceType: N8nInstanceType = 'main';
+
+	queueModeId: string;
 
 	protected server?: AbstractServer;
 
@@ -82,6 +87,22 @@ export abstract class BaseCommand extends Command {
 		this.instanceId = this.userSettings.instanceId ?? '';
 		await Container.get(PostHogClient).init(this.instanceId);
 		await Container.get(InternalHooks).init(this.instanceId);
+	}
+
+	protected setInstanceType(instanceType: N8nInstanceType) {
+		this.instanceType = instanceType;
+		config.set('generic.instanceType', instanceType);
+	}
+
+	protected setInstanceQueueModeId() {
+		if (config.getEnv('executions.mode') === 'queue') {
+			if (config.get('redis.queueModeId')) {
+				this.queueModeId = config.get('redis.queueModeId');
+				return;
+			}
+			this.queueModeId = generateHostInstanceId(this.instanceType);
+			config.set('redis.queueModeId', this.queueModeId);
+		}
 	}
 
 	protected async stopProcess() {
@@ -164,11 +185,9 @@ export abstract class BaseCommand extends Command {
 		await this.externalHooks.init();
 	}
 
-	async initLicense(instanceType: N8nInstanceType = 'main'): Promise<void> {
-		config.set('generic.instanceType', instanceType);
-
+	async initLicense(): Promise<void> {
 		const license = Container.get(License);
-		await license.init(this.instanceId, instanceType);
+		await license.init(this.instanceId, this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 

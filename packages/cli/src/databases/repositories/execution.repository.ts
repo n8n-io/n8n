@@ -521,9 +521,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
 
-		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
-
 		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
+
+		if (executionIds.length === 0) {
+			this.logger.debug('Found no executions to hard-delete from database');
+			return;
+		}
+
+		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,
