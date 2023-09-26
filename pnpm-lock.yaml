@@ -200,6 +200,9 @@ importers:
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
+      '@oclif/config':
+        specifier: ^1.18.17
+        version: 1.18.17
       '@oclif/core':
         specifier: ^1.16.4
         version: 1.16.6
@@ -471,9 +474,6 @@ importers:
       '@apidevtools/swagger-cli':
         specifier: 4.0.0
         version: 4.0.0
-      '@oclif/config':
-        specifier: ^1.18.17
-        version: 1.18.17
       '@oclif/dev-cli':
         specifier: ^1.22.2
         version: 1.26.10
@@ -968,7 +968,7 @@ importers:
     dependencies:
       '@oclif/command':
         specifier: ^1.5.18
-        version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+        version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
       '@oclif/errors':
         specifier: ^1.2.2
         version: 1.3.6
@@ -4785,22 +4785,6 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
-
-  /@oclif/command@1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1):
-    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
-    engines: {node: '>=12.0.0'}
-    peerDependencies:
-      '@oclif/config': ^1
-    dependencies:
-      '@oclif/config': 1.18.5(supports-color@8.1.1)
-      '@oclif/errors': 1.3.6
-      '@oclif/help': 1.0.3(supports-color@8.1.1)
-      '@oclif/parser': 3.8.8
-      debug: 4.3.4(supports-color@8.1.1)
-      semver: 7.5.4
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
 
   /@oclif/config@1.18.17:
     resolution: {integrity: sha512-k77qyeUvjU8qAJ3XK3fr/QVAqsZO8QOBuESnfeM5HHtPNLSyfVcwiMM2zveSW5xRdLSG3MfV8QnLVkuyCL2ENg==}
