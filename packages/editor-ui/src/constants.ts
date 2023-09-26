@@ -1,4 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -210,6 +211,14 @@ export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
+
+// Node Connection Types
+export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.AiTool,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.Main,
+];
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
