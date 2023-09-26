@@ -106,14 +106,15 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initObjectStoreService() {
-		const isS3Enabled =
-			config.get('binaryDataManager.mode') === 's3' &&
-			config.get('binaryDataManager.availableModes').includes('s3');
+		const isS3Required = config.get('binaryDataManager.availableModes').includes('s3');
 
-		if (!isS3Enabled) return;
+		if (!isS3Required) return;
 
 		// @TODO: Re-enable later
-		// if (!Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3)) {
+		// if (
+		// 	config.get('binaryDataManager.mode') === 's3' &&
+		// 	!Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3)
+		// ) {
 		// 	throw new BinaryDataS3NotLicensedError();
 		// }
 
