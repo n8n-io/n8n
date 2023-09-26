@@ -31,6 +31,7 @@
 						:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 						:placeholder="$locale.baseText('ndv.input.parentNodes')"
 						data-test-id="ndv-output-view-select"
+						@update:modelValue="onUpdateOutputMode"
 					>
 						<n8n-option
 							v-for="outputType in outputTypes"
@@ -130,6 +131,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import RunDataAi from './RunDataAi/RunDataAi.vue';
+import { ndvEventBus } from '@/event-bus';
 
 type RunDataRef = InstanceType<typeof RunData>;
 
@@ -316,6 +318,13 @@ export default defineComponent({
 		},
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
+		},
+		onUpdateOutputMode(outputMode: 'regular' | 'ai') {
+			if (outputMode === 'ai') {
+				ndvEventBus.emit('setPositionByName', 'minLeft');
+			} else {
+				ndvEventBus.emit('setPositionByName', 'initial');
+			}
 		},
 	},
 });
