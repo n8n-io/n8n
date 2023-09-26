@@ -394,6 +394,7 @@ export const enum VIEWS {
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
+	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
 	SIGNOUT = 'SignoutView',

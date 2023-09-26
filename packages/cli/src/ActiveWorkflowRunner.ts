@@ -417,7 +417,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				}
 
 				try {
-					await this.removeWorkflowWebhooks(workflow.id as string);
+					await this.removeWorkflowWebhooks(workflow.id);
 				} catch (error1) {
 					ErrorReporter.error(error1);
 					Logger.error(

@@ -1,5 +1,4 @@
 import type { Readable } from 'stream';
-import type { BinaryMetadata } from 'n8n-workflow';
 import type { BINARY_DATA_MODES } from './utils';
 
 export namespace BinaryData {
@@ -11,34 +10,42 @@ export namespace BinaryData {
 		localStoragePath: string;
 	};
 
+	export type Metadata = {
+		fileName?: string;
+		mimeType?: string;
+		fileSize: number;
+	};
+
+	export type WriteResult = { fileId: string; fileSize: number };
+
+	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
+
 	export interface Manager {
 		init(): Promise<void>;
 
-		store(binaryData: Buffer | Readable, executionId: string): Promise<string>;
-		getPath(identifier: string): string;
+		store(
+			workflowId: string,
+			executionId: string,
+			bufferOrStream: Buffer | Readable,
+			metadata: PreWriteMetadata,
+		): Promise<WriteResult>;
 
-		// @TODO: Refactor to use identifier
-		getSize(path: string): Promise<number>;
+		getPath(fileId: string): string;
+		getAsBuffer(fileId: string): Promise<Buffer>;
+		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
+		getMetadata(fileId: string): Promise<Metadata>;
 
-		getBuffer(identifier: string): Promise<Buffer>;
-		getStream(identifier: string, chunkSize?: number): Readable;
+		copyByFileId(workflowId: string, executionId: string, fileId: string): Promise<string>;
+		copyByFilePath(
+			workflowId: string,
+			executionId: string,
+			filePath: string,
+			metadata: PreWriteMetadata,
+		): Promise<WriteResult>;
 
-		// @TODO: Refactor out - not needed for object storage
-		storeMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
-
-		// @TODO: Refactor out - not needed for object storage
-		getMetadata(identifier: string): Promise<BinaryMetadata>;
-
-		// @TODO: Refactor to also use `workflowId` to support full path-like identifier:
-		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
-		copyByPath(path: string, executionId: string): Promise<string>;
-
-		copyByIdentifier(identifier: string, prefix: string): Promise<string>;
-
-		deleteOne(identifier: string): Promise<void>;
-
-		// @TODO: Refactor to also receive `workflowId` to support full path-like identifier:
-		// `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
+		deleteOne(fileId: string): Promise<void>;
 		deleteManyByExecutionIds(executionIds: string[]): Promise<string[]>;
+
+		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
 }
