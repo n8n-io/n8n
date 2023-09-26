@@ -210,7 +210,7 @@ export default defineComponent({
 		return {
 			showDraggableHintWithDelay: false,
 			draggableHintShown: false,
-			inputMode: 'mapping' as MappingMode,
+			inputMode: 'debugging' as MappingMode,
 			mappedNode: null as string | null,
 			inputModes: [
 				{ value: 'mapping', label: this.$locale.baseText('ndv.input.mapping') },
