@@ -9,11 +9,7 @@ import type { BinaryData } from './types';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
-	private readonly objectStoreService: ObjectStoreService;
-
-	constructor() {
-		this.objectStoreService = Container.get(ObjectStoreService); // @TODO: Inject
-	}
+	constructor(private readonly objectStoreService = Container.get(ObjectStoreService)) {}
 
 	async init() {
 		await this.objectStoreService.checkConnection();
