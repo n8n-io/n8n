@@ -37,7 +37,12 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 			const hasSupportedNodes = knownCredentials[credential.name]?.supportedNodes?.length > 0;
 			const httpIcon = httpNode.description.iconUrl;
 			const httpNodeClone = new httpNode.constructor().getNodeType(version);
-			const { docsUrl, apiBaseUrl, name: nodeName } = credentialType.httpRequestNodeVariant;
+			const {
+				docsUrl,
+				apiBaseUrl,
+				apiBaseUrlPlaceholder,
+				name: nodeName,
+			} = credentialType.httpRequestNodeVariant;
 
 			httpNodeClone.hidden = hasSupportedNodes;
 			httpNodeClone.description.codex = httpNode.description.codex;
@@ -71,7 +76,8 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 						return {
 							...prop,
 							default: apiBaseUrl,
-							placeholder: apiBaseUrl ? `e.g. ${apiBaseUrl}` : prop.placeholder,
+							placeholder:
+								apiBaseUrlPlaceholder ?? (apiBaseUrl ? `e.g. ${apiBaseUrl}` : prop.placeholder),
 						};
 					default:
 						return prop;

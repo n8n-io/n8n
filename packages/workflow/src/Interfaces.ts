@@ -324,7 +324,8 @@ export interface ICredentialTestRequestData {
 
 export interface ICredentialHttpRequestNodeVariant {
 	docsUrl: string;
-	apiBaseUrl: string;
+	apiBaseUrl?: string;
+	apiBaseUrlPlaceholder?: string;
 }
 
 export interface ICredentialType {

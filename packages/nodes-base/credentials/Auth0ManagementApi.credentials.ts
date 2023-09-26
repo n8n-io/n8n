@@ -19,7 +19,7 @@ export class Auth0ManagementApi implements ICredentialType {
 	httpRequestNodeVariant = {
 		name: 'Auth0',
 		docsUrl: 'https://auth0.com/docs/api/management/v2',
-		apiBaseUrl: 'https://@@TENANT@@.auth0.com/api/v2/users/',
+		apiBaseUrlPlaceholder: 'https://your-tenant.auth0.com/api/v2/users/',
 	};
 
 	properties: INodeProperties[] = [
