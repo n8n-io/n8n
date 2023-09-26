@@ -12,7 +12,7 @@ import type { VectorStore } from 'langchain/vectorstores/base';
 
 export class ChainVectorStoreQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store QA Chain',
+		displayName: 'Q&A Chain from Vector Store',
 		name: 'chainVectorStoreQa',
 		icon: 'fa:link',
 		group: ['transform'],

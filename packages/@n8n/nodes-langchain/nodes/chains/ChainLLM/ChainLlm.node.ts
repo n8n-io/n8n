@@ -55,14 +55,14 @@ async function getChain(context: IExecuteFunctions, query: string): Promise<unkn
 
 export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LLM Chain',
+		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
 		description: 'A simple chain to prompt LLM',
 		defaults: {
-			name: 'LLM Chain',
+			name: 'Basic LLM Chain',
 			color: '#909298',
 		},
 		codex: {
