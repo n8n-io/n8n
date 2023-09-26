@@ -77,7 +77,7 @@
 					@click.stop
 					teleported
 				>
-					<template #prepend>{{ $locale.baseText('ndv.input.previousNodes') }}</template>
+					<template #prepend>{{ $locale.baseText('ndv.input.previousNode') }}</template>
 					<n8n-option
 						v-for="nodeName in rootNodesParents"
 						:key="nodeName"
@@ -375,15 +375,12 @@ export default defineComponent({
 	methods: {
 		onInputModeChange(val: MappingMode) {
 			this.inputMode = val;
-			if (val === 'debugging') {
-				this.mappedNode = null;
-			}
 		},
 		onMappedNodeSelected(val: string) {
 			this.mappedNode = val;
 
-			this.onUnlinkRun();
 			this.onRunIndexChange(0);
+			this.onUnlinkRun();
 		},
 		getMultipleNodesText(nodeName?: string): string {
 			if (
@@ -456,6 +453,15 @@ export default defineComponent({
 		},
 	},
 	watch: {
+		inputMode: {
+			handler(val) {
+				this.onRunIndexChange(0);
+				this.onUnlinkRun();
+
+				this.mappedNode = val === 'mapping' ? this.rootNodesParents[0] : null;
+			},
+			immediate: true,
+		},
 		showDraggableHint(curr: boolean, prev: boolean) {
 			if (curr && !prev) {
 				setTimeout(() => {

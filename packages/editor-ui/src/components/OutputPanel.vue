@@ -126,8 +126,8 @@ export default defineComponent({
 		return {
 			outputMode: 'regular',
 			outputTypes: [
-				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: 'logs' },
 				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
+				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: 'logs' },
 			],
 		};
 	},
