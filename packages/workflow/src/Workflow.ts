@@ -56,7 +56,7 @@ function dedupe<T>(arr: T[]): T[] {
 }
 
 export class Workflow {
-	id: string | undefined;
+	id: string;
 
 	name: string | undefined;
 
@@ -92,7 +92,7 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id;
+		this.id = parameters.id as string;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;

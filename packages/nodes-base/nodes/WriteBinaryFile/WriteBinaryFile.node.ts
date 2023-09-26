@@ -91,7 +91,7 @@ export class WriteBinaryFile implements INodeType {
 
 				let fileContent: Buffer | Readable;
 				if (binaryData.id) {
-					fileContent = this.helpers.getBinaryStream(binaryData.id);
+					fileContent = await this.helpers.getBinaryStream(binaryData.id);
 				} else {
 					fileContent = Buffer.from(binaryData.data, BINARY_ENCODING);
 				}
