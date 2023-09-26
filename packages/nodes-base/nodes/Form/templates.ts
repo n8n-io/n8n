@@ -259,6 +259,24 @@ input[type="date"] {
 	vertical-align: middle;
 }
 
+input[type="checkbox"] {
+	-webkit-appearance: none;
+	appearance: none;
+	margin: 0;
+	display: grid;
+	place-content: center;
+}
+
+input[type="checkbox"]::before {
+	color: #FF6D5A;
+	width: 18px;
+	height: 18px;
+}
+
+input[type="checkbox"]:checked::before {
+	content: '\u2713';
+}
+
 .multiselect-option:hover {
 	background-color: #f5f5f5;
 }
