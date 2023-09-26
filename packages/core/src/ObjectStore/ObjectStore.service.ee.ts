@@ -5,6 +5,7 @@ import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml } from './utils';
+import { ExternalStorageRequestFailed } from './errors';
 
 import type { AxiosRequestConfig, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
@@ -28,15 +29,17 @@ export class ObjectStoreService {
 		};
 	}
 
+	get host() {
+		return `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
+	}
+
 	/**
 	 * Confirm that the configured bucket exists and the caller has permission to access it.
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
 	async checkConnection() {
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-
-		return this.request('HEAD', host);
+		return this.request('HEAD', this.host);
 	}
 
 	/**
@@ -45,8 +48,6 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
@@ -55,7 +56,7 @@ export class ObjectStoreService {
 		if (metadata.fileName) headers['x-amz-meta-filename'] = metadata.fileName;
 		if (metadata.mimeType) headers['Content-Type'] = metadata.mimeType;
 
-		return this.request('PUT', host, `/${filename}`, { headers, body: buffer });
+		return this.request('PUT', this.host, `/${filename}`, { headers, body: buffer });
 	}
 
 	/**
@@ -66,9 +67,7 @@ export class ObjectStoreService {
 	async get(path: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
 	async get(path: string, { mode }: { mode: 'stream' }): Promise<Readable>;
 	async get(path: string, { mode }: { mode: 'stream' | 'buffer' }) {
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-
-		const { data } = await this.request('GET', host, path, {
+		const { data } = await this.request('GET', this.host, path, {
 			responseType: mode === 'buffer' ? 'arraybuffer' : 'stream',
 		});
 
@@ -85,8 +84,6 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
 	async getMetadata(path: string) {
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-
 		type Response = {
 			headers: {
 				'content-length': string;
@@ -95,7 +92,7 @@ export class ObjectStoreService {
 			} & Record<string, string | number>;
 		};
 
-		const response: Response = await this.request('HEAD', host, path);
+		const response: Response = await this.request('HEAD', this.host, path);
 
 		return response.headers;
 	}
@@ -106,9 +103,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
 	async deleteOne(path: string) {
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-
-		return this.request('DELETE', host, `/${encodeURIComponent(path)}`);
+		return this.request('DELETE', this.host, `/${encodeURIComponent(path)}`);
 	}
 
 	/**
@@ -118,8 +113,6 @@ export class ObjectStoreService {
 	 */
 	async deleteMany(prefix: string) {
 		const objects = await this.list(prefix);
-
-		const host = `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 
 		const innerXml = objects.map(({ key }) => `<Object><Key>${key}</Key></Object>`).join('\n');
 
@@ -131,7 +124,7 @@ export class ObjectStoreService {
 			'Content-MD5': createHash('md5').update(body).digest('base64'),
 		};
 
-		return this.request('POST', host, '/?delete', { headers, body });
+		return this.request('POST', this.host, '/?delete', { headers, body });
 	}
 
 	/**
@@ -143,16 +136,16 @@ export class ObjectStoreService {
 		const items = [];
 
 		let isTruncated;
-		let token; // for next page
+		let nextPageToken;
 
 		do {
-			const listPage = await this.getListPage(prefix, token);
+			const listPage = await this.getListPage(prefix, nextPageToken);
 
 			if (listPage.contents?.length > 0) items.push(...listPage.contents);
 
 			isTruncated = listPage.isTruncated;
-			token = listPage.nextContinuationToken;
-		} while (isTruncated && token);
+			nextPageToken = listPage.nextContinuationToken;
+		} while (isTruncated && nextPageToken);
 
 		return items;
 	}
@@ -161,27 +154,25 @@ export class ObjectStoreService {
 	 * Fetch a page of objects with a common prefix in the configured bucket. Max 1000 per page.
 	 */
 	async getListPage(prefix: string, nextPageToken?: string) {
-		const host = `s3.${this.bucket.region}.amazonaws.com`;
+		const bucketlessHost = this.host.split('.').slice(1).join('.');
 
 		const qs: Record<string, string | number> = { 'list-type': 2, prefix };
 
 		if (nextPageToken) qs['continuation-token'] = nextPageToken;
 
-		const response = await this.request('GET', host, `/${this.bucket.name}`, { qs });
+		const { data } = await this.request('GET', bucketlessHost, `/${this.bucket.name}`, { qs });
 
-		if (typeof response.data !== 'string') {
-			throw new TypeError('Expected string');
+		if (typeof data !== 'string') {
+			throw new TypeError(`Expected XML string but received ${typeof data}`);
 		}
 
-		const { listBucketResult: page } = await parseXml<RawListPage>(response.data);
+		const { listBucketResult: page } = await parseXml<RawListPage>(data);
 
 		if (!page.contents) return { ...page, contents: [] };
 
-		// restore array wrapper removed by `explicitArray: false` on single item array
+		// `explicitArray: false` removes array wrapper on single item array, so restore it
 
-		if (!Array.isArray(page.contents)) {
-			page.contents = [page.contents];
-		}
+		if (!Array.isArray(page.contents)) page.contents = [page.contents];
 
 		// remove null prototype - https://github.com/Leonidas-from-XIV/node-xml2js/issues/670
 
@@ -192,13 +183,13 @@ export class ObjectStoreService {
 		return page as ListPage;
 	}
 
-	private toRequestPath(rawPath: string, qs?: Record<string, string | number>) {
+	private toPath(rawPath: string, qs?: Record<string, string | number>) {
 		const path = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
 
 		if (!qs) return path;
 
-		const qsParams = Object.keys(qs)
-			.map((key) => `${key}=${qs[key]}`)
+		const qsParams = Object.entries(qs)
+			.map(([key, value]) => `${key}=${value}`)
 			.join('&');
 
 		return path.concat(`?${qsParams}`);
@@ -210,7 +201,7 @@ export class ObjectStoreService {
 		rawPath = '',
 		{ qs, headers, body, responseType }: ObjectStore.RequestOptions = {},
 	) {
-		const path = this.toRequestPath(rawPath, qs);
+		const path = this.toPath(rawPath, qs);
 
 		const optionsToSign: Aws4Options = {
 			method,
@@ -237,9 +228,7 @@ export class ObjectStoreService {
 		try {
 			return await axios.request<T>(config);
 		} catch (error) {
-			throw new Error('Request to external object storage failed', {
-				cause: { error: error as unknown, details: config },
-			});
+			throw new ExternalStorageRequestFailed(error, config);
 		}
 	}
 }
