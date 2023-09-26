@@ -15,8 +15,7 @@ export class LmChatAnthropic implements INodeType {
 		displayName: 'Chat Anthropic',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatAnthropic',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:anthropic.png',
+		icon: 'file:anthropic.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Language Model Anthropic',
