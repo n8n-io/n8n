@@ -18,7 +18,7 @@ const emit = defineEmits<{
 		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['versionId'] },
 	): void;
 	(event: 'preview', value: { event: Event; id: WorkflowHistory['versionId'] }): void;
-	(event: 'autoScroll', value: { offsetTop: number }): void;
+	(event: 'mounted', value: { index: number; offsetTop: number; active: boolean }): void;
 }>();
 
 const i18n = useI18n();
@@ -67,9 +67,11 @@ const onItemClick = (event: Event) => {
 };
 
 onMounted(() => {
-	if (props.active && itemElement.value) {
-		emit('autoScroll', { offsetTop: itemElement.value.offsetTop });
-	}
+	emit('mounted', {
+		index: props.index,
+		offsetTop: itemElement.value?.offsetTop ?? 0,
+		active: props.active,
+	});
 });
 </script>
 <template>

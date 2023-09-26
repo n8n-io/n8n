@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
-import { onBeforeMount, watchEffect } from 'vue';
+import { onBeforeMount, ref, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
@@ -30,9 +30,11 @@ const router = useRouter();
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
+const takeItemsAtOnce = ref(20);
+
 onBeforeMount(async () => {
 	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
-		take: 20,
+		take: takeItemsAtOnce.value,
 	});
 	workflowHistoryStore.addWorkflowHistory(history);
 
@@ -138,6 +140,8 @@ watchEffect(async () => {
 			:items="workflowHistoryStore.workflowHistory"
 			:active-item="workflowHistoryStore.workflowVersion"
 			:action-types="workflowHistoryActionTypes"
+			:watch-nth-item-from-end="5"
+			:take-items-at-once="takeItemsAtOnce"
 			@action="onAction"
 			@preview="onPreview"
 			@load-more="loadMore"
