@@ -20,7 +20,16 @@ export class ManualChatTrigger implements INodeType {
 			name: 'On new manual Chat Message',
 			color: '#909298',
 		},
-
+		codex: {
+			categories: ['AI'],
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.manualchattrigger/',
+					},
+				],
+			},
+		},
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
 		properties: [

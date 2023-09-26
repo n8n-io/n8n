@@ -26,6 +26,13 @@ export class DocumentGithubLoader implements INodeType {
 			subcategories: {
 				AI: ['Document Loaders'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentgithubloader/',
+					},
+				],
+			},
 		},
 		credentials: [
 			{
