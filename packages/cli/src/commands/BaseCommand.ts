@@ -106,9 +106,9 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initObjectStoreService() {
-		const isS3Required = config.get('binaryDataManager.availableModes').includes('s3');
+		const isNeeded = config.get('binaryDataManager.availableModes').includes('s3');
 
-		if (!isS3Required) return;
+		if (!isNeeded) return;
 
 		// @TODO: Re-enable later
 		// if (
