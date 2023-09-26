@@ -125,7 +125,7 @@ export class FormTrigger implements INodeType {
 								name: 'dateFormat',
 								type: 'options',
 								default: 'en-GB',
-								description: 'You can use expression to specify required locale, e.g. de-DE',
+								description: 'Use an expression to set the locale for date formatting, e.g. de-DE',
 								options: [
 									{
 										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -202,7 +202,7 @@ export class FormTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Respond',
+				displayName: 'Respond When',
 				name: 'responseMode',
 				type: 'options',
 				options: [
@@ -214,11 +214,11 @@ export class FormTrigger implements INodeType {
 					{
 						name: 'Workflow Finishes',
 						value: 'lastNode',
-						description: 'Returns data of the last-executed node',
+						description: 'When the last node of the workflow is executed',
 					},
 				],
 				default: 'onReceived',
-				description: 'When and how to respond to the form submission',
+				description: 'When to respond to the form submission',
 			},
 			{
 				displayName: 'Respond With',
@@ -256,7 +256,7 @@ export class FormTrigger implements INodeType {
 				name: 'redirectUrl',
 				type: 'string',
 				default: '',
-				placeholder: 'https://example.com',
+				placeholder: 'e.g. https://example.com',
 				displayOptions: {
 					show: {
 						respondWith: ['redirect'],
