@@ -2,6 +2,7 @@ import type Redis from 'ioredis';
 import type { Cluster } from 'ioredis';
 import { getDefaultRedisClient } from './RedisServiceHelper';
 import { LoggerProxy } from 'n8n-workflow';
+import config from '@/config';
 
 export type RedisClientType =
 	| 'subscriber'
@@ -57,8 +58,9 @@ class RedisServiceBase {
 export abstract class RedisServiceBaseSender extends RedisServiceBase {
 	senderId: string;
 
-	setSenderId(senderId?: string): void {
-		this.senderId = senderId ?? '';
+	async init(type: RedisClientType = 'client'): Promise<void> {
+		await super.init(type);
+		this.senderId = config.get('redis.queueModeId');
 	}
 }
 
