@@ -9,7 +9,7 @@ import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { LICENSE_FEATURES, inTest } from '@/constants';
+import { inTest } from '@/constants';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
@@ -22,7 +22,6 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
-import { BinaryDataS3NotLicensedError } from '../errors';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -114,9 +113,9 @@ export abstract class BaseCommand extends Command {
 		if (!isS3Enabled) return;
 
 		// @TODO: Re-enable later
-		if (false || !Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3)) {
-			throw new BinaryDataS3NotLicensedError();
-		}
+		// if (!Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3)) {
+		// 	throw new BinaryDataS3NotLicensedError();
+		// }
 
 		const objectStoreService = Container.get(ObjectStoreService);
 

@@ -107,8 +107,10 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		);
 	}
 
-	async rename() {
-		throw new Error('TODO'); // @TODO
+	async rename(oldFileId: string, newFileId: string) {
+		const oldFile = await this.objectStoreService.get(oldFileId, { mode: 'buffer' });
+
+		await this.objectStoreService.put(newFileId, oldFile);
 	}
 
 	// ----------------------------------
