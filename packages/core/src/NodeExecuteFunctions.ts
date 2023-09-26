@@ -1024,6 +1024,7 @@ export async function copyBinaryFile(
 	fileName: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
+	console.log('[x] filePath', filePath);
 	let fileExtension: string | undefined;
 	if (!mimeType) {
 		// If no mime type is given figure it out

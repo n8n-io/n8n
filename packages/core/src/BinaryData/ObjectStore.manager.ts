@@ -1,9 +1,8 @@
+import fs from 'node:fs/promises';
 import Container, { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
-import { FileSystemManager } from './FileSystem.manager';
 import { toBuffer } from './utils';
 import { ObjectStoreService } from '../ObjectStore/ObjectStore.service.ee';
-
 import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
 
@@ -30,7 +29,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	getPath(fileId: string) {
-		return fileId; // already full path
+		return fileId; // already full path, no transform needed
 	}
 
 	async getAsBuffer(fileId: string) {
@@ -67,23 +66,20 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	/**
-	 * Create a copy of a file in the filesystem. Used by Webhook, FTP, SSH nodes.
-	 *
-	 * This delegates to FS manager because the object store manager does not support
-	 * storage and access of user-written data, only execution-written data.
+	 * Copy to object store the temp file written by nodes like Webhook, FTP, and SSH.
 	 */
 	async copyByFilePath(
 		workflowId: string,
 		executionId: string,
-		filePath: string,
+		sourceFilePath: string,
 		metadata: BinaryData.PreWriteMetadata,
 	) {
-		return Container.get(FileSystemManager).copyByFilePath(
-			workflowId,
-			executionId,
-			filePath,
-			metadata,
-		);
+		const targetFileId = this.toFileId(workflowId, executionId);
+		const sourceFile = await fs.readFile(sourceFilePath);
+
+		await this.objectStoreService.put(targetFileId, sourceFile, metadata);
+
+		return { fileId: targetFileId, fileSize: sourceFile.length };
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
@@ -110,6 +106,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	// ----------------------------------
 
 	private toFileId(workflowId: string, executionId: string) {
+		if (!executionId) executionId = 'temp'; // missing in edge case, see PR #7244
+
 		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 	}
 

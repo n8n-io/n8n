@@ -41,7 +41,7 @@ export namespace BinaryData {
 		copyByFilePath(
 			workflowId: string,
 			executionId: string,
-			filePath: string,
+			sourceFilePath: string,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
 

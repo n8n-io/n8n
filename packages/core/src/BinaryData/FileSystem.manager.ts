@@ -91,18 +91,19 @@ export class FileSystemManager implements BinaryData.Manager {
 	async copyByFilePath(
 		_workflowId: string,
 		executionId: string,
-		filePath: string,
+		sourceFilePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const newFileId = this.toFileId(executionId);
+		const targetFileId = this.toFileId(executionId);
+		const targetFilePath = this.getPath(targetFileId);
 
-		await fs.cp(filePath, this.getPath(newFileId));
+		await fs.cp(sourceFilePath, targetFilePath);
 
-		const fileSize = await this.getSize(newFileId);
+		const fileSize = await this.getSize(targetFileId);
 
-		await this.storeMetadata(newFileId, { mimeType, fileName, fileSize });
+		await this.storeMetadata(targetFileId, { mimeType, fileName, fileSize });
 
-		return { fileId: newFileId, fileSize };
+		return { fileId: targetFileId, fileSize };
 	}
 
 	async copyByFileId(_workflowId: string, executionId: string, sourceFileId: string) {
