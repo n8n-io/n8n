@@ -1,4 +1,4 @@
-import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
+import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
@@ -50,6 +50,9 @@ export class License {
 		const saveCertStr = isMainInstance
 			? async (value: TLicenseBlock) => this.saveCertStr(value)
 			: async () => {};
+		const onFeatureChange = isMainInstance
+			? async (features: TFeatures) => this.onFeatureChange(features)
+			: async () => {};
 
 		try {
 			this.manager = new LicenseManager({
@@ -64,6 +67,7 @@ export class License {
 				loadCertStr: async () => this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => instanceId,
+				onFeatureChange,
 			});
 
 			await this.manager.initialize();
@@ -89,6 +93,18 @@ export class License {
 		return databaseSettings?.value ?? '';
 	}
 
+	async onFeatureChange(_features: TFeatures): Promise<void> {
+		if (config.getEnv('executions.mode') === 'queue') {
+			if (!this.redisPublisher) {
+				this.logger.debug('Initializing Redis publisher for License Service');
+				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
+			}
+			await this.redisPublisher.publishToCommandChannel({
+				command: 'reloadLicense',
+			});
+		}
+	}
+
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
 		// if we have an ephemeral license, we don't want to save it to the database
 		if (config.get('license.cert')) return;
@@ -100,15 +116,6 @@ export class License {
 			},
 			['key'],
 		);
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (!this.redisPublisher) {
-				this.logger.debug('Initializing Redis publisher for License Service');
-				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
-			}
-			await this.redisPublisher.publishToCommandChannel({
-				command: 'reloadLicense',
-			});
-		}
 	}
 
 	async activate(activationKey: string): Promise<void> {
