@@ -291,7 +291,7 @@ export default defineComponent({
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition as number,
+						relativeRight: this.maximumRightPosition,
 					},
 				});
 				return;
