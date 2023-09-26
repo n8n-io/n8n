@@ -108,7 +108,7 @@ export const PERMISSIONS: IUserPermissions = {
 	PRIMARY_MENU: {
 		CAN_ACCESS_USER_INFO: {
 			allow: {
-				loginStatus: [LOGIN_STATUS.LoggedIn],
+				role: [ROLE.Owner],
 			},
 			deny: {
 				role: [ROLE.Default],

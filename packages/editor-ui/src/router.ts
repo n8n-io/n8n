@@ -512,7 +512,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							role: [ROLE.Default],
@@ -569,7 +569,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
+							role: [ROLE.Owner],
 						},
 						deny: {
 							shouldDeny: () => {
@@ -693,7 +693,7 @@ export const routes = [
 					},
 					permissions: {
 						allow: {
-							loginStatus: [LOGIN_STATUS.LoggedIn],
+							role: [ROLE.Owner],
 						},
 					},
 				},

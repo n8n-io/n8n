@@ -9,3 +9,12 @@ pnpm install
 pnpm run build
 pnpm start
 ```
+
+## Hiding UI components
+
+To hide or change the visibility conditions of the sidebar elements, start your research with a file `packages/editor-ui/src/components/MainSidebar.vue`.
+You can use `v-if` attribute to control visibility of elements and use any property from `computed` object as value. In `computed` you can refer to different stores (packages/editor-ui/src/stores).
+
+To control access to routes, refer to `packages/editor-ui/src/router.ts`.
+
+Some expressions use `frontendSettings` (search for `this.frontendSettings =` in `packages/cli/src/Server.ts`). Many of these params obtain its value from configuration - `packages/cli/src/config/schema.ts`.
