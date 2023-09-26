@@ -1591,6 +1591,7 @@ export class WorkflowExecute {
 		} else {
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
+			fullRunData.status = 'success';
 		}
 
 		// Check if static data changed
