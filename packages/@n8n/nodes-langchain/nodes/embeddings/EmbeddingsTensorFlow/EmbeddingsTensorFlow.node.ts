@@ -6,7 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
-import * as tf from '@tensorflow/tfjs-node';
+import '@tensorflow/tfjs-backend-cpu';
 import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -46,7 +46,6 @@ export class EmbeddingsTensorFlow implements INodeType {
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings tensorflow');
-		await tf.setBackend('tensorflow');
 		const embeddings = new TensorFlowEmbeddings({ maxConcurrency: Infinity });
 
 		return {

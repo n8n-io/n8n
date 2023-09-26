@@ -53,6 +53,7 @@ export class ConversationalAgent implements INodeType {
 						'@n8n/nodes-langchain.lmChatAnthropic',
 						'@n8n/nodes-langchain.lmChatOllama',
 						'@n8n/nodes-langchain.lmChatOpenAi',
+						'@n8n/nodes-langchain.lmChatGooglePalm',
 					],
 				},
 				required: true,
