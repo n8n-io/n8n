@@ -45,7 +45,6 @@ export namespace BinaryData {
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
 
-		deleteOne(fileId: string): Promise<void>;
 		deleteMany(ids: IdsForDeletion): Promise<void>;
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;

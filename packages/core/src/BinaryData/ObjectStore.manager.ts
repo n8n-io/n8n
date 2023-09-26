@@ -86,10 +86,6 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		);
 	}
 
-	async deleteOne(fileId: string) {
-		await this.objectStoreService.deleteOne(fileId);
-	}
-
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
 		const prefixes = ids.map(
 			({ workflowId, executionId }) =>

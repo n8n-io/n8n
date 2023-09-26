@@ -104,7 +104,7 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * Delete an object in the configured bucket.
+	 * Delete a single object in the configured bucket.
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */

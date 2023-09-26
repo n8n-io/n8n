@@ -71,12 +71,6 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId, fileSize };
 	}
 
-	async deleteOne(fileId: string) {
-		const filePath = this.getPath(fileId);
-
-		return fs.rm(filePath);
-	}
-
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
 		const executionIds = ids.map((o) => o.executionId);
 
