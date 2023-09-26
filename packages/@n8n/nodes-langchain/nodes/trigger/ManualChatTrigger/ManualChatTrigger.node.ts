@@ -31,6 +31,16 @@ export class ManualChatTrigger implements INodeType {
 				type: 'notice',
 				default: '',
 			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Chat and execute workflow',
+				name: 'openChat',
+				type: 'button',
+				typeOptions: {
+					action: 'openChat',
+				},
+				default: '',
+			},
 		],
 	};
 

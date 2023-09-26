@@ -1032,6 +1032,7 @@ export interface INodeParameters {
 
 export type NodePropertyTypes =
 	| 'boolean'
+	| 'button'
 	| 'collection'
 	| 'color'
 	| 'dateTime'
@@ -1072,6 +1073,7 @@ export interface ILoadOptions {
 }
 
 export interface INodePropertyTypeOptions {
+	action?: string; // Supported by: button
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string

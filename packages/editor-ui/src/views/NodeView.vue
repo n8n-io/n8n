@@ -4464,6 +4464,7 @@ export default defineComponent({
 		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.on('openChat', this.onOpenChat);
 		historyBus.on('nodeMove', this.onMoveNode);
 		historyBus.on('revertAddNode', this.onRevertAddNode);
 		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
@@ -4489,6 +4490,7 @@ export default defineComponent({
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('openChat', this.onOpenChat);
 		historyBus.off('nodeMove', this.onMoveNode);
 		historyBus.off('revertAddNode', this.onRevertAddNode);
 		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
