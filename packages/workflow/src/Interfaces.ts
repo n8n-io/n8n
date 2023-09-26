@@ -687,7 +687,7 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryPath(binaryDataId: string): string;
-	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
+	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
 	getBinaryMetadata(binaryDataId: string): Promise<{
 		fileName?: string;
 		mimeType?: string;
@@ -1816,6 +1816,10 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+}
+
+export interface WorkflowFEMeta {
+	onboardingId?: string;
 }
 
 export interface WorkflowTestData {
