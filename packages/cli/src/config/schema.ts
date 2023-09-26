@@ -627,7 +627,13 @@ export const schema = {
 				format: Boolean,
 				default: true,
 				env: 'N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS',
-				doc: 'Whether to include metrics for events. Default: false',
+				doc: 'Whether to include metrics for events. Default: true',
+			},
+			includeQueueMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_QUEUE_METRICS',
+				doc: 'Whether to include metrics for queue-mode. Default: true',
 			},
 		},
 		rest: {
