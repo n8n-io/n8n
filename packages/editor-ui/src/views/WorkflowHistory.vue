@@ -123,12 +123,12 @@ watchEffect(async () => {
 <template>
 	<div :class="$style.view">
 		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
-			{{ workflowHistoryStore.workflowVersion?.workflow.name }}
+			{{ workflowHistoryStore.workflowVersion?.workflow?.name }}
 		</n8n-heading>
 		<div :class="$style.corner">
-			<n8n-heading tag="h2" size="medium" bold>{{
-				i18n.baseText('workflowHistory.title')
-			}}</n8n-heading>
+			<n8n-heading tag="h2" size="medium" bold>
+				{{ i18n.baseText('workflowHistory.title') }}
+			</n8n-heading>
 			<n8n-button type="tertiary" icon="times" size="small" text square />
 		</div>
 		<workflow-history-content
