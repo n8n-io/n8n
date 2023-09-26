@@ -22,7 +22,7 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
-import { ExternalStorageUnavailableError, ExternalStorageUnlicensedError } from '@/errors';
+import { ExternalStorageUnavailableError } from '@/errors';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -110,23 +110,29 @@ export abstract class BaseCommand extends Command {
 		if (inTest) return; // @TODO: Only for worker.cmd.test.ts
 
 		const isSelected = config.get('binaryDataManager.mode') === 's3';
-
 		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 
-		if (!isSelected && !isAvailable) return;
+		if (isSelected && isAvailable && isLicensed) {
+			await this._initObjectStoreService();
+			return;
+		}
 
-		if (isSelected && !isAvailable) throw new ExternalStorageUnavailableError();
+		if (isSelected && isAvailable && !isLicensed) {
+			await this._initObjectStoreService(); // @TODO: readonly mode, block writes
+			return;
+		}
 
 		if (!isSelected && isAvailable) {
 			await this._initObjectStoreService();
 			return;
 		}
 
-		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+		if (!isSelected && !isAvailable) return;
 
-		if (isSelected && isAvailable && !isLicensed) throw new ExternalStorageUnlicensedError();
-
-		await this._initObjectStoreService();
+		if (isSelected && !isAvailable) {
+			throw new ExternalStorageUnavailableError();
+		}
 	}
 
 	private async _initObjectStoreService() {
