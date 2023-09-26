@@ -5,7 +5,7 @@ import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
-import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
+import { UnknownBinaryDataManagerError, InvalidBinaryDataModeError } from './errors';
 import { LogCatch } from '../decorators/LogCatch.decorator';
 import { areValidModes, toBuffer } from './utils';
 
@@ -20,7 +20,7 @@ export class BinaryDataService {
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataMode();
+		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataModeError();
 
 		this.mode = config.mode;
 
@@ -249,6 +249,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new UnknownBinaryDataManager(mode);
+		throw new UnknownBinaryDataManagerError(mode);
 	}
 }
