@@ -3,7 +3,7 @@
 		:nodeUi="currentNode"
 		:runIndex="runIndex"
 		:linkedRuns="linkedRuns"
-		:canLinkRuns="canLinkRuns"
+		:canLinkRuns="!mappedNode && canLinkRuns"
 		:tooMuchDataTitle="$locale.baseText('ndv.input.tooMuchData.title')"
 		:noDataInBranchMessage="$locale.baseText('ndv.input.noOutputDataInBranch')"
 		:isExecuting="isExecutingPrevious"
@@ -55,9 +55,41 @@
 					</n8n-option>
 				</n8n-select>
 				<span v-else :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
+				<el-switch
+					v-if="isActiveNodeConfig && !readOnly"
+					:class="$style.mappingSwitch"
+					:modelValue="isMappingMode"
+					@update:modelValue="onMappingModeChange"
+					active-text="Mapping"
+					inactive-text="Debugging"
+				/>
 			</div>
 		</template>
-
+		<template #before-data v-if="isMappingMode">
+			<!--
+						Hide the run linking buttons for both input and ouput panels when in 'Mapping Mode' because the run indices wouldn't match.
+						Although this is not the most elegant solution, it's straightforward and simpler than introducing a new props and logic to handle this.
+				-->
+			<component :is="'style'">button.linkRun { display: none }</component>
+			<div :class="$style.mappedNode">
+				<n8n-select
+					:modelValue="mappedNode"
+					@update:modelValue="onMappedNodeSelected"
+					size="small"
+					@click.stop
+					teleported
+				>
+					<template #prepend>{{ $locale.baseText('ndv.input.parentNodes') }}</template>
+					<!-- v-for="option in maxRunIndex + 1" -->
+					<n8n-option
+						v-for="nodeName in rootNodesParents"
+						:key="nodeName"
+						:label="nodeName"
+						:value="nodeName"
+					/>
+				</n8n-select>
+			</div>
+		</template>
 		<template #node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
@@ -179,6 +211,8 @@ export default defineComponent({
 		return {
 			showDraggableHintWithDelay: false,
 			draggableHintShown: false,
+			isMappingMode: false,
+			mappedNode: null as string | null,
 		};
 	},
 	computed: {
@@ -230,7 +264,12 @@ export default defineComponent({
 			return false;
 		},
 		isMappingEnabled(): boolean {
-			return !this.readOnly && !this.isActiveNodeConfig;
+			if (this.readOnly) return false;
+
+			// Mapping is only enabled in mapping mode for config nodes and if node to map is selected
+			if (this.isActiveNodeConfig) return this.isMappingMode && this.mappedNode !== null;
+
+			return true;
 		},
 		isExecutingPrevious(): boolean {
 			if (!this.workflowRunning) {
@@ -263,11 +302,28 @@ export default defineComponent({
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
+
+		rootNode(): string {
+			const workflow = this.currentWorkflow;
+			const rootNodes = workflow.getChildNodes(this.activeNode.name, 'ALL_NON_MAIN');
+
+			return rootNodes[0];
+		},
+		rootNodesParents(): string[] {
+			const workflow = this.currentWorkflow;
+			const parentNodes = [...workflow.getParentNodes(this.rootNode, 'main')].reverse();
+
+			return parentNodes;
+		},
 		currentNode(): INodeUi | null {
 			if (this.isActiveNodeConfig) {
-				// For config nodes we want to return the active node to make everyhing
-				// work correctly as they normally do not have any inputs and the input
-				// data does get set manually and is only for debugging
+				// if we're mapping node we want to show the output of the mapped node
+				if (this.mappedNode) {
+					return this.workflowsStore.getNodeByName(this.mappedNode);
+				}
+
+				// in debugging mode data does get set manually and is only for debugging
+				// so we want to force the node to be the active node to make sure we show the correct data
 				return this.activeNode;
 			}
 
@@ -311,6 +367,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		onMappingModeChange(val: boolean) {
+			this.isMappingMode = val;
+			if (!val) {
+				this.mappedNode = null;
+			}
+		},
+		onMappedNodeSelected(val: string) {
+			this.mappedNode = val;
+
+			this.onUnlinkRun();
+			this.onRunIndexChange(0);
+		},
 		getMultipleNodesText(nodeName?: string): string {
 			if (
 				!nodeName ||
@@ -406,15 +474,22 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.mappedNode {
+	width: max-content;
+	padding: 0 var(--spacing-s) var(--spacing-s);
+}
 .titleSection {
 	display: flex;
 	max-width: 300px;
+	align-items: center;
 
 	> * {
 		margin-right: var(--spacing-2xs);
 	}
 }
-
+.mappingSwitch {
+	margin-left: auto;
+}
 .noOutputData {
 	max-width: 180px;
 

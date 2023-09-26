@@ -299,7 +299,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -336,9 +336,10 @@ export default defineComponent({
 			const workflowNode = this.workflow.getNode(this.activeNode.name);
 			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
 
-			if (outputs.includes(NodeConnectionType.Main)) {
-				return 0;
-			}
+			// TODO: Do we need to prevent from switching runs for non-main nodes?
+			// if (!outputs.includes(NodeConnectionType.Main)) {
+			// 	return 0;
+			// }
 
 			let node = this.inputNode;
 

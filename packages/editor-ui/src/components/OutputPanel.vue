@@ -18,29 +18,10 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
-		:data-output-type="outputMode"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<template v-if="hasAiMetadata">
-					<n8n-select
-						:class="$style.outputTypeSelect"
-						teleported
-						size="medium"
-						v-model="outputMode"
-						:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
-						:placeholder="$locale.baseText('ndv.input.parentNodes')"
-						data-test-id="ndv-output-view-select"
-					>
-						<n8n-option
-							v-for="outputType in outputTypes"
-							:key="outputType.value"
-							:value="outputType.value"
-							:label="outputType.name"
-						/>
-					</n8n-select>
-				</template>
-				<span :class="$style.title" v-else>
+				<span :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
@@ -97,9 +78,6 @@
 			</n8n-text>
 		</template>
 
-		<template #content v-if="outputMode === 'ai'">
-			<run-data-ai :node="node" />
-		</template>
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
@@ -129,14 +107,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import RunDataAi from './RunDataAi/RunDataAi.vue';
 
 type RunDataRef = InstanceType<typeof RunData>;
 
 export default defineComponent({
 	name: 'OutputPanel',
 	mixins: [pinData],
-	components: { RunData, RunInfo, RunDataAi },
+	components: { RunData, RunInfo },
 	data() {
 		return {
 			outputMode: 'regular',
@@ -184,18 +161,6 @@ export default defineComponent({
 		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
-		},
-		hasAiMetadata(): boolean {
-			if (this.node) {
-				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
-
-				if (!resultData || !Array.isArray(resultData)) {
-					return false;
-				}
-
-				return !!resultData[resultData.length - 1!].metadata;
-			}
-			return false;
 		},
 		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -322,16 +287,6 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-// The items count and displayModes are rendered in the RunData component
-// this is a workaround to hide it in the output panel(for ai type) to not add unnecessary one-time props
-:global([data-output-type='ai'] [class*='itemsCount']),
-:global([data-output-type='ai'] [class*='displayModes']) {
-	display: none;
-}
-.outputTypeSelect {
-	margin-bottom: var(--spacing-4xs);
-	width: fit-content;
-}
 .titleSection {
 	display: flex;
 

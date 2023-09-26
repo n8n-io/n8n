@@ -156,6 +156,7 @@
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
 				<n8n-icon-button
+					class="linkRun"
 					:icon="linkedRuns ? 'unlink' : 'link'"
 					text
 					type="tertiary"
@@ -166,6 +167,7 @@
 
 			<slot name="run-info"></slot>
 		</div>
+		<slot name="before-data" />
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
@@ -181,7 +183,11 @@
 
 		<div
 			v-else-if="
-				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+				hasNodeRun &&
+				dataCount > 0 &&
+				maxRunIndex === 0 &&
+				!isArtificialRecoveredEventItem &&
+				!isAiView
 			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
@@ -360,6 +366,10 @@
 				/>
 			</Suspense>
 
+			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && isAiView && ndvStore.activeNode">
+				<run-data-ai :node="ndvStore.activeNode" :runIndex="runIndex" />
+			</Suspense>
+
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 				<n8n-text align="center" tag="div">{{
 					$locale.baseText('runData.noBinaryDataFound')
@@ -455,7 +465,8 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView
+				!isSchemaView &&
+				!isAiView
 			"
 			v-show="!editMode.enabled"
 		>
@@ -494,15 +505,15 @@ import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { saveAs } from 'file-saver';
-import type {
-	ConnectionTypes,
-	IBinaryData,
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	INodeTypeDescription,
-	IRunData,
-	IRunExecutionData,
+import {
+	type ConnectionTypes,
+	type IBinaryData,
+	type IBinaryKeyData,
+	type IDataObject,
+	type INodeExecutionData,
+	type INodeTypeDescription,
+	type IRunData,
+	type IRunExecutionData,
 } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
@@ -541,7 +552,9 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import { get } from 'lodash-es';
 
+const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
 const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
@@ -558,6 +571,7 @@ export default defineComponent({
 		BinaryDataDisplay,
 		NodeErrorView,
 		CodeNodeEditor,
+		RunDataAi,
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
@@ -727,7 +741,7 @@ export default defineComponent({
 			}
 
 			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
-			if (this.isPaneTypeInput) {
+			if (this.isPaneTypeInput && !isEmpty(this.jsonData)) {
 				defaults.unshift(schemaView);
 			} else {
 				defaults.push(schemaView);
@@ -741,7 +755,36 @@ export default defineComponent({
 				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
+			// const isNonMainConnection = this.connectionType !== 'main';
+			// if (this.isPaneTypeInput && isNonMainConnection) {
+			// 	defaults.unshift({ label: 'Mapper', value: 'mapper' });
+			// }
+
+			if (this.isPaneTypeOutput && this.activeNode) {
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(
+					this.activeNode.name,
+				);
+				if (get(resultData, [this.runIndex, 'metadata'])) {
+					defaults.unshift({ label: 'AI', value: 'ai' });
+				}
+			}
+
 			return defaults;
+		},
+		hasAiMetadata(): boolean {
+			if (this.node) {
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
+
+				if (!resultData || !Array.isArray(resultData)) {
+					return false;
+				}
+
+				return !!resultData[resultData.length - 1!].metadata;
+			}
+			return false;
+		},
+		isAiView(): boolean {
+			return this.displayMode === 'ai';
 		},
 		hasNodeRun(): boolean {
 			return Boolean(
@@ -1302,6 +1345,15 @@ export default defineComponent({
 					mode: 'binary',
 				});
 			} else if (this.displayMode === 'binary') {
+				this.ndvStore.setPanelDisplayMode({
+					pane: this.paneType as 'input' | 'output',
+					mode: 'table',
+				});
+			}
+
+			if (this.isAiView && !this.hasAiMetadata) {
+				// If the user has previously selected the AI view but the
+				// current node doesn't have any data disply the table view instead
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',
 					mode: 'table',

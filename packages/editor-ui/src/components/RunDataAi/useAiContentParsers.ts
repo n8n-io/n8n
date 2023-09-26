@@ -96,6 +96,8 @@ const outputTypeParsers: {
 							message = `**Human:** ${message.trim()}`;
 						} else if (content.id.includes('AIMessage')) {
 							message = `**AI:** ${message}`;
+						} else if (content.id.includes('SystemMessage')) {
+							message = `**System Message:** ${message}`;
 						}
 						if (execData.action && execData.action !== 'getMessages') {
 							message = `## Action: ${execData.action}\n\n${message}`;
