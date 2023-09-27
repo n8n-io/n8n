@@ -12,7 +12,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
 
 	const workflowHistory = ref<WorkflowHistory[]>([]);
-	const workflowVersion = ref<WorkflowVersion | null>(null);
+	const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
 
 	const getWorkflowHistory = async (
 		workflowId: string,
@@ -37,7 +37,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			return null;
 		});
 	const setActiveWorkflowVersion = (version: WorkflowVersion | null) => {
-		workflowVersion.value = version;
+		activeWorkflowVersion.value = version;
 	};
 
 	return {
@@ -46,6 +46,6 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		getWorkflowVersion,
 		setActiveWorkflowVersion,
 		workflowHistory,
-		workflowVersion,
+		activeWorkflowVersion,
 	};
 });

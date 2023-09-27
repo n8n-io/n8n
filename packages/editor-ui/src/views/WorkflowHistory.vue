@@ -132,7 +132,7 @@ watchEffect(async () => {
 <template>
 	<div :class="$style.view">
 		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
-			{{ workflowHistoryStore.workflowVersion?.workflow?.name }}
+			{{ workflowHistoryStore.activeWorkflowVersion?.workflow?.name }}
 		</n8n-heading>
 		<div :class="$style.corner">
 			<n8n-heading tag="h2" size="medium" bold>
@@ -142,12 +142,12 @@ watchEffect(async () => {
 		</div>
 		<workflow-history-content
 			:class="$style.contentComponent"
-			:workflow-version="workflowHistoryStore.workflowVersion"
+			:workflow-version="workflowHistoryStore.activeWorkflowVersion"
 		/>
 		<workflow-history-list
 			:class="$style.listComponent"
 			:items="workflowHistoryStore.workflowHistory"
-			:active-item="workflowHistoryStore.workflowVersion"
+			:active-item="workflowHistoryStore.activeWorkflowVersion"
 			:action-types="workflowHistoryActionTypes"
 			:request-number-of-items="requestNumberOfItems"
 			@action="onAction"
