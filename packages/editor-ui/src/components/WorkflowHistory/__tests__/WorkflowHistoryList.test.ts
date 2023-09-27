@@ -1,4 +1,6 @@
 import { vi } from 'vitest';
+import { within } from '@testing-library/dom';
+import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -49,11 +51,11 @@ describe('WorkflowHistoryList', () => {
 		expect(getByText(/No versions yet/)).toBeInTheDocument();
 	});
 
-	it('should render workflow history list', () => {
-		const numberOfItems = Math.floor(Math.random() * 20) + 1;
+	it('should render workflow history list and delegate preview event', async () => {
+		const numberOfItems = faker.number.int({ min: 10, max: 50 });
 		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
 
-		const { getAllByTestId } = renderComponent({
+		const { getAllByTestId, emitted } = renderComponent({
 			pinia,
 			props: {
 				items,
@@ -63,6 +65,41 @@ describe('WorkflowHistoryList', () => {
 			},
 		});
 
-		expect(getAllByTestId('workflow-history-list-item')).toHaveLength(numberOfItems);
+		const listItems = getAllByTestId('workflow-history-list-item');
+		const listItem = listItems[items.length - 1];
+		await userEvent.click(within(listItem).getByText(/ID: /));
+		expect(emitted().preview).toEqual([
+			[
+				expect.objectContaining({
+					id: items[items.length - 1].versionId,
+					event: expect.any(MouseEvent),
+				}),
+			],
+		]);
+
+		expect(listItems).toHaveLength(numberOfItems);
+	});
+
+	test.each(actionTypes)('should delegate %s event from item', async (action) => {
+		const items = Array.from({ length: 2 }, workflowHistoryDataFactory);
+		const index = 1;
+		const { getAllByTestId, emitted } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actionTypes,
+				activeItem: null,
+				requestNumberOfItems: 20,
+			},
+		});
+
+		const listItem = getAllByTestId('workflow-history-list-item')[index];
+
+		await userEvent.click(within(listItem).getByTestId('action-toggle'));
+		const actionsDropdown = getAllByTestId('action-toggle-dropdown')[index];
+		expect(actionsDropdown).toBeInTheDocument();
+
+		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
+		expect(emitted().action).toEqual([[{ action, id: items[index].versionId }]]);
 	});
 });

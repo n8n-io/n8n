@@ -84,12 +84,12 @@ onMounted(() => {
 		}"
 	>
 		<p @click="onItemClick">
-			<strong>{{ formattedCreatedAtDate }}</strong>
+			<time :datetime="item.createdAt">{{ formattedCreatedAtDate }}</time>
 			<n8n-tooltip placement="right-end" :disabled="authors.size < 2">
 				<template #content>{{ props.item.authors }}</template>
 				<span>{{ authors.label }}</span>
 			</n8n-tooltip>
-			<small>{{ idLabel }}</small>
+			<data :value="item.versionId">{{ idLabel }}</data>
 		</p>
 		<div :class="$style.tail">
 			<n8n-badge v-if="props.index === 0">
@@ -123,7 +123,7 @@ onMounted(() => {
 		line-height: unset;
 		cursor: pointer;
 
-		strong {
+		time {
 			padding: 0 0 var(--spacing-2xs);
 			color: var(--color-text-dark);
 			font-size: var(--font-size-s);
@@ -134,7 +134,7 @@ onMounted(() => {
 			justify-self: start;
 		}
 
-		small {
+		data {
 			max-width: 160px;
 			white-space: nowrap;
 			overflow: hidden;

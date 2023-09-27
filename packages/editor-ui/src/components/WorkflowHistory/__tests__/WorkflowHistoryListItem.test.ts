@@ -44,7 +44,7 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		await userEvent.hover(container.querySelector('p span'));
+		await userEvent.hover(container.querySelector('.el-tooltip__trigger'));
 		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
 		await userEvent.click(container.querySelector('p'));
@@ -69,12 +69,12 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		const authorsTag = container.querySelector('p span');
+		const authorsTag = container.querySelector('.el-tooltip__trigger');
 		expect(authorsTag).toHaveTextContent(`${authors[0]} + ${authors.length - 1}`);
 		await userEvent.hover(authorsTag);
 		expect(getByRole('tooltip')).toBeInTheDocument();
 
-		await userEvent.click(getByRole('button'));
+		await userEvent.click(getByTestId('action-toggle'));
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId(`action-${action}`));
