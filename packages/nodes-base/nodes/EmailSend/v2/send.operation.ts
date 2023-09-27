@@ -235,11 +235,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const appendAttribution = options.appendAttribution !== false && nodeVersion >= 2.1;
 
 			if (appendAttribution) {
-				const nodeName = encodeURIComponent(this.getNode().name);
 				const attributionText = 'This email was sent automatically with ';
-				const link = `https://n8n.io/?utm_source=n8n&utm_medium=emailSendNode&utm_campaign=${nodeName}${
-					instanceId ? '_' + instanceId : ''
-				}`;
+				const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+					'n8n-nodes-base.emailSend',
+				)}${instanceId ? '_' + instanceId : ''}`;
 				if (emailFormat === 'html' || (emailFormat === 'both' && mailOptions.html)) {
 					mailOptions.html = `
 					${mailOptions.html}
@@ -250,7 +249,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
 					`;
 				} else {
-					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n: ${link}`;
+					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n:\n${link}`;
 				}
 			}
 

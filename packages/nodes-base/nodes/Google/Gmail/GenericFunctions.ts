@@ -442,11 +442,10 @@ export function prepareEmailBody(
 	let message = (this.getNodeParameter('message', itemIndex, '') as string).trim();
 
 	if (appendAttribution) {
-		const nodeName = encodeURIComponent(this.getNode().name);
 		const attributionText = 'This email was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n&utm_medium=gmailNode&utm_campaign=${nodeName}${
-			instanceId ? '_' + instanceId : ''
-		}`;
+		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.gmail',
+		)}${instanceId ? '_' + instanceId : ''}`;
 		if (emailType === 'html') {
 			message = `
 			${message}
@@ -457,7 +456,7 @@ export function prepareEmailBody(
 			<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
 			`;
 		} else {
-			message = `${message}\n\n---\n${attributionText}n8n: ${link}`;
+			message = `${message}\n\n---\n${attributionText}n8n:\n${link}`;
 		}
 	}
 

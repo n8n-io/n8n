@@ -77,11 +77,10 @@ export function addAdditionalFields(
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	if (operation === 'sendMessage') {
-		const nodeName = encodeURIComponent(this.getNode().name);
 		const attributionText = 'This message was sent automatically with ';
-		const link = `https://n8n.io/?utm_source=n8n&utm_medium=telegramNode&utm_campaign=${nodeName}${
-			instanceId ? '_' + instanceId : ''
-		}`;
+		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.telegram',
+		)}${instanceId ? '_' + instanceId : ''}`;
 
 		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
 			additionalFields.appendAttribution = true;
@@ -89,6 +88,13 @@ export function addAdditionalFields(
 
 		if (!additionalFields.parse_mode) {
 			additionalFields.parse_mode = 'Markdown';
+		}
+
+		const regex = /(https?|ftp|file):\/\/\S+|www\.\S+|\S+\.\S+/;
+		const containsUrl = regex.test(body.text as string);
+
+		if (!containsUrl) {
+			body.disable_web_page_preview = true;
 		}
 
 		if (additionalFields.appendAttribution) {
