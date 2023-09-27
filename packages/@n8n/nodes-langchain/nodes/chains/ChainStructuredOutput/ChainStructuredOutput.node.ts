@@ -44,6 +44,13 @@ export class ChainStructuredOutput implements INodeType {
 			subcategories: {
 				AI: ['Chains'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainstructuredoutput/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
@@ -53,7 +60,7 @@ export class ChainStructuredOutput implements INodeType {
 				maxConnections: 1,
 				type: NodeConnectionType.AiLanguageModel,
 				filter: {
-					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
+					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 				},
 				required: true,
 			},

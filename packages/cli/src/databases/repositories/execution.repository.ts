@@ -521,6 +521,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			})
 		).map(({ id }) => id);
 
+		if (executionIds.length === 0) {
+			this.logger.debug('Found no executions to hard-delete from database');
+			return;
+		}
+
 		await this.binaryDataService.deleteManyByExecutionIds(executionIds);
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {

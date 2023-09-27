@@ -11,10 +11,10 @@ import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class InMemoryVectorStore implements INodeType {
+export class VectorStoreInMemory implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'In Memory Vector Store',
-		name: 'inMemoryVectorStore',
+		name: 'vectorStoreInMemory',
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
@@ -26,6 +26,13 @@ export class InMemoryVectorStore implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Vector Stores'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

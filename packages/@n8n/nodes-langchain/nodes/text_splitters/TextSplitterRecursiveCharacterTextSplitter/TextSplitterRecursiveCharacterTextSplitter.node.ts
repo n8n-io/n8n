@@ -14,7 +14,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
 		name: 'textSplitterRecursiveCharacterTextSplitter',
-		icon: 'fa:remove-format',
+		icon: 'fa:grip-lines-vertical',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters recursively',
@@ -25,6 +25,13 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Text Splitters'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.textsplitterrecursivecharactertextsplitter/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

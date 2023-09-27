@@ -23,22 +23,11 @@
 		<template #header>
 			<div :class="$style.titleSection">
 				<template v-if="hasAiMetadata">
-					<n8n-select
-						:class="$style.outputTypeSelect"
-						teleported
-						size="medium"
+					<n8n-radio-buttons
+						:options="outputTypes"
 						v-model="outputMode"
-						:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
-						:placeholder="$locale.baseText('ndv.input.parentNodes')"
-						data-test-id="ndv-output-view-select"
-					>
-						<n8n-option
-							v-for="outputType in outputTypes"
-							:key="outputType.value"
-							:value="outputType.value"
-							:label="outputType.name"
-						/>
-					</n8n-select>
+						@update:modelValue="onUpdateOutputMode"
+					/>
 				</template>
 				<span :class="$style.title" v-else>
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
@@ -97,7 +86,7 @@
 			</n8n-text>
 		</template>
 
-		<template #content v-if="outputMode === 'ai'">
+		<template #content v-if="outputMode === 'logs'">
 			<run-data-ai :node="node" />
 		</template>
 		<template #recovered-artificial-output-data>
@@ -130,8 +119,14 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import RunDataAi from './RunDataAi/RunDataAi.vue';
+import { ndvEventBus } from '@/event-bus';
 
 type RunDataRef = InstanceType<typeof RunData>;
+
+const OUTPUT_TYPE = {
+	REGULAR: 'regular',
+	LOGS: 'logs',
+};
 
 export default defineComponent({
 	name: 'OutputPanel',
@@ -141,8 +136,8 @@ export default defineComponent({
 		return {
 			outputMode: 'regular',
 			outputTypes: [
-				{ name: this.$locale.baseText('ndv.output.outType.ai'), value: 'ai' },
-				{ name: this.$locale.baseText('ndv.output.outType.regular'), value: 'regular' },
+				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
 			],
 		};
 	},
@@ -317,6 +312,13 @@ export default defineComponent({
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
 		},
+		onUpdateOutputMode(outputMode: (typeof OUTPUT_TYPE)[string]) {
+			if (outputMode === OUTPUT_TYPE.LOGS) {
+				ndvEventBus.emit('setPositionByName', 'minLeft');
+			} else {
+				ndvEventBus.emit('setPositionByName', 'initial');
+			}
+		},
 	},
 });
 </script>
@@ -324,8 +326,8 @@ export default defineComponent({
 <style lang="scss" module>
 // The items count and displayModes are rendered in the RunData component
 // this is a workaround to hide it in the output panel(for ai type) to not add unnecessary one-time props
-:global([data-output-type='ai'] [class*='itemsCount']),
-:global([data-output-type='ai'] [class*='displayModes']) {
+:global([data-output-type='logs'] [class*='itemsCount']),
+:global([data-output-type='logs'] [class*='displayModes']) {
 	display: none;
 }
 .outputTypeSelect {

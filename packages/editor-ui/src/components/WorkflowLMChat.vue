@@ -109,7 +109,7 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
-	NODE_TRIGGER_CHAT_BUTTON,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
@@ -232,7 +232,7 @@ export default defineComponent({
 		setConnectedNode() {
 			const workflow = this.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
+				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
 			);
 
 			if (!triggerNode.length) {
@@ -365,7 +365,7 @@ export default defineComponent({
 		getTriggerNode(): INode | null {
 			const workflow = this.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
+				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
 			);
 
 			if (!triggerNode.length) {

@@ -20,7 +20,16 @@ export class ManualChatTrigger implements INodeType {
 			name: 'On new manual Chat Message',
 			color: '#909298',
 		},
-
+		codex: {
+			categories: ['AI'],
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.manualchattrigger/',
+					},
+				],
+			},
+		},
 		inputs: [],
 		outputs: [NodeConnectionType.Main],
 		properties: [
@@ -29,6 +38,16 @@ export class ManualChatTrigger implements INodeType {
 					'This node is where a manual chat workflow execution starts. To make one, go back to the canvas and click ‘Chat’',
 				name: 'notice',
 				type: 'notice',
+				default: '',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Chat and execute workflow',
+				name: 'openChat',
+				type: 'button',
+				typeOptions: {
+					action: 'openChat',
+				},
 				default: '',
 			},
 		],

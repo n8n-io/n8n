@@ -219,7 +219,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
-	NODE_TRIGGER_CHAT_BUTTON,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 } from '@/constants';
@@ -634,7 +634,7 @@ export default defineComponent({
 		},
 		containsChatNodes(): boolean {
 			return !!this.nodes.find(
-				(node) => node.type === NODE_TRIGGER_CHAT_BUTTON && node.disabled !== true,
+				(node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && node.disabled !== true,
 			);
 		},
 		isExecutionDisabled(): boolean {
@@ -936,7 +936,7 @@ export default defineComponent({
 			let data: IWorkflowTemplate | undefined;
 			try {
 				void this.$externalHooks().run('template.requested', { templateId });
-				data = await this.templatesStore.getWorkflowTemplate(templateId);
+				data = await this.templatesStore.getFixedWorkflowTemplate(templateId);
 
 				if (!data) {
 					throw new Error(
@@ -950,14 +950,6 @@ export default defineComponent({
 				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
-
-			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
-
-			data.workflow.nodes?.forEach((node) => {
-				if (node.credentials) {
-					delete node.credentials;
-				}
-			});
 
 			this.blankRedirect = true;
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
@@ -1991,18 +1983,13 @@ export default defineComponent({
 					const workflowNode = workflow.getNode(newNodeData.name);
 					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
+						lastSelectedNode.type,
+						lastSelectedNode.typeVersion,
+					);
 
 					// If node has only scoped outputs, position it below the last selected node
-					if (
-						outputTypes.every((outputName) =>
-							Object.values(NodeConnectionType).includes(outputName as NodeConnectionType),
-						)
-					) {
-						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
-							lastSelectedNode.type,
-							lastSelectedNode.typeVersion,
-						);
-
+					if (outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)) {
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
 							workflow,
@@ -2011,28 +1998,39 @@ export default defineComponent({
 						);
 						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
-						const scopedConnectionIndex = (lastSelectedInputTypes || []).findIndex(
-							(inputType) => outputs[0] === inputType,
-						);
+						const scopedConnectionIndex = (lastSelectedInputTypes || [])
+							.filter((input) => input !== NodeConnectionType.Main)
+							.findIndex((inputType) => outputs[0] === inputType);
 
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
 							[
 								lastSelectedNode.position[0] +
-									(NodeViewUtils.NODE_SIZE / (lastSelectedNodeType?.inputs?.length ?? 1)) *
+									(NodeViewUtils.NODE_SIZE /
+										(Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
 										scopedConnectionIndex,
 								lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
 							],
 							[100, 0],
 						);
 					} else {
+						const inputs = NodeHelpers.getNodeInputs(
+							workflow,
+							lastSelectedNode,
+							lastSelectedNodeType!,
+						);
+						const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
+
+						let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
+						if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
+							// If the node has scoped inputs, push it down a bit more
+							pushOffset += 150;
+						}
+
 						// If a node is active then add the new node directly after the current one
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
-							[
-								lastSelectedNode.position[0] + NodeViewUtils.PUSH_NODES_OFFSET,
-								lastSelectedNode.position[1] + yOffset,
-							],
+							[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
 						);
 					}
@@ -2986,6 +2984,15 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
+
+						if (workflow.meta?.onboardingId) {
+							this.$telemetry.track(
+								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
+								{
+									workflow_id: workflow.id,
+								},
+							);
+						}
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
@@ -4458,6 +4465,7 @@ export default defineComponent({
 		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.on('openChat', this.onOpenChat);
 		historyBus.on('nodeMove', this.onMoveNode);
 		historyBus.on('revertAddNode', this.onRevertAddNode);
 		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
@@ -4483,6 +4491,7 @@ export default defineComponent({
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('openChat', this.onOpenChat);
 		historyBus.off('nodeMove', this.onMoveNode);
 		historyBus.off('revertAddNode', this.onRevertAddNode);
 		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);

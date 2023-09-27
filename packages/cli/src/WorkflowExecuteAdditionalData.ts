@@ -66,6 +66,7 @@ import {
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
 } from './executionLifecycleHooks/shared/sharedHookFunctions';
+import { restoreBinaryDataId } from './executionLifecycleHooks/restoreBinaryDataId';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -447,6 +448,10 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					executionId: this.executionId,
 					workflowId: this.workflowData.id,
 				});
+
+				if (this.mode === 'webhook' && config.getEnv('binaryDataManager.mode') === 'filesystem') {
+					await restoreBinaryDataId(fullRunData, this.executionId);
+				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
 

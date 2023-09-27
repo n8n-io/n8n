@@ -57,7 +57,7 @@ function dedupe<T>(arr: T[]): T[] {
 }
 
 export class Workflow {
-	id: string | undefined;
+	id: string;
 
 	name: string | undefined;
 
@@ -93,7 +93,7 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id;
+		this.id = parameters.id as string;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
@@ -935,7 +935,7 @@ export class Workflow {
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			// TODO: Identify later differently
-			if (nodeType.description.name === '@n8n/nodes-langchain.manualChatTrigger') {
+			if (nodeType.description.name === '@n8n/n8n-nodes-langchain.manualChatTrigger') {
 				continue;
 			}
 

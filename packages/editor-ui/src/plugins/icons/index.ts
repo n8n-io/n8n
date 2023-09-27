@@ -72,6 +72,7 @@ import {
 	faGift,
 	faGlobe,
 	faGraduationCap,
+	faGripLinesVertical,
 	faGripVertical,
 	faHandScissors,
 	faHandPointLeft,
@@ -137,13 +138,13 @@ import {
 	faUserCircle,
 	faUserFriends,
 	faUsers,
+	faVectorSquare,
 	faVideo,
 	faTree,
 	faStickyNote as faSolidStickyNote,
 	faUserLock,
 	faGem,
 	faDownload,
-	faLanguage,
 	faRemoveFormat,
 	faTools,
 	faProjectDiagram,
@@ -202,6 +203,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faCut);
 		addIcon(faDatabase);
 		addIcon(faDotCircle);
+		addIcon(faGripLinesVertical);
 		addIcon(faGripVertical);
 		addIcon(faEdit);
 		addIcon(faEllipsisH);
@@ -302,6 +304,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faUsers);
 		addIcon(faVariable);
 		addIcon(faVault);
+		addIcon(faVectorSquare);
 		addIcon(faVideo);
 		addIcon(faTree);
 		addIcon(faUserLock);

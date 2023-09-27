@@ -15,8 +15,7 @@ export class LmChatAnthropic implements INodeType {
 		displayName: 'Chat Anthropic',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatAnthropic',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:anthropic.png',
+		icon: 'file:anthropic.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Language Model Anthropic',
@@ -27,6 +26,13 @@ export class LmChatAnthropic implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Language Models'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatanthropic/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -56,7 +62,7 @@ export class LmChatAnthropic implements INodeType {
 					},
 				],
 				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/reference/selecting-a-model">Learn more</a>.',
 				default: 'claude-2',
 			},
 			{

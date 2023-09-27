@@ -156,6 +156,7 @@
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
 				<n8n-icon-button
+					class="linkRun"
 					:icon="linkedRuns ? 'unlink' : 'link'"
 					text
 					type="tertiary"
@@ -166,6 +167,7 @@
 
 			<slot name="run-info"></slot>
 		</div>
+		<slot name="before-data" />
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
@@ -727,7 +729,7 @@ export default defineComponent({
 			}
 
 			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
-			if (this.isPaneTypeInput) {
+			if (this.isPaneTypeInput && !isEmpty(this.jsonData)) {
 				defaults.unshift(schemaView);
 			} else {
 				defaults.push(schemaView);

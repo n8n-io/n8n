@@ -6,16 +6,17 @@ import type { INodeUi } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import {
 	NO_OP_NODE_TYPE,
+	NODE_CONNECTION_TYPE_ALLOW_MULTIPLE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
 	NODE_MIN_INPUT_ITEMS_COUNT,
 } from '@/constants';
 
-import { INodeOutputConfiguration, NodeHelpers } from 'n8n-workflow';
-import {
-	type ConnectionTypes,
-	type INodeInputConfiguration,
-	type INodeTypeDescription,
-	NodeConnectionType,
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
 } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -27,14 +28,22 @@ import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
 
-const createAddInputEndpointSpec = (color?: string): EndpointSpec => ({
-	type: 'N8nAddInput',
-	options: {
-		width: 24,
-		height: 72,
-		color,
-	},
-});
+const createAddInputEndpointSpec = (
+	connectionName: NodeConnectionType,
+	color: string,
+): EndpointSpec => {
+	const multiple = NODE_CONNECTION_TYPE_ALLOW_MULTIPLE.includes(connectionName);
+
+	return {
+		type: 'N8nAddInput',
+		options: {
+			width: 24,
+			height: 72,
+			color,
+			multiple,
+		},
+	};
+};
 
 const createDiamondOutputEndpointSpec = (): EndpointSpec => ({
 	type: 'Rectangle',
@@ -517,7 +526,10 @@ export const nodeBase = defineComponent({
 			const createSupplementalConnectionType = (
 				connectionName: ConnectionTypes,
 			): EndpointOptions => ({
-				endpoint: createAddInputEndpointSpec(this.__getEndpointColor(connectionName)),
+				endpoint: createAddInputEndpointSpec(
+					connectionName as NodeConnectionType,
+					this.__getEndpointColor(connectionName),
+				),
 			});
 
 			return createSupplementalConnectionType(connectionType);

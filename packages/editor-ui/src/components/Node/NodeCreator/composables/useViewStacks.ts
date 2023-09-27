@@ -7,7 +7,11 @@ import type {
 	NodeFilterType,
 	SimplifiedNodeType,
 } from '@/Interface';
-import { AI_NODE_CREATOR_VIEW, DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import {
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	DEFAULT_SUBCATEGORY,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -22,7 +26,7 @@ import { useI18n } from '@/composables';
 
 import type { INodeInputFilter } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/stores';
-import { AIView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
+import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
 
 interface ViewStack {
 	uuid?: string;
@@ -90,7 +94,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
-		if (!stack || !stack.searchItems) return [];
+		if (!stack?.searchItems) return [];
 
 		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
 	});
@@ -98,7 +102,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
-		if (!stack || !stack.search) return [];
+		if (!stack?.search) return [];
 
 		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
 		const globalSearchResult = extendItemsWithUUID(searchNodes(stack.search || '', allNodes));
@@ -128,7 +132,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		} else {
 			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
 
-			relatedAIView = AIView([]).items.find(
+			relatedAIView = AINodesView([]).items.find(
 				(item) => item.properties.connectionType === connectionType,
 			);
 		}
@@ -136,7 +140,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		await nextTick();
 		pushViewStack({
 			title: relatedAIView?.properties.title,
-			rootView: AI_NODE_CREATOR_VIEW,
+			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
 			nodeIcon: {

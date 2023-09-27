@@ -1288,6 +1288,11 @@ export default defineComponent({
 		cursor: pointer;
 	}
 
+	&.add-input-endpoint-multiple {
+		z-index: 100;
+		cursor: pointer;
+	}
+
 	&.jtk-endpoint-connected {
 		z-index: 10;
 	}
@@ -1338,7 +1343,7 @@ export default defineComponent({
 		}
 	}
 
-	&.jtk-endpoint-connected {
+	&.jtk-endpoint-connected:not(.add-input-endpoint-multiple) {
 		.add-input-endpoint-unconnected {
 			display: none;
 		}

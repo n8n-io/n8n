@@ -25,12 +25,20 @@ export class OpenAiFunctionsAgent implements INodeType {
 			"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
 		defaults: {
 			name: 'OpenAi Functions Agent',
+			color: '#404040',
 		},
 		codex: {
 			alias: ['LangChain'],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.openaifunctionsagent/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -41,7 +49,7 @@ export class OpenAiFunctionsAgent implements INodeType {
 				maxConnections: 1,
 				type: NodeConnectionType.AiLanguageModel,
 				filter: {
-					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
+					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 				},
 				required: true,
 			},

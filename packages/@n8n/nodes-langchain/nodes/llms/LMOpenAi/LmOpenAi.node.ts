@@ -27,6 +27,13 @@ export class LmOpenAi implements INodeType {
 			subcategories: {
 				AI: ['Language Models'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmopenai/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
@@ -68,7 +75,7 @@ export class LmOpenAi implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											pass: "={{ !$responseItem.id.startsWith('audio-') && !$responseItem.id.startsWith('gpt-') && !$responseItem.id.startsWith('whisper-') && !['cushman:2020-05-03', 'davinci-if:3.0.0', 'davinci-instruct-beta:2.0.0', 'if'].includes($responseItem.id) && !$responseItem.id.includes('-edit-') && !$responseItem.id.endsWith(':001') }}",
+											pass: "={{$responseItem.owned_by.startsWith('system')",
 										},
 									},
 									{

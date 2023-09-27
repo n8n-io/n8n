@@ -13,7 +13,7 @@ export class TextSplitterTokenSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Token Splitter',
 		name: 'textSplitterTokenSplitter',
-		icon: 'fa:remove-format',
+		icon: 'fa:grip-lines-vertical',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by tokens',
@@ -24,6 +24,13 @@ export class TextSplitterTokenSplitter implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Text Splitters'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.textsplittertokensplitter/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

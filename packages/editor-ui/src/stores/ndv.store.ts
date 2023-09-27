@@ -140,6 +140,9 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		},
 	},
 	actions: {
+		setActiveNodeName(nodeName: string | null): void {
+			this.activeNodeName = nodeName;
+		},
 		setInputNodeName(nodeName: string | undefined): void {
 			this.input = {
 				...this.input,

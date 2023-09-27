@@ -12,7 +12,7 @@ import type { VectorStore } from 'langchain/vectorstores/base';
 
 export class ChainVectorStoreQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store QA Chain',
+		displayName: 'Q&A Chain from Vector Store',
 		name: 'chainVectorStoreQa',
 		icon: 'fa:link',
 		group: ['transform'],
@@ -28,6 +28,13 @@ export class ChainVectorStoreQa implements INodeType {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Chains'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainvectorstoreqa/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
