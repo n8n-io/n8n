@@ -30,7 +30,7 @@ export class SqlAgent implements INodeType {
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Answers questions over a SQL database',
+		description: 'Answers questions over an SQL database',
 		defaults: {
 			name: 'SQL Agent',
 			color: '#404040',

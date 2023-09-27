@@ -11,7 +11,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class EmbeddingsHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Embeddings HuggingFace Inference',
+		displayName: 'Embeddings Hugging Face Inference',
 		name: 'embeddingsHuggingFaceInference',
 		icon: 'file:huggingface.svg',
 		group: ['transform'],
