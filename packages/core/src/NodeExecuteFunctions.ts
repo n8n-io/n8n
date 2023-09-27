@@ -12,95 +12,11 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 
 import type {
-	GenericValue,
-	IAdditionalCredentialOptions,
-	IAllExecuteFunctions,
-	IBinaryData,
-	IContextObject,
-	ICredentialDataDecryptedObject,
-	ICredentialsExpressionResolveValues,
-	IDataObject,
-	IExecuteResponsePromiseData,
-	IExecuteWorkflowInfo,
-	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	IN8nHttpResponse,
-	INode,
-	INodeCredentialDescription,
-	INodeCredentialsDetails,
-	INodeExecutionData,
-	IOAuth2Options,
-	IRunExecutionData,
-	ISourceData,
-	ITaskDataConnections,
-	IWebhookData,
-	IWebhookDescription,
-	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowDataProxyData,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowActivateMode,
-	WorkflowExecuteMode,
-	IExecuteData,
-	IGetNodeParameterOptions,
-	NodeParameterValueType,
-	NodeExecutionWithMetadata,
-	IPairedItemData,
-	ICredentialTestFunctions,
-	BinaryHelperFunctions,
-	NodeHelperFunctions,
-	RequestHelperFunctions,
-	FunctionsBase,
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-	IPollFunctions,
-	ITriggerFunctions,
-	IWebhookFunctions,
-	BinaryMetadata,
-	FileSystemHelperFunctions,
-	INodeType,
-} from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	isObjectEmpty,
-	isResourceMapperValue,
-	NodeApiError,
-	NodeHelpers,
-	NodeOperationError,
-	WorkflowDataProxy,
-	LoggerProxy as Logger,
-	OAuth2GrantType,
-	deepCopy,
-	fileTypeFromMimeType,
-	ExpressionError,
-	validateFieldType,
-	NodeSSLError,
-} from 'n8n-workflow';
-import { parse as parseContentDisposition } from 'content-disposition';
-import { parse as parseContentType } from 'content-type';
-import pick from 'lodash/pick';
-import { Agent } from 'https';
-import { IncomingMessage, type IncomingHttpHeaders } from 'http';
-import { stringify } from 'qs';
-import type { Token } from 'oauth-1.0a';
-import clientOAuth1 from 'oauth-1.0a';
-import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
 	ClientOAuth2TokenData,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
-import crypto, { createHmac } from 'crypto';
-import get from 'lodash/get';
-import type { Request, Response } from 'express';
-import FormData from 'form-data';
-import path from 'path';
-import type { OptionsWithUri, OptionsWithUrl } from 'request';
-import type { RequestPromiseOptions } from 'request-promise-native';
-import FileType from 'file-type';
-import { lookup, extension } from 'mime-types';
 import type {
 	AxiosError,
 	AxiosPromise,
@@ -110,26 +26,110 @@ import type {
 	Method,
 } from 'axios';
 import axios from 'axios';
-import url, { URL, URLSearchParams } from 'url';
-import { Readable } from 'stream';
-import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
+import crypto, { createHmac } from 'crypto';
+import type { Request, Response } from 'express';
+import FileType from 'file-type';
+import FormData from 'form-data';
 import { createReadStream } from 'fs';
-
-import { BinaryDataManager } from './BinaryDataManager';
-import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
-import { extractValue } from './ExtractValue';
-import { getClientCredentialsToken } from './OAuth2Helper';
+import { access as fsAccess, writeFile as fsWriteFile } from 'fs/promises';
+import { IncomingMessage, type IncomingHttpHeaders } from 'http';
+import { Agent } from 'https';
+import get from 'lodash/get';
+import pick from 'lodash/pick';
+import { extension, lookup } from 'mime-types';
+import type {
+	BinaryHelperFunctions,
+	FieldType,
+	FileSystemHelperFunctions,
+	FunctionsBase,
+	GenericValue,
+	IAdditionalCredentialOptions,
+	IAllExecuteFunctions,
+	IBinaryData,
+	IContextObject,
+	ICredentialDataDecryptedObject,
+	ICredentialTestFunctions,
+	ICredentialsExpressionResolveValues,
+	IDataObject,
+	IExecuteData,
+	IExecuteFunctions,
+	IExecuteResponsePromiseData,
+	IExecuteSingleFunctions,
+	IExecuteWorkflowInfo,
+	IGetNodeParameterOptions,
+	IHookFunctions,
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	IN8nHttpFullResponse,
+	IN8nHttpResponse,
+	INode,
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
+	INodeExecutionData,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	INodeType,
+	IOAuth2Options,
+	IPairedItemData,
+	IPollFunctions,
+	IRunExecutionData,
+	ISourceData,
+	ITaskDataConnections,
+	ITriggerFunctions,
+	IWebhookData,
+	IWebhookDescription,
+	IWebhookFunctions,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowDataProxyData,
+	IWorkflowExecuteAdditionalData,
+	NodeExecutionWithMetadata,
+	NodeHelperFunctions,
+	NodeParameterValueType,
+	RequestHelperFunctions,
+	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import {
+	ExpressionError,
+	LoggerProxy as Logger,
+	NodeApiError,
+	NodeHelpers,
+	NodeOperationError,
+	NodeSSLError,
+	OAuth2GrantType,
+	WorkflowDataProxy,
+	createDeferredPromise,
+	deepCopy,
+	fileTypeFromMimeType,
+	isObjectEmpty,
+	isResourceMapperValue,
+	validateFieldType,
+} from 'n8n-workflow';
+import type { Token } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
+import path from 'path';
+import { stringify } from 'qs';
+import type { OptionsWithUri, OptionsWithUrl } from 'request';
+import type { RequestPromiseOptions } from 'request-promise-native';
+import { Readable } from 'stream';
+import url, { URL, URLSearchParams } from 'url';
+
+import { BinaryDataService } from './BinaryData/BinaryData.service';
+import {
+	BINARY_DATA_STORAGE_PATH,
+	BLOCK_FILE_ACCESS_TO_N8N_FILES,
+	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
-	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	RESTRICT_FILE_ACCESS_TO,
-	CONFIG_FILES,
-	BINARY_DATA_STORAGE_PATH,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
-import { binaryToBuffer } from './BinaryDataManager/utils';
+import { extractValue } from './ExtractValue';
+import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
+import { getClientCredentialsToken } from './OAuth2Helper';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
@@ -138,6 +138,8 @@ import {
 } from './WorkflowExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
 import { getUserN8nFolderPath } from './UserSettings';
+import Container from 'typedi';
+import type { BinaryData } from './BinaryData/types';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -600,26 +602,91 @@ type ConfigObject = {
 	simple?: boolean;
 };
 
-export function parseIncomingMessage(message: IncomingMessage) {
-	if ('content-type' in message.headers) {
-		const { type: contentType, parameters } = (() => {
-			try {
-				return parseContentType(message);
-			} catch {
-				return { type: undefined, parameters: undefined };
-			}
-		})();
-		message.contentType = contentType;
-		message.encoding = (parameters?.charset ?? 'utf-8').toLowerCase() as BufferEncoding;
+interface IContentType {
+	type: string;
+	parameters: {
+		charset: string;
+		[key: string]: string;
+	};
+}
+
+interface IContentDisposition {
+	type: string;
+	filename?: string;
+}
+
+function parseHeaderParameters(parameters: string[]): Record<string, string> {
+	return parameters.reduce(
+		(acc, param) => {
+			const [key, value] = param.split('=');
+			acc[key.toLowerCase().trim()] = decodeURIComponent(value);
+			return acc;
+		},
+		{} as Record<string, string>,
+	);
+}
+
+function parseContentType(contentType?: string): IContentType | null {
+	if (!contentType) {
+		return null;
 	}
 
-	const contentDispositionHeader = message.headers['content-disposition'];
-	if (contentDispositionHeader?.length) {
-		const {
-			type,
-			parameters: { filename },
-		} = parseContentDisposition(contentDispositionHeader);
-		message.contentDisposition = { type, filename };
+	const [type, ...parameters] = contentType.split(';');
+
+	return {
+		type: type.toLowerCase(),
+		parameters: { charset: 'utf-8', ...parseHeaderParameters(parameters) },
+	};
+}
+
+function parseFileName(filename?: string): string | undefined {
+	if (filename?.startsWith('"') && filename?.endsWith('"')) {
+		return filename.slice(1, -1);
+	}
+
+	return filename;
+}
+
+// https://datatracker.ietf.org/doc/html/rfc5987
+function parseFileNameStar(filename?: string): string | undefined {
+	const [_encoding, _locale, content] = parseFileName(filename)?.split("'") ?? [];
+
+	return content;
+}
+
+function parseContentDisposition(contentDisposition?: string): IContentDisposition | null {
+	if (!contentDisposition) {
+		return null;
+	}
+
+	// This is invalid syntax, but common
+	// Example 'filename="example.png"' (instead of 'attachment; filename="example.png"')
+	if (!contentDisposition.startsWith('attachment') && !contentDisposition.startsWith('inline')) {
+		contentDisposition = `attachment; ${contentDisposition}`;
+	}
+
+	const [type, ...parameters] = contentDisposition.split(';');
+
+	const parsedParameters = parseHeaderParameters(parameters);
+
+	return {
+		type,
+		filename:
+			parseFileNameStar(parsedParameters['filename*']) ?? parseFileName(parsedParameters.filename),
+	};
+}
+
+export function parseIncomingMessage(message: IncomingMessage) {
+	const contentType = parseContentType(message.headers['content-type']);
+	if (contentType) {
+		const { type, parameters } = contentType;
+		message.contentType = type;
+		message.encoding = parameters.charset.toLowerCase() as BufferEncoding;
+	}
+
+	const contentDisposition = parseContentDisposition(message.headers['content-disposition']);
+	if (contentDisposition) {
+		message.contentDisposition = contentDisposition;
 	}
 }
 
@@ -707,9 +774,9 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToBuffer(responseData).then((buffer) =>
-						buffer.toString('utf-8'),
-					);
+					responseData = await Container.get(BinaryDataService)
+						.toBuffer(responseData)
+						.then((buffer) => buffer.toString('utf-8'));
 				}
 
 				if (configObject.simple === false) {
@@ -874,21 +941,21 @@ async function httpRequest(
 }
 
 export function getBinaryPath(binaryDataId: string): string {
-	return BinaryDataManager.getInstance().getBinaryPath(binaryDataId);
+	return Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
-export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
-	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
+	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
-export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
-	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+export async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable> {
+	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -925,26 +992,33 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**
  * Store an incoming IBinaryData & related buffer using the configured binary data manager.
  *
  * @export
- * @param {IBinaryData} data
- * @param {Buffer | Readable} binaryData
+ * @param {IBinaryData} binaryData
+ * @param {Buffer | Readable} bufferOrStream
  * @returns {Promise<IBinaryData>}
  */
 export async function setBinaryDataBuffer(
-	data: IBinaryData,
-	binaryData: Buffer | Readable,
+	binaryData: IBinaryData,
+	bufferOrStream: Buffer | Readable,
+	workflowId: string,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
+	return Container.get(BinaryDataService).store(
+		workflowId,
+		executionId,
+		bufferOrStream,
+		binaryData,
+	);
 }
 
 export async function copyBinaryFile(
+	workflowId: string,
 	executionId: string,
 	filePath: string,
 	fileName: string,
@@ -994,7 +1068,12 @@ export async function copyBinaryFile(
 		returnData.fileName = path.parse(filePath).base;
 	}
 
-	return BinaryDataManager.getInstance().copyBinaryFile(returnData, filePath, executionId);
+	return Container.get(BinaryDataService).copyBinaryFile(
+		workflowId,
+		executionId,
+		returnData,
+		filePath,
+	);
 }
 
 /**
@@ -1004,6 +1083,7 @@ export async function copyBinaryFile(
 async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
+	workflowId: string,
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
@@ -1085,7 +1165,7 @@ async function prepareBinaryData(
 		}
 	}
 
-	return setBinaryDataBuffer(returnData, binaryData, executionId);
+	return setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
 }
 
 /**
@@ -1980,36 +2060,139 @@ const validateResourceMapperValue = (
 	return result;
 };
 
-const validateValueAgainstSchema = (
+const validateCollection = (
+	node: INode,
+	runIndex: number,
+	itemIndex: number,
+	propertyDescription: INodeProperties,
+	parameterPath: string[],
+	validationResult: ExtendedValidationResult,
+): ExtendedValidationResult => {
+	let nestedDescriptions: INodeProperties[] | undefined;
+
+	if (propertyDescription.type === 'fixedCollection') {
+		nestedDescriptions = (propertyDescription.options as INodePropertyCollection[]).find(
+			(entry) => entry.name === parameterPath[1],
+		)?.values;
+	}
+
+	if (propertyDescription.type === 'collection') {
+		nestedDescriptions = propertyDescription.options as INodeProperties[];
+	}
+
+	if (!nestedDescriptions) {
+		return validationResult;
+	}
+
+	const validationMap: {
+		[key: string]: { type: FieldType; displayName: string; options?: INodePropertyOptions[] };
+	} = {};
+
+	for (const prop of nestedDescriptions) {
+		if (!prop.validateType || prop.ignoreValidationDuringExecution) continue;
+
+		validationMap[prop.name] = {
+			type: prop.validateType,
+			displayName: prop.displayName,
+			options:
+				prop.validateType === 'options' ? (prop.options as INodePropertyOptions[]) : undefined,
+		};
+	}
+
+	if (!Object.keys(validationMap).length) {
+		return validationResult;
+	}
+
+	for (const value of Array.isArray(validationResult.newValue)
+		? (validationResult.newValue as IDataObject[])
+		: [validationResult.newValue as IDataObject]) {
+		for (const key of Object.keys(value)) {
+			if (!validationMap[key]) continue;
+
+			const fieldValidationResult = validateFieldType(
+				key,
+				value[key],
+				validationMap[key].type,
+				validationMap[key].options,
+			);
+
+			if (!fieldValidationResult.valid) {
+				throw new ExpressionError(
+					`Invalid input for field '${validationMap[key].displayName}' inside '${propertyDescription.displayName}' in [item ${itemIndex}]`,
+					{
+						description: fieldValidationResult.errorMessage,
+						runIndex,
+						itemIndex,
+						nodeCause: node.name,
+					},
+				);
+			}
+			value[key] = fieldValidationResult.newValue;
+		}
+	}
+
+	return validationResult;
+};
+
+export const validateValueAgainstSchema = (
 	node: INode,
 	nodeType: INodeType,
-	inputValues: string | number | boolean | object | null | undefined,
+	parameterValue: string | number | boolean | object | null | undefined,
 	parameterName: string,
 	runIndex: number,
 	itemIndex: number,
 ) => {
-	let validationResult: ExtendedValidationResult = { valid: true, newValue: inputValues };
-	// Currently only validate resource mapper values
-	const resourceMapperField = nodeType.description.properties.find(
+	const parameterPath = parameterName.split('.');
+
+	const propertyDescription = nodeType.description.properties.find(
 		(prop) =>
-			NodeHelpers.displayParameter(node.parameters, prop, node) &&
-			prop.type === 'resourceMapper' &&
-			parameterName === `${prop.name}.value`,
+			parameterPath[0] === prop.name && NodeHelpers.displayParameter(node.parameters, prop, node),
 	);
 
-	if (resourceMapperField && typeof inputValues === 'object') {
+	if (!propertyDescription) {
+		return parameterValue;
+	}
+
+	let validationResult: ExtendedValidationResult = { valid: true, newValue: parameterValue };
+
+	if (
+		parameterPath.length === 1 &&
+		propertyDescription.validateType &&
+		!propertyDescription.ignoreValidationDuringExecution
+	) {
+		validationResult = validateFieldType(
+			parameterName,
+			parameterValue,
+			propertyDescription.validateType,
+		);
+	} else if (
+		propertyDescription.type === 'resourceMapper' &&
+		parameterPath[1] === 'value' &&
+		typeof parameterValue === 'object'
+	) {
 		validationResult = validateResourceMapperValue(
 			parameterName,
-			inputValues as { [key: string]: unknown },
+			parameterValue as { [key: string]: unknown },
 			node,
-			resourceMapperField.typeOptions?.resourceMapper?.mode !== 'add',
+			propertyDescription.typeOptions?.resourceMapper?.mode !== 'add',
+		);
+	} else if (['fixedCollection', 'collection'].includes(propertyDescription.type)) {
+		validationResult = validateCollection(
+			node,
+			runIndex,
+			itemIndex,
+			propertyDescription,
+			parameterPath,
+			validationResult,
 		);
 	}
 
 	if (!validationResult.valid) {
 		throw new ExpressionError(
 			`Invalid input for '${
-				String(validationResult.fieldName) || parameterName
+				validationResult.fieldName
+					? String(validationResult.fieldName)
+					: propertyDescription.displayName
 			}' [item ${itemIndex}]`,
 			{
 				description: validationResult.errorMessage,
@@ -2053,6 +2236,10 @@ export function getNodeParameter(
 		throw new Error(`Could not get parameter "${parameterName}"!`);
 	}
 
+	if (options?.rawExpressions) {
+		return value;
+	}
+
 	let returnData;
 	try {
 		returnData = workflow.expression.getParameterValue(
@@ -2084,7 +2271,7 @@ export function getNodeParameter(
 		returnData = extractValue(returnData, parameterName, node, nodeType);
 	}
 
-	// Validate parameter value if it has a schema defined
+	// Validate parameter value if it has a schema defined(RMC) or validateType defined
 	returnData = validateValueAgainstSchema(
 		node,
 		nodeType,
@@ -2150,7 +2337,7 @@ export function getNodeWebhookUrl(
 		undefined,
 		false,
 	) as boolean;
-	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
+	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id, node, path.toString(), isFullPath);
 }
 
 /**
@@ -2386,24 +2573,27 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	},
 });
 
-const getNodeHelperFunctions = ({
-	executionId,
-}: IWorkflowExecuteAdditionalData): NodeHelperFunctions => ({
+const getNodeHelperFunctions = (
+	{ executionId }: IWorkflowExecuteAdditionalData,
+	workflowId: string,
+): NodeHelperFunctions => ({
 	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+		copyBinaryFile(workflowId, executionId!, filePath, fileName, mimeType),
 });
 
-const getBinaryHelperFunctions = ({
-	executionId,
-}: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+const getBinaryHelperFunctions = (
+	{ executionId }: IWorkflowExecuteAdditionalData,
+	workflowId: string,
+): BinaryHelperFunctions => ({
 	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToBuffer,
+	binaryToBuffer: async (body: Buffer | Readable) =>
+		Container.get(BinaryDataService).toBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
-		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
+		prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
-		setBinaryDataBuffer(data, binaryData, executionId!),
+		setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
 	copyBinaryFile: async () => {
 		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
 	},
@@ -2463,7 +2653,7 @@ export function getExecutePollFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
 			},
 		};
@@ -2522,7 +2712,7 @@ export function getExecuteTriggerFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
 			},
 		};
@@ -2587,9 +2777,10 @@ export function getExecuteFunctions(
 						parentWorkflowSettings: workflow.settings,
 					})
 					.then(async (result) =>
-						BinaryDataManager.getInstance().duplicateBinaryData(
-							result,
+						Container.get(BinaryDataService).duplicateBinaryData(
+							workflow.id,
 							additionalData.executionId!,
+							result,
 						),
 					);
 			},
@@ -2659,7 +2850,8 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			binaryToBuffer,
+			binaryToBuffer: async (body: Buffer | Readable) =>
+				Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
@@ -2696,7 +2888,7 @@ export function getExecuteFunctions(
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
@@ -2706,7 +2898,7 @@ export function getExecuteFunctions(
 				normalizeItems,
 				constructExecutionMetaData,
 			},
-			nodeHelpers: getNodeHelperFunctions(additionalData),
+			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -2838,7 +3030,7 @@ export function getExecuteSingleFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 
 				assertBinaryData: (propertyName, inputIndex = 0) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
@@ -3095,10 +3287,10 @@ export function getExecuteWebhookFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
 			},
-			nodeHelpers: getNodeHelperFunctions(additionalData),
+			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
 	})(workflow, node);
 }

@@ -1,12 +1,15 @@
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import { eventBus } from '../eventbus';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
-import type { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
+import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import * as os from 'os';
+import Container from 'typedi';
+import { License } from '@/License';
+import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
 
 export function getWorkerCommandReceivedHandler(options: {
-	uniqueInstanceId: string;
+	queueModeId: string;
+	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
 }) {
@@ -23,16 +26,16 @@ export function getWorkerCommandReceivedHandler(options: {
 				return;
 			}
 			if (message) {
-				if (message.targets && !message.targets.includes(options.uniqueInstanceId)) {
+				if (message.targets && !message.targets.includes(options.queueModeId)) {
 					return; // early return if the message is not for this worker
 				}
 				switch (message.command) {
 					case 'getStatus':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 							payload: {
-								workerId: options.uniqueInstanceId,
+								workerId: options.queueModeId,
 								runningJobs: options.getRunningJobIds(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
@@ -51,19 +54,22 @@ export function getWorkerCommandReceivedHandler(options: {
 						break;
 					case 'getId':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 						});
 						break;
 					case 'restartEventBus':
-						await eventBus.restart();
+						await Container.get(MessageEventBus).restart();
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 							payload: {
 								result: 'success',
 							},
 						});
+						break;
+					case 'reloadLicense':
+						await Container.get(License).reload();
 						break;
 					case 'stopWorker':
 						// TODO: implement proper shutdown

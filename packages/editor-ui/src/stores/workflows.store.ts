@@ -1272,6 +1272,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		// Creates a new workflow
 		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
+			// make sure that the new ones are not active
+			sendData.active = false;
+
 			const rootStore = useRootStore();
 			return makeRestApiRequest(
 				rootStore.getRestApiContext,

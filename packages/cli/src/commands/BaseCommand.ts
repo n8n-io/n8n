@@ -3,7 +3,7 @@ import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataService, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
@@ -16,11 +16,13 @@ import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import type { IExternalHooksClass } from '@/Interfaces';
+import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { initExpressionEvaluator } from '@/ExpressionEvalator';
+import { generateHostInstanceId } from '../databases/utils/generators';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -35,10 +37,15 @@ export abstract class BaseCommand extends Command {
 
 	protected instanceId: string;
 
+	instanceType: N8nInstanceType = 'main';
+
+	queueModeId: string;
+
 	protected server?: AbstractServer;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
+		initExpressionEvaluator();
 
 		process.once('SIGTERM', async () => this.stopProcess());
 		process.once('SIGINT', async () => this.stopProcess());
@@ -81,6 +88,22 @@ export abstract class BaseCommand extends Command {
 		await Container.get(InternalHooks).init(this.instanceId);
 	}
 
+	protected setInstanceType(instanceType: N8nInstanceType) {
+		this.instanceType = instanceType;
+		config.set('generic.instanceType', instanceType);
+	}
+
+	protected setInstanceQueueModeId() {
+		if (config.getEnv('executions.mode') === 'queue') {
+			if (config.get('redis.queueModeId')) {
+				this.queueModeId = config.get('redis.queueModeId');
+				return;
+			}
+			this.queueModeId = generateHostInstanceId(this.instanceType);
+			config.set('redis.queueModeId', this.queueModeId);
+		}
+	}
+
 	protected async stopProcess() {
 		// This needs to be overridden
 	}
@@ -103,9 +126,9 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
-	async initBinaryManager() {
+	async initBinaryDataService() {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig, true);
+		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}
 
 	async initExternalHooks() {
@@ -115,7 +138,7 @@ export abstract class BaseCommand extends Command {
 
 	async initLicense(): Promise<void> {
 		const license = Container.get(License);
-		await license.init(this.instanceId);
+		await license.init(this.instanceId, this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 
