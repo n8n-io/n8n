@@ -26,8 +26,6 @@ import type {
 	Method,
 } from 'axios';
 import axios from 'axios';
-import { parse as parseContentDisposition } from 'content-disposition';
-import { parse as parseContentType } from 'content-type';
 import crypto, { createHmac } from 'crypto';
 import type { Request, Response } from 'express';
 import FileType from 'file-type';
@@ -91,7 +89,7 @@ import type {
 	RequestHelperFunctions,
 	Workflow,
 	WorkflowActivateMode,
-	WorkflowExecuteMode
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	ExpressionError,
@@ -118,29 +116,7 @@ import type { RequestPromiseOptions } from 'request-promise-native';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
-import {
-	import
-} from {
-		ExpressionError,
-		LoggerProxy, as, Logger,
-		NodeApiError,
-		NodeHelpers,
-		NodeOperationError,
-		NodeSSLError,
-		OAuth2GrantType,
-		WorkflowDataProxy,
-		createDeferredPromise,
-		deepCopy,
-		fileTypeFromMimeType,
-		isObjectEmpty,
-		isResourceMapperValue,
-		validateFieldType,
-	};
-from 'n8n-workflow';
-
-import Container from 'typedi';
 import { BinaryDataService } from './BinaryData/BinaryData.service';
-import type { BinaryData } from './BinaryData/types';
 import {
 	BINARY_DATA_STORAGE_PATH,
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
@@ -154,14 +130,16 @@ import {
 import { extractValue } from './ExtractValue';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath } from './UserSettings';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getSecretsProxy } from './Secrets';
+import { getUserN8nFolderPath } from './UserSettings';
+import Container from 'typedi';
+import type { BinaryData } from './BinaryData/types';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default

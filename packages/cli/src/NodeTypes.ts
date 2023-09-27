@@ -1,5 +1,3 @@
-import type { Dirent } from 'fs';
-import { readdir } from 'fs/promises';
 import { loadClassInIsolation } from 'n8n-core';
 import type {
 	INodeType,
@@ -9,10 +7,12 @@ import type {
 	LoadedClass,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
-import { dirname, join } from 'path';
 import { Service } from 'typedi';
-import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
+import { join, dirname } from 'path';
+import { readdir } from 'fs/promises';
+import type { Dirent } from 'fs';
 
 @Service()
 export class NodeTypes implements INodeTypes {
