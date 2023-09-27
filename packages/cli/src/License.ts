@@ -15,6 +15,7 @@ import Container, { Service } from 'typedi';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
+import { ObjectStoreService } from 'n8n-core';
 
 type FeatureReturnType = Partial<
 	{
@@ -103,6 +104,10 @@ export class License {
 				command: 'reloadLicense',
 			});
 		}
+
+		const isReadonly = _features['feat:binaryDataS3'] === false;
+
+		Container.get(ObjectStoreService).setReadonly(isReadonly);
 	}
 
 	async saveCertStr(value: TLicenseBlock): Promise<void> {

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { ObjectStoreService } from '../src/ObjectStore/ObjectStore.service.ee';
 import { Readable } from 'stream';
+import { writeBlockedMessage } from '@/ObjectStore/utils';
+import { initLogger } from './helpers/utils';
 
 jest.mock('axios');
 
@@ -110,6 +112,27 @@ describe('ObjectStoreService', () => {
 					data: buffer,
 				}),
 			);
+		});
+
+		it('should block without erroring if read-only', async () => {
+			initLogger();
+			objectStoreService.setReadonly(true);
+
+			const path = 'file.txt';
+			const buffer = Buffer.from('Test content');
+			const metadata = { fileName: path, mimeType: 'text/plain' };
+
+			const promise = objectStoreService.put(path, buffer, metadata);
+
+			await expect(promise).resolves.not.toThrow();
+
+			const result = await promise;
+
+			const blockedMessage = writeBlockedMessage(path);
+
+			expect(result.status).toBe(403);
+			expect(result.statusText).toBe('Forbidden');
+			expect(result.data).toBe(blockedMessage);
 		});
 
 		it('should throw an error on request failure', async () => {

@@ -4,10 +4,11 @@ import { createHash } from 'node:crypto';
 import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
-import { isStream, parseXml } from './utils';
+import { isStream, parseXml, writeBlockedMessage } from './utils';
 import { ObjectStore } from './errors';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import type { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
 import type { Bucket, ListPage, RawListPage, RequestOptions } from './types';
 import type { Readable } from 'stream';
@@ -22,6 +23,8 @@ export class ObjectStoreService {
 	private bucket: Bucket = { region: '', name: '' };
 
 	private isReadOnly = false;
+
+	private logger = Logger;
 
 	async init(
 		bucket: { region: string; name: string },
@@ -44,6 +47,10 @@ export class ObjectStoreService {
 		return `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
 	}
 
+	setReadonly(newState: boolean) {
+		this.isReadOnly = newState;
+	}
+
 	/**
 	 * Confirm that the configured bucket exists and the caller has permission to access it.
 	 *
@@ -59,7 +66,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
-		if (this.isReadOnly) throw new ObjectStore.WriteBlockedError(filename);
+		if (this.isReadOnly) return this.blockWrite(filename);
 
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
@@ -206,6 +213,14 @@ export class ObjectStoreService {
 			.join('&');
 
 		return path.concat(`?${qsParams}`);
+	}
+
+	private async blockWrite(filename: string): Promise<AxiosResponse> {
+		const logMessage = writeBlockedMessage(filename);
+
+		this.logger.warn(logMessage);
+
+		return { status: 403, statusText: 'Forbidden', data: logMessage, headers: {}, config: {} };
 	}
 
 	private async request<T = unknown>(
