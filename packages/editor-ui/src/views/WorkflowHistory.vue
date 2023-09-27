@@ -25,6 +25,11 @@ const WORKFLOW_HISTORY_ACTIONS: WorkflowHistoryActionRecord = workflowHistoryAct
 	{} as WorkflowHistoryActionRecord,
 );
 
+const loadMore = async ({ take }: { take: number }) => {
+	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, { take });
+	workflowHistoryStore.addWorkflowHistory(history);
+};
+
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -33,10 +38,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const takeItemsAtOnce = ref(20);
 
 onBeforeMount(async () => {
-	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
-		take: takeItemsAtOnce.value,
-	});
-	workflowHistoryStore.addWorkflowHistory(history);
+	await loadMore({ take: takeItemsAtOnce.value });
 
 	if (!route.params.versionId) {
 		await router.replace({
@@ -103,11 +105,6 @@ const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['ver
 			},
 		});
 	}
-};
-
-const loadMore = async ({ take }: { take: number }) => {
-	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, { take });
-	workflowHistoryStore.addWorkflowHistory(history);
 };
 
 watchEffect(async () => {
