@@ -27,6 +27,9 @@ export function getWorkerCommandReceivedHandler(options: {
 				return;
 			}
 			if (message) {
+				LoggerProxy.debug(
+					`RedisCommandHandler(worker): Received command message ${message.command} from ${message.senderId}`,
+				);
 				if (message.targets && !message.targets.includes(options.queueModeId)) {
 					return; // early return if the message is not for this worker
 				}

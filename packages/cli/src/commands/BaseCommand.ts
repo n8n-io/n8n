@@ -94,14 +94,12 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected setInstanceQueueModeId() {
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (config.get('redis.queueModeId')) {
-				this.queueModeId = config.get('redis.queueModeId');
-				return;
-			}
-			this.queueModeId = generateHostInstanceId(this.instanceType);
-			config.set('redis.queueModeId', this.queueModeId);
+		if (config.get('redis.queueModeId')) {
+			this.queueModeId = config.get('redis.queueModeId');
+			return;
 		}
+		this.queueModeId = generateHostInstanceId(this.instanceType);
+		config.set('redis.queueModeId', this.queueModeId);
 	}
 
 	protected async stopProcess() {
