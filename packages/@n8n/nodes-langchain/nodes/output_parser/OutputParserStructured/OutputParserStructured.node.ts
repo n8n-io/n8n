@@ -22,7 +22,7 @@ export class OutputParserStructured implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Returns data in a defined JSON format',
+		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
 		},
