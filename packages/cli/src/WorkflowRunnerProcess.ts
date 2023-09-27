@@ -7,7 +7,6 @@
 import 'source-map-support/register';
 import 'reflect-metadata';
 import { setDefaultResultOrder } from 'dns';
-setDefaultResultOrder('ipv4first');
 
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
@@ -58,6 +57,10 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	setDefaultResultOrder('ipv4first');
+}
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
