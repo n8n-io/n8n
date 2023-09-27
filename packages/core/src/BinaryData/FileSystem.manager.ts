@@ -59,7 +59,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		bufferOrStream: Buffer | Readable,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const fileId = this.createFileId(executionId);
+		const fileId = this.toFileId(executionId);
 		const filePath = this.getPath(fileId);
 
 		await fs.writeFile(filePath, bufferOrStream);
@@ -77,10 +77,11 @@ export class FileSystemManager implements BinaryData.Manager {
 		return fs.rm(filePath);
 	}
 
-	async deleteManyByExecutionIds(executionIds: string[]) {
+	async deleteMany(ids: BinaryData.IdsForDeletion) {
+		const executionIds = ids.map((o) => o.executionId);
+
 		const set = new Set(executionIds);
 		const fileNames = await fs.readdir(this.storagePath);
-		const deletedIds = [];
 
 		for (const fileName of fileNames) {
 			const executionId = fileName.match(EXECUTION_ID_EXTRACTOR)?.[1];
@@ -89,12 +90,8 @@ export class FileSystemManager implements BinaryData.Manager {
 				const filePath = this.resolvePath(fileName);
 
 				await Promise.all([fs.rm(filePath), fs.rm(`${filePath}.metadata`)]);
-
-				deletedIds.push(executionId);
 			}
 		}
-
-		return deletedIds;
 	}
 
 	async copyByFilePath(
@@ -103,7 +100,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		filePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const newFileId = this.createFileId(executionId);
+		const newFileId = this.toFileId(executionId);
 
 		await fs.cp(filePath, this.getPath(newFileId));
 
@@ -114,12 +111,14 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId: newFileId, fileSize };
 	}
 
-	async copyByFileId(_workflowId: string, executionId: string, fileId: string) {
-		const newFileId = this.createFileId(executionId);
+	async copyByFileId(_workflowId: string, executionId: string, sourceFileId: string) {
+		const targetFileId = this.toFileId(executionId);
+		const sourcePath = this.resolvePath(sourceFileId);
+		const targetPath = this.resolvePath(targetFileId);
 
-		await fs.copyFile(this.resolvePath(fileId), this.resolvePath(newFileId));
+		await fs.copyFile(sourcePath, targetPath);
 
-		return newFileId;
+		return targetFileId;
 	}
 
 	async rename(oldFileId: string, newFileId: string) {
@@ -136,7 +135,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	//         private methods
 	// ----------------------------------
 
-	private createFileId(executionId: string) {
+	private toFileId(executionId: string) {
 		return [executionId, uuid()].join('');
 	}
 
