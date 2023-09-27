@@ -67,6 +67,12 @@ export class VectorStoreZepInsert implements INodeType {
 				required: true,
 			},
 			{
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',

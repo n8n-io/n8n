@@ -75,6 +75,12 @@ export class VectorStorePineconeInsert implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Clear Namespace',
 				name: 'clearNamespace',
 				type: 'boolean',

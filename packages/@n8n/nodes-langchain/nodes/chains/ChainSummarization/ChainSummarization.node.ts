@@ -98,6 +98,12 @@ export class ChainSummarization implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 		],
 	};
 
