@@ -1786,7 +1786,7 @@ export async function getCredentials(
 
 	// Hardcode for now for security reasons that only a single node can access
 	// all credentials
-	const fullAccess = node.type.startsWith('n8n-nodes-base.httpRequest');
+	const fullAccess = ['n8n-nodes-base.httpRequest'].includes(node.type);
 
 	let nodeCredentialDescription: INodeCredentialDescription | undefined;
 	if (!fullAccess) {

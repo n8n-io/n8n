@@ -47,8 +47,7 @@ export class NodeTypes implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		const [type] = nodeType.split(':');
-		return NodeHelpers.getVersionedNodeType(this.getNode(type).type, version);
+		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
 	applySpecialNodeParameters() {
