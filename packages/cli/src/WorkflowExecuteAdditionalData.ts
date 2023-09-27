@@ -66,6 +66,7 @@ import {
 	updateExistingExecution,
 } from './executionLifecycleHooks/shared/sharedHookFunctions';
 import { restoreBinaryDataId } from './executionLifecycleHooks/restoreBinaryDataId';
+import { isVariablesEnabled } from './environments/variables/enviromentHelpers';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -990,10 +991,8 @@ export async function getBase(
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
-	const [encryptionKey, variables] = await Promise.all([
-		UserSettings.getEncryptionKey(),
-		WorkflowHelpers.getVariables(),
-	]);
+	const encryptionKey = await UserSettings.getEncryptionKey();
+	const variables = isVariablesEnabled() ? await WorkflowHelpers.getVariables() : {};
 
 	return {
 		credentialsHelper: new CredentialsHelper(encryptionKey),

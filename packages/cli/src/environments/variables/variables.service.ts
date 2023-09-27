@@ -1,8 +1,8 @@
+import { Service } from 'typedi';
+import type { DeepPartial } from 'typeorm';
+import { VariablesRepository } from '@/databases/repositories';
 import type { Variables } from '@db/entities/Variables';
 import { CacheService } from '@/services/cache.service';
-import Container, { Service } from 'typedi';
-import { VariablesRepository } from '@/databases/repositories';
-import type { DeepPartial } from 'typeorm';
 
 @Service()
 export class VariablesService {
@@ -13,10 +13,8 @@ export class VariablesService {
 
 	async getAllCached(): Promise<Variables[]> {
 		const variables = await this.cacheService.get('variables', {
-			async refreshFunction() {
-				// TODO: log refresh cache metric
-				return Container.get(VariablesService).findAll();
-			},
+			// TODO: log refresh cache metric
+			refreshFunction: async () => this.findAll(),
 		});
 		return (variables as Array<DeepPartial<Variables>>).map((v) =>
 			this.variablesRepository.create(v),
