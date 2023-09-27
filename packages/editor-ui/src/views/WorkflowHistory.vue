@@ -23,7 +23,7 @@ const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'open',
 	'download',
 ];
-const WORKFLOW_HISTORY_ACTIONS: WorkflowHistoryActionRecord = workflowHistoryActionTypes.reduce(
+const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
 	(record, key) => ({ ...record, [key.toUpperCase()]: key }),
 	{} as WorkflowHistoryActionRecord,
 );
