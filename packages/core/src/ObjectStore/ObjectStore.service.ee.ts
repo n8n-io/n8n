@@ -271,7 +271,6 @@ export class ObjectStoreService {
 		if (responseType) config.responseType = responseType;
 
 		try {
-			this.logger.debug(`[S3] Sending ${method} request to ${host}${path}`, { config });
 			return await axios.request<T>(config);
 		} catch (error) {
 			throw new ObjectStore.RequestFailedError(error, config);
