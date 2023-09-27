@@ -281,7 +281,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				} else {
 					mailOptions.text = `${
 						mailOptions.text
-					}\n\n---\n${attributionText}n8n:\n${'https://n8n.io'}`;
+					}\n\n---\n${attributionText}n8n\n${'https://n8n.io'}`;
 				}
 			}
 
