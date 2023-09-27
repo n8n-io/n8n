@@ -1,5 +1,5 @@
+import type { ColumnOptions } from 'typeorm';
 import { BeforeUpdate, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { IsDate, IsOptional } from 'class-validator';
 import config from '@/config';
 
 const dbType = config.getEnv('database.type');
@@ -14,22 +14,17 @@ const timestampSyntax = {
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
 
+const tsColumnOptions: ColumnOptions = {
+	precision: 3,
+	default: () => timestampSyntax,
+	type: datetimeColumnType,
+};
+
 export abstract class AbstractEntity {
-	@CreateDateColumn({
-		precision: 3,
-		default: () => timestampSyntax,
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
+	@CreateDateColumn(tsColumnOptions)
 	createdAt: Date;
 
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => timestampSyntax,
-		onUpdate: timestampSyntax,
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
+	@UpdateDateColumn(tsColumnOptions)
 	updatedAt: Date;
 
 	@BeforeUpdate()
