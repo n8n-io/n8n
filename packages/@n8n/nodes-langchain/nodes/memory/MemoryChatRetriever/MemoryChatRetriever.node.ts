@@ -41,12 +41,12 @@ export class MemoryChatRetriever implements INodeType {
 		version: 1,
 		description: 'Retrieve chat messages from memory and use them in the workflow',
 		defaults: {
-			name: 'Memory Chat Retriever',
+			name: 'Chat Messages Retriever',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Memory'],
+				AI: ['Miscellaneous'],
 			},
 			resources: {
 				primaryDocumentation: [

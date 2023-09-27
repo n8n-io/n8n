@@ -27,6 +27,7 @@ import {
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_UNCATEGORIZED_CATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables';
 import { useNodeTypesStore } from '@/stores';
@@ -205,6 +206,14 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 					title: AI_CATEGORY_VECTOR_STORES,
 					icon: 'project-diagram',
 					...getAISubcategoryProperties(NodeConnectionType.AiVectorStore),
+				},
+			},
+			{
+				key: AI_UNCATEGORIZED_CATEGORY,
+				type: 'subcategory',
+				properties: {
+					title: AI_UNCATEGORIZED_CATEGORY,
+					icon: 'code',
 				},
 			},
 		],
