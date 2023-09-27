@@ -201,7 +201,6 @@ input[type="date"] {
 
 /* multiselect ----------------------------------- */
 .multiselect {
-	padding-top: 6px;
 	padding-left: 6px;
 	padding-right: 6px;
 }
@@ -317,7 +316,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 		formHtml += `
 		<p class="error-${fieldIndex} error-hidden">
-		'This field is required'
+			This field is required
 		</p>`;
 
 		formHtml += '</div>';
