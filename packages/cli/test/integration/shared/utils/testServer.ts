@@ -162,7 +162,6 @@ export const setupTestServer = ({
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
-		config.set('executions.pruneData', false);
 
 		if (enabledFeatures) {
 			Container.get(License).isFeatureEnabled = (feature) => enabledFeatures.includes(feature);
