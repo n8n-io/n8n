@@ -29,9 +29,9 @@ export class WorkflowActivationError extends ExecutionBaseError {
 }
 
 export class WebhookPathAlreadyTakenError extends WorkflowActivationError {
-	constructor(webhookData: { node: string }, cause?: Error) {
+	constructor(nodeName: string, cause?: Error) {
 		super(
-			`The URL path that the "${webhookData.node}" node uses is already taken. Please change it to something else.`,
+			`The URL path that the "${nodeName}" node uses is already taken. Please change it to something else.`,
 			{ severity: 'warning', cause },
 		);
 	}

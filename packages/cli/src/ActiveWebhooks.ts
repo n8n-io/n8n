@@ -46,7 +46,7 @@ export class ActiveWebhooks {
 
 		// check that there is not a webhook already registered with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
-			throw new WebhookPathAlreadyTakenError(webhookData);
+			throw new WebhookPathAlreadyTakenError(webhookData.node);
 		}
 
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {
