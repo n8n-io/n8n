@@ -16,12 +16,6 @@ const spinnerIcon = `
 		d="M304 48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zm0 416a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM48 304a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm464-48a48 48 0 1 0 -96 0 48 48 0 1 0 96 0zM142.9 437A48 48 0 1 0 75 369.1 48 48 0 1 0 142.9 437zm0-294.2A48 48 0 1 0 75 75a48 48 0 1 0 67.9 67.9zM369.1 437A48 48 0 1 0 437 369.1 48 48 0 1 0 369.1 437z" />
 </svg>`;
 
-const downArrowIcon = `
-<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 13.229 13.229">
-<path fill="#909399"
-	d="M2.03 2.055.063 4.438l6.55 6.726V6.546L2.03 2.055Zm4.585 4.491v4.618l6.55-6.726L11.2 2.055 6.615 6.546Z" />
-</svg>`;
-
 const styles = `
 *,
 ::after,
@@ -207,53 +201,18 @@ input[type="date"] {
 
 /* multiselect ----------------------------------- */
 .multiselect {
-	position: relative;
-}
-
-.multiselect-button {
-	width: 100%;
-	border: transparent;
-	border-radius: 6px;
-	width: 100%;
-	font-size: 14px;
-	color: #909399;
-	font-weight: 400;
-	background-color: white;
-	padding: 12px;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-}
-
-.multiselect-button svg {
-	width: 10px;
-	height: 10px;
-	fill: #909399;
-}
-
-.multiselect-dropdown {
-	position: absolute;
-	z-index: 10;
-	top: 110%;
-	left: 0;
-	width: 100%;
-	min-width: 100px;
-	background-color: #fff;
-	border: 1px solid #DBDFE7;
-	box-shadow: 0px 4px 16px 0px #634DFF0F;
-	display: none;
+	padding: 6px;
 }
 
 .multiselect-option {
-	color: #7E8186;
-	padding: 2px 12px;
-	cursor: pointer;
+	padding-top: 6px;
 	display: flex;
-	justify-content: space-between;
 }
 
 .multiselect-option label {
+	padding-left: 12px;
 	color: #7E8186;
+	cursor: pointer;
 }
 
 .multiselect-checkbox {
@@ -261,45 +220,9 @@ input[type="date"] {
 }
 
 input[type="checkbox"] {
-	-webkit-appearance: none;
-	appearance: none;
-	margin: 0;
-	display: grid;
-	place-content: center;
-}
-
-input[type="checkbox"]::before {
-	color: #FF6D5A;
 	width: 18px;
 	height: 18px;
-}
-
-input[type="checkbox"]:checked::before {
-	content: '\u2713';
-}
-
-.multiselect-option:hover {
-	background-color: #f5f5f5;
-}
-
-.multiselect-option.is-selected label {
-	color: #FF6D5A;
-}
-
-.is-active {
-	display: block;
-}
-
-.modal {
-	display: none;
-	position: fixed;
-	z-index: 5;
-	left: 0;
-	top: 0;
-	height: 100%;
-	width: 100%;
-	overflow: auto;
-	background-color: transparent;
+	cursor: pointer;
 }
 `;
 
@@ -344,24 +267,17 @@ const addMultiselectInput = (field: FormField, fieldIndex: string) => {
 		const optionIndex = `option${index}`;
 		dropdownOptions += `
 		<div class="multiselect-option">
-			<label for="${optionIndex}">${entry.option}</label>
 			<input type="checkbox" class="multiselect-checkbox" id="${optionIndex}" />
+			<label for="${optionIndex}">${entry.option}</label>
 		</div>
 		`;
 	}
 
 	return `
 	<div>
-		<label class="form-label">${field.fieldLabel}</label>
-		<div class="multiselect select-input" id="${fieldIndex}">
-			<div class="multiselect-button">
-				<span>Select options ...</span>
-				${downArrowIcon}
-			</div>
-
-			<div class="multiselect-dropdown">
-				${dropdownOptions}
-			</div>
+		<label class="form-label">Multiselect Options</label>
+		<div class="multiselect" id="${fieldIndex}">
+			${dropdownOptions}
 		</div>
 	`;
 };
@@ -399,7 +315,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 
 		formHtml += `
 		<p class="error-${fieldIndex} error-hidden">
-			This field is required
+			${multiselect ? 'This is required question' : 'This field is required'}
 		</p>`;
 
 		formHtml += '</div>';
@@ -408,45 +324,16 @@ const prepareFormGroups = (formFields: FormField[]) => {
 			const input = `input${index}`;
 			variables += `
 				const ${input} = document.querySelector(\`#${fieldIndex}\`);
-				const dropdown${index} = ${input}.querySelector('.multiselect-dropdown');
-
-				${requiredField ? `const error${index} = document.querySelector(\`.error-${fieldIndex}\`);` : ''}
-
-				document.querySelector('.modal').addEventListener('click', () => {
-					dropdown${index}.classList.remove('is-active');
-					${requiredField ? `validateMultiselect(${input}, error${index});` : ''}
-					document.querySelector('.modal').style.display = 'none';
-				});
-
-				${input}.querySelector('.multiselect-button').addEventListener('click', () => {
-					dropdown${index}.classList.add('is-active');
-					document.querySelector('.modal').style.display = 'block';
-					${requiredField ? `validateMultiselect(${input}, error${index});` : ''}
-				});
-
-				dropdown${index}.addEventListener('click', (e) => {
-					const checkbox = e.target.closest('.multiselect-option').querySelector('.multiselect-checkbox');
-
-					if (checkbox) {
-						checkbox.checked = !checkbox.checked;
-
-						if (checkbox.checked) {
-							e.target.closest('.multiselect-option').classList.add('is-selected');
-						} else {
-							e.target.closest('.multiselect-option').classList.remove('is-selected');
-						}
-					}
-
-					const selectedValues = getSelectedValues(${input});
-					const multiselectButtonText = ${input}.querySelector('span');
-
-					if (!selectedValues.length) {
-						multiselectButtonText.textContent = 'Select options ...';
-					} else {
-						multiselectButtonText.textContent = selectedValues.join(', ');
-					}
-				});
 			`;
+			if (requiredField) {
+				variables += `
+					const error${index} = document.querySelector(\`.error-${fieldIndex}\`);
+
+					${input}.addEventListener('click', () => {
+						validateMultiselect(${input}, error${index});
+					});
+				`;
+			}
 		}
 
 		if (requiredField) {

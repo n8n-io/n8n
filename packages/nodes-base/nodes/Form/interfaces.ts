@@ -3,6 +3,5 @@ export type FormField = {
 	fieldType: string;
 	requiredField: boolean;
 	fieldOptions?: { values: Array<{ option: string }> };
-	dateFormat?: string;
 	multiselect?: boolean;
 };

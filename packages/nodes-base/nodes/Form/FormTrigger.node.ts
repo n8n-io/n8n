@@ -121,30 +121,6 @@ export class FormTrigger implements INodeType {
 								required: true,
 							},
 							{
-								displayName: 'Date Format',
-								name: 'dateFormat',
-								type: 'options',
-								default: 'en-GB',
-								description: 'Use an expression to set the locale for date formatting, e.g. de-DE',
-								options: [
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'dd/mm/yyyy',
-										value: 'en-GB',
-									},
-									{
-										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-										name: 'mm/dd/yyyy',
-										value: 'en-US',
-									},
-								],
-								displayOptions: {
-									show: {
-										fieldType: ['date'],
-									},
-								},
-							},
-							{
 								displayName: 'Field Options',
 								name: 'fieldOptions',
 								placeholder: 'Add Field Option',
@@ -221,48 +197,72 @@ export class FormTrigger implements INodeType {
 				description: 'When to respond to the form submission',
 			},
 			{
-				displayName: 'Respond With',
-				name: 'respondWith',
-				type: 'options',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
 				options: [
 					{
-						name: 'Default Confirmation',
-						value: 'default',
-					},
-					{
-						name: 'Custom Text',
-						value: 'text',
-					},
-					{
-						name: 'Redirection to URL',
-						value: 'redirect',
+						displayName: 'Respond With',
+						name: 'respondWith',
+						type: 'fixedCollection',
+						placeholder: 'Select Option',
+						default: { values: { respondWith: 'default' } },
+						options: [
+							{
+								displayName: 'Values',
+								name: 'values',
+								values: [
+									{
+										displayName: 'Respond With',
+										name: 'respondWith',
+										type: 'options',
+										options: [
+											{
+												name: 'Default Confirmation',
+												value: 'default',
+											},
+											{
+												name: 'Custom Text',
+												value: 'text',
+											},
+											{
+												name: 'Redirection to URL',
+												value: 'redirect',
+											},
+										],
+										default: 'default',
+									},
+									{
+										displayName: 'Custom Text',
+										name: 'customText',
+										type: 'string',
+										default: '',
+										displayOptions: {
+											show: {
+												respondWith: ['text'],
+											},
+										},
+									},
+									{
+										displayName: 'Redirect URL',
+										name: 'redirectUrl',
+										type: 'string',
+										default: '',
+										placeholder: 'e.g. https://example.com',
+										displayOptions: {
+											show: {
+												respondWith: ['redirect'],
+											},
+										},
+										validateType: 'url',
+									},
+								],
+							},
+						],
 					},
 				],
-				default: 'default',
-			},
-			{
-				displayName: 'Custom Text',
-				name: 'customText',
-				type: 'string',
-				default: '',
-				displayOptions: {
-					show: {
-						respondWith: ['text'],
-					},
-				},
-			},
-			{
-				displayName: 'Redirect URL',
-				name: 'redirectUrl',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. https://example.com',
-				displayOptions: {
-					show: {
-						respondWith: ['redirect'],
-					},
-				},
-				validateType: 'url',
 			},
 		],
 	};
@@ -302,11 +302,6 @@ export class FormTrigger implements INodeType {
 			if (field.fieldType === 'text') {
 				value = String(value).trim();
 			}
-			if (field.fieldType === 'date') {
-				value = new Intl.DateTimeFormat(field.dateFormat ?? 'en-GB').format(
-					new Date(value as string),
-				);
-			}
 			if (field.multiselect && typeof value === 'string') {
 				value = jsonParse(value);
 			}
@@ -316,17 +311,20 @@ export class FormTrigger implements INodeType {
 		returnData.submittedAt = bodyData.submittedAt;
 		returnData.formMode = mode;
 
-		const respondWith = this.getNodeParameter('respondWith', '') as string;
+		const respondWithValues = this.getNodeParameter(
+			'options.respondWith.values',
+			{},
+		) as IDataObject;
 
 		const webhookResponse: IDataObject = { status: 200 };
 		const triggerSettings: IDataObject = {};
 
-		if (respondWith === 'redirect') {
-			triggerSettings.redirectUrl = this.getNodeParameter('redirectUrl', '') as string;
+		if (respondWithValues?.respondWith === 'redirect') {
+			triggerSettings.redirectUrl = respondWithValues.redirectUrl as string;
 		}
 
-		if (respondWith === 'text') {
-			triggerSettings.customText = this.getNodeParameter('customText', '') as string;
+		if (respondWithValues?.respondWith === 'text') {
+			triggerSettings.customText = respondWithValues.customText as string;
 		}
 
 		if (Object.keys(triggerSettings).length) {

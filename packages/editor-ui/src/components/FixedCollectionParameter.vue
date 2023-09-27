@@ -381,12 +381,6 @@ export default defineComponent({
 				top: 14px;
 			}
 		}
-
-		.fixed-collection-parameter {
-			.parameter-item-wrapper:first-child {
-				border-top: 1px dashed transparent;
-			}
-		}
 	}
 }
 
