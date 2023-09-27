@@ -44,7 +44,6 @@ const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
 		([entry]) => {
 			if (entry.isIntersecting) {
-				shouldAutoScroll.value = false;
 				observer.value?.unobserve(element);
 				observer.value?.disconnect();
 				observer.value = null;
@@ -72,7 +71,6 @@ const onAction = ({
 };
 
 const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
-	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
 };
 
