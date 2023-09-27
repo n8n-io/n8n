@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, BINARY_ENCODING, NodeConnectionType } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -44,7 +44,7 @@ export class N8nBinaryLoader {
 				throw new NodeOperationError(this.context.getNode(), 'No binary data set.');
 			}
 
-			const { data, mimeType } = binaryData;
+			const { mimeType } = binaryData;
 
 			// Check if loader matches the mime-type of the data
 			if (!SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType)) {
@@ -71,7 +71,7 @@ export class N8nBinaryLoader {
 				);
 			}
 
-			const bufferData = Buffer.from(data, BINARY_ENCODING).buffer;
+			const bufferData = await this.context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
 			const itemBlob = new Blob([new Uint8Array(bufferData)], { type: mimeType });
 
 			let loader: PDFLoader | CSVLoader | N8nEPubLoader | DocxLoader | TextLoader | JSONLoader;
