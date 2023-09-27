@@ -47,11 +47,15 @@ export class ObjectStoreService {
 
 		await this.checkConnection();
 
-		this.isReady = true;
+		this.setReady(true);
 	}
 
 	setReadonly(newState: boolean) {
 		this.isReadOnly = newState;
+	}
+
+	setReady(newState: boolean) {
+		this.isReady = newState;
 	}
 
 	/**

@@ -33,6 +33,8 @@ describe('ObjectStoreService', () => {
 		it('should send a HEAD request to the correct host', async () => {
 			mockAxios.request.mockResolvedValue({ status: 200 });
 
+			objectStoreService.setReady(false);
+
 			await objectStoreService.checkConnection();
 
 			expect(mockAxios.request).toHaveBeenCalledWith(
@@ -49,6 +51,8 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
+			objectStoreService.setReady(false);
+
 			mockAxios.request.mockRejectedValue(MOCK_S3_ERROR);
 
 			const promise = objectStoreService.checkConnection();
