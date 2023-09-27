@@ -35,7 +35,7 @@ const formattedCreatedAtDate = computed<string>(() => {
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
-const authors = computed<{ label: string; tooltip: string }>(() => {
+const authors = computed<{ size: number; label: string }>(() => {
 	const allAuthors = props.item.authors.split(', ');
 	let label = allAuthors[0];
 
@@ -76,6 +76,7 @@ onMounted(() => {
 <template>
 	<li
 		ref="itemElement"
+		data-test-id="workflow-history-list-item"
 		:class="{
 			[$style.item]: true,
 			[$style.active]: props.isActive,
@@ -101,7 +102,6 @@ onMounted(() => {
 				@action="onAction"
 				@click.stop
 				@visible-change="onVisibleChange"
-				data-test-id="workflow-history-list-item-actions"
 			/>
 		</div>
 	</li>

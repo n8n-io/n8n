@@ -18,7 +18,7 @@ vi.stubGlobal(
 const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
 	versionId: faker.string.nanoid(),
 	createdAt: faker.date.past().toDateString(),
-	authors: Array.from({ length: Math.floor(Math.random() * 5) + 1 }, faker.person.fullName).join(
+	authors: Array.from({ length: faker.number.int({ min: 1, max: 5 }) }, faker.person.fullName).join(
 		', ',
 	),
 });
@@ -53,7 +53,7 @@ describe('WorkflowHistoryList', () => {
 		const numberOfItems = Math.floor(Math.random() * 20) + 1;
 		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
 
-		const { container } = renderComponent({
+		const { getAllByTestId } = renderComponent({
 			pinia,
 			props: {
 				items,
@@ -63,6 +63,6 @@ describe('WorkflowHistoryList', () => {
 			},
 		});
 
-		expect(container.querySelectorAll('li')).toHaveLength(numberOfItems);
+		expect(getAllByTestId('workflow-history-list-item')).toHaveLength(numberOfItems);
 	});
 });
