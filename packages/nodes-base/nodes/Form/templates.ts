@@ -213,6 +213,7 @@ input[type="date"] {
 .multiselect-option label {
 	padding-left: 12px;
 	color: #7E8186;
+	font-weight: 400;
 	cursor: pointer;
 }
 
