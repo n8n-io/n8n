@@ -1,5 +1,7 @@
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
+import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
+import concatStream from 'concat-stream';
 
 /**
  * Modes for storing binary data:
@@ -19,4 +21,11 @@ export async function ensureDirExists(dir: string) {
 	} catch {
 		await fs.mkdir(dir, { recursive: true });
 	}
+}
+
+export async function toBuffer(body: Buffer | Readable) {
+	return new Promise<Buffer>((resolve) => {
+		if (Buffer.isBuffer(body)) resolve(body);
+		else body.pipe(concatStream(resolve));
+	});
 }
