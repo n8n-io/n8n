@@ -30,6 +30,7 @@ import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
 	prepareRequestBody,
+	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -1151,8 +1152,8 @@ export class HttpRequestV3 implements INodeType {
 			if (timeout) {
 				requestOptions.timeout = timeout;
 			} else {
-				// set default timeout to 1 hour
-				requestOptions.timeout = 3600000;
+				// set default timeout to 5 minutes
+				requestOptions.timeout = 300_000;
 			}
 			if (sendQuery && queryParameterArrays) {
 				Object.assign(requestOptions, {
@@ -1160,7 +1161,7 @@ export class HttpRequestV3 implements INodeType {
 				});
 			}
 
-			const parametersToKeyValue = (
+			const parametersToKeyValue = async (
 				accumulator: { [key: string]: any },
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
@@ -1170,7 +1171,7 @@ export class HttpRequestV3 implements INodeType {
 					let uploadData: Buffer | Readable;
 					const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
 					if (itemBinaryData.id) {
-						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
@@ -1191,7 +1192,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.body = prepareRequestBody(
+					requestOptions.body = await prepareRequestBody(
 						bodyParameters,
 						bodyContentType,
 						nodeVersion,
@@ -1242,7 +1243,7 @@ export class HttpRequestV3 implements INodeType {
 					const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
 
 					if (itemBinaryData.id) {
-						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
 						const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
 						contentLength = metadata.fileSize;
 					} else {
@@ -1263,7 +1264,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
+					requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1286,7 +1287,7 @@ export class HttpRequestV3 implements INodeType {
 			if (sendHeaders && headerParameters) {
 				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					additionalHeaders = headerParameters.reduce(parametersToKeyValue, {});
+					additionalHeaders = await reduceAsync(headerParameters, parametersToKeyValue);
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {

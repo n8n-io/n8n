@@ -40,6 +40,8 @@ import SamlOnboarding from '@/views/SamlOnboarding.vue';
 import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
+import WorkflowHistory from '@/views/WorkflowHistory.vue';
+import WorkflowOnboardingView from '@/views/WorkflowOnboardingView.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 interface IRouteConfig {
@@ -56,11 +58,11 @@ interface IRouteConfig {
 	};
 }
 
-function getTemplatesRedirect() {
+function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return { name: VIEWS.NOT_FOUND };
+		return { name: defaultRedirect || VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -294,6 +296,28 @@ export const routes = [
 		],
 	},
 	{
+		path: '/workflow/:workflowId/history/:historyId?',
+		name: VIEWS.WORKFLOW_HISTORY,
+		components: {
+			default: WorkflowHistory,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			keepWorkflowAlive: true,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+				deny: {
+					shouldDeny: () =>
+						!useSettingsStore().isEnterpriseFeatureEnabled(
+							EnterpriseEditionFeature.WorkflowHistory,
+						),
+				},
+			},
+		},
+	},
+	{
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
@@ -304,6 +328,24 @@ export const routes = [
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/onboarding/:id',
+		name: VIEWS.WORKFLOW_ONBOARDING,
+		components: {
+			default: WorkflowOnboardingView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -493,7 +535,7 @@ export const routes = [
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
 								return (
-									settingsStore.settings.hideUsagePage === true ||
+									settingsStore.settings.hideUsagePage ||
 									settingsStore.settings.deployment?.type === 'cloud'
 								);
 							},
@@ -570,7 +612,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isPublicApiEnabled === false;
+								return !settingsStore.isPublicApiEnabled;
 							},
 						},
 					},
@@ -685,7 +727,7 @@ export const routes = [
 						deny: {
 							shouldDeny: () => {
 								const settingsStore = useSettingsStore();
-								return settingsStore.isCommunityNodesFeatureEnabled === false;
+								return !settingsStore.isCommunityNodesFeatureEnabled;
 							},
 						},
 					},
@@ -702,7 +744,7 @@ export const routes = [
 						pageCategory: 'settings',
 						getProperties(route: RouteLocation) {
 							return {
-								feature: route.params['featureId'],
+								feature: route.params.featureId,
 							};
 						},
 					},

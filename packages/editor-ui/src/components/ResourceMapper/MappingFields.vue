@@ -242,6 +242,10 @@ function getParamType(field: ResourceMapperField): NodePropertyTypes {
 	return 'string';
 }
 
+function getParsedFieldName(fullName: string): string {
+	return parseResourceMapperFieldName(fullName) ?? fullName;
+}
+
 function onValueChanged(value: IUpdateInformation): void {
 	emit('fieldValueChanged', value);
 }
@@ -344,7 +348,7 @@ defineExpose({
 							},
 						})
 					"
-					data-test-id="remove-field-button"
+					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					@click="removeField(field.name)"
 				/>
 			</div>

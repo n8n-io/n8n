@@ -48,12 +48,6 @@ export interface IBinaryData {
 	id?: string;
 }
 
-export interface BinaryMetadata {
-	fileName?: string;
-	mimeType?: string;
-	fileSize: number;
-}
-
 // All properties in this interface except for
 // "includeCredentialsOnRefreshOnBody" will get
 // removed once we add the OAuth2 hooks to the
@@ -578,7 +572,10 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 }
 
 export interface IGetNodeParameterOptions {
+	// extract value from regex, works only when parameter type is resourceLocator
 	extractValue?: boolean;
+	// get raw value of parameter with unresolved expressions
+	rawExpressions?: boolean;
 }
 
 namespace ExecuteFunctions {
@@ -697,8 +694,12 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryPath(binaryDataId: string): string;
-	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
-	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
+	getBinaryMetadata(binaryDataId: string): Promise<{
+		fileName?: string;
+		mimeType?: string;
+		fileSize: number;
+	}>;
 }
 
 export interface NodeHelperFunctions {
@@ -1127,6 +1128,12 @@ export interface INodeProperties {
 	modes?: INodePropertyMode[];
 	requiresDataPath?: 'single' | 'multiple';
 	doNotInherit?: boolean;
+	// set expected type for the value which would be used for validation and type casting
+	validateType?: FieldType;
+	// works only if validateType is set
+	// allows to skip validation during execution or set custom validation/casting logic inside node
+	// inline error messages would still be shown in UI
+	ignoreValidationDuringExecution?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {
@@ -1214,7 +1221,6 @@ export interface INodePropertyValueExtractorFunction {
 		value: string | NodeParameterValue,
 	): Promise<string | NodeParameterValue> | (string | NodeParameterValue);
 }
-
 export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 
 export interface IParameterDependencies {
@@ -1819,6 +1825,10 @@ export interface IWorkflowSettings {
 	executionOrder?: 'v0' | 'v1';
 }
 
+export interface WorkflowFEMeta {
+	onboardingId?: string;
+}
+
 export interface WorkflowTestData {
 	description: string;
 	input: {
@@ -2118,6 +2128,8 @@ export interface IPublicApiSettings {
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
 
+export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -2136,6 +2148,7 @@ export interface IN8nUISettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	n8nMetadata?: {
+		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
@@ -2195,6 +2208,7 @@ export interface IN8nUISettings {
 		externalSecrets: boolean;
 		showNonProdBanner: boolean;
 		debugInEditor: boolean;
+		workflowHistory: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -2202,6 +2216,9 @@ export interface IN8nUISettings {
 	};
 	variables: {
 		limit: number;
+	};
+	expressions: {
+		evaluator: ExpressionEvaluatorType;
 	};
 	mfa: {
 		enabled: boolean;
@@ -2225,4 +2242,9 @@ export interface SecretsHelpersBase {
 	listSecrets(provider: string): string[];
 }
 
-export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';
+export type BannerName =
+	| 'V1'
+	| 'TRIAL_OVER'
+	| 'TRIAL'
+	| 'NON_PRODUCTION_LICENSE'
+	| 'EMAIL_CONFIRMATION';

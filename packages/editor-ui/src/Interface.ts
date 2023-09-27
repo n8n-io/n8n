@@ -1,7 +1,13 @@
-import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type {
+	CREDENTIAL_EDIT_MODAL_KEY,
+	FAKE_DOOR_FEATURES,
+	REGULAR_NODE_CREATOR_VIEW,
+	SignInType,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from './constants';
 
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy } from '@/utils/typeHelpers';
+import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { IMenuItem } from 'n8n-design-system';
 import type {
 	BannerName,
@@ -39,12 +45,7 @@ import type {
 	WorkflowExecuteMode,
 	WorkflowSettings,
 } from 'n8n-workflow';
-import type {
-	FAKE_DOOR_FEATURES,
-	REGULAR_NODE_CREATOR_VIEW,
-	SignInType,
-	TRIGGER_NODE_CREATOR_VIEW,
-} from './constants';
+import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
 
@@ -213,6 +214,7 @@ export interface IWorkflowDataUpdate {
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -224,15 +226,16 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: {
-		nodes: INodeUi[];
-		connections: IConnections;
-	};
+	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
 }
 
 export interface INewWorkflowData {
 	name: string;
 	onboardingFlowEnabled: boolean;
+}
+
+export interface WorkflowMetadata {
+	onboardingId?: string;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -251,6 +254,7 @@ export interface IWorkflowDb {
 	ownedBy?: Partial<IUser>;
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
+	meta?: WorkflowMetadata;
 }
 
 // Identical to cli.Interfaces.ts
@@ -1093,7 +1097,7 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
-	banners: { [key in BannerName]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
+	bannerStack: BannerName[];
 }
 
 export type IFakeDoor = {
@@ -1201,6 +1205,7 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
+	currentUserCloudInfo: Cloud.UserAccount | null;
 }
 
 export interface IWorkflowsState {
@@ -1470,6 +1475,8 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
+export type SshKeyTypes = ['ed25519', 'rsa'];
+
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
@@ -1478,6 +1485,7 @@ export type SourceControlPreferences = {
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
 };
 
@@ -1535,6 +1543,13 @@ export declare namespace Cloud {
 		length: number;
 		gracePeriod: number;
 	}
+
+	export type UserAccount = {
+		confirmed: boolean;
+		username: string;
+		email: string;
+		hasEarlyAccess?: boolean;
+	};
 }
 
 export interface CloudPlanState {
@@ -1600,3 +1615,10 @@ export type UTMCampaign =
 	| 'open'
 	| 'upgrade-users'
 	| 'upgrade-variables';
+
+export type N8nBanners = {
+	[key in BannerName]: {
+		priority: number;
+		component: Component;
+	};
+};

@@ -2,7 +2,6 @@
 	<button
 		:class="$style.googleAuthBtn"
 		:title="$locale.baseText('credentialEdit.oAuthButton.signInWithGoogle')"
-		@click.stop.prevent="$emit('click')"
 		:style="googleAuthButtons"
 	/>
 </template>

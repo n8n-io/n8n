@@ -1,4 +1,4 @@
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
 import type {
@@ -27,9 +27,14 @@ import {
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
-import { OrchestrationService } from '../../services/orchestration.service';
+import { RedisService } from '@/services/redis.service';
+import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { EVENT_BUS_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
+import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
+import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -43,10 +48,15 @@ export interface MessageEventBusInitializeOptions {
 	workerId?: string;
 }
 
+@Service()
 export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
+
+	redisPublisher: RedisServicePubSubPublisher;
+
+	redisSubscriber: RedisServicePubSubSubscriber;
 
 	logWriter: MessageEventBusLogWriter;
 
@@ -81,6 +91,20 @@ export class MessageEventBus extends EventEmitter {
 			return;
 		}
 
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
+			this.redisSubscriber = await Container.get(RedisService).getPubSubSubscriber();
+			await this.redisSubscriber.subscribeToEventLog();
+			this.redisSubscriber.addMessageHandler(
+				'MessageEventBusMessageReceiver',
+				async (channel: string, messageString: string) => {
+					if (channel === EVENT_BUS_REDIS_CHANNEL) {
+						await this.handleRedisEventBusMessage(messageString);
+					}
+				},
+			);
+		}
+
 		LoggerProxy.debug('Initializing event bus...');
 
 		const savedEventDestinations = await Db.collections.EventDestinations.find({});
@@ -89,7 +113,7 @@ export class MessageEventBus extends EventEmitter {
 				try {
 					const destination = messageEventBusDestinationFromDb(this, destinationData);
 					if (destination) {
-						await this.addDestination(destination);
+						await this.addDestination(destination, false);
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -182,10 +206,13 @@ export class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	async addDestination(destination: MessageEventBusDestination) {
-		await this.removeDestination(destination.getId());
+	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
+		await this.removeDestination(destination.getId(), false);
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
+		if (notifyWorkers) {
+			await this.broadcastRestartEventbusAfterDestinationUpdate();
+		}
 		return destination;
 	}
 
@@ -199,19 +226,38 @@ export class MessageEventBus extends EventEmitter {
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
-	async removeDestination(id: string): Promise<DeleteResult | undefined> {
+	async removeDestination(
+		id: string,
+		notifyWorkers: boolean = true,
+	): Promise<DeleteResult | undefined> {
 		let result;
 		if (Object.keys(this.destinations).includes(id)) {
 			await this.destinations[id].close();
 			result = await this.destinations[id].deleteFromDb();
 			delete this.destinations[id];
 		}
+		if (notifyWorkers) {
+			await this.broadcastRestartEventbusAfterDestinationUpdate();
+		}
 		return result;
+	}
+
+	async handleRedisEventBusMessage(messageString: string) {
+		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
+		if (eventData) {
+			const eventMessage = getEventMessageObjectByType(eventData);
+			if (eventMessage) {
+				await Container.get(MessageEventBus).send(eventMessage);
+			}
+		}
+		return eventData;
 	}
 
 	async broadcastRestartEventbusAfterDestinationUpdate() {
 		if (config.getEnv('executions.mode') === 'queue') {
-			await Container.get(OrchestrationService).restartEventBus();
+			await this.redisPublisher.publishToCommandChannel({
+				command: 'restartEventBus',
+			});
 		}
 	}
 
@@ -235,6 +281,7 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
+		await this.redisSubscriber?.unSubscribeFromEventLog();
 		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
 	}
@@ -417,4 +464,4 @@ export class MessageEventBus extends EventEmitter {
 	}
 }
 
-export const eventBus = MessageEventBus.getInstance();
+export const eventBus = Container.get(MessageEventBus);

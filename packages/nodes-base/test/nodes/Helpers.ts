@@ -1,6 +1,6 @@
 import { mkdtempSync, readFileSync, readdirSync } from 'fs';
 import { get, isEmpty } from 'lodash';
-import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -32,6 +32,7 @@ import type {
 import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import path from 'path';
+import { Container } from 'typedi';
 import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
@@ -215,15 +216,10 @@ export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
-export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
-	const temporaryDir = createTemporaryDir();
-	await BinaryDataManager.init({
-		mode,
-		availableModes: mode,
-		localStoragePath: temporaryDir,
-		binaryDataTTL: 1,
-	});
-	return temporaryDir;
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({ mode: 'default', availableModes: [mode] });
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 const credentialTypes = new CredentialType();
