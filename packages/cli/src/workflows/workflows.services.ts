@@ -29,11 +29,12 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { TestWebhooks } from '@/TestWebhooks';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { InternalHooks } from '@/InternalHooks';
-import { WorkflowHistoryRepository, WorkflowRepository } from '@/databases/repositories';
+import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
-import { isWorkflowHistoryEnabled } from './workflowHistory/workflowHistoryHelper.ee';
+import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -299,14 +300,8 @@ export class WorkflowsService {
 			);
 		}
 
-		if (isWorkflowHistoryEnabled()) {
-			await Container.get(WorkflowHistoryRepository).insert({
-				authors: user.firstName + ' ' + user.lastName,
-				connections: shared.workflow.connections,
-				nodes: shared.workflow.nodes,
-				versionId: shared.workflow.versionId,
-				workflowId: shared.workflow.id,
-			});
+		if (isWorkflowHistoryLicensed()) {
+			await Container.get(WorkflowHistoryService).saveVersion(user, shared.workflow);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];

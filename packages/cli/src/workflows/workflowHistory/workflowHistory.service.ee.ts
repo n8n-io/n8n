@@ -1,9 +1,11 @@
 import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import type { User } from '@/databases/entities/User';
+import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
 import { SharedWorkflowRepository } from '@/databases/repositories';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { Service } from 'typedi';
+import { isWorkflowHistoryEnabled } from './workflowHistoryHelper.ee';
 
 export class SharedWorkflowNotFoundError extends Error {}
 export class HistoryVersionNotFoundError extends Error {}
@@ -60,5 +62,17 @@ export class WorkflowHistoryService {
 			throw new HistoryVersionNotFoundError();
 		}
 		return hist;
+	}
+
+	async saveVersion(user: User, workflow: WorkflowEntity) {
+		if (isWorkflowHistoryEnabled()) {
+			await this.workflowHistoryRepository.insert({
+				authors: user.firstName + ' ' + user.lastName,
+				connections: workflow.connections,
+				nodes: workflow.nodes,
+				versionId: workflow.versionId,
+				workflowId: workflow.id,
+			});
+		}
 	}
 }
