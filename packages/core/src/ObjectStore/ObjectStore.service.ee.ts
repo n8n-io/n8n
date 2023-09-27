@@ -14,8 +14,6 @@ import type { Bucket, ListPage, RawListPage, RequestOptions } from './types';
 import type { Readable } from 'stream';
 import type { BinaryData } from '..';
 
-// @TODO: Decouple host from AWS
-
 @Service()
 export class ObjectStoreService {
 	private host = '';
@@ -48,10 +46,6 @@ export class ObjectStoreService {
 		await this.checkConnection();
 	}
 
-	// get host() {
-	// 	return `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`; // @TODO: Get it from envs
-	// }
-
 	setReadonly(newState: boolean) {
 		this.isReadOnly = newState;
 	}
@@ -62,7 +56,7 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
 	async checkConnection() {
-		return this.request('HEAD', this.host);
+		return this.request('HEAD', this.host, this.bucket.name);
 	}
 
 	/**
@@ -81,7 +75,9 @@ export class ObjectStoreService {
 		if (metadata.fileName) headers['x-amz-meta-filename'] = metadata.fileName;
 		if (metadata.mimeType) headers['Content-Type'] = metadata.mimeType;
 
-		return this.request('PUT', this.host, `/${filename}`, { headers, body: buffer });
+		const path = `/${this.bucket.name}/${filename}`;
+
+		return this.request('PUT', this.host, path, { headers, body: buffer });
 	}
 
 	/**
@@ -89,9 +85,11 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async get(path: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
-	async get(path: string, { mode }: { mode: 'stream' }): Promise<Readable>;
-	async get(path: string, { mode }: { mode: 'stream' | 'buffer' }) {
+	async get(fileId: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
+	async get(fileId: string, { mode }: { mode: 'stream' }): Promise<Readable>;
+	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }) {
+		const path = `${this.bucket.name}/${fileId}`;
+
 		const { data } = await this.request('GET', this.host, path, {
 			responseType: mode === 'buffer' ? 'arraybuffer' : 'stream',
 		});
@@ -108,7 +106,7 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
-	async getMetadata(path: string) {
+	async getMetadata(fileId: string) {
 		type Response = {
 			headers: {
 				'content-length': string;
@@ -116,6 +114,8 @@ export class ObjectStoreService {
 				'x-amz-meta-filename'?: string;
 			} & BinaryData.PreWriteMetadata;
 		};
+
+		const path = `${this.bucket.name}/${fileId}`;
 
 		const response: Response = await this.request('HEAD', this.host, path);
 
@@ -127,8 +127,10 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async deleteOne(path: string) {
-		return this.request('DELETE', this.host, `/${encodeURIComponent(path)}`);
+	async deleteOne(fileId: string) {
+		const path = `${this.bucket.name}/${fileId}`;
+
+		return this.request('DELETE', this.host, path);
 	}
 
 	/**
@@ -149,7 +151,9 @@ export class ObjectStoreService {
 			'Content-MD5': createHash('md5').update(body).digest('base64'),
 		};
 
-		return this.request('POST', this.host, '/?delete', { headers, body });
+		const path = `${this.bucket.name}/?delete`;
+
+		return this.request('POST', this.host, path, { headers, body });
 	}
 
 	/**
@@ -179,13 +183,11 @@ export class ObjectStoreService {
 	 * Fetch a page of objects with a common prefix in the configured bucket. Max 1000 per page.
 	 */
 	async getListPage(prefix: string, nextPageToken?: string) {
-		const bucketlessHost = this.host.split('.').slice(1).join('.');
-
 		const qs: Record<string, string | number> = { 'list-type': 2, prefix };
 
 		if (nextPageToken) qs['continuation-token'] = nextPageToken;
 
-		const { data } = await this.request('GET', bucketlessHost, `/${this.bucket.name}`, { qs });
+		const { data } = await this.request('GET', this.host, this.bucket.name, { qs });
 
 		if (typeof data !== 'string') {
 			throw new TypeError(`Expected XML string but received ${typeof data}`);

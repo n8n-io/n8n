@@ -9,9 +9,10 @@ jest.mock('axios');
 const mockAxios = axios as jest.Mocked<typeof axios>;
 
 const MOCK_BUCKET = { region: 'us-east-1', name: 'test-bucket' };
+const MOCK_HOST = `s3.${MOCK_BUCKET.region}.amazonaws.com`;
 const MOCK_CREDENTIALS = { accountId: 'mock-account-id', secretKey: 'mock-secret-key' };
+const MOCK_URL = `https://${MOCK_HOST}/${MOCK_BUCKET.name}`;
 const FAILED_REQUEST_ERROR_MESSAGE = 'Request to external object storage failed';
-const EXPECTED_HOST = `${MOCK_BUCKET.name}.s3.${MOCK_BUCKET.region}.amazonaws.com`;
 const MOCK_S3_ERROR = new Error('Something went wrong!');
 
 const toMultipleDeletionXml = (filename: string) => `<Delete>
@@ -24,7 +25,7 @@ describe('ObjectStoreService', () => {
 	beforeEach(async () => {
 		objectStoreService = new ObjectStoreService();
 		mockAxios.request.mockResolvedValueOnce({ status: 200 }); // for checkConnection
-		await objectStoreService.init(MOCK_BUCKET, MOCK_CREDENTIALS);
+		await objectStoreService.init(MOCK_HOST, MOCK_BUCKET, MOCK_CREDENTIALS);
 		jest.restoreAllMocks();
 	});
 
@@ -37,7 +38,7 @@ describe('ObjectStoreService', () => {
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'HEAD',
-					url: `https://${EXPECTED_HOST}/`,
+					url: `https://${MOCK_HOST}/${MOCK_BUCKET.name}`,
 					headers: expect.objectContaining({
 						'X-Amz-Content-Sha256': expect.any(String),
 						'X-Amz-Date': expect.any(String),
@@ -58,18 +59,18 @@ describe('ObjectStoreService', () => {
 
 	describe('getMetadata()', () => {
 		it('should send a HEAD request to the correct host and path', async () => {
-			const path = 'file.txt';
+			const fileId = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 200 });
 
-			await objectStoreService.getMetadata(path);
+			await objectStoreService.getMetadata(fileId);
 
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'HEAD',
-					url: `https://${EXPECTED_HOST}/${path}`,
+					url: `${MOCK_URL}/${fileId}`,
 					headers: expect.objectContaining({
-						Host: EXPECTED_HOST,
+						Host: MOCK_HOST,
 						'X-Amz-Content-Sha256': expect.any(String),
 						'X-Amz-Date': expect.any(String),
 						Authorization: expect.any(String),
@@ -79,11 +80,11 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should throw an error on request failure', async () => {
-			const path = 'file.txt';
+			const fileId = 'file.txt';
 
 			mockAxios.request.mockRejectedValue(MOCK_S3_ERROR);
 
-			const promise = objectStoreService.getMetadata(path);
+			const promise = objectStoreService.getMetadata(fileId);
 
 			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
 		});
@@ -91,18 +92,18 @@ describe('ObjectStoreService', () => {
 
 	describe('put()', () => {
 		it('should send a PUT request to upload an object', async () => {
-			const path = 'file.txt';
+			const fileId = 'file.txt';
 			const buffer = Buffer.from('Test content');
-			const metadata = { fileName: path, mimeType: 'text/plain' };
+			const metadata = { fileName: fileId, mimeType: 'text/plain' };
 
 			mockAxios.request.mockResolvedValue({ status: 200 });
 
-			await objectStoreService.put(path, buffer, metadata);
+			await objectStoreService.put(fileId, buffer, metadata);
 
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'PUT',
-					url: `https://${EXPECTED_HOST}/${path}`,
+					url: `${MOCK_URL}/${fileId}`,
 					headers: expect.objectContaining({
 						'Content-Length': buffer.length,
 						'Content-MD5': expect.any(String),
@@ -150,16 +151,16 @@ describe('ObjectStoreService', () => {
 
 	describe('get()', () => {
 		it('should send a GET request to download an object as a buffer', async () => {
-			const path = 'file.txt';
+			const fileId = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 200, data: Buffer.from('Test content') });
 
-			const result = await objectStoreService.get(path, { mode: 'buffer' });
+			const result = await objectStoreService.get(fileId, { mode: 'buffer' });
 
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'GET',
-					url: `https://${EXPECTED_HOST}/${path}`,
+					url: `${MOCK_URL}/${fileId}`,
 					responseType: 'arraybuffer',
 				}),
 			);
@@ -168,16 +169,16 @@ describe('ObjectStoreService', () => {
 		});
 
 		it('should send a GET request to download an object as a stream', async () => {
-			const path = 'file.txt';
+			const fileId = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 200, data: new Readable() });
 
-			const result = await objectStoreService.get(path, { mode: 'stream' });
+			const result = await objectStoreService.get(fileId, { mode: 'stream' });
 
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'GET',
-					url: `https://${EXPECTED_HOST}/${path}`,
+					url: `${MOCK_URL}/${fileId}`,
 					responseType: 'stream',
 				}),
 			);
@@ -197,17 +198,17 @@ describe('ObjectStoreService', () => {
 	});
 
 	describe('deleteOne()', () => {
-		it('should send a DELETE request to delete an object', async () => {
-			const path = 'file.txt';
+		it('should send a DELETE request to delete a single object', async () => {
+			const fileId = 'file.txt';
 
 			mockAxios.request.mockResolvedValue({ status: 204 });
 
-			await objectStoreService.deleteOne(path);
+			await objectStoreService.deleteOne(fileId);
 
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'DELETE',
-					url: `https://${EXPECTED_HOST}/${path}`,
+					url: `${MOCK_URL}/${fileId}`,
 				}),
 			);
 		});
@@ -247,7 +248,7 @@ describe('ObjectStoreService', () => {
 			expect(mockAxios.request).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
-					url: `https://${EXPECTED_HOST}/?delete`,
+					url: `${MOCK_URL}/?delete`,
 					headers: expect.objectContaining({
 						'Content-Type': 'application/xml',
 						'Content-Length': expect.any(Number),

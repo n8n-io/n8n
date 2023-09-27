@@ -920,7 +920,7 @@ export const schema = {
 				format: String,
 				default: '',
 				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
-				doc: 'Endpoint of the n8n bucket in S3-compatible external storage, e.g. `my-bucket.s3.us-east-1.amazonaws.com`',
+				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com` or `s3.us-east-005.backblazeb2.com`',
 			},
 			bucket: {
 				name: {

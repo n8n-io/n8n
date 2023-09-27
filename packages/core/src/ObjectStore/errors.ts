@@ -2,11 +2,9 @@ import { AxiosRequestConfig } from 'axios';
 
 export namespace ObjectStore {
 	export class RequestFailedError extends Error {
-		message = 'Request to external object storage failed';
-
-		constructor(error: unknown, details: AxiosRequestConfig) {
-			super();
-			this.cause = { error, details };
+		constructor(error: unknown, config: AxiosRequestConfig) {
+			super(`Request to external object storage failed. Config: ${JSON.stringify(config)}`);
+			this.cause = { error };
 		}
 	}
 }
