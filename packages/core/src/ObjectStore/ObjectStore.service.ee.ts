@@ -22,6 +22,8 @@ export class ObjectStoreService {
 
 	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
 
+	private isReady = false;
+
 	private isReadOnly = false;
 
 	private logger = Logger;
@@ -44,6 +46,8 @@ export class ObjectStoreService {
 		if (options?.isReadOnly) this.isReadOnly = true;
 
 		await this.checkConnection();
+
+		this.isReady = true;
 	}
 
 	setReadonly(newState: boolean) {
@@ -56,6 +60,8 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
 	async checkConnection() {
+		if (this.isReady) return;
+
 		return this.request('HEAD', this.host, this.bucket.name);
 	}
 
@@ -261,6 +267,7 @@ export class ObjectStoreService {
 		if (responseType) config.responseType = responseType;
 
 		try {
+			console.log(config);
 			return await axios.request<T>(config);
 		} catch (error) {
 			throw new ObjectStore.RequestFailedError(error, config);
