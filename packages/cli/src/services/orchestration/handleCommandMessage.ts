@@ -1,8 +1,9 @@
 import { LoggerProxy } from 'n8n-workflow';
 import { messageToRedisServiceCommandObject } from './helpers';
 import config from '@/config';
-import { MessageEventBus } from '../../eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 
 // this function handles commands sent to the MAIN instance. the workers handle their own commands
 export async function handleCommandMessage(messageString: string) {
@@ -21,16 +22,15 @@ export async function handleCommandMessage(messageString: string) {
 		}
 		switch (message.command) {
 			case 'reloadLicense':
-				// at this point in time, only a single main instance is supported, thus this
-				// command _should_ never be caught currently (which is why we log a warning)
+				// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 				LoggerProxy.warn(
 					'Received command to reload license via Redis, but this should not have happened and is not supported on the main instance yet.',
 				);
-				// once multiple main instances are supported, this command should be handled
-				// await Container.get(License).reload();
 				break;
 			case 'restartEventBus':
 				await Container.get(MessageEventBus).restart();
+			case 'reloadExternalSecretsProviders':
+				await Container.get(ExternalSecretsManager).reloadAllProviders();
 			default:
 				break;
 		}

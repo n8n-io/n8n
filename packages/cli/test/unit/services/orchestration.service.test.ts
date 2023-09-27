@@ -9,8 +9,10 @@ import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
 import { handleWorkerResponseMessage } from '../../../src/services/orchestration/handleWorkerResponseMessage';
 import { handleCommandMessage } from '../../../src/services/orchestration/handleCommandMessage';
+import { OrchestrationHandlerService } from '../../../src/services/orchestration.handler.service';
 
 const os = Container.get(OrchestrationService);
+const handler = Container.get(OrchestrationHandlerService);
 
 let queueModeId: string;
 
@@ -76,8 +78,9 @@ describe('Orchestration Service', () => {
 
 	test('should initialize', async () => {
 		await os.init();
+		await handler.init();
 		expect(os.redisPublisher).toBeDefined();
-		expect(os.redisSubscriber).toBeDefined();
+		expect(handler.redisSubscriber).toBeDefined();
 		expect(queueModeId).toBeDefined();
 	});
 

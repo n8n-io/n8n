@@ -6,6 +6,7 @@ import * as os from 'os';
 import Container from 'typedi';
 import { License } from '@/License';
 import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
+import { ExternalSecretsManager } from '../ExternalSecrets/ExternalSecretsManager.ee';
 
 export function getWorkerCommandReceivedHandler(options: {
 	queueModeId: string;
@@ -60,6 +61,16 @@ export function getWorkerCommandReceivedHandler(options: {
 						break;
 					case 'restartEventBus':
 						await Container.get(MessageEventBus).restart();
+						await options.redisPublisher.publishToWorkerChannel({
+							workerId: options.queueModeId,
+							command: message.command,
+							payload: {
+								result: 'success',
+							},
+						});
+						break;
+					case 'reloadExternalSecretsProviders':
+						await Container.get(ExternalSecretsManager).reloadAllProviders();
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,
