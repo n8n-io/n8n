@@ -177,7 +177,7 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 				type: 'subcategory',
 				properties: {
 					title: AI_CATEGORY_TEXT_SPLITTERS,
-					icon: 'remove-format',
+					icon: 'grip-lines-vertical',
 					...getAISubcategoryProperties(NodeConnectionType.AiTextSplitter),
 				},
 			},
