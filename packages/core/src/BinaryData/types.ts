@@ -20,6 +20,8 @@ export namespace BinaryData {
 
 	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
+	export type IdsForDeletion = Array<{ workflowId: string; executionId: string }>;
+
 	export interface Manager {
 		init(): Promise<void>;
 
@@ -35,7 +37,7 @@ export namespace BinaryData {
 		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
-		copyByFileId(workflowId: string, executionId: string, fileId: string): Promise<string>;
+		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
 		copyByFilePath(
 			workflowId: string,
 			executionId: string,
@@ -44,7 +46,7 @@ export namespace BinaryData {
 		): Promise<WriteResult>;
 
 		deleteOne(fileId: string): Promise<void>;
-		deleteManyByExecutionIds(executionIds: string[]): Promise<string[]>;
+		deleteMany(ids: IdsForDeletion): Promise<void>;
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
