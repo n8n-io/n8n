@@ -26,7 +26,7 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataManager,
+	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
@@ -204,6 +204,8 @@ export class Server extends AbstractServer {
 
 	push: Push;
 
+	binaryDataService: BinaryDataService;
+
 	constructor() {
 		super('main');
 
@@ -363,6 +365,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
+		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -1431,13 +1434,12 @@ export class Server extends AbstractServer {
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
-				const binaryDataManager = BinaryDataManager.getInstance();
 				try {
-					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					const binaryPath = this.binaryDataService.getPath(identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							const metadata = await this.binaryDataService.getMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
@@ -1476,9 +1478,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize({
-				uniqueInstanceId: this.uniqueInstanceId,
-			});
+			await eventBus.initialize();
 		}
 
 		if (this.endpointPresetCredentials !== '') {

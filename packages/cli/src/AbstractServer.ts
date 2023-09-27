@@ -117,7 +117,7 @@ export abstract class AbstractServer {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			// will start the redis connections
-			await Container.get(OrchestrationService).init(this.uniqueInstanceId);
+			await Container.get(OrchestrationService).init();
 		}
 	}
 

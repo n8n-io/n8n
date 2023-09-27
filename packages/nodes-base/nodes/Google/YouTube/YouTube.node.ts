@@ -838,7 +838,7 @@ export class YouTube implements INodeType {
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
-							fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+							fileContent = await this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;

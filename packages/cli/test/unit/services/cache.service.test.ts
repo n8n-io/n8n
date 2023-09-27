@@ -80,10 +80,7 @@ describe('cacheService', () => {
 	});
 
 	test('should honour ttl values', async () => {
-		// set default TTL to 10ms
-		config.set('cache.memory.ttl', 10);
-
-		await cacheService.set('testString', 'test');
+		await cacheService.set('testString', 'test', 10);
 		await cacheService.set('testNumber1', 123, 1000);
 
 		const store = (await cacheService.getCache())?.store;
@@ -92,15 +89,6 @@ describe('cacheService', () => {
 
 		await expect(store!.ttl('testString')).resolves.toBeLessThanOrEqual(100);
 		await expect(store!.ttl('testNumber1')).resolves.toBeLessThanOrEqual(1000);
-
-		// commented out because it fails on CI sporadically
-		// await expect(cacheService.get('testString')).resolves.toBe('test');
-		// await expect(cacheService.get('testNumber1')).resolves.toBe(123);
-
-		// await new Promise((resolve) => setTimeout(resolve, 20));
-
-		// await expect(cacheService.get('testString')).resolves.toBeUndefined();
-		// await expect(cacheService.get('testNumber1')).resolves.toBe(123);
 	});
 
 	test('should set and remove values', async () => {

@@ -7,11 +7,10 @@
 import 'source-map-support/register';
 import 'reflect-metadata';
 import { setDefaultResultOrder } from 'dns';
-setDefaultResultOrder('ipv4first');
 
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataService, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -58,6 +57,10 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	setDefaultResultOrder('ipv4first');
+}
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -124,7 +127,7 @@ class WorkflowRunnerProcess {
 		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig);
+		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);
 		await license.init(instanceId);

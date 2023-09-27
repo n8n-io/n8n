@@ -39,7 +39,6 @@ import pick from 'lodash/pick';
 import { extension, lookup } from 'mime-types';
 import type {
 	BinaryHelperFunctions,
-	BinaryMetadata,
 	FieldType,
 	FileSystemHelperFunctions,
 	FunctionsBase,
@@ -117,8 +116,7 @@ import type { RequestPromiseOptions } from 'request-promise-native';
 import { Readable } from 'stream';
 import url, { URL, URLSearchParams } from 'url';
 
-import { BinaryDataManager } from './BinaryDataManager';
-import { binaryToBuffer } from './BinaryDataManager/utils';
+import { BinaryDataService } from './BinaryData/BinaryData.service';
 import {
 	BINARY_DATA_STORAGE_PATH,
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
@@ -132,14 +130,16 @@ import {
 import { extractValue } from './ExtractValue';
 import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath } from './UserSettings';
 import {
 	getAllWorkflowExecutionMetadata,
 	getWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
+import { getSecretsProxy } from './Secrets';
+import { getUserN8nFolderPath } from './UserSettings';
+import Container from 'typedi';
+import type { BinaryData } from './BinaryData/types';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -774,9 +774,9 @@ export async function proxyRequestToAxios(
 				let responseData = response.data;
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
-					responseData = await binaryToBuffer(responseData).then((buffer) =>
-						buffer.toString('utf-8'),
-					);
+					responseData = await Container.get(BinaryDataService)
+						.toBuffer(responseData)
+						.then((buffer) => buffer.toString('utf-8'));
 				}
 
 				if (configObject.simple === false) {
@@ -941,21 +941,21 @@ async function httpRequest(
 }
 
 export function getBinaryPath(binaryDataId: string): string {
-	return BinaryDataManager.getInstance().getBinaryPath(binaryDataId);
+	return Container.get(BinaryDataService).getPath(binaryDataId);
 }
 
 /**
  * Returns binary file metadata
  */
-export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
-	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryData.Metadata> {
+	return Container.get(BinaryDataService).getMetadata(binaryDataId);
 }
 
 /**
  * Returns binary file stream for piping
  */
-export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
-	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+export async function getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable> {
+	return Container.get(BinaryDataService).getAsStream(binaryDataId, chunkSize);
 }
 
 export function assertBinaryData(
@@ -992,26 +992,33 @@ export async function getBinaryDataBuffer(
 	inputIndex: number,
 ): Promise<Buffer> {
 	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
-	return BinaryDataManager.getInstance().getBinaryDataBuffer(binaryData);
+	return Container.get(BinaryDataService).getAsBuffer(binaryData);
 }
 
 /**
  * Store an incoming IBinaryData & related buffer using the configured binary data manager.
  *
  * @export
- * @param {IBinaryData} data
- * @param {Buffer | Readable} binaryData
+ * @param {IBinaryData} binaryData
+ * @param {Buffer | Readable} bufferOrStream
  * @returns {Promise<IBinaryData>}
  */
 export async function setBinaryDataBuffer(
-	data: IBinaryData,
-	binaryData: Buffer | Readable,
+	binaryData: IBinaryData,
+	bufferOrStream: Buffer | Readable,
+	workflowId: string,
 	executionId: string,
 ): Promise<IBinaryData> {
-	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
+	return Container.get(BinaryDataService).store(
+		workflowId,
+		executionId,
+		bufferOrStream,
+		binaryData,
+	);
 }
 
 export async function copyBinaryFile(
+	workflowId: string,
 	executionId: string,
 	filePath: string,
 	fileName: string,
@@ -1061,7 +1068,12 @@ export async function copyBinaryFile(
 		returnData.fileName = path.parse(filePath).base;
 	}
 
-	return BinaryDataManager.getInstance().copyBinaryFile(returnData, filePath, executionId);
+	return Container.get(BinaryDataService).copyBinaryFile(
+		workflowId,
+		executionId,
+		returnData,
+		filePath,
+	);
 }
 
 /**
@@ -1071,6 +1083,7 @@ export async function copyBinaryFile(
 async function prepareBinaryData(
 	binaryData: Buffer | Readable,
 	executionId: string,
+	workflowId: string,
 	filePath?: string,
 	mimeType?: string,
 ): Promise<IBinaryData> {
@@ -1152,7 +1165,7 @@ async function prepareBinaryData(
 		}
 	}
 
-	return setBinaryDataBuffer(returnData, binaryData, executionId);
+	return setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
 }
 
 /**
@@ -2324,7 +2337,7 @@ export function getNodeWebhookUrl(
 		undefined,
 		false,
 	) as boolean;
-	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id!, node, path.toString(), isFullPath);
+	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id, node, path.toString(), isFullPath);
 }
 
 /**
@@ -2560,24 +2573,27 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	},
 });
 
-const getNodeHelperFunctions = ({
-	executionId,
-}: IWorkflowExecuteAdditionalData): NodeHelperFunctions => ({
+const getNodeHelperFunctions = (
+	{ executionId }: IWorkflowExecuteAdditionalData,
+	workflowId: string,
+): NodeHelperFunctions => ({
 	copyBinaryFile: async (filePath, fileName, mimeType) =>
-		copyBinaryFile(executionId!, filePath, fileName, mimeType),
+		copyBinaryFile(workflowId, executionId!, filePath, fileName, mimeType),
 });
 
-const getBinaryHelperFunctions = ({
-	executionId,
-}: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+const getBinaryHelperFunctions = (
+	{ executionId }: IWorkflowExecuteAdditionalData,
+	workflowId: string,
+): BinaryHelperFunctions => ({
 	getBinaryPath,
 	getBinaryStream,
 	getBinaryMetadata,
-	binaryToBuffer,
+	binaryToBuffer: async (body: Buffer | Readable) =>
+		Container.get(BinaryDataService).toBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
-		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
+		prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
-		setBinaryDataBuffer(data, binaryData, executionId!),
+		setBinaryDataBuffer(data, binaryData, workflowId, executionId!),
 	copyBinaryFile: async () => {
 		throw new Error('copyBinaryFile has been removed. Please upgrade this node');
 	},
@@ -2637,7 +2653,7 @@ export function getExecutePollFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
 			},
 		};
@@ -2696,7 +2712,7 @@ export function getExecuteTriggerFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
 			},
 		};
@@ -2761,9 +2777,10 @@ export function getExecuteFunctions(
 						parentWorkflowSettings: workflow.settings,
 					})
 					.then(async (result) =>
-						BinaryDataManager.getInstance().duplicateBinaryData(
-							result,
+						Container.get(BinaryDataService).duplicateBinaryData(
+							workflow.id,
 							additionalData.executionId!,
+							result,
 						),
 					);
 			},
@@ -2833,7 +2850,8 @@ export function getExecuteFunctions(
 				);
 				return dataProxy.getDataProxy();
 			},
-			binaryToBuffer,
+			binaryToBuffer: async (body: Buffer | Readable) =>
+				Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {
@@ -2870,7 +2888,7 @@ export function getExecuteFunctions(
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getFileSystemHelperFunctions(node),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				assertBinaryData: (itemIndex, propertyName) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, 0),
 				getBinaryDataBuffer: async (itemIndex, propertyName) =>
@@ -2880,7 +2898,7 @@ export function getExecuteFunctions(
 				normalizeItems,
 				constructExecutionMetaData,
 			},
-			nodeHelpers: getNodeHelperFunctions(additionalData),
+			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
 	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
@@ -3012,7 +3030,7 @@ export function getExecuteSingleFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 
 				assertBinaryData: (propertyName, inputIndex = 0) =>
 					assertBinaryData(inputData, node, itemIndex, propertyName, inputIndex),
@@ -3269,10 +3287,10 @@ export function getExecuteWebhookFunctions(
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),
-				...getBinaryHelperFunctions(additionalData),
+				...getBinaryHelperFunctions(additionalData, workflow.id),
 				returnJsonArray,
 			},
-			nodeHelpers: getNodeHelperFunctions(additionalData),
+			nodeHelpers: getNodeHelperFunctions(additionalData, workflow.id),
 		};
 	})(workflow, node);
 }

@@ -100,7 +100,7 @@ jest.mock('@/Db', () => {
 				find: jest.fn(async () => generateWorkflows(databaseActiveWorkflowsCount)),
 				findOne: jest.fn(async (searchParams) => {
 					return databaseActiveWorkflowsList.find(
-						(workflow) => workflow.id.toString() === searchParams.where.id.toString(),
+						(workflow) => workflow.id === searchParams.where.id.toString(),
 					);
 				}),
 				update: jest.fn(),
