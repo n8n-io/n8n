@@ -1,18 +1,19 @@
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 import type { IRunData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 
+import { useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { useToast } from '@/composables';
 
 import { useTitleChange } from '@/composables/useTitleChange';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
+import { HTTP_REQUEST_NODE_TYPE } from '../constants';
 
 export const workflowRun = defineComponent({
 	mixins: [externalHooks, workflowHelpers],
@@ -190,6 +191,14 @@ export const workflowRun = defineComponent({
 				}
 
 				const workflowData = await this.getWorkflowDataToSave();
+
+				workflowData.nodes = workflowData.nodes.map((node) => {
+					// Execute HTTP request node variants as HTTP Request Node
+					if (node.type.startsWith(`${HTTP_REQUEST_NODE_TYPE}:`)) {
+						node.type = HTTP_REQUEST_NODE_TYPE;
+					}
+					return node;
+				});
 
 				const startRunData: IStartRunData = {
 					workflowData,

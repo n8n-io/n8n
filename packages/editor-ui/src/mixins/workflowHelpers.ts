@@ -1,6 +1,5 @@
 import {
 	EnterpriseEditionFeature,
-	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -591,10 +590,6 @@ export const workflowHelpers = defineComponent({
 					node,
 				);
 				nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
-
-				if (nodeData.type.startsWith(HTTP_REQUEST_NODE_TYPE)) {
-					nodeData.type = HTTP_REQUEST_NODE_TYPE;
-				}
 
 				// Add the node credentials if there are some set and if they should be displayed
 				if (node.credentials !== undefined && nodeType.credentials !== undefined) {
