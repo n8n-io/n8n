@@ -44,6 +44,7 @@ describe('NodeExecuteFunctions', () => {
 					data: 'This should be overwritten by the actual payload in the response',
 				},
 				inputData,
+				'workflowId',
 				'executionId',
 			);
 
@@ -95,6 +96,7 @@ describe('NodeExecuteFunctions', () => {
 					data: 'This should be overwritten with the name of the configured data manager',
 				},
 				inputData,
+				'workflowId',
 				'executionId',
 			);
 
