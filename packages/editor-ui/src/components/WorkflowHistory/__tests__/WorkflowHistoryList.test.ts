@@ -37,7 +37,7 @@ describe('WorkflowHistoryList', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render empty workflow history list', () => {
+	it('should render empty list', () => {
 		const { getByText } = renderComponent({
 			pinia,
 			props: {
@@ -51,7 +51,7 @@ describe('WorkflowHistoryList', () => {
 		expect(getByText(/No versions yet/)).toBeInTheDocument();
 	});
 
-	it('should render workflow history list and delegate preview event', async () => {
+	it('should render list and delegate preview event', async () => {
 		const numberOfItems = faker.number.int({ min: 10, max: 50 });
 		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
 

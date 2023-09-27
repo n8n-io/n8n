@@ -31,7 +31,7 @@ describe('WorkflowHistoryListItem', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render empty workflow history list with badge', async () => {
+	it('should render item with badge', async () => {
 		const item = workflowHistoryDataFactory();
 		item.authors = 'John Doe';
 		const { getByText, container, queryByRole, emitted } = renderComponent({
