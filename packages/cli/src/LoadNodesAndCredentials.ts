@@ -1,5 +1,7 @@
+import { EventEmitter } from 'events';
 import uniq from 'lodash/uniq';
 import glob from 'fast-glob';
+import { Service } from 'typedi';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -22,11 +24,8 @@ import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import { CommunityPackageService } from './services/communityPackage.service';
 import {
 	GENERATED_STATIC_DIR,
-	RESPONSE_ERROR_MESSAGES,
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
 	inTest,
@@ -34,10 +33,9 @@ import {
 	inE2ETests,
 } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import Container, { Service } from 'typedi';
 
 @Service()
-export class LoadNodesAndCredentials implements INodesAndCredentials {
+export class LoadNodesAndCredentials extends EventEmitter implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -92,6 +90,12 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
 		this.injectCustomApiCallOptions();
+
+		this.on('postProcess:start', async () => {
+			await this.postProcessLoaders();
+			await this.generateTypesForFrontend();
+			this.emit('postProcess:done');
+		});
 	}
 
 	async generateTypesForFrontend() {
@@ -180,93 +184,16 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		}
 	}
 
-	private async installOrUpdateNpmModule(
-		packageName: string,
-		options: { version?: string } | { installedPackage: InstalledPackages },
-	) {
-		const isUpdate = 'installedPackage' in options;
-		const command = isUpdate
-			? `npm update ${packageName}`
-			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
-
-		const communityPackageService = Container.get(CommunityPackageService);
-
-		try {
-			await communityPackageService.executeNpmCommand(command);
-		} catch (error) {
-			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
-				throw new Error(`The npm package "${packageName}" could not be found.`);
-			}
-			throw error;
-		}
-
+	async loadPackage(packageName: string) {
 		const finalNodeUnpackedPath = path.join(this.downloadFolder, 'node_modules', packageName);
-
-		let loader: PackageDirectoryLoader;
-		try {
-			loader = await this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
-		} catch (error) {
-			// Remove this package since loading it failed
-			const removeCommand = `npm remove ${packageName}`;
-			try {
-				await communityPackageService.executeNpmCommand(removeCommand);
-			} catch {}
-			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
-		}
-
-		if (loader.loadedNodes.length > 0) {
-			// Save info to DB
-			try {
-				if (isUpdate) {
-					await communityPackageService.removePackageFromDatabase(options.installedPackage);
-				}
-				const installedPackage = await communityPackageService.persistInstalledPackage(loader);
-				await this.postProcessLoaders();
-				await this.generateTypesForFrontend();
-				return installedPackage;
-			} catch (error) {
-				LoggerProxy.error('Failed to save installed packages and nodes', {
-					error: error as Error,
-					packageName,
-				});
-				throw error;
-			}
-		} else {
-			// Remove this package since it contains no loadable nodes
-			const removeCommand = `npm remove ${packageName}`;
-			try {
-				await communityPackageService.executeNpmCommand(removeCommand);
-			} catch {}
-
-			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
-		}
+		return this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 	}
 
-	async installNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		return this.installOrUpdateNpmModule(packageName, { version });
-	}
-
-	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
-		const communityPackageService = Container.get(CommunityPackageService);
-
-		await communityPackageService.executeNpmCommand(`npm remove ${packageName}`);
-
-		await communityPackageService.removePackageFromDatabase(installedPackage);
-
+	async unloadPackage(packageName: string) {
 		if (packageName in this.loaders) {
 			this.loaders[packageName].reset();
 			delete this.loaders[packageName];
 		}
-
-		await this.postProcessLoaders();
-		await this.generateTypesForFrontend();
-	}
-
-	async updateNpmModule(
-		packageName: string,
-		installedPackage: InstalledPackages,
-	): Promise<InstalledPackages> {
-		return this.installOrUpdateNpmModule(packageName, { installedPackage });
 	}
 
 	/**
@@ -336,7 +263,7 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		return loader;
 	}
 
-	async postProcessLoaders() {
+	private async postProcessLoaders() {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };

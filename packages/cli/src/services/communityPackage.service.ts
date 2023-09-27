@@ -1,11 +1,13 @@
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-
-import { LoggerProxy as Logger } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
 import { Service } from 'typedi';
 import { promisify } from 'util';
 import axios from 'axios';
+
+import { LoggerProxy as Logger } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { UserSettings } from 'n8n-core';
+import type { PackageDirectoryLoader } from 'n8n-core';
 
 import config from '@/config';
 import { toError } from '@/utils';
@@ -18,11 +20,8 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import type { PackageDirectoryLoader } from 'n8n-core';
 import type { CommunityPackages } from '@/Interfaces';
-import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -46,7 +45,10 @@ const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
 export class CommunityPackageService {
-	constructor(private readonly installedPackageRepository: InstalledPackagesRepository) {}
+	constructor(
+		private readonly installedPackageRepository: InstalledPackagesRepository,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {}
 
 	async findInstalledPackage(packageName: string) {
 		return this.installedPackageRepository.findOne({
@@ -283,10 +285,7 @@ export class CommunityPackageService {
 				// Optimistic approach - stop if any installation fails
 
 				for (const missingPackage of missingPackages) {
-					await loadNodesAndCredentials.installNpmModule(
-						missingPackage.packageName,
-						missingPackage.version,
-					);
+					await this.installNpmModule(missingPackage.packageName, missingPackage.version);
 
 					missingPackages.delete(missingPackage);
 				}
@@ -302,5 +301,76 @@ export class CommunityPackageService {
 				.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
 				.join(' '),
 		);
+	}
+
+	async installNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
+		return this.installOrUpdateNpmModule(packageName, { version });
+	}
+
+	async updateNpmModule(
+		packageName: string,
+		installedPackage: InstalledPackages,
+	): Promise<InstalledPackages> {
+		return this.installOrUpdateNpmModule(packageName, { installedPackage });
+	}
+
+	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
+		await this.executeNpmCommand(`npm remove ${packageName}`);
+		await this.removePackageFromDatabase(installedPackage);
+		await this.loadNodesAndCredentials.unloadPackage(packageName);
+		this.loadNodesAndCredentials.emit('postProcess:start');
+	}
+
+	private async installOrUpdateNpmModule(
+		packageName: string,
+		options: { version?: string } | { installedPackage: InstalledPackages },
+	) {
+		const isUpdate = 'installedPackage' in options;
+		const command = isUpdate
+			? `npm update ${packageName}`
+			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
+
+		try {
+			await this.executeNpmCommand(command);
+		} catch (error) {
+			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
+			}
+			throw error;
+		}
+
+		let loader: PackageDirectoryLoader;
+		try {
+			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
+		} catch (error) {
+			// Remove this package since loading it failed
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await this.executeNpmCommand(removeCommand);
+			} catch {}
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+		}
+
+		if (loader.loadedNodes.length > 0) {
+			// Save info to DB
+			try {
+				if (isUpdate) {
+					await this.removePackageFromDatabase(options.installedPackage);
+				}
+				const installedPackage = await this.persistInstalledPackage(loader);
+				this.loadNodesAndCredentials.emit('postProcess:start');
+				return installedPackage;
+			} catch (error) {
+				throw new Error(`Failed to save installed package: ${packageName}`, { cause: error });
+			}
+		} else {
+			// Remove this package since it contains no loadable nodes
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await this.executeNpmCommand(removeCommand);
+			} catch {}
+
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+		}
 	}
 }

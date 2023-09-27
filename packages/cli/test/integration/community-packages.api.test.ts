@@ -22,7 +22,7 @@ const communityPackageService = mockInstance(CommunityPackageService);
 const mockLoadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 mockInstance(Push);
 
-const testServer = setupTestServer({ endpointGroups: ['nodes'] });
+const testServer = setupTestServer({ endpointGroups: ['community-packages'] });
 
 const commonUpdatesProps = {
 	createdAt: new Date(),
@@ -47,12 +47,12 @@ beforeEach(() => {
 	jest.resetAllMocks();
 });
 
-describe('GET /nodes', () => {
+describe('GET /community-packages', () => {
 	test('should respond 200 if no nodes are installed', async () => {
 		communityPackageService.getAllInstalledPackages.mockResolvedValue([]);
 		const {
 			body: { data },
-		} = await authAgent.get('/nodes').expect(200);
+		} = await authAgent.get('/community-packages').expect(200);
 
 		expect(data).toHaveLength(0);
 	});
@@ -66,7 +66,7 @@ describe('GET /nodes', () => {
 
 		const {
 			body: { data },
-		} = await authAgent.get('/nodes').expect(200);
+		} = await authAgent.get('/community-packages').expect(200);
 
 		expect(data).toHaveLength(1);
 		expect(data[0].installedNodes).toHaveLength(1);
@@ -97,7 +97,7 @@ describe('GET /nodes', () => {
 
 		const {
 			body: { data },
-		} = await authAgent.get('/nodes').expect(200);
+		} = await authAgent.get('/community-packages').expect(200);
 
 		expect(data).toHaveLength(2);
 
@@ -110,7 +110,7 @@ describe('GET /nodes', () => {
 	});
 
 	test('should not check for updates if no packages installed', async () => {
-		await authAgent.get('/nodes');
+		await authAgent.get('/community-packages');
 
 		expect(communityPackageService.executeNpmCommand).not.toHaveBeenCalled();
 	});
@@ -118,7 +118,7 @@ describe('GET /nodes', () => {
 	test('should check for updates if packages installed', async () => {
 		communityPackageService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 
-		await authAgent.get('/nodes').expect(200);
+		await authAgent.get('/community-packages').expect(200);
 
 		const args = ['npm outdated --json', { doNotHandleError: true }];
 
@@ -153,7 +153,7 @@ describe('GET /nodes', () => {
 
 		const {
 			body: { data },
-		} = await authAgent.get('/nodes').expect(200);
+		} = await authAgent.get('/community-packages').expect(200);
 
 		const [returnedPkg] = data;
 
@@ -162,9 +162,9 @@ describe('GET /nodes', () => {
 	});
 });
 
-describe('POST /nodes', () => {
+describe('POST /community-packages', () => {
 	test('should reject if package name is missing', async () => {
-		await authAgent.post('/nodes').expect(400);
+		await authAgent.post('/community-packages').expect(400);
 	});
 
 	test('should reject if package is duplicate', async () => {
@@ -175,7 +175,7 @@ describe('POST /nodes', () => {
 
 		const {
 			body: { message },
-		} = await authAgent.post('/nodes').send({ name: mockPackageName() }).expect(400);
+		} = await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(400);
 
 		expect(message).toContain('already installed');
 	});
@@ -187,7 +187,7 @@ describe('POST /nodes', () => {
 		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 		mockLoadNodesAndCredentials.installNpmModule.mockResolvedValue(mockPackage());
 
-		await authAgent.post('/nodes').send({ name: mockPackageName() }).expect(200);
+		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
 		expect(communityPackageService.removePackageFromMissingList).toHaveBeenCalled();
 	});
@@ -198,21 +198,24 @@ describe('POST /nodes', () => {
 
 		const {
 			body: { message },
-		} = await authAgent.post('/nodes').send({ name: mockPackageName() }).expect(400);
+		} = await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(400);
 
 		expect(message).toContain('banned');
 	});
 });
 
-describe('DELETE /nodes', () => {
+describe('DELETE /community-packages', () => {
 	test('should not delete if package name is empty', async () => {
-		await authAgent.delete('/nodes').expect(400);
+		await authAgent.delete('/community-packages').expect(400);
 	});
 
 	test('should reject if package is not installed', async () => {
 		const {
 			body: { message },
-		} = await authAgent.delete('/nodes').query({ name: mockPackageName() }).expect(400);
+		} = await authAgent
+			.delete('/community-packages')
+			.query({ name: mockPackageName() })
+			.expect(400);
 
 		expect(message).toContain('not installed');
 	});
@@ -220,21 +223,21 @@ describe('DELETE /nodes', () => {
 	test('should uninstall package', async () => {
 		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
 
-		await authAgent.delete('/nodes').query({ name: mockPackageName() }).expect(200);
+		await authAgent.delete('/community-packages').query({ name: mockPackageName() }).expect(200);
 
 		expect(mockLoadNodesAndCredentials.removeNpmModule).toHaveBeenCalledTimes(1);
 	});
 });
 
-describe('PATCH /nodes', () => {
+describe('PATCH /community-packages', () => {
 	test('should reject if package name is empty', async () => {
-		await authAgent.patch('/nodes').expect(400);
+		await authAgent.patch('/community-packages').expect(400);
 	});
 
 	test('should reject if package is not installed', async () => {
 		const {
 			body: { message },
-		} = await authAgent.patch('/nodes').send({ name: mockPackageName() }).expect(400);
+		} = await authAgent.patch('/community-packages').send({ name: mockPackageName() }).expect(400);
 
 		expect(message).toContain('not installed');
 	});
@@ -243,7 +246,7 @@ describe('PATCH /nodes', () => {
 		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
 		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
-		await authAgent.patch('/nodes').send({ name: mockPackageName() });
+		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 
 		expect(mockLoadNodesAndCredentials.updateNpmModule).toHaveBeenCalledTimes(1);
 	});
