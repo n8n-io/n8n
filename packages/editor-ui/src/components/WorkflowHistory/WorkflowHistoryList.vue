@@ -71,6 +71,7 @@ const onAction = ({
 };
 
 const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
+	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
 };
 
