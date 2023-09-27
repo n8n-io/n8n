@@ -75,7 +75,7 @@ export class LmChatOpenAi implements INodeType {
 									{
 										type: 'filter',
 										properties: {
-											pass: "={{ $responseItem.id.startsWith('gpt-') }}",
+											pass: "={{ $responseItem.id.startsWith('gpt-') && !$responseItem.id.includes('instruct') }}",
 										},
 									},
 									{
