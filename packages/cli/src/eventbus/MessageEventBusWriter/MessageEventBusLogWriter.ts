@@ -18,7 +18,7 @@ import {
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
-import { inTest } from '../../constants';
+import { inTest } from '@/constants';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
