@@ -29,7 +29,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const listElement = ref<Element | null>(null);
-const isAutoScrolled = ref(false);
+const shouldAutoScroll = ref(true);
 const observer = ref<IntersectionObserver | null>(null);
 
 const actions = computed<UserAction[]>(() =>
@@ -43,7 +43,8 @@ const actions = computed<UserAction[]>(() =>
 const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
 		([entry]) => {
-			if (entry.isIntersecting && entry.intersectionRatio === 1) {
+			if (entry.isIntersecting) {
+				shouldAutoScroll.value = false;
 				observer.value?.unobserve(element);
 				observer.value?.disconnect();
 				observer.value = null;
@@ -52,7 +53,7 @@ const observeElement = (element: Element) => {
 		},
 		{
 			root: listElement.value,
-			threshold: 1,
+			threshold: 0.01,
 		},
 	);
 
@@ -66,10 +67,12 @@ const onAction = ({
 	action: TupleToUnion<WorkflowHistoryActionTypes>;
 	id: WorkflowHistory['versionId'];
 }) => {
+	shouldAutoScroll.value = false;
 	emit('action', { action, id });
 };
 
 const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
+	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
 };
 
@@ -82,8 +85,8 @@ const onItemMounted = ({
 	offsetTop: number;
 	active: boolean;
 }) => {
-	if (active && !isAutoScrolled.value) {
-		isAutoScrolled.value = true;
+	if (active && shouldAutoScroll.value) {
+		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 
@@ -106,7 +109,7 @@ const onItemMounted = ({
 			@preview="onPreview"
 			@mounted="onItemMounted"
 		/>
-		<li :class="$style.empty">
+		<li v-if="!props.items.length" :class="$style.empty">
 			{{ i18n.baseText('workflowHistory.empty') }}
 			<br />
 			{{ i18n.baseText('workflowHistory.hint') }}
