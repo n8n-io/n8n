@@ -9,6 +9,7 @@ import {
 import { Request, Response, NextFunction } from 'express';
 import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflowHistoryHelper.ee';
 import { NotFoundError } from '@/ResponseHelper';
+import { paginationListQueryMiddleware } from '@/middlewares/listQuery/pagination';
 
 const DEFAULT_TAKE = 20;
 
@@ -19,9 +20,9 @@ export class WorkflowHistoryController {
 	constructor(private readonly historyService: WorkflowHistoryService) {}
 
 	@Middleware()
-	workflowHistoryLicenseMiddleware(_req: Request, res: Response, next: NextFunction) {
+	workflowHistoryLicense(_req: Request, res: Response, next: NextFunction) {
 		if (!isWorkflowHistoryLicensed()) {
-			res.status(400);
+			res.status(403);
 			res.send('Workflow History license data not found');
 			return;
 		}
@@ -29,22 +30,22 @@ export class WorkflowHistoryController {
 	}
 
 	@Middleware()
-	workflowHistoryEnabledMiddleware(_req: Request, res: Response, next: NextFunction) {
+	workflowHistoryEnabled(_req: Request, res: Response, next: NextFunction) {
 		if (!isWorkflowHistoryEnabled()) {
-			res.status(400);
+			res.status(403);
 			res.send('Workflow History is disabled');
 			return;
 		}
 		next();
 	}
 
-	@Get('/workflow/:workflowId')
+	@Get('/workflow/:workflowId', { middlewares: [paginationListQueryMiddleware] })
 	async getList(req: WorkflowHistoryRequest.GetList) {
 		try {
 			return await this.historyService.getList(
 				req.user,
 				req.params.workflowId,
-				Math.min(req.query.take ?? DEFAULT_TAKE, DEFAULT_TAKE),
+				req.query.take ?? DEFAULT_TAKE,
 				req.query.skip ?? 0,
 			);
 		} catch (e) {

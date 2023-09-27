@@ -24,7 +24,7 @@ beforeAll(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 });
 
-beforeEach(async () => {
+beforeEach(() => {
 	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
 });
 
@@ -36,7 +36,7 @@ describe('GET /workflow-history/:workflowId', () => {
 	test('should not work when license is not available', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 		const resp = await authOwnerAgent.get('/workflow-history/workflow/badid');
-		expect(resp.status).toBe(400);
+		expect(resp.status).toBe(403);
 		expect(resp.text).toBe('Workflow History license data not found');
 	});
 
@@ -156,7 +156,9 @@ describe('GET /workflow-history/:workflowId', () => {
 		last.createdAt = last.createdAt.toISOString();
 		last.updatedAt = last.updatedAt.toISOString();
 
-		const resp = await authOwnerAgent.get(`/workflow-history/workflow/${workflow.id}?skip=5`);
+		const resp = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}?skip=5&take=20`,
+		);
 		expect(resp.status).toBe(200);
 		expect(resp.body.data).toHaveLength(5);
 		expect(resp.body.data[0]).toEqual(last);
@@ -167,7 +169,7 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 	test('should not work when license is not available', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 		const resp = await authOwnerAgent.get('/workflow-history/workflow/badid/version/badid');
-		expect(resp.status).toBe(400);
+		expect(resp.status).toBe(403);
 		expect(resp.text).toBe('Workflow History license data not found');
 	});
 

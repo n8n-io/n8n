@@ -555,7 +555,7 @@ export declare namespace WorkflowHistoryRequest {
 		{ workflowId: string },
 		Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>,
 		{},
-		{ take?: number; skip?: number }
+		ListQuery.Options
 	>;
 	type GetVersion = AuthenticatedRequest<
 		{ workflowId: string; versionId: string },
