@@ -73,6 +73,9 @@ export N8N_AVAILABLE_BINARY_DATA_MODES=filesystem,s3
 
 ## Usage notes
 
-- To inspect binary data in the n8n S3 bucket, you can use the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) with your access key ID and secret access key. You can also access the S3 section in the AWS Management Console with the details from step 7.
+- To inspect binary data in the n8n S3 bucket...
+  - You can use the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) with your access key ID and secret access key.
+  - You can also access the S3 section in the AWS Management Console with the details from step 7.
+  - Or you can query the AWS S3 API using n8n's AWS S3 node.
 - If your license key has expired and you remain on S3 mode, the instance will be able to read from, but not write to, the S3 bucket.
 - If your instance stored data in S3 and was later switched to filesystem mode, the instance will continue to read any data that was stored in S3, as long as `s3` remains listed in `N8N_AVAILABLE_BINARY_DATA_MODES` and as long as your S3 credentials remain valid.
