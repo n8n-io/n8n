@@ -75,7 +75,8 @@ function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: str
 				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				icon: node.icon!,
 			},
-		}));
+		}))
+		.sort((a, b) => a.properties.displayName.localeCompare(b.properties.displayName));
 }
 
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
