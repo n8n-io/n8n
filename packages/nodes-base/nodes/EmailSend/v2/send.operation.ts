@@ -61,7 +61,37 @@ const properties: INodeProperties[] = [
 				value: 'both',
 			},
 		],
+		default: 'html',
+		displayOptions: {
+			hide: {
+				'@version': [2],
+			},
+		},
+	},
+	{
+		displayName: 'Email Format',
+		name: 'emailFormat',
+		type: 'options',
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+			{
+				name: 'Both',
+				value: 'both',
+			},
+		],
 		default: 'text',
+		displayOptions: {
+			show: {
+				'@version': [2],
+			},
+		},
 	},
 	{
 		displayName: 'Text',
@@ -249,7 +279,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
 					`;
 				} else {
-					mailOptions.text = `${mailOptions.text}\n\n---\n${attributionText}n8n:\n${link}`;
+					mailOptions.text = `${
+						mailOptions.text
+					}\n\n---\n${attributionText}n8n:\n${'https://n8n.io'}`;
 				}
 			}
 

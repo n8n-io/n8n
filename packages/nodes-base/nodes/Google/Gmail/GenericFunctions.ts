@@ -456,7 +456,7 @@ export function prepareEmailBody(
 			<em>${attributionText}<a href="${link}" target="_blank">n8n</a></em>
 			`;
 		} else {
-			message = `${message}\n\n---\n${attributionText}n8n:\n${link}`;
+			message = `${message}\n\n---\n${attributionText}n8n:\n${'https://n8n.io'}`;
 		}
 	}
 

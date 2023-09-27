@@ -125,7 +125,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Email Type',
 		name: 'emailType',
 		type: 'options',
-		default: 'text',
+		default: 'html',
 		required: true,
 		noDataExpression: true,
 		options: [
@@ -142,6 +142,34 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['send', 'reply'],
+			},
+			hide: {
+				'@version': [2],
+			},
+		},
+	},
+	{
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'html',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send', 'reply'],
+				'@version': [2],
 			},
 		},
 	},
