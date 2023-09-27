@@ -25,7 +25,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
-import { TIME } from '@/constants';
+import { TIME, inTest } from '@/constants';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -93,7 +93,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
-		if (!this.isMainInstance) return;
+		if (!this.isMainInstance || inTest) return;
 
 		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
