@@ -8,7 +8,7 @@ import type { BinaryData } from './types';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
-	constructor(private readonly objectStoreService = Container.get(ObjectStoreService)) {}
+	constructor(private readonly objectStoreService = Container.get(ObjectStoreService)) {} // @TODO: Fix
 
 	async init() {
 		await this.objectStoreService.checkConnection();
