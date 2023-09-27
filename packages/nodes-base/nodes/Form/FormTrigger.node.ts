@@ -262,6 +262,7 @@ export class FormTrigger implements INodeType {
 						respondWith: ['redirect'],
 					},
 				},
+				validateType: 'url',
 			},
 		],
 	};

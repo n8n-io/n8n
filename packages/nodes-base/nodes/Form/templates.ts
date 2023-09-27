@@ -121,7 +121,7 @@ form .form-input {
 
 form input:focus {
 	outline: none;
-	border-color: #EA1F30;
+	border-color: rgb(90, 76, 194);
 }
 
 .select-input {
@@ -130,7 +130,7 @@ form input:focus {
 }
 
 .select-input:focus-within {
-	border: 1px solid #EA1F30;
+	border: 1px solid rgb(90, 76, 194);
 }
 
 form select {
@@ -158,6 +158,7 @@ input[type="date"] {
 	border: 0;
 	font-size: 14px;
 	font-weight: 600;
+	font-family: Open Sans;
 	background-color: #FF6D5A;
 	color: #FFFFFF;
 	cursor: pointer;
@@ -612,15 +613,16 @@ export const createPage = (
 							document.querySelector('#submitted-form').style.display = 'block';
 							if (data?.triggerSettings?.customText) {
 								document.querySelector('#submitted-content').textContent = data.triggerSettings.customText;
-							}
-							if (data?.triggerSettings?.redirectUrl) {
+							} else if (data?.triggerSettings?.redirectUrl) {
 								window.location.href = data.triggerSettings.redirectUrl;
+							} else {
+								document.querySelector('#submitted-content').remove();
 							}
 						} else {
 							form.style.display = 'none';
 							document.querySelector('#submitted-form').style.display = 'block';
 							document.querySelector('#submitted-header').textContent = 'Problem submitting response';
-							document.querySelector('#submitted-content').textContent = data.message;
+							document.querySelector('#submitted-content').textContent = 'An error occurred in the workflow handling this form';
 						}
 					})
 					.catch(function (error) {
