@@ -44,7 +44,7 @@ Follow these instructions to set up an AWS S3 bucket as n8n's object store.
 
 7. Click on `Attach policies directly`, then search and tick the checkbox for the policy you created in step 4. Click on `Next` and then `Create user`. Download the CSV with the user name, password and console sign-in link.
 
-8. Click on `Return to users list`, access the user you just created, and select the `Security credentials` tab. Scroll down to the `Access key` section and click on `Create access key`. Select `Local code` and `Next`. Click on `Create access key`. Download the CSV with the access key ID and secret access key. Click on `Done`.
+8. Click on `Return to users list`, access the user you just created, and select the `Security credentials` tab. Scroll down to the `Access key` section and click on `Create access key`. Select `Third-party service` or `Application running outside AWS` and `Next`. Click on `Create access key`. Download the CSV with the access key ID and secret access key. Click on `Done`.
 
 ## Configure n8n to use S3
 
