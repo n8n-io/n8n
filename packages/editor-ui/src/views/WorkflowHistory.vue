@@ -4,14 +4,17 @@ import { onBeforeMount, ref, watchEffect } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
-import type { TupleToUnion } from '@/utils/typeHelpers';
-import type { WorkflowHistoryActionTypes, WorkflowHistory } from '@/types/workflowHistory';
+import type {
+	WorkflowHistoryActionTypes,
+	WorkflowHistory,
+	WorkflowHistoryRequestParams,
+} from '@/types/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 
 type WorkflowHistoryActionRecord = {
-	[K in Uppercase<TupleToUnion<WorkflowHistoryActionTypes>>]: Lowercase<K>;
+	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
@@ -25,20 +28,23 @@ const WORKFLOW_HISTORY_ACTIONS: WorkflowHistoryActionRecord = workflowHistoryAct
 	{} as WorkflowHistoryActionRecord,
 );
 
-const loadMore = async ({ take }: { take: number }) => {
-	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, { take });
-	workflowHistoryStore.addWorkflowHistory(history);
-};
-
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
-const takeItemsAtOnce = ref(20);
+const requestNumberOfItems = ref(20);
+
+const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
+	const history = await workflowHistoryStore.getWorkflowHistory(
+		route.params.workflowId,
+		queryParams,
+	);
+	workflowHistoryStore.addWorkflowHistory(history);
+};
 
 onBeforeMount(async () => {
-	await loadMore({ take: takeItemsAtOnce.value });
+	await loadMore({ take: requestNumberOfItems.value });
 
 	if (!route.params.versionId) {
 		await router.replace({
@@ -80,7 +86,7 @@ const onAction = async ({
 	action,
 	id,
 }: {
-	action: TupleToUnion<WorkflowHistoryActionTypes>;
+	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowHistory['versionId'];
 }) => {
 	switch (action) {
@@ -93,7 +99,13 @@ const onAction = async ({
 	}
 };
 
-const onPreview = async ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
+const onPreview = async ({
+	event,
+	id,
+}: {
+	event: MouseEvent;
+	id: WorkflowHistory['versionId'];
+}) => {
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
 	} else {
@@ -113,7 +125,7 @@ watchEffect(async () => {
 			route.params.workflowId,
 			route.params.versionId,
 		);
-		workflowHistoryStore.setWorkflowVersion(workflowVersion);
+		workflowHistoryStore.setActiveWorkflowVersion(workflowVersion);
 	}
 });
 </script>
@@ -137,7 +149,7 @@ watchEffect(async () => {
 			:items="workflowHistoryStore.workflowHistory"
 			:active-item="workflowHistoryStore.workflowVersion"
 			:action-types="workflowHistoryActionTypes"
-			:take-items-at-once="takeItemsAtOnce"
+			:request-number-of-items="requestNumberOfItems"
 			@action="onAction"
 			@preview="onPreview"
 			@load-more="loadMore"

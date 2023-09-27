@@ -2,7 +2,11 @@ import { ref } from 'vue';
 import { defineStore } from 'pinia';
 import * as whApi from '@/api/workflowHistory';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import type { WorkflowHistory, WorkflowVersion } from '@/types/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowVersion,
+	WorkflowHistoryRequestParams,
+} from '@/types/workflowHistory';
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
@@ -12,7 +16,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 
 	const getWorkflowHistory = async (
 		workflowId: string,
-		queryParams: Parameters<typeof whApi.getWorkflowHistory>[2],
+		queryParams: WorkflowHistoryRequestParams,
 	): Promise<WorkflowHistory[]> =>
 		whApi
 			.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams)
@@ -32,7 +36,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			console.error(error);
 			return null;
 		});
-	const setWorkflowVersion = (version: WorkflowVersion | null) => {
+	const setActiveWorkflowVersion = (version: WorkflowVersion | null) => {
 		workflowVersion.value = version;
 	};
 
@@ -40,7 +44,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		getWorkflowHistory,
 		addWorkflowHistory,
 		getWorkflowVersion,
-		setWorkflowVersion,
+		setActiveWorkflowVersion,
 		workflowHistory,
 		workflowVersion,
 	};

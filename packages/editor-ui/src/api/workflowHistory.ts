@@ -1,22 +1,21 @@
 import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
-import type { WorkflowHistory, WorkflowVersion } from '@/types/workflowHistory';
-import type { HasAtLeastOneKey } from '@/utils/typeHelpers';
+import type {
+	WorkflowHistory,
+	WorkflowVersion,
+	WorkflowHistoryRequestParams,
+} from '@/types/workflowHistory';
 import { valuesToString } from '@/utils/objectUtils';
-
-const workflowHistoryApiRoot = '/workflow-history';
 
 export const getWorkflowHistory = async (
 	context: IRestApiContext,
 	workflowId: string,
-	queryParams: HasAtLeastOneKey<{ take?: number; skip?: number }>,
+	queryParams: WorkflowHistoryRequestParams,
 ): Promise<WorkflowHistory[]> =>
 	makeRestApiRequest(
 		context,
 		'GET',
-		`${workflowHistoryApiRoot}/workflow/${workflowId}?${new URLSearchParams(
-			valuesToString(queryParams),
-		).toString()}`,
+		`/workflow-history/workflow/${workflowId}?${new URLSearchParams(valuesToString(queryParams))}`,
 	);
 
 export const getWorkflowVersion = async (
@@ -27,5 +26,5 @@ export const getWorkflowVersion = async (
 	makeRestApiRequest(
 		context,
 		'GET',
-		`${workflowHistoryApiRoot}/workflow/${workflowId}/version/${versionId}`,
+		`/workflow-history/workflow/${workflowId}/version/${versionId}`,
 	);

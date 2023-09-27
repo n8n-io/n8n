@@ -2,16 +2,19 @@
 import { computed, ref } from 'vue';
 import type { UserAction } from 'n8n-design-system';
 import { useI18n } from '@/composables';
-import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowHistoryActionTypes,
+	WorkflowHistoryRequestParams,
+} from '@/types/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
-import type { TupleToUnion } from '@/utils/typeHelpers';
 
 const props = withDefaults(
 	defineProps<{
 		items: WorkflowHistory[];
 		activeItem: WorkflowHistory | null;
 		actionTypes: WorkflowHistoryActionTypes;
-		takeItemsAtOnce: number;
+		requestNumberOfItems: number;
 	}>(),
 	{
 		items: () => [],
@@ -20,10 +23,10 @@ const props = withDefaults(
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['versionId'] },
+		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowHistory['versionId'] },
 	): void;
-	(event: 'preview', value: { event: Event; id: WorkflowHistory['versionId'] }): void;
-	(event: 'loadMore', value: { take: number }): void;
+	(event: 'preview', value: { event: MouseEvent; id: WorkflowHistory['versionId'] }): void;
+	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
 }>();
 
 const i18n = useI18n();
@@ -47,7 +50,7 @@ const observeElement = (element: Element) => {
 				observer.value?.unobserve(element);
 				observer.value?.disconnect();
 				observer.value = null;
-				emit('loadMore', { take: props.takeItemsAtOnce });
+				emit('loadMore', { take: props.requestNumberOfItems });
 			}
 		},
 		{
@@ -63,14 +66,14 @@ const onAction = ({
 	action,
 	id,
 }: {
-	action: TupleToUnion<WorkflowHistoryActionTypes>;
+	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowHistory['versionId'];
 }) => {
 	shouldAutoScroll.value = false;
 	emit('action', { action, id });
 };
 
-const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId'] }) => {
+const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowHistory['versionId'] }) => {
 	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
 };
@@ -78,13 +81,13 @@ const onPreview = ({ event, id }: { event: Event; id: WorkflowHistory['versionId
 const onItemMounted = ({
 	index,
 	offsetTop,
-	active,
+	isActive,
 }: {
 	index: number;
 	offsetTop: number;
-	active: boolean;
+	isActive: boolean;
 }) => {
-	if (active && shouldAutoScroll.value) {
+	if (isActive && shouldAutoScroll.value) {
 		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
@@ -102,7 +105,7 @@ const onItemMounted = ({
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:active="item.versionId === props.activeItem?.versionId"
+			:is-active="item.versionId === props.activeItem?.versionId"
 			:actions="actions"
 			@action="onAction"
 			@preview="onPreview"

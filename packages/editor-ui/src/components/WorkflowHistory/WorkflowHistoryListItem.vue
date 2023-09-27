@@ -3,22 +3,21 @@ import { computed, ref, onMounted } from 'vue';
 import dateformat from 'dateformat';
 import type { UserAction } from 'n8n-design-system';
 import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
-import type { TupleToUnion } from '@/utils/typeHelpers';
 import { useI18n } from '@/composables';
 
 const props = defineProps<{
 	item: WorkflowHistory;
 	index: number;
 	actions: UserAction[];
-	active: boolean;
+	isActive: boolean;
 }>();
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: TupleToUnion<WorkflowHistoryActionTypes>; id: WorkflowHistory['versionId'] },
+		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowHistory['versionId'] },
 	): void;
-	(event: 'preview', value: { event: Event; id: WorkflowHistory['versionId'] }): void;
-	(event: 'mounted', value: { index: number; offsetTop: number; active: boolean }): void;
+	(event: 'preview', value: { event: MouseEvent; id: WorkflowHistory['versionId'] }): void;
+	(event: 'mounted', value: { index: number; offsetTop: number; isActive: boolean }): void;
 }>();
 
 const i18n = useI18n();
@@ -54,7 +53,7 @@ const idLabel = computed<string>(() =>
 	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
 );
 
-const onAction = (action: TupleToUnion<WorkflowHistoryActionTypes>) => {
+const onAction = (action: WorkflowHistoryActionTypes[number]) => {
 	emit('action', { action, id: props.item.versionId });
 };
 
@@ -62,7 +61,7 @@ const onVisibleChange = (visible: boolean) => {
 	actionsVisible.value = visible;
 };
 
-const onItemClick = (event: Event) => {
+const onItemClick = (event: MouseEvent) => {
 	emit('preview', { event, id: props.item.versionId });
 };
 
@@ -70,7 +69,7 @@ onMounted(() => {
 	emit('mounted', {
 		index: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
-		active: props.active,
+		isActive: props.isActive,
 	});
 });
 </script>
@@ -79,7 +78,7 @@ onMounted(() => {
 		ref="itemElement"
 		:class="{
 			[$style.item]: true,
-			[$style.active]: props.active,
+			[$style.active]: props.isActive,
 			[$style.actionsVisible]: actionsVisible,
 		}"
 	>
@@ -113,7 +112,7 @@ onMounted(() => {
 	position: relative;
 	align-items: center;
 	justify-content: space-between;
-	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+	border-left: 2px var(--border-style-base) transparent;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
@@ -140,7 +139,7 @@ onMounted(() => {
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
-			padding: var(--spacing-4xs) 0 0;
+			padding-top: var(--spacing-4xs);
 			font-size: var(--font-size-2xs);
 		}
 	}
@@ -153,21 +152,16 @@ onMounted(() => {
 
 	&.active {
 		background-color: var(--color-background-base);
-		border-left: 2px var(--border-style-base) var(--color-primary);
+		border-left-color: var(--color-primary);
 
 		p {
-			padding-left: calc(var(--spacing-s) - 1px);
 			cursor: default;
 		}
 	}
 
 	&:hover,
 	&.actionsVisible {
-		border-left: 2px var(--border-style-base) var(--color-foreground-xdark);
-
-		p {
-			padding-left: calc(var(--spacing-s) - 1px);
-		}
+		border-left-color: var(--color-foreground-xdark);
 	}
 }
 
