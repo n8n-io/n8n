@@ -194,8 +194,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.6.1
-        version: 2.6.1
+        specifier: ~2.4.0
+        version: 2.4.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
@@ -4125,8 +4125,8 @@ packages:
       - '@lezer/common'
     dev: false
 
-  /@n8n_io/license-sdk@2.6.1:
-    resolution: {integrity: sha512-N4yBzgNIRrQlhy+BWyEC9cbf86asPxryWbJpmrfeaqkFpBR6Z5yIqmWRGnLs7XKVC9se8cdWlF7EWKtaH6oDPA==}
+  /@n8n_io/license-sdk@2.4.0:
+    resolution: {integrity: sha512-99kuCVH4NcBi4nyn/WIpd6KSIMLk/pbBks0zr8bC65ALKj0se7/2MwC6N+WwGkG7NqH0kMdGe/7Y5KnJkMTefg==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -5825,7 +5825,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.15
+      vue-component-type-helpers: 1.8.8
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -20792,12 +20792,12 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.15:
-    resolution: {integrity: sha512-RKiPRKW4BdwgmQ9vaNkHYKAThdTbgU4TOphVyyzqxRwsOJOoRIrb+vB49XLvs5CKPNrvxMXZMwPe5FyJCqFWyg==}
-    dev: true
-
   /vue-component-type-helpers@1.8.4:
     resolution: {integrity: sha512-6bnLkn8O0JJyiFSIF0EfCogzeqNXpnjJ0vW/SZzNHfe6sPx30lTtTXlE5TFs2qhJlAtDFybStVNpL73cPe3OMQ==}
+    dev: true
+
+  /vue-component-type-helpers@1.8.8:
+    resolution: {integrity: sha512-Ohv9HQY92nSbpReC6WhY0X4YkOszHzwUHaaN/lev5tHQLM1AEw+LrLeB2bIGIyKGDU7ZVrncXcv/oBny4rjbYg==}
     dev: true
 
   /vue-demi@0.14.5(vue@3.3.4):
