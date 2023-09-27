@@ -67,7 +67,7 @@ export N8N_AVAILABLE_BINARY_DATA_MODES=filesystem,s3
 
 ## Usage notes
 
-- Binary data is written to your n8n S3 bucket in this format: `workflows/{workflowId}/executions/{executionId}/binary_data/{fileId}`
+- Binary data is written to your n8n S3 bucket in this format: `workflows/{workflowId}/executions/{executionId}/binary_data/{binaryFileId}`
 - To inspect binary data in the n8n S3 bucket, you can use the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-welcome.html) with your access key ID and secret access key, or you can also access the S3 section in the AWS Management Console with the details from step 7.
 - If your license key has expired and you remain on S3 mode, the instance will be able to read from, but not write to, the S3 bucket.
 - If your instance stored data in S3 and was later switched to filesystem mode, the instance will continue to read any data that was stored in S3, as long as `s3` remains listed in `N8N_AVAILABLE_BINARY_DATA_MODES` and provided that your access key ID and secret access key for S3 remain valid.
