@@ -916,7 +916,12 @@ export const schema = {
 
 	externalStorage: {
 		s3: {
-			// @TODO: service name
+			host: {
+				format: String,
+				default: '',
+				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
+				doc: 'Endpoint of the n8n bucket in S3-compatible external storage, e.g. `my-bucket.s3.us-east-1.amazonaws.com`',
+			},
 			bucket: {
 				name: {
 					format: String,

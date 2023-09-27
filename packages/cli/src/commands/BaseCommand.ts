@@ -169,7 +169,9 @@ export abstract class BaseCommand extends Command {
 			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
 		};
 
-		await objectStoreService.init(bucket, credentials, options);
+		const host = config.getEnv('externalStorage.s3.host');
+
+		await objectStoreService.init(host, bucket, credentials, options);
 	}
 
 	async initBinaryDataService() {

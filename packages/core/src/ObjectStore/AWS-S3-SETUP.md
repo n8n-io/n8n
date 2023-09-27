@@ -65,6 +65,7 @@ export N8N_EXTERNAL_STORAGE_S3_SECRET_KEY=...
 Configure n8n to store binary data in S3.
 
 ```sh
+export N8N_EXTERNAL_STORAGE_S3_HOST=...
 export N8N_DEFAULT_BINARY_DATA_MODE=s3
 export N8N_AVAILABLE_BINARY_DATA_MODES=filesystem,s3
 ```

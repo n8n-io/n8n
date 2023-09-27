@@ -18,20 +18,25 @@ import type { BinaryData } from '..';
 
 @Service()
 export class ObjectStoreService {
-	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
+	private host = '';
 
 	private bucket: Bucket = { region: '', name: '' };
+
+	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
 
 	private isReadOnly = false;
 
 	private logger = Logger;
 
 	async init(
-		bucket: { region: string; name: string },
+		host: string,
+		bucket: Bucket,
 		credentials: { accountId: string; secretKey: string },
 		options?: { isReadOnly: boolean },
 	) {
-		this.bucket = bucket;
+		this.host = host;
+		this.bucket.name = bucket.name;
+		this.bucket.region = bucket.region;
 
 		this.credentials = {
 			accessKeyId: credentials.accountId,
@@ -43,9 +48,9 @@ export class ObjectStoreService {
 		await this.checkConnection();
 	}
 
-	get host() {
-		return `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
-	}
+	// get host() {
+	// 	return `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`; // @TODO: Get it from envs
+	// }
 
 	setReadonly(newState: boolean) {
 		this.isReadOnly = newState;
