@@ -104,7 +104,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
 const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
-type Severity = 'warning' | 'error';
+export type Severity = 'warning' | 'error';
 
 interface ExecutionBaseErrorOptions {
 	cause?: Error | JsonObject;
@@ -135,6 +135,8 @@ export abstract class ExecutionBaseError extends Error {
 	context: IDataObject = {};
 
 	lineNumber: number | undefined;
+
+	severity: Severity = 'error';
 
 	constructor(message: string, { cause }: ExecutionBaseErrorOptions) {
 		const options = cause instanceof Error ? { cause } : {};
@@ -170,8 +172,6 @@ export abstract class ExecutionBaseError extends Error {
  */
 export abstract class NodeError extends ExecutionBaseError {
 	node: INode;
-
-	severity: Severity = 'error';
 
 	constructor(node: INode, error: Error | JsonObject) {
 		const message = error instanceof Error ? error.message : '';
