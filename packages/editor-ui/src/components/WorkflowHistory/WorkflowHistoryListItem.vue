@@ -110,6 +110,7 @@ onMounted(() => {
 <style module lang="scss">
 .item {
 	display: flex;
+	position: relative;
 	align-items: center;
 	justify-content: space-between;
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);

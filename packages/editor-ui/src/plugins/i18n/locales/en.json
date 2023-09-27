@@ -1770,6 +1770,8 @@
 	"workflowHistory.item.actions.download": "Download",
 	"workflowHistory.item.unsaved.title": "Unsaved version",
 	"workflowHistory.item.latest": "Latest saved",
+	"workflowHistory.empty": "No versions yet.",
+	"workflowHistory.hint": "Save the workflow to create the first version!",
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",

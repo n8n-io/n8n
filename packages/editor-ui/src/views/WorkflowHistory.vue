@@ -140,7 +140,6 @@ watchEffect(async () => {
 			:items="workflowHistoryStore.workflowHistory"
 			:active-item="workflowHistoryStore.workflowVersion"
 			:action-types="workflowHistoryActionTypes"
-			:watch-nth-item-from-end="5"
 			:take-items-at-once="takeItemsAtOnce"
 			@action="onAction"
 			@preview="onPreview"

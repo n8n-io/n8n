@@ -11,7 +11,6 @@ const props = withDefaults(
 		items: WorkflowHistory[];
 		activeItem: WorkflowHistory | null;
 		actionTypes: WorkflowHistoryActionTypes;
-		watchNthItemFromEnd: number;
 		takeItemsAtOnce: number;
 	}>(),
 	{
@@ -30,7 +29,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const listElement = ref<Element | null>(null);
-const listScrollabilityEnsured = ref(false);
 const isAutoScrolled = ref(false);
 const observer = ref<IntersectionObserver | null>(null);
 
@@ -41,20 +39,6 @@ const actions = computed<UserAction[]>(() =>
 		value,
 	})),
 );
-
-const ensureListScrollability = () => {
-	if (listElement.value) {
-		const { scrollHeight, clientHeight } = listElement.value;
-		const scrollable = scrollHeight > clientHeight;
-		const firstListItemElementHeight = listElement.value.children[0].clientHeight ?? 1;
-
-		const listCapacity = Math.ceil(clientHeight / firstListItemElementHeight);
-
-		if (!scrollable) {
-			emit('loadMore', { take: listCapacity - props.items.length + 1 });
-		}
-	}
-};
 
 const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
@@ -98,17 +82,12 @@ const onItemMounted = ({
 	offsetTop: number;
 	active: boolean;
 }) => {
-	if (index === props.items.length - 1 && !listScrollabilityEnsured.value) {
-		listScrollabilityEnsured.value = true;
-		ensureListScrollability();
-	}
-
 	if (active && !isAutoScrolled.value) {
 		isAutoScrolled.value = true;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 
-	if (index === props.items.length - props.watchNthItemFromEnd) {
+	if (index === props.items.length - 1) {
 		observeElement(listElement.value?.children[index] as Element);
 	}
 };
@@ -127,6 +106,11 @@ const onItemMounted = ({
 			@preview="onPreview"
 			@mounted="onItemMounted"
 		/>
+		<li :class="$style.empty">
+			{{ i18n.baseText('workflowHistory.empty') }}
+			<br />
+			{{ i18n.baseText('workflowHistory.hint') }}
+		</li>
 	</ul>
 </template>
 
@@ -135,5 +119,28 @@ const onItemMounted = ({
 	height: 100%;
 	overflow: auto;
 	position: relative;
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: var(--border-width-base);
+		background-color: var(--color-foreground-base);
+	}
+}
+
+.empty {
+	display: flex;
+	position: absolute;
+	height: 100%;
+	padding: 0 25%;
+	justify-content: center;
+	align-items: center;
+	text-align: center;
+	color: var(--color-text-base);
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-loose);
 }
 </style>
