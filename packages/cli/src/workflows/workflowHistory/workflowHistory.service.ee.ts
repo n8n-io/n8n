@@ -1,6 +1,6 @@
 import type { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 import type { User } from '@/databases/entities/User';
-import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
 import { SharedWorkflowRepository } from '@/databases/repositories';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
