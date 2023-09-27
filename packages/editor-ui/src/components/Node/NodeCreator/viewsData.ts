@@ -20,16 +20,18 @@ import {
 	AI_CATEGORY_LANGUAGE_MODELS,
 	AI_CATEGORY_MEMORY,
 	AI_CATEGORY_OUTPUTPARSER,
-	AI_CATEGORY_RETRIEVERS,
 	AI_CATEGORY_TEXT_SPLITTERS,
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	AI_CATEGORY_EMBEDDING,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 } from '@/constants';
 import { useI18n } from '@/composables';
+import { useNodeTypesStore } from '@/stores';
 import type { SimplifiedNodeType } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';
 
 export interface NodeViewItem {
@@ -58,18 +60,30 @@ interface NodeView {
 	items: NodeViewItem[];
 }
 
+function getAiNodesBySubcategory(nodes: INodeTypeDescription[], subcategory: string) {
+	return nodes
+		.filter((node) => node.codex?.subcategories?.[AI_SUBCATEGORY]?.includes(subcategory))
+		.map((node) => ({
+			key: node.name,
+			type: 'node',
+			properties: {
+				group: [],
+				name: node.name,
+				displayName: node.displayName,
+				title: node.displayName,
+				description: node.description,
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				icon: node.icon!,
+			},
+		}));
+}
+
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
+	const nodeTypesStore = useNodeTypesStore();
 
-	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionType) {
-		return {
-			connectionType: nodeConnectionType,
-			iconProps: {
-				color: `var(--node-type-${nodeConnectionType}-color)`,
-			},
-			panelClass: `nodes-list-panel-${nodeConnectionType}`,
-		};
-	}
+	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
+	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
 
 	return {
 		value: AI_NODE_CREATOR_VIEW,
@@ -83,28 +97,43 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					group: [],
 					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
 					displayName: 'Manual Chat Trigger',
+					title: 'Manual Chat Trigger',
 					description: 'Runs the flow on new manual chat message',
 					icon: 'fa:comments',
 				},
 			},
+			...chainNodes,
+			...agentNodes,
 			{
-				key: AI_CATEGORY_AGENTS,
-				type: 'subcategory',
+				key: AI_OTHERS_NODE_CREATOR_VIEW,
+				type: 'view',
 				properties: {
-					title: AI_CATEGORY_AGENTS,
+					title: i18n.baseText('nodeCreator.aiPanel.aiOtherNodes'),
 					icon: 'robot',
-					...getAISubcategoryProperties(NodeConnectionType.AiChain),
+					description: i18n.baseText('nodeCreator.aiPanel.aiOtherNodesDescription'),
 				},
 			},
-			{
-				key: AI_CATEGORY_CHAINS,
-				type: 'subcategory',
-				properties: {
-					title: AI_CATEGORY_CHAINS,
-					icon: 'link',
-					...getAISubcategoryProperties(NodeConnectionType.AiChain),
-				},
+		],
+	};
+}
+export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
+	const i18n = useI18n();
+
+	function getAISubcategoryProperties(nodeConnectionType: NodeConnectionType) {
+		return {
+			connectionType: nodeConnectionType,
+			iconProps: {
+				color: `var(--node-type-${nodeConnectionType}-color)`,
 			},
+			panelClass: `nodes-list-panel-${nodeConnectionType}`,
+		};
+	}
+
+	return {
+		value: AI_OTHERS_NODE_CREATOR_VIEW,
+		title: i18n.baseText('nodeCreator.aiPanel.aiOtherNodes'),
+		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
+		items: [
 			{
 				key: AI_CATEGORY_DOCUMENT_LOADERS,
 				type: 'subcategory',
@@ -139,15 +168,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 					title: AI_CATEGORY_OUTPUTPARSER,
 					icon: 'list',
 					...getAISubcategoryProperties(NodeConnectionType.AiOutputParser),
-				},
-			},
-			{
-				key: AI_CATEGORY_RETRIEVERS,
-				type: 'subcategory',
-				properties: {
-					title: AI_CATEGORY_RETRIEVERS,
-					icon: 'search',
-					...getAISubcategoryProperties(NodeConnectionType.AiVectorRetriever),
 				},
 			},
 			{

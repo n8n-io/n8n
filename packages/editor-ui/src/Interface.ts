@@ -5,6 +5,7 @@ import type {
 	FAKE_DOOR_FEATURES,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 } from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
@@ -1143,7 +1144,8 @@ export type IFakeDoorLocation =
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
 	| typeof TRIGGER_NODE_CREATOR_VIEW
-	| typeof AI_NODE_CREATOR_VIEW;
+	| typeof AI_NODE_CREATOR_VIEW
+	| typeof AI_OTHERS_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''

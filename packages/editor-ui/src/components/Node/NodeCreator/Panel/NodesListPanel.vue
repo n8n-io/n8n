@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
 import {
+	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
@@ -9,7 +10,7 @@ import {
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView, AIView } from '../viewsData';
+import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
@@ -67,6 +68,7 @@ watch(
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
 			[AI_NODE_CREATOR_VIEW]: AIView,
+			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
 		};
 
 		const itemKey = selectedView;

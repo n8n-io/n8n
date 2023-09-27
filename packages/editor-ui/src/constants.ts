@@ -183,9 +183,9 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
-export const AI_NODES_CATEGORY = 'AI Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
+export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
 export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
