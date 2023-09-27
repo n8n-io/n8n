@@ -24,7 +24,7 @@ export class OpenAiFunctionsAgent implements INodeType {
 		description:
 			"Utilizes OpenAI's Function Calling feature to select the appropriate tool and arguments for execution",
 		defaults: {
-			name: 'OpenAi Functions Agent',
+			name: 'OpenAI Functions Agent',
 			color: '#404040',
 		},
 		codex: {
