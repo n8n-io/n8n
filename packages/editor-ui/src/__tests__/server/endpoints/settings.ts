@@ -18,8 +18,6 @@ const defaultSettings: IN8nUISettings = {
 		variables: true,
 		sourceControl: false,
 		auditLogs: false,
-		versionControl: false,
-		showNonProdBanner: false,
 	},
 	executionMode: 'regular',
 	executionTimeout: 0,
