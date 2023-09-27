@@ -15,12 +15,13 @@ const MOCK_URL = `https://${MOCK_HOST}/${MOCK_BUCKET.name}`;
 const FAILED_REQUEST_ERROR_MESSAGE = 'Request to external object storage failed';
 const MOCK_S3_ERROR = new Error('Something went wrong!');
 
-const toMultipleDeletionXml = (filename: string) => `<Delete>
+const toDeletionXml = (filename: string) => `<Delete>
 <Object><Key>${filename}</Key></Object>
 </Delete>`;
 
 describe('ObjectStoreService', () => {
 	let objectStoreService: ObjectStoreService;
+	initLogger();
 
 	beforeEach(async () => {
 		objectStoreService = new ObjectStoreService();
@@ -258,7 +259,7 @@ describe('ObjectStoreService', () => {
 						'Content-Length': expect.any(Number),
 						'Content-MD5': expect.any(String),
 					}),
-					data: toMultipleDeletionXml(fileName),
+					data: toDeletionXml(fileName),
 				}),
 			);
 		});
