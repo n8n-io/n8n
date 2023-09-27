@@ -60,24 +60,46 @@ export function getWorkerCommandReceivedHandler(options: {
 						});
 						break;
 					case 'restartEventBus':
-						await Container.get(MessageEventBus).restart();
-						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.queueModeId,
-							command: message.command,
-							payload: {
-								result: 'success',
-							},
-						});
+						try {
+							await Container.get(MessageEventBus).restart();
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'success',
+								},
+							});
+						} catch (error) {
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'error',
+									error: (error as Error).message,
+								},
+							});
+						}
 						break;
 					case 'reloadExternalSecretsProviders':
-						await Container.get(ExternalSecretsManager).reloadAllProviders();
-						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.queueModeId,
-							command: message.command,
-							payload: {
-								result: 'success',
-							},
-						});
+						try {
+							await Container.get(ExternalSecretsManager).reloadAllProviders();
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'success',
+								},
+							});
+						} catch (error) {
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'error',
+									error: (error as Error).message,
+								},
+							});
+						}
 						break;
 					case 'reloadLicense':
 						await Container.get(License).reload();

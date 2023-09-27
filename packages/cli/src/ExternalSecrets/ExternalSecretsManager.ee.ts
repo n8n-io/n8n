@@ -20,10 +20,7 @@ import {
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
-import config from '../config';
-import { RedisService } from '../services/redis.service';
-import { OrchestrationService } from '../services/orchestration.service';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 const logger = getLogger();
 
@@ -34,8 +31,6 @@ export class ExternalSecretsManager {
 	private initializingPromise?: Promise<void>;
 
 	private cachedSettings: ExternalSecretsSettings = {};
-
-	private redisPublisher: RedisServicePubSubPublisher;
 
 	initialized = false;
 
@@ -50,9 +45,6 @@ export class ExternalSecretsManager {
 	) {}
 
 	async init(): Promise<void> {
-		if (!this.redisPublisher && config.getEnv('executions.mode') === 'queue') {
-			this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
-		}
 		if (!this.initialized) {
 			if (!this.initializingPromise) {
 				this.initializingPromise = new Promise<void>(async (resolve) => {
