@@ -49,7 +49,7 @@ export class OpenAiFunctionsAgent implements INodeType {
 				maxConnections: 1,
 				type: NodeConnectionType.AiLanguageModel,
 				filter: {
-					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
+					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 				},
 				required: true,
 			},

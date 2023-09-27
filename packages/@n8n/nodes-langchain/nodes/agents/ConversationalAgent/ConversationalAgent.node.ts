@@ -50,10 +50,10 @@ export class ConversationalAgent implements INodeType {
 				type: NodeConnectionType.AiLanguageModel,
 				filter: {
 					nodes: [
-						'@n8n/nodes-langchain.lmChatAnthropic',
-						'@n8n/nodes-langchain.lmChatOllama',
-						'@n8n/nodes-langchain.lmChatOpenAi',
-						'@n8n/nodes-langchain.lmChatGooglePalm',
+						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatOllama',
+						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 					],
 				},
 				required: true,

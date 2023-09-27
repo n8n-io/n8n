@@ -315,7 +315,7 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
-      '@n8n/nodes-langchain':
+      '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
       '@n8n_io/license-sdk':

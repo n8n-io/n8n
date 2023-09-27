@@ -935,7 +935,7 @@ export class Workflow {
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			// TODO: Identify later differently
-			if (nodeType.description.name === '@n8n/nodes-langchain.manualChatTrigger') {
+			if (nodeType.description.name === '@n8n/n8n-nodes-langchain.manualChatTrigger') {
 				continue;
 			}
 
