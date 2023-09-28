@@ -54,6 +54,7 @@ const classes = computed(() => {
 		font-family: inherit;
 		font-size: inherit;
 		margin: 0;
+		white-space: pre-wrap;
 	}
 }
 </style>
