@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/types';
 import MessageTyping from '@/components/MessageTyping.vue';
 import { useChatStore } from '@/stores/chat';
 import { storeToRefs } from 'pinia';
+import { useOptions } from '@/composables';
 
 defineProps({
 	messages: {
@@ -14,10 +15,16 @@ defineProps({
 });
 
 const chatStore = useChatStore();
-const { waitingForResponse } = storeToRefs(chatStore);
+
+const { initialMessages, waitingForResponse } = storeToRefs(chatStore);
 </script>
 <template>
 	<div class="chat-messages-list">
+		<Message
+			v-for="initialMessage in initialMessages"
+			:key="initialMessage"
+			:message="initialMessage"
+		/>
 		<Message v-for="message in messages" :key="message.id" :message="message" />
 		<MessageTyping v-if="waitingForResponse" />
 	</div>

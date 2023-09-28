@@ -11,12 +11,12 @@ export function createChatbot(options?: Partial<ChatbotOptions>) {
 	const resolvedOptions: ChatbotOptions = {
 		...defaultOptions,
 		...options,
-		messages: {
-			...defaultOptions.messages,
-			...options?.messages,
+		i18n: {
+			...defaultOptions.i18n,
+			...options?.i18n,
 			en: {
-				...defaultOptions.messages.en,
-				...options?.messages?.en,
+				...defaultOptions.i18n.en,
+				...options?.i18n?.en,
 			},
 		},
 		theme: {

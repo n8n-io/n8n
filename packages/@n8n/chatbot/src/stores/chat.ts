@@ -1,4 +1,4 @@
-import { nextTick, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuidv4 } from 'uuid';
 import type { ChatMessage } from '@/types';
@@ -57,6 +57,15 @@ export const useChatStore = defineStore('chat', () => {
 	const messages = ref<ChatMessage[]>([]);
 	const currentSessionId = ref<string | null>(null);
 	const waitingForResponse = ref(false);
+
+	const initialMessages = computed<ChatMessage[]>(() =>
+		(options.initialMessages ?? []).map((text) => ({
+			id: uuidv4(),
+			text,
+			sender: 'bot',
+			createdAt: new Date().toISOString(),
+		})),
+	);
 
 	async function sendMessage(text: string) {
 		const sentMessage: ChatMessage = {
@@ -120,6 +129,7 @@ export const useChatStore = defineStore('chat', () => {
 	}
 
 	return {
+		initialMessages,
 		messages,
 		currentSessionId,
 		waitingForResponse,

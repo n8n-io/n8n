@@ -3,7 +3,8 @@ export interface ChatbotOptions {
 	target?: string | Element;
 	mode?: 'window' | 'fullscreen';
 	defaultLanguage: 'en';
-	messages: Record<
+	initialMessages?: string[];
+	i18n: Record<
 		string,
 		{
 			title: string;

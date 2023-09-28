@@ -5,7 +5,8 @@ export const defaultOptions: ChatbotOptions = {
 	target: '#n8n-chatbot',
 	mode: 'window',
 	defaultLanguage: 'en',
-	messages: {
+	initialMessages: ['Hi there! 👋', 'My name is Nathan. How can I assist you today?'],
+	i18n: {
 		en: {
 			title: 'Hi there! 👋',
 			subtitle: "Start a chat. We're here to help you 24/7.",
