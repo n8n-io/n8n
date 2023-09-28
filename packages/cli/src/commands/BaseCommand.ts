@@ -129,6 +129,15 @@ export abstract class BaseCommand extends Command {
 	async initObjectStoreService() {
 		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
+
+		if (!isSelected && !isAvailable) return;
+
+		if (isSelected && !isAvailable) {
+			throw new Error(
+				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
+			);
+		}
+
 		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 
 		if (isSelected && isAvailable && isLicensed) {
@@ -160,12 +169,6 @@ export abstract class BaseCommand extends Command {
 
 			return;
 		}
-
-		if (isSelected && !isAvailable) {
-			throw new Error(
-				'External storage selected but unavailable. Stopping n8n startup. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
-			);
-		}
 	}
 
 	private async _initObjectStoreService(options = { isReadOnly: false }) {
@@ -173,15 +176,45 @@ export abstract class BaseCommand extends Command {
 
 		const host = config.getEnv('externalStorage.s3.host');
 
+		if (host === '') {
+			throw new Error(
+				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
+			);
+		}
+
 		const bucket = {
 			name: config.getEnv('externalStorage.s3.bucket.name'),
 			region: config.getEnv('externalStorage.s3.bucket.region'),
 		};
 
+		if (bucket.name === '') {
+			throw new Error(
+				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
+			);
+		}
+
+		if (bucket.region === '') {
+			throw new Error(
+				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
+			);
+		}
+
 		const credentials = {
 			accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
 			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
 		};
+
+		if (credentials.accountId === '') {
+			throw new Error(
+				'External storage account ID not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCOUNT_ID`.',
+			);
+		}
+
+		if (credentials.secretKey === '') {
+			throw new Error(
+				'External storage secret key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_SECRET_KEY`.',
+			);
+		}
 
 		LoggerProxy.debug('Initializing object store service');
 
@@ -198,6 +231,14 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initBinaryDataService() {
+		try {
+			await this.initObjectStoreService();
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			LoggerProxy.error(`Failed to init object store: ${error.message}`, { error });
+			process.exit(1);
+		}
+
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}

@@ -264,7 +264,6 @@ export class Worker extends BaseCommand {
 
 		await this.initLicense();
 
-		await this.initObjectStoreService();
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();

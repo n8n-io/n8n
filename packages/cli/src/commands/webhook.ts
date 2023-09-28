@@ -92,7 +92,6 @@ export class Webhook extends BaseCommand {
 		await super.init();
 
 		await this.initLicense();
-		await this.initObjectStoreService();
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();

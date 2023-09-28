@@ -896,7 +896,7 @@ export const schema = {
 	binaryDataManager: {
 		availableModes: {
 			format: 'comma-separated-list',
-			default: 'filesystem,s3',
+			default: 'filesystem',
 			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
