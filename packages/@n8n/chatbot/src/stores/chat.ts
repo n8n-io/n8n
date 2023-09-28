@@ -99,7 +99,6 @@ export const useChatStore = defineStore('chat', () => {
 		const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 		const timestamp = new Date().toISOString();
 
-		currentSessionId.value = sessionId;
 		messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
 			id: `${index}`,
 			text: message.kwargs.content,
@@ -107,7 +106,9 @@ export const useChatStore = defineStore('chat', () => {
 			createdAt: timestamp,
 		}));
 
-		console.log(messages.value);
+		if (messages.value.length) {
+			currentSessionId.value = sessionId;
+		}
 
 		return sessionId;
 	}
