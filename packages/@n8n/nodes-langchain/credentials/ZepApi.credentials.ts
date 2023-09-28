@@ -10,7 +10,7 @@ export class ZepApi implements ICredentialType {
 
 	displayName = 'Zep Api';
 
-	documentationUrl = 'zepApi';
+	documentationUrl = 'zep';
 
 	properties: INodeProperties[] = [
 		{

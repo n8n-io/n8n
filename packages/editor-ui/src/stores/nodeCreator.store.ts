@@ -18,7 +18,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const showScrim = ref(false);
 	const openSource = ref<NodeCreatorOpenSource>('');
 
-	const allNodeCreatorNodes = computed(() => Object.values(mergedNodes.value).map(i => transformNodeType(i)));
+	const allNodeCreatorNodes = computed(() =>
+		Object.values(mergedNodes.value).map((i) => transformNodeType(i)),
+	);
 
 	function setMergeNodes(nodes: SimplifiedNodeType[]) {
 		mergedNodes.value = nodes;

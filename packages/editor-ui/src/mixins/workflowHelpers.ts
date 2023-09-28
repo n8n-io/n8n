@@ -30,6 +30,7 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
@@ -72,7 +73,7 @@ export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	if (nodeType) {
 		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
 
-		if (!!outputs.find((output) => output !== 'main')) {
+		if (!!outputs.find((output) => output !== NodeConnectionType.Main)) {
 			// Get the first node which is connected to a non-main output
 			const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
 				const parentNodes = workflow.getChildNodes(node.name, outputName);
@@ -114,7 +115,7 @@ export function resolveParameter(
 ): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
-	const inputName = 'main';
+	const inputName = NodeConnectionType.Main;
 	let activeNode = useNDVStore().activeNode;
 
 	const workflow = getCurrentWorkflow();
@@ -269,6 +270,34 @@ function getCurrentWorkflow(copyData?: boolean): Workflow {
 	return useWorkflowsStore().getCurrentWorkflow(copyData);
 }
 
+function getConnectedNodes(
+	direction: 'upstream' | 'downstream',
+	workflow: Workflow,
+	nodeName: string,
+): string[] {
+	let checkNodes: string[];
+	if (direction === 'downstream') {
+		checkNodes = workflow.getChildNodes(nodeName);
+	} else if (direction === 'upstream') {
+		checkNodes = workflow.getParentNodes(nodeName);
+	} else {
+		throw new Error(`The direction "${direction}" is not supported!`);
+	}
+
+	// Find also all nodes which are connected to the child nodes via a non-main input
+	let connectedNodes: string[] = [];
+	checkNodes.forEach((checkNode) => {
+		connectedNodes = [
+			...connectedNodes,
+			checkNode,
+			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+		];
+	});
+
+	// Remove duplicates
+	return [...new Set(connectedNodes)];
+}
+
 function getNodes(): INodeUi[] {
 	return useWorkflowsStore().getNodes();
 }
@@ -352,7 +381,7 @@ function connectionInputData(
 	return connectionInputData;
 }
 
-function executeData(
+export function executeData(
 	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
@@ -413,7 +442,10 @@ function executeData(
 						currentNode
 					].main) {
 						for (const connection of mainConnections) {
-							if (connection.type === 'main' && connection.node === parentNodeName) {
+							if (
+								connection.type === NodeConnectionType.Main &&
+								connection.node === parentNodeName
+							) {
 								previousNodeOutput = connection.index;
 								break mainConnections;
 							}
@@ -465,6 +497,7 @@ export const workflowHelpers = defineComponent({
 		resolveParameter,
 		resolveRequiredParameters,
 		getCurrentWorkflow,
+		getConnectedNodes,
 		getNodes,
 		getParentMainInputNode,
 		getWorkflow,
@@ -943,8 +976,6 @@ export const workflowHelpers = defineComponent({
 
 				const workflowDataRequest: IWorkflowDataUpdate =
 					data || (await this.getWorkflowDataToSave());
-				// make sure that the new ones are not active
-				workflowDataRequest.active = false;
 				const changedNodes = {} as IDataObject;
 
 				if (resetNodeIds) {

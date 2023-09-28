@@ -109,7 +109,7 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
-	NODE_TRIGGER_CHAT_BUTTON,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 } from '@/constants';
@@ -119,7 +119,13 @@ import { get, last } from 'lodash-es';
 
 import { useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import { type INode, type INodeType, type ITaskData, NodeHelpers } from 'n8n-workflow';
+import {
+	type INode,
+	type INodeType,
+	type ITaskData,
+	NodeHelpers,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
@@ -195,8 +201,10 @@ export default defineComponent({
 			inputField.focus();
 		},
 		updated(event: KeyboardEvent) {
-			if ((event.ctrlKey || event.shiftKey) && event.key === 'Enter') {
-				this.sendChatMessage(this.currentMessage);
+			if (event.key === 'Enter' && !event.shiftKey && this.currentMessage) {
+				void this.sendChatMessage(this.currentMessage);
+				event.stopPropagation();
+				event.preventDefault();
 			}
 		},
 		async sendChatMessage(message: string) {
@@ -224,7 +232,7 @@ export default defineComponent({
 		setConnectedNode() {
 			const workflow = this.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
+				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
 			);
 
 			if (!triggerNode.length) {
@@ -252,9 +260,9 @@ export default defineComponent({
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
 					if (
-						inputTypes.includes('languageModel') &&
-						inputTypes.includes('main') &&
-						outputTypes.includes('main')
+						inputTypes.includes(NodeConnectionType.AiLanguageModel) &&
+						inputTypes.includes(NodeConnectionType.Main) &&
+						outputTypes.includes(NodeConnectionType.Main)
 					) {
 						isCustomChainOrAgent = true;
 					}
@@ -357,7 +365,7 @@ export default defineComponent({
 		getTriggerNode(): INode | null {
 			const workflow = this.getCurrentWorkflow();
 			const triggerNode = workflow.queryNodes(
-				(nodeType: INodeType) => nodeType.description.name === NODE_TRIGGER_CHAT_BUTTON,
+				(nodeType: INodeType) => nodeType.description.name === MANUAL_CHAT_TRIGGER_NODE_TYPE,
 			);
 
 			if (!triggerNode.length) {

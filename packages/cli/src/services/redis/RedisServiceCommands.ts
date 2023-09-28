@@ -12,7 +12,7 @@ export type RedisServiceCommand =
  * @field payload: Optional arguments to be sent with the command.
  */
 type RedisServiceBaseCommand = {
-	senderId?: string;
+	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
 		[key: string]: string | number | boolean | string[] | number[] | boolean[];

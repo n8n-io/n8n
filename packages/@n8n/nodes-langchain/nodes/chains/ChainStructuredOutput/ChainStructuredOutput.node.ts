@@ -5,6 +5,7 @@ import {
 	type INodeTypeDescription,
 	NodeOperationError,
 	jsonParse,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -36,28 +37,35 @@ export class ChainStructuredOutput implements INodeType {
 			'Processes input text and structures the output according to a specified JSON schema',
 		defaults: {
 			name: 'Structured Output Chain',
-			color: '#432032',
+			color: '#909298',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Chains'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainstructuredoutput/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				filter: {
-					nodes: ['@n8n/nodes-langchain.lmChatOpenAi'],
+					nodes: ['@n8n/n8n-nodes-langchain.lmChatOpenAi'],
 				},
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -102,7 +110,10 @@ export class ChainStructuredOutput implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Structured Output Chain');
-		const model = (await this.getInputConnectionData('languageModel', 0)) as ChatOpenAI;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as ChatOpenAI;
 
 		const outputParser = new JsonOutputFunctionsParser();
 

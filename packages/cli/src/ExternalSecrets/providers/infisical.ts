@@ -110,10 +110,6 @@ export class InfisicalProvider implements SecretsProvider {
 	}
 
 	async getEnvironment(): Promise<string> {
-		if (!this.client || !this.client.clientConfig) {
-			throw new Error('Client not initialized');
-		}
-
 		const serviceTokenData = (await getServiceTokenData(
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.client.clientConfig,
@@ -128,10 +124,9 @@ export class InfisicalProvider implements SecretsProvider {
 	}
 
 	async test(): Promise<[boolean] | [boolean, string]> {
-		if (!this.client || !this.client.clientConfig) {
+		if (!this.client) {
 			return [false, 'Client not initialized'];
 		}
-
 		try {
 			await populateClientWorkspaceConfigsHelper(this.client.clientConfig);
 			return [true];

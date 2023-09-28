@@ -4,7 +4,8 @@ import { N8nAddInputEndpoint } from './N8nAddInputEndpointType';
 export const register = () => {
 	registerEndpointRenderer<N8nAddInputEndpoint>(N8nAddInputEndpoint.type, {
 		makeNode: (endpointInstance: N8nAddInputEndpoint) => {
-			const lineOffset = -2;
+			const xOffset = 1;
+			const lineYOffset = -2;
 			const width = endpointInstance.params.width;
 			const height = endpointInstance.params.height;
 			const unconnectedDiamondSize = width / 2;
@@ -22,15 +23,15 @@ export const register = () => {
 
 			const unconnectedGroup = svg.node('g', { class: 'add-input-endpoint-unconnected' });
 			const unconnectedLine = svg.node('rect', {
-				x: unconnectedDiamondWidth / 2 + sizeDifference,
-				y: unconnectedDiamondWidth + lineOffset,
+				x: xOffset / 2 + unconnectedDiamondWidth / 2 + sizeDifference,
+				y: unconnectedDiamondWidth + lineYOffset,
 				width: 2,
 				height: height - unconnectedDiamondWidth - unconnectedPlusSize,
 				'stroke-width': 0,
 				class: 'add-input-endpoint-line',
 			});
 			const unconnectedPlusGroup = svg.node('g', {
-				transform: `translate(0, ${height - unconnectedPlusSize + lineOffset})`,
+				transform: `translate(${xOffset / 2}, ${height - unconnectedPlusSize + lineYOffset})`,
 			});
 			const plusRectangle = svg.node('rect', {
 				x: 1,
@@ -55,7 +56,7 @@ export const register = () => {
 
 			const defaultGroup = svg.node('g', { class: 'add-input-endpoint-default' });
 			const defaultDiamond = svg.node('rect', {
-				x: sizeDifference + unconnectedPlusStroke,
+				x: xOffset + sizeDifference + unconnectedPlusStroke,
 				y: 0,
 				'stroke-width': 0,
 				width: unconnectedDiamondSize,

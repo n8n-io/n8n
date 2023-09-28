@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import type { RecursiveCharacterTextSplitterParams } from 'langchain/text_splitter';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
@@ -8,24 +14,30 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
 		name: 'textSplitterRecursiveCharacterTextSplitter',
-		icon: 'fa:remove-format',
+		icon: 'fa:grip-lines-vertical',
 		group: ['transform'],
 		version: 1,
 		description: 'Split text into chunks by characters recursively',
 		defaults: {
 			name: 'Recursive Character Text Splitter',
-			color: '#400080',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Text Splitters'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.textsplitterrecursivecharactertextsplitter/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['textSplitter'],
+		outputs: [NodeConnectionType.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
 			// {

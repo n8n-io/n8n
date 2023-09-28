@@ -48,12 +48,6 @@ export interface IBinaryData {
 	id?: string;
 }
 
-export interface BinaryMetadata {
-	fileName?: string;
-	mimeType?: string;
-	fileSize: number;
-}
-
 // All properties in this interface except for
 // "includeCredentialsOnRefreshOnBody" will get
 // removed once we add the OAuth2 hooks to the
@@ -694,8 +688,12 @@ export interface BinaryHelperFunctions {
 	copyBinaryFile(): Promise<never>;
 	binaryToBuffer(body: Buffer | Readable): Promise<Buffer>;
 	getBinaryPath(binaryDataId: string): string;
-	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
-	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
+	getBinaryStream(binaryDataId: string, chunkSize?: number): Promise<Readable>;
+	getBinaryMetadata(binaryDataId: string): Promise<{
+		fileName?: string;
+		mimeType?: string;
+		fileSize: number;
+	}>;
 }
 
 export interface NodeHelperFunctions {
@@ -786,9 +784,11 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		addInputData(
 			connectionType: ConnectionTypes,
 			data: INodeExecutionData[][] | ExecutionError,
-		): void;
+			runIndex?: number,
+		): { index: number };
 		addOutputData(
 			connectionType: ConnectionTypes,
+			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
 
@@ -1030,6 +1030,7 @@ export interface INodeParameters {
 
 export type NodePropertyTypes =
 	| 'boolean'
+	| 'button'
 	| 'collection'
 	| 'color'
 	| 'dateTime'
@@ -1070,6 +1071,7 @@ export interface ILoadOptions {
 }
 
 export interface INodePropertyTypeOptions {
+	action?: string; // Supported by: button
 	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorType; // Supported by: string
@@ -1495,17 +1497,42 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 }
 
 export type ConnectionTypes =
-	| 'chain'
-	| 'document'
-	| 'embedding'
-	| 'languageModel'
-	| 'main'
-	| 'memory'
-	| 'outputParser'
-	| 'tool'
-	| 'textSplitter'
-	| 'vectorRetriever'
-	| 'vectorStore';
+	| 'ai_chain'
+	| 'ai_document'
+	| 'ai_embedding'
+	| 'ai_languageModel'
+	| 'ai_memory'
+	| 'ai_outputParser'
+	| 'ai_textSplitter'
+	| 'ai_tool'
+	| 'ai_vectorRetriever'
+	| 'ai_vectorStore'
+	| 'main';
+
+export const enum NodeConnectionType {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiChain = 'ai_chain',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiDocument = 'ai_document',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiEmbedding = 'ai_embedding',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiLanguageModel = 'ai_languageModel',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiMemory = 'ai_memory',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiOutputParser = 'ai_outputParser',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiTextSplitter = 'ai_textSplitter',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiTool = 'ai_tool',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiVectorRetriever = 'ai_vectorRetriever',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiVectorStore = 'ai_vectorStore',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	Main = 'main',
+}
 
 export interface INodeInputFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
@@ -1732,13 +1759,13 @@ export interface IRunData {
 	[key: string]: ITaskData[];
 }
 
-export interface ITaskAIRunMetadata {
+export interface ITaskSubRunMetadata {
 	node: string;
 	runIndex: number;
 }
 
 export interface ITaskMetadata {
-	aiRun?: ITaskAIRunMetadata[];
+	subRun?: ITaskSubRunMetadata[];
 }
 
 // The data that gets returned when a node runs
@@ -1891,6 +1918,10 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+}
+
+export interface WorkflowFEMeta {
+	onboardingId?: string;
 }
 
 export interface WorkflowTestData {
@@ -2212,6 +2243,7 @@ export interface IN8nUISettings {
 	urlBaseEditor: string;
 	versionCli: string;
 	n8nMetadata?: {
+		userId?: string;
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
@@ -2305,4 +2337,9 @@ export interface SecretsHelpersBase {
 	listSecrets(provider: string): string[];
 }
 
-export type BannerName = 'V1' | 'TRIAL_OVER' | 'TRIAL' | 'NON_PRODUCTION_LICENSE';
+export type BannerName =
+	| 'V1'
+	| 'TRIAL_OVER'
+	| 'TRIAL'
+	| 'NON_PRODUCTION_LICENSE'
+	| 'EMAIL_CONFIRMATION';

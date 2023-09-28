@@ -1,6 +1,7 @@
 import { EnableNodeToggleCommand } from './../models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
 
 import type {
 	ConnectionTypes,
@@ -22,7 +23,7 @@ import type {
 	Workflow,
 	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeHelpers, ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
@@ -44,6 +45,8 @@ import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
+import { useI18n } from '@/composables';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export const nodeHelpers = defineComponent({
 	computed: {
@@ -507,7 +510,7 @@ export const nodeHelpers = defineComponent({
 			runIndex = 0,
 			outputIndex = 0,
 			paneType: NodePanelType = 'output',
-			connectionType: ConnectionTypes = 'main',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			if (node === null) {
 				return [];
@@ -544,7 +547,7 @@ export const nodeHelpers = defineComponent({
 		getInputData(
 			connectionsData: ITaskDataConnections,
 			outputIndex: number,
-			connectionType: ConnectionTypes = 'main',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			if (
 				!connectionsData ||
@@ -564,7 +567,7 @@ export const nodeHelpers = defineComponent({
 			node: string | null,
 			runIndex: number,
 			outputIndex: number,
-			connectionType: ConnectionTypes = 'main',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): IBinaryKeyData[] {
 			if (node === null) {
 				return [];

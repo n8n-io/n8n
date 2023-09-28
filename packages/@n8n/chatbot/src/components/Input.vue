@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import IconSend from 'virtual:icons/mdi/send';
 import { useI18n } from '@/composables';
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useChatStore } from '@/stores/chat';
 import { chatEventBus } from '@/event-buses';
 import { storeToRefs } from 'pinia';
@@ -16,17 +16,16 @@ const isSubmitDisabled = computed(() => {
 	return input.value === '' || waitingForResponse.value;
 });
 
-async function onSubmit(event: KeyboardEvent) {
+async function onSubmit(event: MouseEvent | KeyboardEvent) {
 	event.preventDefault();
 
 	if (isSubmitDisabled.value) {
 		return;
 	}
 
-	await chatStore.sendMessage(input.value);
+	const messageText = input.value;
 	input.value = '';
-
-	chatEventBus.emit('scrollToBottom');
+	await chatStore.sendMessage(messageText);
 }
 
 async function onSubmitKeydown(event: KeyboardEvent) {
@@ -47,7 +46,7 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 			@keydown.enter="onSubmitKeydown"
 		/>
 		<button :disabled="isSubmitDisabled" class="chat-input-send-button" @click="onSubmit">
-			<IconSend size="32" />
+			<IconSend height="32" width="32" />
 		</button>
 	</div>
 </template>

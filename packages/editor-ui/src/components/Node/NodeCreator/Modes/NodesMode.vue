@@ -8,13 +8,14 @@ import {
 	WEBHOOK_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
 	AI_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 } from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView, AIView } from '../viewsData';
+import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import { transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useActions } from '../composables/useActions';
@@ -117,6 +118,7 @@ function onSelected(item: INodeCreateElement) {
 			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
 			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
 			[AI_NODE_CREATOR_VIEW]: AIView,
+			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
 		};
 
 		const itemKey = item.key as keyof typeof views;

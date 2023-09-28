@@ -41,6 +41,7 @@ import SettingsSourceControl from './views/SettingsSourceControl.vue';
 import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
 import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
 import WorkflowHistory from '@/views/WorkflowHistory.vue';
+import WorkflowOnboardingView from '@/views/WorkflowOnboardingView.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 interface IRouteConfig {
@@ -57,11 +58,11 @@ interface IRouteConfig {
 	};
 }
 
-function getTemplatesRedirect() {
+function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]) {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return { name: VIEWS.NOT_FOUND };
+		return { name: defaultRedirect || VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -327,6 +328,24 @@ export const routes = [
 		meta: {
 			templatesEnabled: true,
 			getRedirect: getTemplatesRedirect,
+			permissions: {
+				allow: {
+					loginStatus: [LOGIN_STATUS.LoggedIn],
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/onboarding/:id',
+		name: VIEWS.WORKFLOW_ONBOARDING,
+		components: {
+			default: WorkflowOnboardingView,
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			templatesEnabled: true,
+			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],

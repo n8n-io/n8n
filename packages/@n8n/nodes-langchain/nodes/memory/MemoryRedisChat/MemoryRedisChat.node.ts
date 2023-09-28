@@ -5,6 +5,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { BufferMemory } from 'langchain/memory';
 import type { RedisChatMessageHistoryInput } from 'langchain/stores/message/redis';
@@ -35,11 +36,18 @@ export class MemoryRedisChat implements INodeType {
 			subcategories: {
 				AI: ['Memory'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memoryredischat/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['memory'],
+		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
 			{

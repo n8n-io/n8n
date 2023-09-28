@@ -168,7 +168,7 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType, deepCopy } from 'n8n-workflow';
 import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -233,7 +233,7 @@ export default defineComponent({
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
-			if (this.nodeType && !this.nodeType.inputs.includes('main')) {
+			if (this.nodeType && !this.nodeType.inputs.includes(NodeConnectionType.Main)) {
 				return false;
 			}
 			return this.executable || this.hasForeignCredential;

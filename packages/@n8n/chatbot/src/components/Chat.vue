@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { Layout, MessagesList, GetStarted, GetStartedFooter, Input } from '@/components';
-import { computed, nextTick, onMounted, ref, toRefs } from 'vue';
+import Layout from '@/components/Layout.vue';
+import GetStarted from '@/components/GetStarted.vue';
+import GetStartedFooter from '@/components/GetStartedFooter.vue';
+import MessagesList from '@/components/MessagesList.vue';
+import Input from '@/components/Input.vue';
+import { computed, nextTick, onMounted, toRefs } from 'vue';
 import { useI18n, useOptions } from '@/composables';
 import { useChatStore } from '@/stores/chat';
 import { chatEventBus } from '@/event-buses';

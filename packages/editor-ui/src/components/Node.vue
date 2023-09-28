@@ -1,12 +1,7 @@
 <template>
 	<div
-		:class="{
-			'node-wrapper': true,
-			'node-wrapper--trigger': isTriggerNode,
-			'node-wrapper--configurable': isConfigurableNode,
-			'node-wrapper--config': isConfigNode,
-		}"
-		:style="nodePosition"
+		:class="nodeWrapperClass"
+		:style="nodeWrapperStyles"
 		:id="nodeId"
 		data-test-id="canvas-node"
 		:ref="data.name"
@@ -101,6 +96,7 @@
 					:nodeType="nodeType"
 					:size="40"
 					:shrink="false"
+					:colorDefault="iconColorDefault"
 					:disabled="this.data.disabled"
 				/>
 			</div>
@@ -177,8 +173,9 @@ import { mapStores } from 'pinia';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-	WAIT_TIME_UNLIMITED,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -187,7 +184,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
 import type { IExecutionsSummary, INodeTypeDescription, ITaskData } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -230,6 +227,12 @@ export default defineComponent({
 		},
 		isScheduledGroup(): boolean {
 			return this.nodeType?.group.includes('schedule') === true;
+		},
+		iconColorDefault(): string | undefined {
+			if (this.isConfigNode) {
+				return 'var(--color-text-base)';
+			}
+			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
@@ -322,23 +325,60 @@ export default defineComponent({
 		sameTypeNodes(): INodeUi[] {
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
-		nodeClass(): object {
+		nodeWrapperClass(): object {
 			const classes = {
-				'node-box': true,
-				disabled: this.data.disabled,
-				executing: this.isExecuting,
+				'node-wrapper': true,
+				'node-wrapper--trigger': this.isTriggerNode,
+				'node-wrapper--configurable': this.isConfigurableNode,
+				'node-wrapper--config': this.isConfigNode,
 			};
 
 			if (this.outputs.length) {
 				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
-
-				const otherOutputs = outputTypes.filter((outputName) => outputName !== 'main');
+				const otherOutputs = outputTypes.filter(
+					(outputName) => outputName !== NodeConnectionType.Main,
+				);
 				if (otherOutputs.length) {
-					classes['node-other'] = true;
+					otherOutputs.forEach((outputName) => {
+						classes[`node-wrapper--connection-type-${outputName}`] = true;
+					});
 				}
 			}
 
 			return classes;
+		},
+		nodeWrapperStyles(): object {
+			const styles: {
+				[key: string]: string | number;
+			} = {
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
+			};
+
+			const nonMainInputs = this.inputs.filter((input) => input !== NodeConnectionType.Main);
+			if (nonMainInputs.length) {
+				const requiredNonMainInputs = this.inputs.filter(
+					(input) => typeof input !== 'string' && input.required,
+				);
+
+				let spacerCount = 0;
+				if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+					const requiredNonMainInputsCount = requiredNonMainInputs.length;
+					const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+					spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+				}
+
+				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
+			}
+
+			return styles;
+		},
+		nodeClass(): object {
+			return {
+				'node-box': true,
+				disabled: this.data.disabled,
+				executing: this.isExecuting,
+			};
 		},
 		nodeExecutionStatus(): string {
 			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
@@ -378,16 +418,6 @@ export default defineComponent({
 		},
 		showDisabledLinethrough(): boolean {
 			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
-		},
-		nodePosition(): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				left: this.position[0] + 'px',
-				top: this.position[1] + 'px',
-			};
-
-			return returnStyles;
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -434,6 +464,10 @@ export default defineComponent({
 			} = {};
 
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.isConfigurableNode || this.isConfigNode) {
+				borderColor = getStyleTokenValue('--color-foreground-dark');
+			}
 
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
@@ -661,20 +695,26 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .node-wrapper {
+	--node-width: 100px;
+	--node-height: 100px;
+
+	--configurable-node-min-input-count: 4;
+	--configurable-node-input-width: 65px;
+
 	position: absolute;
-	width: 100px;
-	height: 100px;
+	width: var(--node-width);
+	height: var(--node-height);
 
 	.node-description {
 		position: absolute;
-		top: 100px;
-		left: -50px;
+		top: var(--node-height);
+		left: calc(var(--node-width) / 2 * -1);
 		line-height: 1.5;
 		text-align: center;
 		cursor: default;
 		padding: 8px;
 		width: 100%;
-		min-width: 200px;
+		min-width: calc(var(--node-width) * 2);
 		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p {
@@ -717,16 +757,6 @@ export default defineComponent({
 				.node-executing-info {
 					display: inline-block;
 				}
-
-				&.node-other {
-					background-color: $node-background-executing-other !important;
-				}
-			}
-
-			&.node-other {
-				background-color: $node-background-type-other;
-				border-radius: 50px;
-				border: 0;
 			}
 		}
 
@@ -803,7 +833,7 @@ export default defineComponent({
 			position: absolute;
 			top: -25px;
 			left: -10px;
-			width: 120px;
+			width: calc(var(--node-width) + 20px);
 			height: 26px;
 			font-size: 0.9em;
 			z-index: 10;
@@ -841,43 +871,98 @@ export default defineComponent({
 	}
 
 	&--config {
+		--configurable-node-input-width: 55px;
+		--node-width: 75px;
+		--node-height: 75px;
+
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
 				height: 25px;
 			}
+
+			.node-icon {
+				scale: 0.75;
+			}
+		}
+
+		.node-default {
+			.node-box {
+				border: 2px solid var(--color-foreground-xdark);
+				//background-color: $node-background-type-other;
+				border-radius: 50px;
+
+				&.executing {
+					background-color: $node-background-executing-other !important;
+				}
+
+				.node-executing-info {
+					font-size: 2.85em;
+				}
+			}
+		}
+
+		@each $node-type in $supplemental-node-types {
+			&.node-wrapper--connection-type-#{$node-type} {
+				.node-default .node-box {
+					background: var(--node-type-#{$node-type}-background);
+				}
+
+				.node-description {
+					.node-subtitle {
+						color: var(--node-type-#{$node-type}-color);
+					}
+				}
+			}
 		}
 
 		.node-info-icon {
-			bottom: 0px !important;
-			right: 1px !important;
+			bottom: 4px !important;
+			right: 50% !important;
+			transform: translateX(50%) scale(0.75);
+		}
+
+		&.node-wrapper--configurable {
+			--configurable-node-icon-offset: 20px;
+
+			.node-info-icon {
+				bottom: 1px !important;
+				right: 1px !important;
+			}
 		}
 	}
 
 	&--configurable {
-		$configurable-node-width: 250px;
-		$configurable-node-icon-offset: 40px;
-		$configurable-node-icon-size: 30px;
-
-		width: $configurable-node-width;
+		--node-width: var(
+			--configurable-node-width,
+			calc(
+				max(var(--configurable-node-input-count, 5), var(--configurable-node-min-input-count)) *
+					var(--configurable-node-input-width)
+			)
+		);
+		--configurable-node-icon-offset: 40px;
+		--configurable-node-icon-size: 30px;
 
 		.node-description {
 			top: calc(50%);
 			transform: translateY(-50%);
-			left: calc($configurable-node-icon-offset + $configurable-node-icon-size + var(--spacing-s));
+			left: calc(
+				var(--configurable-node-icon-offset) + var(--configurable-node-icon-size) + var(--spacing-s)
+			);
 			text-align: left;
 			overflow: auto;
 			white-space: normal;
 			min-width: unset;
 			max-width: calc(
-				$configurable-node-width - $configurable-node-icon-offset - $configurable-node-icon-size - 2 *
-					var(--spacing-s)
+				var(--node-width) - var(--configurable-node-icon-offset) - var(
+						--configurable-node-icon-size
+					) - 2 * var(--spacing-s)
 			);
 		}
 
 		.node-default {
 			.node-icon {
-				left: $configurable-node-icon-offset;
+				left: var(--configurable-node-icon-offset);
 			}
 
 			.node-options {
@@ -935,7 +1020,12 @@ export default defineComponent({
 	.node-wrapper--config & {
 		--node--selected--box-shadow-radius: 4px;
 		border-radius: 60px;
-		background-color: var(--color-foreground-dark);
+		background-color: hsla(
+			var(--color-foreground-base-h),
+			60%,
+			var(--color-foreground-base-l),
+			80%
+		);
 	}
 }
 
@@ -1188,6 +1278,7 @@ export default defineComponent({
 
 	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
 	transform: rotate(45deg);
+	z-index: 10;
 }
 
 .add-input-endpoint {
@@ -1195,6 +1286,15 @@ export default defineComponent({
 
 	&:not(.jtk-endpoint-connected) {
 		cursor: pointer;
+	}
+
+	&.add-input-endpoint-multiple {
+		z-index: 100;
+		cursor: pointer;
+	}
+
+	&.jtk-endpoint-connected {
+		z-index: 10;
 	}
 
 	.add-input-endpoint-default {
@@ -1243,7 +1343,7 @@ export default defineComponent({
 		}
 	}
 
-	&.jtk-endpoint-connected {
+	&.jtk-endpoint-connected:not(.add-input-endpoint-multiple) {
 		.add-input-endpoint-unconnected {
 			display: none;
 		}
@@ -1259,6 +1359,8 @@ export default defineComponent({
 
 .node-input-endpoint-label,
 .node-output-endpoint-label {
+	--node-endpoint-label--transition-duration: 0.15s;
+
 	background-color: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -1269,6 +1371,13 @@ export default defineComponent({
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	transition: color var(--node-endpoint-label--transition-duration) ease;
+
+	@each $node-type in $supplemental-node-types {
+		&.node-connection-type-#{$node-type} {
+			color: var(--node-type-supplemental-label-color);
+		}
+	}
 }
 
 .node-output-endpoint-label {

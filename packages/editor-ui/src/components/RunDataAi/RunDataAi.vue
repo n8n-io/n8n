@@ -1,11 +1,6 @@
 <template>
-	<div v-if="aiData" :class="{ [$style.container]: true }">
+	<div v-if="aiData" :class="$style.container">
 		<div :class="{ [$style.tree]: true, [$style.slim]: slim }">
-			<p
-				:class="$style.title"
-				v-text="$locale.baseText('ndv.output.ai.logTree')"
-				v-if="hideTitle === false"
-			/>
 			<el-tree
 				:data="executionTree"
 				:props="{ label: 'node' }"
@@ -64,24 +59,35 @@
 
 <script lang="ts" setup>
 import type { Ref } from 'vue';
-import { computed, ref } from 'vue';
-import type { ITaskAIRunMetadata, ITaskDataConnections } from 'n8n-workflow';
-import type { NodeConnectionType, IAiData, IAiDataContent, INodeUi } from '@/Interface';
+import { computed, ref, watch } from 'vue';
+import type { ITaskSubRunMetadata, ITaskDataConnections } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
+import type { IAiData, IAiDataContent, INodeUi } from '@/Interface';
 import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
 import NodeIcon from '@/components/NodeIcon.vue';
 import RunDataAiContent from './RunDataAiContent.vue';
+import { ElTree } from 'element-plus';
 
 interface AIResult {
 	node: string;
 	runIndex: number;
 	data: IAiDataContent | undefined;
 }
-
-const props = defineProps<{
+interface TreeNode {
+	node: string;
+	id: string;
+	children: TreeNode[];
+	depth: number;
+	startTime: number;
+	runIndex: number;
+}
+export interface Props {
 	node: INodeUi;
+	runIndex: number;
 	hideTitle?: boolean;
 	slim?: boolean;
-}>();
+}
+const props = withDefaults(defineProps<Props>(), { runIndex: 0 });
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const selectedRun: Ref<IAiData[]> = ref([]);
@@ -91,7 +97,7 @@ function isTreeNodeSelected(node: TreeNode) {
 }
 
 function getReferencedData(
-	reference: ITaskAIRunMetadata,
+	reference: ITaskSubRunMetadata,
 	withInput: boolean,
 	withOutput: boolean,
 ): IAiDataContent[] {
@@ -175,14 +181,13 @@ function getNodeType(nodeName: string) {
 
 	return nodeType;
 }
-interface TreeNode {
-	node: string;
-	id: string;
-	children: TreeNode[];
-	depth: number;
-	startTime: number;
-	runIndex: number;
+
+function selectFirst() {
+	if (executionTree.value.length && executionTree.value[0].children.length) {
+		onItemClick(executionTree.value[0].children[0]);
+	}
 }
+
 const createNode = (
 	nodeName: string,
 	currentDepth: number,
@@ -207,7 +212,9 @@ function getTreeNodeData(nodeName: string, currentDepth: number): TreeNode[] {
 		return resultData.map((d) => createNode(nodeName, currentDepth, d));
 	}
 
-	const nonMainConnectionsKeys = Object.keys(connections).filter((key) => key !== 'main');
+	const nonMainConnectionsKeys = Object.keys(connections).filter(
+		(key) => key !== NodeConnectionType.Main,
+	);
 	const children = nonMainConnectionsKeys.flatMap((key) =>
 		connections[key][0].flatMap((node) => getTreeNodeData(node.node, currentDepth + 1)),
 	);
@@ -228,22 +235,22 @@ const aiData = computed<AIResult[] | undefined>(() => {
 		return;
 	}
 
-	const aiRun = resultData[resultData.length - 1].metadata?.aiRun;
-	if (!Array.isArray(aiRun)) {
+	const subRun = resultData[props.runIndex].metadata?.subRun;
+	if (!Array.isArray(subRun)) {
 		return;
 	}
-	// Extend the aiRun with the data and sort by adding execution time + startTime and comparing them
-	const aiRunWithData = aiRun.flatMap((run) =>
+	// Extend the subRun with the data and sort by adding execution time + startTime and comparing them
+	const subRunWithData = subRun.flatMap((run) =>
 		getReferencedData(run, false, true).map((data) => ({ ...run, data })),
 	);
 
-	aiRunWithData.sort((a, b) => {
+	subRunWithData.sort((a, b) => {
 		const aTime = a.data?.metadata?.startTime || 0;
 		const bTime = b.data?.metadata?.startTime || 0;
 		return aTime - bTime;
 	});
 
-	return aiRunWithData;
+	return subRunWithData;
 });
 
 const executionTree = computed<TreeNode[]>(() => {
@@ -252,6 +259,8 @@ const executionTree = computed<TreeNode[]>(() => {
 	const tree = getTreeNodeData(rootNode.name, 0);
 	return tree || [];
 });
+
+watch(() => props.runIndex, selectFirst, { immediate: true });
 </script>
 
 <style lang="scss" module>

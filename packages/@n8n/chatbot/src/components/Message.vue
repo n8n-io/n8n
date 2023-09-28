@@ -22,7 +22,9 @@ const classes = computed(() => {
 </script>
 <template>
 	<div class="chat-message" :class="classes">
-		<pre>{{ message.text }}</pre>
+		<slot>
+			<pre>{{ message.text }}</pre>
+		</slot>
 	</div>
 </template>
 

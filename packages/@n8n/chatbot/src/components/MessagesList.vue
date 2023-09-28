@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { PropType } from 'vue';
-import { defineProps } from 'vue';
 import Message from '@/components/Message.vue';
 import type { ChatMessage } from '@/types';
 import MessageTyping from '@/components/MessageTyping.vue';

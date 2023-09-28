@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
@@ -67,18 +73,24 @@ export class MemoryBufferWindow implements INodeType {
 		description: 'Stores the chat history in a windowed buffer. Refreshes on restart.',
 		defaults: {
 			name: 'Window Buffer Memory',
-			color: '#400080',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['memory'],
+		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
 			// TODO: Should we allow the user to specify the input key?

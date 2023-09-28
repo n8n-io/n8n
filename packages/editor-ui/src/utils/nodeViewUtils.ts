@@ -1,11 +1,10 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
-import { isNumber } from '@/utils';
-import { NODE_OUTPUT_DEFAULT_KEY, SCOPED_ENDPOINT_TYPES, STICKY_NODE_TYPE } from '@/constants';
+import { isNumber, closestNumberDivisibleBy } from '@/utils';
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import type { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import type { Endpoint, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
-import { closestNumberDivisibleBy } from '@/utils';
 import type {
 	ConnectionTypes,
 	IConnection,
@@ -15,9 +14,9 @@ import type {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 import { useUIStore } from '@/stores';
-import type { NodeConnectionType } from '@/Interface';
 
 /*
 	Canvas constants and functions.
@@ -77,12 +76,11 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 		loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
 		getEndpointOffset(endpoint: Endpoint) {
 			const indexOffset = 10; // stub offset between different endpoints of same node
-			const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
-			const totalEndpoints = endpoint && endpoint.__meta ? endpoint.__meta.totalEndpoints : 0;
+			const index = endpoint?.__meta ? endpoint.__meta.index : 0;
+			const totalEndpoints = endpoint?.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 			const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
-			const labelOffset =
-				outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+			const labelOffset = outputOverlay?.label && outputOverlay.label.length > 1 ? 10 : 0;
 			const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
 			return index * indexOffset + labelOffset + outputsOffset;
@@ -109,37 +107,35 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
+	...{
+		dashstyle: '5 3',
+	},
 	stroke: getStyleTokenValue('--color-foreground-dark', true),
-	dashstyle: '2 2',
 };
 
-export const CONNECTOR_COLOR: {
-	[K in ConnectionTypes]: string;
-} = {
-	chain: '--node-type-chain-color',
-	document: '--node-type-document-color',
-	embedding: '--node-type-embedding-color',
-	languageModel: '--node-type-languageModel-color',
-	main: '--node-type-main-color',
-	memory: '--node-type-memory-color',
-	outputParser: '--node-type-outputParser-color',
-	textSplitter: '--node-type-textSplitter-color',
-	tool: '--node-type-tool-color',
-	vectorRetriever: '--node-type-vectorRetriever-color',
-	vectorStore: '--node-type-vectorStore-color',
+export const getConnectorColor = (type: ConnectionTypes): string => {
+	if (type === NodeConnectionType.Main) {
+		return '--node-type-main-color';
+	}
+
+	return '--node-type-supplemental-connector-color';
 };
 
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
-	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const additionalStyles: PaintStyle = {};
+	if (connection.parameters.type !== NodeConnectionType.Main) {
+		additionalStyles.dashstyle = '5 3';
+	}
 	return {
 		...CONNECTOR_PAINT_STYLE_PULL,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
-		...(connection.parameters.type === 'main' ? {} : { dashstyle: '2 2' }),
+		...additionalStyles,
 	};
 };
 
 export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
-	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
@@ -147,7 +143,7 @@ export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyl
 };
 
 export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
-	const connectorColor = CONNECTOR_COLOR[connection.parameters.type as ConnectionTypes];
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
@@ -195,8 +191,9 @@ export const getAnchorPosition = (
 	connectionType: ConnectionTypes,
 	type: 'input' | 'output',
 	amount: number,
+	spacerIndexes: number[] = [],
 ): ArrayAnchorSpec[] => {
-	if (connectionType === 'main') {
+	if (connectionType === NodeConnectionType.Main) {
 		const positions = {
 			input: {
 				1: [[0.01, 0.5, -1, 0]],
@@ -243,13 +240,15 @@ export const getAnchorPosition = (
 	const oy = type === 'input' ? 1 : -1;
 	const ox = 0;
 
+	const spacedAmount = amount + spacerIndexes.length;
 	const returnPositions: ArrayAnchorSpec[] = [];
-	for (let i = 0; i < amount; i++) {
-		const stepSize = 1 / (amount + 1);
+	for (let i = 0; i < spacedAmount; i++) {
+		const stepSize = 1 / (spacedAmount + 1);
 		let x = stepSize * i;
+		x += stepSize;
 
-		if (connectionType !== 'main') {
-			x += stepSize;
+		if (spacerIndexes.includes(i)) {
+			continue;
 		}
 
 		returnPositions.push([x, y, ox, oy]);
@@ -258,9 +257,16 @@ export const getAnchorPosition = (
 	return returnPositions;
 };
 
-export const getEndpointScope = (endpointType: NodeConnectionType): string | undefined => {
-	if (SCOPED_ENDPOINT_TYPES.includes(endpointType)) {
-		return endpointType;
+export const getScope = (type?: string) => {
+	if (!type || type === NodeConnectionType.Main) {
+		return undefined;
+	}
+	return type;
+};
+
+export const getEndpointScope = (endpointType: ConnectionTypes): string | undefined => {
+	if (Object.values(NodeConnectionType).includes(endpointType)) {
+		return getScope(endpointType);
 	}
 
 	return undefined;
@@ -269,13 +275,13 @@ export const getEndpointScope = (endpointType: NodeConnectionType): string | und
 export const getInputEndpointStyle = (
 	nodeTypeData: INodeTypeDescription,
 	color: string,
-	connectionType: ConnectionTypes = 'main',
+	connectionType: ConnectionTypes = NodeConnectionType.Main,
 ): EndpointStyle => {
 	let width = 8;
 	let height = nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20;
 
-	if (connectionType !== 'main') {
-		let temp = width;
+	if (connectionType !== NodeConnectionType.Main) {
+		const temp = width;
 		width = height;
 		height = temp;
 	}
@@ -306,8 +312,9 @@ export const getInputNameOverlay = (
 				label.innerHTML += ' <strong style="color: var(--color-primary)">*</strong>';
 			}
 			label.classList.add('node-input-endpoint-label');
-			if (inputName !== 'main') {
+			if (inputName !== NodeConnectionType.Main) {
 				label.classList.add('node-input-endpoint-label--data');
+				label.classList.add(`node-connection-type-${inputName}`);
 			}
 			return label;
 		},
@@ -317,7 +324,6 @@ export const getInputNameOverlay = (
 export const getOutputEndpointStyle = (
 	nodeTypeData: INodeTypeDescription,
 	color: string,
-	connectionType: ConnectionTypes = 'main',
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
 	fill: getStyleTokenValue(color, true),
@@ -333,8 +339,9 @@ export const getOutputNameOverlay = (labelText: string, outputName: string): Ove
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
-			if (outputName !== 'main') {
-				label.classList.add(`node-output-endpoint-label--data`);
+			if (outputName !== NodeConnectionType.Main) {
+				label.classList.add('node-output-endpoint-label--data');
+				label.classList.add(`node-connection-type-${getScope(outputName)}`);
 			}
 			return label;
 		},
@@ -418,7 +425,7 @@ export const hideOverlay = (item: Connection | Endpoint, overlayId: string) => {
 };
 
 export const showOrHideMidpointArrow = (connection: Connection) => {
-	if (!connection || !connection.endpoints || connection.endpoints.length !== 2) {
+	if (!connection?.endpoints || connection.endpoints.length !== 2) {
 		return;
 	}
 	const hasItemsLabel = !!getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
@@ -439,7 +446,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 
 	const arrow = getOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 	const isArrowVisible =
-		connection.parameters.type === 'main' &&
+		connection.parameters.type === NodeConnectionType.Main &&
 		isBackwards &&
 		isTooLong &&
 		!isActionsOverlayHovered &&
@@ -492,7 +499,7 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	const isHidden = diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL;
 
 	overlay.setVisible(!isHidden);
-	const innerElement = overlay.canvas && overlay.canvas.querySelector('span');
+	const innerElement = overlay.canvas?.querySelector('span');
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
 			innerElement.classList.add('floating');
@@ -550,30 +557,20 @@ export const getNewNodePosition = (
 			}
 		}
 
-		if (conflictFound === true) {
+		if (conflictFound) {
 			targetPosition[0] += movePosition[0];
 			targetPosition[1] += movePosition[1];
 		}
-	} while (conflictFound === true);
+	} while (conflictFound);
 
 	return targetPosition;
 };
 
 export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
 	// @ts-ignore
-	const x =
-		e.pageX !== undefined
-			? e.pageX
-			: e.touches && e.touches[0] && e.touches[0].pageX
-			? e.touches[0].pageX
-			: 0;
+	const x = e.pageX !== undefined ? e.pageX : e.touches?.[0]?.pageX ? e.touches[0].pageX : 0;
 	// @ts-ignore
-	const y =
-		e.pageY !== undefined
-			? e.pageY
-			: e.touches && e.touches[0] && e.touches[0].pageY
-			? e.touches[0].pageY
-			: 0;
+	const y = e.pageY !== undefined ? e.pageY : e.touches?.[0]?.pageY ? e.touches[0].pageY : 0;
 
 	return [x, y];
 };
@@ -667,7 +664,7 @@ export const getOutputSummary = (
 	} = {};
 
 	data.forEach((run: ITaskData) => {
-		if (!run.data || !run.data[connectionType]) {
+		if (!run.data?.[connectionType]) {
 			return;
 		}
 
@@ -766,7 +763,7 @@ export const addConnectionOutputSuccess = (
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	if (connection.parameters.type === 'main') {
+	if (connection.parameters.type === NodeConnectionType.Main) {
 		const overlay = connection.addOverlay({
 			type: 'Custom',
 			options: {
@@ -883,6 +880,23 @@ export const resetInputLabelPosition = (targetEndpoint: Connection | Endpoint) =
 	}
 };
 
+export const hideOutputNameLabel = (sourceEndpoint: Connection | Endpoint) => {
+	hideOverlay(sourceEndpoint, OVERLAY_OUTPUT_NAME_LABEL);
+};
+
+export const showOutputNameLabel = (
+	sourceEndpoint: Connection | Endpoint,
+	connection: Connection,
+) => {
+	const outputNameOverlay = getOverlay(sourceEndpoint, OVERLAY_OUTPUT_NAME_LABEL);
+	if (outputNameOverlay) {
+		outputNameOverlay.setVisible(true);
+		(connection.endpoints || []).forEach((endpoint) => {
+			connection.instance.repaint(endpoint.element);
+		});
+	}
+};
+
 export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 	const inputNameOverlay = getOverlay(targetEndpoint, OVERLAY_INPUT_NAME_LABEL);
 	if (inputNameOverlay) {
@@ -932,7 +946,7 @@ export const addConnectionActionsOverlay = (
 					connection.instance.fire(EVENT_CONNECTION_MOUSEOVER, component),
 				);
 
-				if (connection.parameters.type === 'main') {
+				if (connection.parameters.type === NodeConnectionType.Main) {
 					const addButton = document.createElement('button');
 					addButton.classList.add('add');
 					addButton.innerHTML = getIcon('plus');
@@ -957,7 +971,7 @@ export const getOutputEndpointUUID = (
 	connectionType: ConnectionTypes,
 	outputIndex: number,
 ) => {
-	return `${nodeId}${OUTPUT_UUID_KEY}${connectionType}${outputIndex}`;
+	return `${nodeId}${OUTPUT_UUID_KEY}${getScope(connectionType) || ''}${outputIndex}`;
 };
 
 export const getInputEndpointUUID = (
@@ -965,7 +979,7 @@ export const getInputEndpointUUID = (
 	connectionType: ConnectionTypes,
 	inputIndex: number,
 ) => {
-	return `${nodeId}${INPUT_UUID_KEY}${connectionType}${inputIndex}`;
+	return `${nodeId}${INPUT_UUID_KEY}${getScope(connectionType) || ''}${inputIndex}`;
 };
 
 export const getFixedNodesList = (workflowNodes: INode[]) => {

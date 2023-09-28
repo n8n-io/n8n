@@ -219,7 +219,7 @@ import {
 	REGULAR_NODE_CREATOR_VIEW,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
-	NODE_TRIGGER_CHAT_BUTTON,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 } from '@/constants';
@@ -264,7 +264,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -341,8 +341,6 @@ import {
 	OVERLAY_REVERSE_ARROW_ID,
 } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { SCOPED_ENDPOINT_TYPES } from '@/constants';
-import type { NodeConnectionType } from '@/Interface';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -600,9 +598,11 @@ export default defineComponent({
 				returnClasses.push('do-not-select');
 			}
 
-			if (this.connectionDragScope) {
+			if (this.connectionDragScope.type) {
+				returnClasses.push(`connection-drag-scope-active`);
+				returnClasses.push(`connection-drag-scope-active-type-${this.connectionDragScope.type}`);
 				returnClasses.push(
-					`connection-drag-scope-active connection-drag-scope-active-${this.connectionDragScope}`,
+					`connection-drag-scope-active-connection-${this.connectionDragScope.connection}`,
 				);
 			}
 
@@ -634,7 +634,7 @@ export default defineComponent({
 		},
 		containsChatNodes(): boolean {
 			return !!this.nodes.find(
-				(node) => node.type === NODE_TRIGGER_CHAT_BUTTON && node.disabled !== true,
+				(node) => node.type === MANUAL_CHAT_TRIGGER_NODE_TYPE && node.disabled !== true,
 			);
 		},
 		isExecutionDisabled(): boolean {
@@ -664,7 +664,10 @@ export default defineComponent({
 			pullConnActiveNodeName: null as string | null,
 			pullConnActive: false,
 			dropPrevented: false,
-			connectionDragScope: '',
+			connectionDragScope: {
+				type: null,
+				connection: null,
+			} as { type: string | null; connection: 'source' | 'target' | null },
 			renamingActive: false,
 			showStickyButton: false,
 			isExecutionPreview: false,
@@ -933,7 +936,7 @@ export default defineComponent({
 			let data: IWorkflowTemplate | undefined;
 			try {
 				void this.$externalHooks().run('template.requested', { templateId });
-				data = await this.templatesStore.getWorkflowTemplate(templateId);
+				data = await this.templatesStore.getFixedWorkflowTemplate(templateId);
 
 				if (!data) {
 					throw new Error(
@@ -947,14 +950,6 @@ export default defineComponent({
 				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
-
-			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
-
-			data.workflow.nodes?.forEach((node) => {
-				if (node.credentials) {
-					delete node.credentials;
-				}
-			});
 
 			this.blankRedirect = true;
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
@@ -1355,7 +1350,9 @@ export default defineComponent({
 
 			// Get all upstream nodes and select them
 			const workflow = this.getCurrentWorkflow();
-			for (const nodeName of workflow.getParentNodes(lastSelectedNode.name)) {
+
+			const checkNodes = this.getConnectedNodes('upstream', workflow, lastSelectedNode.name);
+			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
 
@@ -1372,7 +1369,9 @@ export default defineComponent({
 
 			// Get all downstream nodes and select them
 			const workflow = this.getCurrentWorkflow();
-			for (const nodeName of workflow.getChildNodes(lastSelectedNode.name)) {
+
+			const checkNodes = this.getConnectedNodes('downstream', workflow, lastSelectedNode.name);
+			for (const nodeName of checkNodes) {
 				this.nodeSelectedByName(nodeName);
 			}
 
@@ -1382,9 +1381,11 @@ export default defineComponent({
 
 		pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
 			const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
+
 			const workflow = this.getCurrentWorkflow();
-			const childNodes = workflow.getChildNodes(sourceNodeName);
-			for (const nodeName of childNodes) {
+
+			const checkNodes = this.getConnectedNodes('downstream', workflow, sourceNodeName);
+			for (const nodeName of checkNodes) {
 				const node = this.workflowsStore.nodesByName[nodeName];
 				const oldPosition = node.position;
 
@@ -1982,18 +1983,13 @@ export default defineComponent({
 					const workflowNode = workflow.getNode(newNodeData.name);
 					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
+						lastSelectedNode.type,
+						lastSelectedNode.typeVersion,
+					);
 
 					// If node has only scoped outputs, position it below the last selected node
-					if (
-						outputTypes.every((outputName) =>
-							SCOPED_ENDPOINT_TYPES.includes(outputName as NodeConnectionType),
-						)
-					) {
-						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
-							lastSelectedNode.type,
-							lastSelectedNode.typeVersion,
-						);
-
+					if (outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)) {
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
 							workflow,
@@ -2002,28 +1998,39 @@ export default defineComponent({
 						);
 						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
-						const scopedConnectionIndex = (lastSelectedInputTypes || []).findIndex(
-							(inputType) => outputs[0] === inputType,
-						);
+						const scopedConnectionIndex = (lastSelectedInputTypes || [])
+							.filter((input) => input !== NodeConnectionType.Main)
+							.findIndex((inputType) => outputs[0] === inputType);
 
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
 							[
 								lastSelectedNode.position[0] +
-									(NodeViewUtils.NODE_SIZE / (lastSelectedNodeType?.inputs?.length ?? 1)) *
+									(NodeViewUtils.NODE_SIZE /
+										(Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
 										scopedConnectionIndex,
 								lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
 							],
 							[100, 0],
 						);
 					} else {
+						const inputs = NodeHelpers.getNodeInputs(
+							workflow,
+							lastSelectedNode,
+							lastSelectedNodeType!,
+						);
+						const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
+
+						let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
+						if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
+							// If the node has scoped inputs, push it down a bit more
+							pushOffset += 150;
+						}
+
 						// If a node is active then add the new node directly after the current one
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
-							[
-								lastSelectedNode.position[0] + NodeViewUtils.PUSH_NODES_OFFSET,
-								lastSelectedNode.position[1] + yOffset,
-							],
+							[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
 							[100, 0],
 						);
 					}
@@ -2120,6 +2127,17 @@ export default defineComponent({
 		) {
 			this.uiStore.stateIsDirty = true;
 
+			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
+			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
+
+			if (
+				sourceNode &&
+				targetNode &&
+				!this.checkNodeConnectionAllowed(sourceNode, targetNode, type)
+			) {
+				return;
+			}
+
 			if (
 				this.getConnection(
 					sourceNodeName,
@@ -2182,7 +2200,13 @@ export default defineComponent({
 			// Handle connection of scoped_endpoint types
 			if (lastSelectedNodeEndpointUuid) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
-				if (SCOPED_ENDPOINT_TYPES.includes(lastSelectedEndpoint.scope as NodeConnectionType)) {
+				if (
+					this.checkNodeConnectionAllowed(
+						lastSelectedNode!,
+						newNodeData,
+						lastSelectedEndpoint.scope as NodeConnectionType,
+					)
+				) {
 					const connectionType = lastSelectedEndpoint.scope as ConnectionTypes;
 					const newNodeElement = this.instance.getManagedElement(newNodeData.id);
 					const newNodeConnections = this.instance.getEndpoints(newNodeElement);
@@ -2210,11 +2234,23 @@ export default defineComponent({
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, 'main');
+					this.connectTwoNodes(
+						newNodeData.name,
+						0,
+						targetNodeName,
+						targetOutputIndex,
+						NodeConnectionType.Main,
+					);
 				}
 
 				// Connect active node to the newly created one
-				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, 'main');
+				this.connectTwoNodes(
+					lastSelectedNode.name,
+					outputIndex,
+					newNodeData.name,
+					0,
+					NodeConnectionType.Main,
+				);
 			}
 			this.historyStore.stopRecordingUndo();
 		},
@@ -2227,7 +2263,7 @@ export default defineComponent({
 			outputType?: NodeConnectionType;
 			endpointUuid?: string;
 		}) {
-			const type = info.outputType || 'main';
+			const type = info.outputType || NodeConnectionType.Main;
 
 			let filter;
 			// Get the node and set it as active that new nodes
@@ -2279,10 +2315,13 @@ export default defineComponent({
 			// TODO: The animation is a bit glitchy because we're updating view stack immediately
 			// after the node creator is opened
 			const isOutput = info.connection?.endpoints[0].parameters.connection === 'source';
-			const isScopedConnection = type !== 'main' && SCOPED_ENDPOINT_TYPES.includes(type);
+			const isScopedConnection =
+				type !== NodeConnectionType.Main && Object.values(NodeConnectionType).includes(type);
 
-			if (isScopedConnection && !isOutput) {
-				useViewStacks().gotoCompatibleConnectionView(type, filter);
+			if (isScopedConnection) {
+				useViewStacks()
+					.gotoCompatibleConnectionView(type, isOutput, filter)
+					.catch((e) => {});
 			}
 		},
 		onEventConnectionAbort(connection: Connection) {
@@ -2303,18 +2342,13 @@ export default defineComponent({
 							outputIndex,
 							this.pullConnActiveNodeName,
 							0,
-							'main',
+							NodeConnectionType.Main,
 						);
 						this.pullConnActiveNodeName = null;
 						this.dropPrevented = true;
 					}
 					return;
 				}
-
-				const isOutput = connection.endpoints[0].parameters.connection === 'source';
-
-				// Non main output connections shouldn't open node creator as they couldn't map 1:1
-				if (connection.parameters.type !== 'main' && isOutput) return;
 
 				this.insertNodeAfterSelected({
 					sourceId: connection.parameters.nodeId,
@@ -2326,6 +2360,41 @@ export default defineComponent({
 			} catch (e) {
 				console.error(e);
 			}
+		},
+		checkNodeConnectionAllowed(
+			sourceNode: INodeUi,
+			targetNode: INodeUi,
+			targetInfoType: NodeConnectionType,
+		): boolean {
+			const targetNodeType = this.nodeTypesStore.getNodeType(
+				targetNode.type,
+				targetNode.typeVersion,
+			);
+
+			if (targetNodeType?.inputs?.length) {
+				for (const input of targetNodeType?.inputs || []) {
+					if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
+						// No filters defined or wrong connection type
+						continue;
+					}
+
+					if (input.filter.nodes.length) {
+						if (!input.filter.nodes.includes(sourceNode.type)) {
+							this.dropPrevented = true;
+							this.showToast({
+								title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
+								message: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.message', {
+									interpolate: { sourceNodeName: sourceNode.name, targetNodeName: targetNode.name },
+								}),
+								type: 'error',
+								duration: 5000,
+							});
+							return false;
+						}
+					}
+				}
+			}
+			return true;
 		},
 		onInterceptBeforeDrop(info: BeforeDropParams) {
 			try {
@@ -2354,34 +2423,8 @@ export default defineComponent({
 				const targetNodeName = targetNode?.name || '';
 
 				if (sourceNode && targetNode) {
-					const targetNodeType = this.nodeTypesStore.getNodeType(
-						targetNode.type,
-						targetNode.typeVersion,
-					);
-
-					if (targetNodeType?.inputs?.length) {
-						for (const input of targetNodeType?.inputs || []) {
-							if (typeof input === 'string' || input.type !== targetInfo.type || !input.filter) {
-								// No filters defined or wrong connection type
-								continue;
-							}
-
-							if (input.filter.nodes.length) {
-								if (!input.filter.nodes.includes(sourceNode.type)) {
-									this.dropPrevented = true;
-									this.showToast({
-										title: this.$locale.baseText('nodeView.showError.nodeNodeCompatible.title'),
-										message: this.$locale.baseText(
-											'nodeView.showError.nodeNodeCompatible.message',
-											{ interpolate: { sourceNodeName, targetNodeName } },
-										),
-										type: 'error',
-										duration: 5000,
-									});
-									return false;
-								}
-							}
-						}
+					if (!this.checkNodeConnectionAllowed(sourceNode, targetNode, targetInfo.type)) {
+						return false;
 					}
 				}
 
@@ -2453,6 +2496,9 @@ export default defineComponent({
 				if (!this.suspendRecordingDetachedConnections) {
 					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 				}
+
+				NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
+
 				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
@@ -2484,7 +2530,7 @@ export default defineComponent({
 						OVERLAY_ENDPOINT_ARROW_ID,
 					);
 					const reverseArrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
-					if (sourceInfo.type === 'main') {
+					if (sourceInfo.type === NodeConnectionType.Main) {
 						// For some reason the arrow is visible by default, so hide it
 						reverseArrow?.setVisible(false);
 					} else {
@@ -2627,6 +2673,8 @@ export default defineComponent({
 
 				const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 				NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
+				NodeViewUtils.showOutputNameLabel(info.sourceEndpoint, info.connection);
+
 				info.connection.removeOverlays();
 				this.__removeConnectionByConnectionInfo(info, false, false);
 
@@ -2640,7 +2688,13 @@ export default defineComponent({
 					if (connectionInfo) {
 						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
 					}
-					this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, 'main');
+					this.connectTwoNodes(
+						sourceNodeName,
+						outputIndex,
+						this.pullConnActiveNodeName,
+						0,
+						NodeConnectionType.Main,
+					);
 					this.pullConnActiveNodeName = null;
 					await this.$nextTick();
 					this.historyStore.stopRecordingUndo();
@@ -2728,7 +2782,10 @@ export default defineComponent({
 					window.removeEventListener('mousemove', onMouseMove);
 					window.removeEventListener('mouseup', onMouseUp);
 
-					this.connectionDragScope = '';
+					this.connectionDragScope = {
+						type: null,
+						connection: null,
+					};
 				};
 
 				window.addEventListener('mousemove', onMouseMove);
@@ -2736,7 +2793,10 @@ export default defineComponent({
 				window.addEventListener('mouseup', onMouseUp);
 				window.addEventListener('touchend', onMouseMove);
 
-				this.connectionDragScope = connection.parameters.type;
+				this.connectionDragScope = {
+					type: connection.parameters.type,
+					connection: connection.parameters.connection,
+				};
 			} catch (e) {
 				console.error(e);
 			}
@@ -2924,6 +2984,15 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
+
+						if (workflow.meta?.onboardingId) {
+							this.$telemetry.track(
+								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
+								{
+									workflow_id: workflow.id,
+								},
+							);
+						}
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
@@ -2996,7 +3065,8 @@ export default defineComponent({
 					sourceNode.type,
 					sourceNode.typeVersion,
 				);
-				const sourceNodeOutput = sourceNodeType?.outputs?.[connection[0].index] || 'main';
+				const sourceNodeOutput =
+					sourceNodeType?.outputs?.[connection[0].index] || NodeConnectionType.Main;
 				const sourceNodeOutputName =
 					typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 				const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
@@ -3036,12 +3106,12 @@ export default defineComponent({
 					{
 						index: connection.__meta?.sourceOutputIndex,
 						node: connection.__meta.sourceNodeName,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 					{
 						index: connection.__meta?.targetOutputIndex,
 						node: connection.__meta.targetNodeName,
-						type: 'main',
+						type: NodeConnectionType.Main,
 					},
 				];
 				const removeCommand = new RemoveConnectionCommand(connectionData, this);
@@ -3169,7 +3239,8 @@ export default defineComponent({
 				sourceNode.type,
 				sourceNode.typeVersion,
 			);
-			const sourceNodeOutput = sourceNodeType?.outputs?.[sourceOutputIndex] || 'main';
+			const sourceNodeOutput =
+				sourceNodeType?.outputs?.[sourceOutputIndex] || NodeConnectionType.Main;
 			const sourceNodeOutputName =
 				typeof sourceNodeOutput === 'string' ? sourceNodeOutput : sourceNodeOutput.name;
 			const scope = NodeViewUtils.getEndpointScope(sourceNodeOutputName);
@@ -3405,7 +3476,7 @@ export default defineComponent({
 								sourceNodeOutputIndex,
 								targetNodeName,
 								targetNodeOuputIndex,
-								'main',
+								NodeConnectionType.Main,
 							);
 
 							if (waitForNewConnection) {
@@ -4168,7 +4239,13 @@ export default defineComponent({
 								previouslyAddedNode.position[1],
 							];
 							await this.$nextTick();
-							this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0, 'main');
+							this.connectTwoNodes(
+								previouslyAddedNode.name,
+								0,
+								lastAddedNode.name,
+								0,
+								NodeConnectionType.Main,
+							);
 
 							actionWatcher();
 						});
@@ -4388,6 +4465,7 @@ export default defineComponent({
 		nodeViewEventBus.on('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.on('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.on('openChat', this.onOpenChat);
 		historyBus.on('nodeMove', this.onMoveNode);
 		historyBus.on('revertAddNode', this.onRevertAddNode);
 		historyBus.on('revertRemoveNode', this.onRevertRemoveNode);
@@ -4413,6 +4491,7 @@ export default defineComponent({
 		nodeViewEventBus.off('newWorkflow', this.newWorkflow);
 		nodeViewEventBus.off('importWorkflowData', this.onImportWorkflowDataEvent);
 		nodeViewEventBus.off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+		nodeViewEventBus.off('openChat', this.onOpenChat);
 		historyBus.off('nodeMove', this.onMoveNode);
 		historyBus.off('revertAddNode', this.onRevertAddNode);
 		historyBus.off('revertRemoveNode', this.onRevertRemoveNode);
@@ -4531,26 +4610,78 @@ export default defineComponent({
 
 <style lang="scss">
 .node-view-wrapper {
-	&.connection-drag-scope-active {
-		--drag-scope-active-disabled-color: var(--color-foreground-dark);
+	--drag-scope-active-disabled-color: var(--color-foreground-dark);
 
+	&.connection-drag-scope-active {
 		@each $node-type in $supplemental-node-types {
-			&:not(.connection-drag-scope-active-#{$node-type}) {
+			// Grey out incompatible node type endpoints
+			&:not(.connection-drag-scope-active-type-#{$node-type}) {
 				.diamond-output-endpoint,
 				.jtk-connector,
 				.add-input-endpoint {
 					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
 				}
+
+				.node-input-endpoint-label,
+				.node-output-endpoint-label {
+					--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+				}
 			}
 
-			&.connection-drag-scope-active-#{$node-type} {
-				.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
-					transform: scale(1.375) rotate(45deg);
+			&.connection-drag-scope-active-type-#{$node-type} {
+				// Dragging input
+				&.connection-drag-scope-active-connection-target {
+					// Apply style to compatible output endpoints
+					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						transform: scale(1.375) rotate(45deg);
+					}
+
+					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						// Apply style to dragged compatible input endpoint
+						&.jtk-dragging {
+							.add-input-endpoint-default {
+								transform: translate(-4px, -4px) scale(1.375);
+							}
+						}
+
+						// Apply style to non-dragged compatible input endpoints
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
+
+					.node-input-endpoint-label {
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
 				}
 
-				.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
-					.add-input-endpoint-default {
-						transform: translate(-4px, -4px) scale(1.375);
+				// Dragging output
+				&.connection-drag-scope-active-connection-source {
+					// Apply style to dragged compatible output endpoint
+					.diamond-output-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						&.jtk-dragging {
+							transform: scale(1.375) rotate(45deg);
+						}
+
+						// Apply style to non-dragged compatible input endpoints
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
+					}
+
+					// Apply style to compatible output endpoints
+					.add-input-endpoint[data-jtk-scope-#{$node-type}='true'] {
+						.add-input-endpoint-default {
+							transform: translate(-4px, -4px) scale(1.375);
+						}
+					}
+
+					.node-output-endpoint-label {
+						&:not(.jtk-dragging) {
+							--node-type-#{$node-type}-color: var(--drag-scope-active-disabled-color);
+						}
 					}
 				}
 			}

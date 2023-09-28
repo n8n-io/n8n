@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 
 import type { CharacterTextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -15,9 +15,10 @@ export class N8nJsonLoader {
 		const pointers = this.context.getNodeParameter('pointers', 0) as string;
 		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
 
-		const textSplitter = (await this.context.getInputConnectionData('textSplitter', 0)) as
-			| CharacterTextSplitter
-			| undefined;
+		const textSplitter = (await this.context.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as CharacterTextSplitter | undefined;
 
 		const docs: Document[] = [];
 

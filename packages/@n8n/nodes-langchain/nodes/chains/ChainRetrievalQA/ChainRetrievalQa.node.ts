@@ -1,4 +1,5 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -11,7 +12,7 @@ import type { BaseRetriever } from 'langchain/schema/retriever';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Retrieval QA Chain',
+		displayName: 'Q&A Chain from Retrieved Documents',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
@@ -19,7 +20,7 @@ export class ChainRetrievalQa implements INodeType {
 		description: 'Retrieves answers to queries based on retrieved documents',
 		defaults: {
 			name: 'Retrieval QA Chain',
-			color: '#408080',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -27,24 +28,31 @@ export class ChainRetrievalQa implements INodeType {
 			subcategories: {
 				AI: ['Chains'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainretrievalqa/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Vector Retriever',
 				maxConnections: 1,
-				type: 'vectorRetriever',
+				type: NodeConnectionType.AiVectorRetriever,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -78,10 +86,13 @@ export class ChainRetrievalQa implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Retrieval QA Chain');
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
 
 		const vectorRetriever = (await this.getInputConnectionData(
-			'vectorRetriever',
+			NodeConnectionType.AiVectorRetriever,
 			0,
 		)) as BaseRetriever;
 

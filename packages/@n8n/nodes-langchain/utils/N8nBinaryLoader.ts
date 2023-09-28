@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData, IBinaryData } from 'n8n-workflow';
-import { NodeOperationError, BINARY_ENCODING } from 'n8n-workflow';
+import { NodeOperationError, NodeConnectionType } from 'n8n-workflow';
 
 import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
@@ -44,7 +44,19 @@ export class N8nBinaryLoader {
 				throw new NodeOperationError(this.context.getNode(), 'No binary data set.');
 			}
 
-			const { data, mimeType } = binaryData;
+			const { mimeType } = binaryData;
+
+			// Check if loader matches the mime-type of the data
+			if (!SUPPORTED_MIME_TYPES[selectedLoader].includes(mimeType)) {
+				const neededLoader = Object.keys(SUPPORTED_MIME_TYPES).find((loader) =>
+					SUPPORTED_MIME_TYPES[loader as keyof typeof SUPPORTED_MIME_TYPES].includes(mimeType),
+				);
+
+				throw new NodeOperationError(
+					this.context.getNode(),
+					`Mime type doesn't match selected loader. Please select under "Loader Type": ${neededLoader}`,
+				);
+			}
 
 			if (!Object.values(SUPPORTED_MIME_TYPES).flat().includes(mimeType)) {
 				throw new NodeOperationError(this.context.getNode(), `Unsupported mime type: ${mimeType}`);
@@ -59,7 +71,7 @@ export class N8nBinaryLoader {
 				);
 			}
 
-			const bufferData = Buffer.from(data, BINARY_ENCODING).buffer;
+			const bufferData = await this.context.helpers.getBinaryDataBuffer(itemIndex, binaryDataKey);
 			const itemBlob = new Blob([new Uint8Array(bufferData)], { type: mimeType });
 
 			let loader: PDFLoader | CSVLoader | N8nEPubLoader | DocxLoader | TextLoader | JSONLoader;
@@ -100,9 +112,10 @@ export class N8nBinaryLoader {
 					);
 			}
 
-			const textSplitter = (await this.context.getInputConnectionData('textSplitter', 0)) as
-				| TextSplitter
-				| undefined;
+			const textSplitter = (await this.context.getInputConnectionData(
+				NodeConnectionType.AiTextSplitter,
+				0,
+			)) as TextSplitter | undefined;
 
 			const loadedDoc = textSplitter
 				? await loader.loadAndSplit(textSplitter)

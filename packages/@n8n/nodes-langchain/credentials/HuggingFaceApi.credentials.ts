@@ -10,7 +10,7 @@ export class HuggingFaceApi implements ICredentialType {
 
 	displayName = 'HuggingFaceApi';
 
-	documentationUrl = 'huggingFaceApi';
+	documentationUrl = 'huggingface';
 
 	properties: INodeProperties[] = [
 		{

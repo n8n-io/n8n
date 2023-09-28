@@ -6,6 +6,7 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 	NodeOperationError,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import { StructuredOutputParser } from 'langchain/output_parsers';
@@ -21,7 +22,7 @@ export class OutputParserStructured implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Returns data in a defined JSON format',
+		description: 'Return data in a defined JSON format',
 		defaults: {
 			name: 'Structured Output Parser',
 		},
@@ -32,11 +33,18 @@ export class OutputParserStructured implements INodeType {
 			subcategories: {
 				AI: ['Output Parsers'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['outputParser'],
+		outputs: [NodeConnectionType.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
 			{

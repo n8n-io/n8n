@@ -1,11 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import { WolframAlphaTool } from 'langchain/tools';
 import { logWrapper } from '../../../utils/logWrapper';
 
 export class ToolWolframAlpha implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Wolfram Alpha',
+		displayName: 'Wolfram|Alpha',
 		name: 'toolWolframAlpha',
 		icon: 'file:wolfram-alpha.svg',
 		group: ['transform'],
@@ -13,8 +19,6 @@ export class ToolWolframAlpha implements INodeType {
 		description: "Connects to WolframAlpha's computational intelligence engine.",
 		defaults: {
 			name: 'Wolfram Alpha',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#400080',
 		},
 		credentials: [
 			{
@@ -27,11 +31,18 @@ export class ToolWolframAlpha implements INodeType {
 			subcategories: {
 				AI: ['Tools'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolwolframalpha/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['tool'],
+		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [],
 	};

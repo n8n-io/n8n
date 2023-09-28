@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type ConnectionTypes,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import { Tool } from 'langchain/tools';
 import type { BaseMessage, ChatResult, InputValues } from 'langchain/schema';
@@ -22,6 +28,60 @@ import { BaseOutputParser } from 'langchain/schema/output_parser';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 
+export async function callMethodAsync<T>(
+	this: T,
+	parameters: {
+		executeFunctions: IExecuteFunctions;
+		connectionType: ConnectionTypes;
+		currentNodeRunIndex: number;
+		method: (...args: any[]) => Promise<unknown>;
+		arguments: unknown[];
+	},
+): Promise<unknown> {
+	try {
+		return await parameters.method.call(this, ...parameters.arguments);
+	} catch (e) {
+		const connectedNode = parameters.executeFunctions.getNode();
+		const error = new NodeOperationError(connectedNode, e);
+		parameters.executeFunctions.addOutputData(
+			parameters.connectionType,
+			parameters.currentNodeRunIndex,
+			error,
+		);
+		throw new NodeOperationError(
+			connectedNode,
+			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+		);
+	}
+}
+
+export function callMethodSync<T>(
+	this: T,
+	parameters: {
+		executeFunctions: IExecuteFunctions;
+		connectionType: ConnectionTypes;
+		currentNodeRunIndex: number;
+		method: (...args: any[]) => T;
+		arguments: unknown[];
+	},
+): unknown {
+	try {
+		return parameters.method.call(this, ...parameters.arguments);
+	} catch (e) {
+		const connectedNode = parameters.executeFunctions.getNode();
+		const error = new NodeOperationError(connectedNode, e);
+		parameters.executeFunctions.addOutputData(
+			parameters.connectionType,
+			parameters.currentNodeRunIndex,
+			error,
+		);
+		throw new NodeOperationError(
+			connectedNode,
+			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+		);
+	}
+}
+
 export function logWrapper(
 	originalInstance:
 		| Tool
@@ -43,15 +103,26 @@ export function logWrapper(
 ) {
 	return new Proxy(originalInstance, {
 		get: (target, prop) => {
+			let connectionType: ConnectionTypes | undefined;
 			// ========== BaseChatMemory ==========
 			if (originalInstance instanceof BaseChatMemory) {
 				if (prop === 'loadMemoryVariables' && 'loadMemoryVariables' in target) {
 					return async (values: InputValues): Promise<MemoryVariables> => {
-						executeFunctions.addInputData('memory', [
+						connectionType = NodeConnectionType.AiMemory;
+
+						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'loadMemoryVariables', values } }],
 						]);
-						const response = await target[prop](values);
-						executeFunctions.addOutputData('memory', [
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [values],
+						})) as MemoryVariables;
+
+						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'loadMemoryVariables', response } }],
 						]);
 						return response;
@@ -61,18 +132,21 @@ export function logWrapper(
 					'outputKey' in target &&
 					target.constructor.name === 'BufferWindowMemory'
 				) {
-					executeFunctions.addInputData('memory', [[{ json: { action: 'chatHistory' } }]]);
+					connectionType = NodeConnectionType.AiMemory;
+					const { index } = executeFunctions.addInputData(connectionType, [
+						[{ json: { action: 'chatHistory' } }],
+					]);
 					const response = target[prop];
 
 					target.chatHistory
 						.getMessages()
 						.then((messages) => {
-							executeFunctions.addOutputData('memory', [
+							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
 								[{ json: { action: 'chatHistory', chatHistory: messages } }],
 							]);
 						})
 						.catch((error: Error) => {
-							executeFunctions.addOutputData('memory', [
+							executeFunctions.addOutputData(NodeConnectionType.AiMemory, index, [
 								[{ json: { action: 'chatHistory', error } }],
 							]);
 						});
@@ -84,20 +158,42 @@ export function logWrapper(
 			if (originalInstance instanceof BaseChatMessageHistory) {
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
-						executeFunctions.addInputData('memory', [[{ json: { action: 'getMessages' } }]]);
-						const response = await target[prop]();
-						executeFunctions.addOutputData('memory', [
+						connectionType = NodeConnectionType.AiMemory;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'getMessages' } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [],
+						})) as BaseMessage[];
+
+						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'getMessages', response } }],
 						]);
 						return response;
 					};
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
-						executeFunctions.addInputData('memory', [
+						connectionType = NodeConnectionType.AiMemory;
+						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'addMessage', message } }],
 						]);
-						await target[prop](message);
-						executeFunctions.addOutputData('memory', [[{ json: { action: 'addMessage' } }]]);
+
+						await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [message],
+						});
+
+						executeFunctions.addOutputData(connectionType, index, [
+							[{ json: { action: 'addMessage' } }],
+						]);
 					};
 				}
 			}
@@ -110,9 +206,20 @@ export function logWrapper(
 						options: any,
 						runManager?: CallbackManagerForLLMRun,
 					): Promise<ChatResult> => {
-						executeFunctions.addInputData('languageModel', [[{ json: { messages, options } }]]);
-						const response = (await target[prop](messages, options, runManager)) as ChatResult;
-						executeFunctions.addOutputData('languageModel', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiLanguageModel;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { messages, options } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [messages, options, runManager],
+						})) as ChatResult;
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}
@@ -122,20 +229,41 @@ export function logWrapper(
 			if (originalInstance instanceof BaseOutputParser) {
 				if (prop === 'getFormatInstructions' && 'getFormatInstructions' in target) {
 					return (options?: FormatInstructionsOptions): string => {
-						executeFunctions.addInputData('outputParser', [
+						connectionType = NodeConnectionType.AiOutputParser;
+						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'getFormatInstructions' } }],
 						]);
-						const response = target[prop](options);
-						executeFunctions.addOutputData('outputParser', [
+
+						// @ts-ignore
+						const response = callMethodSync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [options],
+						}) as string;
+
+						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'getFormatInstructions', response } }],
 						]);
 						return response;
 					};
 				} else if (prop === 'parse' && 'parse' in target) {
 					return async (text: string): Promise<any> => {
-						executeFunctions.addInputData('outputParser', [[{ json: { action: 'parse', text } }]]);
-						const response = (await target[prop](text)) as object;
-						executeFunctions.addOutputData('outputParser', [
+						connectionType = NodeConnectionType.AiOutputParser;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { action: 'parse', text } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [text],
+						})) as object;
+
+						executeFunctions.addOutputData(connectionType, index, [
 							[{ json: { action: 'parse', response } }],
 						]);
 						return response;
@@ -150,9 +278,20 @@ export function logWrapper(
 						query: string,
 						runManager?: CallbackManagerForRetrieverRun,
 					): Promise<Document[]> => {
-						executeFunctions.addInputData('vectorRetriever', [[{ json: { query } }]]);
-						const response = await target[prop](query, runManager);
-						executeFunctions.addOutputData('vectorRetriever', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiVectorRetriever;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [query, runManager],
+						})) as Array<Document<Record<string, any>>>;
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}
@@ -163,18 +302,40 @@ export function logWrapper(
 				// Docs -> Embeddings
 				if (prop === 'embedDocuments' && 'embedDocuments' in target) {
 					return async (documents: string[]): Promise<number[][]> => {
-						executeFunctions.addInputData('embedding', [[{ json: { documents } }]]);
-						const response = await target[prop](documents);
-						executeFunctions.addOutputData('embedding', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiEmbedding;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { documents } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [documents],
+						})) as number[][];
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}
 				// Query -> Embeddings
 				if (prop === 'embedQuery' && 'embedQuery' in target) {
 					return async (query: string): Promise<number[]> => {
-						executeFunctions.addInputData('embedding', [[{ json: { query } }]]);
-						const response = await target.embedQuery(query);
-						executeFunctions.addOutputData('embedding', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiEmbedding;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [query],
+						})) as number[];
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}
@@ -188,10 +349,19 @@ export function logWrapper(
 				// JSON Input -> Documents
 				if (prop === 'process' && 'process' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
-						executeFunctions.addInputData('document', [items]);
-						const response = await target[prop](items);
-						executeFunctions.addOutputData('document', [[{ json: { response } }]]);
-						return response as unknown as number[];
+						connectionType = NodeConnectionType.AiDocument;
+						const { index } = executeFunctions.addInputData(connectionType, [items]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [items],
+						})) as number[];
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						return response;
 					};
 				}
 			}
@@ -200,9 +370,20 @@ export function logWrapper(
 			if (originalInstance instanceof TextSplitter) {
 				if (prop === 'splitText' && 'splitText' in target) {
 					return async (text: string): Promise<string[]> => {
-						executeFunctions.addInputData('textSplitter', [[{ json: { textSplitter: text } }]]);
-						const response = await target[prop](text);
-						executeFunctions.addOutputData('textSplitter', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiTextSplitter;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { textSplitter: text } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [text],
+						})) as string[];
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}
@@ -212,9 +393,20 @@ export function logWrapper(
 			if (originalInstance instanceof Tool) {
 				if (prop === '_call' && '_call' in target) {
 					return async (query: string): Promise<string> => {
-						executeFunctions.addInputData('tool', [[{ json: { query } }]]);
-						const response = await target[prop](query);
-						executeFunctions.addOutputData('tool', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiTool;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [query],
+						})) as string;
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 						return response;
 					};
 				}
@@ -230,9 +422,20 @@ export function logWrapper(
 						filter?: BiquadFilterType | undefined,
 						_callbacks?: Callbacks | undefined,
 					): Promise<Document[]> => {
-						executeFunctions.addInputData('vectorStore', [[{ json: { query, k, filter } }]]);
-						const response = await target[prop](query, k, filter, _callbacks);
-						executeFunctions.addOutputData('vectorStore', [[{ json: { response } }]]);
+						connectionType = NodeConnectionType.AiVectorStore;
+						const { index } = executeFunctions.addInputData(connectionType, [
+							[{ json: { query, k, filter } }],
+						]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [query, k, filter, _callbacks],
+						})) as Array<Document<Record<string, any>>>;
+
+						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 
 						return response;
 					};

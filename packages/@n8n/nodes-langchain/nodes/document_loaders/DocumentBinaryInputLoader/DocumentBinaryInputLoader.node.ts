@@ -1,26 +1,37 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Binary to Document',
+		displayName: 'Binary Input Loader',
 		name: 'documentBinaryInputLoader',
 		icon: 'file:binary.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Converts binary data to Document object(s)',
+		description: 'Use the binary input to this chain',
 		defaults: {
-			name: 'Binary to Document',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#500080',
+			name: 'Binary Input Loader',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Document Loaders'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentbinaryinputloader/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -28,12 +39,12 @@ export class DocumentBinaryInputLoader implements INodeType {
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: 'textSplitter',
+				type: NodeConnectionType.AiTextSplitter,
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['document'],
+		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
 			{

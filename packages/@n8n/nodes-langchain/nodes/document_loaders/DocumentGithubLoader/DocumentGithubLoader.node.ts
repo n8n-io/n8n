@@ -1,5 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
@@ -11,21 +12,26 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class DocumentGithubLoader implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Github Document Loader',
+		displayName: 'GitHub Document Loader',
 		name: 'documentGithubLoader',
 		icon: 'file:github.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Load files from a Github repository as documents',
+		description: 'Use GitHub data as input to this chain',
 		defaults: {
-			name: 'Github repo to Document',
-			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
-			color: '#500080',
+			name: 'GitHub Document Loader',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Document Loaders'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentgithubloader/',
+					},
+				],
 			},
 		},
 		credentials: [
@@ -39,12 +45,12 @@ export class DocumentGithubLoader implements INodeType {
 			{
 				displayName: 'Text Splitter',
 				maxConnections: 1,
-				type: 'textSplitter',
+				type: NodeConnectionType.AiTextSplitter,
 			},
 		],
 		inputNames: ['Text Splitter'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['document'],
+		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
 			{
@@ -96,9 +102,10 @@ export class DocumentGithubLoader implements INodeType {
 			ignorePaths: string;
 		};
 
-		const textSplitter = (await this.getInputConnectionData('textSplitter', 0)) as
-			| CharacterTextSplitter
-			| undefined;
+		const textSplitter = (await this.getInputConnectionData(
+			NodeConnectionType.AiTextSplitter,
+			0,
+		)) as CharacterTextSplitter | undefined;
 
 		const docs = new GithubRepoLoader(repository, {
 			branch,

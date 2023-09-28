@@ -26,7 +26,7 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataManager,
+	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
@@ -202,6 +202,8 @@ export class Server extends AbstractServer {
 
 	push: Push;
 
+	binaryDataService: BinaryDataService;
+
 	constructor() {
 		super('main');
 
@@ -337,7 +339,7 @@ export class Server extends AbstractServer {
 				limit: 0,
 			},
 			expressions: {
-				evaluator: config.get('expression.evaluator') as 'tmpl' | 'tournament',
+				evaluator: config.getEnv('expression.evaluator'),
 			},
 			banners: {
 				dismissed: [],
@@ -361,6 +363,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
+		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -399,7 +402,6 @@ export class Server extends AbstractServer {
 				),
 				executions_data_prune: config.getEnv('executions.pruneData'),
 				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binaryDataConfig.mode,
@@ -1428,13 +1430,12 @@ export class Server extends AbstractServer {
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
-				const binaryDataManager = BinaryDataManager.getInstance();
 				try {
-					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					const binaryPath = this.binaryDataService.getPath(identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							const metadata = await this.binaryDataService.getMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
@@ -1473,9 +1474,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize({
-				uniqueInstanceId: this.uniqueInstanceId,
-			});
+			await eventBus.initialize();
 		}
 
 		if (this.endpointPresetCredentials !== '') {

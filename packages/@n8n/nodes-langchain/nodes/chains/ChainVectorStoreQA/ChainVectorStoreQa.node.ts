@@ -1,4 +1,5 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -11,7 +12,7 @@ import type { VectorStore } from 'langchain/vectorstores/base';
 
 export class ChainVectorStoreQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Vector Store QA Chain',
+		displayName: 'Q&A Chain from Vector Store',
 		name: 'chainVectorStoreQa',
 		icon: 'fa:link',
 		group: ['transform'],
@@ -20,7 +21,7 @@ export class ChainVectorStoreQa implements INodeType {
 			'Performs a question-answering operation on a vector store based on the input query',
 		defaults: {
 			name: 'Vector Store QA',
-			color: '#412012',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -28,24 +29,31 @@ export class ChainVectorStoreQa implements INodeType {
 			subcategories: {
 				AI: ['Chains'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainvectorstoreqa/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: 'vectorStore',
+				type: NodeConnectionType.AiVectorStore,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -87,9 +95,15 @@ export class ChainVectorStoreQa implements INodeType {
 		this.logger.verbose('Executing Vector Store QA Chain');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
 
-		const vectorStore = (await this.getInputConnectionData('vectorStore', 0)) as VectorStore;
+		const vectorStore = (await this.getInputConnectionData(
+			NodeConnectionType.AiVectorStore,
+			0,
+		)) as VectorStore;
 
 		const chain = VectorDBQAChain.fromLLM(model, vectorStore, { k: 4 });
 		const items = this.getInputData();

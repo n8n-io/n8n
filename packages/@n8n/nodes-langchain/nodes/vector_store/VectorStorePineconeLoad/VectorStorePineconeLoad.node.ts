@@ -1,4 +1,10 @@
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
@@ -20,6 +26,13 @@ export class VectorStorePineconeLoad implements INodeType {
 			subcategories: {
 				AI: ['Vector Stores'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorepineconeload/',
+					},
+				],
+			},
 		},
 		credentials: [
 			{
@@ -31,11 +44,11 @@ export class VectorStorePineconeLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: 'embedding',
+				type: NodeConnectionType.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: ['vectorStore'],
+		outputs: [NodeConnectionType.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -60,7 +73,10 @@ export class VectorStorePineconeLoad implements INodeType {
 		const index = this.getNodeParameter('pineconeIndex', 0) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
-		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
 
 		const client = new PineconeClient();
 		await client.init({

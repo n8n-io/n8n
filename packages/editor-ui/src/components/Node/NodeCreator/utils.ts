@@ -36,7 +36,7 @@ export function subcategorizeItems(items: SimplifiedNodeType[]) {
 		// Only some subcategories are allowed
 		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
 
-		WHITE_LISTED_SUBCATEGORIES.forEach(category => {
+		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
 			if (item.codex?.categories?.includes(category)) {
 				subcategories = item.codex?.subcategories?.[category] ?? [];
 			}
@@ -68,7 +68,7 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 	const result = (
 		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.displayName', weight: 2 },
+			{ key: 'properties.displayName', weight: 1.3 },
 			{ key: 'properties.codex.alias', weight: 1 },
 		]) || []
 	).map(({ item }) => item);

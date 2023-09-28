@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import { OutputFixingParser } from 'langchain/output_parsers';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import type { BaseLanguageModel } from 'langchain/base_language';
@@ -12,7 +18,7 @@ export class OutputParserAutofixing implements INodeType {
 		icon: 'fa:tools',
 		group: ['transform'],
 		version: 1,
-		description: 'Tries to automatically fix fixReturn a list of comma separated values',
+		description: 'Automatically fix the output if it is not in the correct format',
 		defaults: {
 			name: 'Auto-fixing Output Parser',
 		},
@@ -22,31 +28,44 @@ export class OutputParserAutofixing implements INodeType {
 			subcategories: {
 				AI: ['Output Parsers'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserautofixing/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Output Parser',
 				maxConnections: 1,
 				required: true,
-				type: 'outputParser',
+				type: NodeConnectionType.AiOutputParser,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['outputParser'],
+		outputs: [NodeConnectionType.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
-		const outputParser = (await this.getInputConnectionData('outputParser', 0)) as BaseOutputParser;
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
+		const outputParser = (await this.getInputConnectionData(
+			NodeConnectionType.AiOutputParser,
+			0,
+		)) as BaseOutputParser;
 
 		const parser = OutputFixingParser.fromLLM(model, outputParser);
 

@@ -11,7 +11,7 @@ import { Container } from 'typedi';
 import { Like } from 'typeorm';
 import config from '@/config';
 import * as Db from '@/Db';
-import type { ICredentialsDb, IExecutionDb, IWorkflowDb } from '@/Interfaces';
+import type { ExecutionPayload, ICredentialsDb, IWorkflowDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -179,7 +179,7 @@ export async function createErrorExecution(
 		},
 	};
 
-	const fullExecutionData: IExecutionDb = {
+	const fullExecutionData: ExecutionPayload = {
 		data: executionData,
 		mode,
 		finished: false,

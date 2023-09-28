@@ -10,7 +10,7 @@ export class WolframAlphaApi implements ICredentialType {
 
 	displayName = 'WolframAlphaApi';
 
-	documentationUrl = 'WolframAlphaApi';
+	documentationUrl = 'wolframalpha';
 
 	properties: INodeProperties[] = [
 		{

@@ -31,8 +31,8 @@ const differenceChecker = (diff: TmplDifference) => {
 	}
 };
 const tournamentEvaluator = new Tournament(errorHandler, undefined);
-let evaluator = tournamentEvaluator.execute.bind(tournamentEvaluator);
-let currentEvaluatorType: ExpressionEvaluatorType = 'tournament';
+let evaluator: Evaluator = tmpl.tmpl;
+let currentEvaluatorType: ExpressionEvaluatorType = 'tmpl';
 let diffExpressions = false;
 
 export const setErrorHandler = (handler: ErrorHandler) => {
@@ -67,7 +67,7 @@ export const checkEvaluatorDifferences = (expr: string): TmplDifference | null =
 	let diff: TmplDifference | null;
 	try {
 		diff = tournamentEvaluator.tmplDiff(expr);
-	} catch (e) {
+	} catch {
 		// We don't include the expression for privacy reasons
 		try {
 			differenceHandler('ERROR');

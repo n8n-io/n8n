@@ -23,7 +23,11 @@ export function getN8nPackageJson() {
 	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
 }
 
-export const STARTING_NODES = ['@n8n/nodes-langchain.manualChatTrigger', 'n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'];
+export const STARTING_NODES = [
+	'@n8n/n8n-nodes-langchain.manualChatTrigger',
+	'n8n-nodes-base.start',
+	'n8n-nodes-base.manualTrigger',
+];
 
 export const N8N_VERSION = getN8nPackageJson().version;
 
@@ -94,3 +98,12 @@ export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a
 
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
+
+/**
+ * Units of time in milliseconds
+ */
+export const TIME = {
+	SECOND: 1000,
+	MINUTE: 60 * 1000,
+	HOUR: 60 * 60 * 1000,
+};

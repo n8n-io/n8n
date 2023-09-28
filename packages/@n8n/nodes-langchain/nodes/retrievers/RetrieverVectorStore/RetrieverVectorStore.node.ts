@@ -1,5 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
+import {
+	NodeConnectionType,
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type SupplyData,
+} from 'n8n-workflow';
 import type { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -13,12 +19,18 @@ export class RetrieverVectorStore implements INodeType {
 		description: 'Outputs Vector Store as Retriever',
 		defaults: {
 			name: 'Vector Store Retriever',
-			color: '#400080',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Retrievers'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.retrievervectorstore/',
+					},
+				],
 			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -26,12 +38,12 @@ export class RetrieverVectorStore implements INodeType {
 			{
 				displayName: 'Vector Store',
 				maxConnections: 1,
-				type: 'vectorStore',
+				type: NodeConnectionType.AiVectorStore,
 				required: true,
 			},
 		],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['vectorRetriever'],
+		outputs: [NodeConnectionType.AiVectorRetriever],
 		outputNames: ['Vector Retriever'],
 		properties: [
 			{
@@ -48,7 +60,10 @@ export class RetrieverVectorStore implements INodeType {
 		this.logger.verbose('Supplying data for Vector Store Retriever');
 
 		const topK = this.getNodeParameter('topK', 0, 4) as number;
-		const vectorStore = (await this.getInputConnectionData('vectorStore', 0)) as PineconeStore;
+		const vectorStore = (await this.getInputConnectionData(
+			NodeConnectionType.AiVectorStore,
+			0,
+		)) as PineconeStore;
 
 		const retriever = vectorStore.asRetriever(topK);
 

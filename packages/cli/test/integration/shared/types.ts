@@ -28,7 +28,8 @@ export type EndpointGroup =
 	| 'tags'
 	| 'externalSecrets'
 	| 'mfa'
-	| 'metrics';
+	| 'metrics'
+	| 'executions';
 
 export interface SetupProps {
 	applyAuth?: boolean;

@@ -9,7 +9,7 @@ import type {
 	ExecutionError,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
@@ -26,18 +26,24 @@ export class ToolWorkflow implements INodeType {
 		description: 'Create a tool via a workflow',
 		defaults: {
 			name: 'Workflow Tool',
-			color: '#400080',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Tools'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['tool'],
+		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [
 			{
@@ -348,7 +354,7 @@ export class ToolWorkflow implements INodeType {
 				description,
 
 				func: async (query: string): Promise<string> => {
-					void this.addInputData('tool', [[{ json: { query } }]]);
+					const { index } = this.addInputData(NodeConnectionType.AiTool, [[{ json: { query } }]]);
 
 					let response: string = '';
 					let executionError: ExecutionError | undefined;
@@ -376,9 +382,9 @@ export class ToolWorkflow implements INodeType {
 					}
 
 					if (executionError) {
-						void this.addOutputData('tool', executionError);
+						void this.addOutputData(NodeConnectionType.AiTool, index, executionError);
 					} else {
-						void this.addOutputData('tool', [[{ json: { response } }]]);
+						void this.addOutputData(NodeConnectionType.AiTool, index, [[{ json: { response } }]]);
 					}
 					return response;
 				},

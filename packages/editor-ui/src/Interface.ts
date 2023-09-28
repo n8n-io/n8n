@@ -5,6 +5,7 @@ import type {
 	FAKE_DOOR_FEATURES,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 } from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
@@ -47,6 +48,7 @@ import type {
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
+import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
 
@@ -111,21 +113,6 @@ export type EndpointStyle = {
 	size?: string;
 	hoverMessage?: string;
 };
-
-export const enum NodeConnectionType {
-	Agent = 'agent',
-	Chain = 'chain',
-	Main = 'main',
-	Tool = 'tool',
-	Memory = 'memory',
-	OutputParser = 'outputParser',
-	LanguageModel = 'languageModel',
-	VectorRetriever = 'vectorRetriever',
-	VectorStore = 'vectorStore',
-	Embedding = 'embedding',
-	Document = 'document',
-	TextSplitter = 'textSplitter',
-}
 
 export interface IUpdateInformation {
 	name: string;
@@ -246,6 +233,7 @@ export interface IWorkflowDataUpdate {
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -257,15 +245,16 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: {
-		nodes: INodeUi[];
-		connections: IConnections;
-	};
+	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
 }
 
 export interface INewWorkflowData {
 	name: string;
 	onboardingFlowEnabled: boolean;
+}
+
+export interface WorkflowMetadata {
+	onboardingId?: string;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -284,6 +273,7 @@ export interface IWorkflowDb {
 	ownedBy?: Partial<IUser>;
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
+	meta?: WorkflowMetadata;
 }
 
 // Identical to cli.Interfaces.ts
@@ -769,7 +759,15 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 
 export type SimplifiedNodeType = Pick<
 	INodeTypeDescription,
-	'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+	| 'displayName'
+	| 'description'
+	| 'name'
+	| 'group'
+	| 'icon'
+	| 'iconUrl'
+	| 'codex'
+	| 'defaults'
+	| 'outputs'
 >;
 export interface SubcategoryItemProps {
 	description?: string;
@@ -1046,7 +1044,7 @@ export type NewCredentialsModal = ModalState & {
 	showAuthSelector?: boolean;
 };
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1122,7 +1120,7 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
-	banners: { [key in BannerName]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
+	bannerStack: BannerName[];
 }
 
 export type IFakeDoor = {
@@ -1146,7 +1144,8 @@ export type IFakeDoorLocation =
 export type NodeFilterType =
 	| typeof REGULAR_NODE_CREATOR_VIEW
 	| typeof TRIGGER_NODE_CREATOR_VIEW
-	| typeof AI_NODE_CREATOR_VIEW;
+	| typeof AI_NODE_CREATOR_VIEW
+	| typeof AI_OTHERS_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -1234,6 +1233,7 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
+	currentUserCloudInfo: Cloud.UserAccount | null;
 }
 
 export interface IWorkflowsState {
@@ -1571,6 +1571,13 @@ export declare namespace Cloud {
 		length: number;
 		gracePeriod: number;
 	}
+
+	export type UserAccount = {
+		confirmed: boolean;
+		username: string;
+		email: string;
+		hasEarlyAccess?: boolean;
+	};
 }
 
 export interface CloudPlanState {
@@ -1636,3 +1643,10 @@ export type UTMCampaign =
 	| 'open'
 	| 'upgrade-users'
 	| 'upgrade-variables';
+
+export type N8nBanners = {
+	[key in BannerName]: {
+		priority: number;
+		component: Component;
+	};
+};

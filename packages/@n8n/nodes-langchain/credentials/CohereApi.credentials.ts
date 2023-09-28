@@ -10,7 +10,7 @@ export class CohereApi implements ICredentialType {
 
 	displayName = 'CohereApi';
 
-	documentationUrl = 'cohereApi';
+	documentationUrl = 'cohere';
 
 	properties: INodeProperties[] = [
 		{

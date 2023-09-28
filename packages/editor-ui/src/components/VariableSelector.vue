@@ -40,7 +40,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 } from 'n8n-workflow';
-import { WorkflowDataProxy } from 'n8n-workflow';
+import { NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
@@ -297,7 +297,7 @@ export default defineComponent({
 		 * @param {string} filterText Filter text for parameters
 		 * @param {number} [itemIndex=0] The index of the item
 		 * @param {number} [runIndex=0] The index of the run
-		 * @param {string} [inputName='main'] The name of the input
+		 * @param {string} [inputName=NodeConnectionType.Main] The name of the input
 		 * @param {number} [outputIndex=0] The index of the output
 		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
@@ -307,7 +307,7 @@ export default defineComponent({
 			filterText: string,
 			itemIndex = 0,
 			runIndex = 0,
-			inputName = 'main',
+			inputName = NodeConnectionType.Main,
 			outputIndex = 0,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
@@ -469,7 +469,7 @@ export default defineComponent({
 			filterText: string,
 		): IVariableSelectorOption[] | null {
 			const itemIndex = 0;
-			const inputName = 'main';
+			const inputName = NodeConnectionType.Main;
 			const runIndex = 0;
 			const returnData: IVariableSelectorOption[] = [];
 
@@ -480,7 +480,7 @@ export default defineComponent({
 			const nodeConnection = this.workflow.getNodeConnectionIndexes(
 				this.activeNode.name,
 				parentNode[0],
-				'main',
+				inputName,
 			);
 			const connectionInputData = this.connectionInputData(
 				parentNode,
@@ -586,7 +586,7 @@ export default defineComponent({
 			return returnParameters;
 		},
 		getFilterResults(filterText: string, itemIndex: number): IVariableSelectorOption[] {
-			const inputName = 'main';
+			const inputName = NodeConnectionType.Main;
 
 			if (this.activeNode === null) {
 				return [];
@@ -650,7 +650,7 @@ export default defineComponent({
 				const nodeConnection = this.workflow.getNodeConnectionIndexes(
 					this.activeNode.name,
 					activeInputParentNode,
-					'main',
+					inputName,
 				);
 				const outputIndex = nodeConnection === undefined ? 0 : nodeConnection.sourceIndex;
 
@@ -660,7 +660,7 @@ export default defineComponent({
 					filterText,
 					itemIndex,
 					0,
-					'main',
+					inputName,
 					outputIndex,
 					true,
 				) as IVariableSelectorOption[];

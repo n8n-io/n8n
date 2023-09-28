@@ -7,7 +7,11 @@ import type {
 	NodeFilterType,
 	SimplifiedNodeType,
 } from '@/Interface';
-import { AI_NODE_CREATOR_VIEW, DEFAULT_SUBCATEGORY, TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import {
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	DEFAULT_SUBCATEGORY,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
@@ -18,11 +22,11 @@ import {
 	sortNodeCreateElements,
 	searchNodes,
 } from '../utils';
-import { ConnectionTypes, INodeInputFilter, INodeTypeDescription } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/stores';
 import { useI18n } from '@/composables';
-import { BaseTextKey } from '@/plugins/i18n';
-import { AIView } from '@/components/Node/NodeCreator/viewsData';
+
+import type { INodeInputFilter } from 'n8n-workflow';
+import { useNodeTypesStore } from '@/stores';
+import { AINodesView, type NodeViewItem } from '@/components/Node/NodeCreator/viewsData';
 
 interface ViewStack {
 	uuid?: string;
@@ -90,7 +94,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const searchBaseItems = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
-		if (!stack || !stack.searchItems) return [];
+		if (!stack?.searchItems) return [];
 
 		return stack.searchItems.map((item) => transformNodeType(item, stack.subcategory));
 	});
@@ -98,7 +102,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = viewStacks.value[viewStacks.value.length - 1];
-		if (!stack || !stack.search) return [];
+		if (!stack?.search) return [];
 
 		const allNodes = nodeCreatorStore.mergedNodes.map((item) => transformNodeType(item));
 		const globalSearchResult = extendItemsWithUUID(searchNodes(stack.search || '', allNodes));
@@ -110,17 +114,33 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
+		isOutput?: boolean,
 		filter?: INodeInputFilter,
 	) {
-		const nodesByOutputType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
-		const relatedAIView = AIView([]).items.find(
-			(item) => item.properties.connectionType === connectionType,
-		);
+		const i18n = useI18n();
+
+		let nodesByConnectionType: { [key: string]: string[] };
+		let relatedAIView: NodeViewItem | { properties: { title: string; icon: string } } | undefined;
+		if (isOutput === true) {
+			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByInputConnectionTypeNames;
+			relatedAIView = {
+				properties: {
+					title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
+					icon: 'robot',
+				},
+			};
+		} else {
+			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByOutputConnectionTypeNames;
+
+			relatedAIView = AINodesView([]).items.find(
+				(item) => item.properties.connectionType === connectionType,
+			);
+		}
 
 		await nextTick();
 		pushViewStack({
 			title: relatedAIView?.properties.title,
-			rootView: AI_NODE_CREATOR_VIEW,
+			rootView: AI_OTHERS_NODE_CREATOR_VIEW,
 			mode: 'nodes',
 			items: nodeCreatorStore.allNodeCreatorNodes,
 			nodeIcon: {
@@ -130,8 +150,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			},
 			panelClass: relatedAIView?.properties.panelClass,
 			baseFilter: (i: INodeCreateElement) => {
-				const displayNode = nodesByOutputType[connectionType].includes(i.key);
+				const displayNode = nodesByConnectionType[connectionType].includes(i.key);
 
+				// TODO: Filtering works currently fine for displaying compatible node when dropping
+				//       input connections. However, it does not work for output connections.
+				//       For that reason does it currently display nodes that are maybe not compatible
+				//       but then errors once it got selected by the user.
 				if (displayNode && filter?.nodes?.length) {
 					return filter.nodes.includes(i.key);
 				}

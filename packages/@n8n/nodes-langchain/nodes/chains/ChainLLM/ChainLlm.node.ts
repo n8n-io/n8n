@@ -1,9 +1,10 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeConnectionType,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from 'langchain/base_language';
@@ -12,9 +13,12 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 
 async function getChain(context: IExecuteFunctions, query: string): Promise<unknown[]> {
-	const llm = (await context.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
+	const llm = (await context.getInputConnectionData(
+		NodeConnectionType.AiLanguageModel,
+		0,
+	)) as BaseLanguageModel;
 	const outputParsers = (await context.getInputConnectionData(
-		'outputParser',
+		NodeConnectionType.AiOutputParser,
 		0,
 	)) as BaseOutputParser[];
 
@@ -51,15 +55,15 @@ async function getChain(context: IExecuteFunctions, query: string): Promise<unkn
 
 export class ChainLlm implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'LLM Chain',
+		displayName: 'Basic LLM Chain',
 		name: 'chainLlm',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
 		description: 'A simple chain to prompt LLM',
 		defaults: {
-			name: 'LLM Chain',
-			color: '#408012',
+			name: 'Basic LLM Chain',
+			color: '#909298',
 		},
 		codex: {
 			alias: ['LangChain'],
@@ -67,23 +71,30 @@ export class ChainLlm implements INodeType {
 			subcategories: {
 				AI: ['Chains'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				required: true,
 			},
 			{
 				displayName: 'Output Parser',
-				type: 'outputParser',
+				type: NodeConnectionType.AiOutputParser,
 				required: false,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{

@@ -1,15 +1,16 @@
-import type {
-	IExecuteFunctions,
-	INodeType,
-	INodeTypeDescription,
-	IDataObject,
-	SupplyData,
+import {
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type IDataObject,
+	type SupplyData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
-
 import { logWrapper } from '../../../utils/logWrapper';
+
 export class VectorStoreSupabaseLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supabase: Load',
@@ -26,6 +27,13 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			subcategories: {
 				AI: ['Vector Stores'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstoresupabaseload/',
+					},
+				],
+			},
 		},
 		credentials: [
 			{
@@ -37,11 +45,11 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: 'embedding',
+				type: NodeConnectionType.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: ['vectorStore'],
+		outputs: [NodeConnectionType.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
@@ -92,7 +100,10 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		};
 
 		const credentials = await this.getCredentials('supabaseApi');
-		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);

@@ -628,7 +628,7 @@ export class WorkflowRunner {
 						(workflowDidSucceed && saveDataSuccessExecution === 'none') ||
 						(!workflowDidSucceed && saveDataErrorExecution === 'none')
 					) {
-						await Container.get(ExecutionRepository).deleteExecution(executionId);
+						await Container.get(ExecutionRepository).softDelete(executionId);
 					}
 					// eslint-disable-next-line id-denylist
 				} catch (err) {

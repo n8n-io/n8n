@@ -6,7 +6,7 @@ import App from './App.vue';
 import type { ChatbotOptions } from '@/types';
 import { ChatbotOptionsSymbol, defaultMountingTarget, defaultOptions } from '@/constants';
 
-export function init(options?: ChatbotOptions) {
+export function init(options?: Partial<ChatbotOptions>) {
 	const resolvedOptions: ChatbotOptions = {
 		...defaultOptions,
 		...options,

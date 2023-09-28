@@ -16,6 +16,7 @@ import { addHeaders, addNodeTranslation } from '@/plugins/i18n';
 import { omit } from '@/utils';
 import type {
 	ILoadOptions,
+	INode,
 	INodeCredentials,
 	INodeListSearchResult,
 	INodeOutputConfiguration,
@@ -25,11 +26,12 @@ import type {
 	INodeTypeNameVersion,
 	ResourceMapperFields,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
-import { ConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
@@ -77,7 +79,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			};
 		},
 		isConfigNode() {
-			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
 				const nodeType = this.getNodeType(nodeTypeName);
 				if (!nodeType) {
 					return false;
@@ -85,11 +87,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
-				return outputTypes ? outputTypes.filter((output) => output !== 'main').length > 0 : false;
+				return outputTypes
+					? outputTypes.filter((output) => output !== NodeConnectionType.Main).length > 0
+					: false;
 			};
 		},
 		isConfigurableNode() {
-			return (workflow: Workflow, node: INode, nodeTypeName: string) => {
+			return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
 				const nodeType = this.getNodeType(nodeTypeName);
 				if (nodeType === null) {
 					return false;
@@ -97,7 +101,9 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const inputs = NodeHelpers.getNodeInputs(workflow, node, nodeType);
 				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-				return inputTypes ? inputTypes.filter((input) => input !== 'main').length > 0 : false;
+				return inputTypes
+					? inputTypes.filter((input) => input !== NodeConnectionType.Main).length > 0
+					: false;
 			};
 		},
 		isTriggerNode() {
@@ -129,6 +135,27 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 					const outputTypes = node.outputs;
 					if (Array.isArray(outputTypes)) {
 						outputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						});
+					}
+
+					return acc;
+				},
+				{} as { [key: string]: string[] },
+			);
+
+			return nodesByOutputType;
+		},
+		visibleNodeTypesByInputConnectionTypeNames(): { [key: string]: string[] } {
+			const nodesByOutputType = this.visibleNodeTypes.reduce(
+				(acc, node) => {
+					const inputTypes = node.inputs;
+					if (Array.isArray(inputTypes)) {
+						inputTypes.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
 							const outputType = typeof value === 'string' ? value : value.type;
 							if (!acc[outputType]) {
 								acc[outputType] = [];

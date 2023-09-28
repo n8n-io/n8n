@@ -1,8 +1,9 @@
-import type {
-	IExecuteFunctions,
-	INodeType,
-	INodeTypeDescription,
-	INodeExecutionData,
+import {
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeExecutionData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
 import type { Embeddings } from 'langchain/embeddings/base';
@@ -27,6 +28,13 @@ export class VectorStoreZepInsert implements INodeType {
 			subcategories: {
 				AI: ['Vector Stores'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorezepinsert/',
+					},
+				],
+			},
 		},
 		credentials: [
 			{
@@ -35,21 +43,21 @@ export class VectorStoreZepInsert implements INodeType {
 			},
 		],
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Document',
 				maxConnections: 1,
-				type: 'document',
+				type: NodeConnectionType.AiDocument,
 				required: true,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: 'embedding',
+				type: NodeConnectionType.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Collection Name',
@@ -101,11 +109,14 @@ export class VectorStoreZepInsert implements INodeType {
 			apiUrl: string;
 		};
 
-		const documentInput = (await this.getInputConnectionData('document', 0)) as
+		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
-		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
 
 		let processedDocuments: Document[];
 

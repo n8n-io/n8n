@@ -19,7 +19,6 @@ import type {
 	IPinData,
 	IRun,
 	IRunData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
@@ -27,13 +26,17 @@ import type {
 	ITaskMetadata,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
-	IWorkflowExecuteAdditionalData,
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
+} from 'n8n-workflow';
+import {
+	LoggerProxy as Logger,
+	WorkflowOperationError,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 

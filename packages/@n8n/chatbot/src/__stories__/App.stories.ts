@@ -14,7 +14,9 @@ const meta = {
 	render: (args: any) => ({
 		setup() {
 			onMounted(() => {
-				init();
+				init({
+					webhookUrl: 'http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183',
+				});
 			});
 
 			return { args };

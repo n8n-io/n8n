@@ -1,8 +1,9 @@
-import type {
-	IExecuteFunctions,
-	INodeType,
-	INodeTypeDescription,
-	INodeExecutionData,
+import {
+	type IExecuteFunctions,
+	type INodeType,
+	type INodeTypeDescription,
+	type INodeExecutionData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
@@ -21,11 +22,20 @@ export class VectorStorePineconeInsert implements INodeType {
 		description: 'Insert data into Pinecone Vector Store index',
 		defaults: {
 			name: 'Pinecone: Insert',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Vector Stores'],
+			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorepineconeinsert/',
+					},
+				],
 			},
 		},
 		credentials: [
@@ -35,21 +45,21 @@ export class VectorStorePineconeInsert implements INodeType {
 			},
 		],
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Document',
 				maxConnections: 1,
-				type: 'document',
+				type: NodeConnectionType.AiDocument,
 				required: true,
 			},
 			{
 				displayName: 'Embedding',
 				maxConnections: 1,
-				type: 'embedding',
+				type: NodeConnectionType.AiEmbedding,
 				required: true,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Pinecone Index',
@@ -84,11 +94,14 @@ export class VectorStorePineconeInsert implements INodeType {
 
 		const credentials = await this.getCredentials('pineconeApi');
 
-		const documentInput = (await this.getInputConnectionData('document', 0)) as
+		const documentInput = (await this.getInputConnectionData(NodeConnectionType.AiDocument, 0)) as
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
-		const embeddings = (await this.getInputConnectionData('embedding', 0)) as Embeddings;
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
 
 		const client = new PineconeClient();
 		await client.init({

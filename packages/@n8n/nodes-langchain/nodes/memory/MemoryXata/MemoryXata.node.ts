@@ -1,11 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription, SupplyData } from 'n8n-workflow';
 import { XataChatMessageHistory } from 'langchain/stores/message/xata';
 import { BufferMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
-
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xata',
@@ -16,17 +15,26 @@ export class MemoryXata implements INodeType {
 		description: 'Use Xata Memory',
 		defaults: {
 			name: 'Xata',
+			// eslint-disable-next-line n8n-nodes-base/node-class-description-non-core-color-present
+			color: '#1321A7',
 		},
 		codex: {
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Memory'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memoryxata/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: ['memory'],
+		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		credentials: [
 			{

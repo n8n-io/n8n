@@ -134,7 +134,7 @@ import type {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { jsonParse, NodeHelpers } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -299,7 +299,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -336,15 +336,16 @@ export default defineComponent({
 			const workflowNode = this.workflow.getNode(this.activeNode.name);
 			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
 
-			if (outputs.includes('main')) {
-				return 0;
-			}
+			// TODO: Do we need to prevent from switching runs for non-main nodes?
+			// if (!outputs.includes(NodeConnectionType.Main)) {
+			// 	return 0;
+			// }
 
 			let node = this.inputNode;
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (outputs.filter((output) => output !== 'main').length) {
+			if (outputs.filter((output) => output !== NodeConnectionType.Main).length) {
 				node = this.activeNode;
 			}
 
@@ -552,7 +553,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
 			}

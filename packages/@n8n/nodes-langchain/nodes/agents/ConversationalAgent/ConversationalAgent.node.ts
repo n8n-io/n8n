@@ -1,4 +1,5 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeType,
@@ -32,19 +33,27 @@ export class ConversationalAgent implements INodeType {
 			subcategories: {
 				AI: ['Agents'],
 			},
+			resources: {
+				primaryDocumentation: [
+					{
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.conversationalagent/',
+					},
+				],
+			},
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
-			'main',
+			NodeConnectionType.Main,
 			{
 				displayName: 'Model',
 				maxConnections: 1,
-				type: 'languageModel',
+				type: NodeConnectionType.AiLanguageModel,
 				filter: {
 					nodes: [
-						'@n8n/nodes-langchain.lmChatAnthropic',
-						'@n8n/nodes-langchain.lmChatOllama',
-						'@n8n/nodes-langchain.lmChatOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
+						'@n8n/n8n-nodes-langchain.lmChatOllama',
+						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						'@n8n/n8n-nodes-langchain.lmChatGooglePalm',
 					],
 				},
 				required: true,
@@ -52,21 +61,21 @@ export class ConversationalAgent implements INodeType {
 			{
 				displayName: 'Memory',
 				maxConnections: 1,
-				type: 'memory',
+				type: NodeConnectionType.AiMemory,
 				required: false,
 			},
 			{
 				displayName: 'Tools',
-				type: 'tool',
+				type: NodeConnectionType.AiTool,
 				required: false,
 			},
 			{
 				displayName: 'Output Parser',
-				type: 'outputParser',
+				type: NodeConnectionType.AiOutputParser,
 				required: false,
 			},
 		],
-		outputs: ['main'],
+		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
 			{
@@ -112,11 +121,16 @@ export class ConversationalAgent implements INodeType {
 		this.logger.verbose('Executing Conversational Agent');
 		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		const model = (await this.getInputConnectionData('languageModel', 0)) as BaseLanguageModel;
-		const memory = (await this.getInputConnectionData('memory', 0)) as BaseChatMemory | undefined;
-		const tools = (await this.getInputConnectionData('tool', 0)) as Tool[];
+		const model = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
+		const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
+			| BaseChatMemory
+			| undefined;
+		const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
 		const outputParsers = (await this.getInputConnectionData(
-			'outputParser',
+			NodeConnectionType.AiOutputParser,
 			0,
 		)) as BaseOutputParser[];
 
