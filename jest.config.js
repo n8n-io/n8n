@@ -1,5 +1,6 @@
 const { compilerOptions } = require('./tsconfig.json');
 
+/** @type {import('ts-jest').TsJestGlobalOptions} */
 const tsJestOptions = {
 	isolatedModules: true,
 	tsconfig: {
