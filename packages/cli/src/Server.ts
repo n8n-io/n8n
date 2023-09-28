@@ -178,6 +178,8 @@ import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
+import { isWorkflowHistoryEnabled } from './workflows/workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -470,6 +472,7 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
+			history: isWorkflowHistoryEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -559,6 +562,7 @@ export class Server extends AbstractServer {
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
+			Container.get(WorkflowHistoryController),
 		];
 
 		if (isLdapEnabled()) {
