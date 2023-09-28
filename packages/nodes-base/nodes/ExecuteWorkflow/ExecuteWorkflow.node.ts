@@ -1,14 +1,12 @@
-import { readFile as fsReadFile } from 'fs/promises';
-
 import type {
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IWorkflowBase,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+
+import { getWorkflowInfo } from './GenericFunctions';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -16,7 +14,7 @@ export class ExecuteWorkflow implements INodeType {
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
@@ -26,6 +24,23 @@ export class ExecuteWorkflow implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Run Once for All Items',
+						value: 'runOnceForAllItems',
+					},
+					{
+						name: 'Run Once for Each Item',
+						value: 'runOnceForEachItem',
+					},
+				],
+				default: 'runOnceForAllItems',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -153,64 +168,26 @@ export class ExecuteWorkflow implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
 		const source = this.getNodeParameter('source', 0) as string;
-
-		const workflowInfo: IExecuteWorkflowInfo = {};
+		const mode = this.getNodeParameter('mode', 0) as string;
 
 		try {
-			if (source === 'database') {
-				// Read workflow from database
-				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
-			} else if (source === 'localFile') {
-				// Read workflow from filesystem
-				const workflowPath = this.getNodeParameter('workflowPath', 0) as string;
-
-				let workflowJson;
-				try {
-					workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' });
-				} catch (error) {
-					if (error.code === 'ENOENT') {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The file "${workflowPath}" could not be found.`,
-						);
-					}
-
-					throw error;
+			const items = this.getInputData();
+			if (mode === 'runOnceForAllItems') {
+				const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source);
+				return await this.executeWorkflow(workflowInfo, items);
+			} else {
+				const returnData = [];
+				for (let i = 0; i < items.length; i++) {
+					const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source, i);
+					returnData.push((await this.executeWorkflow(workflowInfo, [items[i]]))[0]);
 				}
-
-				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-			} else if (source === 'parameter') {
-				// Read workflow from parameter
-				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
-				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
-			} else if (source === 'url') {
-				// Read workflow from url
-				const workflowUrl = this.getNodeParameter('workflowUrl', 0) as string;
-
-				const requestOptions = {
-					headers: {
-						accept: 'application/json,text/*;q=0.99',
-					},
-					method: 'GET',
-					uri: workflowUrl,
-					json: true,
-					gzip: true,
-				};
-
-				const response = await this.helpers.request(requestOptions);
-				workflowInfo.code = response;
+				return [returnData.flat()];
 			}
-
-			const receivedData = await this.executeWorkflow(workflowInfo, items);
-
-			return receivedData;
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message } }]];
 			}
-
 			throw error;
 		}
 	}
