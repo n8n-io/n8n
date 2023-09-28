@@ -46,9 +46,9 @@ export class ChainRetrievalQa implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Vector Retriever',
+				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiVectorRetriever,
+				type: NodeConnectionType.AiRetriever,
 				required: true,
 			},
 		],
@@ -91,13 +91,13 @@ export class ChainRetrievalQa implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const vectorRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorRetriever,
+		const retriever = (await this.getInputConnectionData(
+			NodeConnectionType.AiRetriever,
 			0,
 		)) as BaseRetriever;
 
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever);
+		const chain = RetrievalQAChain.fromLLM(model, retriever);
 
 		const returnData: INodeExecutionData[] = [];
 		const runMode = this.getNodeParameter('mode', 0) as string;

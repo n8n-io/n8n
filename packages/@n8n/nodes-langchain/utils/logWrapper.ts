@@ -18,7 +18,7 @@ import { VectorStore } from 'langchain/vectorstores/base';
 import type { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
 import type { BaseDocumentLoader } from 'langchain/document_loaders/base';
-import type { CallbackManagerForRetrieverRun, Callbacks } from 'langchain/dist/callbacks/manager';
+import type { BaseCallbackConfig, Callbacks } from 'langchain/dist/callbacks/manager';
 import { BaseLLM } from 'langchain/llms/base';
 import { BaseChatMemory } from 'langchain/memory';
 import type { MemoryVariables } from 'langchain/dist/memory/base';
@@ -90,6 +90,7 @@ export function logWrapper(
 		| BaseLLM
 		| BaseChatMessageHistory
 		| BaseOutputParser
+		| BaseRetriever
 		| Embeddings
 		| Document[]
 		| Document
@@ -273,14 +274,14 @@ export function logWrapper(
 
 			// ========== BaseRetriever ==========
 			if (originalInstance instanceof BaseRetriever) {
-				if (prop === '_getRelevantDocuments' && '_getRelevantDocuments' in target) {
+				if (prop === 'getRelevantDocuments' && 'getRelevantDocuments' in target) {
 					return async (
 						query: string,
-						runManager?: CallbackManagerForRetrieverRun,
+						config?: Callbacks | BaseCallbackConfig,
 					): Promise<Document[]> => {
 						connectionType = NodeConnectionType.AiVectorRetriever;
 						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { query } }],
+							[{ json: { query, config } }],
 						]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -288,7 +289,7 @@ export function logWrapper(
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [query, runManager],
+							arguments: [query, config],
 						})) as Array<Document<Record<string, any>>>;
 
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);

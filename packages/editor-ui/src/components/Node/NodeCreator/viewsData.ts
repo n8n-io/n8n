@@ -20,6 +20,7 @@ import {
 	AI_CATEGORY_LANGUAGE_MODELS,
 	AI_CATEGORY_MEMORY,
 	AI_CATEGORY_OUTPUTPARSER,
+	AI_CATEGORY_RETRIEVERS,
 	AI_CATEGORY_TEXT_SPLITTERS,
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
@@ -170,6 +171,15 @@ export function AINodesView(_nodes: SimplifiedNodeType[]): NodeView {
 					title: AI_CATEGORY_OUTPUTPARSER,
 					icon: 'list',
 					...getAISubcategoryProperties(NodeConnectionType.AiOutputParser),
+				},
+			},
+			{
+				key: AI_CATEGORY_RETRIEVERS,
+				type: 'subcategory',
+				properties: {
+					title: AI_CATEGORY_RETRIEVERS,
+					icon: 'search',
+					...getAISubcategoryProperties(NodeConnectionType.AiRetriever),
 				},
 			},
 			{
