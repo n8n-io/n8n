@@ -10,7 +10,7 @@ import { deepCopy } from 'n8n-workflow';
 
 export class SplitInBatchesV3 implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Loop Over Items',
+		displayName: 'Loop Over Items (Split in Batches)',
 		name: 'splitInBatches',
 		icon: 'fa:sync',
 		group: ['organization'],
