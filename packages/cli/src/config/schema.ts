@@ -920,7 +920,7 @@ export const schema = {
 				format: String,
 				default: '',
 				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
-				doc: 'Host of the n8n bucket in S3-compatible external storage',
+				doc: 'Host of the n8n bucket in S3-compatible external storage, `e.g. s3.us-east-1.amazonaws.com`',
 			},
 			bucket: {
 				name: {
@@ -933,7 +933,7 @@ export const schema = {
 					format: String,
 					default: '',
 					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
-					doc: 'Region of the n8n bucket in S3-compatible external storage',
+					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
 				},
 			},
 			credentials: {
