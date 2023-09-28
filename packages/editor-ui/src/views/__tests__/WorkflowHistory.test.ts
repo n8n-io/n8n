@@ -121,7 +121,7 @@ describe('WorkflowHistory', () => {
 		expect(getWorkflowVersionSpy).toHaveBeenCalledWith(workflowId, versionData.versionId);
 	});
 
-	it('should load change path on preview', async () => {
+	it('should change path on preview', async () => {
 		route.params.workflowId = workflowId;
 
 		const { getByTestId } = renderComponent({ pinia });
