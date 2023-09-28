@@ -2,11 +2,11 @@
 
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 import { UnknownBinaryDataManagerError, InvalidBinaryDataModeError } from './errors';
-import { LogCatch } from '../decorators/LogCatch.decorator';
 import { areValidModes, toBuffer } from './utils';
+import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -27,6 +27,7 @@ export class BinaryDataService {
 
 		if (config.availableModes.includes('filesystem')) {
 			const { FileSystemManager } = await import('./FileSystem.manager');
+
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
@@ -34,7 +35,9 @@ export class BinaryDataService {
 
 		if (config.availableModes.includes('s3')) {
 			const { ObjectStoreManager } = await import('./ObjectStore.manager');
-			this.managers.s3 = new ObjectStoreManager();
+			const { ObjectStoreService } = await import('../ObjectStore/ObjectStore.service.ee');
+
+			this.managers.s3 = new ObjectStoreManager(Container.get(ObjectStoreService));
 
 			await this.managers.s3.init();
 		}

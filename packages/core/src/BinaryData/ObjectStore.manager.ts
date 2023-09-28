@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { toBuffer } from './utils';
 import { ObjectStoreService } from '../ObjectStore/ObjectStore.service.ee';
@@ -9,7 +9,7 @@ import type { BinaryData } from './types';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
-	constructor(private readonly objectStoreService = Container.get(ObjectStoreService)) {}
+	constructor(private readonly objectStoreService: ObjectStoreService) {}
 
 	async init() {
 		await this.objectStoreService.checkConnection();
