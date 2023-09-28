@@ -16,6 +16,7 @@ const meta = {
 			onMounted(() => {
 				init({
 					webhookUrl: 'http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183',
+					...args,
 				});
 			});
 
@@ -32,4 +33,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Fullscreen: Story = {};
+Fullscreen.args = {
+	mode: 'fullscreen',
+};
+
+export const Windowed: Story = {};
+Windowed.args = {
+	mode: 'window',
+};

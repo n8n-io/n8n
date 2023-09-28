@@ -64,13 +64,13 @@ async function onSubmitKeydown(event: KeyboardEvent) {
 		width: 100%;
 		border: 0;
 		padding: var(--chat--spacing);
-		max-height: var(--chat--textarea-height);
+		max-height: var(--chat--textarea--height);
 		resize: none;
 	}
 
 	.chat-input-send-button {
-		height: var(--chat--textarea-height);
-		width: var(--chat--textarea-height);
+		height: var(--chat--textarea--height);
+		width: var(--chat--textarea--height);
 		background: white;
 		cursor: pointer;
 		color: var(--chat--color-secondary);

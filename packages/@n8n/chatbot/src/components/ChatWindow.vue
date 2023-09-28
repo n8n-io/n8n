@@ -1,0 +1,110 @@
+<script lang="ts" setup>
+import IconChat from 'virtual:icons/mdi/chat';
+import IconChevronDown from 'virtual:icons/mdi/chevron-down';
+import { Chat } from '@/components';
+import { nextTick, ref } from 'vue';
+import { chatEventBus } from '@/event-buses';
+
+const isOpen = ref(false);
+
+function toggle() {
+	isOpen.value = !isOpen.value;
+
+	if (isOpen.value) {
+		void nextTick(() => {
+			chatEventBus.emit('scrollToBottom');
+		});
+	}
+}
+</script>
+
+<template>
+	<div class="chat-window-wrapper">
+		<Transition name="chat-window-transition">
+			<div class="chat-window" v-show="isOpen">
+				<Chat />
+			</div>
+		</Transition>
+		<div class="chat-window-toggle" @click="toggle">
+			<Transition name="chat-window-toggle-transition" mode="out-in">
+				<IconChat v-if="!isOpen" height="32" width="32" />
+				<IconChevronDown v-else height="32" width="32" />
+			</Transition>
+		</div>
+	</div>
+</template>
+
+<style lang="scss">
+.chat-window-wrapper {
+	position: fixed;
+	display: flex;
+	flex-direction: column;
+	bottom: var(--chat--window--bottom, var(--chat--spacing));
+	right: var(--chat--window--right, var(--chat--spacing));
+	z-index: var(--chat--window--z-index, 9999);
+
+	.chat-window {
+		width: var(--chat--window--width);
+		height: var(--chat--window--height);
+		border: var(--chat--window--border, 1px solid var(--chat--color-light-shade-100));
+		border-radius: var(--chat--window--border-radius, var(--chat--border-radius));
+		margin-bottom: var(--chat--window--margin-bottom, var(--chat--spacing));
+		overflow: hidden;
+		transform-origin: bottom right;
+	}
+
+	.chat-window-toggle {
+		background: var(--chat--toggle--background);
+		color: var(--chat--toggle--color);
+		cursor: pointer;
+		width: var(--chat--toggle--width, var(--chat--toggle--size));
+		height: var(--chat--toggle--height, var(--chat--toggle--size));
+		border-radius: var(--chat--toggle--border-radius, 50%);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin-left: auto;
+		transition:
+			transform var(--chat--transition-duration) ease,
+			background var(--chat--transition-duration) ease;
+
+		&:hover,
+		&:focus {
+			transform: scale(1.05);
+			background: var(--chat--toggle--hover--background);
+		}
+
+		&:active {
+			transform: scale(0.95);
+			background: var(--chat--toggle--active--background);
+		}
+	}
+}
+
+.chat-window-transition {
+	&-enter-active,
+	&-leave-active {
+		transition:
+			transform var(--chat--transition-duration) ease,
+			opacity var(--chat--transition-duration) ease;
+	}
+
+	&-enter-from,
+	&-leave-to {
+		transform: scale(0);
+		opacity: 0;
+	}
+}
+
+.chat-window-toggle-transition {
+	&-enter-active,
+	&-leave-active {
+		transition: opacity var(--chat--transition-duration) ease;
+	}
+
+	&-enter-from,
+	&-leave-to {
+		opacity: 0;
+	}
+}
+</style>

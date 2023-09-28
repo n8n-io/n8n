@@ -1,9 +1,14 @@
 <script lang="ts" setup>
-import { Chat } from '@/components';
-import { onMounted } from 'vue';
+import { Chat, ChatWindow } from '@/components';
+import { computed, onMounted } from 'vue';
 import hljs from 'highlight.js/lib/core';
 import hljsXML from 'highlight.js/lib/languages/xml';
 import hljsJavascript from 'highlight.js/lib/languages/javascript';
+import { useOptions } from '@/composables';
+
+const { options } = useOptions();
+
+const isFullscreen = computed<boolean>(() => options.mode === 'fullscreen');
 
 onMounted(() => {
 	hljs.registerLanguage('xml', hljsXML);
@@ -11,5 +16,6 @@ onMounted(() => {
 });
 </script>
 <template>
-	<Chat />
+	<Chat v-if="isFullscreen" />
+	<ChatWindow v-else />
 </template>
