@@ -2,12 +2,21 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import * as concatenateItems from './concatenateItems.operation';
 import * as limit from './limit.operation';
+import * as manageBinaries from './manageBinaries.operation';
 import * as removeDuplicates from './removeDuplicates.operation';
 import * as sort from './sort.operation';
 import * as splitOutItems from './splitOutItems.operation';
 import * as summarize from './summarize.operation';
 
-export { concatenateItems, limit, removeDuplicates, sort, splitOutItems, summarize };
+export {
+	concatenateItems,
+	limit,
+	manageBinaries,
+	removeDuplicates,
+	sort,
+	splitOutItems,
+	summarize,
+};
 
 export const description: INodeProperties[] = [
 	{
@@ -32,6 +41,12 @@ export const description: INodeProperties[] = [
 				value: 'limit',
 				description: 'Remove items if there are too many',
 				action: 'Limit',
+			},
+			{
+				name: 'Manage Binaries',
+				value: 'manageBinaries',
+				description: 'Manage binary files',
+				action: 'Manage Binaries',
 			},
 			{
 				name: 'Remove Duplicates',
@@ -63,6 +78,7 @@ export const description: INodeProperties[] = [
 	},
 	...concatenateItems.description,
 	...limit.description,
+	...manageBinaries.description,
 	...removeDuplicates.description,
 	...sort.description,
 	...splitOutItems.description,
