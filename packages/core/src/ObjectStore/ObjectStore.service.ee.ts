@@ -277,7 +277,7 @@ export class ObjectStoreService {
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 
-			const message = 'Request to S3 failed';
+			const message = `Request to S3 failed: ${error.message}`;
 
 			this.logger.error(message, { error, config });
 
