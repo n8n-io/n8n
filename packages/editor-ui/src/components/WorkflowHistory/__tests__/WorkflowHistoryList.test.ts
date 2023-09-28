@@ -1,4 +1,3 @@
-import { vi } from 'vitest';
 import { within } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
