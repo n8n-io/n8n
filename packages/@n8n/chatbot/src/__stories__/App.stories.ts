@@ -1,26 +1,19 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
-
+import type { StoryObj } from '@storybook/vue3';
+import type { ChatbotOptions } from '@/types';
 import { init } from '../main';
-import App from '../App.vue';
 import { onMounted } from 'vue';
 
+const webhookUrl = 'http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183';
+
 const meta = {
-	/* 👇 The title prop is optional.
-	 * See https://storybook.js.org/docs/vue/configure/overview#configure-story-loading
-	 * to learn how to generate automatic titles
-	 */
-	title: 'App',
-	component: App,
-	render: (args: any) => ({
+	title: 'Chatbot',
+	render: (args: Partial<ChatbotOptions>) => ({
 		setup() {
 			onMounted(() => {
-				init({
-					webhookUrl: 'http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183',
-					...args,
-				});
+				init(args);
 			});
 
-			return { args };
+			return {};
 		},
 		template: '<div id="n8n-chatbot" />',
 	}),
@@ -28,17 +21,21 @@ const meta = {
 		layout: 'fullscreen',
 	},
 	tags: ['autodocs'],
-} satisfies Meta<typeof App>;
+};
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Fullscreen: Story = {};
-Fullscreen.args = {
-	mode: 'fullscreen',
+export const Fullscreen: Story = {
+	args: {
+		webhookUrl,
+		mode: 'fullscreen',
+	} satisfies Partial<ChatbotOptions>,
 };
 
-export const Windowed: Story = {};
-Windowed.args = {
-	mode: 'window',
+export const Windowed: Story = {
+	args: {
+		webhookUrl,
+		mode: 'window',
+	} satisfies Partial<ChatbotOptions>,
 };

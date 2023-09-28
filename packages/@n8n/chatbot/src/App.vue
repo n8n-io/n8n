@@ -6,6 +6,8 @@ import hljsXML from 'highlight.js/lib/languages/xml';
 import hljsJavascript from 'highlight.js/lib/languages/javascript';
 import { useOptions } from '@/composables';
 
+defineProps({});
+
 const { options } = useOptions();
 
 const isFullscreen = computed<boolean>(() => options.mode === 'fullscreen');

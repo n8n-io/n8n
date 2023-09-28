@@ -43,9 +43,14 @@ function toggle() {
 	right: var(--chat--window--right, var(--chat--spacing));
 	z-index: var(--chat--window--z-index, 9999);
 
+	max-width: calc(100% - var(--chat--window--right, var(--chat--spacing)) * 2);
+	max-height: calc(100% - var(--chat--window--bottom, var(--chat--spacing)) * 2);
+
 	.chat-window {
 		width: var(--chat--window--width);
 		height: var(--chat--window--height);
+		max-width: 100%;
+		max-height: 100%;
 		border: var(--chat--window--border, 1px solid var(--chat--color-light-shade-100));
 		border-radius: var(--chat--window--border-radius, var(--chat--border-radius));
 		margin-bottom: var(--chat--window--margin-bottom, var(--chat--spacing));
@@ -54,6 +59,7 @@ function toggle() {
 	}
 
 	.chat-window-toggle {
+		flex: 0 0 auto;
 		background: var(--chat--toggle--background);
 		color: var(--chat--toggle--color);
 		cursor: pointer;

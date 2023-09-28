@@ -13,10 +13,12 @@ function scrollToBottom() {
 
 onMounted(() => {
 	chatEventBus.on('scrollToBottom', scrollToBottom);
+	window.addEventListener('resize', scrollToBottom);
 });
 
 onBeforeUnmount(() => {
 	chatEventBus.off('scrollToBottom', scrollToBottom);
+	window.removeEventListener('resize', scrollToBottom);
 });
 </script>
 <template>
