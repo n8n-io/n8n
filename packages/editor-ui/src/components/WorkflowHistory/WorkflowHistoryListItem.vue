@@ -2,7 +2,11 @@
 import { computed, ref, onMounted } from 'vue';
 import dateformat from 'dateformat';
 import type { UserAction } from 'n8n-design-system';
-import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type {
+	WorkflowHistory,
+	WorkflowVersionId,
+	WorkflowHistoryActionTypes,
+} from '@/types/workflowHistory';
 import { useI18n } from '@/composables';
 
 const props = defineProps<{
@@ -14,9 +18,9 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowHistory['versionId'] },
+		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowVersionId },
 	): void;
-	(event: 'preview', value: { event: MouseEvent; id: WorkflowHistory['versionId'] }): void;
+	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'mounted', value: { index: number; offsetTop: number; isActive: boolean }): void;
 }>();
 

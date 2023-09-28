@@ -6,7 +6,7 @@ import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
 import type {
 	WorkflowHistoryActionTypes,
-	WorkflowHistory,
+	WorkflowVersionId,
 	WorkflowHistoryRequestParams,
 } from '@/types/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
@@ -57,7 +57,7 @@ onBeforeMount(async () => {
 	}
 });
 
-const openInNewTab = (id: WorkflowHistory['versionId']) => {
+const openInNewTab = (id: WorkflowVersionId) => {
 	const { href } = router.resolve({
 		name: VIEWS.WORKFLOW_HISTORY,
 		params: {
@@ -68,7 +68,7 @@ const openInNewTab = (id: WorkflowHistory['versionId']) => {
 	window.open(href, '_blank');
 };
 
-const downloadVersion = async (id: WorkflowHistory['versionId']) => {
+const downloadVersion = async (id: WorkflowVersionId) => {
 	const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
 		route.params.workflowId,
 		id,
@@ -87,7 +87,7 @@ const onAction = async ({
 	id,
 }: {
 	action: WorkflowHistoryActionTypes[number];
-	id: WorkflowHistory['versionId'];
+	id: WorkflowVersionId;
 }) => {
 	switch (action) {
 		case WORKFLOW_HISTORY_ACTIONS.OPEN:
@@ -99,13 +99,7 @@ const onAction = async ({
 	}
 };
 
-const onPreview = async ({
-	event,
-	id,
-}: {
-	event: MouseEvent;
-	id: WorkflowHistory['versionId'];
-}) => {
+const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	if (event.metaKey || event.ctrlKey) {
 		openInNewTab(id);
 	} else {

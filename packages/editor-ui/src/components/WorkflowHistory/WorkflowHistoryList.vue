@@ -4,6 +4,7 @@ import type { UserAction } from 'n8n-design-system';
 import { useI18n } from '@/composables';
 import type {
 	WorkflowHistory,
+	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
 	WorkflowHistoryRequestParams,
 } from '@/types/workflowHistory';
@@ -23,9 +24,9 @@ const props = withDefaults(
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowHistory['versionId'] },
+		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowVersionId },
 	): void;
-	(event: 'preview', value: { event: MouseEvent; id: WorkflowHistory['versionId'] }): void;
+	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
 }>();
 
@@ -67,13 +68,13 @@ const onAction = ({
 	id,
 }: {
 	action: WorkflowHistoryActionTypes[number];
-	id: WorkflowHistory['versionId'];
+	id: WorkflowVersionId;
 }) => {
 	shouldAutoScroll.value = false;
 	emit('action', { action, id });
 };
 
-const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowHistory['versionId'] }) => {
+const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
 	shouldAutoScroll.value = false;
 	emit('preview', { event, id });
 };

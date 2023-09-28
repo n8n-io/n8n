@@ -6,6 +6,8 @@ export type WorkflowHistory = {
 	createdAt: string;
 };
 
+export type WorkflowVersionId = WorkflowHistory['versionId'];
+
 export type WorkflowVersion = WorkflowHistory & {
 	nodes: IWorkflowDb['nodes'];
 	connection: IWorkflowDb['connections'];
