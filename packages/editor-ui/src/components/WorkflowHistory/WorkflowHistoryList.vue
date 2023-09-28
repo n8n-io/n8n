@@ -99,7 +99,7 @@ const onItemMounted = ({
 </script>
 
 <template>
-	<ul :class="$style.list" ref="listElement">
+	<ul :class="$style.list" ref="listElement" data-test-id="workflow-history-list">
 		<workflow-history-list-item
 			v-for="(item, index) in props.items"
 			:key="item.versionId"

@@ -32,6 +32,10 @@ const renderComponent = createComponentRenderer(WorkflowHistoryList);
 let pinia: ReturnType<typeof createPinia>;
 
 describe('WorkflowHistoryList', () => {
+	beforeAll(() => {
+		Element.prototype.scrollTo = vi.fn();
+	});
+
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
@@ -78,6 +82,22 @@ describe('WorkflowHistoryList', () => {
 		]);
 
 		expect(listItems).toHaveLength(numberOfItems);
+	});
+
+	it('should scroll to active item', async () => {
+		const items = Array.from({ length: 30 }, workflowHistoryDataFactory);
+
+		const { getByTestId } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actionTypes,
+				activeItem: items[0],
+				requestNumberOfItems: 20,
+			},
+		});
+
+		expect(getByTestId('workflow-history-list').scrollTo).toHaveBeenCalled();
 	});
 
 	test.each(actionTypes)('should delegate %s event from item', async (action) => {
