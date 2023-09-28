@@ -132,26 +132,38 @@ export abstract class BaseCommand extends Command {
 		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 
 		if (isSelected && isAvailable && isLicensed) {
-			// allow reads from anywhere, allow writes to S3
+			LoggerProxy.debug(
+				'License found for external storage - object store to init in read-write mode',
+			);
+
 			await this._initObjectStoreService();
+
 			return;
 		}
 
 		if (isSelected && isAvailable && !isLicensed) {
-			// allow reads from anywhere, block writes to s3
+			LoggerProxy.debug(
+				'No license found for external storage - object store to init with writes blocked. To enable writes, please upgrade to a license that supports this feature.',
+			);
+
 			await this._initObjectStoreService({ isReadOnly: true });
+
 			return;
 		}
 
 		if (!isSelected && isAvailable) {
-			// allow reads from anywhere, no writes to S3 will occur
+			LoggerProxy.debug(
+				'External storage unselected but available - object store to init with writes unused',
+			);
+
 			await this._initObjectStoreService();
+
 			return;
 		}
 
 		if (isSelected && !isAvailable) {
 			throw new Error(
-				'External storage selected but unavailable. Please make external storage available, e.g. `export N8N_AVAILABLE_BINARY_DATA_MODES=filesystem,s3`',
+				'External storage selected but unavailable. Stopping n8n startup. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
 			);
 		}
 	}
@@ -171,7 +183,18 @@ export abstract class BaseCommand extends Command {
 			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
 		};
 
-		await objectStoreService.init(host, bucket, credentials, options);
+		LoggerProxy.debug('Initializing object store service');
+
+		try {
+			await objectStoreService.init(host, bucket, credentials);
+			objectStoreService.setReadonly(options.isReadOnly);
+
+			LoggerProxy.debug('Object store init completed');
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+
+			LoggerProxy.debug('Object store init failed', { error });
+		}
 	}
 
 	async initBinaryDataService() {

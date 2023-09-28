@@ -107,7 +107,13 @@ export class License {
 
 		const isReadonly = _features['feat:binaryDataS3'] === false;
 
-		Container.get(ObjectStoreService).setReadonly(isReadonly);
+		if (isReadonly) {
+			this.logger.debug(
+				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
+			);
+
+			Container.get(ObjectStoreService).setReadonly(true);
+		}
 	}
 
 	async saveCertStr(value: TLicenseBlock): Promise<void> {

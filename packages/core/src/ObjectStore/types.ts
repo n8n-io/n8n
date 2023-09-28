@@ -30,3 +30,5 @@ export type RequestOptions = {
 	body?: string | Buffer;
 	responseType?: ResponseType;
 };
+
+export type ConfigSchemaCredentials = { accountId: string; secretKey: string };

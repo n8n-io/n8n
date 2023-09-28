@@ -9,7 +9,13 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
-import type { Bucket, ListPage, RawListPage, RequestOptions } from './types';
+import type {
+	Bucket,
+	ConfigSchemaCredentials,
+	ListPage,
+	RawListPage,
+	RequestOptions,
+} from './types';
 import type { Readable } from 'stream';
 import type { BinaryData } from '..';
 
@@ -27,12 +33,7 @@ export class ObjectStoreService {
 
 	private logger = Logger;
 
-	async init(
-		host: string,
-		bucket: Bucket,
-		credentials: { accountId: string; secretKey: string },
-		options?: { isReadOnly: boolean },
-	) {
+	async init(host: string, bucket: Bucket, credentials: ConfigSchemaCredentials) {
 		this.host = host;
 		this.bucket.name = bucket.name;
 		this.bucket.region = bucket.region;
@@ -41,8 +42,6 @@ export class ObjectStoreService {
 			accessKeyId: credentials.accountId,
 			secretAccessKey: credentials.secretKey,
 		};
-
-		if (options?.isReadOnly) this.isReadOnly = true;
 
 		await this.checkConnection();
 
@@ -167,8 +166,6 @@ export class ObjectStoreService {
 
 	/**
 	 * List objects with a common prefix in the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 	 */
 	async list(prefix: string) {
 		const items = [];
@@ -189,7 +186,11 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * Fetch a page of objects with a common prefix in the configured bucket. Max 1000 per page.
+	 * Fetch a page of objects with a common prefix in the configured bucket.
+	 *
+	 * Max 1000 objects per page - set by AWS.
+	 *
+	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 	 */
 	async getListPage(prefix: string, nextPageToken?: string) {
 		const qs: Record<string, string | number> = { 'list-type': 2, prefix };
