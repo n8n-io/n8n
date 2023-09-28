@@ -107,7 +107,7 @@ export class License {
 
 		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
 		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isLicensed = _features['feat:binaryDataS3'] === false;
+		const isLicensed = _features['feat:binaryDataS3'];
 
 		if (isSelected && isAvailable && !isLicensed) {
 			this.logger.debug(
