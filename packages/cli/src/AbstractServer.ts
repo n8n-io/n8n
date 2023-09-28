@@ -20,6 +20,7 @@ import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { OrchestrationService } from './services/orchestration.service';
+import { OrchestrationHandlerService } from './services/orchestration.handler.service';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -118,6 +119,7 @@ export abstract class AbstractServer {
 		if (config.getEnv('executions.mode') === 'queue') {
 			// will start the redis connections
 			await Container.get(OrchestrationService).init();
+			await Container.get(OrchestrationHandlerService).init();
 		}
 	}
 
