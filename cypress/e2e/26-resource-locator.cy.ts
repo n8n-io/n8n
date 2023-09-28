@@ -19,8 +19,14 @@ describe('Resource Locator', () => {
 		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
 		ndv.getters.resourceLocator('documentId').should('be.visible');
 		ndv.getters.resourceLocator('sheetName').should('be.visible');
-		ndv.getters.resourceLocatorModeSelector('documentId').should('have.text', MODE_SELECTOR_LIST);
-		ndv.getters.resourceLocatorModeSelector('sheetName').should('have.text', MODE_SELECTOR_LIST);
+		ndv.getters
+			.resourceLocatorModeSelector('documentId')
+			.find('input')
+			.should('have.value', MODE_SELECTOR_LIST);
+		ndv.getters
+			.resourceLocatorModeSelector('sheetName')
+			.find('input')
+			.should('have.value', MODE_SELECTOR_LIST);
 	});
 
 	it('should show appropriate error when credentials are not set', () => {
