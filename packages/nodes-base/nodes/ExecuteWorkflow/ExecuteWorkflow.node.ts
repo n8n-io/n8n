@@ -184,6 +184,14 @@ export class ExecuteWorkflow implements INodeType {
 				}
 				return [returnData.flat()];
 			}
+			// } else {
+			// 	const returnData = [];
+			// 	for (let i = 0; i < items.length; i++) {
+			// 		const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source, i);
+			// 		returnData.push(await this.executeWorkflow(workflowInfo, items));
+			// 	}
+			// 	return [returnData.flat().flat()];
+			// }
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message } }]];
