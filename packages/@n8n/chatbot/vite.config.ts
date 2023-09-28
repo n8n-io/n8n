@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import vue from '@vitejs/plugin-vue';
 import icons from 'unplugin-icons/vite';
+import dts from 'vite-plugin-dts';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -12,6 +13,7 @@ export default defineConfig({
 		icons({
 			compiler: 'vue3',
 		}),
+		dts(),
 	],
 	resolve: {
 		alias: {
@@ -20,9 +22,9 @@ export default defineConfig({
 	},
 	build: {
 		lib: {
-			entry: resolve(__dirname, 'src', 'main.ts'),
+			entry: resolve(__dirname, 'src', 'index.ts'),
 			name: 'N8nChatBot',
-			fileName: (format) => `n8n-chatbot.${format}.js`,
+			fileName: (format) => `chatbot.${format}.js`,
 		},
 		rollupOptions: {
 			// make sure to externalize deps that shouldn't be bundled
