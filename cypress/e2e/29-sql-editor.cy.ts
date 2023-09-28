@@ -23,4 +23,20 @@ describe('SQL editors', () => {
 
 		cy.get('div.cm-activeLine').contains('SELECT * FROM `testTable` LIMIT 10');
 	});
+
+	it('should not push NDV header out with a lot of code in Postgres editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Postgres', { action: 'Execute a SQL query', keepNdvOpen: true });
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.sqlEditorContainer().get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
+	});
+
+	it('should not push NDV header out with a lot of code in MySQL editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('MySQL', { action: 'Execute a SQL query', keepNdvOpen: true });
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.sqlEditorContainer().get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
+	});
 });
