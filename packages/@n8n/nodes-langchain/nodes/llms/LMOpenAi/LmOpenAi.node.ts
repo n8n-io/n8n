@@ -102,7 +102,7 @@ export class LmOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'text-davinci-003',
+				default: 'gpt-3.5-turbo-instruct',
 			},
 			{
 				displayName: 'Options',
