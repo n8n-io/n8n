@@ -1,3 +1,5 @@
+@import 'highlight.js/styles/github.css';
+
 :root {
 	--chat--color-primary: #e74266;
 	--chat--color-primary-shade-50: #db4061;
@@ -9,6 +11,11 @@
 	--chat--color-medium: #d2d4d9;
 	--chat--color-dark: #101330;
 	--chat--color-disabled: #777980;
+	--chat--message--bot--background: #ffffff;
+	--chat--message--bot--color: #101330;
+	--chat--message--user--background: #20b69e;
+	--chat--message--user--color: #ffffff;
+	--chat--message--pre--background: rgba(0, 0, 0, 0.05);
 	--chat--spacing: 1rem;
 	--chat--border-radius: 0.25rem;
 	--chat--transition-duration: 0.15s;

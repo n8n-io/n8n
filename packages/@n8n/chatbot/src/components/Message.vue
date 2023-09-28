@@ -3,6 +3,8 @@
 import type { ChatMessage } from '@/types';
 import type { PropType } from 'vue';
 import { computed, toRefs } from 'vue';
+import VueMarkdown from 'vue-markdown-render';
+import hljs from 'highlight.js/lib/core';
 
 const props = defineProps({
 	message: {
@@ -19,11 +21,27 @@ const classes = computed(() => {
 		'chat-message-from-bot': message.value.sender === 'bot',
 	};
 });
+
+const markdownOptions = {
+	highlight(str: string, lang: string) {
+		if (lang && hljs.getLanguage(lang)) {
+			try {
+				return hljs.highlight(str, { language: lang }).value;
+			} catch {}
+		}
+
+		return ''; // use external default escaping
+	},
+};
 </script>
 <template>
 	<div class="chat-message" :class="classes">
 		<slot>
-			<pre>{{ message.text }}</pre>
+			<vue-markdown
+				class="chat-message-markdown"
+				:source="message.text"
+				:options="markdownOptions"
+			/>
 		</slot>
 	</div>
 </template>
@@ -40,21 +58,40 @@ const classes = computed(() => {
 	}
 
 	&.chat-message-from-bot {
-		background-color: var(--chat--message--bot--background, var(--chat--color-medium));
+		background-color: var(--chat--message--bot--background);
+		color: var(--chat--message--bot--color);
 		border-bottom-left-radius: 0;
 	}
 
 	&.chat-message-from-user {
-		background-color: var(--chat--message--bot--background, var(--chat--color-secondary));
+		background-color: var(--chat--message--user--background);
+		color: var(--chat--message--user--color);
 		margin-left: auto;
 		border-bottom-right-radius: 0;
 	}
 
-	pre {
-		font-family: inherit;
-		font-size: inherit;
-		margin: 0;
-		white-space: pre-wrap;
+	> .chat-message-markdown {
+		display: block;
+		box-sizing: border-box;
+
+		> *:first-child {
+			margin-top: 0;
+		}
+
+		> *:last-child {
+			margin-bottom: 0;
+		}
+
+		pre {
+			font-family: inherit;
+			font-size: inherit;
+			margin: 0;
+			white-space: pre-wrap;
+			box-sizing: border-box;
+			padding: var(--chat--spacing);
+			background: var(--chat--message--pre--background);
+			border-radius: var(--chat--border-radius);
+		}
 	}
 }
 </style>
