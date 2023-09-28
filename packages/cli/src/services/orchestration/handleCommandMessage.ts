@@ -35,7 +35,7 @@ export async function handleCommandMessage(messageString: string) {
 					LoggerProxy.error(
 						'Received command to reload license via Redis, but this should not have happened and is not supported on the main instance yet.',
 					);
-					return;
+					return message;
 				}
 				await Container.get(License).reload();
 				break;

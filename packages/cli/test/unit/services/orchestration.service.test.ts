@@ -92,7 +92,7 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should handle command messages from others', async () => {
-		jest.spyOn(LoggerProxy, 'warn');
+		jest.spyOn(LoggerProxy, 'error');
 		const responseFalseId = await handleCommandMessage(
 			JSON.stringify({
 				senderId: 'test',
@@ -102,8 +102,8 @@ describe('Orchestration Service', () => {
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(LoggerProxy.warn).toHaveBeenCalled();
-		jest.spyOn(LoggerProxy, 'warn').mockRestore();
+		expect(LoggerProxy.error).toHaveBeenCalled();
+		jest.spyOn(LoggerProxy, 'error').mockRestore();
 	});
 
 	test('should reject command messages from iteslf', async () => {
