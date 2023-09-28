@@ -5,23 +5,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import type { ChatbotOptions } from '@/types';
 import { ChatbotOptionsSymbol, defaultMountingTarget, defaultOptions } from '@/constants';
-
-function createDefaultMountingTarget(mountingTarget: string) {
-	const mountingTargetNode = document.querySelector(mountingTarget);
-	if (!mountingTargetNode) {
-		const generatedMountingTargetNode = document.createElement('div');
-
-		if (mountingTarget.startsWith('#')) {
-			generatedMountingTargetNode.id = mountingTarget.replace('#', '');
-		}
-
-		if (mountingTarget.startsWith('.')) {
-			generatedMountingTargetNode.className = mountingTarget.replace('.', '');
-		}
-
-		document.body.appendChild(generatedMountingTargetNode);
-	}
-}
+import { createDefaultMountingTarget } from '@/utils';
 
 export function createChatbot(options?: Partial<ChatbotOptions>) {
 	const resolvedOptions: ChatbotOptions = {
