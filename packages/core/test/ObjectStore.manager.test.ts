@@ -51,7 +51,7 @@ describe('getPath()', () => {
 
 describe('getAsBuffer()', () => {
 	it('should return a buffer', async () => {
-		// @ts-expect-error Overload signature seemingly causing Jest to misinfer the return type
+		// @ts-expect-error Overload signature seemingly causing the return type to be misinferred
 		objectStoreService.get.mockResolvedValue(mockBuffer);
 
 		const result = await objectStoreManager.getAsBuffer(fileId);
