@@ -16,5 +16,5 @@ export async function parseXml<T>(xml: string): Promise<T> {
 }
 
 export function writeBlockedMessage(filename: string) {
-	return `BLOCKED: Request to write file "${filename}" to object storage failed. This request was blocked because your current binary data mode is "s3" but storing binary data in S3 is not available with your current license. Please upgrade to a license that supports this feature, or set N8N_DEFAULT_BINARY_DATA_MODE to an option other than "s3".`;
+	return `Request to write file "${filename}" to object storage was blocked because S3 storage is not available with your current license. Please upgrade to a license that supports this feature, or set N8N_DEFAULT_BINARY_DATA_MODE to an option other than "s3".`;
 }

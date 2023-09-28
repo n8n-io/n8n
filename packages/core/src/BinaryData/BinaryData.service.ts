@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { readFile, stat } from 'fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
-
 import { UnknownBinaryDataManagerError, InvalidBinaryDataModeError } from './errors';
 import { LogCatch } from '../decorators/LogCatch.decorator';
 import { areValidModes, toBuffer } from './utils';
@@ -20,7 +19,9 @@ export class BinaryDataService {
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataModeError();
+		if (!areValidModes(config.availableModes)) {
+			throw new InvalidBinaryDataModeError();
+		}
 
 		this.mode = config.mode;
 

@@ -1,6 +1,7 @@
 import { Container } from 'typedi';
 import { mock } from 'jest-mock-extended';
 import { Duplex } from 'stream';
+
 import type { DeepPartial } from 'ts-essentials';
 
 export const mockInstance = <T>(
@@ -13,9 +14,9 @@ export const mockInstance = <T>(
 };
 
 export function toStream(buffer: Buffer) {
-	const d = new Duplex();
-	d.push(buffer);
-	d.push(null);
+	const duplexStream = new Duplex();
+	duplexStream.push(buffer);
+	duplexStream.push(null);
 
-	return d;
+	return duplexStream;
 }

@@ -3,12 +3,13 @@ import Container, { Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import { toBuffer } from './utils';
 import { ObjectStoreService } from '../ObjectStore/ObjectStore.service.ee';
+
 import type { Readable } from 'node:stream';
 import type { BinaryData } from './types';
 
 @Service()
 export class ObjectStoreManager implements BinaryData.Manager {
-	constructor(private readonly objectStoreService = Container.get(ObjectStoreService)) {} // @TODO: Fix
+	constructor(private readonly objectStoreService = Container.get(ObjectStoreService)) {}
 
 	async init() {
 		await this.objectStoreService.checkConnection();
@@ -71,11 +72,11 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	async copyByFilePath(
 		workflowId: string,
 		executionId: string,
-		sourceFilePath: string,
+		sourcePath: string,
 		metadata: BinaryData.PreWriteMetadata,
 	) {
 		const targetFileId = this.toFileId(workflowId, executionId);
-		const sourceFile = await fs.readFile(sourceFilePath);
+		const sourceFile = await fs.readFile(sourcePath);
 
 		await this.objectStoreService.put(targetFileId, sourceFile, metadata);
 
@@ -108,7 +109,7 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	// ----------------------------------
 
 	private toFileId(workflowId: string, executionId: string) {
-		if (!executionId) executionId = 'temp'; // missing in edge case, see PR #7244
+		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
 
 		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 	}

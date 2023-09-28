@@ -159,6 +159,8 @@ export abstract class BaseCommand extends Command {
 	private async _initObjectStoreService(options = { isReadOnly: false }) {
 		const objectStoreService = Container.get(ObjectStoreService);
 
+		const host = config.getEnv('externalStorage.s3.host');
+
 		const bucket = {
 			name: config.getEnv('externalStorage.s3.bucket.name'),
 			region: config.getEnv('externalStorage.s3.bucket.region'),
@@ -168,8 +170,6 @@ export abstract class BaseCommand extends Command {
 			accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
 			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
 		};
-
-		const host = config.getEnv('externalStorage.s3.host');
 
 		await objectStoreService.init(host, bucket, credentials, options);
 	}

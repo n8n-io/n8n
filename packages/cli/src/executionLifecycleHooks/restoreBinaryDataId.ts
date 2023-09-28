@@ -1,15 +1,14 @@
 import Container from 'typedi';
 import { BinaryDataService } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
+import type { BinaryData } from 'n8n-core';
 
 export function isMissingExecutionId(
 	fileId: string,
-	mode: 'filesystem' | 's3',
+	mode: BinaryData.NonDefaultMode,
 	uuidV4CharLength = 36,
 ) {
-	return mode === 'filesystem'
-		? uuidV4CharLength === fileId.length
-		: fileId.includes('/executions/temp/');
+	return mode === 'filesystem' ? uuidV4CharLength === fileId.length : fileId.includes('/temp/');
 }
 
 /**
@@ -34,12 +33,12 @@ export async function restoreBinaryDataId(run: IRun, executionId: string) {
 
 		if (!binaryDataId) return;
 
-		const [mode, fileId] = binaryDataId.split(':') as ['filesystem' | 's3', string];
+		const [mode, fileId] = binaryDataId.split(':') as [BinaryData.NonDefaultMode, string];
 
 		if (!isMissingExecutionId(fileId, mode)) return;
 
 		const correctFileId =
-			mode === 'filesystem' ? `${executionId}${fileId}` : fileId.replace('temp', executionId); // s3
+			mode === 'filesystem' ? `${executionId}${fileId}` : fileId.replace('temp', executionId);
 
 		await Container.get(BinaryDataService).rename(fileId, correctFileId);
 

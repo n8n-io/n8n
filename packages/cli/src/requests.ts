@@ -1,6 +1,7 @@
 import type express from 'express';
 import type {
 	BannerName,
+	IBinaryData,
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,

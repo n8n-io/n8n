@@ -77,7 +77,7 @@ export async function initNodeTypes() {
 export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
 	const binaryDataService = new BinaryDataService();
 	await binaryDataService.init({
-		mode: 'default',
+		mode,
 		availableModes: [mode],
 		localStoragePath: '',
 	});

@@ -5,7 +5,6 @@ import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
 import { isStream, parseXml, writeBlockedMessage } from './utils';
-import { ObjectStore } from './errors';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
@@ -240,7 +239,7 @@ export class ObjectStoreService {
 		return { status: 403, statusText: 'Forbidden', data: logMessage, headers: {}, config: {} };
 	}
 
-	private async request<T = unknown>(
+	private async request(
 		method: Method,
 		host: string,
 		rawPath = '',
@@ -271,10 +270,17 @@ export class ObjectStoreService {
 		if (responseType) config.responseType = responseType;
 
 		try {
-			this.logger.debug(`[Object Store service] Sending request to ${host}${path}`, { config });
-			return await axios.request<T>(config);
-		} catch (error) {
-			throw new ObjectStore.RequestFailedError(error, config);
+			this.logger.debug('Sending request to S3', { config });
+
+			return await axios.request<unknown>(config);
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+
+			const message = 'Request to S3 failed';
+
+			this.logger.error(message, { error, config });
+
+			throw new Error(message, { cause: { error, details: config } });
 		}
 	}
 }

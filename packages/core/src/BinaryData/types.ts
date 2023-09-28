@@ -4,8 +4,10 @@ import type { BINARY_DATA_MODES } from './utils';
 export namespace BinaryData {
 	export type Mode = (typeof BINARY_DATA_MODES)[number];
 
+	export type NonDefaultMode = Exclude<Mode, 'default'>;
+
 	export type Config = {
-		mode: 'default' | 'filesystem';
+		mode: Mode;
 		availableModes: string[];
 		localStoragePath: string;
 	};
@@ -37,15 +39,15 @@ export namespace BinaryData {
 		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
+		deleteMany(ids: IdsForDeletion): Promise<void>;
+
 		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
 		copyByFilePath(
 			workflowId: string,
 			executionId: string,
-			sourceFilePath: string,
+			sourcePath: string,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
-
-		deleteMany(ids: IdsForDeletion): Promise<void>;
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
