@@ -78,7 +78,7 @@ describe('NodeExecuteFunctions', () => {
 			expect(getBinaryDataBufferResponse).toEqual(inputData);
 		});
 
-		test.only("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
+		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
 			Container.set(BinaryDataService, new BinaryDataService());
 
 			// Setup a 'filesystem' binary data manager instance
