@@ -1,7 +1,12 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
-import type { BaseLanguageModel } from 'langchain/dist/base_language';
+import { BaseChatModel } from 'langchain/chat_models/base';
 import type { Tool } from 'langchain/tools';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
@@ -16,7 +21,12 @@ export async function conversationalAgentExecute(
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
 		0,
-	)) as BaseLanguageModel;
+	)) as BaseChatModel;
+
+	if (!(model instanceof BaseChatModel)) {
+		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
+	}
+
 	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;

@@ -1,4 +1,9 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { initializeAgentExecutorWithOptions } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
@@ -6,7 +11,7 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import type { BaseChatMemory } from 'langchain/memory';
-import type { OpenAIChat } from 'langchain/dist/llms/openai-chat';
+import { ChatOpenAI } from 'langchain/chat_models/openai';
 
 export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
@@ -15,7 +20,14 @@ export async function openAiFunctionsAgentExecute(
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
 		0,
-	)) as OpenAIChat;
+	)) as ChatOpenAI;
+
+	if (!(model instanceof ChatOpenAI)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'OpenAI Functions Agent requires OpenAI Chat Model',
+		);
+	}
 	const memory = (await this.getInputConnectionData(NodeConnectionType.AiMemory, 0)) as
 		| BaseChatMemory
 		| undefined;
