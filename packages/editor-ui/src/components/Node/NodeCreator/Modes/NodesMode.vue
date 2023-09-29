@@ -133,6 +133,7 @@ function onSelected(item: INodeCreateElement) {
 		pushViewStack({
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
+			info: view?.info ?? '',
 			items: view.items as INodeCreateElement[],
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,

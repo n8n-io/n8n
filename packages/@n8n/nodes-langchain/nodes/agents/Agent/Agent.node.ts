@@ -167,7 +167,7 @@ export class Agent implements INodeType {
 						name: 'Conversational Agent',
 						value: 'conversationalAgent',
 						description:
-							'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
+							'Selects tools to accomplish its task and uses memory to recall previous conversations',
 					},
 					{
 						name: 'OpenAI Functions Agent',
@@ -178,13 +178,12 @@ export class Agent implements INodeType {
 					{
 						name: 'ReAct Agent',
 						value: 'reActAgent',
-						description:
-							'Recalls previous dialogues from its memory and strategically select tools to accomplish a given task',
+						description: 'Strategically select tools to accomplish a given task',
 					},
 					{
 						name: 'SQL Agent',
 						value: 'sqlAgent',
-						description: 'Answers questions over an SQL database',
+						description: 'Answers questions about data in an SQL database',
 					},
 				],
 				default: 'conversationalAgent',

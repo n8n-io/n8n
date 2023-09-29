@@ -25,7 +25,6 @@ import {
 	AI_CATEGORY_TOOLS,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	AI_CATEGORY_EMBEDDING,
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
@@ -58,6 +57,7 @@ export interface NodeViewItem {
 interface NodeView {
 	value: string;
 	title: string;
+	info?: string;
 	subtitle?: string;
 	items: NodeViewItem[];
 }
@@ -92,19 +92,8 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		value: AI_NODE_CREATOR_VIEW,
 		title: i18n.baseText('nodeCreator.aiPanel.aiNodes'),
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
+		info: i18n.baseText('nodeCreator.aiPanel.infoBox'),
 		items: [
-			{
-				key: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-				type: 'node',
-				properties: {
-					group: [],
-					name: MANUAL_CHAT_TRIGGER_NODE_TYPE,
-					displayName: 'Manual Chat Trigger',
-					title: 'Manual Chat Trigger',
-					description: 'Runs the flow on new manual chat message',
-					icon: 'fa:comments',
-				},
-			},
 			...chainNodes,
 			...agentNodes,
 			{
@@ -311,18 +300,6 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 		],
 	};
 
-	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
-	if (hasAINodes)
-		view.items.push({
-			key: AI_NODE_CREATOR_VIEW,
-			type: 'view',
-			properties: {
-				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
-				icon: 'robot',
-				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
-			},
-		});
-
 	return view;
 }
 
@@ -377,15 +354,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 					icon: 'file-alt',
 				},
 			},
-			{
-				key: TRIGGER_NODE_CREATOR_VIEW,
-				type: 'view',
-				properties: {
-					title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
-					icon: 'bolt',
-					description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
-				},
-			},
 		],
 	};
 
@@ -400,6 +368,16 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
 			},
 		});
+
+	view.items.push({
+		key: TRIGGER_NODE_CREATOR_VIEW,
+		type: 'view',
+		properties: {
+			title: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTrigger'),
+			icon: 'bolt',
+			description: i18n.baseText('nodeCreator.triggerHelperPanel.addAnotherTriggerDescription'),
+		},
+	});
 
 	return view;
 }

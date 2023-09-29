@@ -12,7 +12,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Cohere',
+		displayName: 'Cohere Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmCohere',
 		icon: 'file:cohere.svg',
@@ -20,7 +20,7 @@ export class LmCohere implements INodeType {
 		version: 1,
 		description: 'Language Model Cohere',
 		defaults: {
-			name: 'Cohere',
+			name: 'Cohere Model',
 		},
 		codex: {
 			categories: ['AI'],
