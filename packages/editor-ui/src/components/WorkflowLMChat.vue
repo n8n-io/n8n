@@ -93,6 +93,13 @@
 					type="primary"
 					data-test-id="workflow-chat-button"
 				/>
+
+				<n8n-info-tip class="mt-s">
+					{{ $locale.baseText('chatEmbed.infoTip.description') }}
+					<a @click="openChatEmbedModal">
+						{{ $locale.baseText('chatEmbed.infoTip.link') }}
+					</a>
+				</n8n-info-tip>
 			</div>
 		</template>
 	</Modal>
@@ -109,6 +116,7 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
+	CHAT_EMBED_MODAL_KEY,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -117,7 +125,7 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useWorkflowsStore } from '@/stores';
+import { useUIStore, useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
 import {
 	type INode,
@@ -173,7 +181,7 @@ export default defineComponent({
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore),
+		...mapStores(useWorkflowsStore, useUIStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -472,6 +480,9 @@ export default defineComponent({
 			void this.$externalHooks().run('workflowSettings.dialogVisibleChanged', {
 				dialogVisible: false,
 			});
+		},
+		openChatEmbedModal() {
+			this.uiStore.openModal(CHAT_EMBED_MODAL_KEY);
 		},
 	},
 });
