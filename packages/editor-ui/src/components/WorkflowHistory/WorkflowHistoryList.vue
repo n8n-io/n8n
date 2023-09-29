@@ -93,7 +93,7 @@ const onItemMounted = ({
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 
-	if (index === props.items.length - 1) {
+	if (index === props.items.length - 1 && props.items.length >= props.requestNumberOfItems) {
 		observeElement(listElement.value?.children[index] as Element);
 	}
 };
