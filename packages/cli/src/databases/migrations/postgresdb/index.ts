@@ -47,6 +47,8 @@ import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175
 import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
 import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
+import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
+import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -97,4 +99,6 @@ export const postgresMigrations: Migration[] = [
 	DisallowOrphanExecutions1693554410387,
 	ExecutionSoftDelete1693491613982,
 	AddWorkflowMetadata1695128658538,
+	MigrateToTimestampTz1694091729095,
+	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 ];
