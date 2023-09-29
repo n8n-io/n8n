@@ -335,5 +335,15 @@ export const optionsProperty: INodeProperties = {
 			default: 'data',
 			description: 'Name of the property to return the data of instead of the whole JSON',
 		},
+		{
+			displayName: 'Domain Allowlist',
+			name: 'domainAllowlist',
+			type: 'string',
+			default: '',
+			description:
+				'Domains to allow requests from. Separate multiple by comma. Wildcards are supported.',
+			placeholder: '*.example.com',
+			displayOptions: {},
+		},
 	],
 };
