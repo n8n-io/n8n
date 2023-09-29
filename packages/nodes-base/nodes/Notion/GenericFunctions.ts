@@ -81,7 +81,6 @@ export async function notionApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -107,6 +106,67 @@ export async function notionApiRequestAllItems(
 	} while (responseData.has_more !== false);
 
 	return returnData;
+}
+
+export async function notionApiRequestGetBlockChildrens(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	blocks: IDataObject[],
+	limit?: number,
+) {
+	if (blocks.length === 0) {
+		return;
+	}
+	const responseData = blocks;
+
+	for (const block of responseData) {
+		if (block.type === 'child_page') continue;
+
+		if (block.has_children) {
+			let childrens;
+
+			if (limit === undefined) {
+				childrens = await notionApiRequestAllItems.call(
+					this,
+					'results',
+					'GET',
+					`/blocks/${block.id}/children`,
+				);
+			} else {
+				const page_size = limit;
+				childrens = await notionApiRequest.call(
+					this,
+					'GET',
+					`/blocks/${block.id}/children`,
+					{},
+					{ page_size },
+				);
+				childrens = childrens.results;
+
+				if (childrens.length >= limit) {
+					childrens = childrens.slice(0, limit);
+					block.childrens = childrens.map((entry: IDataObject) => ({
+						object: entry.object,
+						parent_id: block.id,
+						...entry,
+					}));
+					return responseData;
+				} else {
+					limit = limit - childrens.length;
+				}
+			}
+
+			block.childrens = await notionApiRequestGetBlockChildrens.call(
+				this,
+				(childrens || []).map((entry: IDataObject) => ({
+					object: entry.object,
+					parent_id: block.id,
+					...entry,
+				})),
+			);
+		}
+	}
+
+	return responseData;
 }
 
 export function getBlockTypes() {
