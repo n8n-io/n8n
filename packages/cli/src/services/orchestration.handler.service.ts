@@ -9,12 +9,17 @@ import {
 import { handleWorkerResponseMessage } from './orchestration/handleWorkerResponseMessage';
 import { handleCommandMessage } from './orchestration/handleCommandMessage';
 import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
+import config from '@/config';
 
 @Service()
 export class OrchestrationHandlerService {
 	redisSubscriber: RedisServicePubSubSubscriber;
 
-	constructor(readonly redisService: RedisService) {}
+	isMainInstance: boolean;
+
+	constructor(readonly redisService: RedisService) {
+		this.isMainInstance = config.get('generic.instanceType') === 'main';
+	}
 
 	async init() {
 		await this.initSubscriber();
@@ -27,9 +32,12 @@ export class OrchestrationHandlerService {
 	private async initSubscriber() {
 		this.redisSubscriber = await this.redisService.getPubSubSubscriber();
 
-		await this.redisSubscriber.subscribeToWorkerResponseChannel();
 		await this.redisSubscriber.subscribeToCommandChannel();
-		await this.redisSubscriber.subscribeToEventLog();
+
+		if (this.isMainInstance) {
+			await this.redisSubscriber.subscribeToWorkerResponseChannel();
+			await this.redisSubscriber.subscribeToEventLog();
+		}
 
 		this.redisSubscriber.addMessageHandler(
 			'OrchestrationMessageReceiver',
