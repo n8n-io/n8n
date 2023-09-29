@@ -2,15 +2,8 @@
   "name": "@n8n/n8n-nodes-langchain",
   "version": "0.1.0",
   "description": "",
-  "keywords": [
-    "n8n-community-node-package"
-  ],
-  "license": "MIT",
-  "homepage": "",
-  "author": {
-    "name": "",
-    "email": ""
-  },
+  "license": "SEE LICENSE IN LICENSE.md",
+  "homepage": "https://n8n.io",
   "repository": {
     "type": "git",
     "url": "https://github.com/n8n-io/n8n-nodes-langchain.git"
