@@ -12,6 +12,7 @@ import type {
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import { useUIStore } from '@/stores/ui.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -32,6 +33,7 @@ const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
+const uiStore = useUIStore();
 
 const requestNumberOfItems = ref(20);
 
@@ -113,6 +115,10 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 	}
 };
 
+const onUpgrade = () => {
+	uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+};
+
 watchEffect(async () => {
 	if (route.params.versionId) {
 		const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
@@ -144,9 +150,12 @@ watchEffect(async () => {
 			:active-item="workflowHistoryStore.activeWorkflowVersion"
 			:action-types="workflowHistoryActionTypes"
 			:request-number-of-items="requestNumberOfItems"
+			:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
+			:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
 			@action="onAction"
 			@preview="onPreview"
 			@load-more="loadMore"
+			@upgrade="onUpgrade"
 		/>
 	</div>
 </template>

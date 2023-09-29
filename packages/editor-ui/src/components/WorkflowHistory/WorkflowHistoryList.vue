@@ -16,9 +16,13 @@ const props = withDefaults(
 		activeItem: WorkflowHistory | null;
 		actionTypes: WorkflowHistoryActionTypes;
 		requestNumberOfItems: number;
+		shouldUpgrade: boolean;
+		maxRetentionPeriod: number;
 	}>(),
 	{
 		items: () => [],
+		shouldUpgrade: false,
+		maxRetentionPeriod: 0,
 	},
 );
 const emit = defineEmits<{
@@ -28,6 +32,7 @@ const emit = defineEmits<{
 	): void;
 	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
+	(event: 'upgrade'): void;
 }>();
 
 const i18n = useI18n();
@@ -117,6 +122,22 @@ const onItemMounted = ({
 			<br />
 			{{ i18n.baseText('workflowHistory.hint') }}
 		</li>
+		<li v-if="props.shouldUpgrade && props.maxRetentionPeriod > 0" :class="$style.retention">
+			<span>
+				{{
+					i18n.baseText('workflowHistory.limit', {
+						interpolate: { maxRetentionPeriod: props.maxRetentionPeriod },
+					})
+				}}
+			</span>
+			<i18n-t keypath="workflowHistory.upgrade" tag="span">
+				<template #link>
+					<a href="#" @click="emit('upgrade')">
+						{{ i18n.baseText('workflowHistory.upgrade.link') }}
+					</a>
+				</template>
+			</i18n-t>
+		</li>
 	</ul>
 </template>
 
@@ -148,5 +169,13 @@ const onItemMounted = ({
 	color: var(--color-text-base);
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
+}
+
+.retention {
+	display: grid;
+	padding: var(--spacing-s);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-loose);
+	text-align: center;
 }
 </style>

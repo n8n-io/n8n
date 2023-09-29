@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 import * as whApi from '@/api/workflowHistory';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -13,6 +13,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 
 	const workflowHistory = ref<WorkflowHistory[]>([]);
 	const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
+	const maxRetentionPeriod = ref(0);
+	const retentionPeriod = ref(0);
+	const shouldUpgrade = computed(() => maxRetentionPeriod.value === retentionPeriod.value);
 
 	const getWorkflowHistory = async (
 		workflowId: string,
@@ -47,5 +50,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		setActiveWorkflowVersion,
 		workflowHistory,
 		activeWorkflowVersion,
+		shouldUpgrade,
+		maxRetentionPeriod,
 	};
 });
