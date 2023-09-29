@@ -300,6 +300,18 @@ export function TriggerView(nodes: SimplifiedNodeType[]) {
 		],
 	};
 
+	const hasAINodes = (nodes ?? []).some((node) => node.codex?.categories?.includes(AI_SUBCATEGORY));
+	if (hasAINodes)
+		view.items.push({
+			key: AI_NODE_CREATOR_VIEW,
+			type: 'view',
+			properties: {
+				title: i18n.baseText('nodeCreator.aiPanel.langchainAiNodes'),
+				icon: 'robot',
+				description: i18n.baseText('nodeCreator.aiPanel.nodesForAi'),
+			},
+		});
+
 	return view;
 }
 
