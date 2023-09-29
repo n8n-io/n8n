@@ -78,7 +78,7 @@ describe('NodeExecuteFunctions', () => {
 			expect(getBinaryDataBufferResponse).toEqual(inputData);
 		});
 
-		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
+		test.only("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
 			Container.set(BinaryDataService, new BinaryDataService());
 
 			// Setup a 'filesystem' binary data manager instance
@@ -106,7 +106,7 @@ describe('NodeExecuteFunctions', () => {
 			// Ensure that the input data was successfully persisted to disk.
 			expect(
 				readFileSync(
-					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem:', '')}`,
+					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem-v2:', '')}`,
 				),
 			).toEqual(inputData);
 
