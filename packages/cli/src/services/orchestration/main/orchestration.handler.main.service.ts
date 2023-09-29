@@ -6,7 +6,7 @@ import {
 } from '../../redis/RedisServiceHelper';
 import { handleWorkerResponseMessageMain } from './handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from './handleCommandMessageMain';
-import { MessageEventBus } from '../../../eventbus/MessageEventBus/MessageEventBus';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { OrchestrationHandlerService } from '../../orchestration.handler.base.service';
 
 @Service()

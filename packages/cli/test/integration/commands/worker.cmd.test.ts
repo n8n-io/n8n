@@ -17,8 +17,8 @@ import { NodeTypes } from '@/NodeTypes';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { RedisService } from '@/services/redis.service';
-import { OrchestrationHandlerWorkerService } from '../../../src/services/orchestration/worker/orchestration.handler.worker.service';
-import { OrchestrationWorkerService } from '../../../src/services/orchestration/worker/orchestration.worker.service';
+import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 

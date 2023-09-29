@@ -18,8 +18,20 @@ export abstract class OrchestrationService {
 		return config.get('generic.instanceType') === 'main';
 	}
 
+	get isWebhookInstance(): boolean {
+		return config.get('generic.instanceType') === 'webhook';
+	}
+
+	get isWorkerInstance(): boolean {
+		return config.get('generic.instanceType') === 'worker';
+	}
+
 	constructor() {
 		this.redisService = Container.get(RedisService);
+	}
+
+	sanityCheck(): boolean {
+		return this.initialized && this.isQueueMode;
 	}
 
 	async init() {

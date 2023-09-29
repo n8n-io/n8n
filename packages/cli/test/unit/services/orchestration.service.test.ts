@@ -7,9 +7,9 @@ import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisSer
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
-import { handleWorkerResponseMessageMain } from '../../../src/services/orchestration/main/handleWorkerResponseMessageMain';
-import { handleCommandMessageMain } from '../../../src/services/orchestration/main/handleCommandMessageMain';
-import { OrchestrationHandlerMainService } from '../../../src/services/orchestration/main/orchestration.handler.main.service';
+import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
+import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 const os = Container.get(OrchestrationMainService);
 const handler = Container.get(OrchestrationHandlerMainService);
