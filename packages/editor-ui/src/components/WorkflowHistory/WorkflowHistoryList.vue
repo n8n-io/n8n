@@ -56,7 +56,7 @@ const observeElement = (element: Element) => {
 				observer.value?.unobserve(element);
 				observer.value?.disconnect();
 				observer.value = null;
-				emit('loadMore', { take: props.requestNumberOfItems });
+				emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length });
 			}
 		},
 		{
