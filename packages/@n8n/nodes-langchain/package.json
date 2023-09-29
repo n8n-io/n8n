@@ -47,7 +47,6 @@
     "nodes": [
       "dist/nodes/agents/Agent/Agent.node.js",
       "dist/nodes/chains/ChainSummarization/ChainSummarization.node.js",
-      "dist/nodes/chains/ChainStructuredOutput/ChainStructuredOutput.node.js",
       "dist/nodes/chains/ChainLLM/ChainLlm.node.js",
       "dist/nodes/chains/ChainRetrievalQA/ChainRetrievalQa.node.js",
       "dist/nodes/code/Code.node.js",
