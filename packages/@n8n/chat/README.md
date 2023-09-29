@@ -101,7 +101,7 @@ The default options are:
 createChat({
 	webhookUrl: '',
 	webhookConfig: {
-		method: 'GET',
+		method: 'POST',
 		headers: {}
 	},
 	target: '#n8n-chat',
@@ -134,7 +134,7 @@ createChat({
 
 ### `webhookConfig`
 - **Type**: `{ method: string, headers: Record<string, string> }`
-- **Default**: `{ method: 'GET', headers: {} }`
+- **Default**: `{ method: 'POST', headers: {} }`
 - **Description**: The configuration for the Webhook request.
 
 ### `target`

@@ -3,7 +3,7 @@ import type { ChatOptions } from '@/types';
 export const defaultOptions: ChatOptions = {
 	webhookUrl: 'http://localhost:5678',
 	webhookConfig: {
-		method: 'GET',
+		method: 'POST',
 		headers: {},
 	},
 	target: '#n8n-chat',
