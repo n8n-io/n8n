@@ -46,7 +46,7 @@ const dummyMessages: ChatMessage[] = [
 	},
 	{
 		id: '6',
-		text: 'This is a chatbot app powered by n8n',
+		text: 'This is a chat app powered by n8n',
 		sender: 'bot',
 		createdAt: '2021-08-10T12:00:00.000Z',
 	},

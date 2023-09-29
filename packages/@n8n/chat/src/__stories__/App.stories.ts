@@ -1,21 +1,21 @@
 import type { StoryObj } from '@storybook/vue3';
-import type { ChatbotOptions } from '@/types';
-import { createChatbot } from '@/index';
+import type { ChatOptions } from '@/types';
+import { createChat } from '@/index';
 import { onMounted } from 'vue';
 
 const webhookUrl = 'http://localhost:5678/webhook/513107b3-6f3a-4a1e-af21-659f0ed14183';
 
 const meta = {
-	title: 'Chatbot',
-	render: (args: Partial<ChatbotOptions>) => ({
+	title: 'Chat',
+	render: (args: Partial<ChatOptions>) => ({
 		setup() {
 			onMounted(() => {
-				createChatbot(args);
+				createChat(args);
 			});
 
 			return {};
 		},
-		template: '<div id="n8n-chatbot" />',
+		template: '<div id="n8n-chat" />',
 	}),
 	parameters: {
 		layout: 'fullscreen',
@@ -30,12 +30,12 @@ export const Fullscreen: Story = {
 	args: {
 		webhookUrl,
 		mode: 'fullscreen',
-	} satisfies Partial<ChatbotOptions>,
+	} satisfies Partial<ChatOptions>,
 };
 
 export const Windowed: Story = {
 	args: {
 		webhookUrl,
 		mode: 'window',
-	} satisfies Partial<ChatbotOptions>,
+	} satisfies Partial<ChatOptions>,
 };

@@ -23,8 +23,8 @@ export default defineConfig({
 	build: {
 		lib: {
 			entry: resolve(__dirname, 'src', 'index.ts'),
-			name: 'N8nChatBot',
-			fileName: (format) => `chatbot.${format}.js`,
+			name: 'N8nChat',
+			fileName: (format) => `chat.${format}.js`,
 		},
 		rollupOptions: {
 			// make sure to externalize deps that shouldn't be bundled

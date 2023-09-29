@@ -1,9 +1,9 @@
 import { inject } from 'vue';
-import { ChatbotOptionsSymbol } from '@/constants';
-import type { ChatbotOptions } from '@/types';
+import { ChatOptionsSymbol } from '@/constants';
+import type { ChatOptions } from '@/types';
 
 export function useOptions() {
-	const options = inject(ChatbotOptionsSymbol) as ChatbotOptions;
+	const options = inject(ChatOptionsSymbol) as ChatOptions;
 
 	return {
 		options,

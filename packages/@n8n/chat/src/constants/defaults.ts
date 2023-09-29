@@ -1,8 +1,12 @@
-import type { ChatbotOptions } from '@/types';
+import type { ChatOptions } from '@/types';
 
-export const defaultOptions: ChatbotOptions = {
+export const defaultOptions: ChatOptions = {
 	webhookUrl: 'http://localhost:5678',
-	target: '#n8n-chatbot',
+	webhookConfig: {
+		method: 'GET',
+		headers: {},
+	},
+	target: '#n8n-chat',
 	mode: 'window',
 	defaultLanguage: 'en',
 	initialMessages: ['Hi there! 👋', 'My name is Nathan. How can I assist you today?'],
@@ -19,4 +23,4 @@ export const defaultOptions: ChatbotOptions = {
 	poweredBy: true,
 };
 
-export const defaultMountingTarget = '#n8n-chatbot';
+export const defaultMountingTarget = '#n8n-chat';

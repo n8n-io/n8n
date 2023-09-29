@@ -1,4 +1,4 @@
 import type { InjectionKey } from 'vue';
-import type { ChatbotOptions } from '@/types';
+import type { ChatOptions } from '@/types';
 
-export const ChatbotOptionsSymbol = Symbol('ChatbotOptions') as InjectionKey<ChatbotOptions>;
+export const ChatOptionsSymbol = Symbol('ChatOptions') as InjectionKey<ChatOptions>;

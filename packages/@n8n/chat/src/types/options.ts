@@ -1,8 +1,12 @@
-export interface ChatbotOptions {
+export interface ChatOptions {
 	webhookUrl: string;
+	webhookConfig?: {
+		method?: 'GET' | 'POST';
+		headers?: Record<string, string>;
+	};
 	target?: string | Element;
 	mode?: 'window' | 'fullscreen';
-	defaultLanguage: 'en';
+	defaultLanguage?: 'en';
 	initialMessages?: string[];
 	i18n: Record<
 		string,

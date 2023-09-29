@@ -3,8 +3,9 @@
 This is a chatbot for n8n. It allows to execute AI Workflows via chat.
 
 ## Pre-requisites
-Create a n8n workflow which you want to execute via chat. The workflow has to be accessible via Webhook.
+Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Webhook** node and return data using the **Respond to Webhook** node.
 
+[See example workflow](/resources/workflow.json)
 
 ## Installation
 
@@ -20,8 +21,10 @@ Create a n8n workflow which you want to execute via chat. The workflow has to be
 ```
 
 ## How it works
-Each Chatbot request is sent to the n8n webhook. The response is then sent back to the Chatbot. The request is accompanied by an `action` query parameter.
+Each Chat request is sent to the n8n Webhook endpoint, which then sends back a response.
 
-`action` can be one of:
-- `loadPreviousSession`: When the user opens the Chatbot again and the previous chat session should be loaded
-- `sendMessage`: When the user sends a message
+Each request is accompanied by an `action` query parameter, where `action` can be one of:
+- `loadPreviousSession` - When the user opens the Chatbot again and the previous chat session should be loaded
+- `sendMessage` - When the user sends a message
+
+

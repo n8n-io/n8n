@@ -1,5 +1,5 @@
 {
-  "name": "@n8n/chatbot",
+  "name": "@n8n/chat",
   "version": "0.0.1",
   "scripts": {
     "dev": "npm run storybook",
@@ -15,13 +15,13 @@
     "storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build"
   },
-  "main": "./chatbot.umd.cjs",
-  "module": "./chatbot.js",
+  "main": "./chat.umd.cjs",
+  "module": "./chat.js",
   "types": "./types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./chatbot.js",
-      "require": "./chatbot.umd.cjs"
+      "import": "./chat.js",
+      "require": "./chat.umd.cjs"
     },
     "./style.css": {
       "import": "./style.css",
