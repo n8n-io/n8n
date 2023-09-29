@@ -1,9 +1,10 @@
-import type {
-	IExecuteFunctions,
-	IExecuteWorkflowInfo,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+import {
+	NodeOperationError,
+	type IExecuteFunctions,
+	type IExecuteWorkflowInfo,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
@@ -24,23 +25,6 @@ export class ExecuteWorkflow implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
-			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Run Once for All Items',
-						value: 'runOnceForAllItems',
-					},
-					{
-						name: 'Run Once for Each Item',
-						value: 'runOnceForEachItem',
-					},
-				],
-				default: 'runOnceForAllItems',
-			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -164,34 +148,59 @@ export class ExecuteWorkflow implements INodeType {
 				type: 'notice',
 				default: '',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Send Items Separately',
+						name: 'sendSeparately',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to send items separately to the executed workflow rather than sending them all at once. Use it to send each item to a different workflow.',
+					},
+				],
+			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
-		const mode = this.getNodeParameter('mode', 0) as string;
+		const sendSeparately = this.getNodeParameter('options.sendSeparately', 0, false) as boolean;
 
 		try {
 			const items = this.getInputData();
-			if (mode === 'runOnceForAllItems') {
+			if (sendSeparately) {
+				const returnData = [];
+
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const workflowInfo = await getWorkflowInfo.call(this, source, i);
+						const workflowResult = await this.executeWorkflow(workflowInfo, [items[i]]);
+
+						if (Array.isArray(workflowResult) && workflowResult.length > 0) {
+							returnData.push(workflowResult[0]);
+						} else {
+							returnData.push([]);
+						}
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), error, {
+							message: `Error executing workflow with item at index ${i}`,
+							description: error.message,
+							itemIndex: i,
+						});
+					}
+				}
+				const flattenedData = returnData.flat();
+				return [flattenedData];
+			} else {
 				const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source);
 				return await this.executeWorkflow(workflowInfo, items);
-			} else {
-				const returnData = [];
-				for (let i = 0; i < items.length; i++) {
-					const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source, i);
-					returnData.push((await this.executeWorkflow(workflowInfo, [items[i]]))[0]);
-				}
-				return [returnData.flat()];
 			}
-			// } else {
-			// 	const returnData = [];
-			// 	for (let i = 0; i < items.length; i++) {
-			// 		const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source, i);
-			// 		returnData.push(await this.executeWorkflow(workflowInfo, items));
-			// 	}
-			// 	return [returnData.flat().flat()];
-			// }
 		} catch (error) {
 			if (this.continueOnFail()) {
 				return [[{ json: { error: error.message } }]];
