@@ -8,7 +8,7 @@ export function createDefaultMountingTarget(mountingTarget: string) {
 		}
 
 		if (mountingTarget.startsWith('.')) {
-			generatedMountingTargetNode.className = mountingTarget.replace('.', '');
+			generatedMountingTargetNode.classList.add(mountingTarget.replace('.', ''));
 		}
 
 		document.body.appendChild(generatedMountingTargetNode);

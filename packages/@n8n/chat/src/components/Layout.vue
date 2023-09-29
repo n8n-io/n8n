@@ -40,6 +40,7 @@ onBeforeUnmount(() => {
 	width: 100%;
 	height: 100%;
 	display: flex;
+	overflow-y: auto;
 	flex-direction: column;
 	font-family: var(
 		--chat--font-family,
@@ -69,6 +70,7 @@ onBeforeUnmount(() => {
 		flex-direction: column;
 		overflow-y: auto;
 		position: relative;
+		min-height: 100px;
 	}
 
 	.chat-footer {

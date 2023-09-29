@@ -47,6 +47,7 @@ function toggle() {
 	max-height: calc(100% - var(--chat--window--bottom, var(--chat--spacing)) * 2);
 
 	.chat-window {
+		display: flex;
 		width: var(--chat--window--width);
 		height: var(--chat--window--height);
 		max-width: 100%;
@@ -56,6 +57,12 @@ function toggle() {
 		margin-bottom: var(--chat--window--margin-bottom, var(--chat--spacing));
 		overflow: hidden;
 		transform-origin: bottom right;
+
+		.chat-layout {
+			width: auto;
+			height: auto;
+			flex: 1;
+		}
 	}
 
 	.chat-window-toggle {
