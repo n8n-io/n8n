@@ -42,13 +42,6 @@ const i18n = useI18n();
 					:title="i18n.baseText('nodeCreator.nodeItem.triggerIconTitle')"
 					:class="$style.triggerIcon"
 				/>
-				<font-awesome-icon
-					icon="link"
-					v-if="isAi"
-					size="xs"
-					:title="i18n.baseText('nodeCreator.nodeItem.aiIconTitle')"
-					:class="$style.aiIcon"
-				/>
 				<n8n-tooltip
 					v-if="!!$slots.tooltip"
 					placement="top"

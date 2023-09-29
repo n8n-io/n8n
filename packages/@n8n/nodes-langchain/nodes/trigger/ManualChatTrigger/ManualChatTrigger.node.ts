@@ -21,13 +21,16 @@ export class ManualChatTrigger implements INodeType {
 			color: '#909298',
 		},
 		codex: {
-			categories: ['AI'],
+			categories: ['Core Nodes'],
 			resources: {
 				primaryDocumentation: [
 					{
 						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.manualchattrigger/',
 					},
 				],
+			},
+			subcategories: {
+				'Core Nodes': ['Other Trigger Nodes'],
 			},
 		},
 		inputs: [],

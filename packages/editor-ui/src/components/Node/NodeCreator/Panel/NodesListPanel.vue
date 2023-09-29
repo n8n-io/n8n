@@ -84,6 +84,7 @@ watch(
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
 			items: view.items as INodeCreateElement[],
+			info: view.info,
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
@@ -157,6 +158,12 @@ function onBackButton() {
 				@update:modelValue="onSearch"
 			/>
 			<div :class="$style.renderedItems">
+				<n8n-notice
+					v-if="activeViewStack.info && !activeViewStack.search"
+					:class="$style.info"
+					:content="activeViewStack.info"
+					theme="info"
+				/>
 				<!-- Actions mode -->
 				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
 
@@ -190,6 +197,9 @@ function onBackButton() {
 	// Make sure the leaving panel stays on top
 	// for the slide-out panel effect
 	z-index: 1;
+}
+.info {
+	margin: var(--spacing-2xs) var(--spacing-s);
 }
 .backButton {
 	background: transparent;
@@ -289,8 +299,6 @@ function onBackButton() {
 <style lang="scss">
 @each $node-type in $supplemental-node-types {
 	.nodes-list-panel-#{$node-type} .nodes-list-panel-header {
-		color: var(--node-type-#{$node-type}-color);
-
 		.n8n-node-icon svg {
 			color: var(--node-type-#{$node-type}-color);
 		}
