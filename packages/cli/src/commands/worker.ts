@@ -32,12 +32,12 @@ import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { eventBus } from '../eventbus';
-import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
-import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
-import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
+import { eventBus } from '@/eventbus';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { IConfig } from '@oclif/config';
+import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -57,8 +57,6 @@ export class Worker extends BaseCommand {
 	} = {};
 
 	static jobQueue: JobQueue;
-
-	redisPublisher: RedisServicePubSubPublisher;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -268,8 +266,17 @@ export class Worker extends BaseCommand {
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
 		await this.initEventBus();
-		await this.initRedis();
+		await this.initOrchestration();
 		await this.initQueue();
+
+		await Container.get(OrchestrationWorkerService).publishToEventLog(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId: this.queueModeId,
+				},
+			}),
+		);
 	}
 
 	async initEventBus() {
@@ -284,29 +291,14 @@ export class Worker extends BaseCommand {
 	 * A subscription connection to redis is created to subscribe to commands from the main process
 	 * The subscription connection adds a handler to handle the command messages
 	 */
-	async initRedis() {
-		this.redisPublisher = Container.get(RedisServicePubSubPublisher);
-		this.redisSubscriber = Container.get(RedisServicePubSubSubscriber);
-		await this.redisPublisher.init();
-		await this.redisPublisher.publishToEventLog(
-			new EventMessageGeneric({
-				eventName: 'n8n.worker.started',
-				payload: {
-					workerId: this.queueModeId,
-				},
-			}),
-		);
-		await this.redisSubscriber.subscribeToCommandChannel();
-		this.redisSubscriber.addMessageHandler(
-			'WorkerCommandReceivedHandler',
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			getWorkerCommandReceivedHandler({
-				queueModeId: this.queueModeId,
-				instanceId: this.instanceId,
-				redisPublisher: this.redisPublisher,
-				getRunningJobIds: () => Object.keys(Worker.runningJobs),
-			}),
-		);
+	async initOrchestration() {
+		await Container.get(OrchestrationWorkerService).init();
+		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
+			queueModeId: this.queueModeId,
+			instanceId: this.instanceId,
+			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
+			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+		});
 	}
 
 	async initQueue() {

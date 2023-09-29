@@ -5,15 +5,17 @@ import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServiceP
 import * as os from 'os';
 import Container from 'typedi';
 import { License } from '@/License';
-import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
-import { ExternalSecretsManager } from '../ExternalSecrets/ExternalSecretsManager.ee';
+import { MessageEventBus } from '../../../eventbus/MessageEventBus/MessageEventBus';
+import { ExternalSecretsManager } from '../../../ExternalSecrets/ExternalSecretsManager.ee';
 
-export function getWorkerCommandReceivedHandler(options: {
+export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
 	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
-}) {
+}
+
+export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
 			if (!messageString) return;

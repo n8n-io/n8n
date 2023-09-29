@@ -2,22 +2,23 @@ import Container from 'typedi';
 import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
-import { handleWorkerResponseMessage } from '../../../src/services/orchestration/handleWorkerResponseMessage';
-import { handleCommandMessage } from '../../../src/services/orchestration/handleCommandMessage';
-import { OrchestrationHandlerService } from '../../../src/services/orchestration.handler.service';
+import { handleWorkerResponseMessageMain } from '../../../src/services/orchestration/main/handleWorkerResponseMessageMain';
+import { handleCommandMessageMain } from '../../../src/services/orchestration/main/handleCommandMessageMain';
+import { OrchestrationHandlerMainService } from '../../../src/services/orchestration/main/orchestration.handler.main.service';
 
-const os = Container.get(OrchestrationService);
-const handler = Container.get(OrchestrationHandlerService);
+const os = Container.get(OrchestrationMainService);
+const handler = Container.get(OrchestrationHandlerMainService);
 
 let queueModeId: string;
 
 function setDefaultConfig() {
 	config.set('executions.mode', 'queue');
+	config.set('generic.instanceType', 'main');
 }
 
 const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
@@ -85,7 +86,7 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should handle worker responses', async () => {
-		const response = await handleWorkerResponseMessage(
+		const response = await handleWorkerResponseMessageMain(
 			JSON.stringify(workerRestartEventbusResponse),
 		);
 		expect(response.command).toEqual('restartEventBus');
@@ -93,7 +94,7 @@ describe('Orchestration Service', () => {
 
 	test('should handle command messages from others', async () => {
 		jest.spyOn(LoggerProxy, 'error');
-		const responseFalseId = await handleCommandMessage(
+		const responseFalseId = await handleCommandMessageMain(
 			JSON.stringify({
 				senderId: 'test',
 				command: 'reloadLicense',
@@ -108,7 +109,7 @@ describe('Orchestration Service', () => {
 
 	test('should reject command messages from iteslf', async () => {
 		jest.spyOn(eventBus, 'restart');
-		const response = await handleCommandMessage(
+		const response = await handleCommandMessageMain(
 			JSON.stringify({ ...workerRestartEventbusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
@@ -119,7 +120,8 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should send command messages', async () => {
-		jest.spyOn(os.redisPublisher, 'publishToCommandChannel');
+		setDefaultConfig();
+		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockImplementation(async () => {});
 		await os.getWorkerIds();
 		expect(os.redisPublisher.publishToCommandChannel).toHaveBeenCalled();
 		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockRestore();

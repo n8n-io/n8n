@@ -1,17 +1,14 @@
 import { LoggerProxy } from 'n8n-workflow';
-import { messageToRedisServiceCommandObject } from './helpers';
+import { messageToRedisServiceCommandObject } from '../helpers';
 import config from '@/config';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import type { N8nInstanceType } from '@/Interfaces';
 import { License } from '@/License';
 
-// this function handles commands sent to the MAIN instance. the workers handle their own commands
-export async function handleCommandMessage(messageString: string) {
+export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.get('redis.queueModeId');
-	const instanceType = config.get('generic.instanceType') as N8nInstanceType;
-	const isMainInstance = instanceType === 'main';
+	const isMainInstance = config.get('generic.instanceType') === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 
 	if (message) {

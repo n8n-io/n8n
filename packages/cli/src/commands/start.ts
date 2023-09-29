@@ -31,6 +31,8 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -213,6 +215,7 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
+		await this.initOrchestration();
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
@@ -220,6 +223,11 @@ export class Start extends BaseCommand {
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
 		}
+	}
+
+	async initOrchestration() {
+		await Container.get(OrchestrationMainService).init();
+		await Container.get(OrchestrationHandlerMainService).init();
 	}
 
 	async run() {

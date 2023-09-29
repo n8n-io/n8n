@@ -1,33 +1,8 @@
 import { Service } from 'typedi';
-import { RedisService } from './redis.service';
-import type { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
-import config from '@/config';
+import { OrchestrationService } from '../../orchestration.base.service';
 
 @Service()
-export class OrchestrationService {
-	private initialized = false;
-
-	redisPublisher: RedisServicePubSubPublisher;
-
-	get isQueueMode() {
-		return config.getEnv('executions.mode') === 'queue';
-	}
-
-	constructor(readonly redisService: RedisService) {}
-
-	async init() {
-		await this.initPublisher();
-		this.initialized = true;
-	}
-
-	async shutdown() {
-		await this.redisPublisher?.destroy();
-	}
-
-	private async initPublisher() {
-		this.redisPublisher = await this.redisService.getPubSubPublisher();
-	}
-
+export class OrchestrationWebhookService extends OrchestrationService {
 	async getWorkerStatus(id?: string) {
 		if (!this.isQueueMode) {
 			return;
