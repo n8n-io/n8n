@@ -2245,6 +2245,7 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	isBetaRelease: boolean;
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;
