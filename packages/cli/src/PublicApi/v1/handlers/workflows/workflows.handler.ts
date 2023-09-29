@@ -26,6 +26,8 @@ import {
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
+import { isWorkflowHistoryLicensed } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 
 export = {
 	createWorkflow: [
@@ -175,6 +177,10 @@ export = {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
 				}
+			}
+
+			if (isWorkflowHistoryLicensed()) {
+				await Container.get(WorkflowHistoryService).saveVersion(req.user, sharedWorkflow.workflow);
 			}
 
 			if (sharedWorkflow.workflow.active) {
