@@ -5,12 +5,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import type { AgentExecutorInput } from 'langchain/agents';
 import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import { type BaseChatMemory } from 'langchain/memory';
+import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 
 export async function openAiFunctionsAgentExecute(
@@ -40,14 +41,23 @@ export async function openAiFunctionsAgentExecute(
 		systemMessage?: string;
 	};
 
-	const agentExecutor = AgentExecutor.fromAgentAndTools({
+	const agentConfig: AgentExecutorInput = {
 		tags: ['openai-functions'],
 		agent: OpenAIAgent.fromLLMAndTools(model, tools, {
 			prefix: options.systemMessage,
 		}),
 		tools,
-		memory,
-	});
+		memory:
+			memory ??
+			new BufferMemory({
+				returnMessages: true,
+				memoryKey: 'chat_history',
+				inputKey: 'input',
+				outputKey: 'output',
+			}),
+	};
+
+	const agentExecutor = AgentExecutor.fromAgentAndTools(agentConfig);
 
 	const returnData: INodeExecutionData[] = [];
 
