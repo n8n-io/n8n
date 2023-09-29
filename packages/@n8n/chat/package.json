@@ -8,12 +8,13 @@
     "build:prepare": "node scripts/postbuild.js",
     "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
-    "test:unit": "vitest",
+    "test:unit": "vitest --passWithNoTests",
     "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore --ignore-path .eslintignore",
     "format": "prettier --write src/",
     "storybook": "storybook dev -p 6006",
-    "build:storybook": "storybook build"
+    "build:storybook": "storybook build",
+    "release": "run-p build lint test:unit && np"
   },
   "main": "./chat.umd.cjs",
   "module": "./chat.js",
