@@ -474,7 +474,7 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
-			history: isWorkflowHistoryEnabled(),
+			workflowHistory: isWorkflowHistoryEnabled(),
 		});
 
 		if (isLdapEnabled()) {
