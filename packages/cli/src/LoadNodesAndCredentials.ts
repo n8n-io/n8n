@@ -45,13 +45,15 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 	private postProcessors: Array<() => Promise<void>> = [];
 
 	async init() {
+		if (inTest) throw new Error('Not available in tests');
+
 		// Make sure the imported modules can resolve dependencies fine.
 		const delimiter = process.platform === 'win32' ? ';' : ':';
 		process.env.NODE_PATH = module.paths.join(delimiter);
 
 		// @ts-ignore
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		if (!inTest) module.constructor._initPaths();
+		module.constructor._initPaths();
 
 		if (!inE2ETests) {
 			this.excludeNodes = this.excludeNodes ?? [];
