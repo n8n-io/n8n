@@ -4,7 +4,9 @@ import type { BINARY_DATA_MODES } from './utils';
 export namespace BinaryData {
 	export type Mode = (typeof BINARY_DATA_MODES)[number];
 
-	export type NonDefaultMode = Exclude<Mode, 'default'>;
+	export type Prefix = Mode | 'filesystem-v2';
+
+	export type NonDefaultPrefix = Exclude<Prefix, 'default'>;
 
 	export type Config = {
 		mode: Mode;

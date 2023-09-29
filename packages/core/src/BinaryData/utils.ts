@@ -15,7 +15,7 @@ export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
 	return modes.every((m) => BINARY_DATA_MODES.includes(m as BinaryData.Mode));
 }
 
-export async function ensureDirExists(dir: string) {
+export async function assertDir(dir: string) {
 	try {
 		await fs.access(dir);
 	} catch {

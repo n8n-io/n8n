@@ -79,7 +79,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private rates: Record<string, number> = {
 		softDeletion: 1 * TIME.HOUR,
-		hardDeletion: 15 * TIME.MINUTE,
+		hardDeletion: 10 * TIME.SECOND,
 	};
 
 	private isMainInstance = config.get('generic.instanceType') === 'main';

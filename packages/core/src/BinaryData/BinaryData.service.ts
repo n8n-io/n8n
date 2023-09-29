@@ -29,6 +29,7 @@ export class BinaryDataService {
 			const { FileSystemManager } = await import('./FileSystem.manager');
 
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
+			this.managers['filesystem-v2'] = this.managers.filesystem;
 
 			await this.managers.filesystem.init();
 		}
@@ -200,11 +201,10 @@ export class BinaryDataService {
 	//         private methods
 	// ----------------------------------
 
-	/**
-	 * Create an identifier `${mode}:{fileId}` for `IBinaryData['id']`.
-	 */
 	private createBinaryDataId(fileId: string) {
-		return `${this.mode}:${fileId}`;
+		const mode = this.mode === 'filesystem' ? 'filesystem-v2' : this.mode;
+
+		return `${mode}:${fileId}`;
 	}
 
 	private async duplicateBinaryDataInExecData(
