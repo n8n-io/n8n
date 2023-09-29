@@ -8,13 +8,13 @@
     "build:prepare": "node scripts/postbuild.js",
     "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
-    "test:unit": "vitest --passWithNoTests",
+    "test:unit": "vitest",
     "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore --ignore-path .eslintignore",
     "format": "prettier --write src/",
     "storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
-    "release": "run-p build lint test:unit && np"
+    "release": "npm run build && cd dist && npm publish"
   },
   "main": "./chat.umd.cjs",
   "module": "./chat.js",
@@ -58,7 +58,6 @@
     "eslint": "^8.45.0",
     "eslint-plugin-vue": "^9.15.1",
     "jsdom": "^22.1.0",
-    "np": "^8.0.4",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.0.0",
     "react": "^18.2.0",
