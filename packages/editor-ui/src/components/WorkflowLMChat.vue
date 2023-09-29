@@ -12,6 +12,7 @@
 		"
 		:eventBus="modalBus"
 		:scrollable="false"
+		@keydown.stop
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
@@ -81,7 +82,7 @@
 					type="textarea"
 					ref="inputField"
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
-					@keydown="updated"
+					@keydown.stop="updated"
 				/>
 				<n8n-button
 					@click.stop="sendChatMessage(currentMessage)"
