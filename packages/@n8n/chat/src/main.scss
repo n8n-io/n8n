@@ -1,4 +1,6 @@
-@import 'highlight.js/styles/github.css';
+.n8n-chat {
+	@import 'highlight.js/styles/github';
+}
 
 :root {
 	--chat--color-primary: #e74266;
