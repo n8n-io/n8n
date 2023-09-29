@@ -75,16 +75,22 @@ export class ChainSummarization implements INodeType {
 				default: 'map_reduce',
 				options: [
 					{
-						name: 'Map Reduce',
+						name: 'Map Reduce (Recommended)',
 						value: 'map_reduce',
+						description:
+							'Individually summarizes each document using an LLM (Map step), then combines these summaries into a global summary (Reduce step), with an optional compression step to ensure fit',
 					},
 					{
 						name: 'Refine',
 						value: 'refine',
+						description:
+							'Iteratively updates its answer by looping over the documents and passing the current document along with the latest intermediate answer to an LLM, suitable for analyzing large document sets, albeit with more LLM calls',
 					},
 					{
 						name: 'Stuff',
 						value: 'stuff',
+						description:
+							'Inserts all documents into a prompt, then passes it to an LLM for summarization, ideal for small document sets',
 					},
 				],
 			},
@@ -236,8 +242,6 @@ export class ChainSummarization implements INodeType {
 		const chain = loadSummarizationChain(model, chainArgs);
 
 		const items = this.getInputData();
-
-		// Run for each item
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			let processedDocuments: Document[];
