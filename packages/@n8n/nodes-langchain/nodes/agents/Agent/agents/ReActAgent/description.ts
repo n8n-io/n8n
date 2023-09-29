@@ -26,22 +26,21 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		options: [
 			{
-				displayName: 'Prefix Message',
-				name: 'prefix',
+				displayName: 'Human Message Template',
+				name: 'humanMessageTemplate',
 				type: 'string',
-				default: PREFIX,
-				description: 'String to put before the list of tools',
+				default: HUMAN_MESSAGE_TEMPLATE,
+				description: 'String to use directly as the human message template',
 				typeOptions: {
 					rows: 6,
 				},
 			},
 			{
-				displayName: 'Suffix Message for Regular Model',
-				name: 'suffix',
+				displayName: 'Prefix Message',
+				name: 'prefix',
 				type: 'string',
-				default: SUFFIX,
-				description:
-					'String to put after the list of tools that will be used if regular model is used',
+				default: PREFIX,
+				description: 'String to put before the list of tools',
 				typeOptions: {
 					rows: 6,
 				},
@@ -58,11 +57,12 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Human Message Template',
-				name: 'humanMessageTemplate',
+				displayName: 'Suffix Message for Regular Model',
+				name: 'suffix',
 				type: 'string',
-				default: HUMAN_MESSAGE_TEMPLATE,
-				description: 'String to use directly as the human message template',
+				default: SUFFIX,
+				description:
+					'String to put after the list of tools that will be used if regular model is used',
 				typeOptions: {
 					rows: 6,
 				},

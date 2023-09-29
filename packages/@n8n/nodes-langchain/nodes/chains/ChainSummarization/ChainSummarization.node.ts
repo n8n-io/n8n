@@ -96,20 +96,6 @@ export class ChainSummarization implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Prompt',
-						name: 'prompt',
-						type: 'string',
-						default: DEFAULT_PROMPT_TEMPLATE,
-						displayOptions: {
-							hide: {
-								'/type': ['refine'],
-							},
-						},
-						typeOptions: {
-							rows: 6,
-						},
-					},
-					{
 						displayName: 'Combine Map Prompt',
 						name: 'combineMapPrompt',
 						type: 'string',
@@ -119,6 +105,20 @@ export class ChainSummarization implements INodeType {
 							},
 						},
 						default: DEFAULT_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Prompt',
+						name: 'prompt',
+						type: 'string',
+						default: DEFAULT_PROMPT_TEMPLATE,
+						displayOptions: {
+							hide: {
+								'/type': ['refine'],
+							},
+						},
 						typeOptions: {
 							rows: 6,
 						},
