@@ -15,10 +15,6 @@ const chatStore = useChatStore();
 
 const { messages, currentSessionId } = toRefs(chatStore);
 
-const footerVisible = computed<boolean>(() => {
-	return !!options.poweredBy || te('footer') || !!currentSessionId.value;
-});
-
 async function initialize() {
 	await chatStore.loadPreviousSession();
 	void nextTick(() => {
@@ -46,7 +42,7 @@ onMounted(() => {
 		</template>
 		<GetStarted v-if="!currentSessionId" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
-		<template v-if="footerVisible" #footer>
+		<template #footer>
 			<Input v-if="currentSessionId" />
 			<GetStartedFooter v-else />
 		</template>

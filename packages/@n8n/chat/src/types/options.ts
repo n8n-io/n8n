@@ -19,6 +19,5 @@ export interface ChatOptions {
 			[message: string]: string;
 		}
 	>;
-	poweredBy?: boolean;
 	theme?: {};
 }

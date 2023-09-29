@@ -41,7 +41,7 @@
 		},
 		{
 			"parameters": {
-				"sessionKey": "={{ $('Webhook').item.json.body.sessionId }}"
+				"sessionKey": "={{ $json.body.sessionId }}"
 			},
 			"id": "ebc23ffa-3bcf-494f-bcb8-51a5fff91885",
 			"name": "Window Buffer Memory",
@@ -81,7 +81,7 @@
 		},
 		{
 			"parameters": {
-				"sessionKey": "={{ $('Webhook').item.json.body.sessionId }}"
+				"sessionKey": "={{ $json.body.sessionId }}"
 			},
 			"id": "347edc3a-1dda-4996-b778-dcdc447ecfd8",
 			"name": "Memory Chat Retriever Window Buffer Memory",
@@ -100,7 +100,7 @@
 						"entries": [
 							{
 								"name": "sessionId",
-								"value": "={{ $('Webhook').item.json.body.sessionId }}"
+								"value": "={{ $json.body.sessionId }}"
 							}
 						]
 					}
@@ -280,7 +280,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "7b81858a-7a53-4661-9912-00ea5926726d",
+	"versionId": "bcf67233-fb50-4ab0-962f-866e4fd99469",
 	"id": "L3FlJuFOxZcHtoFT",
 	"meta": {
 		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"

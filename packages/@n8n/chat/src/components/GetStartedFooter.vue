@@ -10,7 +10,7 @@ const { t, te } = useI18n();
 		<div v-if="te('footer')">
 			{{ t('footer') }}
 		</div>
-		<PoweredBy v-if="options.poweredBy" />
+		<PoweredBy />
 	</div>
 </template>
 
