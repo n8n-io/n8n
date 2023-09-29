@@ -132,6 +132,7 @@
 	"binaryDataDisplay.noDataFoundToDisplay": "No data found to display",
 	"binaryDataDisplay.yourBrowserDoesNotSupport": "Your browser does not support the video element. Kindly update it to latest version.",
 	"chat.window.title": "Chat Window ({nodeName})",
+	"chat.window.logs": "Log (for last message)",
 	"chat.window.noChatNode": "No Chat Node",
 	"chat.window.noExecution": "Nothing got executed yet",
 	"chat.window.chat.placeholder": "Type in message",
