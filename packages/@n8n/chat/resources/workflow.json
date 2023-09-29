@@ -3,6 +3,7 @@
 	"nodes": [
 		{
 			"parameters": {
+				"httpMethod": "POST",
 				"path": "513107b3-6f3a-4a1e-af21-659f0ed14183",
 				"responseMode": "responseNode",
 				"options": {
@@ -28,7 +29,7 @@
 			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
 			"typeVersion": 1,
 			"position": [
-				1260,
+				1480,
 				560
 			],
 			"credentials": {
@@ -40,14 +41,14 @@
 		},
 		{
 			"parameters": {
-				"sessionKey": "={{ $('Webhook').item.json.query.sessionId }}"
+				"sessionKey": "={{ $('Webhook').item.json.body.sessionId }}"
 			},
 			"id": "ebc23ffa-3bcf-494f-bcb8-51a5fff91885",
 			"name": "Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
 			"position": [
-				1400,
+				1620,
 				560
 			]
 		},
@@ -60,13 +61,13 @@
 			"type": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
 			"typeVersion": 1,
 			"position": [
-				1340,
+				1560,
 				-40
 			]
 		},
 		{
 			"parameters": {
-				"text": "={{ $json.query.message }}",
+				"text": "={{ $json.body.message }}",
 				"systemMessage": "Your name is Nathan. You're an AI Chat Assistant created by n8n. Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary."
 			},
 			"id": "be805a7b-5a75-4915-99e2-55e9fe7f0e82",
@@ -74,20 +75,20 @@
 			"type": "@n8n/n8n-nodes-langchain.conversationalAgent",
 			"typeVersion": 1,
 			"position": [
-				1340,
+				1560,
 				320
 			]
 		},
 		{
 			"parameters": {
-				"sessionKey": "={{ $('Webhook').item.json.query.sessionId }}"
+				"sessionKey": "={{ $('Webhook').item.json.body.sessionId }}"
 			},
 			"id": "347edc3a-1dda-4996-b778-dcdc447ecfd8",
 			"name": "Memory Chat Retriever Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
 			"position": [
-				1360,
+				1580,
 				160
 			]
 		},
@@ -99,7 +100,7 @@
 						"entries": [
 							{
 								"name": "sessionId",
-								"value": "={{ $('Webhook').item.json.query.sessionId }}"
+								"value": "={{ $('Webhook').item.json.body.sessionId }}"
 							}
 						]
 					}
@@ -110,14 +111,14 @@
 			"type": "n8n-nodes-base.respondToWebhook",
 			"typeVersion": 1,
 			"position": [
-				2020,
+				2240,
 				220
 			]
 		},
 		{
 			"parameters": {
 				"dataType": "string",
-				"value1": "={{ $json.query.action }}",
+				"value1": "={{ $json.body.action }}",
 				"rules": {
 					"rules": [
 						{
@@ -135,7 +136,7 @@
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 1,
 			"position": [
-				1100,
+				1320,
 				200
 			]
 		},
@@ -148,8 +149,21 @@
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
 			"position": [
-				1720,
+				1940,
 				-40
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "for (const item of $input.all()) {\n  item.json.body = JSON.parse(item.json.body);\n}\n\nreturn $input.all();"
+			},
+			"id": "809fe3b8-ad9e-4264-8184-18bdecf581fb",
+			"name": "Parse Request JSON",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1100,
+				200
 			]
 		}
 	],
@@ -159,7 +173,7 @@
 			"main": [
 				[
 					{
-						"node": "Chatbot Action",
+						"node": "Parse Request JSON",
 						"type": "main",
 						"index": 0
 					}
@@ -249,13 +263,24 @@
 					}
 				]
 			]
+		},
+		"Parse Request JSON": {
+			"main": [
+				[
+					{
+						"node": "Chatbot Action",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": true,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "d6fc1ed3-920a-496e-8892-67a2bb0ae816",
+	"versionId": "7b81858a-7a53-4661-9912-00ea5926726d",
 	"id": "L3FlJuFOxZcHtoFT",
 	"meta": {
 		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
