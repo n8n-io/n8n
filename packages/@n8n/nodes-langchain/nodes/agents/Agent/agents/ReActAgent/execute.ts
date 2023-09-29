@@ -48,8 +48,6 @@ export async function reActAgentAgentExecute(
 	}
 
 	const items = this.getInputData();
-
-	// Run for each item
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		let input = this.getNodeParameter('text', itemIndex) as string;
 

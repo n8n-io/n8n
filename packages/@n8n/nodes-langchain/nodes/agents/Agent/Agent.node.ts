@@ -21,7 +21,7 @@ import { sqlAgentAgentExecute } from './agents/SqlAgent/execute';
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
 function getInputs(
-	agent: 'conversationalAgent' | 'openAiFunctionsAgent' | 'reactAgent' | 'sqlAgent',
+	agent: 'conversationalAgent' | 'openAiFunctionsAgent' | 'reActAgent' | 'sqlAgent',
 ): Array<ConnectionTypes | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: ConnectionTypes;
@@ -102,7 +102,7 @@ function getInputs(
 				type: NodeConnectionType.AiOutputParser,
 			},
 		];
-	} else if (agent === 'reactAgent') {
+	} else if (agent === 'reActAgent') {
 		specialInputs = [
 			{
 				type: NodeConnectionType.AiLanguageModel,

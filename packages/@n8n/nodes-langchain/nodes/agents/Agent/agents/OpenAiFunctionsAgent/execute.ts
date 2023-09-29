@@ -12,8 +12,6 @@ export async function openAiFunctionsAgentExecute(
 	this: IExecuteFunctions,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.verbose('Executing OpenAi Functions Agent');
-	const runMode = this.getNodeParameter('mode', 0) as string;
-
 	const model = (await this.getInputConnectionData(
 		NodeConnectionType.AiLanguageModel,
 		0,
@@ -54,10 +52,7 @@ export async function openAiFunctionsAgentExecute(
 
 	const items = this.getInputData();
 
-	let itemCount = items.length;
-	if (runMode === 'runOnceForAllItems') {
-		itemCount = 1;
-	}
+	const itemCount = items.length;
 
 	// Run for each item
 	for (let itemIndex = 0; itemIndex < itemCount; itemIndex++) {
