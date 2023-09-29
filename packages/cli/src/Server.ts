@@ -173,6 +173,7 @@ import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import { FrontendService } from './services/frontend.service';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
@@ -198,6 +199,8 @@ export class Server extends AbstractServer {
 	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
+
+	frontendService: FrontendService;
 
 	postHog: PostHogClient;
 
@@ -356,6 +359,10 @@ export class Server extends AbstractServer {
 		this.credentialTypes = Container.get(CredentialTypes);
 		this.nodeTypes = Container.get(NodeTypes);
 
+		this.frontendService = Container.get(FrontendService);
+		this.loadNodesAndCredentials.addPostProcessor(async () => this.frontendService.generateTypes());
+		await this.frontendService.generateTypes();
+
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 		this.waitTracker = Container.get(WaitTracker);
 		this.postHog = Container.get(PostHogClient);
@@ -415,7 +422,7 @@ export class Server extends AbstractServer {
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
 			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
-			await reloadNodesAndCredentials(this.loadNodesAndCredentials);
+			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.push);
 		}
 
 		void Db.collections.Workflow.findOne({
@@ -1502,9 +1509,9 @@ export class Server extends AbstractServer {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.loadNodesAndCredentials.generateTypesForFrontend();
+						await this.frontendService.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 

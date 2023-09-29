@@ -1,14 +1,12 @@
+import { Service } from 'typedi';
 import { loadClassInIsolation } from 'n8n-core';
 import type { ICredentialType, ICredentialTypes, LoadedClass } from 'n8n-workflow';
-import { Service } from 'typedi';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { LoadNodesAndCredentials } from './LoadNodesAndCredentials';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 @Service()
 export class CredentialTypes implements ICredentialTypes {
-	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {
-		nodesAndCredentials.credentialTypes = this;
-	}
+	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {}
 
 	recognizes(type: string) {
 		return type in this.knownCredentials || type in this.loadedCredentials;

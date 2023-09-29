@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { ICredentialTypes, INodeTypes } from 'n8n-workflow';
+import type { INodeTypes } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
@@ -42,7 +42,6 @@ mockInstance(LoadNodesAndCredentials, {
 		credentials: {},
 	},
 	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
 });
 
 beforeAll(async () => {

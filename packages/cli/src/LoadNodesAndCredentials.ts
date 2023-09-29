@@ -1,6 +1,5 @@
-import uniq from 'lodash/uniq';
 import glob from 'fast-glob';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -10,8 +9,6 @@ import {
 	LazyPackageDirectoryLoader,
 } from 'n8n-core';
 import type {
-	ICredentialTypes,
-	ILogger,
 	INodesAndCredentials,
 	KnownNodesAndCredentials,
 	INodeTypeDescription,
@@ -19,19 +16,15 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import { createWriteStream } from 'fs';
-import { mkdir } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import {
-	GENERATED_STATIC_DIR,
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
 	inTest,
 	CLI_DIR,
 	inE2ETests,
 } from '@/constants';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 
 @Service()
 export class LoadNodesAndCredentials implements INodesAndCredentials {
@@ -46,10 +39,6 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 	excludeNodes = config.getEnv('nodes.exclude');
 
 	includeNodes = config.getEnv('nodes.include');
-
-	credentialTypes: ICredentialTypes;
-
-	logger: ILogger;
 
 	private downloadFolder: string;
 
@@ -94,47 +83,6 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 	addPostProcessor(fn: () => Promise<void>) {
 		this.postProcessors.push(fn);
-	}
-
-	async generateTypesForFrontend() {
-		const credentialsOverwrites = CredentialsOverwrites().getAll();
-		for (const credential of this.types.credentials) {
-			const overwrittenProperties = [];
-			this.credentialTypes
-				.getParentTypes(credential.name)
-				.reverse()
-				.map((name) => credentialsOverwrites[name])
-				.forEach((overwrite) => {
-					if (overwrite) overwrittenProperties.push(...Object.keys(overwrite));
-				});
-
-			if (credential.name in credentialsOverwrites) {
-				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
-			}
-
-			if (overwrittenProperties.length) {
-				credential.__overwrittenProperties = uniq(overwrittenProperties);
-			}
-		}
-
-		// pre-render all the node and credential types as static json files
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
-
-		const writeStaticJSON = async (name: string, data: object[]) => {
-			const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
-			const stream = createWriteStream(filePath, 'utf-8');
-			stream.write('[\n');
-			data.forEach((entry, index) => {
-				stream.write(JSON.stringify(entry));
-				if (index !== data.length - 1) stream.write(',');
-				stream.write('\n');
-			});
-			stream.write(']\n');
-			stream.end();
-		};
-
-		await writeStaticJSON('nodes', this.types.nodes);
-		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
 	private async loadNodesFromNodeModules(
@@ -312,14 +260,6 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
-		}
-
-		if (config.get('generic.instanceType') === 'main') {
-			await this.generateTypesForFrontend();
-
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { Push } = await import('./push');
-			Container.get(Push).send('nodeDescriptionUpdated', undefined);
 		}
 	}
 }

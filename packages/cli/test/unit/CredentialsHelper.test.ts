@@ -2,24 +2,21 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
-	ICredentialTypes,
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
-	INodesAndCredentials,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
-import { CredentialTypes } from '@/CredentialTypes';
-import { Container } from 'typedi';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { mockInstance } from '../integration/shared/utils';
 
 describe('CredentialsHelper', () => {
 	const TEST_ENCRYPTION_KEY = 'test';
 
-	const mockNodesAndCredentials: INodesAndCredentials = {
+	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
 		loaded: {
 			nodes: {
 				'test.set': {
@@ -58,12 +55,9 @@ describe('CredentialsHelper', () => {
 			credentials: {},
 		},
 		known: { nodes: {}, credentials: {} },
-		credentialTypes: {} as ICredentialTypes,
-	};
+	});
 
-	Container.set(LoadNodesAndCredentials, mockNodesAndCredentials);
-
-	const nodeTypes = Container.get(NodeTypes);
+	const nodeTypes = mockInstance(NodeTypes);
 
 	describe('authenticate', () => {
 		const tests: Array<{
@@ -287,13 +281,7 @@ describe('CredentialsHelper', () => {
 					},
 				};
 
-				const credentialTypes = Container.get(CredentialTypes);
-
-				const credentialsHelper = new CredentialsHelper(
-					TEST_ENCRYPTION_KEY,
-					credentialTypes,
-					nodeTypes,
-				);
+				const credentialsHelper = new CredentialsHelper(TEST_ENCRYPTION_KEY);
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,

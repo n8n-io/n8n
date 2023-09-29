@@ -1624,7 +1624,6 @@ export type LoadedNodesAndCredentials = {
 export interface INodesAndCredentials {
 	known: KnownNodesAndCredentials;
 	loaded: LoadedNodesAndCredentials;
-	credentialTypes: ICredentialTypes;
 }
 
 export interface IRun {

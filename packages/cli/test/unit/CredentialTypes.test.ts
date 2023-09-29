@@ -1,4 +1,4 @@
-import type { ICredentialTypes, INodesAndCredentials } from 'n8n-workflow';
+import type { INodesAndCredentials } from 'n8n-workflow';
 import { CredentialTypes } from '@/CredentialTypes';
 import { Container } from 'typedi';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -27,7 +27,6 @@ describe('CredentialTypes', () => {
 			},
 		},
 		known: { nodes: {}, credentials: {} },
-		credentialTypes: {} as ICredentialTypes,
 	};
 
 	Container.set(LoadNodesAndCredentials, mockNodesAndCredentials);

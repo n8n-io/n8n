@@ -442,7 +442,7 @@ export class Worker extends BaseCommand {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 						presetCredentialsLoaded = true;
 						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 					} else {

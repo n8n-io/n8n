@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
 
-import type { ICredentialTypes, INode, INodesAndCredentials } from 'n8n-workflow';
+import type { INode, INodesAndCredentials } from 'n8n-workflow';
 import { LoggerProxy, NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
@@ -152,7 +152,6 @@ describe('ActiveWorkflowRunner', () => {
 				credentials: {},
 			},
 			known: { nodes: {}, credentials: {} },
-			credentialTypes: {} as ICredentialTypes,
 		};
 		const mockVariablesService = {
 			getAllCached: jest.fn(() => []),
