@@ -305,7 +305,17 @@ export class ToolWorkflow implements INodeType {
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
 				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
-				workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+				try {
+					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
+				} catch (error) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The provided workflow is not valid JSON: "${error.message}"`,
+						{
+							itemIndex,
+						},
+					);
+				}
 			}
 
 			const rawData: IDataObject = { query };
@@ -334,7 +344,7 @@ export class ToolWorkflow implements INodeType {
 				this.getNode(),
 			);
 
-			const items = [{ json: newItem }] as INodeExecutionData[];
+			const items = [newItem] as INodeExecutionData[];
 
 			const receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
 
