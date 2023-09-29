@@ -279,7 +279,7 @@ export function logWrapper(
 						query: string,
 						config?: Callbacks | BaseCallbackConfig,
 					): Promise<Document[]> => {
-						connectionType = NodeConnectionType.AiVectorRetriever;
+						connectionType = NodeConnectionType.AiRetriever;
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { query, config } }],
 						]);
