@@ -36,7 +36,7 @@ export async function openAiFunctionsAgentExecute(
 		NodeConnectionType.AiOutputParser,
 		0,
 	)) as BaseOutputParser[];
-	const options = this.getNodeParameter('options_openAiFunctionsAgent', 0, {}) as {
+	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
 	};
 

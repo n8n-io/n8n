@@ -100,6 +100,11 @@ export class ChainSummarization implements INodeType {
 						name: 'prompt',
 						type: 'string',
 						default: DEFAULT_PROMPT_TEMPLATE,
+						displayOptions: {
+							hide: {
+								'/type': ['refine'],
+							},
+						},
 						typeOptions: {
 							rows: 6,
 						},
@@ -108,6 +113,11 @@ export class ChainSummarization implements INodeType {
 						displayName: 'Combine Map Prompt',
 						name: 'combineMapPrompt',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/type': ['map_reduce'],
+							},
+						},
 						default: DEFAULT_PROMPT_TEMPLATE,
 						typeOptions: {
 							rows: 6,
@@ -117,6 +127,11 @@ export class ChainSummarization implements INodeType {
 						displayName: 'Refine Prompt',
 						name: 'refinePrompt',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/type': ['refine'],
+							},
+						},
 						default: REFINE_PROMPT_TEMPLATE,
 						typeOptions: {
 							rows: 6,
@@ -126,6 +141,11 @@ export class ChainSummarization implements INodeType {
 						displayName: 'Refine Question Prompt',
 						name: 'refineQuestionPrompt',
 						type: 'string',
+						displayOptions: {
+							show: {
+								'/type': ['refine'],
+							},
+						},
 						default: DEFAULT_PROMPT_TEMPLATE,
 						typeOptions: {
 							rows: 6,

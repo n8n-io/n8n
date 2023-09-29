@@ -15,7 +15,7 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'options_openAiFunctionsAgent',
+		name: 'options',
 		type: 'collection',
 		displayOptions: {
 			show: {

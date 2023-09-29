@@ -37,7 +37,7 @@ export async function conversationalAgentExecute(
 	)) as BaseOutputParser[];
 
 	// TODO: Make it possible in the future to use values for other items than just 0
-	const options = this.getNodeParameter('options_conversationalAgent', 0, {}) as {
+	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
 		humanMessage?: string;
 	};

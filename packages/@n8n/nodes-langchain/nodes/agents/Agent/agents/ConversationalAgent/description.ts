@@ -15,7 +15,7 @@ export const conversationalAgentProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'options_conversationalAgent',
+		name: 'options',
 		type: 'collection',
 		displayOptions: {
 			show: {
@@ -36,7 +36,7 @@ export const conversationalAgentProperties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Humman Message',
+				displayName: 'Human Message',
 				name: 'humanMessage',
 				type: 'string',
 				default: HUMAN_MESSAGE,

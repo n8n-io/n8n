@@ -15,7 +15,7 @@ export const reActAgentAgentProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'options_reActAgent',
+		name: 'options',
 		type: 'collection',
 		displayOptions: {
 			show: {

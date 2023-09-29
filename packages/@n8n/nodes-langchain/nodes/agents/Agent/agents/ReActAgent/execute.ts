@@ -24,7 +24,7 @@ export async function reActAgentAgentExecute(
 		0,
 	)) as BaseOutputParser[];
 
-	const options = this.getNodeParameter('options_reActAgent', 0, {}) as {
+	const options = this.getNodeParameter('options', 0, {}) as {
 		prefix?: string;
 		suffix?: string;
 		suffixChat?: string;
