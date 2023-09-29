@@ -198,6 +198,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
 	}
 
+	isCachingLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.CACHING);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
