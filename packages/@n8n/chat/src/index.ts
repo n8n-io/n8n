@@ -34,6 +34,7 @@ export function createChat(options?: Partial<ChatOptions>) {
 		createDefaultMountingTarget(mountingTarget);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	const app = createApp(App);
 	app.use(createPinia());
 	app.provide(ChatOptionsSymbol, resolvedOptions);

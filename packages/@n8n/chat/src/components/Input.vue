@@ -1,9 +1,9 @@
 <script setup lang="ts">
+// eslint-disable-next-line import/no-unresolved
 import IconSend from 'virtual:icons/mdi/send';
 import { useI18n } from '@/composables';
-import { computed, nextTick, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useChatStore } from '@/stores/chat';
-import { chatEventBus } from '@/event-buses';
 import { storeToRefs } from 'pinia';
 
 const chatStore = useChatStore();

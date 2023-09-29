@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test:unit": "vitest",
     "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
-    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore --ignore-path .eslintignore",
     "format": "prettier --write src/",
     "storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build"

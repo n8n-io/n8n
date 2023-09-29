@@ -7,51 +7,6 @@ import { useOptions } from '@/composables';
 import * as api from '@/api';
 import { chatEventBus } from '@/event-buses';
 
-const dummyMessages: ChatMessage[] = [
-	{
-		id: '0',
-		text: 'Hello',
-		sender: 'user',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-	{
-		id: '1',
-		text: 'Hello, how are you?',
-		sender: 'bot',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-	{
-		id: '2',
-		text: 'I am fine, thanks',
-		sender: 'user',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-	{
-		id: '3',
-		text: 'How are you?',
-		sender: 'user',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-	{
-		id: '4',
-		text: "I am a bit rusty, but I'll be fine",
-		sender: 'bot',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-	{
-		id: '5',
-		text: 'Can you tell me what this app is about?',
-		sender: 'user',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-	{
-		id: '6',
-		text: 'This is a chat app powered by n8n',
-		sender: 'bot',
-		createdAt: '2021-08-10T12:00:00.000Z',
-	},
-];
-
 export const useChatStore = defineStore('chat', () => {
 	const { options } = useOptions();
 	const messages = ref<ChatMessage[]>([]);

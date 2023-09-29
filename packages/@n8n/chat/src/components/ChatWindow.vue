@@ -1,7 +1,9 @@
 <script lang="ts" setup>
+// eslint-disable-next-line import/no-unresolved
 import IconChat from 'virtual:icons/mdi/chat';
+// eslint-disable-next-line import/no-unresolved
 import IconChevronDown from 'virtual:icons/mdi/chevron-down';
-import { Chat } from '@/components';
+import Chat from '@/components/Chat.vue';
 import { nextTick, ref } from 'vue';
 import { chatEventBus } from '@/event-buses';
 

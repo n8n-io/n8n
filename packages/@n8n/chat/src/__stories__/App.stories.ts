@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type { StoryObj } from '@storybook/vue3';
 import type { ChatOptions } from '@/types';
 import { createChat } from '@/index';
@@ -23,6 +24,7 @@ const meta = {
 	tags: ['autodocs'],
 };
 
+// eslint-disable-next-line import/no-default-export
 export default meta;
 type Story = StoryObj<typeof meta>;
 
