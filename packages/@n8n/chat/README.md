@@ -120,7 +120,6 @@ createChat({
 			inputPlaceholder: 'Type your question..',
 		},
 	},
-	poweredBy: true,
 });
 ```
 
@@ -161,12 +160,6 @@ createChat({
 ### `initialMessages`
 - **Type**: `string[]`
 - **Description**: The initial messages to be displayed in the Chat window.
-
-### `poweredBy`
-- **Type**: `boolean`
-- **Default**: `true`
-- **Description**: Whether to display the "Powered by n8n" footer in the Chat window.
-
 
 ## Customization
 The Chat window is entirely customizable using CSS variables.
