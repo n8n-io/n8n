@@ -2,7 +2,7 @@ import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { Push } from '@/push';
-import { CommunityPackageService } from '@/services/communityPackage.service';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 import * as testDb from './shared/testDb';
@@ -18,7 +18,7 @@ import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { SuperAgentTest } from 'supertest';
 
-const communityPackageService = mockInstance(CommunityPackageService);
+const communityPackagesService = mockInstance(CommunityPackagesService);
 const mockLoadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 mockInstance(Push);
 
@@ -49,7 +49,7 @@ beforeEach(() => {
 
 describe('GET /community-packages', () => {
 	test('should respond 200 if no nodes are installed', async () => {
-		communityPackageService.getAllInstalledPackages.mockResolvedValue([]);
+		communityPackagesService.getAllInstalledPackages.mockResolvedValue([]);
 		const {
 			body: { data },
 		} = await authAgent.get('/community-packages').expect(200);
@@ -61,8 +61,8 @@ describe('GET /community-packages', () => {
 		const pkg = mockPackage();
 		const node = mockNode(pkg.packageName);
 		pkg.installedNodes = [node];
-		communityPackageService.getAllInstalledPackages.mockResolvedValue([pkg]);
-		communityPackageService.matchPackagesWithUpdates.mockReturnValue([pkg]);
+		communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
+		communityPackagesService.matchPackagesWithUpdates.mockReturnValue([pkg]);
 
 		const {
 			body: { data },
@@ -80,9 +80,9 @@ describe('GET /community-packages', () => {
 		const nodeB = mockNode(pkgB.packageName);
 		const nodeC = mockNode(pkgB.packageName);
 
-		communityPackageService.getAllInstalledPackages.mockResolvedValue([pkgA, pkgB]);
+		communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkgA, pkgB]);
 
-		communityPackageService.matchPackagesWithUpdates.mockReturnValue([
+		communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
 			{
 				...commonUpdatesProps,
 				packageName: pkgA.packageName,
@@ -112,24 +112,24 @@ describe('GET /community-packages', () => {
 	test('should not check for updates if no packages installed', async () => {
 		await authAgent.get('/community-packages');
 
-		expect(communityPackageService.executeNpmCommand).not.toHaveBeenCalled();
+		expect(communityPackagesService.executeNpmCommand).not.toHaveBeenCalled();
 	});
 
 	test('should check for updates if packages installed', async () => {
-		communityPackageService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
+		communityPackagesService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 
 		await authAgent.get('/community-packages').expect(200);
 
 		const args = ['npm outdated --json', { doNotHandleError: true }];
 
-		expect(communityPackageService.executeNpmCommand).toHaveBeenCalledWith(...args);
+		expect(communityPackagesService.executeNpmCommand).toHaveBeenCalledWith(...args);
 	});
 
 	test('should report package updates if available', async () => {
 		const pkg = mockPackage();
-		communityPackageService.getAllInstalledPackages.mockResolvedValue([pkg]);
+		communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 
-		communityPackageService.executeNpmCommand.mockImplementation(() => {
+		communityPackagesService.executeNpmCommand.mockImplementation(() => {
 			throw {
 				code: 1,
 				stdout: JSON.stringify({
@@ -143,7 +143,7 @@ describe('GET /community-packages', () => {
 			};
 		});
 
-		communityPackageService.matchPackagesWithUpdates.mockReturnValue([
+		communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
 			{
 				packageName: 'test',
 				installedNodes: [],
@@ -168,10 +168,10 @@ describe('POST /community-packages', () => {
 	});
 
 	test('should reject if package is duplicate', async () => {
-		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackageService.isPackageInstalled.mockResolvedValue(true);
-		communityPackageService.hasPackageLoaded.mockReturnValue(true);
-		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackagesService.isPackageInstalled.mockResolvedValue(true);
+		communityPackagesService.hasPackageLoaded.mockReturnValue(true);
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
 			body: { message },
@@ -181,20 +181,20 @@ describe('POST /community-packages', () => {
 	});
 
 	test('should allow installing packages that could not be loaded', async () => {
-		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackageService.hasPackageLoaded.mockReturnValue(false);
-		communityPackageService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
-		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
-		mockLoadNodesAndCredentials.installNpmModule.mockResolvedValue(mockPackage());
+		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackagesService.hasPackageLoaded.mockReturnValue(false);
+		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+		communityPackagesService.installNpmModule.mockResolvedValue(mockPackage());
 
 		await authAgent.post('/community-packages').send({ name: mockPackageName() }).expect(200);
 
-		expect(communityPackageService.removePackageFromMissingList).toHaveBeenCalled();
+		expect(communityPackagesService.removePackageFromMissingList).toHaveBeenCalled();
 	});
 
 	test('should not install a banned package', async () => {
-		communityPackageService.checkNpmPackageStatus.mockResolvedValue({ status: 'Banned' });
-		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+		communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'Banned' });
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		const {
 			body: { message },
@@ -221,11 +221,11 @@ describe('DELETE /community-packages', () => {
 	});
 
 	test('should uninstall package', async () => {
-		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
 
 		await authAgent.delete('/community-packages').query({ name: mockPackageName() }).expect(200);
 
-		expect(mockLoadNodesAndCredentials.removeNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.removeNpmModule).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -243,11 +243,11 @@ describe('PATCH /community-packages', () => {
 	});
 
 	test('should update a package', async () => {
-		communityPackageService.findInstalledPackage.mockResolvedValue(mockPackage());
-		communityPackageService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+		communityPackagesService.findInstalledPackage.mockResolvedValue(mockPackage());
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
 
 		await authAgent.patch('/community-packages').send({ name: mockPackageName() });
 
-		expect(mockLoadNodesAndCredentials.updateNpmModule).toHaveBeenCalledTimes(1);
+		expect(communityPackagesService.updateNpmModule).toHaveBeenCalledTimes(1);
 	});
 });

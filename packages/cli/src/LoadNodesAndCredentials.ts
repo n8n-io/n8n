@@ -1,7 +1,6 @@
-import { EventEmitter } from 'events';
 import uniq from 'lodash/uniq';
 import glob from 'fast-glob';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -35,7 +34,7 @@ import {
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 
 @Service()
-export class LoadNodesAndCredentials extends EventEmitter implements INodesAndCredentials {
+export class LoadNodesAndCredentials implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -53,6 +52,8 @@ export class LoadNodesAndCredentials extends EventEmitter implements INodesAndCr
 	logger: ILogger;
 
 	private downloadFolder: string;
+
+	private postProcessors: Array<() => Promise<void>> = [];
 
 	async init() {
 		// Make sure the imported modules can resolve dependencies fine.
@@ -89,13 +90,10 @@ export class LoadNodesAndCredentials extends EventEmitter implements INodesAndCr
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
-		this.injectCustomApiCallOptions();
+	}
 
-		this.on('postProcess:start', async () => {
-			await this.postProcessLoaders();
-			await this.generateTypesForFrontend();
-			this.emit('postProcess:done');
-		});
+	addPostProcessor(fn: () => Promise<void>) {
+		this.postProcessors.push(fn);
 	}
 
 	async generateTypesForFrontend() {
@@ -263,7 +261,7 @@ export class LoadNodesAndCredentials extends EventEmitter implements INodesAndCr
 		return loader;
 	}
 
-	private async postProcessLoaders() {
+	async postProcessLoaders() {
 		this.known = { nodes: {}, credentials: {} };
 		this.loaded = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
@@ -308,6 +306,20 @@ export class LoadNodesAndCredentials extends EventEmitter implements INodesAndCr
 					extends: extendsArr,
 				};
 			}
+		}
+
+		this.injectCustomApiCallOptions();
+
+		for (const postProcessor of this.postProcessors) {
+			await postProcessor();
+		}
+
+		if (config.get('generic.instanceType') === 'main') {
+			await this.generateTypesForFrontend();
+
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { Push } = await import('./push');
+			Container.get(Push).send('nodeDescriptionUpdated', undefined);
 		}
 	}
 }

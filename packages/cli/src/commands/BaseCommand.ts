@@ -29,8 +29,6 @@ export abstract class BaseCommand extends Command {
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected loadNodesAndCredentials: LoadNodesAndCredentials;
-
 	protected nodeTypes: NodeTypes;
 
 	protected userSettings: IUserSettings;
@@ -53,10 +51,8 @@ export abstract class BaseCommand extends Command {
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
 
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await this.loadNodesAndCredentials.init();
+		await Container.get(LoadNodesAndCredentials).init();
 		this.nodeTypes = Container.get(NodeTypes);
-		this.nodeTypes.init();
 		const credentialTypes = Container.get(CredentialTypes);
 		CredentialsOverwrites(credentialTypes);
 

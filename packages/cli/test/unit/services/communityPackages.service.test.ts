@@ -1,7 +1,9 @@
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-
 import axios from 'axios';
+import { mocked } from 'jest-mock';
+import Container from 'typedi';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import {
 	NODE_PACKAGE_PREFIX,
@@ -9,22 +11,20 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
-import { InstalledPackages } from '@db/entities/InstalledPackages';
-import { randomName } from '../../integration/shared/random';
 import config from '@/config';
-import { mockInstance, mockPackageName, mockPackagePair } from '../../integration/shared/utils';
-import { mocked } from 'jest-mock';
-
+import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
-import { CommunityPackageService } from '@/services/communityPackage.service';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 import { InstalledNodesRepository, InstalledPackagesRepository } from '@/databases/repositories';
-import Container from 'typedi';
 import { InstalledNodes } from '@/databases/entities/InstalledNodes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+
 import {
 	COMMUNITY_NODE_VERSION,
 	COMMUNITY_PACKAGE_VERSION,
 } from '../../integration/shared/constants';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import { randomName } from '../../integration/shared/random';
+import { mockInstance, mockPackageName, mockPackagePair } from '../../integration/shared/utils';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
@@ -38,10 +38,8 @@ const execMock = ((...args) => {
 	cb(null, 'Done', '');
 }) as typeof exec;
 
-describe('CommunityPackageService', () => {
+describe('CommunityPackagesService', () => {
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
-	Container.set(InstalledNodesRepository, installedNodesRepository);
-
 	installedNodesRepository.create.mockImplementation(() => {
 		const nodeName = randomName();
 
@@ -54,7 +52,6 @@ describe('CommunityPackageService', () => {
 	});
 
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
-
 	installedPackageRepository.create.mockImplementation(() => {
 		return Object.assign(new InstalledPackages(), {
 			packageName: mockPackageName(),
@@ -62,7 +59,9 @@ describe('CommunityPackageService', () => {
 		});
 	});
 
-	const communityPackageService = new CommunityPackageService(installedPackageRepository);
+	mockInstance(LoadNodesAndCredentials);
+
+	const communityPackagesService = Container.get(CommunityPackagesService);
 
 	beforeEach(() => {
 		config.load(config.default);
@@ -70,18 +69,18 @@ describe('CommunityPackageService', () => {
 
 	describe('parseNpmPackageName()', () => {
 		test('should fail with empty package name', () => {
-			expect(() => communityPackageService.parseNpmPackageName('')).toThrowError();
+			expect(() => communityPackagesService.parseNpmPackageName('')).toThrowError();
 		});
 
 		test('should fail with invalid package prefix name', () => {
 			expect(() =>
-				communityPackageService.parseNpmPackageName('INVALID_PREFIX@123'),
+				communityPackagesService.parseNpmPackageName('INVALID_PREFIX@123'),
 			).toThrowError();
 		});
 
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
-			const parsed = communityPackageService.parseNpmPackageName(name);
+			const parsed = communityPackagesService.parseNpmPackageName(name);
 
 			expect(parsed.rawString).toBe(name);
 			expect(parsed.packageName).toBe(name);
@@ -93,7 +92,7 @@ describe('CommunityPackageService', () => {
 			const name = mockPackageName();
 			const version = '0.1.1';
 			const fullPackageName = `${name}@${version}`;
-			const parsed = communityPackageService.parseNpmPackageName(fullPackageName);
+			const parsed = communityPackagesService.parseNpmPackageName(fullPackageName);
 
 			expect(parsed.rawString).toBe(fullPackageName);
 			expect(parsed.packageName).toBe(name);
@@ -106,7 +105,7 @@ describe('CommunityPackageService', () => {
 			const name = mockPackageName();
 			const version = '0.1.1';
 			const fullPackageName = `${scope}/${name}@${version}`;
-			const parsed = communityPackageService.parseNpmPackageName(fullPackageName);
+			const parsed = communityPackagesService.parseNpmPackageName(fullPackageName);
 
 			expect(parsed.rawString).toBe(fullPackageName);
 			expect(parsed.packageName).toBe(`${scope}/${name}`);
@@ -134,7 +133,7 @@ describe('CommunityPackageService', () => {
 
 			mocked(exec).mockImplementation(execMock);
 
-			await communityPackageService.executeNpmCommand('ls');
+			await communityPackagesService.executeNpmCommand('ls');
 
 			expect(fsAccess).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
@@ -144,7 +143,7 @@ describe('CommunityPackageService', () => {
 		test('should make sure folder exists', async () => {
 			mocked(exec).mockImplementation(execMock);
 
-			await communityPackageService.executeNpmCommand('ls');
+			await communityPackagesService.executeNpmCommand('ls');
 			expect(fsAccess).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
 			expect(fsMkdir).toBeCalledTimes(0);
@@ -156,7 +155,7 @@ describe('CommunityPackageService', () => {
 				throw new Error('Folder does not exist.');
 			});
 
-			await communityPackageService.executeNpmCommand('ls');
+			await communityPackagesService.executeNpmCommand('ls');
 
 			expect(fsAccess).toHaveBeenCalled();
 			expect(exec).toHaveBeenCalled();
@@ -172,7 +171,7 @@ describe('CommunityPackageService', () => {
 
 			mocked(exec).mockImplementation(erroringExecMock);
 
-			const call = async () => communityPackageService.executeNpmCommand('ls');
+			const call = async () => communityPackagesService.executeNpmCommand('ls');
 
 			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
 
@@ -186,7 +185,7 @@ describe('CommunityPackageService', () => {
 		test('should return same list if availableUpdates is undefined', () => {
 			const fakePkgs = mockPackagePair();
 
-			const crossedPkgs = communityPackageService.matchPackagesWithUpdates(fakePkgs);
+			const crossedPkgs = communityPackagesService.matchPackagesWithUpdates(fakePkgs);
 
 			expect(crossedPkgs).toEqual(fakePkgs);
 		});
@@ -210,7 +209,7 @@ describe('CommunityPackageService', () => {
 			};
 
 			const [crossedPkgA, crossedPkgB]: PublicInstalledPackage[] =
-				communityPackageService.matchPackagesWithUpdates([pkgA, pkgB], updates);
+				communityPackagesService.matchPackagesWithUpdates([pkgA, pkgB], updates);
 
 			expect(crossedPkgA.updateAvailable).toBe('0.2.0');
 			expect(crossedPkgB.updateAvailable).toBe('0.3.0');
@@ -229,7 +228,7 @@ describe('CommunityPackageService', () => {
 			};
 
 			const [crossedPkgA, crossedPkgB]: PublicInstalledPackage[] =
-				communityPackageService.matchPackagesWithUpdates([pkgA, pkgB], updates);
+				communityPackagesService.matchPackagesWithUpdates([pkgA, pkgB], updates);
 
 			expect(crossedPkgA.updateAvailable).toBeUndefined();
 			expect(crossedPkgB.updateAvailable).toBe('0.3.0');
@@ -241,7 +240,7 @@ describe('CommunityPackageService', () => {
 			const fakePkgs = mockPackagePair();
 			const notFoundPkgNames = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${NODE_PACKAGE_PREFIX}another-very-long-name-that-never-is-seen`;
 
-			const matchedPackages = communityPackageService.matchMissingPackages(
+			const matchedPackages = communityPackagesService.matchMissingPackages(
 				fakePkgs,
 				notFoundPkgNames,
 			);
@@ -258,7 +257,7 @@ describe('CommunityPackageService', () => {
 			const [pkgA, pkgB] = mockPackagePair();
 			const notFoundPkgNames = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${pkgA.packageName}@${pkgA.installedVersion}`;
 
-			const [matchedPkgA, matchedPkgB] = communityPackageService.matchMissingPackages(
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages(
 				[pkgA, pkgB],
 				notFoundPkgNames,
 			);
@@ -270,7 +269,7 @@ describe('CommunityPackageService', () => {
 		test('should match failed packages even if version is wrong', () => {
 			const [pkgA, pkgB] = mockPackagePair();
 			const notFoundPackageList = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${pkgA.packageName}@123.456.789`;
-			const [matchedPkgA, matchedPkgB] = communityPackageService.matchMissingPackages(
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages(
 				[pkgA, pkgB],
 				notFoundPackageList,
 			);
@@ -282,7 +281,7 @@ describe('CommunityPackageService', () => {
 
 	describe('checkNpmPackageStatus()', () => {
 		test('should call axios.post', async () => {
-			await communityPackageService.checkNpmPackageStatus(mockPackageName());
+			await communityPackagesService.checkNpmPackageStatus(mockPackageName());
 
 			expect(axios.post).toHaveBeenCalled();
 		});
@@ -292,7 +291,7 @@ describe('CommunityPackageService', () => {
 				throw new Error('Something went wrong');
 			});
 
-			const result = await communityPackageService.checkNpmPackageStatus(mockPackageName());
+			const result = await communityPackagesService.checkNpmPackageStatus(mockPackageName());
 
 			expect(result.status).toBe(NPM_PACKAGE_STATUS_GOOD);
 		});
@@ -300,7 +299,7 @@ describe('CommunityPackageService', () => {
 		test('should warn if package is banned', async () => {
 			mocked(axios.post).mockResolvedValue({ data: { status: 'Banned', reason: 'Not good' } });
 
-			const result = (await communityPackageService.checkNpmPackageStatus(
+			const result = (await communityPackagesService.checkNpmPackageStatus(
 				mockPackageName(),
 			)) as CommunityPackages.PackageStatusCheck;
 
@@ -313,19 +312,19 @@ describe('CommunityPackageService', () => {
 		test('should return true when failed package list does not exist', () => {
 			config.set<string>('nodes.packagesMissing', undefined);
 
-			expect(communityPackageService.hasPackageLoaded('package')).toBe(true);
+			expect(communityPackagesService.hasPackageLoaded('package')).toBe(true);
 		});
 
 		test('should return true when package is not in the list of missing packages', () => {
 			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.1.0');
 
-			expect(communityPackageService.hasPackageLoaded('packageC')).toBe(true);
+			expect(communityPackagesService.hasPackageLoaded('packageC')).toBe(true);
 		});
 
 		test('should return false when package is in the list of missing packages', () => {
 			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.1.0');
 
-			expect(communityPackageService.hasPackageLoaded('packageA')).toBe(false);
+			expect(communityPackagesService.hasPackageLoaded('packageA')).toBe(false);
 		});
 	});
 
@@ -333,7 +332,7 @@ describe('CommunityPackageService', () => {
 		test('should do nothing if key does not exist', () => {
 			config.set<string>('nodes.packagesMissing', undefined);
 
-			communityPackageService.removePackageFromMissingList('packageA');
+			communityPackagesService.removePackageFromMissingList('packageA');
 
 			expect(config.get('nodes.packagesMissing')).toBeUndefined();
 		});
@@ -341,7 +340,7 @@ describe('CommunityPackageService', () => {
 		test('should remove only correct package from list', () => {
 			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.2.0 packageC@0.2.0');
 
-			communityPackageService.removePackageFromMissingList('packageB');
+			communityPackagesService.removePackageFromMissingList('packageB');
 
 			expect(config.get('nodes.packagesMissing')).toBe('packageA@0.1.0 packageC@0.2.0');
 		});
@@ -349,7 +348,7 @@ describe('CommunityPackageService', () => {
 		test('should not remove if package is not in the list', () => {
 			const failedToLoadList = 'packageA@0.1.0 packageB@0.2.0 packageB@0.2.0';
 			config.set('nodes.packagesMissing', failedToLoadList);
-			communityPackageService.removePackageFromMissingList('packageC');
+			communityPackagesService.removePackageFromMissingList('packageC');
 
 			expect(config.get('nodes.packagesMissing')).toBe(failedToLoadList);
 		});

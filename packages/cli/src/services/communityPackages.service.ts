@@ -44,7 +44,7 @@ const asyncExec = promisify(exec);
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
-export class CommunityPackageService {
+export class CommunityPackagesService {
 	constructor(
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
@@ -223,7 +223,7 @@ export class CommunityPackageService {
 	}
 
 	hasPackageLoaded(packageName: string) {
-		const missingPackages = config.get('nodes.packagesMissing') as string | undefined;
+		const missingPackages = config.getEnv('nodes.packagesMissing') as string | undefined;
 
 		if (!missingPackages) return true;
 
@@ -252,16 +252,13 @@ export class CommunityPackageService {
 		}
 	}
 
-	async setMissingPackages(
-		loadNodesAndCredentials: LoadNodesAndCredentials,
-		{ reinstallMissingPackages }: { reinstallMissingPackages: boolean },
-	) {
+	async setMissingPackages({ reinstallMissingPackages }: { reinstallMissingPackages: boolean }) {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
 		installedPackages.forEach((installedPackage) => {
 			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!loadNodesAndCredentials.known.nodes[installedNode.type]) {
+				if (!this.loadNodesAndCredentials.known.nodes[installedNode.type]) {
 					// Leave the list ready for installing in case we need.
 					missingPackages.add({
 						packageName: installedPackage.packageName,
@@ -318,7 +315,7 @@ export class CommunityPackageService {
 		await this.executeNpmCommand(`npm remove ${packageName}`);
 		await this.removePackageFromDatabase(installedPackage);
 		await this.loadNodesAndCredentials.unloadPackage(packageName);
-		this.loadNodesAndCredentials.emit('postProcess:start');
+		await this.loadNodesAndCredentials.postProcessLoaders();
 	}
 
 	private async installOrUpdateNpmModule(
@@ -358,7 +355,7 @@ export class CommunityPackageService {
 					await this.removePackageFromDatabase(options.installedPackage);
 				}
 				const installedPackage = await this.persistInstalledPackage(loader);
-				this.loadNodesAndCredentials.emit('postProcess:start');
+				await this.loadNodesAndCredentials.postProcessLoaders();
 				return installedPackage;
 			} catch (error) {
 				throw new Error(`Failed to save installed package: ${packageName}`, { cause: error });

@@ -16,14 +16,8 @@ import type { Dirent } from 'fs';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {}
-
-	init() {
-		// Some nodeTypes need to get special parameters applied like the
-		// polling nodes the polling times
-		this.applySpecialNodeParameters();
-
-		this.nodesAndCredentials.on('postProcess:done', () => this.applySpecialNodeParameters());
+	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {
+		nodesAndCredentials.addPostProcessor(async () => this.applySpecialNodeParameters());
 	}
 
 	/**
@@ -52,6 +46,7 @@ export class NodeTypes implements INodeTypes {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
+	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */
 	applySpecialNodeParameters() {
 		for (const nodeTypeData of Object.values(this.loadedNodes)) {
 			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
