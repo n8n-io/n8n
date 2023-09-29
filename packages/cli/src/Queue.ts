@@ -2,7 +2,7 @@ import type Bull from 'bull';
 import { Service } from 'typedi';
 import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
+import { decodeWebhookResponse } from '@/WebhookHelpers';
 
 import {
 	getRedisClusterClient,

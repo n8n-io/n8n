@@ -36,7 +36,7 @@ export class ActiveWorkflows {
 	 * Returns the ids of the currently active workflows
 	 *
 	 */
-	allActiveWorkflows(): string[] {
+	allActiveWorkflowIds(): string[] {
 		return Object.keys(this.workflowData);
 	}
 

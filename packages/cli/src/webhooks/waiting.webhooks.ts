@@ -1,39 +1,50 @@
-import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
 import { Service } from 'typedi';
-import type express from 'express';
+import type { Application, Response } from 'express';
+import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
 
-import * as ResponseHelper from '@/ResponseHelper';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import config from '@/config';
+import { NotFoundError, ConflictError } from '@/ResponseHelper';
 import { NodeTypes } from '@/NodeTypes';
-import type {
-	IResponseCallbackData,
-	IWebhookManager,
-	IWorkflowDb,
-	WaitingWebhookRequest,
-} from '@/Interfaces';
+import type { IWorkflowDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories';
-import { OwnershipService } from './services/ownership.service';
+import { OwnershipService } from '@/services/ownership.service';
+
+import { AbstractWebhooks } from './abstract.webhooks';
+import type {
+	RegisteredWaitingWebhook,
+	WaitingWebhookRequest,
+	WebhookResponseCallbackData,
+} from './types';
 
 @Service()
-export class WaitingWebhooks implements IWebhookManager {
+export class WaitingWebhooks extends AbstractWebhooks<RegisteredWaitingWebhook> {
+	override supportsDynamicPath = false;
+
 	constructor(
-		private nodeTypes: NodeTypes,
+		nodeTypes: NodeTypes,
 		private executionRepository: ExecutionRepository,
 		private ownershipService: OwnershipService,
-	) {}
+	) {
+		super(nodeTypes);
+	}
 
-	// TODO: implement `getWebhookMethods` for CORS support
+	override registerHandler(app: Application) {
+		const prefix = config.getEnv('endpoints.webhookWaiting');
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		app.all(`/${prefix}/:path/:suffix?`, this.handleRequest.bind(this));
+	}
 
 	async executeWebhook(
-		req: WaitingWebhookRequest,
-		res: express.Response,
-	): Promise<IResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
-		Logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
+		webhook: RegisteredWaitingWebhook,
+		request: WaitingWebhookRequest,
+		response: Response,
+	): Promise<WebhookResponseCallbackData> {
+		const { path: executionId, suffix } = request.params;
+		Logger.debug(`Received waiting-webhook "${request.method}" for execution "${executionId}"`);
 
 		// Reset request parameters
-		req.params = {} as WaitingWebhookRequest['params'];
+		request.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
@@ -41,11 +52,11 @@ export class WaitingWebhooks implements IWebhookManager {
 		});
 
 		if (!execution) {
-			throw new ResponseHelper.NotFoundError(`The execution "${executionId} does not exist.`);
+			throw new NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 
 		if (execution.finished || execution.data.resultData.error) {
-			throw new ResponseHelper.ConflictError(`The execution "${executionId} has finished already.`);
+			throw new ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
@@ -77,55 +88,43 @@ export class WaitingWebhooks implements IWebhookManager {
 		try {
 			workflowOwner = await this.ownershipService.getWorkflowOwnerCached(workflowData.id!);
 		} catch (error) {
-			throw new ResponseHelper.NotFoundError('Could not find workflow');
+			throw new NotFoundError('Could not find workflow');
 		}
 
-		const workflowStartNode = workflow.getNode(lastNodeExecuted);
-		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+		const startNode = workflow.getNode(lastNodeExecuted);
+		if (startNode === null) {
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflowStartNode,
-			additionalData,
-		).find(
-			(webhook) =>
-				webhook.httpMethod === req.method &&
-				webhook.path === (suffix ?? '') &&
-				webhook.webhookDescription.restartWebhook === true,
+		const webhookData = NodeHelpers.getNodeWebhooks(workflow, startNode, additionalData).find(
+			(w) =>
+				w.httpMethod === request.method &&
+				w.path === (suffix ?? '') &&
+				w.webhookDescription.restartWebhook === true,
 		);
 
 		if (webhookData === undefined) {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
 			const errorMessage = `The workflow for execution "${executionId}" does not contain a waiting webhook with a matching path/method.`;
-			throw new ResponseHelper.NotFoundError(errorMessage);
+			throw new NotFoundError(errorMessage);
 		}
 
 		const runExecutionData = execution.data;
 
 		return new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
+			void this.startWebhookExecution(
+				webhook,
+				request,
+				response,
 				workflowData as IWorkflowDb,
-				workflowStartNode,
-				executionMode,
-				undefined,
+				(error: Error | null, data: object) => {
+					if (error !== null) reject(error);
+					else resolve(data);
+				},
 				runExecutionData,
 				execution.id,
-				req,
-				res,
-
-				(error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					resolve(data);
-				},
 			);
 		});
 	}

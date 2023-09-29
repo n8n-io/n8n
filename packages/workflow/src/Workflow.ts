@@ -42,6 +42,7 @@ import type {
 	IRunNodeResponse,
 	NodeParameterValueType,
 	ConnectionTypes,
+	WebhookNodeType,
 } from './Interfaces';
 import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -1179,25 +1180,19 @@ export class Workflow {
 	 *
 	 */
 	async runWebhook(
-		webhookData: IWebhookData,
+		webhookName: string,
 		node: INode,
+		nodeType: WebhookNodeType,
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
 	): Promise<IWebhookResponseData> {
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (nodeType === undefined) {
-			throw new Error(`The type of the webhook node "${node.name}" is not known.`);
-		} else if (nodeType.webhook === undefined) {
-			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
-		}
-
 		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
-			webhookData,
+			{ name: webhookName },
 		);
 		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
 	}

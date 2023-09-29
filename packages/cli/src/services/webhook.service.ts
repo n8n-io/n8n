@@ -1,11 +1,9 @@
-import { WebhookRepository } from '@/databases/repositories';
 import { Service } from 'typedi';
-import { CacheService } from './cache.service';
-import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
-import type { IHttpRequestMethods } from 'n8n-workflow';
 import type { DeepPartial } from 'typeorm';
-
-type Method = NonNullable<IHttpRequestMethods>;
+import type { IHttpRequestMethods } from 'n8n-workflow';
+import { WebhookRepository } from '@db/repositories';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
+import { CacheService } from './cache.service';
 
 @Service()
 export class WebhookService {
@@ -22,7 +20,7 @@ export class WebhookService {
 		void this.cacheService.setMany(allWebhooks.map((w) => [w.cacheKey, w]));
 	}
 
-	private async findCached(method: Method, path: string) {
+	private async findCached(method: IHttpRequestMethods, path: string) {
 		const cacheKey = `webhook:${method}-${path}`;
 
 		const cachedWebhook = await this.cacheService.get(cacheKey);
@@ -43,7 +41,7 @@ export class WebhookService {
 	/**
 	 * Find a matching webhook with zero dynamic path segments, e.g. `<uuid>` or `user/profile`.
 	 */
-	private async findStaticWebhook(method: Method, path: string) {
+	private async findStaticWebhook(method: IHttpRequestMethods, path: string) {
 		return this.webhookRepository.findOneBy({ webhookPath: path, method });
 	}
 
@@ -51,7 +49,7 @@ export class WebhookService {
 	 * Find a matching webhook with one or more dynamic path segments, e.g. `<uuid>/user/:id/posts`.
 	 * It is mandatory for dynamic webhooks to have `<uuid>/` at the base.
 	 */
-	private async findDynamicWebhook(method: Method, path: string) {
+	private async findDynamicWebhook(method: IHttpRequestMethods, path: string) {
 		const [uuidSegment, ...otherSegments] = path.split('/');
 
 		const dynamicWebhooks = await this.webhookRepository.findBy({
@@ -87,7 +85,7 @@ export class WebhookService {
 		return webhook;
 	}
 
-	async findWebhook(method: Method, path: string) {
+	async findWebhook(method: IHttpRequestMethods, path: string) {
 		return this.findCached(method, path);
 	}
 

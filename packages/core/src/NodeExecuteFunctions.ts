@@ -3576,7 +3576,7 @@ export function getExecuteWebhookFunctions(
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
-	webhookData: IWebhookData,
+	webhookData: { name: string },
 ): IWebhookFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
@@ -3655,7 +3655,7 @@ export function getExecuteWebhookFunctions(
 					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, null),
 				),
-			getWebhookName: () => webhookData.webhookDescription.name,
+			getWebhookName: () => webhookData.name,
 			helpers: {
 				createDeferredPromise,
 				...getRequestHelperFunctions(workflow, node, additionalData),

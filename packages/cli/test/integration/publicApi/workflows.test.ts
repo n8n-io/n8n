@@ -10,6 +10,8 @@ import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
+import { WorkflowRepository } from '@/databases/repositories';
+import Container from 'typedi';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -17,6 +19,7 @@ let member: User;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
+let workflowRepository: WorkflowRepository;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -38,6 +41,7 @@ beforeAll(async () => {
 	await utils.initEncryptionKey();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
+	workflowRepository = Container.get(WorkflowRepository);
 });
 
 beforeEach(async () => {
@@ -466,7 +470,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(true);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await workflowRunner.isActive(workflow.id)).toBe(true);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
@@ -510,7 +514,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(true);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await workflowRunner.isActive(workflow.id)).toBe(true);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 });
 
@@ -564,7 +568,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
-		expect(await workflowRunner.isActive(workflow.id)).toBe(false);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
@@ -609,7 +613,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
-		expect(await workflowRunner.isActive(workflow.id)).toBe(false);
+		expect(await workflowRepository.isActive(workflow.id)).toBe(false);
 	});
 });
 

@@ -4,12 +4,10 @@ import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 import { AbstractServer } from '@/AbstractServer';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import { TestWebhooks } from '@/TestWebhooks';
-import { WaitingWebhooks } from '@/WaitingWebhooks';
-import type { IResponseCallbackData } from '@/Interfaces';
+import { ActiveWebhooks, TestWebhooks, WaitingWebhooks } from '@/webhooks';
+import type { WebhookResponseCallbackData } from '@/webhooks/types';
 
 import { mockInstance } from '../integration/shared/utils';
 
@@ -21,7 +19,7 @@ describe('WebhookServer', () => {
 
 	describe('CORS', () => {
 		const corsOrigin = 'https://example.com';
-		const activeWorkflowRunner = mockInstance(ActiveWorkflowRunner);
+		const activeWebhooks = mockInstance(ActiveWebhooks);
 		const testWebhooks = mockInstance(TestWebhooks);
 		mockInstance(WaitingWebhooks);
 
@@ -34,7 +32,7 @@ describe('WebhookServer', () => {
 		});
 
 		const tests = [
-			['webhook', activeWorkflowRunner],
+			['webhook', activeWebhooks],
 			['webhookTest', testWebhooks],
 			// TODO: enable webhookWaiting after CORS support is added
 			// ['webhookWaiting', waitingWebhooks],
@@ -70,7 +68,7 @@ describe('WebhookServer', () => {
 		}
 
 		const mockResponse = (data = {}, headers = {}, status = 200) => {
-			const response = mock<IResponseCallbackData>();
+			const response = mock<WebhookResponseCallbackData>();
 			response.responseCode = status;
 			response.data = data;
 			response.headers = headers;

@@ -62,6 +62,12 @@ export class NotFoundError extends ResponseError {
 	}
 }
 
+export class MethodNotAllowedError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 404, 404, hint);
+	}
+}
+
 export class ConflictError extends ResponseError {
 	constructor(message: string, hint: string | undefined = undefined) {
 		super(message, 409, 409, hint);
