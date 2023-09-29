@@ -155,7 +155,30 @@ export class Agent implements INodeType {
 		},
 		inputs: `={{ ((agent) => { ${getInputs.toString()}; return getInputs(agent) })($parameter.agent) }}`,
 		outputs: [NodeConnectionType.Main],
-		credentials: [],
+		credentials: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'mySql',
+				required: true,
+				testedBy: 'mysqlConnectionTest',
+				displayOptions: {
+					show: {
+						agent: ['sqlAgent'],
+						'/dataSource': ['mysql'],
+					},
+				},
+			},
+			{
+				name: 'postgres',
+				required: true,
+				displayOptions: {
+					show: {
+						agent: ['sqlAgent'],
+						'/dataSource': ['postgres'],
+					},
+				},
+			},
+		],
 		properties: [
 			{
 				displayName: 'Agent',
