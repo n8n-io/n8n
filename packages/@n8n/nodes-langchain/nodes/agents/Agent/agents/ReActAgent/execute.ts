@@ -1,6 +1,6 @@
 import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
 
-import { initializeAgentExecutorWithOptions } from 'langchain/agents';
+import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/base_language';
 import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
@@ -18,17 +18,34 @@ export async function reActAgentAgentExecute(
 		| BaseChatModel;
 
 	const tools = (await this.getInputConnectionData(NodeConnectionType.AiTool, 0)) as Tool[];
+
 	const outputParsers = (await this.getInputConnectionData(
 		NodeConnectionType.AiOutputParser,
 		0,
 	)) as BaseOutputParser[];
 
-	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
-		agentType:
-			model instanceof BaseChatModel
-				? 'chat-zero-shot-react-description'
-				: 'zero-shot-react-description',
-	});
+	const options = this.getNodeParameter('options', 0, {}) as {
+		prefix?: string;
+		suffix?: string;
+		suffixChat?: string;
+		humanMessageTemplate?: string;
+	};
+	let agent: ChatAgent | ZeroShotAgent;
+
+	if (model instanceof BaseChatModel) {
+		agent = ChatAgent.fromLLMAndTools(model, tools, {
+			prefix: options.prefix,
+			suffix: options.suffixChat,
+			humanMessageTemplate: options.humanMessageTemplate,
+		});
+	} else {
+		agent = ZeroShotAgent.fromLLMAndTools(model, tools, {
+			prefix: options.prefix,
+			suffix: options.suffix,
+		});
+	}
+
+	const agentExecutor = AgentExecutor.fromAgentAndTools({ agent, tools });
 
 	const returnData: INodeExecutionData[] = [];
 

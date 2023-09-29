@@ -37,7 +37,10 @@ export async function conversationalAgentExecute(
 	)) as BaseOutputParser[];
 
 	// TODO: Make it possible in the future to use values for other items than just 0
-	const options = this.getNodeParameter('options', 0, {}) as { systemMessage?: string };
+	const options = this.getNodeParameter('options', 0, {}) as {
+		systemMessage?: string;
+		humanMessage?: string;
+	};
 
 	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
 		// Passing "chat-conversational-react-description" as the agent type
@@ -48,6 +51,7 @@ export async function conversationalAgentExecute(
 		memory,
 		agentArgs: {
 			systemMessage: options.systemMessage,
+			humanMessage: options.humanMessage,
 		},
 	});
 

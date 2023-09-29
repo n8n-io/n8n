@@ -5,12 +5,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { initializeAgentExecutorWithOptions } from 'langchain/agents';
+import type { AgentExecutorInput } from 'langchain/agents';
+import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
 import type { Tool } from 'langchain/tools';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { PromptTemplate } from 'langchain/prompts';
 import { CombiningOutputParser } from 'langchain/output_parsers';
-import type { BaseChatMemory } from 'langchain/memory';
+import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 
 export async function openAiFunctionsAgentExecute(
@@ -36,14 +37,27 @@ export async function openAiFunctionsAgentExecute(
 		NodeConnectionType.AiOutputParser,
 		0,
 	)) as BaseOutputParser[];
+	const options = this.getNodeParameter('options', 0, {}) as {
+		systemMessage?: string;
+	};
 
-	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
-		agentType: 'openai-functions',
-	});
+	const agentConfig: AgentExecutorInput = {
+		tags: ['openai-functions'],
+		agent: OpenAIAgent.fromLLMAndTools(model, tools, {
+			prefix: options.systemMessage,
+		}),
+		tools,
+		memory:
+			memory ??
+			new BufferMemory({
+				returnMessages: true,
+				memoryKey: 'chat_history',
+				inputKey: 'input',
+				outputKey: 'output',
+			}),
+	};
 
-	if (memory) {
-		agentExecutor.memory = memory;
-	}
+	const agentExecutor = AgentExecutor.fromAgentAndTools(agentConfig);
 
 	const returnData: INodeExecutionData[] = [];
 
@@ -63,11 +77,7 @@ export async function openAiFunctionsAgentExecute(
 	}
 
 	const items = this.getInputData();
-
-	const itemCount = items.length;
-
-	// Run for each item
-	for (let itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		let input = this.getNodeParameter('text', itemIndex) as string;
 
 		if (prompt) {
