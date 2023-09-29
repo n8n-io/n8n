@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "dev": "npm run storybook",
     "build": "run-p type-check build:vite && npm run build:prepare",
@@ -14,7 +14,7 @@
     "format": "prettier --write src/",
     "storybook": "storybook dev -p 6006",
     "build:storybook": "storybook build",
-    "release": "npm run build && cd dist && npm publish"
+    "release": "pnpm run build && cd dist && pnpm publish"
   },
   "main": "./chat.umd.cjs",
   "module": "./chat.js",
