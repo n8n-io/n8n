@@ -96,8 +96,8 @@ export class Webhook extends Node {
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const options = context.getNodeParameter('options', {}) as {
 			binaryData: boolean;
-			ignoreBots: boolean;
 			domainAllowlist: string;
+			ignoreBots: boolean;
 			rawBody: Buffer;
 			responseData?: string;
 		};

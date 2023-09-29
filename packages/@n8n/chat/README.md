@@ -4,6 +4,8 @@ This is an embeddable Chat widget for n8n. It allows the execution of AI-Powered
 ## Pre-requisites
 Create a n8n workflow which you want to execute via chat. The workflow has to be triggered using a **Webhook** node and return data using the **Respond to Webhook** node.
 
+Open the **Webhook** node and add your domain to the **Domain Allowlist** field. This makes sure that only requests from your domain are accepted.
+
 [See example workflow](/resources/workflow.json)
 
 > Make sure the workflow is **Active.**
@@ -18,6 +20,8 @@ Each request is accompanied by an `action` query parameter, where `action` can b
 We use the `Switch` node to handle the different actions.
 
 ## Installation
+
+Open the **Webhook** node and replace `YOUR_PRODUCTION_WEBHOOK_URL` with your production URL. This is the URL that the Chat widget will use to send requests to.
 
 ### a. CDN Embed
 Add the following code to your HTML page.

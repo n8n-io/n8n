@@ -5,7 +5,9 @@
 			"parameters": {
 				"path": "513107b3-6f3a-4a1e-af21-659f0ed14183",
 				"responseMode": "responseNode",
-				"options": {}
+				"options": {
+					"domainAllowlist": "*.localhost"
+				}
 			},
 			"id": "51ab2689-647d-4cff-9d6f-0ba4df45e904",
 			"name": "Webhook",
@@ -253,7 +255,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "d37f6de5-5976-4625-8c82-389c11173075",
+	"versionId": "d6fc1ed3-920a-496e-8892-67a2bb0ae816",
 	"id": "L3FlJuFOxZcHtoFT",
 	"meta": {
 		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
