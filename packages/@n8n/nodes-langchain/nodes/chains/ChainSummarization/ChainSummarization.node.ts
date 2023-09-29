@@ -6,11 +6,14 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { SummarizationChainParams } from 'langchain/chains';
 import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Document } from 'langchain/document';
+import { PromptTemplate } from 'langchain/prompts';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from './prompt';
 
 export class ChainSummarization implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,23 +62,10 @@ export class ChainSummarization implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Run Once for All Items',
-						value: 'runOnceForAllItems',
-						description: 'Run this chain only once, no matter how many input items there are',
-					},
-					{
-						name: 'Run Once for Each Item',
-						value: 'runOnceForEachItem',
-						description: 'Run this chain as many times as there are input items',
-					},
-				],
-				default: 'runOnceForAllItems',
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
 			},
 			{
 				displayName: 'Type',
@@ -99,17 +89,55 @@ export class ChainSummarization implements INodeType {
 				],
 			},
 			{
-				displayName: 'Specify the document to load in the document loader sub-node',
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Prompt',
+						name: 'prompt',
+						type: 'string',
+						default: DEFAULT_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Combine Map Prompt',
+						name: 'combineMapPrompt',
+						type: 'string',
+						default: DEFAULT_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Refine Prompt',
+						name: 'refinePrompt',
+						type: 'string',
+						default: REFINE_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Refine Question Prompt',
+						name: 'refineQuestionPrompt',
+						type: 'string',
+						default: DEFAULT_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+				],
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Vector Store QA Chain');
-		const runMode = this.getNodeParameter('mode', 0) as string;
 		const type = this.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
 
 		const model = (await this.getInputConnectionData(
@@ -121,23 +149,73 @@ export class ChainSummarization implements INodeType {
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
-		const chain = loadSummarizationChain(model, { type });
+		const options = this.getNodeParameter('options', 0, {}) as {
+			prompt?: string;
+			refineQuestionPrompt?: string;
+			refinePrompt?: string;
+			combineMapPrompt?: string;
+		};
 
-		const items = this.getInputData();
-		if (runMode === 'runOnceForAllItems') {
-			let processedDocuments: Document[];
-			if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
-				processedDocuments = await documentInput.process(items);
-			} else {
-				processedDocuments = documentInput;
+		const chainArgs: SummarizationChainParams = {
+			type,
+		};
+
+		// Map reduce prompt override
+		if (type === 'map_reduce') {
+			const mapReduceArgs = chainArgs as SummarizationChainParams & {
+				type: 'map_reduce';
+			};
+			if (options.combineMapPrompt) {
+				mapReduceArgs.combineMapPrompt = new PromptTemplate({
+					template: options.combineMapPrompt,
+					inputVariables: ['text'],
+				});
+			}
+			if (options.prompt) {
+				mapReduceArgs.combinePrompt = new PromptTemplate({
+					template: options.prompt,
+					inputVariables: ['text'],
+				});
+			}
+		}
+
+		// Stuff prompt override
+		if (type === 'stuff') {
+			const stuffArgs = chainArgs as SummarizationChainParams & {
+				type: 'stuff';
+			};
+			if (options.prompt) {
+				stuffArgs.prompt = new PromptTemplate({
+					template: options.prompt,
+					inputVariables: ['text'],
+				});
+			}
+		}
+
+		// Refine prompt override
+		if (type === 'refine') {
+			const refineArgs = chainArgs as SummarizationChainParams & {
+				type: 'refine';
+			};
+
+			if (options.refinePrompt) {
+				refineArgs.refinePrompt = new PromptTemplate({
+					template: options.refinePrompt,
+					inputVariables: ['existing_answer', 'text'],
+				});
 			}
 
-			const response = await chain.call({
-				input_documents: processedDocuments,
-			});
-
-			return this.prepareOutputData([{ json: { response } }]);
+			if (options.refineQuestionPrompt) {
+				refineArgs.questionPrompt = new PromptTemplate({
+					template: options.refineQuestionPrompt,
+					inputVariables: ['text'],
+				});
+			}
 		}
+
+		const chain = loadSummarizationChain(model, chainArgs);
+
+		const items = this.getInputData();
 
 		// Run for each item
 		const returnData: INodeExecutionData[] = [];

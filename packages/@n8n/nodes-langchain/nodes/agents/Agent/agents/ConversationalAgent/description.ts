@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { SYSTEM_MESSAGE, HUMAN_MESSAGE } from './prompt';
 
 export const conversationalAgentProperties: INodeProperties[] = [
 	{
@@ -14,7 +15,7 @@ export const conversationalAgentProperties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'options',
+		name: 'options_conversationalAgent',
 		type: 'collection',
 		displayOptions: {
 			show: {
@@ -28,11 +29,20 @@ export const conversationalAgentProperties: INodeProperties[] = [
 				displayName: 'System Message',
 				name: 'systemMessage',
 				type: 'string',
-				default:
-					'Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary.',
+				default: SYSTEM_MESSAGE,
 				description: 'The message that will be sent to the agent before the conversation starts',
 				typeOptions: {
-					rows: 3,
+					rows: 6,
+				},
+			},
+			{
+				displayName: 'Humman Message',
+				name: 'humanMessage',
+				type: 'string',
+				default: HUMAN_MESSAGE,
+				description: 'The message that will provide the agent with a list of tools to use',
+				typeOptions: {
+					rows: 6,
 				},
 			},
 		],
