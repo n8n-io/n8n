@@ -734,6 +734,18 @@ export const schema = {
 						default: '',
 						env: 'N8N_SMTP_PASS',
 					},
+					serviceClient: {
+						doc: 'SMTP OAuth Service Client',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_SERVICE_CLIENT',
+					},
+					privateKey: {
+						doc: 'SMTP OAuth Private Key',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_PRIVATE_KEY',
+					},
 				},
 				sender: {
 					doc: 'How to display sender name',
