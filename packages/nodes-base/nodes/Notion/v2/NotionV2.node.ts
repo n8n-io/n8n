@@ -12,6 +12,7 @@ import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 import type { SortData, FileRecord } from '../GenericFunctions';
 import {
+	countBlocks,
 	downloadFiles,
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
@@ -289,7 +290,8 @@ export class NotionV2 implements INodeType {
 							responseData = await notionApiRequestGetBlockChildrens.call(this, responseData);
 						}
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i);
+						const limit = this.getNodeParameter('limit', i);
+						qs.page_size = limit;
 						responseData = await notionApiRequest.call(
 							this,
 							'GET',
@@ -297,15 +299,36 @@ export class NotionV2 implements INodeType {
 							{},
 							qs,
 						);
-						responseData = responseData.results;
+						const results = responseData.results;
 
-						if (fetchNestedBlocks && responseData.length < qs.page_size) {
-							const limit = qs.page_size - responseData.length;
-							responseData = await notionApiRequestGetBlockChildrens.call(
-								this,
-								responseData,
-								limit,
-							);
+						if (fetchNestedBlocks) {
+							let blocksCount = 0;
+							const blocks = [];
+
+							for (const result of results) {
+								const currentLimit = limit - blocksCount;
+								if (currentLimit <= 0) {
+									break;
+								}
+
+								if (result.has_children) {
+									const blockWithChildrens = await notionApiRequestGetBlockChildrens.call(
+										this,
+										[result],
+										currentLimit,
+									);
+
+									blocksCount += countBlocks(blockWithChildrens as IDataObject[]);
+									blocks.push(...(blockWithChildrens as IDataObject[]));
+								} else {
+									blocksCount++;
+									blocks.push(result);
+								}
+							}
+
+							responseData = blocks;
+						} else {
+							responseData = results;
 						}
 					}
 

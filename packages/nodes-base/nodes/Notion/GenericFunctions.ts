@@ -108,6 +108,17 @@ export async function notionApiRequestAllItems(
 	return returnData;
 }
 
+export function countBlocks(blocks: IDataObject[]) {
+	let count = 0;
+	for (const block of blocks) {
+		count++;
+		if (block.childrens) {
+			count += countBlocks(block.childrens as IDataObject[]);
+		}
+	}
+	return count;
+}
+
 export async function notionApiRequestGetBlockChildrens(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	blocks: IDataObject[],
@@ -118,40 +129,31 @@ export async function notionApiRequestGetBlockChildrens(
 	}
 	const responseData = blocks;
 
+	let currentLimit;
+
+	if (limit) {
+		currentLimit = limit - countBlocks(blocks);
+	}
+
 	for (const block of responseData) {
 		if (block.type === 'child_page') continue;
 
 		if (block.has_children) {
-			let childrens;
+			let childrens = await notionApiRequestAllItems.call(
+				this,
+				'results',
+				'GET',
+				`/blocks/${block.id}/children`,
+			);
 
-			if (limit === undefined) {
-				childrens = await notionApiRequestAllItems.call(
-					this,
-					'results',
-					'GET',
-					`/blocks/${block.id}/children`,
-				);
-			} else {
-				const page_size = limit;
-				childrens = await notionApiRequest.call(
-					this,
-					'GET',
-					`/blocks/${block.id}/children`,
-					{},
-					{ page_size },
-				);
-				childrens = childrens.results;
-
-				if (childrens.length >= limit) {
-					childrens = childrens.slice(0, limit);
-					block.childrens = childrens.map((entry: IDataObject) => ({
-						object: entry.object,
-						parent_id: block.id,
-						...entry,
-					}));
-					return responseData;
+			if (currentLimit) {
+				if (childrens.length > currentLimit) {
+					childrens = childrens.slice(0, currentLimit);
+					currentLimit -= childrens.length;
+					block.childrens = childrens;
+					break;
 				} else {
-					limit = limit - childrens.length;
+					currentLimit -= childrens.length;
 				}
 			}
 
