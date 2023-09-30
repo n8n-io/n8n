@@ -65,6 +65,7 @@ import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { executionsController } from '@/executions/executions.controller';
+import { WorkflowHistoryController } from '@/workflows/workflowHistory/workflowHistory.controller.ee';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -161,7 +162,6 @@ export const setupTestServer = ({
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
-		config.set('executions.pruneData', false);
 
 		if (enabledFeatures) {
 			Container.get(License).isFeatureEnabled = (feature) => enabledFeatures.includes(feature);
@@ -312,6 +312,9 @@ export const setupTestServer = ({
 						break;
 					case 'externalSecrets':
 						registerController(app, config, Container.get(ExternalSecretsController));
+						break;
+					case 'workflowHistory':
+						registerController(app, config, Container.get(WorkflowHistoryController));
 						break;
 				}
 			}

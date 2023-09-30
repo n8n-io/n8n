@@ -17,7 +17,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 		icon: 'file:binary.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Use the binary input to this chain',
+		description: 'Use binary data from a previous step in the workflow',
 		defaults: {
 			name: 'Binary Input Loader',
 		},

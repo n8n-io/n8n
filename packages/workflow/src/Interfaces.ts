@@ -1503,6 +1503,7 @@ export type ConnectionTypes =
 	| 'ai_languageModel'
 	| 'ai_memory'
 	| 'ai_outputParser'
+	| 'ai_retriever'
 	| 'ai_textSplitter'
 	| 'ai_tool'
 	| 'ai_vectorRetriever'
@@ -1522,6 +1523,8 @@ export const enum NodeConnectionType {
 	AiMemory = 'ai_memory',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiOutputParser = 'ai_outputParser',
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	AiRetriever = 'ai_retriever',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiTextSplitter = 'ai_textSplitter',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -2242,6 +2245,7 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
+	isBetaRelease: boolean;
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;

@@ -104,9 +104,9 @@ export class Code implements INodeType {
 		},
 		codex: {
 			categories: ['AI'],
-			// subcategories: {
-			// 	AI: ['Tools'],
-			// },
+			subcategories: {
+				AI: ['Miscellaneous'],
+			},
 			resources: {
 				primaryDocumentation: [
 					{

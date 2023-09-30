@@ -12,7 +12,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmChatAnthropic implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Chat Anthropic',
+		displayName: 'Anthropic Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
@@ -20,7 +20,7 @@ export class LmChatAnthropic implements INodeType {
 		version: 1,
 		description: 'Language Model Anthropic',
 		defaults: {
-			name: 'Chat Anthropic',
+			name: 'Anthropic Chat Model',
 		},
 		codex: {
 			categories: ['AI'],

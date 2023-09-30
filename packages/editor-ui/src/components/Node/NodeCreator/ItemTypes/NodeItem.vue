@@ -8,7 +8,6 @@
 		:description="subcategory !== DEFAULT_SUBCATEGORY ? description : ''"
 		:title="displayName"
 		:show-action-arrow="showActionArrow"
-		:is-ai="isAi"
 		:is-trigger="isTrigger"
 		:data-test-id="dataTestId"
 	>
@@ -78,7 +77,7 @@ const description = computed<string>(() => {
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
-	}) as string;
+	}) ;
 });
 const showActionArrow = computed(() => hasActions.value);
 const dataTestId = computed(() =>
@@ -110,10 +109,6 @@ const displayName = computed<any>(() => {
 		key: `headers.${shortNodeType.value}.displayName`,
 		fallback: hasActions.value ? displayName.replace('Trigger', '') : displayName,
 	});
-});
-
-const isAi = computed<boolean>(() => {
-	return (props.nodeType.codex?.categories?.includes('AI') ?? false) && !hasActions.value;
 });
 
 const isSubNode = computed<boolean>(() => {

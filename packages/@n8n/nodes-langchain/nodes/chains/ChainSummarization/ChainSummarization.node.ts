@@ -6,11 +6,14 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { SummarizationChainParams } from 'langchain/chains';
 import { loadSummarizationChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { Document } from 'langchain/document';
+import { PromptTemplate } from 'langchain/prompts';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from './prompt';
 
 export class ChainSummarization implements INodeType {
 	description: INodeTypeDescription = {
@@ -59,23 +62,10 @@ export class ChainSummarization implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Run Once for All Items',
-						value: 'runOnceForAllItems',
-						description: 'Run this chain only once, no matter how many input items there are',
-					},
-					{
-						name: 'Run Once for Each Item',
-						value: 'runOnceForEachItem',
-						description: 'Run this chain as many times as there are input items',
-					},
-				],
-				default: 'runOnceForAllItems',
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
 			},
 			{
 				displayName: 'Type',
@@ -85,16 +75,87 @@ export class ChainSummarization implements INodeType {
 				default: 'map_reduce',
 				options: [
 					{
-						name: 'Map Reduce',
+						name: 'Map Reduce (Recommended)',
 						value: 'map_reduce',
+						description:
+							'Individually summarizes each document using an LLM (Map step), then combines these summaries into a global summary (Reduce step), with an optional compression step to ensure fit',
 					},
 					{
 						name: 'Refine',
 						value: 'refine',
+						description:
+							'Iteratively updates its answer by looping over the documents and passing the current document along with the latest intermediate answer to an LLM, suitable for analyzing large document sets, albeit with more LLM calls',
 					},
 					{
 						name: 'Stuff',
 						value: 'stuff',
+						description:
+							'Inserts all documents into a prompt, then passes it to an LLM for summarization, ideal for small document sets',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				placeholder: 'Add Option',
+				options: [
+					{
+						displayName: 'Combine Map Prompt',
+						name: 'combineMapPrompt',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/type': ['map_reduce'],
+							},
+						},
+						default: DEFAULT_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Prompt',
+						name: 'prompt',
+						type: 'string',
+						default: DEFAULT_PROMPT_TEMPLATE,
+						displayOptions: {
+							hide: {
+								'/type': ['refine'],
+							},
+						},
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Refine Prompt',
+						name: 'refinePrompt',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/type': ['refine'],
+							},
+						},
+						default: REFINE_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Refine Question Prompt',
+						name: 'refineQuestionPrompt',
+						type: 'string',
+						displayOptions: {
+							show: {
+								'/type': ['refine'],
+							},
+						},
+						default: DEFAULT_PROMPT_TEMPLATE,
+						typeOptions: {
+							rows: 6,
+						},
 					},
 				],
 			},
@@ -103,7 +164,6 @@ export class ChainSummarization implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing Vector Store QA Chain');
-		const runMode = this.getNodeParameter('mode', 0) as string;
 		const type = this.getNodeParameter('type', 0) as 'map_reduce' | 'stuff' | 'refine';
 
 		const model = (await this.getInputConnectionData(
@@ -115,25 +175,73 @@ export class ChainSummarization implements INodeType {
 			| N8nJsonLoader
 			| Array<Document<Record<string, unknown>>>;
 
-		const chain = loadSummarizationChain(model, { type });
+		const options = this.getNodeParameter('options', 0, {}) as {
+			prompt?: string;
+			refineQuestionPrompt?: string;
+			refinePrompt?: string;
+			combineMapPrompt?: string;
+		};
 
-		const items = this.getInputData();
-		if (runMode === 'runOnceForAllItems') {
-			let processedDocuments: Document[];
-			if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
-				processedDocuments = await documentInput.process(items);
-			} else {
-				processedDocuments = documentInput;
+		const chainArgs: SummarizationChainParams = {
+			type,
+		};
+
+		// Map reduce prompt override
+		if (type === 'map_reduce') {
+			const mapReduceArgs = chainArgs as SummarizationChainParams & {
+				type: 'map_reduce';
+			};
+			if (options.combineMapPrompt) {
+				mapReduceArgs.combineMapPrompt = new PromptTemplate({
+					template: options.combineMapPrompt,
+					inputVariables: ['text'],
+				});
 			}
-
-			const response = await chain.call({
-				input_documents: processedDocuments,
-			});
-
-			return this.prepareOutputData([{ json: { response } }]);
+			if (options.prompt) {
+				mapReduceArgs.combinePrompt = new PromptTemplate({
+					template: options.prompt,
+					inputVariables: ['text'],
+				});
+			}
 		}
 
-		// Run for each item
+		// Stuff prompt override
+		if (type === 'stuff') {
+			const stuffArgs = chainArgs as SummarizationChainParams & {
+				type: 'stuff';
+			};
+			if (options.prompt) {
+				stuffArgs.prompt = new PromptTemplate({
+					template: options.prompt,
+					inputVariables: ['text'],
+				});
+			}
+		}
+
+		// Refine prompt override
+		if (type === 'refine') {
+			const refineArgs = chainArgs as SummarizationChainParams & {
+				type: 'refine';
+			};
+
+			if (options.refinePrompt) {
+				refineArgs.refinePrompt = new PromptTemplate({
+					template: options.refinePrompt,
+					inputVariables: ['existing_answer', 'text'],
+				});
+			}
+
+			if (options.refineQuestionPrompt) {
+				refineArgs.questionPrompt = new PromptTemplate({
+					template: options.refineQuestionPrompt,
+					inputVariables: ['text'],
+				});
+			}
+		}
+
+		const chain = loadSummarizationChain(model, chainArgs);
+
+		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			let processedDocuments: Document[];

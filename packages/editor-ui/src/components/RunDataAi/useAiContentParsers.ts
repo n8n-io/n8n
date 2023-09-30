@@ -119,6 +119,7 @@ const outputTypeParsers: {
 		return fallbackParser(execData);
 	},
 	[NodeConnectionType.AiOutputParser]: fallbackParser,
+	[NodeConnectionType.AiRetriever]: fallbackParser,
 	[NodeConnectionType.AiVectorRetriever]: fallbackParser,
 	[NodeConnectionType.AiVectorStore](execData: IDataObject) {
 		if (execData.documents) {

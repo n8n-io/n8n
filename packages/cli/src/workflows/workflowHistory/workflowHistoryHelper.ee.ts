@@ -5,3 +5,7 @@ export function isWorkflowHistoryLicensed() {
 	const license = Container.get(License);
 	return license.isWorkflowHistoryLicensed();
 }
+
+export function isWorkflowHistoryEnabled() {
+	return isWorkflowHistoryLicensed();
+}

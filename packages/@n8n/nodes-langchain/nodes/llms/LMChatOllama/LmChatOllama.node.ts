@@ -13,7 +13,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmChatOllama implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Chat Ollama',
+		displayName: 'Ollama Chat Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmChatOllama',
 		icon: 'file:ollama.svg',
@@ -21,7 +21,7 @@ export class LmChatOllama implements INodeType {
 		version: 1,
 		description: 'Language Model Ollama',
 		defaults: {
-			name: 'Chat Ollama',
+			name: 'Ollama Chat Model',
 		},
 		codex: {
 			categories: ['AI'],

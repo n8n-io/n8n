@@ -858,6 +858,17 @@ export default defineComponent({
 					font-size: 1.2em;
 				}
 			}
+
+			&:after {
+				content: '';
+				display: block;
+				position: absolute;
+				left: 0;
+				right: 0;
+				top: -1rem;
+				bottom: -1rem;
+				z-index: -1;
+			}
 		}
 
 		&.is-touch-device .node-options {
@@ -875,6 +886,9 @@ export default defineComponent({
 		--node-width: 75px;
 		--node-height: 75px;
 
+		& [class*='node-wrapper--connection-type'] {
+			--configurable-node-options: -10px;
+		}
 		.node-default {
 			.node-options {
 				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
@@ -942,6 +956,7 @@ export default defineComponent({
 		);
 		--configurable-node-icon-offset: 40px;
 		--configurable-node-icon-size: 30px;
+		--configurable-node-options: -10px;
 
 		.node-description {
 			top: calc(50%);
@@ -966,7 +981,7 @@ export default defineComponent({
 			}
 
 			.node-options {
-				left: 65px;
+				left: var(--configurable-node-options, 65px);
 				height: 25px;
 			}
 

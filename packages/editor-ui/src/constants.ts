@@ -190,7 +190,6 @@ export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
 export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
-export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
@@ -208,6 +207,7 @@ export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
 export const AI_CATEGORY_EMBEDDING = 'Embeddings';
 export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
 export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 

@@ -12,15 +12,15 @@ import { logWrapper } from '../../../utils/logWrapper';
 
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'OpenAI',
+		displayName: 'OpenAI Model',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'lmOpenAi',
 		icon: 'file:openAi.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Language Model OpenAI',
+		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'OpenAI',
+			name: 'OpenAI Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -102,7 +102,7 @@ export class LmOpenAi implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'text-davinci-003',
+				default: 'gpt-3.5-turbo-instruct',
 			},
 			{
 				displayName: 'Options',

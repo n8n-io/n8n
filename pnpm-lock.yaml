@@ -437,7 +437,7 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
       '@n8n_io/license-sdk':
-        specifier: ~2.6.0
+        specifier: ~2.6.1
         version: 2.6.1
       '@oclif/command':
         specifier: ^1.8.16
@@ -815,6 +815,9 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      aws4:
+        specifier: ^1.8.0
+        version: 1.11.0
       axios:
         specifier: ^0.21.1
         version: 0.21.4
@@ -869,7 +872,13 @@ importers:
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
+      xml2js:
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
+      '@types/aws4':
+        specifier: ^1.5.1
+        version: 1.11.2
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
@@ -894,6 +903,9 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      '@types/xml2js':
+        specifier: ^0.4.11
+        version: 0.4.11
 
   packages/design-system:
     dependencies:

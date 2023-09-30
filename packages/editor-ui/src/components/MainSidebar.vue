@@ -18,11 +18,7 @@
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
-					<img
-						:src="basePath + (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')"
-						:class="$style.icon"
-						alt="n8n"
-					/>
+					<img :src="logoPath" :class="$style.icon" alt="n8n" />
 				</div>
 			</template>
 
@@ -159,8 +155,16 @@ export default defineComponent({
 			useCloudPlanStore,
 			useSourceControlStore,
 		),
+		logoPath(): string {
+			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
+
+			return (
+				this.basePath +
+				(this.settingsStore.settings.isBetaRelease ? 'n8n-beta-logo.svg' : 'n8n-logo-expanded.svg')
+			);
+		},
 		hasVersionUpdates(): boolean {
-			return this.versionsStore.hasVersionUpdates;
+			return !this.settingsStore.settings.isBetaRelease && this.versionsStore.hasVersionUpdates;
 		},
 		nextVersions(): IVersion[] {
 			return this.versionsStore.nextVersions;

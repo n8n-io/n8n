@@ -781,7 +781,7 @@ export async function proxyRequestToAxios(
 
 				if (Buffer.isBuffer(responseData) || responseData instanceof Readable) {
 					responseData = await Container.get(BinaryDataService)
-						.binaryToBuffer(responseData)
+						.toBuffer(responseData)
 						.then((buffer) => buffer.toString('utf-8'));
 				}
 
@@ -2698,7 +2698,7 @@ const getBinaryHelperFunctions = (
 	getBinaryStream,
 	getBinaryMetadata,
 	binaryToBuffer: async (body: Buffer | Readable) =>
-		Container.get(BinaryDataService).binaryToBuffer(body),
+		Container.get(BinaryDataService).toBuffer(body),
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, workflowId, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -3146,7 +3146,7 @@ export function getExecuteFunctions(
 				return dataProxy.getDataProxy();
 			},
 			binaryToBuffer: async (body: Buffer | Readable) =>
-				Container.get(BinaryDataService).binaryToBuffer(body),
+				Container.get(BinaryDataService).toBuffer(body),
 			async putExecutionToWait(waitTill: Date): Promise<void> {
 				runExecutionData.waitTill = waitTill;
 				if (additionalData.setExecutionStatus) {

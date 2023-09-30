@@ -34,6 +34,7 @@ interface ViewStack {
 	subtitle?: string;
 	search?: string;
 	subcategory?: string;
+	info?: string;
 	nodeIcon?: {
 		iconType?: string;
 		icon?: string;
@@ -121,6 +122,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		let nodesByConnectionType: { [key: string]: string[] };
 		let relatedAIView: NodeViewItem | { properties: { title: string; icon: string } } | undefined;
+
 		if (isOutput === true) {
 			nodesByConnectionType = useNodeTypesStore().visibleNodeTypesByInputConnectionTypeNames;
 			relatedAIView = {
@@ -161,6 +163,12 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				}
 
 				return displayNode;
+			},
+			itemsMapper(item) {
+				return {
+					...item,
+					subcategory: connectionType,
+				};
 			},
 			preventBack: true,
 		});

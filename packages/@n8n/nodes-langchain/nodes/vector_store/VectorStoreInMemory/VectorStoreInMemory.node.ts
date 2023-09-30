@@ -52,7 +52,14 @@ export class VectorStoreInMemory implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiVectorRetriever],
 		outputNames: ['Vector Retriever'],
-		properties: [],
+		properties: [
+			{
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+		],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {

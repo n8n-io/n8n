@@ -60,7 +60,7 @@ export class ChainLlm implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'A simple chain to prompt LLM',
+		description: 'A simple chain to prompt a large language mode',
 		defaults: {
 			name: 'Basic LLM Chain',
 			color: '#909298',
@@ -98,25 +98,6 @@ export class ChainLlm implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Run Once for All Items',
-						value: 'runOnceForAllItems',
-						description: 'Run this chain only once, no matter how many input items there are',
-					},
-					{
-						name: 'Run Once for Each Item',
-						value: 'runOnceForEachItem',
-						description: 'Run this chain as many times as there are input items',
-					},
-				],
-				default: 'runOnceForAllItems',
-			},
-			{
 				displayName: 'Prompt',
 				name: 'prompt',
 				type: 'string',
@@ -128,16 +109,10 @@ export class ChainLlm implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.verbose('Executing LLM Chain');
 		const items = this.getInputData();
-		const runMode = this.getNodeParameter('mode', 0) as string;
 
 		const returnData: INodeExecutionData[] = [];
 
-		let itemCount = items.length;
-		if (runMode === 'runOnceForAllItems') {
-			itemCount = 1;
-		}
-
-		for (let i = 0; i < itemCount; i++) {
+		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('prompt', i) as string;
 			const responses = await getChain(this, prompt);
 
