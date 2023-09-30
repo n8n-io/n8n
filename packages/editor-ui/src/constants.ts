@@ -27,6 +27,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
+export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';

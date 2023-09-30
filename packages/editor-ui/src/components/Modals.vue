@@ -15,6 +15,10 @@
 			<AboutModal />
 		</ModalRoot>
 
+		<ModalRoot :name="CHAT_EMBED_MODAL_KEY">
+			<ChatEmbedModal />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -142,6 +146,7 @@
 import { defineComponent } from 'vue';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -170,6 +175,7 @@ import {
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import ChatEmbedModal from './ChatEmbedModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -202,6 +208,7 @@ export default defineComponent({
 	components: {
 		AboutModal,
 		ActivationModal,
+		ChatEmbedModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
 		ContactPromptModal,
@@ -229,6 +236,7 @@ export default defineComponent({
 		MfaSetupModal,
 	},
 	data: () => ({
+		CHAT_EMBED_MODAL_KEY,
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
