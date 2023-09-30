@@ -11,10 +11,19 @@ export async function getPostgresDataSource(this: IExecuteFunctions): Promise<Da
 		username: credentials.user as string,
 		password: credentials.password as string,
 		database: credentials.database as string,
-		ssl: {
-			rejectUnauthorized: !(credentials.allowUnauthorizedCerts as boolean),
-		},
 	});
+
+	if (credentials.allowUnauthorizedCerts === true) {
+		dataSource.setOptions({
+			ssl: {
+				rejectUnauthorized: true,
+			},
+		});
+	} else {
+		dataSource.setOptions({
+			ssl: !['disable', undefined].includes(credentials.ssl as string | undefined),
+		});
+	}
 
 	return dataSource;
 }
