@@ -160,23 +160,21 @@ watchEffect(async () => {
 			:class="$style.contentComponent"
 			:workflow-version="workflowHistoryStore.activeWorkflowVersion"
 		/>
-		<Suspense>
-			<workflow-history-list
-				:class="$style.listComponent"
-				:items="workflowHistoryStore.workflowHistory"
-				:lastReceivedItemsLength="lastReceivedItemsLength"
-				:activeItem="workflowHistoryStore.activeWorkflowVersion"
-				:actionTypes="workflowHistoryActionTypes"
-				:requestNumberOfItems="requestNumberOfItems"
-				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-				:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
-				:listLoading="listLoading"
-				@action="onAction"
-				@preview="onPreview"
-				@load-more="loadMore"
-				@upgrade="onUpgrade"
-			/>
-		</Suspense>
+		<workflow-history-list
+			:class="$style.listComponent"
+			:items="workflowHistoryStore.workflowHistory"
+			:lastReceivedItemsLength="lastReceivedItemsLength"
+			:activeItem="workflowHistoryStore.activeWorkflowVersion"
+			:actionTypes="workflowHistoryActionTypes"
+			:requestNumberOfItems="requestNumberOfItems"
+			:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
+			:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
+			:listLoading="listLoading"
+			@action="onAction"
+			@preview="onPreview"
+			@load-more="loadMore"
+			@upgrade="onUpgrade"
+		/>
 	</div>
 </template>
 <style module lang="scss">
