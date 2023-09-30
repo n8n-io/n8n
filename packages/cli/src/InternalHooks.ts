@@ -97,6 +97,8 @@ export class InternalHooks implements IInternalHooksClass {
 			smtp_set_up: diagnosticInfo.smtp_set_up,
 			ldap_allowed: diagnosticInfo.ldap_allowed,
 			saml_enabled: diagnosticInfo.saml_enabled,
+			license_plan_name: diagnosticInfo.licensePlanName,
+			license_tenant_id: diagnosticInfo.licenseTenantId,
 		};
 
 		return Promise.all([
