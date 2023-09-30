@@ -782,7 +782,7 @@ export async function getWorkflowData(
 
 		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
-		if (workflowData === undefined) {
+		if (workflowData === undefined || workflowData === null) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
 	} else {

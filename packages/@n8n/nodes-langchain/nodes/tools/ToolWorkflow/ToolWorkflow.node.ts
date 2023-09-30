@@ -346,13 +346,26 @@ export class ToolWorkflow implements INodeType {
 
 			const items = [newItem] as INodeExecutionData[];
 
-			const receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
+			let receivedData: INodeExecutionData;
+			try {
+				receivedData = (await this.executeWorkflow(workflowInfo, items)) as INodeExecutionData;
+			} catch (error) {
+				// Make sure a valid error gets returned that can by json-serialized else it will
+				// not show up in the frontend
+				throw new NodeOperationError(this.getNode(), error);
+			}
 
-			let response: string | undefined = get(receivedData, [0, 0, 'json', responsePropertyName]) as
-				| string
-				| undefined;
+			const response: string | undefined = get(receivedData, [
+				0,
+				0,
+				'json',
+				responsePropertyName,
+			]) as string | undefined;
 			if (response === undefined) {
-				response = `There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`;
+				throw new NodeOperationError(
+					this.getNode(),
+					`There was an error: "The workflow did not return an item with the property '${responsePropertyName}'"`,
+				);
 			}
 
 			return response;
