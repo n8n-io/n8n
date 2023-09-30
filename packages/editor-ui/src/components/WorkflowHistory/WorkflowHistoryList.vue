@@ -16,16 +16,14 @@ const props = withDefaults(
 		activeItem: WorkflowHistory | null;
 		actionTypes: WorkflowHistoryActionTypes;
 		requestNumberOfItems: number;
-		shouldUpgrade: boolean;
-		maxRetentionPeriod: number;
 		lastReceivedItemsLength: number;
-		listLoading: boolean;
+		shouldUpgrade?: boolean;
+		maxRetentionPeriod?: number;
+		listLoading?: boolean;
 	}>(),
 	{
-		items: () => [],
 		shouldUpgrade: false,
 		maxRetentionPeriod: 0,
-		lastReceivedItemsLength: 0,
 		listLoading: false,
 	},
 );

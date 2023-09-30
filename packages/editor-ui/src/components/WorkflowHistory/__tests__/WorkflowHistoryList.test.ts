@@ -65,6 +65,7 @@ describe('WorkflowHistoryList', () => {
 				actionTypes,
 				activeItem: null,
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
 			},
 		});
 
@@ -93,6 +94,7 @@ describe('WorkflowHistoryList', () => {
 				actionTypes,
 				activeItem: items[0],
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
 			},
 		});
 
@@ -109,6 +111,7 @@ describe('WorkflowHistoryList', () => {
 				actionTypes,
 				activeItem: null,
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
 			},
 		});
 
