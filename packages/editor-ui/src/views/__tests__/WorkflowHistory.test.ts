@@ -87,6 +87,7 @@ describe('WorkflowHistory', () => {
 		route = useRoute();
 		router = useRouter();
 
+		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'workflowHistory', 'get').mockReturnValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'activeWorkflowVersion', 'get').mockReturnValue(versionData);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
