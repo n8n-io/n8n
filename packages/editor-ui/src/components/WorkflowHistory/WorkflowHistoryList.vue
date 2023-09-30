@@ -18,11 +18,15 @@ const props = withDefaults(
 		requestNumberOfItems: number;
 		shouldUpgrade: boolean;
 		maxRetentionPeriod: number;
+		lastReceivedItemsLength: number;
+		listLoading: boolean;
 	}>(),
 	{
 		items: () => [],
 		shouldUpgrade: false,
 		maxRetentionPeriod: 0,
+		lastReceivedItemsLength: 0,
+		listLoading: false,
 	},
 );
 const emit = defineEmits<{
@@ -98,7 +102,10 @@ const onItemMounted = ({
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 
-	if (index === props.items.length - 1 && props.items.length >= props.requestNumberOfItems) {
+	if (
+		index === props.items.length - 1 &&
+		props.lastReceivedItemsLength === props.requestNumberOfItems
+	) {
 		observeElement(listElement.value?.children[index] as Element);
 	}
 };
@@ -117,10 +124,15 @@ const onItemMounted = ({
 			@preview="onPreview"
 			@mounted="onItemMounted"
 		/>
-		<li v-if="!props.items.length" :class="$style.empty">
+		<li v-if="!props.items.length && !props.listLoading" :class="$style.empty">
 			{{ i18n.baseText('workflowHistory.empty') }}
 			<br />
 			{{ i18n.baseText('workflowHistory.hint') }}
+		</li>
+		<li v-if="props.listLoading" :class="$style.loader">
+			<n8n-loading :rows="3" class="mb-xs" />
+			<n8n-loading :rows="3" class="mb-xs" />
+			<n8n-loading :rows="3" class="mb-xs" />
 		</li>
 		<li v-if="props.shouldUpgrade && props.maxRetentionPeriod > 0" :class="$style.retention">
 			<span>
@@ -169,6 +181,10 @@ const onItemMounted = ({
 	color: var(--color-text-base);
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
+}
+
+.loader {
+	padding: 0 var(--spacing-s);
 }
 
 .retention {

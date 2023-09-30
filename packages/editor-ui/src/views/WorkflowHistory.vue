@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
-import { onBeforeMount, ref, watchEffect } from 'vue';
+import { onBeforeMount, onUnmounted, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
@@ -35,18 +35,28 @@ const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 
+const listLoading = ref(true);
 const requestNumberOfItems = ref(20);
+const lastReceivedItemsLength = ref(0);
+const editorRoute = computed(() => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: route.params.workflowId,
+	},
+}));
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
 		queryParams,
 	);
+	lastReceivedItemsLength.value = history.length;
 	workflowHistoryStore.addWorkflowHistory(history);
 };
 
 onBeforeMount(async () => {
 	await loadMore({ take: requestNumberOfItems.value });
+	listLoading.value = false;
 
 	if (!route.params.versionId) {
 		await router.replace({
@@ -57,6 +67,10 @@ onBeforeMount(async () => {
 			},
 		});
 	}
+});
+
+onUnmounted(() => {
+	workflowHistoryStore.reset();
 });
 
 const openInNewTab = (id: WorkflowVersionId) => {
@@ -138,25 +152,31 @@ watchEffect(async () => {
 			<n8n-heading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}
 			</n8n-heading>
-			<n8n-button type="tertiary" icon="times" size="small" text square />
+			<router-link :to="editorRoute">
+				<n8n-button type="tertiary" icon="times" size="small" text square />
+			</router-link>
 		</div>
 		<workflow-history-content
 			:class="$style.contentComponent"
 			:workflow-version="workflowHistoryStore.activeWorkflowVersion"
 		/>
-		<workflow-history-list
-			:class="$style.listComponent"
-			:items="workflowHistoryStore.workflowHistory"
-			:active-item="workflowHistoryStore.activeWorkflowVersion"
-			:action-types="workflowHistoryActionTypes"
-			:request-number-of-items="requestNumberOfItems"
-			:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-			:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
-			@action="onAction"
-			@preview="onPreview"
-			@load-more="loadMore"
-			@upgrade="onUpgrade"
-		/>
+		<Suspense>
+			<workflow-history-list
+				:class="$style.listComponent"
+				:items="workflowHistoryStore.workflowHistory"
+				:lastReceivedItemsLength="lastReceivedItemsLength"
+				:activeItem="workflowHistoryStore.activeWorkflowVersion"
+				:actionTypes="workflowHistoryActionTypes"
+				:requestNumberOfItems="requestNumberOfItems"
+				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
+				:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
+				:listLoading="listLoading"
+				@action="onAction"
+				@preview="onPreview"
+				@load-more="loadMore"
+				@upgrade="onUpgrade"
+			/>
+		</Suspense>
 	</div>
 </template>
 <style module lang="scss">

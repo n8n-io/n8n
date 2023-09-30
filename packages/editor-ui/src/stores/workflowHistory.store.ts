@@ -17,6 +17,13 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const retentionPeriod = ref(0);
 	const shouldUpgrade = computed(() => maxRetentionPeriod.value === retentionPeriod.value);
 
+	const reset = () => {
+		workflowHistory.value = [];
+		activeWorkflowVersion.value = null;
+		maxRetentionPeriod.value = 0;
+		retentionPeriod.value = 0;
+	};
+
 	const getWorkflowHistory = async (
 		workflowId: string,
 		queryParams: WorkflowHistoryRequestParams,
@@ -44,6 +51,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	};
 
 	return {
+		reset,
 		getWorkflowHistory,
 		addWorkflowHistory,
 		getWorkflowVersion,
