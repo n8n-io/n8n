@@ -72,6 +72,7 @@
       "dist/nodes/retrievers/RetrieverContextualCompression/RetrieverContextualCompression.node.js",
       "dist/nodes/retrievers/RetrieverVectorStore/RetrieverVectorStore.node.js",
       "dist/nodes/retrievers/RetrieverMultiQuery/RetrieverMultiQuery.node.js",
+      "dist/nodes/retrievers/RetrieverWorkflow/RetrieverWorkflow.node.js",
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterRecursiveCharacterTextSplitter/TextSplitterRecursiveCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
