@@ -6,7 +6,6 @@ import type { BinaryData } from 'n8n-core';
 /**
  * Whenever the execution ID is not available to the binary data service at the
  * time of writing a binary data file, its name is missing the execution ID.
- *
  * This function restores the ID in the file name and run data reference.
  *
  * ```txt
