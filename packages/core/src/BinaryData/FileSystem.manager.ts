@@ -66,6 +66,8 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
+		if (ids.length === 0) return;
+
 		// binary files stored in single dir - `filesystem`
 
 		const executionIds = ids.map((o) => o.executionId);
