@@ -33,6 +33,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
+	N8N_PRICING_PAGE_URL,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -54,8 +55,6 @@ import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
@@ -328,24 +327,28 @@ export const useUIStore = defineStore(STORES.UI, {
 				return false;
 			};
 		},
-		upgradeLinkUrl() {
-			return (source: string, utm_campaign: string, autologinCode?: string): string => {
-				const linkUrlTranslationKey = this.contextBasedTranslationKeys
-					.upgradeLinkUrl as BaseTextKey;
-				let linkUrl = locale.baseText(linkUrlTranslationKey);
+		async upgradeLinkUrl(source: string, utm_campaign: string, deploymentType: string) {
+			let linkUrl = '';
 
-				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${linkUrl}?ref=${source}`;
-				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
-				}
+			const searchParams = new URLSearchParams();
 
-				if (autologinCode) {
-					linkUrl = `${linkUrl}&code=${autologinCode}`;
-				}
+			if (deploymentType === 'cloud') {
+				const { code } = await useCloudPlanStore().getAutoLoginCode();
+				const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+				linkUrl = `https://${adminPanelHost}/login`;
+				searchParams.set('code', code);
+			} else {
+				linkUrl = N8N_PRICING_PAGE_URL;
+			}
 
-				return linkUrl;
-			};
+			if (utm_campaign) {
+				searchParams.set('utm_campaign', utm_campaign);
+			}
+
+			if (source) {
+				searchParams.set('source', source);
+			}
+			return `${linkUrl}?${searchParams.toString()}`;
 		},
 		headerHeight() {
 			return Number(getStyleTokenValue('--header-height'));
@@ -537,7 +540,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			utm_campaign: UTMCampaign,
 			mode: 'open' | 'redirect' = 'open',
 		): Promise<void> {
-			const { usageLeft, trialDaysLeft, userIsTrialing, getAutoLoginCode } = useCloudPlanStore();
+			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
 			const deploymentType = useSettingsStore().deploymentType;
 
@@ -550,16 +553,12 @@ export const useUIStore = defineStore(STORES.UI, {
 				workflowsLeft,
 			});
 
-			let code;
-
-			if (deploymentType === 'cloud') {
-				({ code } = await useCloudPlanStore().getAutoLoginCode());
-			}
+			const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
 
 			if (mode === 'open') {
-				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank', code);
+				window.open(upgradeLink, '_blank');
 			} else {
-				location.href = this.upgradeLinkUrl(source, utm_campaign, code);
+				location.href = upgradeLink;
 			}
 		},
 		async dismissBanner(

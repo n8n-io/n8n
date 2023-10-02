@@ -96,7 +96,7 @@ const onSelect = async (b: string) => {
 };
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('source-control', 'upgrade-source-control');
+	void uiStore.goToUpgrade('source-control', 'upgrade-source-control');
 };
 
 const initialize = async () => {
