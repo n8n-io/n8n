@@ -30,9 +30,7 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { NodeConnectionType } from 'n8n-workflow';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
 
 import type {
 	INodeTypesMaxCount,
@@ -51,7 +49,7 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { useToast, useMessage } from '@/composables';
 
-import { get, isEqual } from 'lodash-es';
+import { isEqual } from 'lodash-es';
 
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/utils';
@@ -437,7 +435,7 @@ export function executeData(
 				let previousNodeOutput: number | undefined;
 				// As the node can be connected through either of the outputs find the correct one
 				// and set it to make pairedItem work on not executed nodes
-				if (workflow.connectionsByDestinationNode[currentNode].main) {
+				if (workflow.connectionsByDestinationNode[currentNode]?.main) {
 					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
 						currentNode
 					].main) {

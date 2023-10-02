@@ -28,7 +28,7 @@ export const workflowRun = defineComponent({
 	methods: {
 		// Starts to executes a workflow on server.
 		async runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
-			if (this.rootStore.pushConnectionActive === false) {
+			if (!this.rootStore.pushConnectionActive) {
 				// Do not start if the connection to server is not active
 				// because then it can not receive the data as it executes.
 				throw new Error(this.$locale.baseText('workflowRun.noActiveConnectionToTheServer'));
@@ -77,7 +77,7 @@ export const workflowRun = defineComponent({
 			try {
 				// Check first if the workflow has any issues before execute it
 				const issuesExist = this.workflowsStore.nodesIssuesExist;
-				if (issuesExist === true) {
+				if (issuesExist) {
 					// If issues exist get all of the issues of all nodes
 					const workflowIssues = this.checkReadyForExecution(workflow, options.destinationNode);
 					if (workflowIssues !== null) {
@@ -201,9 +201,8 @@ export const workflowRun = defineComponent({
 					executedNode = options.destinationNode;
 					startNodes.push(options.destinationNode);
 				} else if ('triggerNode' in options && 'nodeData' in options) {
-					startNodes.push.apply(
-						startNodes,
-						workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
+					startNodes.push(
+						...workflow.getChildNodes(options.triggerNode, NodeConnectionType.Main, 1),
 					);
 					newRunData = {
 						[options.triggerNode]: [options.nodeData],

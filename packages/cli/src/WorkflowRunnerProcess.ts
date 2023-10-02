@@ -312,7 +312,7 @@ class WorkflowRunnerProcess {
 			this.workflow,
 			this.data.runData,
 			this.data.startNodes,
-			this.data.destinationNode!, // No idea why the ! is needed as both time it is optional
+			this.data.destinationNode,
 			this.data.pinData,
 		);
 	}

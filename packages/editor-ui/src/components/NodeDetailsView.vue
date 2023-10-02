@@ -336,11 +336,6 @@ export default defineComponent({
 			const workflowNode = this.workflow.getNode(this.activeNode.name);
 			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
 
-			// TODO: Do we need to prevent from switching runs for non-main nodes?
-			// if (!outputs.includes(NodeConnectionType.Main)) {
-			// 	return 0;
-			// }
-
 			let node = this.inputNode;
 
 			const runData: IRunData | null = this.workflowRunData;

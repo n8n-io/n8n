@@ -506,8 +506,6 @@ export const nodeBase = defineComponent({
 			connectionType: ConnectionTypes,
 			nodeTypeData: INodeTypeDescription,
 		): EndpointOptions {
-			const type = 'input';
-
 			if (connectionType === NodeConnectionType.Main) {
 				return {
 					paintStyle: NodeViewUtils.getInputEndpointStyle(
@@ -515,7 +513,6 @@ export const nodeBase = defineComponent({
 						this.__getEndpointColor(NodeConnectionType.Main),
 						connectionType,
 					),
-					cssClass: `dot-${type}-endpoint`,
 				};
 			}
 

@@ -145,8 +145,9 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
-		async checkForCloudPlanData() {
-			return this.cloudPlanStore.checkForCloudPlanData();
+		async checkForCloudData() {
+			await this.cloudPlanStore.checkForCloudPlanData();
+			await this.cloudPlanStore.fetchUserCloudAccount();
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
@@ -238,7 +239,7 @@ export default defineComponent({
 		await this.authenticate();
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		await this.checkForCloudPlanData();
+		await this.checkForCloudData();
 		void this.postAuthenticate();
 
 		this.loading = false;

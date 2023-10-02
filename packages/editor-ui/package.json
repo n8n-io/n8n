@@ -91,7 +91,6 @@
     "@types/jsonpath": "^0.2.0",
     "@types/lodash-es": "^4.17.6",
     "@types/luxon": "^3.2.0",
-    "@types/markdown-it": "^12.2.3",
     "@types/uuid": "^8.3.2",
     "miragejs": "^0.1.47"
   }

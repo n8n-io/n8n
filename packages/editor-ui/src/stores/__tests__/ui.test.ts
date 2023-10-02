@@ -123,7 +123,8 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL');
@@ -137,7 +138,8 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
@@ -151,7 +153,8 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(false));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL_OVER');

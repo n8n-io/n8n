@@ -77,7 +77,7 @@ const description = computed<string>(() => {
 	return i18n.headerText({
 		key: `headers.${shortNodeType.value}.description`,
 		fallback: props.nodeType.description,
-	}) ;
+	});
 });
 const showActionArrow = computed(() => hasActions.value);
 const dataTestId = computed(() =>

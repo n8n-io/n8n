@@ -1,7 +1,6 @@
 import { EnableNodeToggleCommand } from './../models/history';
 import { useHistoryStore } from '@/stores/history.store';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
-import * as NodeViewUtils from '@/utils/nodeViewUtils';
 
 import type {
 	ConnectionTypes,
@@ -45,8 +44,6 @@ import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
-import { useI18n } from '@/composables';
-import { BaseTextKey } from '@/plugins/i18n';
 
 export const nodeHelpers = defineComponent({
 	computed: {

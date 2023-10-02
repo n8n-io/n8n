@@ -207,7 +207,7 @@ export default defineComponent({
 			window.open(route.href, '_blank');
 		},
 		repostMessage(message: ChatMessage) {
-			this.sendChatMessage(message.text);
+			void this.sendChatMessage(message.text);
 		},
 		reuseMessage(message: ChatMessage) {
 			this.currentMessage = message.text;
@@ -475,7 +475,7 @@ export default defineComponent({
 						executionId,
 					} as ChatMessage);
 
-					this.$nextTick(() => {
+					void this.$nextTick(() => {
 						that.setNode();
 					});
 				}

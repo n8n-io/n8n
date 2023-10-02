@@ -246,7 +246,6 @@ import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import { v4 as uuid } from 'uuid';
 import type {
-	ConnectionTypes,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -263,6 +262,7 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
@@ -2098,9 +2098,8 @@ export default defineComponent({
 			targetNodeOuputIndex: number,
 			type: ConnectionTypes,
 		): IConnection | undefined {
-			const nodeConnections = (
-				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName) 
-			)[type];
+			const nodeConnections =
+				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName)[type];
 			if (nodeConnections) {
 				const connections: IConnection[] | null = nodeConnections[sourceNodeOutputIndex];
 
@@ -3336,9 +3335,8 @@ export default defineComponent({
 			const outputMap = NodeViewUtils.getOutputSummary(
 				data,
 				nodeConnections || [],
-				connectionType as ConnectionTypes,
+				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
 			);
-
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 					Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(

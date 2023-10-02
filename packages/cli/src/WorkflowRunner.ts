@@ -367,7 +367,7 @@ export class WorkflowRunner {
 					workflow,
 					data.runData,
 					data.startNodes,
-					data.destinationNode!, // No idea why the ! is needed as both time it is optional
+					data.destinationNode,
 					data.pinData,
 				);
 			}

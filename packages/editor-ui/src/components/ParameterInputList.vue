@@ -145,7 +145,6 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	NodeParameterValue,
-	NodeParameterValueType,
 } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
@@ -161,7 +160,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { ndvEventBus, nodeViewEventBus } from '@/event-bus';
+import { nodeViewEventBus } from '@/event-bus';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -274,9 +273,9 @@ export default defineComponent({
 			);
 
 			// Get names of all fields that credentials rendering depends on (using displayOptions > show)
-			if (nodeType && nodeType.credentials) {
+			if (nodeType?.credentials) {
 				for (const cred of nodeType.credentials) {
-					if (cred.displayOptions && cred.displayOptions.show) {
+					if (cred.displayOptions?.show) {
 						Object.keys(cred.displayOptions.show).forEach((fieldName) =>
 							dependencies.add(fieldName),
 						);
@@ -320,7 +319,7 @@ export default defineComponent({
 		},
 
 		mustHideDuringCustomApiCall(parameter: INodeProperties, nodeValues: INodeParameters): boolean {
-			if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+			if (parameter?.displayOptions?.hide) return true;
 
 			const MUST_REMAIN_VISIBLE = [
 				'authentication',
@@ -407,7 +406,7 @@ export default defineComponent({
 				}
 			} while (resolveKeys.length !== 0);
 
-			if (parameterGotResolved === true) {
+			if (parameterGotResolved) {
 				if (this.path) {
 					rawValues = deepCopy(this.nodeValues);
 					set(rawValues, this.path, nodeValues);
