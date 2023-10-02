@@ -1253,7 +1253,7 @@ export default defineComponent({
 				() => {
 					void this.loadRemoteParameterOptions();
 				},
-				{ deep: true, immediate: true },
+				{ immediate: true },
 			);
 		}
 

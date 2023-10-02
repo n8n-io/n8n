@@ -346,4 +346,13 @@ describe('NDV', () => {
 		ndv.actions.close();
 		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
 	});
+
+	it('should not retrieve remote options when a parameter value changes', () => {
+		cy.intercept('/rest/node-parameter-options?**', cy.spy().as('myRequest'));
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+		// Type something into the field
+		ndv.actions.typeIntoParameterInput('otherField', 'test');
+		// Should call the endpoint only once, not for every keystroke
+		cy.get('@myRequest').should('have.been.calledOnce');
+	});
 });
