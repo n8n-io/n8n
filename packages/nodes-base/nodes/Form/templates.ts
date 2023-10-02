@@ -247,14 +247,21 @@ const automatedWith = (instanceId?: string) => {
 	`;
 };
 
-const submittedTestMessage = (testRun: boolean) => {
+const submittedTestMessage = (formSubmittedText: string | undefined) => {
+	let submittedContent = `
+		<p id="submitted-content">
+			${formSubmittedText === undefined ? 'Your response has been recorded' : formSubmittedText}
+		</p>
+	`;
+
+	if (formSubmittedText === '') {
+		submittedContent = '';
+	}
 	return `
 	<div class="card" id="submitted-form" style="display: none;">
 	<div class="form-header">
 		<h1 id="submitted-header">Form Submited</h1>
-		<p id="submitted-content">
-			${testRun ? 'Close this window and go back to the n8n editor' : ''}
-		</p>
+		${submittedContent}
 	</div>
 	</div>
 	`;
@@ -390,6 +397,7 @@ const createForm = (formTitle: string, formDescription: string, form: string) =>
 export const createPage = (
 	formTitle: string,
 	formDescription: string,
+	formSubmittedText: string | undefined,
 	formFields: FormField[],
 	testRun: boolean,
 	instanceId?: string,
@@ -413,7 +421,7 @@ export const createPage = (
 				<section>
 					${testRun ? testNotice : ''}
 					${form}
-					${submittedTestMessage(testRun)}
+					${submittedTestMessage(formSubmittedText)}
 					${automatedWith(instanceId)}
 				</section>
 			</div>
@@ -500,13 +508,6 @@ export const createPage = (
 						if (data.status === 200) {
 							form.style.display = 'none';
 							document.querySelector('#submitted-form').style.display = 'block';
-							if (data?.triggerSettings?.customText) {
-								document.querySelector('#submitted-content').textContent = data.triggerSettings.customText;
-							} else if (data?.triggerSettings?.redirectUrl) {
-								window.location.href = data.triggerSettings.redirectUrl;
-							} else {
-								document.querySelector('#submitted-content').remove();
-							}
 						} else {
 							form.style.display = 'none';
 							document.querySelector('#submitted-form').style.display = 'block';

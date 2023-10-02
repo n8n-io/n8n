@@ -205,63 +205,10 @@ export class FormTrigger implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Respond With',
-						name: 'respondWith',
-						type: 'fixedCollection',
-						placeholder: 'Select Option',
-						default: { values: { respondWith: 'default' } },
-						options: [
-							{
-								displayName: 'Values',
-								name: 'values',
-								values: [
-									{
-										displayName: 'Respond With',
-										name: 'respondWith',
-										type: 'options',
-										options: [
-											{
-												name: 'Default Confirmation',
-												value: 'default',
-											},
-											{
-												name: 'Custom Text',
-												value: 'text',
-											},
-											{
-												name: 'Redirection to URL',
-												value: 'redirect',
-											},
-										],
-										default: 'default',
-									},
-									{
-										displayName: 'Form Submitted Text',
-										name: 'customText',
-										type: 'string',
-										default: 'Your response has been recorded',
-										displayOptions: {
-											show: {
-												respondWith: ['text'],
-											},
-										},
-									},
-									{
-										displayName: 'Redirect URL',
-										name: 'redirectUrl',
-										type: 'string',
-										default: '',
-										placeholder: 'e.g. https://example.com',
-										displayOptions: {
-											show: {
-												respondWith: ['redirect'],
-											},
-										},
-										validateType: 'url',
-									},
-								],
-							},
-						],
+						displayName: 'Form Submitted Text',
+						name: 'formSubmittedText',
+						type: 'string',
+						default: 'Your response has been recorded',
 					},
 				],
 			},
@@ -278,8 +225,16 @@ export class FormTrigger implements INodeType {
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
 			const instanceId = await this.getInstanceId();
+			const { formSubmittedText } = this.getNodeParameter('options', {}) as IDataObject;
 
-			const page = createPage(formTitle, formDescription, formFields, mode === 'test', instanceId);
+			const page = createPage(
+				formTitle,
+				formDescription,
+				formSubmittedText as string,
+				formFields,
+				mode === 'test',
+				instanceId,
+			);
 
 			const res = this.getResponseObject();
 			res.status(200).send(page).end();
@@ -312,33 +267,7 @@ export class FormTrigger implements INodeType {
 		returnData.submittedAt = bodyData.submittedAt;
 		returnData.formMode = mode;
 
-		const respondWithValues = this.getNodeParameter(
-			'options.respondWith.values',
-			{},
-		) as IDataObject;
-
 		const webhookResponse: IDataObject = { status: 200 };
-		const triggerSettings: IDataObject = {};
-
-		if (respondWithValues?.respondWith === 'redirect') {
-			triggerSettings.redirectUrl = respondWithValues.redirectUrl as string;
-		}
-
-		if (respondWithValues?.respondWith === 'text') {
-			triggerSettings.customText = respondWithValues.customText as string;
-		}
-
-		if (Object.keys(triggerSettings).length) {
-			const responseMode = this.getNodeParameter('responseMode', '') as string;
-
-			if (responseMode === 'onReceived') {
-				webhookResponse.triggerSettings = triggerSettings;
-			}
-
-			if (responseMode === 'lastNode') {
-				returnData.triggerSettings = triggerSettings;
-			}
-		}
 
 		return {
 			webhookResponse,
