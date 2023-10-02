@@ -327,28 +327,30 @@ export const useUIStore = defineStore(STORES.UI, {
 				return false;
 			};
 		},
-		async upgradeLinkUrl(source: string, utm_campaign: string, deploymentType: string) {
-			let linkUrl = '';
+		upgradeLinkUrl() {
+			return async (source: string, utm_campaign: string, deploymentType: string) => {
+				let linkUrl = '';
 
-			const searchParams = new URLSearchParams();
+				const searchParams = new URLSearchParams();
 
-			if (deploymentType === 'cloud') {
-				const { code } = await useCloudPlanStore().getAutoLoginCode();
-				const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-				linkUrl = `https://${adminPanelHost}/login`;
-				searchParams.set('code', code);
-			} else {
-				linkUrl = N8N_PRICING_PAGE_URL;
-			}
+				if (deploymentType === 'cloud') {
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
+					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					linkUrl = `https://${adminPanelHost}/login`;
+					searchParams.set('code', code);
+				} else {
+					linkUrl = N8N_PRICING_PAGE_URL;
+				}
 
-			if (utm_campaign) {
-				searchParams.set('utm_campaign', utm_campaign);
-			}
+				if (utm_campaign) {
+					searchParams.set('utm_campaign', utm_campaign);
+				}
 
-			if (source) {
-				searchParams.set('source', source);
-			}
-			return `${linkUrl}?${searchParams.toString()}`;
+				if (source) {
+					searchParams.set('source', source);
+				}
+				return `${linkUrl}?${searchParams.toString()}`;
+			};
 		},
 		headerHeight() {
 			return Number(getStyleTokenValue('--header-height'));
@@ -539,7 +541,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			source: CloudUpdateLinkSourceType,
 			utm_campaign: UTMCampaign,
 			mode: 'open' | 'redirect' = 'open',
-		): Promise<void> {
+		): Promise<string> {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
 			const deploymentType = useSettingsStore().deploymentType;
@@ -553,12 +555,12 @@ export const useUIStore = defineStore(STORES.UI, {
 				workflowsLeft,
 			});
 
-			const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
+			// const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
 
 			if (mode === 'open') {
-				window.open(upgradeLink, '_blank');
+				window.open('', '_blank');
 			} else {
-				location.href = upgradeLink;
+				location.href = '';
 			}
 		},
 		async dismissBanner(
