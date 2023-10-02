@@ -61,9 +61,9 @@ export class TextSplitterCharacterTextSplitter implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply Data for Text Splitter');
-		const itemIndex = 0;
+
 		const separator = this.getNodeParameter('separator', itemIndex) as string;
 		const chunkSize = this.getNodeParameter('chunkSize', itemIndex) as number;
 		const chunkOverlap = this.getNodeParameter('chunkOverlap', itemIndex) as number;

@@ -122,12 +122,9 @@ export class LmOpenHuggingFaceInference implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('huggingFaceApi');
 
-		const itemIndex = 0;
-
-		// TODO: Should it get executed once per item or not?
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 

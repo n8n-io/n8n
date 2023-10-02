@@ -78,9 +78,7 @@ export class OutputParserItemList implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const itemIndex = 0;
-
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			numberOfItems?: number;
 			separator?: string;

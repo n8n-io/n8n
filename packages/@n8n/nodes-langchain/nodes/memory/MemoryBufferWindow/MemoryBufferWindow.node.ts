@@ -117,9 +117,9 @@ export class MemoryBufferWindow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const sessionKey = this.getNodeParameter('sessionKey', 0) as string;
-		const contextWindowLength = this.getNodeParameter('contextWindowLength', 0) as number;
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+		const sessionKey = this.getNodeParameter('sessionKey', itemIndex) as string;
+		const contextWindowLength = this.getNodeParameter('contextWindowLength', itemIndex) as number;
 		const workflowId = this.getWorkflow().id;
 		const memoryInstance = MemoryBufferSingleton.getInstance();
 

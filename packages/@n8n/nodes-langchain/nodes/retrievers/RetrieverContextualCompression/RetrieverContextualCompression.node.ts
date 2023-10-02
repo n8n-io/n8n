@@ -63,17 +63,17 @@ export class RetrieverContextualCompression implements INodeType {
 		properties: [],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for Contextual Compression Retriever');
 
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
-			0,
+			itemIndex,
 		)) as BaseLanguageModel;
 
 		const baseRetriever = (await this.getInputConnectionData(
 			NodeConnectionType.AiRetriever,
-			0,
+			itemIndex,
 		)) as BaseRetriever;
 
 		const baseCompressor = LLMChainExtractor.fromLLM(model);

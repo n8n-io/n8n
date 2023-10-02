@@ -56,12 +56,9 @@ export class MemoryMotorhead implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('motorheadApi');
 
-		const itemIndex = 0;
-
-		// TODO: Should it get executed once per item or not?
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 
 		const memory = new MotorheadMemory({

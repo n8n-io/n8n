@@ -68,10 +68,10 @@ export class MemoryRedisChat implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('redis');
-		const sessionKey = this.getNodeParameter('sessionKey', 0) as string;
-		const sessionTTL = this.getNodeParameter('sessionTTL', 0, 0) as number;
+		const sessionKey = this.getNodeParameter('sessionKey', itemIndex) as string;
+		const sessionTTL = this.getNodeParameter('sessionTTL', itemIndex, 0) as number;
 
 		const redisOptions: RedisClientOptions = {
 			socket: {

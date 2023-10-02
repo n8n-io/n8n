@@ -82,11 +82,9 @@ export class EmbeddingsOpenAi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings');
 		const credentials = await this.getCredentials('openAiApi');
-
-		const itemIndex = 0;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			batchSize?: number;

@@ -144,11 +144,11 @@ export class LmChatGooglePalm implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googlePalmApi');
 
-		const modelName = this.getNodeParameter('modelName', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as object;
+		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
+		const options = this.getNodeParameter('options', itemIndex, {}) as object;
 
 		const model = new ChatGooglePaLM({
 			apiKey: credentials.apiKey as string,

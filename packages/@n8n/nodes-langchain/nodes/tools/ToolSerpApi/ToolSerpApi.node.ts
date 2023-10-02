@@ -110,10 +110,8 @@ export class ToolSerpApi implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('serpApi');
-
-		const itemIndex = 0;
 
 		const options = this.getNodeParameter('options', itemIndex) as object;
 

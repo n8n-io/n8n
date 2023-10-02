@@ -53,10 +53,8 @@ export class MemoryXata implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('xataApi');
-
-		const itemIndex = 0;
 
 		const xataClient = new BaseClient({
 			apiKey: credentials.apiKey as string,
@@ -64,7 +62,6 @@ export class MemoryXata implements INodeType {
 			databaseURL: credentials.databaseEndpoint as string,
 		});
 
-		// TODO: Should it get executed once per item or not?
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 
 		const table = (credentials.databaseEndpoint as string).match(

@@ -91,11 +91,11 @@ export class DocumentGithubLoader implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		console.log('Supplying data for Github Document Loader');
 
-		const repository = this.getNodeParameter('repository', 0) as string;
-		const branch = this.getNodeParameter('branch', 0) as string;
+		const repository = this.getNodeParameter('repository', itemIndex) as string;
+		const branch = this.getNodeParameter('branch', itemIndex) as string;
 		const credentials = await this.getCredentials('githubApi');
 		const { ignorePaths, recursive } = this.getNodeParameter('additionalOptions', 0) as {
 			recursive: boolean;

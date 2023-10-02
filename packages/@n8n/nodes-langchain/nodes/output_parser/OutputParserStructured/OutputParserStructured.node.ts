@@ -83,9 +83,7 @@ export class OutputParserStructured implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const itemIndex = 0;
-
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const schema = this.getNodeParameter('jsonSchema', itemIndex) as string;
 
 		let itemSchema: object;

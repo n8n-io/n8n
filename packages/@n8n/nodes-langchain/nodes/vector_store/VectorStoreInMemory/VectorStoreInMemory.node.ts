@@ -62,14 +62,14 @@ export class VectorStoreInMemory implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const documents = (await this.getInputConnectionData(
 			NodeConnectionType.AiDocument,
-			0,
+			itemIndex,
 		)) as Document[];
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
-			0,
+			itemIndex,
 		)) as Embeddings;
 
 		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);

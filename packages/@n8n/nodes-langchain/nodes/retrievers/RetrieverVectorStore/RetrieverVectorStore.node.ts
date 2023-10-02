@@ -56,13 +56,13 @@ export class RetrieverVectorStore implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for Vector Store Retriever');
 
-		const topK = this.getNodeParameter('topK', 0, 4) as number;
+		const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 		const vectorStore = (await this.getInputConnectionData(
 			NodeConnectionType.AiVectorStore,
-			0,
+			itemIndex,
 		)) as VectorStore;
 
 		const retriever = vectorStore.asRetriever(topK);

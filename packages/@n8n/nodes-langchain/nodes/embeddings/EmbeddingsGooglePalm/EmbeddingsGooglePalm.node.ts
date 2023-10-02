@@ -113,9 +113,13 @@ export class EmbeddingsGooglePalm implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings Google PaLM');
-		const modelName = this.getNodeParameter('modelName', 0, 'models/embedding-gecko-001') as string;
+		const modelName = this.getNodeParameter(
+			'modelName',
+			itemIndex,
+			'models/embedding-gecko-001',
+		) as string;
 		const credentials = await this.getCredentials('googlePalmApi');
 		const embeddings = new GooglePaLMEmbeddings({
 			apiKey: credentials.apiKey as string,

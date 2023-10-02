@@ -279,9 +279,7 @@ export class RetrieverWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const itemIndex = 0;
-
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		class WorkflowRetriever extends BaseRetriever {
 			lc_namespace = ['n8n-nodes-langchain', 'retrievers', 'workflow'];
 
@@ -303,11 +301,17 @@ export class RetrieverWorkflow implements INodeType {
 				const workflowInfo: IExecuteWorkflowInfo = {};
 				if (source === 'database') {
 					// Read workflow from database
-					workflowInfo.id = this.executeFunctions.getNodeParameter('workflowId', 0) as string;
+					workflowInfo.id = this.executeFunctions.getNodeParameter(
+						'workflowId',
+						itemIndex,
+					) as string;
 					baseMetadata.workflowId = workflowInfo.id;
 				} else if (source === 'parameter') {
 					// Read workflow from parameter
-					const workflowJson = this.executeFunctions.getNodeParameter('workflowJson', 0) as string;
+					const workflowJson = this.executeFunctions.getNodeParameter(
+						'workflowJson',
+						itemIndex,
+					) as string;
 					try {
 						workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
 					} catch (error) {
@@ -323,9 +327,14 @@ export class RetrieverWorkflow implements INodeType {
 
 				const rawData: IDataObject = { query };
 
-				const workflowFieldsJson = this.executeFunctions.getNodeParameter('fields.values', 0, [], {
-					rawExpressions: true,
-				}) as SetField[];
+				const workflowFieldsJson = this.executeFunctions.getNodeParameter(
+					'fields.values',
+					itemIndex,
+					[],
+					{
+						rawExpressions: true,
+					},
+				) as SetField[];
 
 				// Copied from Set Node v2
 				for (const entry of workflowFieldsJson) {

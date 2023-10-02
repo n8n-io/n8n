@@ -57,14 +57,14 @@ export class OutputParserAutofixing implements INodeType {
 		properties: [],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
-			0,
+			itemIndex,
 		)) as BaseLanguageModel;
 		const outputParser = (await this.getInputConnectionData(
 			NodeConnectionType.AiOutputParser,
-			0,
+			itemIndex,
 		)) as BaseOutputParser;
 
 		const parser = OutputFixingParser.fromLLM(model, outputParser);

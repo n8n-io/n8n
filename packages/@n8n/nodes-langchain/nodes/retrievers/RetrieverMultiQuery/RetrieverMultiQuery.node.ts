@@ -82,21 +82,19 @@ export class RetrieverMultiQuery implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for MultiQuery Retriever');
-
-		const itemIndex = 0;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as { queryCount?: number };
 
 		const model = (await this.getInputConnectionData(
 			NodeConnectionType.AiLanguageModel,
-			0,
+			itemIndex,
 		)) as BaseLanguageModel;
 
 		const baseRetriever = (await this.getInputConnectionData(
 			NodeConnectionType.AiRetriever,
-			0,
+			itemIndex,
 		)) as BaseRetriever;
 
 		// TODO: Add support for parserKey

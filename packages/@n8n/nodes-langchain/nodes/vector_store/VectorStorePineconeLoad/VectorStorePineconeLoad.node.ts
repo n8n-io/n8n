@@ -67,15 +67,16 @@ export class VectorStorePineconeLoad implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for Pinecone Load Vector Store');
-		const namespace = this.getNodeParameter('pineconeNamespace', 0) as string;
-		const index = this.getNodeParameter('pineconeIndex', 0) as string;
+
+		const namespace = this.getNodeParameter('pineconeNamespace', itemIndex) as string;
+		const index = this.getNodeParameter('pineconeIndex', itemIndex) as string;
 
 		const credentials = await this.getCredentials('pineconeApi');
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
-			0,
+			itemIndex,
 		)) as Embeddings;
 
 		const client = new PineconeClient();

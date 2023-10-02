@@ -77,12 +77,13 @@ export class VectorStoreZepLoad implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supplying data for Zep Load Vector Store');
-		const collectionName = this.getNodeParameter('collectionName', 0) as string;
+
+		const collectionName = this.getNodeParameter('collectionName', itemIndex) as string;
 
 		const options =
-			(this.getNodeParameter('options', 0) as {
+			(this.getNodeParameter('options', itemIndex) as {
 				embeddingDimensions?: number;
 			}) || {};
 

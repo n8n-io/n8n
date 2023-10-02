@@ -285,9 +285,7 @@ export class ToolWorkflow implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const itemIndex = 0;
-
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = this.getNodeParameter('name', itemIndex) as string;
 		const description = this.getNodeParameter('description', itemIndex) as string;
 
@@ -301,10 +299,10 @@ export class ToolWorkflow implements INodeType {
 			const workflowInfo: IExecuteWorkflowInfo = {};
 			if (source === 'database') {
 				// Read workflow from database
-				workflowInfo.id = this.getNodeParameter('workflowId', 0) as string;
+				workflowInfo.id = this.getNodeParameter('workflowId', itemIndex) as string;
 			} else if (source === 'parameter') {
 				// Read workflow from parameter
-				const workflowJson = this.getNodeParameter('workflowJson', 0) as string;
+				const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
 				try {
 					workflowInfo.code = JSON.parse(workflowJson) as IWorkflowBase;
 				} catch (error) {
@@ -320,7 +318,7 @@ export class ToolWorkflow implements INodeType {
 
 			const rawData: IDataObject = { query };
 
-			const workflowFieldsJson = this.getNodeParameter('fields.values', 0, [], {
+			const workflowFieldsJson = this.getNodeParameter('fields.values', itemIndex, [], {
 				rawExpressions: true,
 			}) as SetField[];
 

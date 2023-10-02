@@ -62,11 +62,11 @@ export class EmbeddingsHuggingFaceInference implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply data for embeddings HF Inference');
 		const model = this.getNodeParameter(
 			'modelName',
-			0,
+			itemIndex,
 			'sentence-transformers/distilbert-base-nli-mean-tokens',
 		) as string;
 		const credentials = await this.getCredentials('huggingFaceApi');

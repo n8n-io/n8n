@@ -332,9 +332,7 @@ export class Code implements INodeType {
 		}
 	}
 
-	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {
-		const itemIndex = 0;
-
+	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const code = this.getNodeParameter('code', itemIndex) as { supplyData?: { code: string } };
 
 		if (!code.supplyData?.code) {
