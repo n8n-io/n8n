@@ -35,7 +35,7 @@ const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 
-const listLoading = ref(true);
+const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
 const editorRoute = computed(() => ({
@@ -56,7 +56,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 
 onBeforeMount(async () => {
 	await loadMore({ take: requestNumberOfItems.value });
-	listLoading.value = false;
+	isListLoading.value = false;
 
 	if (!route.params.versionId) {
 		await router.replace({
@@ -169,7 +169,7 @@ watchEffect(async () => {
 			:requestNumberOfItems="requestNumberOfItems"
 			:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
 			:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
-			:listLoading="listLoading"
+			:isListLoading="isListLoading"
 			@action="onAction"
 			@preview="onPreview"
 			@load-more="loadMore"

@@ -19,12 +19,11 @@ const props = withDefaults(
 		lastReceivedItemsLength: number;
 		shouldUpgrade?: boolean;
 		maxRetentionPeriod?: number;
-		listLoading?: boolean;
+		isListLoading?: boolean;
 	}>(),
 	{
 		shouldUpgrade: false,
 		maxRetentionPeriod: 0,
-		listLoading: false,
 	},
 );
 const emit = defineEmits<{
@@ -122,12 +121,19 @@ const onItemMounted = ({
 			@preview="onPreview"
 			@mounted="onItemMounted"
 		/>
-		<li v-if="!props.items.length && !props.listLoading" :class="$style.empty">
+		<li v-if="!props.items.length && !props.isListLoading" :class="$style.empty">
 			{{ i18n.baseText('workflowHistory.empty') }}
 			<br />
 			{{ i18n.baseText('workflowHistory.hint') }}
 		</li>
-		<li v-if="props.listLoading" :class="$style.loader">
+		<li
+			v-if="props.isListLoading"
+			:class="$style.loader"
+			role="status"
+			aria-live="polite"
+			aria-busy="true"
+			:aria-label="i18n.baseText('generic.loading')"
+		>
 			<n8n-loading :rows="3" class="mb-xs" />
 			<n8n-loading :rows="3" class="mb-xs" />
 			<n8n-loading :rows="3" class="mb-xs" />

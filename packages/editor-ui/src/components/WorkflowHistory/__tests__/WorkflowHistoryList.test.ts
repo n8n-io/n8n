@@ -40,18 +40,37 @@ describe('WorkflowHistoryList', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render empty list', () => {
-		const { getByText } = renderComponent({
+	it('should render empty list when not lading and no items', () => {
+		const { getByText, queryByRole } = renderComponent({
 			pinia,
 			props: {
 				items: [],
 				actionTypes,
 				activeItem: null,
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 0,
 			},
 		});
 
+		expect(queryByRole('status')).not.toBeInTheDocument();
 		expect(getByText(/No versions yet/)).toBeInTheDocument();
+	});
+
+	it('should show loader but no empty list message when loading', () => {
+		const { queryByText, getByRole } = renderComponent({
+			pinia,
+			props: {
+				items: [],
+				actionTypes,
+				activeItem: null,
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 0,
+				isListLoading: true,
+			},
+		});
+
+		expect(getByRole('status')).toBeInTheDocument();
+		expect(queryByText(/No versions yet/)).not.toBeInTheDocument();
 	});
 
 	it('should render list and delegate preview event', async () => {
