@@ -14,10 +14,7 @@
 			"name": "Webhook",
 			"type": "n8n-nodes-base.webhook",
 			"typeVersion": 1,
-			"position": [
-				880,
-				200
-			],
+			"position": [100, 480],
 			"webhookId": "513107b3-6f3a-4a1e-af21-659f0ed14183"
 		},
 		{
@@ -28,16 +25,8 @@
 			"name": "Chat OpenAI",
 			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
 			"typeVersion": 1,
-			"position": [
-				1480,
-				560
-			],
-			"credentials": {
-				"openAiApi": {
-					"id": "B5Fiv70Adfg6htxn",
-					"name": "Alex's OpenAI Account"
-				}
-			}
+			"position": [700, 840],
+			"credentials": {}
 		},
 		{
 			"parameters": {
@@ -47,10 +36,7 @@
 			"name": "Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
-			"position": [
-				1620,
-				560
-			]
+			"position": [840, 840]
 		},
 		{
 			"parameters": {
@@ -60,24 +46,7 @@
 			"name": "Memory Chat Retriever",
 			"type": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
 			"typeVersion": 1,
-			"position": [
-				1560,
-				-40
-			]
-		},
-		{
-			"parameters": {
-				"text": "={{ $json.body.message }}",
-				"systemMessage": "Your name is Nathan. You're an AI Chat Assistant created by n8n. Do your best to answer the questions. Feel free to use any tools available to look up relevant information, only if necessary."
-			},
-			"id": "be805a7b-5a75-4915-99e2-55e9fe7f0e82",
-			"name": "Conversational Agent",
-			"type": "@n8n/n8n-nodes-langchain.conversationalAgent",
-			"typeVersion": 1,
-			"position": [
-				1560,
-				320
-			]
+			"position": [780, 240]
 		},
 		{
 			"parameters": {
@@ -87,10 +56,7 @@
 			"name": "Memory Chat Retriever Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
-			"position": [
-				1580,
-				160
-			]
+			"position": [800, 440]
 		},
 		{
 			"parameters": {
@@ -110,10 +76,7 @@
 			"name": "Respond to Webhook",
 			"type": "n8n-nodes-base.respondToWebhook",
 			"typeVersion": 1,
-			"position": [
-				2240,
-				220
-			]
+			"position": [1460, 500]
 		},
 		{
 			"parameters": {
@@ -135,10 +98,7 @@
 			"name": "Chatbot Action",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 1,
-			"position": [
-				1320,
-				200
-			]
+			"position": [540, 480]
 		},
 		{
 			"parameters": {
@@ -148,10 +108,7 @@
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [
-				1940,
-				-40
-			]
+			"position": [1160, 240]
 		},
 		{
 			"parameters": {
@@ -161,13 +118,20 @@
 			"name": "Parse Request JSON",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [
-				1100,
-				200
-			]
+			"position": [320, 480]
+		},
+		{
+			"parameters": {
+				"text": "={{ $json.body.message }}",
+				"options": {}
+			},
+			"id": "c43f9232-0636-4c95-a3ad-1addd8c74f6e",
+			"name": "Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 1,
+			"position": [780, 600]
 		}
 	],
-	"pinData": {},
 	"connections": {
 		"Webhook": {
 			"main": [
@@ -184,7 +148,7 @@
 			"ai_languageModel": [
 				[
 					{
-						"node": "Conversational Agent",
+						"node": "Agent",
 						"type": "ai_languageModel",
 						"index": 0
 					}
@@ -195,7 +159,7 @@
 			"ai_memory": [
 				[
 					{
-						"node": "Conversational Agent",
+						"node": "Agent",
 						"type": "ai_memory",
 						"index": 0
 					}
@@ -224,17 +188,6 @@
 				]
 			]
 		},
-		"Conversational Agent": {
-			"main": [
-				[
-					{
-						"node": "Respond to Webhook",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
 		"Chatbot Action": {
 			"main": [
 				[
@@ -246,7 +199,7 @@
 				],
 				[
 					{
-						"node": "Conversational Agent",
+						"node": "Agent",
 						"type": "main",
 						"index": 0
 					}
@@ -274,16 +227,17 @@
 					}
 				]
 			]
+		},
+		"Agent": {
+			"main": [
+				[
+					{
+						"node": "Respond to Webhook",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
-	},
-	"active": true,
-	"settings": {
-		"executionOrder": "v1"
-	},
-	"versionId": "bcf67233-fb50-4ab0-962f-866e4fd99469",
-	"id": "L3FlJuFOxZcHtoFT",
-	"meta": {
-		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
-	},
-	"tags": []
+	}
 }
