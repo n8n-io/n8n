@@ -33,7 +33,7 @@ describe('WorkflowHistoryList', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render empty list when not lading and no items', () => {
+	it('should render empty list when not loading and no items', () => {
 		const { getByText, queryByRole } = renderComponent({
 			pinia,
 			props: {
