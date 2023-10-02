@@ -237,7 +237,9 @@ export default defineComponent({
 				const workflow = this.workflowsStore.getCurrentWorkflow();
 				const workflowNode = workflow.getNode(this.node.name);
 				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
-				if (!inputs.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
 					return false;
 				}
 			}
