@@ -3,6 +3,7 @@
 		:class="['code-node-editor', $style['code-node-editor-container'], language]"
 		@mouseover="onMouseOver"
 		@mouseout="onMouseOut"
+		@keydown="onKeyDown"
 		ref="codeNodeEditorContainer"
 	>
 		<el-tabs
@@ -46,11 +47,12 @@ import jsParser from 'prettier/plugins/babel';
 import { format } from 'prettier';
 import * as estree from 'prettier/plugins/estree';
 import { mapStores } from 'pinia';
+import { toggleComment } from '@codemirror/commands';
 import type { LanguageSupport } from '@codemirror/language';
 import type { Extension, Line } from '@codemirror/state';
 import { Compartment, EditorState } from '@codemirror/state';
 import type { ViewUpdate } from '@codemirror/view';
-import { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
@@ -183,6 +185,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		onKeyDown(e: KeyboardEvent) {
+			const isCtrlKeyPressed = e.metaKey || e.ctrlKey;
+			console.log(e);
+
+			if (this.language !== 'javaScript') return;
+			if (e.key === 'k' && isCtrlKeyPressed) {
+				e.stopPropagation();
+				e.preventDefault();
+
+				void this.onReplaceCode(this.getCurrentEditorContent());
+			}
+		},
 		getCurrentEditorContent() {
 			return this.editor?.state.doc.toString() ?? '';
 		},
@@ -331,6 +345,10 @@ export default defineComponent({
 
 			extensions.push(
 				...writableEditorExtensions,
+				keymap.of([
+					{ key: 'Ctrl-;', run: toggleComment },
+					{ key: 'Cmd-;', run: toggleComment },
+				]),
 				EditorView.domEventHandlers({
 					focus: () => {
 						this.isEditorFocused = true;
