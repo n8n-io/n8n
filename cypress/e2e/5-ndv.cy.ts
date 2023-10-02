@@ -352,7 +352,7 @@ describe('NDV', () => {
 		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
 		// Type something into the field
 		ndv.actions.typeIntoParameterInput('otherField', 'test');
-		// Should call the endpoint only once, not for every keystroke
+		// Should call the endpoint only once (on mount), not for every keystroke
 		cy.get('@myRequest').should('have.been.calledOnce');
 	});
 });
