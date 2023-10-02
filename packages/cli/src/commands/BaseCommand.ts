@@ -200,19 +200,19 @@ export abstract class BaseCommand extends Command {
 		}
 
 		const credentials = {
-			accountId: config.getEnv('externalStorage.s3.credentials.accountId'),
-			secretKey: config.getEnv('externalStorage.s3.credentials.secretKey'),
+			accessKey: config.getEnv('externalStorage.s3.credentials.accessKey'),
+			accessSecret: config.getEnv('externalStorage.s3.credentials.accessSecret'),
 		};
 
-		if (credentials.accountId === '') {
+		if (credentials.accessKey === '') {
 			throw new Error(
-				'External storage account ID not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCOUNT_ID`.',
+				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
 			);
 		}
 
-		if (credentials.secretKey === '') {
+		if (credentials.accessSecret === '') {
 			throw new Error(
-				'External storage secret key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_SECRET_KEY`.',
+				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
 			);
 		}
 

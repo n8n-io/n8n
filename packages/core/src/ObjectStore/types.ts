@@ -31,4 +31,4 @@ export type RequestOptions = {
 	responseType?: ResponseType;
 };
 
-export type ConfigSchemaCredentials = { accountId: string; secretKey: string };
+export type ConfigSchemaCredentials = { accessKey: string; accessSecret: string };

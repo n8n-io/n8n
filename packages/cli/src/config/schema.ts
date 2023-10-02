@@ -937,17 +937,17 @@ export const schema = {
 				},
 			},
 			credentials: {
-				accountId: {
+				accessKey: {
 					format: String,
 					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_ACCOUNT_ID',
-					doc: 'Account ID in S3-compatible external storage',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
+					doc: 'Access key in S3-compatible external storage',
 				},
-				secretKey: {
+				accessSecret: {
 					format: String,
 					default: '',
-					env: 'N8N_EXTERNAL_STORAGE_S3_SECRET_KEY',
-					doc: 'Secret key in S3-compatible external storage',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
+					doc: 'Access secret in S3-compatible external storage',
 				},
 			},
 		},
