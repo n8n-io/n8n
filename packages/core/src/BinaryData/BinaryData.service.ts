@@ -1,13 +1,13 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
 import { readFile, stat } from 'fs/promises';
-import concatStream from 'concat-stream';
 import prettyBytes from 'pretty-bytes';
 import { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 
-import { FileSystemManager } from './FileSystem.manager';
 import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
 import { LogCatch } from '../decorators/LogCatch.decorator';
-import { areValidModes } from './utils';
+import { areValidModes, toBuffer } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -15,8 +15,6 @@ import type { INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
-	private availableModes: BinaryData.Mode[] = [];
-
 	private mode: BinaryData.Mode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
@@ -24,10 +22,10 @@ export class BinaryDataService {
 	async init(config: BinaryData.Config) {
 		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataMode();
 
-		this.availableModes = config.availableModes;
 		this.mode = config.mode;
 
-		if (this.availableModes.includes('filesystem')) {
+		if (config.availableModes.includes('filesystem')) {
+			const { FileSystemManager } = await import('./FileSystem.manager');
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
@@ -80,7 +78,7 @@ export class BinaryDataService {
 		const manager = this.managers[this.mode];
 
 		if (!manager) {
-			const buffer = await this.binaryToBuffer(bufferOrStream);
+			const buffer = await this.toBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
 
@@ -106,11 +104,8 @@ export class BinaryDataService {
 		return binaryData;
 	}
 
-	async binaryToBuffer(body: Buffer | Readable) {
-		return new Promise<Buffer>((resolve) => {
-			if (Buffer.isBuffer(body)) resolve(body);
-			else body.pipe(concatStream(resolve));
-		});
+	async toBuffer(bufferOrStream: Buffer | Readable) {
+		return toBuffer(bufferOrStream);
 	}
 
 	async getAsStream(binaryDataId: string, chunkSize?: number) {
@@ -141,12 +136,12 @@ export class BinaryDataService {
 		return this.getManager(mode).getMetadata(fileId);
 	}
 
-	async deleteManyByExecutionIds(executionIds: string[]) {
+	async deleteMany(ids: BinaryData.IdsForDeletion) {
 		const manager = this.managers[this.mode];
 
 		if (!manager) return;
 
-		await manager.deleteManyByExecutionIds(executionIds);
+		await manager.deleteMany(ids);
 	}
 
 	@LogCatch((error) =>

@@ -63,7 +63,7 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Please reffer to the Supabase documentation for more information on how to setup your database as a Vector Store. https://supabase.com/docs/guides/ai/langchain',
+					'Please refer to the <a href="https://supabase.com/docs/guides/ai/langchain" target="_blank">Supabase documentation</a> for more information on how to setup your database as a Vector Store.',
 				name: 'setupNotice',
 				type: 'notice',
 				default: '',
@@ -83,6 +83,12 @@ export class VectorStoreSupabaseInsert implements INodeType {
 				default: 'match_documents',
 				required: true,
 				description: 'Name of the query to use for matching documents',
+			},
+			{
+				displayName: 'Specify the document to load in the document loader sub-node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
 			},
 		],
 	};

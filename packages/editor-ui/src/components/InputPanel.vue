@@ -88,7 +88,10 @@
 			</div>
 		</template>
 		<template #node-not-run>
-			<div :class="$style.noOutputData" v-if="parentNodes.length">
+			<div
+				:class="$style.noOutputData"
+				v-if="(isActiveNodeConfig && rootNode) || parentNodes.length"
+			>
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
 					$locale.baseText('ndv.input.noOutputData.title')
 				}}</n8n-text>
@@ -105,7 +108,7 @@
 					<NodeExecuteButton
 						type="secondary"
 						:transparent="true"
-						:nodeName="currentNodeName"
+						:nodeName="isActiveNodeConfig ? rootNode : currentNodeName"
 						:label="$locale.baseText('ndv.input.noOutputData.executePrevious')"
 						@execute="onNodeExecute"
 						telemetrySource="inputs"

@@ -17,7 +17,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		icon: 'fa:grip-lines-vertical',
 		group: ['transform'],
 		version: 1,
-		description: 'Split text into chunks by characters recursively',
+		description: 'Split text into chunks by characters recursively, recommended for most use cases',
 		defaults: {
 			name: 'Recursive Character Text Splitter',
 		},

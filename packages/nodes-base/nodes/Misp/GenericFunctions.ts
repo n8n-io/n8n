@@ -19,14 +19,11 @@ export async function mispApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl, apiKey, allowUnauthorizedCerts } = (await this.getCredentials(
+	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'mispApi',
 	)) as MispCredentials;
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: apiKey,
-		},
 		method,
 		body,
 		qs,
@@ -44,7 +41,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return await this.helpers.request(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'mispApi', options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {

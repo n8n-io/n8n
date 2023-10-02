@@ -67,15 +67,22 @@ function getSandbox(
 	const workflowMode = this.getMode();
 
 	const context = getSandboxContext.call(this, itemIndex);
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.addInputData = this.addInputData;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.addOutputData = this.addOutputData;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getInputConnectionData = this.getInputConnectionData;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getInputData = this.getInputData;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNode = this.getNode;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNodeOutputs = this.getNodeOutputs;
 	if (options?.addItems) {
 		context.items = context.$input.all();
 	}
+	// eslint-disable-next-line @typescript-eslint/unbound-method
 
 	const sandbox = new JavaScriptSandbox(context, code, itemIndex, this.helpers, {
 		resolver: vmResolver,
@@ -104,9 +111,9 @@ export class Code implements INodeType {
 		},
 		codex: {
 			categories: ['AI'],
-			// subcategories: {
-			// 	AI: ['Tools'],
-			// },
+			subcategories: {
+				AI: ['Miscellaneous'],
+			},
 			resources: {
 				primaryDocumentation: [
 					{
@@ -296,7 +303,7 @@ export class Code implements INodeType {
 			items = await sandbox.runCodeAllItems(options);
 		} catch (error) {
 			if (!this.continueOnFail()) throw error;
-			items = [{ json: { error: error.message } }];
+			items = [{ json: { error: (error as Error).message } }];
 			if (options.multiOutput) {
 				items = [items];
 			}

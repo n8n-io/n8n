@@ -17,7 +17,7 @@ export class DocumentJsonInputLoader implements INodeType {
 		icon: 'file:json.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Use the JSON input to this chain',
+		description: 'Use JSON data from a previous step in the workflow',
 		defaults: {
 			name: 'JSON Input Loader',
 		},

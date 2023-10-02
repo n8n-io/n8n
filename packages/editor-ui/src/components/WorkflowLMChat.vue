@@ -12,6 +12,7 @@
 		"
 		:eventBus="modalBus"
 		:scrollable="false"
+		@keydown.stop
 	>
 		<template #content>
 			<div v-loading="isLoading" class="workflow-lm-chat" data-test-id="workflow-lm-chat-dialog">
@@ -63,12 +64,17 @@
 						</div>
 					</div>
 				</div>
-				<div class="logs">
-					<run-data-ai v-if="node" :node="node" hide-title slim />
-					<div v-else class="no-node-connected">
-						<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-							$locale.baseText('chat.window.noExecution')
-						}}</n8n-text>
+				<div class="logs-wrapper">
+					<n8n-text class="logs-title" tag="p" size="large">{{
+						$locale.baseText('chat.window.logs')
+					}}</n8n-text>
+					<div class="logs">
+						<run-data-ai v-if="node" :node="node" hide-title slim :key="messages.length" />
+						<div v-else class="no-node-connected">
+							<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+								$locale.baseText('chat.window.noExecution')
+							}}</n8n-text>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -81,7 +87,7 @@
 					type="textarea"
 					ref="inputField"
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
-					@keydown="updated"
+					@keydown.stop="updated"
 				/>
 				<n8n-button
 					@click.stop="sendChatMessage(currentMessage)"
@@ -93,6 +99,13 @@
 					type="primary"
 					data-test-id="workflow-chat-button"
 				/>
+
+				<n8n-info-tip class="mt-s">
+					{{ $locale.baseText('chatEmbed.infoTip.description') }}
+					<a @click="openChatEmbedModal">
+						{{ $locale.baseText('chatEmbed.infoTip.link') }}
+					</a>
+				</n8n-info-tip>
 			</div>
 		</template>
 	</Modal>
@@ -109,6 +122,7 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_CODE_NODE_TYPE,
 	AI_SUBCATEGORY,
+	CHAT_EMBED_MODAL_KEY,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
@@ -117,7 +131,7 @@ import {
 import { workflowRun } from '@/mixins/workflowRun';
 import { get, last } from 'lodash-es';
 
-import { useWorkflowsStore } from '@/stores';
+import { useUIStore, useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
 import {
 	type INode,
@@ -173,7 +187,7 @@ export default defineComponent({
 	},
 
 	computed: {
-		...mapStores(useWorkflowsStore),
+		...mapStores(useWorkflowsStore, useUIStore),
 		isLoading(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
@@ -473,6 +487,9 @@ export default defineComponent({
 				dialogVisible: false,
 			});
 		},
+		openChatEmbedModal() {
+			this.uiStore.openModal(CHAT_EMBED_MODAL_KEY);
+		},
 	},
 });
 </script>
@@ -492,14 +509,17 @@ export default defineComponent({
 	height: 100%;
 	min-height: 400px;
 
-	.logs {
-		background-color: var(--color-background-base);
+	.logs-wrapper {
 		border: 1px solid #e0e0e0;
 		border-radius: 4px;
 		height: 100%;
 		overflow-y: auto;
 		width: 100%;
 		padding: var(--spacing-xs) 0;
+
+		.logs-title {
+			margin: 0 var(--spacing-s) var(--spacing-s);
+		}
 	}
 	.messages {
 		background-color: var(--color-background-base);
@@ -523,6 +543,7 @@ export default defineComponent({
 				max-width: 75%;
 				padding: 1em;
 				white-space: pre-wrap;
+				overflow-x: auto;
 
 				&.bot {
 					background-color: #e0d0d0;

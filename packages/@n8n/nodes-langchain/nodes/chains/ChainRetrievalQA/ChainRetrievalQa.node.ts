@@ -46,9 +46,9 @@ export class ChainRetrievalQa implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'Vector Retriever',
+				displayName: 'Retriever',
 				maxConnections: 1,
-				type: NodeConnectionType.AiVectorRetriever,
+				type: NodeConnectionType.AiRetriever,
 				required: true,
 			},
 		],
@@ -56,29 +56,10 @@ export class ChainRetrievalQa implements INodeType {
 		credentials: [],
 		properties: [
 			{
-				displayName: 'Mode',
-				name: 'mode',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Run Once for All Items',
-						value: 'runOnceForAllItems',
-						description: 'Run this chain only once, no matter how many input items there are',
-					},
-					{
-						name: 'Run Once for Each Item',
-						value: 'runOnceForEachItem',
-						description: 'Run this chain as many times as there are input items',
-					},
-				],
-				default: 'runOnceForAllItems',
-			},
-			{
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				default: '',
+				default: '={{ $json.input }}',
 			},
 		],
 	};
@@ -91,23 +72,16 @@ export class ChainRetrievalQa implements INodeType {
 			0,
 		)) as BaseLanguageModel;
 
-		const vectorRetriever = (await this.getInputConnectionData(
-			NodeConnectionType.AiVectorRetriever,
+		const retriever = (await this.getInputConnectionData(
+			NodeConnectionType.AiRetriever,
 			0,
 		)) as BaseRetriever;
 
 		const items = this.getInputData();
-		const chain = RetrievalQAChain.fromLLM(model, vectorRetriever);
+		const chain = RetrievalQAChain.fromLLM(model, retriever);
 
 		const returnData: INodeExecutionData[] = [];
-		const runMode = this.getNodeParameter('mode', 0) as string;
 
-		if (runMode === 'runOnceForAllItems') {
-			const query = this.getNodeParameter('query', 0) as string;
-			const response = await chain.call({ query });
-
-			return this.prepareOutputData([{ json: { response } }]);
-		}
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;

@@ -32,6 +32,7 @@ import type {
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
+	NodeOperationError,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -69,6 +70,41 @@ import {
 import { restoreBinaryDataId } from './executionLifecycleHooks/restoreBinaryDataId';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+
+export function objectToError(errorObject: unknown, workflow: Workflow): Error {
+	// TODO: Expand with other error types
+	if (errorObject instanceof Error) {
+		// If it's already an Error instance, return it as is.
+		return errorObject;
+	} else if (errorObject && typeof errorObject === 'object' && 'message' in errorObject) {
+		// If it's an object with a 'message' property, create a new Error instance.
+		let error: Error | undefined;
+		if ('node' in errorObject) {
+			const node = workflow.getNode((errorObject.node as { name: string }).name);
+			if (node) {
+				error = new NodeOperationError(
+					node,
+					errorObject as unknown as Error,
+					errorObject as object,
+				);
+			}
+		}
+
+		if (error === undefined) {
+			error = new Error(errorObject.message as string);
+		}
+
+		if ('stack' in errorObject) {
+			// If there's a 'stack' property, set it on the new Error instance.
+			error.stack = errorObject.stack as string;
+		}
+
+		return error;
+	} else {
+		// If it's neither an Error nor an object with a 'message' property, create a generic Error.
+		return new Error('An error occurred');
+	}
+}
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -746,7 +782,7 @@ export async function getWorkflowData(
 
 		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
-		if (workflowData === undefined) {
+		if (workflowData === undefined || workflowData === null) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
 	} else {
@@ -913,11 +949,14 @@ async function executeWorkflow(
 			executionId,
 			fullExecutionData,
 		);
-		throw {
-			...error,
-			stack: error.stack,
-			message: error.message,
-		};
+		throw objectToError(
+			{
+				...error,
+				stack: error.stack,
+				message: error.message,
+			},
+			workflow,
+		);
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
@@ -935,10 +974,13 @@ async function executeWorkflow(
 	// Workflow did fail
 	const { error } = data.data.resultData;
 	// eslint-disable-next-line @typescript-eslint/no-throw-literal
-	throw {
-		...error,
-		stack: error!.stack,
-	};
+	throw objectToError(
+		{
+			...error,
+			stack: error!.stack,
+		},
+		workflow,
+	);
 }
 
 export function setExecutionStatus(status: ExecutionStatus) {

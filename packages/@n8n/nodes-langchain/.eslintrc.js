@@ -8,7 +8,7 @@ module.exports = {
 
 	...sharedOptions(__dirname),
 
-	ignorePatterns: ['index.js'],
+	ignorePatterns: ['index.js', '**/package.json'],
 
 	rules: {
 		// TODO: remove all the following rules
