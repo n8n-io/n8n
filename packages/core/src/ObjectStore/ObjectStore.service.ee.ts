@@ -279,7 +279,7 @@ export class ObjectStoreService {
 
 			const message = `Request to S3 failed: ${error.message}`;
 
-			this.logger.error(message, { error, config });
+			this.logger.error(message, { config });
 
 			throw new Error(message, { cause: { error, details: config } });
 		}

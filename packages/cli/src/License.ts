@@ -105,11 +105,11 @@ export class License {
 			});
 		}
 
-		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
-		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
-		const isLicensed = _features['feat:binaryDataS3'];
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = _features['feat:binaryDataS3'];
 
-		if (isSelected && isAvailable && !isLicensed) {
+		if (isS3Selected && isS3Available && !isS3Licensed) {
 			this.logger.debug(
 				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
 			);
