@@ -14,7 +14,7 @@ import type { INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
-	private mode: BinaryData.InternalMode = 'default';
+	private mode: BinaryData.ServiceMode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
 

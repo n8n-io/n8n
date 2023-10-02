@@ -12,10 +12,10 @@ export namespace BinaryData {
 	export type ConfigMode = (typeof CONFIG_BINARY_DATA_MODES)[number];
 
 	/**
-	 * Binary data mode used internally by server. Selected legacy modes
-	 * are replaced with upgraded modes.
+	 * Binary data mode used internally by binary data service. User-selected
+	 * legacy modes are replaced with upgraded modes.
 	 */
-	export type InternalMode = Exclude<ConfigMode, LegacyMode> | UpgradedMode;
+	export type ServiceMode = Exclude<ConfigMode, LegacyMode> | UpgradedMode;
 
 	/**
 	 * Binary data mode in binary data ID in stored execution data, where
