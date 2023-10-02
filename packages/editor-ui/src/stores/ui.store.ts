@@ -329,7 +329,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		upgradeLinkUrl() {
-			return (source: string, utm_campaign: string): string => {
+			return (source: string, utm_campaign: string, autologinCode?: string): string => {
 				const linkUrlTranslationKey = this.contextBasedTranslationKeys
 					.upgradeLinkUrl as BaseTextKey;
 				let linkUrl = locale.baseText(linkUrlTranslationKey);
@@ -338,6 +338,10 @@ export const useUIStore = defineStore(STORES.UI, {
 					linkUrl = `${linkUrl}?ref=${source}`;
 				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
 					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
+				}
+
+				if (autologinCode) {
+					linkUrl = `${linkUrl}&code=${autologinCode}`;
 				}
 
 				return linkUrl;
@@ -528,25 +532,34 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(
+		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,
 			utm_campaign: UTMCampaign,
 			mode: 'open' | 'redirect' = 'open',
-		): void {
-			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
+		): Promise<void> {
+			const { usageLeft, trialDaysLeft, userIsTrialing, getAutoLoginCode } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
+			const deploymentType = useSettingsStore().deploymentType;
+
 			useTelemetryStore().track('User clicked upgrade CTA', {
 				source,
 				isTrial: userIsTrialing,
-				deploymentType: useSettingsStore().deploymentType,
+				deploymentType,
 				trialDaysLeft,
 				executionsLeft,
 				workflowsLeft,
 			});
+
+			let code;
+
+			if (deploymentType === 'cloud') {
+				({ code } = await useCloudPlanStore().getAutoLoginCode());
+			}
+
 			if (mode === 'open') {
-				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank', code);
 			} else {
-				location.href = this.upgradeLinkUrl(source, utm_campaign);
+				location.href = this.upgradeLinkUrl(source, utm_campaign, code);
 			}
 		},
 		async dismissBanner(
