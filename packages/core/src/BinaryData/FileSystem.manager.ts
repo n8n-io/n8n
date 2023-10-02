@@ -66,7 +66,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
-		// binary files stored in single dir under `filesystem`
+		// binary files stored in single dir - `filesystem`
 
 		const executionIds = ids.map((o) => o.executionId);
 
@@ -83,7 +83,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			}
 		}
 
-		// binary files stored in nested dirs under `filesystem-v2`
+		// binary files stored in nested dirs - `filesystem-v2`
 
 		const binaryDataDirs = ids.map(({ workflowId, executionId }) =>
 			this.resolvePath(`workflows/${workflowId}/executions/${executionId}/binary_data/`),
