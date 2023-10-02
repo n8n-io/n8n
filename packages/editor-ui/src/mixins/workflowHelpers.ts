@@ -435,7 +435,7 @@ export function executeData(
 				let previousNodeOutput: number | undefined;
 				// As the node can be connected through either of the outputs find the correct one
 				// and set it to make pairedItem work on not executed nodes
-				if (workflow.connectionsByDestinationNode[currentNode].main) {
+				if (workflow.connectionsByDestinationNode[currentNode]?.main) {
 					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
 						currentNode
 					].main) {

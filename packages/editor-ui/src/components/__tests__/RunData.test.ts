@@ -13,6 +13,11 @@ const renderComponent = createComponentRenderer(RunData, {
 			name: 'Test Node',
 		},
 	},
+	data() {
+		return {
+			canPinData: true,
+		};
+	},
 	global: {
 		mocks: {
 			$route: {
