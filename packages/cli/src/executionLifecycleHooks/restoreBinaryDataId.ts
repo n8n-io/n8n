@@ -24,7 +24,7 @@ export async function restoreBinaryDataId(run: IRun, executionId: string) {
 
 		if (!binaryDataId) return;
 
-		const [mode, fileId] = binaryDataId.split(':') as [BinaryData.NonDefaultPrefix, string];
+		const [mode, fileId] = binaryDataId.split(':') as [BinaryData.StoredMode, string];
 
 		const isMissingExecutionId = fileId.includes('/temp/');
 

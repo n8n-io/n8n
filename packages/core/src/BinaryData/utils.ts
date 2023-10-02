@@ -6,13 +6,16 @@ import concatStream from 'concat-stream';
 /**
  * Modes for storing binary data:
  * - `default` (in memory)
- * - `filesystem` (on disk)
+ * - `filesystem` (on disk, legacy)
  * - `s3` (S3-compatible storage)
+ *
+ * `filesystem` (storage in flat dir) is selectable by user via config, but
+ * the upgraded `filesystem-v2` (storage in nested dirs) is used internally instead.
  */
-export const BINARY_DATA_MODES = ['default', 'filesystem', 's3'] as const;
+export const CONFIG_BINARY_DATA_MODES = ['default', 'filesystem', 's3'] as const;
 
-export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
-	return modes.every((m) => BINARY_DATA_MODES.includes(m as BinaryData.Mode));
+export function areValidModes(modes: string[]): modes is BinaryData.ConfigMode[] {
+	return modes.every((m) => CONFIG_BINARY_DATA_MODES.includes(m as BinaryData.ConfigMode));
 }
 
 export async function assertDir(dir: string) {

@@ -4,7 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
-import { UnknownBinaryDataManagerError, InvalidBinaryDataModeError } from './errors';
+import { UnknownManagerError, InvalidModeError } from './errors';
 import { areValidModes, toBuffer } from './utils';
 import { LogCatch } from '../decorators/LogCatch.decorator';
 
@@ -14,16 +14,14 @@ import type { INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
-	private mode: BinaryData.Mode = 'default';
+	private mode: BinaryData.InternalMode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) {
-			throw new InvalidBinaryDataModeError();
-		}
+		if (!areValidModes(config.availableModes)) throw new InvalidModeError();
 
-		this.mode = config.mode;
+		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
 		if (config.availableModes.includes('filesystem')) {
 			const { FileSystemManager } = await import('./FileSystem.manager');
@@ -202,9 +200,7 @@ export class BinaryDataService {
 	// ----------------------------------
 
 	private createBinaryDataId(fileId: string) {
-		const mode = this.mode === 'filesystem' ? 'filesystem-v2' : this.mode;
-
-		return `${mode}:${fileId}`;
+		return `${this.mode}:${fileId}`;
 	}
 
 	private async duplicateBinaryDataInExecData(
@@ -253,6 +249,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new UnknownBinaryDataManagerError(mode);
+		throw new UnknownManagerError(mode);
 	}
 }
