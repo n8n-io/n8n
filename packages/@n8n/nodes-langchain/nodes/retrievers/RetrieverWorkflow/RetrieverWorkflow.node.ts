@@ -18,12 +18,15 @@ import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { logWrapper } from '../../../utils/logWrapper';
 
-function objectToString(obj: any, level = 0) {
+function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
 	let result = '';
 	for (const key in obj) {
 		const value = obj[key];
-		if (typeof value === 'object') {
-			result += `${'  '.repeat(level)}- "${key}":\n${objectToString(value, level + 1)}`;
+		if (typeof value === 'object' && value !== null) {
+			result += `${'  '.repeat(level)}- "${key}":\n${objectToString(
+				value as IDataObject,
+				level + 1,
+			)}`;
 		} else {
 			result += `${'  '.repeat(level)}- "${key}": "${value}"\n`;
 		}
@@ -310,7 +313,7 @@ export class RetrieverWorkflow implements INodeType {
 					} catch (error) {
 						throw new NodeOperationError(
 							this.executeFunctions.getNode(),
-							`The provided workflow is not valid JSON: "${error.message}"`,
+							`The provided workflow is not valid JSON: "${(error as Error).message}"`,
 							{
 								itemIndex,
 							},
@@ -355,7 +358,7 @@ export class RetrieverWorkflow implements INodeType {
 				} catch (error) {
 					// Make sure a valid error gets returned that can by json-serialized else it will
 					// not show up in the frontend
-					throw new NodeOperationError(this.executeFunctions.getNode(), error);
+					throw new NodeOperationError(this.executeFunctions.getNode(), error as Error);
 				}
 
 				const returnData: Document[] = [];

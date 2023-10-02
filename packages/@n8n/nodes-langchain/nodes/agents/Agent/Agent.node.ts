@@ -31,7 +31,7 @@ function getInputs(
 	const getInputData = (
 		inputs: SpecialInput[],
 	): Array<ConnectionTypes | INodeInputConfiguration> => {
-		const displayNames = {
+		const displayNames: { [key: string]: string } = {
 			[NodeConnectionType.AiLanguageModel]: 'Model',
 			[NodeConnectionType.AiMemory]: 'Memory',
 			[NodeConnectionType.AiTool]: 'Tool',
@@ -41,7 +41,7 @@ function getInputs(
 		return inputs.map(({ type, filter }) => {
 			const input: INodeInputConfiguration = {
 				type,
-				// @ts-ignore
+				// displayName: type in displayNames ? displayNames[type] : undefined,
 				displayName: type in displayNames ? displayNames[type] : undefined,
 				required: type === NodeConnectionType.AiLanguageModel,
 				maxConnections: [NodeConnectionType.AiLanguageModel, NodeConnectionType.AiMemory].includes(

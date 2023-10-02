@@ -92,6 +92,9 @@
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
     ]
   },
+  "peerDependencies": {
+    "@n8n/vm2": "^3.9.20"
+  },
   "devDependencies": {
     "@types/express": "^4.17.6",
     "@types/html-to-text": "^9.0.1",

@@ -310,7 +310,7 @@ export class ToolWorkflow implements INodeType {
 				} catch (error) {
 					throw new NodeOperationError(
 						this.getNode(),
-						`The provided workflow is not valid JSON: "${error.message}"`,
+						`The provided workflow is not valid JSON: "${(error as Error).message}"`,
 						{
 							itemIndex,
 						},
@@ -352,7 +352,7 @@ export class ToolWorkflow implements INodeType {
 			} catch (error) {
 				// Make sure a valid error gets returned that can by json-serialized else it will
 				// not show up in the frontend
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
 			const response: string | undefined = get(receivedData, [
