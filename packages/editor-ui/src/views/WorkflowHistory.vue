@@ -48,6 +48,16 @@ const editorRoute = computed(() => ({
 	},
 }));
 const activeWorkflow = ref<IWorkflowDb | null>(null);
+const activeWorkflowVersionPreview = computed<IWorkflowDb | null>(() => {
+	if (workflowHistoryStore.activeWorkflowVersion && activeWorkflow.value) {
+		return {
+			...activeWorkflow.value,
+			nodes: workflowHistoryStore.activeWorkflowVersion.nodes,
+			connections: workflowHistoryStore.activeWorkflowVersion.connections,
+		};
+	}
+	return null;
+});
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
@@ -167,10 +177,9 @@ watchEffect(async () => {
 				<n8n-button type="tertiary" icon="times" size="small" text square />
 			</router-link>
 		</div>
-		<workflow-history-content
-			:class="$style.contentComponent"
-			:workflow-version="workflowHistoryStore.activeWorkflowVersion"
-		/>
+		<div :class="$style.contentComponentWrapper">
+			<workflow-history-content :workflow-version="activeWorkflowVersionPreview" />
+		</div>
 		<div :class="$style.listComponentWrapper">
 			<workflow-history-list
 				:items="workflowHistoryStore.workflowHistory"
@@ -191,6 +200,7 @@ watchEffect(async () => {
 </template>
 <style module lang="scss">
 .view {
+	position: relative;
 	display: grid;
 	width: 100%;
 	grid-template-areas: 'header corner' 'content list';
@@ -218,13 +228,16 @@ watchEffect(async () => {
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
-.contentComponent {
+.contentComponentWrapper {
 	grid-area: content;
+	position: relative;
+	z-index: 1;
 }
 
 .listComponentWrapper {
-	position: relative;
 	grid-area: list;
+	position: relative;
+	z-index: 2;
 
 	&::before {
 		content: '';
