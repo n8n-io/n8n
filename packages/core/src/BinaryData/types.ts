@@ -18,8 +18,8 @@ export namespace BinaryData {
 	export type ServiceMode = Exclude<ConfigMode, LegacyMode> | UpgradedMode;
 
 	/**
-	 * Binary data mode in binary data ID in stored execution data, where
-	 * both legacy and upgraded modes may be present.
+	 * Binary data mode in binary data ID in stored execution data. Both legacy
+	 * and upgraded modes may be present, except the in-memory case.
 	 */
 	export type StoredMode = Exclude<ConfigMode | UpgradedMode, 'default'>;
 
