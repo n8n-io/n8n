@@ -26,7 +26,6 @@ import { useUIStore } from '@/stores';
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
-export const OVERLAY_REVERSE_ARROW_ID = 'reverse-arrow';
 export const OVERLAY_ENDPOINT_ARROW_ID = 'endpoint-arrow';
 export const OVERLAY_RUN_ITEMS_ID = 'run-items-label';
 export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
@@ -160,18 +159,6 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 			foldback: 1,
 			length: 10,
 			visible: true,
-		},
-	},
-	{
-		type: 'Arrow',
-		options: {
-			id: OVERLAY_REVERSE_ARROW_ID,
-			location: 0,
-			direction: -1,
-			width: 12,
-			foldback: 1,
-			length: 10,
-			visible: false,
 		},
 	},
 	{

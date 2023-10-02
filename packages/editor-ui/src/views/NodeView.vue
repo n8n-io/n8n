@@ -335,11 +335,7 @@ import {
 } from '@/plugins/jsplumb/N8nPlusEndpointType';
 import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
-import {
-	getConnectorPaintStyleData,
-	OVERLAY_ENDPOINT_ARROW_ID,
-	OVERLAY_REVERSE_ARROW_ID,
-} from '@/utils/nodeViewUtils';
+import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 
 interface AddNodeOptions {
@@ -2496,9 +2492,8 @@ export default defineComponent({
 					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 				}
 
-				NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
-
 				if (!this.isReadOnlyRoute && !this.readOnlyEnv) {
+					NodeViewUtils.hideOutputNameLabel(info.sourceEndpoint);
 					NodeViewUtils.addConnectionActionsOverlay(
 						info.connection,
 						() => {
@@ -2528,15 +2523,10 @@ export default defineComponent({
 						info.connection,
 						OVERLAY_ENDPOINT_ARROW_ID,
 					);
-					const reverseArrow = NodeViewUtils.getOverlay(info.connection, OVERLAY_REVERSE_ARROW_ID);
-					if (sourceInfo.type === NodeConnectionType.Main) {
-						// For some reason the arrow is visible by default, so hide it
-						reverseArrow?.setVisible(false);
-					} else {
+					if (sourceInfo.type !== NodeConnectionType.Main) {
 						// Not "main" connections get a different connection style
 						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
 						endpointArrow?.setVisible(false);
-						reverseArrow?.setVisible(false);
 					}
 				}
 				this.dropPrevented = false;
