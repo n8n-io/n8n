@@ -338,6 +338,7 @@ export const useUIStore = defineStore(STORES.UI, {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
 					linkUrl = `https://${adminPanelHost}/login`;
 					searchParams.set('code', code);
+					searchParams.set('returnPath', '/account/change-plan');
 				} else {
 					linkUrl = N8N_PRICING_PAGE_URL;
 				}
