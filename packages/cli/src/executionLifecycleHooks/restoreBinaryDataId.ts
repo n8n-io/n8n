@@ -25,7 +25,7 @@ export async function restoreBinaryDataId(run: IRun, executionId: string) {
 	const { runData } = run.data.resultData;
 
 	const promises = Object.keys(runData).map(async (nodeName) => {
-		const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0].binary?.data.id;
+		const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary?.data.id;
 
 		if (!binaryDataId || !isMissingExecutionId(binaryDataId)) return;
 
