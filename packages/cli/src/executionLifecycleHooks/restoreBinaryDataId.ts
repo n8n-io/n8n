@@ -10,11 +10,11 @@ import type { BinaryData } from 'n8n-core';
  * This function restores the ID in the file name and run data reference.
  *
  * ```txt
- * s3:workflows/123/executions/temp/binary_data/69055-83c4-4493-876a-9092c4708b9b ->
- * s3:workflows/123/executions/390/binary_data/69055-83c4-4493-876a-9092c4708b9b
- *
  * filesystem-v2:workflows/123/executions/temp/binary_data/69055-83c4-4493-876a-9092c4708b9b ->
  * filesystem-v2:workflows/123/executions/390/binary_data/69055-83c4-4493-876a-9092c4708b9b
+ *
+ * s3:workflows/123/executions/temp/binary_data/69055-83c4-4493-876a-9092c4708b9b ->
+ * s3:workflows/123/executions/390/binary_data/69055-83c4-4493-876a-9092c4708b9b
  * ```
  */
 export async function restoreBinaryDataId(run: IRun, executionId: string) {
