@@ -10,9 +10,11 @@
   },
   "main": "index.js",
   "scripts": {
-    "build": "tsc && gulp build:icons",
     "clean": "rimraf dist .turbo",
     "dev": "tsc --watch",
+    "typecheck": "tsc",
+    "build": "tsc -p tsconfig.build.json && gulp build:icons && pnpm build:metadata",
+    "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier nodes credentials --write",
     "lint": "eslint nodes credentials",
     "lintfix": "eslint nodes credentials --fix",
