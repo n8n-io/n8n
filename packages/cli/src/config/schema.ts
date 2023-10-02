@@ -431,6 +431,13 @@ export const schema = {
 			format: ['main', 'webhook', 'worker'] as const,
 			default: 'main',
 		},
+
+		isBetaRelease: {
+			doc: 'If it is a beta release',
+			format: 'Boolean',
+			default: false,
+			env: 'IS_BETA_RELEASE',
+		},
 	},
 
 	// How n8n can be reached (Editor & REST-API)
