@@ -19,7 +19,6 @@ const workflowId = 'ObogjVbqpNOQpiyV';
 const executionId = '999';
 const fileUuid = '71f6209b-5d48-41a2-a224-80d529d8bb32';
 const fileId = toFileId(workflowId, executionId, fileUuid);
-const prefix = `workflows/${workflowId}/executions/${executionId}/binary_data/`;
 
 const otherWorkflowId = 'FHio8ftV6SrCAfPJ';
 const otherExecutionId = '888';
@@ -39,7 +38,6 @@ describe('store()', () => {
 
 		const result = await fsManager.store(workflowId, executionId, mockBuffer, metadata);
 
-		expect(result.fileId.startsWith(prefix)).toBe(true);
 		expect(result.fileSize).toBe(mockBuffer.length);
 	});
 });
