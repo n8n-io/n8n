@@ -30,7 +30,7 @@ function getDataId(run: IRun, kind: 'binary' | 'json') {
 
 const binaryDataService = mockInstance(BinaryDataService);
 
-for (const mode of ['filesystem', 's3'] as const) {
+for (const mode of ['filesystem-v2', 's3'] as const) {
 	describe(`on ${mode} mode`, () => {
 		describe('restoreBinaryDataId()', () => {
 			beforeAll(() => {
