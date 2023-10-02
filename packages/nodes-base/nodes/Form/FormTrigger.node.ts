@@ -91,6 +91,7 @@ export class FormTrigger implements INodeType {
 								name: 'fieldLabel',
 								type: 'string',
 								default: '',
+								placeholder: 'e.g. What is your name?',
 								description: 'Label appears above the input field',
 								required: true,
 							},
@@ -185,7 +186,7 @@ export class FormTrigger implements INodeType {
 					{
 						name: 'Form Is Submitted',
 						value: 'onReceived',
-						description: 'As soon as this node receives the form',
+						description: 'As soon as this node receives the form submission',
 					},
 					{
 						name: 'Workflow Finishes',
@@ -235,10 +236,10 @@ export class FormTrigger implements INodeType {
 										default: 'default',
 									},
 									{
-										displayName: 'Custom Text',
+										displayName: 'Form Submitted Text',
 										name: 'customText',
 										type: 'string',
-										default: '',
+										default: 'Your response has been recorded',
 										displayOptions: {
 											show: {
 												respondWith: ['text'],

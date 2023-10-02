@@ -828,7 +828,7 @@
 	"nodeCreator.triggerHelperPanel.scheduleTriggerDescription": "Runs the flow every day, hour, or custom interval",
 	"nodeCreator.triggerHelperPanel.webhookTriggerDisplayName": "On webhook call",
 	"nodeCreator.triggerHelperPanel.webhookTriggerDescription": "Runs the flow when another app sends a webhook",
-	"nodeCreator.triggerHelperPanel.formTriggerDisplayName": "On Form Submission",
+	"nodeCreator.triggerHelperPanel.formTriggerDisplayName": "On form submission",
 	"nodeCreator.triggerHelperPanel.formTriggerDescription": "Runs the flow when an n8n generated webform is submitted",
 	"nodeCreator.triggerHelperPanel.manualTriggerDisplayName": "Manually",
 	"nodeCreator.triggerHelperPanel.manualTriggerDescription": "Runs the flow on clicking a button in n8n",
