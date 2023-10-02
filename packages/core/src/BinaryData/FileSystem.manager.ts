@@ -152,7 +152,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	/**
 	 * Generate an ID for a binary data file.
 	 *
-	 * The legacy IDs format `{executionId}{uuid}` for `filesystem` mode is
+	 * The legacy ID format `{executionId}{uuid}` for `filesystem` mode is
 	 * no longer used on write, only when reading from stored execution data.
 	 */
 	private toFileId(workflowId: string, executionId: string) {
