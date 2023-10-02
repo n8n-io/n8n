@@ -74,6 +74,13 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The field in the output under which to put the split field contents',
 			},
+			{
+				displayName: 'Include Binary',
+				name: 'includeBinary',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include the binary data in the new items',
+			},
 		],
 	},
 ];
@@ -102,6 +109,8 @@ export async function execute(
 			0,
 			false,
 		) as boolean;
+
+		const includeBinary = this.getNodeParameter('options.includeBinary', i, false) as boolean;
 
 		const destinationFields = (
 			this.getNodeParameter('options.destinationFieldName', i, '') as string
@@ -211,6 +220,7 @@ export async function execute(
 
 			returnData.push({
 				json: newItem,
+				binary: includeBinary ? items[i].binary : undefined,
 				pairedItem: {
 					item: i,
 				},
