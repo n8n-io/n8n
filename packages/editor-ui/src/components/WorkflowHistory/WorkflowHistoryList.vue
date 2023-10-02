@@ -159,19 +159,12 @@ const onItemMounted = ({
 
 <style module lang="scss">
 .list {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
 	height: 100%;
 	overflow: auto;
-	position: relative;
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		width: var(--border-width-base);
-		background-color: var(--color-foreground-base);
-	}
 }
 
 .empty {
