@@ -4,7 +4,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
-import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import { workflowHistoryDataFactory } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 
 vi.stubGlobal(
 	'IntersectionObserver',
@@ -15,14 +16,6 @@ vi.stubGlobal(
 		unobserve: vi.fn(),
 	})),
 );
-
-const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
-	versionId: faker.string.nanoid(),
-	createdAt: faker.date.past().toDateString(),
-	authors: Array.from({ length: faker.number.int({ min: 1, max: 5 }) }, faker.person.fullName).join(
-		', ',
-	),
-});
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
 

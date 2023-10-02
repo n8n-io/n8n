@@ -58,7 +58,8 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		setActiveWorkflowVersion,
 		workflowHistory,
 		activeWorkflowVersion,
-		shouldUpgrade,
+		retentionPeriod,
 		maxRetentionPeriod,
+		shouldUpgrade,
 	};
 });

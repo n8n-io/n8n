@@ -10,7 +10,10 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { STORES, VIEWS } from '@/constants';
-import type { WorkflowHistory } from '@/types/workflowHistory';
+import {
+	workflowHistoryDataFactory,
+	workflowVersionDataFactory,
+} from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -27,21 +30,6 @@ vi.mock('vue-router', () => {
 			resolve,
 		}),
 	};
-});
-
-const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
-	versionId: faker.string.nanoid(),
-	createdAt: faker.date.past().toDateString(),
-	authors: Array.from({ length: faker.number.int({ min: 2, max: 5 }) }, faker.person.fullName).join(
-		', ',
-	),
-});
-
-const workflowVersionDataFactory: () => WorkflowHistory = () => ({
-	...workflowHistoryDataFactory(),
-	workflow: {
-		name: faker.lorem.words(3),
-	},
 });
 
 const workflowId = faker.string.nanoid();
