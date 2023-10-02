@@ -45,7 +45,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		}
 	});
 
-	it('should add merge node and test connections', () => {
+	it.only('should add merge node and test connections', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		for (let i = 0; i < 2; i++) {

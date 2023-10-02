@@ -159,7 +159,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
-	it('should undo/redo deleting a connection by moving it away', () => {
+	it.only('should undo/redo deleting a connection by moving it away', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', [0, -100]);

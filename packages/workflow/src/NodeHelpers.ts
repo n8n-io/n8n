@@ -36,6 +36,10 @@ import type {
 	INodePropertyOptions,
 	ResourceMapperValue,
 	ValidationResult,
+	ConnectionTypes,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+	INodeInputConfiguration,
 	GenericValue,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
@@ -1005,6 +1009,65 @@ export function getNodeWebhookUrl(
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
+export function getConnectionTypes(
+	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
+): ConnectionTypes[] {
+	return connections
+		.map((connection) => {
+			if (typeof connection === 'string') {
+				return connection;
+			}
+			return connection.type;
+		})
+		.filter((connection) => connection !== undefined);
+}
+
+export function getNodeInputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeInputConfiguration> {
+	if (Array.isArray(nodeTypeData.inputs)) {
+		return nodeTypeData.inputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return (workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.inputs,
+			'internal',
+			'',
+			{},
+		) || []) as ConnectionTypes[];
+	} catch (e) {
+		throw new Error(`Could not calculate inputs dynamically for node "${node.name}"`);
+	}
+}
+
+export function getNodeOutputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeOutputConfiguration> {
+	if (Array.isArray(nodeTypeData.outputs)) {
+		return nodeTypeData.outputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return (workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.outputs,
+			'internal',
+			'',
+			{},
+		) || []) as ConnectionTypes[];
+	} catch (e) {
+		throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+	}
+}
+
 /**
  * Returns all the parameter-issues of the node
  *
@@ -1049,7 +1112,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		nodeIssues.push('Execution Error.');
 	}
 
-	const objectProperties = ['parameters', 'credentials'];
+	const objectProperties = ['parameters', 'credentials', 'input'];
 
 	let issueText: string;
 	let parameterName: string;
