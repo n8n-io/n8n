@@ -158,13 +158,10 @@ export default defineComponent({
 		logoPath(): string {
 			if (this.isCollapsed) return this.basePath + 'n8n-logo-collapsed.svg';
 
-			return (
-				this.basePath +
-				(this.settingsStore.settings.isBetaRelease ? 'n8n-beta-logo.svg' : 'n8n-logo-expanded.svg')
-			);
+			return this.basePath + this.uiStore.logo;
 		},
 		hasVersionUpdates(): boolean {
-			return !this.settingsStore.settings.isBetaRelease && this.versionsStore.hasVersionUpdates;
+			return this.settingsStore.settings.releaseChannel === 'stable' && this.versionsStore.hasVersionUpdates;
 		},
 		nextVersions(): IVersion[] {
 			return this.versionsStore.nextVersions;
