@@ -75,6 +75,6 @@
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
-  "license": "fair-code",
+  "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io"
 }
