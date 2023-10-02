@@ -157,10 +157,10 @@ export class Code implements INodeType {
 					},
 					{
 						name: 'supplyData',
-						displayName: 'SupplyData',
+						displayName: 'Supply Data',
 						values: [
 							{
-								displayName: 'JavaScript - SupplyData',
+								displayName: 'JavaScript - Supply Data',
 								name: 'code',
 								type: 'string',
 								typeOptions: {
@@ -179,7 +179,7 @@ export class Code implements INodeType {
 			// TODO: Add links to docs which provide additional information regarding functionality
 			{
 				displayName:
-					'You can import langchain and use all available functionality. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
+					'You can import LangChain and use all available functionality. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -340,7 +340,7 @@ export class Code implements INodeType {
 		if (!code.supplyData?.code) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`No code for "SupplyData" set on node "${this.getNode().name}`,
+				`No code for "Supply Data" set on node "${this.getNode().name}`,
 				{
 					itemIndex,
 				},

@@ -12,14 +12,14 @@ import type { BaseRetriever } from 'langchain/schema/retriever';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Q&A Chain from Retrieved Documents',
+		displayName: 'Retrieval Q&A Chain',
 		name: 'chainRetrievalQa',
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
 		description: 'Retrieves answers to queries based on retrieved documents',
 		defaults: {
-			name: 'Retrieval QA Chain',
+			name: 'Retrieval Q&A Chain',
 			color: '#909298',
 		},
 		codex: {
