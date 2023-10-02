@@ -6,11 +6,8 @@ import concatStream from 'concat-stream';
 /**
  * Modes for storing binary data:
  * - `default` (in memory)
- * - `filesystem` (on disk, legacy)
+ * - `filesystem` (on disk) (legacy, replaced internally with `filesystem-v2`)
  * - `s3` (S3-compatible storage)
- *
- * `filesystem` (storage in flat dir) is selectable by user via config, but
- * the upgraded `filesystem-v2` (storage in nested dirs) is used internally instead.
  */
 export const CONFIG_BINARY_DATA_MODES = ['default', 'filesystem', 's3'] as const;
 
