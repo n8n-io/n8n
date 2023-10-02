@@ -542,7 +542,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			source: CloudUpdateLinkSourceType,
 			utm_campaign: UTMCampaign,
 			mode: 'open' | 'redirect' = 'open',
-		): Promise<string> {
+		): Promise<void> {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
 			const deploymentType = useSettingsStore().deploymentType;
@@ -556,12 +556,12 @@ export const useUIStore = defineStore(STORES.UI, {
 				workflowsLeft,
 			});
 
-			// const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
+			const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
 
 			if (mode === 'open') {
-				window.open('', '_blank');
+				window.open(upgradeLink, '_blank');
 			} else {
-				location.href = '';
+				location.href = upgradeLink;
 			}
 		},
 		async dismissBanner(
