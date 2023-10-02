@@ -184,11 +184,11 @@ export default defineComponent({
 			if (this.node) {
 				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
 
-				if (!resultData || !Array.isArray(resultData)) {
+				if (!resultData || !Array.isArray(resultData) || resultData.length === 0) {
 					return false;
 				}
 
-				return !!resultData[resultData.length - 1!].metadata;
+				return !!resultData[resultData.length - 1].metadata;
 			}
 			return false;
 		},
