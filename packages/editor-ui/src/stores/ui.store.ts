@@ -49,9 +49,9 @@ import type {
 	NewCredentialsModal,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from './workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -184,13 +184,8 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
-		banners: {
-			V1: { dismissed: true },
-			TRIAL: { dismissed: true },
-			TRIAL_OVER: { dismissed: true },
-			NON_PRODUCTION_LICENSE: { dismissed: true },
-		},
 		bannersHeight: 0,
+		bannerStack: [],
 	}),
 	getters: {
 		contextBasedTranslationKeys() {
@@ -563,36 +558,23 @@ export const useUIStore = defineStore(STORES.UI, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});
-				this.banners[name].dismissed = true;
-				this.banners[name].type = 'permanent';
+				this.removeBannerFromStack(name);
 				return;
 			}
-			this.banners[name].dismissed = true;
-			this.banners[name].type = 'temporary';
-		},
-		showBanner(name: BannerName): void {
-			this.banners[name].dismissed = false;
+			this.removeBannerFromStack(name);
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
 		},
-		async initBanners(): Promise<void> {
-			const cloudPlanStore = useCloudPlanStore();
-			if (cloudPlanStore.userIsTrialing) {
-				await this.dismissBanner('V1', 'temporary');
-				if (cloudPlanStore.trialExpired) {
-					this.showBanner('TRIAL_OVER');
-				} else {
-					this.showBanner('TRIAL');
-				}
-			}
+		pushBannerToStack(name: BannerName) {
+			if (this.bannerStack.includes(name)) return;
+			this.bannerStack.push(name);
 		},
-		async dismissAllBanners() {
-			return Promise.all([
-				this.dismissBanner('TRIAL', 'temporary'),
-				this.dismissBanner('TRIAL_OVER', 'temporary'),
-				this.dismissBanner('V1', 'temporary'),
-			]);
+		removeBannerFromStack(name: BannerName) {
+			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
+		},
+		clearBannerStack() {
+			this.bannerStack = [];
 		},
 	},
 });

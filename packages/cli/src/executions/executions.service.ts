@@ -351,9 +351,13 @@ export class ExecutionsService {
 			}
 		}
 
-		return Container.get(ExecutionRepository).deleteExecutions(requestFilters, sharedWorkflowIds, {
-			deleteBefore,
-			ids,
-		});
+		return Container.get(ExecutionRepository).deleteExecutionsByFilter(
+			requestFilters,
+			sharedWorkflowIds,
+			{
+				deleteBefore,
+				ids,
+			},
+		);
 	}
 }

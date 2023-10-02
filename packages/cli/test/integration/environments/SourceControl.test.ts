@@ -5,6 +5,7 @@ import * as utils from '../shared/utils/';
 import type { User } from '@db/entities/User';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import Container from 'typedi';
+import config from '@/config';
 import { License } from '@/License';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
@@ -67,6 +68,23 @@ describe('GET /sourceControl/preferences', () => {
 				const data: SourceControlledFile[] = res.body.data;
 				expect(data.length).toBe(1);
 				expect(data[0].id).toBe('haQetoXq9GxHSkft');
+			});
+	});
+
+	test('refreshing key pairsshould return new rsa key', async () => {
+		config.set('sourceControl.defaultKeyPairType', 'rsa');
+		await authOwnerAgent
+			.post(`/${SOURCE_CONTROL_API_ROOT}/generate-key-pair`)
+			.send()
+			.expect(200)
+			.expect((res) => {
+				expect(
+					Container.get(SourceControlPreferencesService).getPreferences().keyGeneratorType,
+				).toBe('rsa');
+				expect(res.body.data).toHaveProperty('publicKey');
+				expect(res.body.data).toHaveProperty('keyGeneratorType');
+				expect(res.body.data.keyGeneratorType).toBe('rsa');
+				expect(res.body.data.publicKey).toContain('ssh-rsa');
 			});
 	});
 });

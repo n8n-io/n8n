@@ -1,4 +1,4 @@
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
 import type {
@@ -27,8 +27,10 @@ import {
 } from '../EventMessageClasses/EventMessageGeneric';
 import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
-import Container from 'typedi';
+import Container, { Service } from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
+import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
+import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { OrchestrationService } from '../../services/orchestration.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
@@ -43,6 +45,7 @@ export interface MessageEventBusInitializeOptions {
 	workerId?: string;
 }
 
+@Service()
 export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
@@ -89,7 +92,7 @@ export class MessageEventBus extends EventEmitter {
 				try {
 					const destination = messageEventBusDestinationFromDb(this, destinationData);
 					if (destination) {
-						await this.addDestination(destination);
+						await this.addDestination(destination, false);
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -182,10 +185,13 @@ export class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	async addDestination(destination: MessageEventBusDestination) {
-		await this.removeDestination(destination.getId());
+	async addDestination(destination: MessageEventBusDestination, notifyWorkers: boolean = true) {
+		await this.removeDestination(destination.getId(), false);
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
+		if (notifyWorkers) {
+			await Container.get(OrchestrationService).broadcastRestartEventbusAfterDestinationUpdate();
+		}
 		return destination;
 	}
 
@@ -199,20 +205,31 @@ export class MessageEventBus extends EventEmitter {
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
-	async removeDestination(id: string): Promise<DeleteResult | undefined> {
+	async removeDestination(
+		id: string,
+		notifyWorkers: boolean = true,
+	): Promise<DeleteResult | undefined> {
 		let result;
 		if (Object.keys(this.destinations).includes(id)) {
 			await this.destinations[id].close();
 			result = await this.destinations[id].deleteFromDb();
 			delete this.destinations[id];
 		}
+		if (notifyWorkers) {
+			await Container.get(OrchestrationService).broadcastRestartEventbusAfterDestinationUpdate();
+		}
 		return result;
 	}
 
-	async broadcastRestartEventbusAfterDestinationUpdate() {
-		if (config.getEnv('executions.mode') === 'queue') {
-			await Container.get(OrchestrationService).restartEventBus();
+	async handleRedisEventBusMessage(messageString: string) {
+		const eventData = jsonParse<AbstractEventMessageOptions>(messageString);
+		if (eventData) {
+			const eventMessage = getEventMessageObjectByType(eventData);
+			if (eventMessage) {
+				await Container.get(MessageEventBus).send(eventMessage);
+			}
 		}
+		return eventData;
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -417,4 +434,4 @@ export class MessageEventBus extends EventEmitter {
 	}
 }
 
-export const eventBus = MessageEventBus.getInstance();
+export const eventBus = Container.get(MessageEventBus);

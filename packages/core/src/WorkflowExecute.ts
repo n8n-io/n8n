@@ -19,20 +19,23 @@ import type {
 	IPinData,
 	IRun,
 	IRunData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
 	ITaskDataConnectionsSource,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
-	IWorkflowExecuteAdditionalData,
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
+} from 'n8n-workflow';
+import {
+	LoggerProxy as Logger,
+	WorkflowOperationError,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
@@ -1588,6 +1591,7 @@ export class WorkflowExecute {
 		} else {
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
+			fullRunData.status = 'success';
 		}
 
 		// Check if static data changed

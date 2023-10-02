@@ -886,7 +886,7 @@ export default defineComponent({
 			let data: IWorkflowTemplate | undefined;
 			try {
 				void this.$externalHooks().run('template.requested', { templateId });
-				data = await this.templatesStore.getWorkflowTemplate(templateId);
+				data = await this.templatesStore.getFixedWorkflowTemplate(templateId);
 
 				if (!data) {
 					throw new Error(
@@ -900,14 +900,6 @@ export default defineComponent({
 				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return;
 			}
-
-			data.workflow.nodes = NodeViewUtils.getFixedNodesList(data.workflow.nodes) as INodeUi[];
-
-			data.workflow.nodes?.forEach((node) => {
-				if (node.credentials) {
-					delete node.credentials;
-				}
-			});
 
 			this.blankRedirect = true;
 			await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
@@ -2531,15 +2523,18 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_ABORT, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
-
-			// Get all the endpoints and unbind the events
-			const elements = this.instance.getManagedElements();
-			for (const element of Object.values(elements)) {
-				const endpoints = element.endpoints;
-				for (const endpoint of endpoints || []) {
-					const endpointInstance = endpoint?.endpoint;
-					if (endpointInstance && endpointInstance.type === N8nPlusEndpointType) {
-						(endpointInstance as N8nPlusEndpoint).unbindEvents();
+		},
+		unbindEndpointEventListeners(bind = true) {
+			if (this.instance) {
+				// Get all the endpoints and unbind the events
+				const elements = this.instance.getManagedElements();
+				for (const element of Object.values(elements)) {
+					const endpoints = element.endpoints;
+					for (const endpoint of endpoints || []) {
+						const endpointInstance = endpoint?.endpoint;
+						if (endpointInstance && endpointInstance.type === N8nPlusEndpointType) {
+							(endpointInstance as N8nPlusEndpoint).unbindEvents();
+						}
 					}
 				}
 			}
@@ -2632,6 +2627,15 @@ export default defineComponent({
 						this.titleSet(workflow.name, 'IDLE');
 						await this.openWorkflow(workflow);
 						await this.checkAndInitDebugMode();
+
+						if (workflow.meta?.onboardingId) {
+							this.$telemetry.track(
+								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
+								{
+									workflow_id: workflow.id,
+								},
+							);
+						}
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow
@@ -3575,6 +3579,7 @@ export default defineComponent({
 			this.nodeCreatorStore.setShowScrim(false);
 
 			// Reset nodes
+			this.unbindEndpointEventListeners();
 			this.deleteEveryEndpoint();
 
 			// Make sure that if there is a waiting test-webhook that it gets removed

@@ -28,6 +28,7 @@ import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Variables } from '@db/entities/Variables';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import type { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import type { WorkflowHistory } from './databases/entities/WorkflowHistory';
 
 export class UserUpdatePayload implements Pick<User, 'email' | 'firstName' | 'lastName'> {
 	@IsEmail()
@@ -85,6 +86,7 @@ export declare namespace WorkflowRequest {
 		active: boolean;
 		tags: string[];
 		hash: string;
+		meta: Record<string, unknown>;
 	}>;
 
 	type ManualRunPayload = {
@@ -543,4 +545,21 @@ export declare namespace ExternalSecretsRequest {
 export declare namespace OrchestrationRequest {
 	type GetAll = AuthenticatedRequest;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+}
+
+// ----------------------------------
+//           /workflow-history
+// ----------------------------------
+
+export declare namespace WorkflowHistoryRequest {
+	type GetList = AuthenticatedRequest<
+		{ workflowId: string },
+		Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>,
+		{},
+		ListQuery.Options
+	>;
+	type GetVersion = AuthenticatedRequest<
+		{ workflowId: string; versionId: string },
+		WorkflowHistory
+	>;
 }

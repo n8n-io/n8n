@@ -20,6 +20,7 @@ import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { OrchestrationService } from './services/orchestration.service';
+import { OrchestrationHandlerService } from './services/orchestration.handler.service';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -117,7 +118,8 @@ export abstract class AbstractServer {
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			// will start the redis connections
-			await Container.get(OrchestrationService).init(this.uniqueInstanceId);
+			await Container.get(OrchestrationService).init();
+			await Container.get(OrchestrationHandlerService).init();
 		}
 	}
 
@@ -201,7 +203,7 @@ export abstract class AbstractServer {
 		const checkIfBot = isbot.spawn(['bot']);
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
-			if (!userAgent || checkIfBot(userAgent)) {
+			if (userAgent && checkIfBot(userAgent)) {
 				Logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
 				res.status(204).end();
 			} else next();
