@@ -52,11 +52,27 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return state.usage?.executions >= state.data?.monthlyExecutionsLimit;
 	});
 
-	const getOwnerCurrentPlan = async () => {
+	const hasCloudPlan = computed(() => {
 		const cloudUserId = settingsStore.settings.n8nMetadata?.userId;
-		const hasCloudPlan =
-			usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
-		if (!hasCloudPlan) throw new Error('User does not have a cloud plan');
+		return usersStore.currentUser?.isOwner && settingsStore.isCloudDeployment && cloudUserId;
+	});
+
+	const getUserCloudAccount = async () => {
+		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
+		try {
+			if (useUsersStore().isInstanceOwner) {
+				await usersStore.fetchUserCloudAccount();
+				if (!usersStore.currentUserCloudInfo?.confirmed) {
+					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
+				}
+			}
+		} catch (error) {
+			throw new Error(error);
+		}
+	};
+
+	const getOwnerCurrentPlan = async () => {
+		if (!hasCloudPlan.value) throw new Error('User does not have a cloud plan');
 		state.loadingPlan = true;
 		let plan;
 		try {
@@ -69,13 +85,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 					useUIStore().pushBannerToStack('TRIAL_OVER');
 				} else {
 					useUIStore().pushBannerToStack('TRIAL');
-				}
-			}
-
-			if (useUsersStore().isInstanceOwner) {
-				await usersStore.fetchUserCloudAccount();
-				if (!usersStore.currentUserCloudInfo?.confirmed) {
-					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
 				}
 			}
 		} catch (error) {
@@ -132,6 +141,12 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		} catch {}
 	};
 
+	const fetchUserCloudAccount = async () => {
+		try {
+			await getUserCloudAccount();
+		} catch {}
+	};
+
 	return {
 		state,
 		getOwnerCurrentPlan,
@@ -145,5 +160,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		allExecutionsUsed,
 		reset,
 		checkForCloudPlanData,
+		fetchUserCloudAccount,
 	};
 });
