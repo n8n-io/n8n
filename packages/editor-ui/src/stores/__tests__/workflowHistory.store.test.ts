@@ -21,12 +21,11 @@ describe('Workflow history store', () => {
 
 		store.addWorkflowHistory(historyData);
 		store.setActiveWorkflowVersion(versionData);
-		store.maxRetentionPeriod = 10;
-		store.retentionPeriod = 10;
+		store.maxRetentionPeriod = 0;
 
 		expect(store.shouldUpgrade).toBe(true);
 
-		store.retentionPeriod = 5;
+		store.maxRetentionPeriod = 10;
 		expect(store.shouldUpgrade).toBe(false);
 
 		expect(store.workflowHistory).toEqual(historyData);
@@ -35,7 +34,6 @@ describe('Workflow history store', () => {
 		store.reset();
 		expect(store.workflowHistory).toEqual([]);
 		expect(store.activeWorkflowVersion).toEqual(null);
-		expect(store.maxRetentionPeriod).toEqual(0);
-		expect(store.retentionPeriod).toEqual(0);
+		expect(store.maxRetentionPeriod).toEqual(10);
 	});
 });
