@@ -2469,6 +2469,10 @@ const addExecutionDataFunctions = async (
 			});
 		}
 
+		if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
+			runExecutionData.executionData!.metadata = {};
+		}
+
 		let sourceTaskData = get(runExecutionData, `executionData.metadata[${sourceNodeName}]`);
 
 		if (!sourceTaskData) {
