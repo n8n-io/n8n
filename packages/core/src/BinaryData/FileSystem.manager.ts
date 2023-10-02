@@ -150,9 +150,11 @@ export class FileSystemManager implements BinaryData.Manager {
 	/**
 	 * Generate an ID for a binary data file.
 	 *
-	 * - `filesystem` -> `{executionId}{uuid}` (legacy, only present in older execution data)
 	 * - `filesystem-v2` -> `workflows/${workflowId}/executions/${executionId}/binary_data/{uuid}`
-	 * - `s3` -> workflows/${workflowId}/executions/${executionId}/binary_data/{uuid}`
+	 * - `s3` -> `workflows/${workflowId}/executions/${executionId}/binary_data/{uuid}`
+	 * - `filesystem` (legacy) -> `{executionId}{uuid}`
+	 *
+	 * `filesystem` is no longer used for writing, only for reading from stored execution data.
 	 */
 	private toFileId(workflowId: string, executionId: string) {
 		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
