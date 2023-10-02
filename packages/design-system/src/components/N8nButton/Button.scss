@@ -118,17 +118,17 @@
 	--button-border-color: var(--color-button-secondary-border);
 	--button-background-color: var(--color-button-secondary-background);
 
-	--button-hover-font-color: var(--color-button-secondary-hover-font);
-	--button-hover-border-color: var(--color-button-secondary-hover-border);
+	--button-hover-font-color: var(--color-button-secondary-hover-active-focus-font);
+	--button-hover-border-color: var(--color-button-secondary-hover-active-border);
 	--button-hover-background-color: var(--color-button-secondary-hover-background);
 
-	--button-active-font-color: var(--color-button-secondary-active-font);
-	--button-active-border-color: var(--color-button-secondary-active-border);
+	--button-active-font-color: var(--color-button-secondary-hover-active-focus-font);
+	--button-active-border-color: var(--color-button-secondary-hover-active-border);
 	--button-active-background-color: var(--color-button-secondary-active-background);
 
-	--button-focus-font-color: var(--color-button-secondary-focus-font);
-	--button-focus-border-color: var(--color-button-secondary-focus-border);
-	--button-focus-background-color: var(--color-button-secondary-focus-background);
+	--button-focus-font-color: var(--color-button-secondary-hover-active-focus-font);
+	--button-focus-border-color: var(--color-button-secondary-border);
+	--button-focus-background-color: var(--color-button-secondary-background);
 	--button-focus-outline-color: var(--color-button-secondary-focus-outline);
 
 	--button-disabled-font-color: var(--color-button-secondary-disabled-font);
