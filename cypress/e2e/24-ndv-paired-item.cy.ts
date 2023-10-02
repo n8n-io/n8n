@@ -105,7 +105,7 @@ describe('NDV', () => {
 		ndv.getters.parameterExpressionPreview('value').should('include.text', '1111');
 	});
 
-	it.skip('maps paired input and output items based on selected run', () => {
+	it('maps paired input and output items based on selected run', () => {
 		cy.fixture('Test_workflow_5.json').then((data) => {
 			cy.get('body').paste(JSON.stringify(data));
 		});

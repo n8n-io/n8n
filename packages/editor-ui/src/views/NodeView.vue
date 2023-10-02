@@ -246,7 +246,6 @@ import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
 import { v4 as uuid } from 'uuid';
 import type {
-	ConnectionTypes,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -263,6 +262,7 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
 import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 import type {
@@ -599,7 +599,7 @@ export default defineComponent({
 			}
 
 			if (this.connectionDragScope.type) {
-				returnClasses.push(`connection-drag-scope-active`);
+				returnClasses.push('connection-drag-scope-active');
 				returnClasses.push(`connection-drag-scope-active-type-${this.connectionDragScope.type}`);
 				returnClasses.push(
 					`connection-drag-scope-active-connection-${this.connectionDragScope.connection}`,
@@ -2102,9 +2102,8 @@ export default defineComponent({
 			targetNodeOuputIndex: number,
 			type: ConnectionTypes,
 		): IConnection | undefined {
-			const nodeConnections = (
-				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName) as INodeConnections
-			)[type];
+			const nodeConnections =
+				this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName)[type];
 			if (nodeConnections) {
 				const connections: IConnection[] | null = nodeConnections[sourceNodeOutputIndex];
 
@@ -2819,7 +2818,7 @@ export default defineComponent({
 			}
 		},
 		onAddInputEndpointClick(endpoint: Endpoint) {
-			if (endpoint && endpoint.__meta) {
+			if (endpoint?.__meta) {
 				this.insertNodeAfterSelected({
 					sourceId: endpoint.__meta.nodeId,
 					index: endpoint.__meta.index,
@@ -3346,7 +3345,7 @@ export default defineComponent({
 			const outputMap = NodeViewUtils.getOutputSummary(
 				data,
 				nodeConnections || [],
-				connectionType as ConnectionTypes,
+				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
 			);
 
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {

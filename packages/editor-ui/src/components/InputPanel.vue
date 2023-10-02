@@ -458,10 +458,11 @@ export default defineComponent({
 	watch: {
 		inputMode: {
 			handler(val) {
-				this.onRunIndexChange(0);
-				this.onUnlinkRun();
-
-				this.mappedNode = val === 'mapping' ? this.rootNodesParents[0] : null;
+				this.onRunIndexChange(-1);
+				if (val === 'mapping') {
+					this.onUnlinkRun();
+					this.mappedNode = this.rootNodesParents[0];
+				}
 			},
 			immediate: true,
 		},

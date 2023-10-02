@@ -233,7 +233,11 @@ export default defineComponent({
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
-			if (this.nodeType && !this.nodeType.inputs.includes(NodeConnectionType.Main)) {
+			if (
+				this.nodeType &&
+				!this.isTriggerNode &&
+				!this.nodeType.inputs.includes(NodeConnectionType.Main)
+			) {
 				return false;
 			}
 			return this.executable || this.hasForeignCredential;

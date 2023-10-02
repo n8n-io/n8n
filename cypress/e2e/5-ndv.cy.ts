@@ -20,7 +20,7 @@ describe('NDV', () => {
 		ndv.getters.container().should('not.be.visible');
 	});
 
-	it.only('should test webhook node', () => {
+	it('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
@@ -198,7 +198,7 @@ describe('NDV', () => {
 		});
 	});
 
-	it.only('can link and unlink run selectors between input and output', () => {
+	it('can link and unlink run selectors between input and output', () => {
 		cy.createFixtureWorkflow('Test_workflow_5.json', 'Test');
 		workflowPage.actions.zoomToFit();
 		workflowPage.actions.executeWorkflow();
@@ -322,7 +322,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 	});
 
-	it.only('should flag issues as soon as params are set', () => {
+	it('should flag issues as soon as params are set', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
