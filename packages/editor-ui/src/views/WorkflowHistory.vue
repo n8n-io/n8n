@@ -76,7 +76,7 @@ onBeforeMount(async () => {
 	activeWorkflow.value = workflow;
 	isListLoading.value = false;
 
-	if (!route.params.versionId) {
+	if (!route.params.versionId && workflowHistoryStore.workflowHistory.length) {
 		await router.replace({
 			name: VIEWS.WORKFLOW_HISTORY,
 			params: {
