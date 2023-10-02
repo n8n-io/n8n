@@ -39,8 +39,8 @@ export class ObjectStoreService {
 		this.bucket.region = bucket.region;
 
 		this.credentials = {
-			accessKeyId: credentials.accountId,
-			secretAccessKey: credentials.secretKey,
+			accessKeyId: credentials.accessKey,
+			secretAccessKey: credentials.accessSecret,
 		};
 
 		await this.checkConnection();

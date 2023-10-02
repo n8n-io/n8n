@@ -10,7 +10,7 @@ const mockAxios = axios as jest.Mocked<typeof axios>;
 
 const mockBucket = { region: 'us-east-1', name: 'test-bucket' };
 const mockHost = `s3.${mockBucket.region}.amazonaws.com`;
-const mockCredentials = { accountId: 'mock-account-id', secretKey: 'mock-secret-key' };
+const mockCredentials = { accessKey: 'mock-access-key', accessSecret: 'mock-secret-key' };
 const mockUrl = `https://${mockHost}/${mockBucket.name}`;
 const FAILED_REQUEST_ERROR_MESSAGE = 'Request to S3 failed';
 const mockError = new Error('Something went wrong!');
