@@ -12,6 +12,14 @@ import type { BaseLanguageModel } from 'langchain/base_language';
 import { PromptTemplate } from 'langchain/prompts';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
+import { LLMChain } from 'langchain/chains';
+
+async function createSimpleLLMChain(llm: BaseLanguageModel, query: string): Promise<string[]> {
+	const chain = new LLMChain({ llm, prompt: PromptTemplate.fromTemplate(query) });
+	const response = (await chain.call({})) as string[];
+
+	return Array.isArray(response) ? response : [response];
+}
 
 async function getChain(context: IExecuteFunctions, query: string): Promise<unknown[]> {
 	const llm = (await context.getInputConnectionData(
@@ -23,31 +31,23 @@ async function getChain(context: IExecuteFunctions, query: string): Promise<unkn
 		0,
 	)) as BaseOutputParser[];
 
-	let prompt: PromptTemplate;
-
-	let outputParser: BaseOutputParser | undefined;
-	if (outputParsers.length) {
-		if (outputParsers.length === 1) {
-			outputParser = outputParsers[0];
-		} else {
-			outputParser = new CombiningOutputParser(...outputParsers);
-		}
-		const formatInstructions = outputParser.getFormatInstructions();
-
-		prompt = new PromptTemplate({
-			template: query + '\n{formatInstructions}',
-			inputVariables: [],
-			partialVariables: { formatInstructions },
-		});
-	} else {
-		prompt = PromptTemplate.fromTemplate(query);
+	// If there are no output parsers, create a simple LLM chain and execute the query
+	if (!outputParsers.length) {
+		return createSimpleLLMChain(llm, query);
 	}
 
-	let chain = prompt.pipe(llm);
+	// If there's only one output parser, use it; otherwise, create a combined output parser
+	const combinedOutputParser =
+		outputParsers.length === 1 ? outputParsers[0] : new CombiningOutputParser(...outputParsers);
+	const formatInstructions = combinedOutputParser.getFormatInstructions();
 
-	if (outputParser) {
-		chain = chain.pipe(outputParser);
-	}
+	// Create a prompt template incorporating the format instructions and query
+	const prompt = new PromptTemplate({
+		template: query + '\n{formatInstructions}',
+		inputVariables: [],
+		partialVariables: { formatInstructions },
+	});
+	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
 
 	const response = (await chain.invoke({ query })) as string | string[];
 
