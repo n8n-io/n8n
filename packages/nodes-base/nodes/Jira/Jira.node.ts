@@ -942,7 +942,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						this.helpers.returnJsonArray({ success: true }), //endpoint returns no content
 						{ itemData: { item: i } },
 					);
 
