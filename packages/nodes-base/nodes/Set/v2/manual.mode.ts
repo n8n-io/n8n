@@ -191,7 +191,13 @@ export async function execute(
 				);
 			}
 
-			const { name, value } = validateEntry(entry, node, i, options.ignoreConversionErrors);
+			const { name, value } = validateEntry(
+				entry,
+				node,
+				i,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
 			newData[name] = value;
 		}
 
