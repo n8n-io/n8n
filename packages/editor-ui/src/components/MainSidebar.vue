@@ -161,7 +161,10 @@ export default defineComponent({
 			return this.basePath + this.uiStore.logo;
 		},
 		hasVersionUpdates(): boolean {
-			return this.settingsStore.settings.releaseChannel === 'stable' && this.versionsStore.hasVersionUpdates;
+			return (
+				this.settingsStore.settings.releaseChannel === 'stable' &&
+				this.versionsStore.hasVersionUpdates
+			);
 		},
 		nextVersions(): IVersion[] {
 			return this.versionsStore.nextVersions;
