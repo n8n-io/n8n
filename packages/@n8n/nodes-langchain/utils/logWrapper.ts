@@ -25,6 +25,7 @@ import type { MemoryVariables } from 'langchain/dist/memory/base';
 import { BaseRetriever } from 'langchain/schema/retriever';
 import type { FormatInstructionsOptions } from 'langchain/schema/output_parser';
 import { BaseOutputParser } from 'langchain/schema/output_parser';
+import { isObject } from 'lodash';
 import { N8nJsonLoader } from './N8nJsonLoader';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 
@@ -250,10 +251,11 @@ export function logWrapper(
 						return response;
 					};
 				} else if (prop === 'parse' && 'parse' in target) {
-					return async (text: string): Promise<any> => {
+					return async (text: string | Record<string, unknown>): Promise<unknown> => {
 						connectionType = NodeConnectionType.AiOutputParser;
+						const stringifiedText = isObject(text) ? JSON.stringify(text) : text;
 						const { index } = executeFunctions.addInputData(connectionType, [
-							[{ json: { action: 'parse', text } }],
+							[{ json: { action: 'parse', text: stringifiedText } }],
 						]);
 
 						const response = (await callMethodAsync.call(target, {
@@ -261,7 +263,7 @@ export function logWrapper(
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [text],
+							arguments: [stringifiedText],
 						})) as object;
 
 						executeFunctions.addOutputData(connectionType, index, [
