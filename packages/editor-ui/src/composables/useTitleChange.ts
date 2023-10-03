@@ -1,10 +1,11 @@
 import type { WorkflowTitleStatus } from '@/Interface';
 import { useSettingsStore } from '@/stores';
+
 export function useTitleChange() {
 	const prependBeta = (title: string) => {
 		const settingsStore = useSettingsStore();
-
-		return settingsStore.settings.isBetaRelease ? `[BETA] ${title}` : title;
+		const { releaseChannel } = settingsStore.settings;
+		return releaseChannel === 'stable' ? title : `[${releaseChannel.toUpperCase()}] ${title}`;
 	};
 
 	const titleSet = (workflow: string, status: WorkflowTitleStatus) => {
