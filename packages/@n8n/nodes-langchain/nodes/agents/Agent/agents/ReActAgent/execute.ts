@@ -1,4 +1,9 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import { AgentExecutor, ChatAgent, ZeroShotAgent } from 'langchain/agents';
 import type { BaseLanguageModel } from 'langchain/base_language';
@@ -67,6 +72,13 @@ export async function reActAgentAgentExecute(
 	const items = this.getInputData();
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		let input = this.getNodeParameter('text', itemIndex) as string;
+
+		if (input === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No value for the required parameter "Text" was returned.',
+			);
+		}
 
 		if (prompt) {
 			input = (await prompt.invoke({ input })).value;

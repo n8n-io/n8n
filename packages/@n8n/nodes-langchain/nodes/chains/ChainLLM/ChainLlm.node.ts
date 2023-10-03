@@ -5,6 +5,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import type { BaseLanguageModel } from 'langchain/base_language';
@@ -101,6 +102,7 @@ export class ChainLlm implements INodeType {
 				displayName: 'Prompt',
 				name: 'prompt',
 				type: 'string',
+				required: true,
 				default: '={{ $json.input }}',
 			},
 		],
@@ -114,6 +116,14 @@ export class ChainLlm implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('prompt', i) as string;
+
+			if (prompt === undefined) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'No value for the required parameter "Prompt" was returned.',
+				);
+			}
+
 			const responses = await getChain(this, prompt);
 
 			responses.forEach((response) => {

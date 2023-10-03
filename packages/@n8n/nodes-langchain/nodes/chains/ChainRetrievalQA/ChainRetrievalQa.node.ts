@@ -4,6 +4,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { RetrievalQAChain } from 'langchain/chains';
@@ -59,6 +60,7 @@ export class ChainRetrievalQa implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				required: true,
 				default: '={{ $json.input }}',
 			},
 		],
@@ -85,6 +87,13 @@ export class ChainRetrievalQa implements INodeType {
 		// Run for each item
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const query = this.getNodeParameter('query', itemIndex) as string;
+
+			if (query === undefined) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'No value for the required parameter "Query" was returned.',
+				);
+			}
 
 			const response = await chain.call({ query });
 			returnData.push({ json: { response } });

@@ -80,6 +80,13 @@ export async function openAiFunctionsAgentExecute(
 	for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 		let input = this.getNodeParameter('text', itemIndex) as string;
 
+		if (input === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No value for the required parameter "Text" was returned.',
+			);
+		}
+
 		if (prompt) {
 			input = (await prompt.invoke({ input })).value;
 		}

@@ -36,6 +36,14 @@ export async function sqlAgentAgentExecute(
 	for (let i = 0; i < items.length; i++) {
 		const item = items[i];
 		const input = this.getNodeParameter('input', i) as string;
+
+		if (input === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No value for the required parameter "Prompt" was returned.',
+			);
+		}
+
 		const options = this.getNodeParameter('options', i, {});
 		const selectedDataSource = this.getNodeParameter('dataSource', i, 'sqlite') as
 			| 'mysql'

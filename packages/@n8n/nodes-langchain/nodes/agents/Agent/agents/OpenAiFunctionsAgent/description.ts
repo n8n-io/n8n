@@ -6,6 +6,7 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				agent: ['openAiFunctionsAgent'],

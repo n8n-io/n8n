@@ -6,6 +6,7 @@ export const conversationalAgentProperties: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				agent: ['conversationalAgent'],
