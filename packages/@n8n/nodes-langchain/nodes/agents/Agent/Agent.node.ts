@@ -140,7 +140,13 @@ export class Agent implements INodeType {
 			color: '#404040',
 		},
 		codex: {
-			alias: ['LangChain'],
+			alias: [
+				'LangChain',
+				'sql agent',
+				'react agent',
+				'openai functions agent',
+				'conversational agent',
+			],
 			categories: ['AI'],
 			subcategories: {
 				AI: ['Agents'],
