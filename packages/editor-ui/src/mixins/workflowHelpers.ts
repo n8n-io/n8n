@@ -305,8 +305,8 @@ function connectionInputData(
 	return connectionInputData;
 }
 
-function executeData(
-	parentNode: string[],
+export function executeData(
+	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
@@ -317,12 +317,10 @@ function executeData(
 		source: null,
 	} as IExecuteData;
 
-	if (parentNode.length) {
-		// Add the input data to be able to also resolve the short expression format
-		// which does not use the node name
-		const parentNodeName = parentNode[0];
-		const workflowsStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore();
 
+	// Find the parent node which has data
+	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
 			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
@@ -337,7 +335,6 @@ function executeData(
 		}
 
 		// populate `executeData` from `runData`
-
 		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
@@ -368,6 +365,7 @@ function executeData(
 					],
 				};
 			}
+			return executeData;
 		}
 	}
 
@@ -878,8 +876,6 @@ export const workflowHelpers = defineComponent({
 
 				const workflowDataRequest: IWorkflowDataUpdate =
 					data || (await this.getWorkflowDataToSave());
-				// make sure that the new ones are not active
-				workflowDataRequest.active = false;
 				const changedNodes = {} as IDataObject;
 
 				if (resetNodeIds) {

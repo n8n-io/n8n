@@ -1,11 +1,11 @@
-import type {
-	INode,
+import type { INode } from 'n8n-workflow';
+import {
+	Workflow,
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
 	INodeTypes,
 } from 'n8n-workflow';
-import { Workflow } from 'n8n-workflow';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';

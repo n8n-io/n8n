@@ -59,6 +59,7 @@ import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
 import { useExternalHooks } from '@/composables';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'App',
@@ -143,14 +144,13 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
-		async initBanners() {
-			return this.uiStore.initBanners();
-		},
-		async checkForCloudPlanData() {
-			return this.cloudPlanStore.checkForCloudPlanData();
+		async checkForCloudData() {
+			await this.cloudPlanStore.checkForCloudPlanData();
+			await this.cloudPlanStore.fetchUserCloudAccount();
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
+			ExpressionEvaluatorProxy.setEvaluator(useSettingsStore().settings.expressions.evaluator);
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {
@@ -238,8 +238,7 @@ export default defineComponent({
 		await this.authenticate();
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		await this.checkForCloudPlanData();
-		void this.initBanners();
+		await this.checkForCloudData();
 		void this.postAuthenticate();
 
 		this.loading = false;

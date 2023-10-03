@@ -1,4 +1,4 @@
-import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
+import type { TEntitlement, TFeatures, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
@@ -11,8 +11,10 @@ import {
 	SETTINGS_LICENSE_CERT_KEY,
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
-import { Service } from 'typedi';
-import type { BooleanLicenseFeature, NumericLicenseFeature } from './Interfaces';
+import Container, { Service } from 'typedi';
+import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
+import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
+import { RedisService } from './services/redis.service';
 
 type FeatureReturnType = Partial<
 	{
@@ -26,18 +28,31 @@ export class License {
 
 	private manager: LicenseManager | undefined;
 
+	instanceId: string | undefined;
+
+	private redisPublisher: RedisServicePubSubPublisher;
+
 	constructor() {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string) {
+	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
 			return;
 		}
 
+		this.instanceId = instanceId;
+		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
-		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
+		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
+		const offlineMode = !isMainInstance;
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
+		const saveCertStr = isMainInstance
+			? async (value: TLicenseBlock) => this.saveCertStr(value)
+			: async () => {};
+		const onFeatureChange = isMainInstance
+			? async (features: TFeatures) => this.onFeatureChange(features)
+			: async () => {};
 
 		try {
 			this.manager = new LicenseManager({
@@ -45,11 +60,14 @@ export class License {
 				tenantId: config.getEnv('license.tenantId'),
 				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled,
+				renewOnInit: autoRenewEnabled,
 				autoRenewOffset,
+				offlineMode,
 				logger: this.logger,
 				loadCertStr: async () => this.loadCertStr(),
-				saveCertStr: async (value: TLicenseBlock) => this.saveCertStr(value),
+				saveCertStr,
 				deviceFingerprint: () => instanceId,
+				onFeatureChange,
 			});
 
 			await this.manager.initialize();
@@ -75,6 +93,18 @@ export class License {
 		return databaseSettings?.value ?? '';
 	}
 
+	async onFeatureChange(_features: TFeatures): Promise<void> {
+		if (config.getEnv('executions.mode') === 'queue') {
+			if (!this.redisPublisher) {
+				this.logger.debug('Initializing Redis publisher for License Service');
+				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
+			}
+			await this.redisPublisher.publishToCommandChannel({
+				command: 'reloadLicense',
+			});
+		}
+	}
+
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
 		// if we have an ephemeral license, we don't want to save it to the database
 		if (config.get('license.cert')) return;
@@ -94,6 +124,14 @@ export class License {
 		}
 
 		await this.manager.activate(activationKey);
+	}
+
+	async reload(): Promise<void> {
+		if (!this.manager) {
+			return;
+		}
+		this.logger.debug('Reloading license');
+		await this.manager.reload();
 	}
 
 	async renew() {

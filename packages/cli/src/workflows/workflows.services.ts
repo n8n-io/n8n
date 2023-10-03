@@ -33,6 +33,8 @@ import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
+import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -298,6 +300,10 @@ export class WorkflowsService {
 			);
 		}
 
+		if (isWorkflowHistoryLicensed()) {
+			await Container.get(WorkflowHistoryService).saveVersion(user, shared.workflow);
+		}
+
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
 		// We sadly get nothing back from "update". Neither if it updated a record
@@ -492,7 +498,7 @@ export class WorkflowsService {
 				// Workflow is saved so update in database
 				try {
 					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					await WorkflowsService.saveStaticDataById(workflow.id!, workflow.staticData);
+					await WorkflowsService.saveStaticDataById(workflow.id, workflow.staticData);
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
