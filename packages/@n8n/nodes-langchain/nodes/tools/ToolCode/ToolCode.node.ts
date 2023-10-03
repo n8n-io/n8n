@@ -49,7 +49,7 @@ export class ToolCode implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'My Tool',
+				placeholder: 'My_Tool',
 			},
 			{
 				displayName: 'Description',

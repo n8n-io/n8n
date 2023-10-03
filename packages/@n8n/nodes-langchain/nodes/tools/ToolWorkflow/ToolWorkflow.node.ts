@@ -51,7 +51,7 @@ export class ToolWorkflow implements INodeType {
 				name: 'name',
 				type: 'string',
 				default: '',
-				placeholder: 'My Color Tool',
+				placeholder: 'My_Color_Tool',
 			},
 			{
 				displayName: 'Description',
