@@ -87,7 +87,7 @@
 		</template>
 
 		<template #content v-if="outputMode === 'logs'">
-			<run-data-ai :node="node" />
+			<run-data-ai :node="node" :run-index="runIndex" />
 		</template>
 		<template #recovered-artificial-output-data>
 			<div :class="$style.recoveredOutputData">
