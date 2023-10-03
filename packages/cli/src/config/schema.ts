@@ -1227,4 +1227,20 @@ export const schema = {
 			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
 		},
 	},
+
+	workflowHistory: {
+		enabled: {
+			doc: 'Whether to save workflow history versions',
+			format: Boolean,
+			default: true,
+			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
+		},
+
+		pruneTime: {
+			doc: 'Time (in hours) to keep workflow history versions for',
+			format: Number,
+			default: -1,
+			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
+		},
+	},
 };

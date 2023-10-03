@@ -178,7 +178,11 @@ import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
-import { isWorkflowHistoryEnabled } from './workflows/workflowHistory/workflowHistoryHelper.ee';
+import {
+	getWorkflowHistoryLicensePruneTime,
+	getWorkflowHistoryPruneTime,
+	isWorkflowHistoryEnabled,
+} from './workflows/workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
@@ -350,6 +354,10 @@ export class Server extends AbstractServer {
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
 			},
+			workflowHistory: {
+				pruneTime: -1,
+				licensePruneTime: -1,
+			},
 		};
 	}
 
@@ -494,6 +502,13 @@ export class Server extends AbstractServer {
 
 		if (isVariablesEnabled()) {
 			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
+
+		if (isWorkflowHistoryEnabled()) {
+			Object.assign(this.frontendSettings.workflowHistory, {
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
+			});
 		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
