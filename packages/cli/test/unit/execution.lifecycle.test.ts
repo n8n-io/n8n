@@ -3,7 +3,7 @@ import { BinaryDataService } from 'n8n-core';
 import { mockInstance } from '../integration/shared/utils/mocking';
 import type { IRun } from 'n8n-workflow';
 
-function toIRun(item: object) {
+function toIRun(item?: object) {
 	return {
 		data: {
 			resultData: {
@@ -83,5 +83,15 @@ describe('restoreBinaryDataId()', () => {
 
 		expect(binaryDataService.rename).not.toHaveBeenCalled();
 		expect(getDataId(run, 'json')).toBe(dataId);
+	});
+
+	it('should do nothing on itemless case', async () => {
+		const executionId = '999';
+
+		const promise = restoreBinaryDataId(toIRun(), executionId);
+
+		await expect(promise).resolves.not.toThrow();
+
+		expect(binaryDataService.rename).not.toHaveBeenCalled();
 	});
 });

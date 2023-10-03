@@ -30,7 +30,7 @@ import type {
 	INodeProperties,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
 
 import type {
 	INodeTypesMaxCount,
@@ -62,8 +62,44 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
 import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { getWorkflowPermissions } from '@/permissions';
 import type { IPermissions } from '@/permissions';
+
+export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
+	const nodeType = useNodeTypesStore().getNodeType(node.type);
+	if (nodeType) {
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+
+		if (!!outputs.find((output) => output !== NodeConnectionType.Main)) {
+			// Get the first node which is connected to a non-main output
+			const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
+				const parentNodes = workflow.getChildNodes(node.name, outputName);
+				if (parentNodes.length > 0) {
+					acc.push(...parentNodes);
+				}
+				return acc;
+			}, [] as string[]);
+
+			if (nonMainNodesConnected.length) {
+				const returnNode = workflow.getNode(nonMainNodesConnected[0]);
+				if (returnNode === null) {
+					// This should theoretically never happen as the node is connected
+					// but who knows and it makes TS happy
+					throw new Error(
+						`The node "${nonMainNodesConnected[0]}" which is a connection of "${node.name}" could not be found!`,
+					);
+				}
+
+				// The chain of non-main nodes is potentially not finished yet so
+				// keep on going
+				return getParentMainInputNode(workflow, returnNode);
+			}
+		}
+	}
+
+	return node;
+}
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -77,10 +113,16 @@ export function resolveParameter(
 ): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
-	const inputName = 'main';
-	const activeNode = useNDVStore().activeNode;
+	const inputName = NodeConnectionType.Main;
+	let activeNode = useNDVStore().activeNode;
 
 	const workflow = getCurrentWorkflow();
+
+	// Should actually just do that for incoming data and not things like parameters
+	if (activeNode) {
+		activeNode = getParentMainInputNode(workflow, activeNode);
+	}
+
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
@@ -162,6 +204,10 @@ export function resolveParameter(
 	}
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
 
+	ExpressionEvaluatorProxy.setEvaluator(
+		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+	);
+
 	return workflow.expression.getParameterValue(
 		parameter,
 		runExecutionData,
@@ -220,6 +266,34 @@ export function resolveRequiredParameters(
 
 function getCurrentWorkflow(copyData?: boolean): Workflow {
 	return useWorkflowsStore().getCurrentWorkflow(copyData);
+}
+
+function getConnectedNodes(
+	direction: 'upstream' | 'downstream',
+	workflow: Workflow,
+	nodeName: string,
+): string[] {
+	let checkNodes: string[];
+	if (direction === 'downstream') {
+		checkNodes = workflow.getChildNodes(nodeName);
+	} else if (direction === 'upstream') {
+		checkNodes = workflow.getParentNodes(nodeName);
+	} else {
+		throw new Error(`The direction "${direction}" is not supported!`);
+	}
+
+	// Find also all nodes which are connected to the child nodes via a non-main input
+	let connectedNodes: string[] = [];
+	checkNodes.forEach((checkNode) => {
+		connectedNodes = [
+			...connectedNodes,
+			checkNode,
+			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+		];
+	});
+
+	// Remove duplicates
+	return [...new Set(connectedNodes)];
 }
 
 function getNodes(): INodeUi[] {
@@ -356,11 +430,33 @@ export function executeData(
 					[inputName]: workflowRunData[currentNode][runIndex].source,
 				};
 			} else {
+				const workflow = getCurrentWorkflow();
+
+				let previousNodeOutput: number | undefined;
+				// As the node can be connected through either of the outputs find the correct one
+				// and set it to make pairedItem work on not executed nodes
+				if (workflow.connectionsByDestinationNode[currentNode]?.main) {
+					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
+						currentNode
+					].main) {
+						for (const connection of mainConnections) {
+							if (
+								connection.type === NodeConnectionType.Main &&
+								connection.node === parentNodeName
+							) {
+								previousNodeOutput = connection.index;
+								break mainConnections;
+							}
+						}
+					}
+				}
+
 				// The current node did not get executed in UI yet so build data manually
 				executeData.source = {
 					[inputName]: [
 						{
 							previousNode: parentNodeName,
+							previousNodeOutput,
 						},
 					],
 				};
@@ -399,7 +495,9 @@ export const workflowHelpers = defineComponent({
 		resolveParameter,
 		resolveRequiredParameters,
 		getCurrentWorkflow,
+		getConnectedNodes,
 		getNodes,
+		getParentMainInputNode,
 		getWorkflow,
 		getNodeTypes,
 		connectionInputData,

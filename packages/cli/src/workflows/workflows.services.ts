@@ -33,6 +33,8 @@ import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
+import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -296,6 +298,10 @@ export class WorkflowsService {
 			await Db.collections.WorkflowTagMapping.insert(
 				tagIds.map((tagId) => ({ tagId, workflowId })),
 			);
+		}
+
+		if (isWorkflowHistoryLicensed()) {
+			await Container.get(WorkflowHistoryService).saveVersion(user, shared.workflow);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];

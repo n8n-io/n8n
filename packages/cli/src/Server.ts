@@ -178,6 +178,8 @@ import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
+import { isWorkflowHistoryEnabled } from './workflows/workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -247,6 +249,7 @@ export class Server extends AbstractServer {
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
+			isBetaRelease: config.getEnv('generic.isBetaRelease'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
@@ -408,6 +411,8 @@ export class Server extends AbstractServer {
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
+			licensePlanName: Container.get(License).getPlanName(),
+			licenseTenantId: config.getEnv('license.tenantId'),
 		};
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
@@ -470,6 +475,7 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
+			workflowHistory: isWorkflowHistoryEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -559,6 +565,7 @@ export class Server extends AbstractServer {
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
+			Container.get(WorkflowHistoryController),
 		];
 
 		if (isLdapEnabled()) {
