@@ -143,7 +143,7 @@ import {
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath } from './UserSettings';
+import { getUserN8nFolderPath, getInstanceId } from './UserSettings';
 import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
 
@@ -2506,6 +2506,7 @@ const getCommonWorkflowFunctions = (
 
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
+	getInstanceId: async () => getInstanceId(),
 	getTimezone: () => getTimezone(workflow, additionalData),
 
 	prepareOutputData: async (outputData) => [outputData],
