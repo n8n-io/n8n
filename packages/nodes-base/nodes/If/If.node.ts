@@ -470,6 +470,10 @@ export class If implements INodeType {
 				}
 			}
 
+			if (item.pairedItems === undefined) {
+				item.pairedItems = [{ item: itemIndex }];
+			}
+
 			if (combineOperation === 'all') {
 				// If the operation is "all" it means the item did match all conditions
 				// so it passes.
