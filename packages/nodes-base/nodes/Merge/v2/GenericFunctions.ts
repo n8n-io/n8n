@@ -242,6 +242,15 @@ export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
+const preparePairedItem = (
+	pairedItem: number | IPairedItemData | IPairedItemData[] | undefined,
+): IPairedItemData[] => {
+	if (pairedItem === undefined) return [];
+	if (typeof pairedItem === 'number') return [{ item: pairedItem }];
+	if (Array.isArray(pairedItem)) return pairedItem;
+	return [pairedItem];
+};
+
 export function mergeMatched(
 	matched: EntryMatches[],
 	clashResolveOptions: ClashResolveOptions,
@@ -257,6 +266,7 @@ export function mergeMatched(
 
 		let json: IDataObject = {};
 		let binary: IBinaryKeyData = {};
+		let pairedItem: IPairedItemData[] = [];
 
 		if (resolveClash === 'addSuffix') {
 			const suffix1 = '1';
@@ -270,6 +280,10 @@ export function mergeMatched(
 				{ ...entry.binary },
 				...matches.map((item) => item.binary as IDataObject),
 			);
+			pairedItem = [
+				...preparePairedItem(entry.pairedItem),
+				...matches.map((item) => preparePairedItem(item.pairedItem)).flat(),
+			];
 		} else {
 			const preferInput1 = 'preferInput1';
 			const preferInput2 = 'preferInput2';
@@ -294,6 +308,12 @@ export function mergeMatched(
 					...restMatches.map((item) => item.binary as IDataObject),
 					entry.binary as IDataObject,
 				);
+
+				pairedItem = [
+					...preparePairedItem(firstMatch.pairedItem),
+					...restMatches.map((item) => preparePairedItem(item.pairedItem)).flat(),
+					...preparePairedItem(entry.pairedItem),
+				];
 			}
 
 			if (resolveClash === preferInput2) {
@@ -302,13 +322,12 @@ export function mergeMatched(
 					{ ...entry.binary },
 					...matches.map((item) => item.binary as IDataObject),
 				);
+				pairedItem = [
+					...preparePairedItem(entry.pairedItem),
+					...matches.map((item) => preparePairedItem(item.pairedItem)).flat(),
+				];
 			}
 		}
-
-		const pairedItem = [
-			entry.pairedItem as IPairedItemData,
-			...matches.map((m) => m.pairedItem as IPairedItemData),
-		];
 
 		returnData.push({
 			json,
