@@ -432,11 +432,11 @@ export const schema = {
 			default: 'main',
 		},
 
-		isBetaRelease: {
-			doc: 'If it is a beta release',
-			format: 'Boolean',
-			default: false,
-			env: 'IS_BETA_RELEASE',
+		releaseChannel: {
+			doc: 'N8N release channel',
+			format: ['stable', 'beta', 'nightly', 'dev'] as const,
+			default: 'dev',
+			env: 'N8N_RELEASE_TYPE',
 		},
 	},
 

@@ -1,4 +1,5 @@
 ARG NODE_VERSION=18
+ARG N8N_RELEASE_TYPE=dev
 
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
@@ -35,4 +36,5 @@ RUN \
 	chown node:node .n8n
 USER node
 ENV NODE_ENV=production
+ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
