@@ -25,7 +25,7 @@ export class TypeformTrigger implements INodeType {
 		name: 'typeformTrigger',
 		icon: 'file:typeform.svg',
 		group: ['trigger'],
-		version: [1, 2],
+		version: [1, 1.1],
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
 		description: 'Starts the workflow on a Typeform form submission',
 		defaults: {
@@ -280,7 +280,7 @@ export class TypeformTrigger implements INodeType {
 
 		if (onlyAnswers) {
 			// Return only the answers
-			if (version >= 2) {
+			if (version >= 1.1) {
 				return {
 					workflowData: [
 						this.helpers.returnJsonArray([
