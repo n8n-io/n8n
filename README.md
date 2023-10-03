@@ -60,10 +60,8 @@ With n8n's LangChain nodes you can build AI-powered functionality within your wo
 
 Learn more in the [documentation](https://docs.n8n.io/langchain/).
 
-The nodes and chatbot module are currently in this repo. n8n may move them to separate repositories in the future.
-
-* [LangChain nodes package](https://github.com/n8n-io/n8n/tree/master/packages/%40n8n/nodes-langchain/README.md)
-* [Chatbot package](https://github.com/n8n-io/n8n/tree/master/packages/%40n8n/chat/README.md)
+- [LangChain nodes package](https://www.npmjs.com/package/@n8n/n8n-nodes-langchain)
+- [Chatbot package](https://www.npmjs.com/package/@n8n/chat)
 
 ## Support
 
