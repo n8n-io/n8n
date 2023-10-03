@@ -4,14 +4,14 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
-      branch:
-        description: 'Branch to create image off.'
-        required: true
-        default: 'ai-tool-creation-breaking'
-      tag:
-        description: 'Name of the docker tag to create.'
-        required: true
-        default: 'ai-beta'
+    branch:
+      description: 'Branch to create image off.'
+      required: true
+      default: 'ai-beta'
+    tag:
+      description: 'Name of the docker tag to create.'
+      required: true
+      default: 'ai-beta-nightly'
 
 jobs:
   build:
