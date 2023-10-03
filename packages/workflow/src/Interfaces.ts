@@ -740,6 +740,7 @@ export interface FunctionsBase {
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
+	getInstanceId(): Promise<string>;
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
