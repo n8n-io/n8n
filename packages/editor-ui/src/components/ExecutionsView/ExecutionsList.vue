@@ -56,7 +56,7 @@ import { useToast, useMessage } from '@/composables';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range as _range } from 'lodash-es';
+import { range } from '@/utils/arrayUtils';
 import { debounceHelper } from '@/mixins/debounce';
 import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -98,8 +98,7 @@ export default defineComponent({
 		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		hidePreview(): boolean {
 			const activeNotPresent =
-				this.filterApplied &&
-				!(this.executions as IExecutionsSummary[]).find((ex) => ex.id === this.activeExecution?.id);
+				this.filterApplied && !this.executions.find((ex) => ex.id === this.activeExecution?.id);
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
@@ -193,7 +192,7 @@ export default defineComponent({
 			}
 		}
 
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
 		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
@@ -387,14 +386,13 @@ export default defineComponent({
 
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && !isNaN(currentId)) {
+				const currentId = parseInt(currentItem.id || '0', 10);
+				if (lastId !== 0) {
 					if (currentId - lastId > 1) {
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
+						gaps.push(...range(lastId + 1, currentId));
 					}
 				}
-				lastId = parseInt(currentItem.id, 10) || 0;
+				lastId = currentId;
 
 				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
 				if (executionIndex !== -1) {
@@ -581,7 +579,7 @@ export default defineComponent({
 			this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {
-			if (!nodes || !nodes.length) {
+			if (!nodes?.length) {
 				return;
 			}
 
@@ -723,7 +721,7 @@ export default defineComponent({
 					loadWorkflow,
 				);
 
-				if (retrySuccessful === true) {
+				if (retrySuccessful) {
 					this.showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
 						type: 'success',

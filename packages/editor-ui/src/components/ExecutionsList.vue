@@ -301,7 +301,7 @@ import type {
 	ExecutionsQueryFilter,
 } from '@/Interface';
 import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
-import { range as _range } from 'lodash-es';
+import { range } from '@/utils/arrayUtils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty, setPageTitle } from '@/utils';
@@ -591,19 +591,18 @@ export default defineComponent({
 
 			for (let i = pastExecutions.results.length - 1; i >= 0; i--) {
 				const currentItem = pastExecutions.results[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && !isNaN(currentId)) {
+				const currentId = parseInt(currentItem.id || '0', 10);
+				if (lastId !== 0) {
 					// We are doing this iteration to detect possible gaps.
 					// The gaps are used to remove executions that finished
 					// and were deleted from database but were displaying
 					// in this list while running.
 					if (currentId - lastId > 1) {
 						// We have some gaps.
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
+						gaps.push(...range(lastId + 1, currentId));
 					}
 				}
-				lastId = parseInt(currentItem.id, 10) || 0;
+				lastId = currentId;
 
 				// Check new results from end to start
 				// Add new items accordingly.
