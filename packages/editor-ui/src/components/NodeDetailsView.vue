@@ -329,7 +329,7 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null && this.activeNode === null) {
+			if (this.inputNode === null || this.activeNode === null) {
 				return 0;
 			}
 

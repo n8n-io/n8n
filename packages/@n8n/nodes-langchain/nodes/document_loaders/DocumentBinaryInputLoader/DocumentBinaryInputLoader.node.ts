@@ -133,11 +133,14 @@ export class DocumentBinaryInputLoader implements INodeType {
 			},
 			// JSON Only Fields
 			{
-				displayName: 'Pointers',
+				displayName: 'Data Path',
 				name: 'pointers',
 				type: 'string',
 				default: '',
-				description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
+				description:
+					'Name of the field to set the value of. Supports dot-notation. Example: data.person[0].name',
+				// We can't use `requiresDataPath: 'single'` because this is config node so we disable expression for this field
+				noDataExpression: true,
 				displayOptions: {
 					show: {
 						loader: ['jsonLoader'],

@@ -17,22 +17,7 @@ import { Document } from 'langchain/document';
 import type { SetField, SetNodeOptions } from 'n8n-nodes-base/dist/nodes/Set/v2/helpers/interfaces';
 import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { logWrapper } from '../../../utils/logWrapper';
-
-function objectToString(obj: Record<string, string> | IDataObject, level = 0) {
-	let result = '';
-	for (const key in obj) {
-		const value = obj[key];
-		if (typeof value === 'object' && value !== null) {
-			result += `${'  '.repeat(level)}- "${key}":\n${objectToString(
-				value as IDataObject,
-				level + 1,
-			)}`;
-		} else {
-			result += `${'  '.repeat(level)}- "${key}": "${value}"\n`;
-		}
-	}
-	return result;
-}
+import { objectToString } from '../../../utils/N8nJsonLoader';
 
 export class RetrieverWorkflow implements INodeType {
 	description: INodeTypeDescription = {

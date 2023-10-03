@@ -5,11 +5,10 @@ import type { TextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
 import { CSVLoader } from 'langchain/document_loaders/fs/csv';
 import { DocxLoader } from 'langchain/document_loaders/fs/docx';
-import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { N8nEPubLoader } from './EpubLoader';
-
+import { JSONLoader } from './N8nJsonLoader';
 const SUPPORTED_MIME_TYPES = {
 	pdfLoader: ['application/pdf'],
 	csvLoader: ['text/csv'],
@@ -101,9 +100,9 @@ export class N8nBinaryLoader {
 					loader = new TextLoader(itemBlob);
 					break;
 				case 'application/json':
-					const pointers = this.context.getNodeParameter('pointers', 0) as string;
-					const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
-					loader = new JSONLoader(itemBlob, pointersArray);
+					const dataPath = this.context.getNodeParameter('pointers', 0) as string;
+
+					loader = new JSONLoader(itemBlob, dataPath);
 					break;
 				default:
 					throw new NodeOperationError(
