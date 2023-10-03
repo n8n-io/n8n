@@ -16,6 +16,11 @@ export class NodeMailer {
 			secure: config.getEnv('userManagement.emails.smtp.secure'),
 		};
 
+		if (config.getEnv('userManagement.emails.smtp.debug')) {
+			transportConfig.logger = true;
+			transportConfig.debug = true;
+		}
+
 		if (
 			config.getEnv('userManagement.emails.smtp.auth.user') &&
 			config.getEnv('userManagement.emails.smtp.auth.pass')

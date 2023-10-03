@@ -721,6 +721,12 @@ export const schema = {
 					default: true,
 					env: 'N8N_SMTP_SSL',
 				},
+				debug: {
+					doc: 'Whether or not to output SMTP debug information',
+					format: Boolean,
+					default: false,
+					env: 'N8N_SMTP_DEBUG',
+				},
 				auth: {
 					user: {
 						doc: 'SMTP login username',
