@@ -372,14 +372,16 @@ export class MicrosoftTeams implements INodeType {
 						const message = this.getNodeParameter('message', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						const includeLinkToWorkflow =
-							options.includeLinkToWorkflow !== false && nodeVersion >= 1.1;
+						let includeLinkToWorkflow = options.includeLinkToWorkflow;
+						if (includeLinkToWorkflow === undefined) {
+							includeLinkToWorkflow = nodeVersion >= 1.1;
+						}
 
 						const body: IDataObject = prepareMessage.call(
 							this,
 							message,
 							messageType,
-							includeLinkToWorkflow,
+							includeLinkToWorkflow as boolean,
 							instanceId,
 						);
 

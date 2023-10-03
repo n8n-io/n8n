@@ -262,7 +262,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				mailOptions.html = this.getNodeParameter('html', itemIndex, '');
 			}
 
-			const appendAttribution = options.appendAttribution !== false && nodeVersion >= 2.1;
+			let appendAttribution = options.appendAttribution;
+			if (appendAttribution === undefined) {
+				appendAttribution = nodeVersion >= 2.1;
+			}
 
 			if (appendAttribution) {
 				const attributionText = 'This email was sent automatically with ';
