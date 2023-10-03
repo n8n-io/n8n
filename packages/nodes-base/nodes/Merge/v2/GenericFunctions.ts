@@ -11,7 +11,7 @@ import assignWith from 'lodash/assignWith';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import mergeWith from 'lodash/mergeWith';
-import { fuzzyCompare } from '@utils/utilities';
+import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -242,15 +242,6 @@ export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
-const preparePairedItem = (
-	pairedItem: number | IPairedItemData | IPairedItemData[] | undefined,
-): IPairedItemData[] => {
-	if (pairedItem === undefined) return [];
-	if (typeof pairedItem === 'number') return [{ item: pairedItem }];
-	if (Array.isArray(pairedItem)) return pairedItem;
-	return [pairedItem];
-};
-
 export function mergeMatched(
 	matched: EntryMatches[],
 	clashResolveOptions: ClashResolveOptions,
@@ -281,8 +272,8 @@ export function mergeMatched(
 				...matches.map((item) => item.binary as IDataObject),
 			);
 			pairedItem = [
-				...preparePairedItem(entry.pairedItem),
-				...matches.map((item) => preparePairedItem(item.pairedItem)).flat(),
+				...preparePairedItemDataArray(entry.pairedItem),
+				...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
 			];
 		} else {
 			const preferInput1 = 'preferInput1';
@@ -310,9 +301,9 @@ export function mergeMatched(
 				);
 
 				pairedItem = [
-					...preparePairedItem(firstMatch.pairedItem),
-					...restMatches.map((item) => preparePairedItem(item.pairedItem)).flat(),
-					...preparePairedItem(entry.pairedItem),
+					...preparePairedItemDataArray(firstMatch.pairedItem),
+					...restMatches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+					...preparePairedItemDataArray(entry.pairedItem),
 				];
 			}
 
@@ -323,8 +314,8 @@ export function mergeMatched(
 					...matches.map((item) => item.binary as IDataObject),
 				);
 				pairedItem = [
-					...preparePairedItem(entry.pairedItem),
-					...matches.map((item) => preparePairedItem(item.pairedItem)).flat(),
+					...preparePairedItemDataArray(entry.pairedItem),
+					...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
 				];
 			}
 		}

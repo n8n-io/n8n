@@ -340,8 +340,8 @@ export class Filter implements INodeType {
 						value2,
 					);
 
-					if (item.pairedItems === undefined) {
-						item.pairedItems = [{ item: itemIndex }];
+					if (item.pairedItem === undefined) {
+						item.pairedItem = [{ item: itemIndex }];
 					}
 
 					// If the operation is "OR" it means the item did match one condition no ned to check further

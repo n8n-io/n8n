@@ -470,8 +470,8 @@ export class If implements INodeType {
 				}
 			}
 
-			if (item.pairedItems === undefined) {
-				item.pairedItems = [{ item: itemIndex }];
+			if (item.pairedItem === undefined) {
+				item.pairedItem = [{ item: itemIndex }];
 			}
 
 			if (combineOperation === 'all') {
