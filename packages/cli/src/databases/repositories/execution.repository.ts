@@ -1,5 +1,13 @@
 import { Service } from 'typedi';
-import { Brackets, DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+	Brackets,
+	DataSource,
+	In,
+	IsNull,
+	LessThanOrEqual,
+	MoreThanOrEqual,
+	Repository,
+} from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
@@ -110,13 +118,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	setSoftDeletionInterval() {
-		this.logger.debug('Setting soft-deletion interval (pruning) for executions');
+		this.logger.debug(
+			`Setting soft-deletion interval (pruning) for executions with rate ${this.rates.hardDeletion}`,
+		);
 
 		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.hardDeletion);
 	}
 
 	setHardDeletionInterval() {
-		this.logger.debug('Setting hard-deletion interval for executions');
+		this.logger.debug(
+			`Setting hard-deletion interval for executions with rate ${this.rates.hardDeletion}`,
+		);
 
 		this.intervals.hardDeletion = setInterval(
 			async () => this.hardDelete(),
@@ -470,6 +482,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		];
 
 		if (maxCount > 0) {
+			// This logic is not perfect, as there can be executions after the
+			// maxCount-th execution that can't be pruned because they are not
+			// in an end state. Therefore we can end up with more than maxCount
+			// executions. But it's good enough for now.
 			const executions = await this.find({
 				select: ['id'],
 				skip: maxCount,
@@ -487,7 +503,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
-			.where(
+			.where({
+				// Don't re-mark already deleted executions
+				deletedAt: IsNull(),
+				// Only mark executions as deleted if they are in an end state
+				status: In(['canceled', 'crashed', 'error', 'failed', 'success']),
+			})
+			.andWhere(
 				new Brackets((qb) =>
 					countBasedWhere
 						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
