@@ -187,7 +187,6 @@ export default defineComponent({
 	methods: {
 		onKeyDown(e: KeyboardEvent) {
 			const isCtrlKeyPressed = e.metaKey || e.ctrlKey;
-			console.log(e);
 
 			if (this.language !== 'javaScript') return;
 			if (e.key === 'k' && isCtrlKeyPressed) {
