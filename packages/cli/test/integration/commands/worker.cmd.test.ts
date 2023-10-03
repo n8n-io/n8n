@@ -1,11 +1,12 @@
 import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
+import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
 import { getLogger } from '@/Logger';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { BinaryDataManager } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import { CacheService } from '@/services/cache.service';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
@@ -17,16 +18,17 @@ import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { RedisService } from '@/services/redis.service';
 
-const config: Config.IConfig = new Config.Config({ root: __dirname });
+const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
 beforeAll(async () => {
 	LoggerProxy.init(getLogger());
+	config.set('executions.mode', 'queue');
 	mockInstance(Telemetry);
 	mockInstance(PostHogClient);
 	mockInstance(InternalHooks);
 	mockInstance(CacheService);
 	mockInstance(ExternalSecretsManager);
-	mockInstance(BinaryDataManager);
+	mockInstance(BinaryDataService);
 	mockInstance(MessageEventBus);
 	mockInstance(LoadNodesAndCredentials);
 	mockInstance(CredentialTypes);
@@ -37,11 +39,11 @@ beforeAll(async () => {
 });
 
 test('worker initializes all its components', async () => {
-	const worker = new Worker([], config);
+	const worker = new Worker([], oclifConfig);
 
 	jest.spyOn(worker, 'init');
 	jest.spyOn(worker, 'initLicense').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initBinaryManager').mockImplementation(async () => {});
+	jest.spyOn(worker, 'initBinaryDataService').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initExternalHooks').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initExternalSecrets').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initEventBus').mockImplementation(async () => {});
@@ -60,11 +62,11 @@ test('worker initializes all its components', async () => {
 
 	await worker.init();
 
-	expect(worker.uniqueInstanceId).toBeDefined();
-	expect(worker.uniqueInstanceId).toContain('worker');
-	expect(worker.uniqueInstanceId.length).toBeGreaterThan(15);
+	expect(worker.queueModeId).toBeDefined();
+	expect(worker.queueModeId).toContain('worker');
+	expect(worker.queueModeId.length).toBeGreaterThan(15);
 	expect(worker.initLicense).toHaveBeenCalled();
-	expect(worker.initBinaryManager).toHaveBeenCalled();
+	expect(worker.initBinaryDataService).toHaveBeenCalled();
 	expect(worker.initExternalHooks).toHaveBeenCalled();
 	expect(worker.initExternalSecrets).toHaveBeenCalled();
 	expect(worker.initEventBus).toHaveBeenCalled();

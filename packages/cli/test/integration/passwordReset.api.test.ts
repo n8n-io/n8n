@@ -238,8 +238,9 @@ describe('POST /change-password', () => {
 				.post('/change-password')
 				.query(invalidPayload);
 			expect(response.statusCode).toBe(400);
-
-			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({});
+			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({
+				id: owner.id,
+			});
 			expect(owner.password).toBe(storedPassword);
 		}
 	});

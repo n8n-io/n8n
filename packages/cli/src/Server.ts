@@ -26,7 +26,7 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataManager,
+	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
@@ -178,6 +178,8 @@ import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
+import { isWorkflowHistoryEnabled } from './workflows/workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -201,6 +203,8 @@ export class Server extends AbstractServer {
 	postHog: PostHogClient;
 
 	push: Push;
+
+	binaryDataService: BinaryDataService;
 
 	constructor() {
 		super('main');
@@ -245,6 +249,7 @@ export class Server extends AbstractServer {
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
+			isBetaRelease: config.getEnv('generic.isBetaRelease'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
@@ -361,6 +366,7 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
+		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -405,6 +411,8 @@ export class Server extends AbstractServer {
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
+			licensePlanName: Container.get(License).getPlanName(),
+			licenseTenantId: config.getEnv('license.tenantId'),
 		};
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
@@ -467,6 +475,7 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
+			workflowHistory: isWorkflowHistoryEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -556,6 +565,7 @@ export class Server extends AbstractServer {
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
+			Container.get(WorkflowHistoryController),
 		];
 
 		if (isLdapEnabled()) {
@@ -1427,13 +1437,12 @@ export class Server extends AbstractServer {
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
-				const binaryDataManager = BinaryDataManager.getInstance();
 				try {
-					const binaryPath = binaryDataManager.getBinaryPath(identifier);
+					const binaryPath = this.binaryDataService.getPath(identifier);
 					let { mode, fileName, mimeType } = req.query;
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+							const metadata = await this.binaryDataService.getMetadata(identifier);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
@@ -1472,9 +1481,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize({
-				uniqueInstanceId: this.uniqueInstanceId,
-			});
+			await eventBus.initialize();
 		}
 
 		if (this.endpointPresetCredentials !== '') {

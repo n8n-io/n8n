@@ -1,4 +1,3 @@
-import { BinaryDataManager } from '@/BinaryDataManager';
 import {
 	getBinaryDataBuffer,
 	parseIncomingMessage,
@@ -16,25 +15,24 @@ import type {
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
+import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import nock from 'nock';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { initLogger } from './helpers/utils';
+import Container from 'typedi';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 
 describe('NodeExecuteFunctions', () => {
 	describe('test binary data helper methods', () => {
-		// Reset BinaryDataManager for each run. This is a dirty operation, as individual managers are not cleaned.
-		beforeEach(() => {
-			BinaryDataManager.instance = undefined;
-		});
-
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'default' mode", async () => {
 			// Setup a 'default' binary data manager instance
-			await BinaryDataManager.init({
+			Container.set(BinaryDataService, new BinaryDataService());
+
+			await Container.get(BinaryDataService).init({
 				mode: 'default',
-				availableModes: 'default',
+				availableModes: ['default'],
 				localStoragePath: temporaryDir,
 			});
 
@@ -46,6 +44,7 @@ describe('NodeExecuteFunctions', () => {
 					data: 'This should be overwritten by the actual payload in the response',
 				},
 				inputData,
+				'workflowId',
 				'executionId',
 			);
 
@@ -80,10 +79,12 @@ describe('NodeExecuteFunctions', () => {
 		});
 
 		test("test getBinaryDataBuffer(...) & setBinaryDataBuffer(...) methods in 'filesystem' mode", async () => {
+			Container.set(BinaryDataService, new BinaryDataService());
+
 			// Setup a 'filesystem' binary data manager instance
-			await BinaryDataManager.init({
+			await Container.get(BinaryDataService).init({
 				mode: 'filesystem',
-				availableModes: 'filesystem',
+				availableModes: ['filesystem'],
 				localStoragePath: temporaryDir,
 			});
 
@@ -95,6 +96,7 @@ describe('NodeExecuteFunctions', () => {
 					data: 'This should be overwritten with the name of the configured data manager',
 				},
 				inputData,
+				'workflowId',
 				'executionId',
 			);
 

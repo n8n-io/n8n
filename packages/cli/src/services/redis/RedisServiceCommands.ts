@@ -3,7 +3,8 @@ export type RedisServiceCommand =
 	| 'getId'
 	| 'restartEventBus'
 	| 'stopWorker'
-	| 'reloadLicense';
+	| 'reloadLicense'
+	| 'reloadExternalSecretsProviders';
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -12,7 +13,7 @@ export type RedisServiceCommand =
  * @field payload: Optional arguments to be sent with the command.
  */
 type RedisServiceBaseCommand = {
-	senderId?: string;
+	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
 		[key: string]: string | number | boolean | string[] | number[] | boolean[];
@@ -44,6 +45,13 @@ export type RedisServiceWorkerResponseObject = {
 	  }
 	| {
 			command: 'restartEventBus';
+			payload: {
+				result: 'success' | 'error';
+				error?: string;
+			};
+	  }
+	| {
+			command: 'reloadExternalSecretsProviders';
 			payload: {
 				result: 'success' | 'error';
 				error?: string;

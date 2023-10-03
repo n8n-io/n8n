@@ -10,7 +10,7 @@ import type {
 import { parse, stringify } from 'flatted';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
-import { BinaryDataManager } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import type {
 	ExecutionPayload,
 	IExecutionBase,
@@ -25,7 +25,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
-import { TIME } from '@/constants';
+import { TIME, inTest } from '@/constants';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -89,10 +89,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
-		if (!this.isMainInstance) return;
+		if (!this.isMainInstance || inTest) return;
 
 		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
@@ -504,9 +505,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const date = new Date();
 		date.setHours(date.getHours() - 1);
 
-		const executionIds = (
+		const workflowIdsAndExecutionIds = (
 			await this.find({
-				select: ['id'],
+				select: ['workflowId', 'id'],
 				where: {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
 				},
@@ -518,10 +519,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				 */
 				withDeleted: true,
 			})
-		).map(({ id }) => id);
+		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
 
-		const binaryDataManager = BinaryDataManager.getInstance();
-		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
+		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
+
+		if (executionIds.length === 0) {
+			this.logger.debug('Found no executions to hard-delete from database');
+			return;
+		}
+
+		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,

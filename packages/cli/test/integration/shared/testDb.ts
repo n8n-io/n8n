@@ -1,7 +1,8 @@
 import { UserSettings } from 'n8n-core';
-import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -26,12 +27,17 @@ import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
-import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
+import {
+	TagRepository,
+	WorkflowHistoryRepository,
+	WorkflowTagMappingRepository,
+} from '@/databases/repositories';
 import { separate } from '@/utils';
 
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
+import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -118,7 +124,12 @@ export async function truncate(collections: CollectionName[]) {
 	}
 
 	for (const collection of rest) {
-		await Db.collections[collection].delete({});
+		if (typeof collection === 'string') {
+			await Db.collections[collection].delete({});
+		} else {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await Container.get(collection as { new (): Repository<any> }).delete({});
+		}
 	}
 }
 
@@ -569,6 +580,33 @@ export async function getVariableById(id: string) {
 		where: {
 			id,
 		},
+	});
+}
+
+// ----------------------------------
+//          workflow history
+// ----------------------------------
+
+export async function createWorkflowHistoryItem(
+	workflowId: string,
+	data?: Partial<WorkflowHistory>,
+) {
+	return Container.get(WorkflowHistoryRepository).save({
+		authors: 'John Smith',
+		connections: {},
+		nodes: [
+			{
+				id: 'uuid-1234',
+				name: 'Start',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+			},
+		],
+		versionId: uuid(),
+		...(data ?? {}),
+		workflowId,
 	});
 }
 

@@ -2,28 +2,21 @@ import path from 'path';
 import convict from 'convict';
 import { UserSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { ensureStringArray } from './utils';
 
 convict.addFormat({
-	name: 'nodes-list',
-	// @ts-ignore
-	validate(values: string[], { env }: { env: string }): void {
-		try {
-			if (!Array.isArray(values)) {
-				throw new Error();
-			}
+	name: 'json-string-array',
+	coerce: (rawStr: string) =>
+		jsonParse<string[]>(rawStr, {
+			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
+		}),
+	validate: ensureStringArray,
+});
 
-			for (const value of values) {
-				if (typeof value !== 'string') {
-					throw new Error();
-				}
-			}
-		} catch (error) {
-			throw new TypeError(`${env} is not a valid Array of strings.`);
-		}
-	},
-	coerce(rawValue: string): string[] {
-		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
-	},
+convict.addFormat({
+	name: 'comma-separated-list',
+	coerce: (rawStr: string) => rawStr.split(','),
+	validate: ensureStringArray,
 });
 
 export const schema = {
@@ -438,6 +431,13 @@ export const schema = {
 			format: ['main', 'webhook', 'worker'] as const,
 			default: 'main',
 		},
+
+		isBetaRelease: {
+			doc: 'If it is a beta release',
+			format: 'Boolean',
+			default: false,
+			env: 'IS_BETA_RELEASE',
+		},
 	},
 
 	// How n8n can be reached (Editor & REST-API)
@@ -788,13 +788,13 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: 'nodes-list',
+			format: 'json-string-array',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: 'nodes-list',
+			format: 'json-string-array',
 			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
@@ -902,7 +902,7 @@ export const schema = {
 
 	binaryDataManager: {
 		availableModes: {
-			format: String,
+			format: 'comma-separated-list',
 			default: 'filesystem',
 			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
 			doc: 'Available modes of binary data storage, as comma separated strings',
@@ -1144,6 +1144,11 @@ export const schema = {
 			format: String,
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
+		},
+		queueModeId: {
+			doc: 'Unique ID for this n8n instance, is usually set automatically by n8n during startup',
+			format: String,
+			default: '',
 		},
 	},
 
