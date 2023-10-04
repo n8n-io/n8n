@@ -15,7 +15,11 @@ import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 
 async function createSimpleLLMChain(llm: BaseLanguageModel, query: string): Promise<string[]> {
-	const chain = new LLMChain({ llm, prompt: PromptTemplate.fromTemplate(query) });
+	const chain = new LLMChain({
+		llm,
+		prompt: PromptTemplate.fromTemplate(query),
+		outputKey: 'output',
+	});
 	const response = (await chain.call({})) as string[];
 
 	return Array.isArray(response) ? response : [response];
