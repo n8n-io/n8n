@@ -18,11 +18,11 @@
     "release": "pnpm run build && cd dist && pnpm publish"
   },
   "main": "./chat.umd.cjs",
-  "module": "./chat.js",
+  "module": "./chat.es.js",
   "types": "./types/index.d.ts",
   "exports": {
     ".": {
-      "import": "./chat.js",
+      "import": "./chat.es.js",
       "require": "./chat.umd.cjs"
     },
     "./style.css": {
