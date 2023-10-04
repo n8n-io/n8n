@@ -23,6 +23,7 @@ import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
+import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -159,6 +160,10 @@ export abstract class BaseCommand extends Command {
 	async initExternalSecrets() {
 		const secretsManager = Container.get(ExternalSecretsManager);
 		await secretsManager.init();
+	}
+
+	initWorkflowHistory() {
+		Container.get(WorkflowHistoryManager).init();
 	}
 
 	async finally(error: Error | undefined) {

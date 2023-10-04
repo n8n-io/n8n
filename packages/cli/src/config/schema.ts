@@ -431,6 +431,13 @@ export const schema = {
 			format: ['main', 'webhook', 'worker'] as const,
 			default: 'main',
 		},
+
+		releaseChannel: {
+			doc: 'N8N release channel',
+			format: ['stable', 'beta', 'nightly', 'dev'] as const,
+			default: 'dev',
+			env: 'N8N_RELEASE_TYPE',
+		},
 	},
 
 	// How n8n can be reached (Editor & REST-API)
@@ -1218,6 +1225,22 @@ export const schema = {
 			format: ['rsa', 'ed25519'] as const,
 			default: 'ed25519',
 			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
+		},
+	},
+
+	workflowHistory: {
+		enabled: {
+			doc: 'Whether to save workflow history versions',
+			format: Boolean,
+			default: true,
+			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
+		},
+
+		pruneTime: {
+			doc: 'Time (in hours) to keep workflow history versions for',
+			format: Number,
+			default: -1,
+			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
 };

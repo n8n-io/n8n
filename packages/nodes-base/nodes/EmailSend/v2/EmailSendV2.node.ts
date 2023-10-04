@@ -15,7 +15,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'emailSend',
 	icon: 'fa:envelope',
 	group: ['output'],
-	version: 2,
+	version: [2, 2.1],
 	description: 'Sends an email using SMTP protocol',
 	defaults: {
 		name: 'Send Email',

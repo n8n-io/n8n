@@ -15,6 +15,10 @@
 			<AboutModal />
 		</ModalRoot>
 
+		<ModalRoot :name="CHAT_EMBED_MODAL_KEY">
+			<ChatEmbedModal />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -41,6 +45,10 @@
 			<template #default="{ active }">
 				<ValueSurvey :isActive="active" />
 			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_LM_CHAT_MODAL_KEY">
+			<WorkflowLMChat />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
@@ -138,6 +146,7 @@
 import { defineComponent } from 'vue';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -153,6 +162,7 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
@@ -165,6 +175,7 @@ import {
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import ChatEmbedModal from './ChatEmbedModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -179,6 +190,7 @@ import PersonalizationModal from './PersonalizationModal.vue';
 import TagsManager from './TagsManager/TagsManager.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import ValueSurvey from './ValueSurvey.vue';
+import WorkflowLMChat from './WorkflowLMChat.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
 import ActivationModal from './ActivationModal.vue';
@@ -196,6 +208,7 @@ export default defineComponent({
 	components: {
 		AboutModal,
 		ActivationModal,
+		ChatEmbedModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
 		ContactPromptModal,
@@ -211,6 +224,7 @@ export default defineComponent({
 		TagsManager,
 		UpdatesPanel,
 		ValueSurvey,
+		WorkflowLMChat,
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
@@ -222,6 +236,7 @@ export default defineComponent({
 		MfaSetupModal,
 	},
 	data: () => ({
+		CHAT_EMBED_MODAL_KEY,
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
@@ -236,6 +251,7 @@ export default defineComponent({
 		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
+		WORKFLOW_LM_CHAT_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		WORKFLOW_SHARE_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
