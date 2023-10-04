@@ -144,6 +144,37 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
+	it('should snap connection when dragging', () => {
+		const draggingConnectorPath = () => cy.get('path[jtk-overlay-id="endpoint-arrow"].jtk-overlay.jtk-dragging');
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		// Click away to deselect last added node
+		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.get(WorkflowPage.getters.getEndpointSelector('input', CODE_NODE_NAME)).then($el => {
+			const inputPosition = $el.position();
+			const outputEndpointSelector = WorkflowPage.getters.getEndpointSelector('output', SCHEDULE_TRIGGER_NODE_NAME);
+			// Should not snap because connector is too far from the input endpoint
+			cy.drag(
+				outputEndpointSelector,
+				[inputPosition.left + 30, inputPosition.top - 60],
+				{ abs: true, clickToFinish: true, beforeMouseUpFn: () => {
+					// Check the color of draggec connector to determine if it snapped
+					draggingConnectorPath().should('not.have.attr', 'stroke', 'var(--color-primary)')
+				}}
+			)
+			cy.get('body').type('{esc}');
+
+			// Should snap becase connector is close enough to the input endpoint
+			cy.drag(
+				outputEndpointSelector,
+				[inputPosition.left + 30, inputPosition.top - 30],
+				{ abs: true, clickToFinish: true, beforeMouseUpFn: () => {
+					draggingConnectorPath().should('have.attr', 'stroke', 'var(--color-primary)')
+				}}
+			)
+		})
+	});
+
 	it('should delete multiple nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);

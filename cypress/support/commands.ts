@@ -123,6 +123,9 @@ Cypress.Commands.add('drag', (selector, pos, options) => {
 				pageY: newPosition.y,
 				force: true,
 			});
+			if (options?.beforeMouseUpFn) {
+				options.beforeMouseUpFn();
+			}
 			if (options?.clickToFinish) {
 				// Click to finish the drag
 				// For some reason, mouseup isn't working when moving nodes
