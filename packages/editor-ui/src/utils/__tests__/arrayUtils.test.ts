@@ -1,9 +1,22 @@
-import { range } from '@/utils/arrayUtils';
+import { findGaps } from '@/utils/arrayUtils';
 
-describe('range', () => {
-	it('should return an array of numbers from start to end', () => {
-		expect(range(1, 5)).toEqual([1, 2, 3, 4]);
-		expect(range(3, 7)).toEqual([3, 4, 5, 6]);
-		expect(range(4, 2)).toEqual([]);
+describe('findGaps', () => {
+	test.each([
+		[[1, 2, 3], []],
+		[[1, 2, 4], [3]],
+		[
+			[1, 2, 4, 5, 7],
+			[3, 6],
+		],
+		[
+			[1, 2, 4, 5, 7, 9],
+			[3, 6, 8],
+		],
+		[
+			[5, 1, 2, 4, 7, 9],
+			[3, 6, 8],
+		],
+	])('should find gaps in (%s)', (input, expected) => {
+		expect(findGaps(input)).toEqual(expected);
 	});
 });
