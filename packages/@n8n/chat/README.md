@@ -29,7 +29,7 @@ Add the following code to your HTML page.
 ```html
 <link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" type="text/css" />
 <script type="module">
-	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.js';
+	import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
 	createChat({
 		webhookUrl: 'YOUR_PRODUCTION_WEBHOOK_URL'

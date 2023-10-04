@@ -22,6 +22,9 @@ export default defineConfig({
 			'@': fileURLToPath(new URL('./src', import.meta.url)),
 		},
 	},
+	define: {
+		'process.env.NODE_ENV': process.env.NODE_ENV ? `"${process.env.NODE_ENV}"` : '"development"',
+	},
 	build: {
 		emptyOutDir: !includeVue,
 		lib: {
@@ -37,9 +40,11 @@ export default defineConfig({
 				exports: 'named',
 				// Provide global variables to use in the UMD build
 				// for externalized deps
-				globals: {
-					vue: 'Vue',
-				},
+				globals: includeVue
+					? {}
+					: {
+							vue: 'Vue',
+					  },
 			},
 		},
 	},
