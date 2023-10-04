@@ -610,6 +610,22 @@ export async function createWorkflowHistoryItem(
 	});
 }
 
+export async function createManyWorkflowHistoryItems(
+	workflowId: string,
+	count: number,
+	time?: Date,
+) {
+	const baseTime = (time ?? new Date()).valueOf();
+	return Promise.all(
+		[...Array(count)].map(async (_, i) =>
+			createWorkflowHistoryItem(workflowId, {
+				createdAt: new Date(baseTime + i),
+				updatedAt: new Date(baseTime + i),
+			}),
+		),
+	);
+}
+
 // ----------------------------------
 //        connection options
 // ----------------------------------
