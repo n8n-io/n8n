@@ -56,7 +56,6 @@ import { useToast, useMessage } from '@/composables';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
 import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -65,7 +64,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useTagsStore } from '@/stores/tags.store';
-import { executionFilterToQueryFilter } from '@/utils/executionUtils';
+import {
+	executionFilterToQueryFilter,
+	mergeExecutionsAfterLoadingMore,
+} from '@/utils/executionUtils';
 
 // Number of execution pages that are fetched before temporary execution card is shown
 const MAX_LOADING_ATTEMPTS = 5;
@@ -378,60 +380,15 @@ export default defineComponent({
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
 			const fetchedExecutions: IExecutionsSummary[] = await this.loadExecutions();
-			let existingExecutions: IExecutionsSummary[] = [...this.executions];
-			const alreadyPresentExecutionIds = existingExecutions.map((exec) => parseInt(exec.id, 10));
-			let lastId = 0;
-			const gaps = [] as number[];
-			let updatedActiveExecution = null;
-
-			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
-				const currentItem = fetchedExecutions[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && !isNaN(currentId)) {
-					if (currentId - lastId > 1) {
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
-					}
-				}
-				lastId = parseInt(currentItem.id, 10) || 0;
-
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
-				if (executionIndex !== -1) {
-					const existingExecution = existingExecutions.find((ex) => ex.id === currentItem.id);
-					const existingStillRunning =
-						(existingExecution && existingExecution.finished === false) ||
-						existingExecution?.stoppedAt === undefined;
-					const currentFinished =
-						currentItem.finished === true || currentItem.stoppedAt !== undefined;
-
-					if (existingStillRunning && currentFinished) {
-						existingExecutions[executionIndex] = currentItem;
-						if (currentItem.id === this.activeExecution?.id) {
-							updatedActiveExecution = currentItem;
-						}
-					}
-					continue;
-				}
-
-				let j;
-				for (j = existingExecutions.length - 1; j >= 0; j--) {
-					if (currentId < parseInt(existingExecutions[j].id, 10)) {
-						existingExecutions.splice(j + 1, 0, currentItem);
-						break;
-					}
-				}
-				if (j === -1) {
-					existingExecutions.unshift(currentItem);
-				}
-			}
-
-			existingExecutions = existingExecutions.filter(
-				(execution) =>
-					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
+			const existingExecutions: IExecutionsSummary[] = [...this.executions];
+			const { executions, updateActiveExecution } = mergeExecutionsAfterLoadingMore(
+				existingExecutions,
+				fetchedExecutions,
+				this.activeExecution,
 			);
-			this.workflowsStore.currentWorkflowExecutions = existingExecutions;
+			this.workflowsStore.currentWorkflowExecutions = executions;
 			if (updatedActiveExecution !== null) {
-				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
+				this.workflowsStore.activeWorkflowExecution = updateActiveExecution;
 			} else {
 				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution?.id);
 				if (!activeInList && this.executions.length > 0 && !this.temporaryExecution) {
