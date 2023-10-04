@@ -348,7 +348,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 		if (requiredField) {
 			if (multiselect) {
 				validationCases += `
-					valid = validateMultiselect(input${index}, error${index});
+				valid.push(validateMultiselect(input${index}, error${index}));
 				`;
 			} else {
 				variables += `
@@ -363,7 +363,7 @@ const prepareFormGroups = (formFields: FormField[]) => {
 				`;
 
 				validationCases += `
-					valid = validateInput(input${index}, error${index});
+				valid.push(validateInput(input${index}, error${index}));
 				`;
 			}
 		}
@@ -478,12 +478,12 @@ export const createPage = (
 			${variables}
 
 			form.addEventListener('submit', (e) => {
-				let valid = true;
+				const valid = [];
 				e.preventDefault();
 
 				${validationCases}
 
-				if (valid) {
+				if (valid.every((v) => v)) {
 					var formData = new FormData(form);
 
 					document.querySelectorAll('.multiselect').forEach((multiselect) => {

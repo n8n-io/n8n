@@ -24,7 +24,9 @@
 					:key="property.name + index"
 					class="parameter-item"
 				>
-					<div :class="index ? 'border-top-dashed ' : '' + 'parameter-item-wrapper '">
+					<div
+						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
+					>
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon
 								icon="trash"
