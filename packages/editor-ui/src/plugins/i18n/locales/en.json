@@ -1038,6 +1038,7 @@
 	"nodeView.zoomIn": "Zoom In",
 	"nodeView.zoomOut": "Zoom Out",
 	"nodeView.zoomToFit": "Zoom to Fit",
+	"nodeView.replaceMe": "Replace Me",
 	"nodeWebhooks.clickToCopyWebhookUrls": "Click to copy webhook URLs",
 	"nodeWebhooks.clickToDisplayWebhookUrls": "Click to display webhook URLs",
 	"nodeWebhooks.clickToHideWebhookUrls": "Click to hide webhook URLs",

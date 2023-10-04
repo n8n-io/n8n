@@ -97,7 +97,7 @@
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
 					@toggleNodeCreator="onToggleNodeCreator"
-					@addNode="onAddNode"
+					@addNodes="onAddNodes"
 				/>
 			</Suspense>
 			<Suspense>
@@ -179,17 +179,17 @@
 </template>
 
 <script lang="ts">
-import { mapStores } from 'pinia';
 import { defineAsyncComponent, defineComponent, nextTick } from 'vue';
+import { mapStores } from 'pinia';
 
 import type {
-	BeforeDropParams,
-	ComponentParameters,
-	Connection,
-	ConnectionDetachedParams,
-	ConnectionEstablishedParams,
-	ConnectionMovedParams,
 	Endpoint,
+	Connection,
+	ConnectionEstablishedParams,
+	BeforeDropParams,
+	ConnectionDetachedParams,
+	ConnectionMovedParams,
+	ComponentParameters,
 } from '@jsplumb/core';
 import {
 	EVENT_CONNECTION,
@@ -197,74 +197,56 @@ import {
 	EVENT_CONNECTION_MOVED,
 	INTERCEPT_BEFORE_DROP,
 } from '@jsplumb/core';
-import type { ElNotification, MessageBoxInputData } from 'element-plus';
+import type { MessageBoxInputData, ElNotification } from 'element-plus';
 
 import {
-	useCanvasMouseSelect,
-	useExecutionDebugging,
-	useGlobalLinkActions,
-	useMessage,
-	useTitleChange,
-	useToast,
-} from '@/composables';
-import { useI18n } from '@/composables/useI18n';
-import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
-import {
-	AI_NODE_CREATOR_VIEW,
-	EnterpriseEditionFeature,
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MAIN_HEADER_TABS,
-	MANUAL_CHAT_TRIGGER_NODE_TYPE,
-	MANUAL_TRIGGER_NODE_TYPE,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
-	NODE_CREATOR_OPEN_SOURCES,
 	NODE_OUTPUT_DEFAULT_KEY,
-	NO_OP_NODE_TYPE,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	ONBOARDING_PROMPT_TIMEBOX,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	QUICKSTART_NOTE_NAME,
-	REGULAR_NODE_CREATOR_VIEW,
-	SPLIT_IN_BATCHES_NODE_TYPE,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
-	TRIGGER_NODE_CREATOR_VIEW,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
+	TRIGGER_NODE_CREATOR_VIEW,
+	EnterpriseEditionFeature,
+	REGULAR_NODE_CREATOR_VIEW,
+	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_CREATOR_OPEN_SOURCES,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
+	AI_NODE_CREATOR_VIEW,
+	DRAG_EVENT_DATA_KEY,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
+import {
+	useGlobalLinkActions,
+	useCanvasMouseSelect,
+	useMessage,
+	useToast,
+	useTitleChange,
+	useExecutionDebugging,
+} from '@/composables';
+import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
+import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
 
-import type {
-	ICredentialsResponse,
-	IExecutionResponse,
-	INewWorkflowData,
-	INodeUi,
-	INodeUpdatePropertiesInformation,
-	IPushDataExecutionFinished,
-	ITag,
-	IUpdateInformation,
-	IUser,
-	IWorkflowData,
-	IWorkflowDataUpdate,
-	IWorkflowDb,
-	IWorkflowTemplate,
-	IWorkflowToShare,
-	NodeCreatorOpenSource,
-	XYPosition,
-} from '@/Interface';
-import Node from '@/components/Node.vue';
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
+import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
+import CanvasAddButton from './CanvasAddButton.vue';
+import { v4 as uuid } from 'uuid';
 import type {
-	ConnectionTypes,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -281,14 +263,59 @@ import type {
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	Workflow,
+	ConnectionTypes,
 } from 'n8n-workflow';
-import { NodeConnectionType, NodeHelpers, TelemetryHelpers, deepCopy } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
+import {
+	deepCopy,
+	jsonParse,
+	NodeConnectionType,
+	NodeHelpers,
+	TelemetryHelpers,
+} from 'n8n-workflow';
+import type {
+	ICredentialsResponse,
+	IExecutionResponse,
+	IWorkflowDb,
+	IWorkflowData,
+	INodeUi,
+	IUpdateInformation,
+	IWorkflowDataUpdate,
+	XYPosition,
+	IPushDataExecutionFinished,
+	ITag,
+	INewWorkflowData,
+	IWorkflowTemplate,
+	IWorkflowToShare,
+	IUser,
+	INodeUpdatePropertiesInformation,
+	NodeCreatorOpenSource,
+	AddedNodesAndConnections,
+} from '@/Interface';
 
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import { sourceControlEventBus } from '@/event-bus/source-control';
 import { debounceHelper } from '@/mixins/debounce';
+import type { Route, RawLocation } from 'vue-router';
+import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
+import {
+	useEnvironmentsStore,
+	useWorkflowsEEStore,
+	useCanvasStore,
+	useNodeCreatorStore,
+	useTagsStore,
+	useCredentialsStore,
+	useNodeTypesStore,
+	useTemplatesStore,
+	useSegment,
+	useNDVStore,
+	useRootStore,
+	useWorkflowsStore,
+	useUsersStore,
+	useSettingsStore,
+	useUIStore,
+	useHistoryStore,
+	useExternalSecretsStore,
+} from '@/stores';
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
+import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import {
 	AddConnectionCommand,
 	AddNodeCommand,
@@ -298,46 +325,26 @@ import {
 	RenameNodeCommand,
 	historyBus,
 } from '@/models/history';
-import type { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
-import {
-	EVENT_PLUS_ENDPOINT_CLICK,
-	N8nPlusEndpointType,
-} from '@/plugins/endpoints/N8nPlusEndpointType';
-import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
-import {
-	useCanvasStore,
-	useCredentialsStore,
-	useEnvironmentsStore,
-	useExternalSecretsStore,
-	useHistoryStore,
-	useNDVStore,
-	useNodeCreatorStore,
-	useNodeTypesStore,
-	useRootStore,
-	useSegment,
-	useSettingsStore,
-	useTagsStore,
-	useTemplatesStore,
-	useUIStore,
-	useUsersStore,
-	useWorkflowsEEStore,
-	useWorkflowsStore,
-} from '@/stores';
-import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
-import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { OVERLAY_ENDPOINT_ARROW_ID, getConnectorPaintStyleData } from '@/utils/nodeViewUtils';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import {
-	EVENT_CONNECTION_ABORT,
+	EVENT_ENDPOINT_MOUSEOVER,
+	EVENT_ENDPOINT_MOUSEOUT,
+	EVENT_DRAG_MOVE,
 	EVENT_CONNECTION_DRAG,
+	EVENT_CONNECTION_ABORT,
 	EVENT_CONNECTION_MOUSEOUT,
 	EVENT_CONNECTION_MOUSEOVER,
-	EVENT_DRAG_MOVE,
-	EVENT_ENDPOINT_MOUSEOUT,
-	EVENT_ENDPOINT_MOUSEOVER,
 	ready,
 } from '@jsplumb/browser-ui';
-import type { RawLocation, Route } from 'vue-router';
+import type { N8nPlusEndpoint } from '@/plugins/jsplumb/N8nPlusEndpointType';
+import {
+	N8nPlusEndpointType,
+	EVENT_PLUS_ENDPOINT_CLICK,
+} from '@/plugins/jsplumb/N8nPlusEndpointType';
+import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
+import { sourceControlEventBus } from '@/event-bus/source-control';
+import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
+import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1743,32 +1750,22 @@ export default defineComponent({
 			event.preventDefault();
 		},
 
-		onDrop(event: DragEvent) {
+		async onDrop(event: DragEvent) {
 			if (!event.dataTransfer) {
 				return;
 			}
 
-			const nodeTypeNames = event.dataTransfer.getData('nodeTypeName').split(',');
-
-			if (nodeTypeNames) {
+			const dropData = jsonParse<AddedNodesAndConnections>(
+				event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
+			);
+			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
+				const insertNodePosition = [
+					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
+					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
+				] as XYPosition;
 
-				const nodesToAdd = nodeTypeNames.map((nodeTypeName: string, index: number) => {
-					return {
-						nodeTypeName,
-						position: [
-							// If adding more than one node, offset the X position
-							mousePosition[0] -
-								NodeViewUtils.NODE_SIZE / 2 +
-								NodeViewUtils.NODE_SIZE * index * 2 +
-								NodeViewUtils.GRID_SIZE,
-							mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-						] as XYPosition,
-						dragAndDrop: true,
-					};
-				});
-
-				this.onAddNode(nodesToAdd, true);
+				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;
 			}
 		},
@@ -2228,7 +2225,7 @@ export default defineComponent({
 				}
 			}
 			// If a node is last selected then connect between the active and its child ones
-			if (lastSelectedNode && !isAutoAdd) {
+			if (lastSelectedNode) {
 				await this.$nextTick();
 
 				if (lastSelectedConnection?.__meta) {
@@ -4156,15 +4153,7 @@ export default defineComponent({
 				this.instance.setSuspendDrawing(false, true);
 			});
 		},
-		onToggleNodeCreator({
-			source,
-			createNodeActive,
-			nodeCreatorView,
-		}: {
-			source?: NodeCreatorOpenSource;
-			createNodeActive: boolean;
-			nodeCreatorView?: string;
-		}) {
+		onToggleNodeCreator({ source, createNodeActive, nodeCreatorView }: ToggleNodeCreatorOptions) {
 			if (createNodeActive === this.createNodeActive) return;
 
 			if (!nodeCreatorView) {
@@ -4203,68 +4192,43 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
-		onAddNode(
-			nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>,
-			dragAndDrop: boolean,
+		async onAddNodes(
+			{ nodes, connections }: AddedNodesAndConnections,
+			dragAndDrop = false,
+			position?: XYPosition,
 		) {
-			const enrichedNodeTypes = nodeTypes
-				.map((nodeType): Array<{ nodeTypeName: string; position: XYPosition; name?: string }> => {
-					if (nodeType.nodeTypeName === SPLIT_IN_BATCHES_NODE_TYPE) {
-						return [
-							nodeType,
-							{ nodeTypeName: NO_OP_NODE_TYPE, position: nodeType.position, name: 'Replace Me' },
-						];
-					}
-					return [nodeType];
-				})
-				.flat();
-
-			const openNDVForIndex = enrichedNodeTypes.findIndex(
-				({ nodeTypeName }) => nodeTypeName !== MANUAL_TRIGGER_NODE_TYPE,
-			);
-
-			enrichedNodeTypes.forEach(({ nodeTypeName, position, name }, index) => {
-				void this.addNode(
-					nodeTypeName,
-					{ position, dragAndDrop, name },
-					openNDVForIndex === index,
+			let currentPosition = position;
+			for (const { type, isAutoAdd, name, openDetail, position: nodePosition } of nodes) {
+				await this.addNode(
+					type,
+					{ position: nodePosition ?? currentPosition, dragAndDrop, name },
+					openDetail ?? false,
 					true,
-					index !== 0,
+					isAutoAdd,
 				);
 
-				if (index === 0) return;
-				// If there's more than one node, we want to connect them
-				// this has to be done in mutation subscriber to make sure both nodes already
-				// exist
-				const unsubscribeActionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
-					if (name === 'addNode' && args[0].type === nodeTypeName) {
-						after(async () => {
-							const lastAddedNode = this.nodes[this.nodes.length - 1];
-							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
+				const lastAddedNode = this.nodes[this.nodes.length - 1];
+				currentPosition = [
+					lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
+					lastAddedNode.position[1],
+				];
+			}
 
-							// Position the added node to the right side of the previously added one
-							lastAddedNode.position = [
-								previouslyAddedNode.position[0] +
-									NodeViewUtils.NODE_SIZE * 2 +
-									NodeViewUtils.GRID_SIZE,
-								previouslyAddedNode.position[1],
-							];
-							await this.$nextTick();
+			const newNodesOffset = this.nodes.length - nodes.length;
+			for (const { from, to } of connections) {
+				const fromNode = this.nodes[newNodesOffset + from.nodeIndex];
+				const toNode = this.nodes[newNodesOffset + to.nodeIndex];
 
-							// For Split In Batches Node, connect the following node's output to its input (close the loop)
-							if (previouslyAddedNode.type === SPLIT_IN_BATCHES_NODE_TYPE) {
-								this.connectTwoNodes(previouslyAddedNode.name, 1, lastAddedNode.name, 0);
-								this.connectTwoNodes(lastAddedNode.name, 0, previouslyAddedNode.name, 0);
-							} else {
-								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
-							}
-
-							unsubscribeActionWatcher();
-						});
-					}
-				});
-			});
+				this.connectTwoNodes(
+					fromNode.name,
+					from.outputIndex ?? 0,
+					toNode.name,
+					to.inputIndex ?? 0,
+					NodeConnectionType.Main,
+				);
+			}
 		},
+
 		async saveCurrentWorkflowExternal(callback: () => void) {
 			await this.saveCurrentWorkflow();
 			callback?.();
