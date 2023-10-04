@@ -1,7 +1,7 @@
 import type { Cloud } from '@/Interface';
 
 // Mocks cloud plan API responses with different trial expiration dates
-function getUserPlanData(trialExpirationDate: Date): Cloud.PlanData {
+function getUserPlanData(trialExpirationDate: Date, isTrial = true): Cloud.PlanData {
 	return {
 		planId: 0,
 		monthlyExecutionsLimit: 1000,
@@ -10,7 +10,7 @@ function getUserPlanData(trialExpirationDate: Date): Cloud.PlanData {
 		isActive: true,
 		displayName: 'Trial',
 		metadata: {
-			group: 'trial',
+			group: isTrial ? 'trial' : 'pro',
 			slug: 'trial-1',
 			trial: {
 				gracePeriod: 3,
@@ -41,4 +41,10 @@ export function getTrialExpiredUserResponse(): Cloud.PlanData {
 	const dateInThePast = new Date();
 	dateInThePast.setDate(dateInThePast.getDate() - 3);
 	return getUserPlanData(dateInThePast);
+}
+
+export function getNotTrialingUserResponse(): Cloud.PlanData {
+	const inThreeDays = new Date();
+	inThreeDays.setDate(inThreeDays.getDate() + 3);
+	return getUserPlanData(inThreeDays, false);
 }
