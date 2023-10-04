@@ -428,7 +428,7 @@ export default defineComponent({
 
 			this.waitForExecution(response.executionId);
 		},
-		extractResponseMessage(responseData: IDataObject) {
+		extractResponseMessage(responseData?: IDataObject) {
 			if (!responseData) return '<NO RESPONSE FOUND>';
 
 			// Paths where the response message might be located
