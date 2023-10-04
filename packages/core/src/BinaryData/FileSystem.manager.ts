@@ -136,8 +136,10 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		await assertDir(path.dirname(newPath));
 
-		await fs.rename(oldPath, newPath);
-		await fs.rename(`${oldPath}.metadata`, `${newPath}.metadata`);
+		await Promise.all([
+			fs.rename(oldPath, newPath),
+			fs.rename(`${oldPath}.metadata`, `${newPath}.metadata`),
+		]);
 
 		const [tempDirParent] = oldPath.split('/temp/');
 		const tempDir = path.join(tempDirParent, 'temp');
