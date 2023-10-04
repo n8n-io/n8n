@@ -26,7 +26,7 @@ const styles = `
 }
 
 body {
-	font-family: Open Sans;
+	font-family: Open Sans, sans-serif;
 	font-weight: 400;
 	font-size: 12px;
 	display: flex;
@@ -141,7 +141,7 @@ form select {
 }
 
 input[type="date"] {
-	font-family: Open Sans;
+	font-family: Open Sans, sans-serif;
 }
 
 #submit-btn {
@@ -152,7 +152,7 @@ input[type="date"] {
 	border: 0;
 	font-size: 14px;
 	font-weight: 600;
-	font-family: Open Sans;
+	font-family: Open Sans, sans-serif;
 	background-color: #FF6D5A;
 	color: #FFFFFF;
 	cursor: pointer;
