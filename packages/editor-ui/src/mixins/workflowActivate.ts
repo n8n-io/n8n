@@ -1,5 +1,6 @@
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -121,7 +122,7 @@ export const workflowActivate = defineComponent({
 			if (isCurrentWorkflow) {
 				if (
 					newActiveState &&
-					window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true'
+					useStorage(LOCAL_STORAGE_ACTIVATION_FLAG, undefined).value !== 'true'
 				) {
 					this.uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 				} else {
