@@ -100,7 +100,7 @@ export class FormTrigger implements INodeType {
 								name: 'fieldType',
 								type: 'options',
 								default: 'text',
-								description: 'Field name appears for users, guiding their input',
+								description: 'The type of field to add to the form',
 								options: [
 									{
 										name: 'Text',
@@ -207,6 +207,7 @@ export class FormTrigger implements INodeType {
 					{
 						displayName: 'Form Submitted Text',
 						name: 'formSubmittedText',
+						description: 'The text displayed to users after they filled the form',
 						type: 'string',
 						default: 'Your response has been recorded',
 					},
