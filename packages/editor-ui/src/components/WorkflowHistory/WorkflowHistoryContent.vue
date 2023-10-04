@@ -14,6 +14,11 @@ const props = defineProps<{
 
 <style module lang="scss">
 .content {
+	position: absolute;
 	display: block;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
 }
 </style>
