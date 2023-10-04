@@ -697,11 +697,6 @@ export default defineComponent({
 				return;
 			}
 
-			data.results = data.results.map((execution) => {
-				// @ts-ignore
-				return { ...execution, mode: execution.mode };
-			});
-
 			this.finishedExecutions.push(...data.results);
 			this.finishedExecutionsCount = data.count;
 			this.finishedExecutionsCountEstimated = data.estimated;
