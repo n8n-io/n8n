@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import {
 	Brackets,
 	DataSource,
+	Not,
 	In,
 	IsNull,
 	LessThanOrEqual,
@@ -119,7 +120,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	setSoftDeletionInterval() {
 		this.logger.debug(
-			`Setting soft-deletion interval (pruning) for executions with rate ${this.rates.softDeletion}`,
+			`Setting soft-deletion interval (pruning) for executions every ${
+				this.rates.softDeletion / TIME.MINUTE
+			} min`,
 		);
 
 		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.softDeletion);
@@ -127,7 +130,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	setHardDeletionInterval() {
 		this.logger.debug(
-			`Setting hard-deletion interval for executions with rate ${this.rates.hardDeletion}`,
+			`Setting hard-deletion interval for executions every ${
+				this.rates.hardDeletion / TIME.MINUTE
+			} min`,
 		);
 
 		this.intervals.hardDeletion = setInterval(
@@ -482,10 +487,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		];
 
 		if (maxCount > 0) {
-			// This logic is not perfect, as there can be executions after the
-			// maxCount-th execution that can't be pruned because they are not
-			// in an end state. Therefore we can end up with more than maxCount
-			// executions. But it's good enough for now.
 			const executions = await this.find({
 				select: ['id'],
 				skip: maxCount,
@@ -504,10 +505,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
 			.where({
-				// Don't re-mark already deleted executions
 				deletedAt: IsNull(),
 				// Only mark executions as deleted if they are in an end state
-				status: In(['canceled', 'crashed', 'error', 'failed', 'success']),
+				status: Not(In(['new', 'running', 'waiting'])),
 			})
 			.andWhere(
 				new Brackets((qb) =>

@@ -7,10 +7,11 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import type { ExecutionRepository } from '../../../src/databases/repositories';
 import type { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
+import { TIME } from '../../../src/constants';
 
 describe('ExecutionRepository.prune()', () => {
 	const now = new Date();
-	const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+	const yesterday = new Date(Date.now() - TIME.DAY);
 	let executionRepository: ExecutionRepository;
 	let workflow: Awaited<ReturnType<typeof testDb.createWorkflow>>;
 
@@ -32,6 +33,10 @@ describe('ExecutionRepository.prune()', () => {
 		await testDb.terminate();
 	});
 
+	afterEach(() => {
+		config.load(config.default);
+	});
+
 	async function findAllExecutions() {
 		return Db.collections.Execution.find({
 			order: { id: 'asc' },
@@ -40,7 +45,7 @@ describe('ExecutionRepository.prune()', () => {
 	}
 
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
-		beforeAll(() => {
+		beforeEach(() => {
 			config.set('executions.pruneDataMaxCount', 1);
 			config.set('executions.pruneDataMaxAge', 336);
 		});
@@ -81,6 +86,8 @@ describe('ExecutionRepository.prune()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
+			['warning', { startedAt: now, stoppedAt: now }],
+			['unknown', { startedAt: now, stoppedAt: now }],
 			['canceled', { startedAt: now, stoppedAt: now }],
 			['crashed', { startedAt: now, stoppedAt: now }],
 			['failed', { startedAt: now, stoppedAt: now }],
@@ -121,7 +128,7 @@ describe('ExecutionRepository.prune()', () => {
 	});
 
 	describe('when EXECUTIONS_DATA_MAX_AGE is set', () => {
-		beforeAll(() => {
+		beforeEach(() => {
 			config.set('executions.pruneDataMaxAge', 1); // 1h
 			config.set('executions.pruneDataMaxCount', 0);
 		});
@@ -172,6 +179,8 @@ describe('ExecutionRepository.prune()', () => {
 		});
 
 		test.each<[ExecutionStatus, Partial<ExecutionEntity>]>([
+			['warning', { startedAt: yesterday, stoppedAt: yesterday }],
+			['unknown', { startedAt: yesterday, stoppedAt: yesterday }],
 			['canceled', { startedAt: yesterday, stoppedAt: yesterday }],
 			['crashed', { startedAt: yesterday, stoppedAt: yesterday }],
 			['failed', { startedAt: yesterday, stoppedAt: yesterday }],
