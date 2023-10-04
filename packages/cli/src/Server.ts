@@ -249,7 +249,7 @@ export class Server extends AbstractServer {
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
-			isBetaRelease: config.getEnv('generic.isBetaRelease'),
+			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
