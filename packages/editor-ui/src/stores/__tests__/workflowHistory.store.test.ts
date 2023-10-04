@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import {
 	workflowHistoryDataFactory,
 	workflowVersionDataFactory,
@@ -16,24 +17,42 @@ describe('Workflow history store', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('should set properties properly and reset', () => {
-		const store = useWorkflowHistoryStore();
+	it('should reset data', () => {
+		const workflowHistoryStore = useWorkflowHistoryStore();
 
-		store.addWorkflowHistory(historyData);
-		store.setActiveWorkflowVersion(versionData);
-		store.maxRetentionPeriod = 0;
+		workflowHistoryStore.addWorkflowHistory(historyData);
+		workflowHistoryStore.setActiveWorkflowVersion(versionData);
 
-		expect(store.shouldUpgrade).toBe(true);
+		expect(workflowHistoryStore.workflowHistory).toEqual(historyData);
+		expect(workflowHistoryStore.activeWorkflowVersion).toEqual(versionData);
 
-		store.maxRetentionPeriod = 10;
-		expect(store.shouldUpgrade).toBe(false);
-
-		expect(store.workflowHistory).toEqual(historyData);
-		expect(store.activeWorkflowVersion).toEqual(versionData);
-
-		store.reset();
-		expect(store.workflowHistory).toEqual([]);
-		expect(store.activeWorkflowVersion).toEqual(null);
-		expect(store.maxRetentionPeriod).toEqual(10);
+		workflowHistoryStore.reset();
+		expect(workflowHistoryStore.workflowHistory).toEqual([]);
+		expect(workflowHistoryStore.activeWorkflowVersion).toEqual(null);
 	});
+
+	test.each([
+		[true, 1, 1],
+		[true, 2, 2],
+		[false, 1, 2],
+		[false, 2, 1],
+		[false, undefined, undefined],
+		[false, -1, 2],
+		[false, 2, -1],
+	])(
+		'should set `shouldUpgrade` to %s when pruneTime is %s and licensePruneTime is %s',
+		(shouldUpgrade, pruneTime, licensePruneTime) => {
+			const workflowHistoryStore = useWorkflowHistoryStore();
+			const settingsStore = useSettingsStore();
+
+			settingsStore.settings = {
+				workflowHistory: {
+					pruneTime,
+					licensePruneTime,
+				},
+			};
+
+			expect(workflowHistoryStore.shouldUpgrade).toBe(shouldUpgrade);
+		},
+	);
 });

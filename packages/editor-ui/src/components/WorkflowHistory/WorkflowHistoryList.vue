@@ -10,22 +10,17 @@ import type {
 } from '@/types/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 
-const props = withDefaults(
-	defineProps<{
-		items: WorkflowHistory[];
-		activeItem: WorkflowHistory | null;
-		actionTypes: WorkflowHistoryActionTypes;
-		requestNumberOfItems: number;
-		lastReceivedItemsLength: number;
-		shouldUpgrade?: boolean;
-		maxRetentionPeriod?: number;
-		isListLoading?: boolean;
-	}>(),
-	{
-		shouldUpgrade: false,
-		maxRetentionPeriod: 0,
-	},
-);
+const props = defineProps<{
+	items: WorkflowHistory[];
+	activeItem: WorkflowHistory | null;
+	actionTypes: WorkflowHistoryActionTypes;
+	requestNumberOfItems: number;
+	lastReceivedItemsLength: number;
+	evaluatedPruneTime: number;
+	shouldUpgrade?: boolean;
+	isListLoading?: boolean;
+}>();
+
 const emit = defineEmits<{
 	(
 		event: 'action',
@@ -138,11 +133,11 @@ const onItemMounted = ({
 			<n8n-loading :rows="3" class="mb-xs" />
 			<n8n-loading :rows="3" class="mb-xs" />
 		</li>
-		<li v-if="props.shouldUpgrade && props.maxRetentionPeriod > 0" :class="$style.retention">
+		<li v-if="props.shouldUpgrade" :class="$style.retention">
 			<span>
 				{{
 					i18n.baseText('workflowHistory.limit', {
-						interpolate: { maxRetentionPeriod: props.maxRetentionPeriod },
+						interpolate: { evaluatedPruneTime: props.evaluatedPruneTime },
 					})
 				}}
 			</span>

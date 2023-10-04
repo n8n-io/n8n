@@ -1773,7 +1773,7 @@
 	"workflowHistory.item.latest": "Latest saved",
 	"workflowHistory.empty": "No versions yet.",
 	"workflowHistory.hint": "Save the workflow to create the first version!",
-	"workflowHistory.limit": "Version history is limited to {maxRetentionPeriod} days",
+	"workflowHistory.limit": "Version history is limited to {evaluatedPruneTime} days",
 	"workflowHistory.upgrade": "{link} to activate full history",
 	"workflowHistory.upgrade.link": "Upgrade plan",
 	"workflows.heading": "Workflows",
