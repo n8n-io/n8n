@@ -431,6 +431,13 @@ export const schema = {
 			format: ['main', 'webhook', 'worker'] as const,
 			default: 'main',
 		},
+
+		releaseChannel: {
+			doc: 'N8N release channel',
+			format: ['stable', 'beta', 'nightly', 'dev'] as const,
+			default: 'dev',
+			env: 'N8N_RELEASE_TYPE',
+		},
 	},
 
 	// How n8n can be reached (Editor & REST-API)
