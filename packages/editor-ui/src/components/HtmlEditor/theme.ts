@@ -2,7 +2,7 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 
-export const theme = [
+export const theme = ({ isReadOnly }: { isReadOnly: boolean }) => [
 	EditorView.theme({
 		'&': {
 			'font-size': '0.8em',
@@ -18,6 +18,9 @@ export const theme = [
 		'.cm-cursor, .cm-dropCursor': {
 			borderLeftColor: 'var(--color-code-caret)',
 		},
+		'&.cm-editor': {
+			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
+		},
 		'&.cm-editor.cm-focused': {
 			outline: '0',
 		},
@@ -31,7 +34,9 @@ export const theme = [
 			backgroundColor: 'var(--color-code-lineHighlight)',
 		},
 		'.cm-gutters': {
-			backgroundColor: 'var(--color-code-gutterBackground)',
+			backgroundColor: isReadOnly
+				? 'var(--color-code-background-readonly)'
+				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 			borderTopLeftRadius: 'var(--border-radius-base)',
 			borderBottomLeftRadius: 'var(--border-radius-base)',

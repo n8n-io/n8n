@@ -686,7 +686,6 @@ export default defineComponent({
 					this.parameter,
 					params.parameters,
 				) as INodeParameters;
-				console.log(this.parameter, resolvedNodeParameters);
 				const loadOptionsMethod = this.getPropertyArgument(this.currentMode, 'searchListMethod') as
 					| string
 					| undefined;

@@ -91,7 +91,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'403': 'Forbidden - perhaps check your credentials?',
 	'404': 'The resource you are requesting could not be found',
 	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
+	'429': 'The service is receiving too many requests from you',
 
 	'5XX': 'The service failed to process your request',
 	'500': 'The service was not able to process your request',

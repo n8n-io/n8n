@@ -12,13 +12,14 @@ export class Set extends VersionedNodeType {
 			icon: 'fa:pen',
 			group: ['input'],
 			description: 'Add or edit fields on an input item and optionally remove other fields',
-			defaultVersion: 3,
+			defaultVersion: 3.1,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SetV1(baseDescription),
 			2: new SetV1(baseDescription),
 			3: new SetV2(baseDescription),
+			3.1: new SetV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
