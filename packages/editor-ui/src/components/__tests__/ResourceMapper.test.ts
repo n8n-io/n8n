@@ -294,4 +294,46 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
 	});
+
+	it('renders initially selected matching column properly', async () => {
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: {
+						parameters: {
+							columns: {
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['name'],
+								schema: [
+									{
+										id: 'name',
+										displayName: 'name',
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'email',
+										displayName: 'email',
+										canBeUsedToMatch: true,
+									},
+								],
+							},
+						},
+					},
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: false,
+							},
+						},
+					},
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+
+		expect(getByTestId('matching-column-select').querySelector('input')).toHaveValue('name');
+	});
 });
