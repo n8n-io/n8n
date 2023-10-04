@@ -3,8 +3,7 @@ import type { PropType } from 'vue';
 import Message from '@/components/Message.vue';
 import type { ChatMessage } from '@/types';
 import MessageTyping from '@/components/MessageTyping.vue';
-import { useChatStore } from '@/stores/chat';
-import { storeToRefs } from 'pinia';
+import { useChat } from '@/composables';
 
 defineProps({
 	messages: {
@@ -13,9 +12,9 @@ defineProps({
 	},
 });
 
-const chatStore = useChatStore();
+const chatStore = useChat();
 
-const { initialMessages, waitingForResponse } = storeToRefs(chatStore);
+const { initialMessages, waitingForResponse } = chatStore;
 </script>
 <template>
 	<div class="chat-messages-list">

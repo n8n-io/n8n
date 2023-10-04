@@ -1,10 +1,11 @@
 {
   "name": "@n8n/chat",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "scripts": {
     "dev": "npm run storybook",
     "build": "run-p type-check build:vite && npm run build:prepare",
-    "build:vite": "vite build",
+    "build:vite": "vite build && npm run build:vite:full",
+    "build:vite:full": "INCLUDE_VUE=true vite build",
     "build:prepare": "node scripts/postbuild.js",
     "build:pack": "node scripts/pack.js",
     "preview": "vite preview",
@@ -31,7 +32,6 @@
   },
   "dependencies": {
     "highlight.js": "^11.8.0",
-    "pinia": "^2.1.4",
     "uuid": "^8.3.2",
     "vue": "^3.3.4",
     "vue-markdown-render": "^2.0.1"

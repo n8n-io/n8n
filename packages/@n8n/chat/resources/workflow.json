@@ -15,7 +15,7 @@
 			"type": "n8n-nodes-base.webhook",
 			"typeVersion": 1,
 			"position": [
-				1100,
+				900,
 				200
 			],
 			"webhookId": "513107b3-6f3a-4a1e-af21-659f0ed14183"
@@ -156,6 +156,19 @@
 				1780,
 				340
 			]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.body = JSON.parse(item.json.body);\n}\n\nreturn $input.all();"
+			},
+			"id": "415c071b-18b2-4ac5-8634-e3d939bf36ac",
+			"name": "Transform request body",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1120,
+				200
+			]
 		}
 	],
 	"pinData": {},
@@ -164,7 +177,7 @@
 			"main": [
 				[
 					{
-						"node": "Chatbot Action",
+						"node": "Transform request body",
 						"type": "main",
 						"index": 0
 					}
@@ -254,13 +267,24 @@
 					}
 				]
 			]
+		},
+		"Transform request body": {
+			"main": [
+				[
+					{
+						"node": "Chatbot Action",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
 	},
 	"active": true,
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "b19acb63-d6b9-4d62-a20c-ad53ff0ae207",
+	"versionId": "12c145a2-74bf-48b5-a87a-ba707949eaed",
 	"id": "L3FlJuFOxZcHtoFT",
 	"meta": {
 		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"

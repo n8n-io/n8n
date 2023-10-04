@@ -3,11 +3,10 @@
 import IconSend from 'virtual:icons/mdi/send';
 import { useI18n } from '@/composables';
 import { computed, ref } from 'vue';
-import { useChatStore } from '@/stores/chat';
-import { storeToRefs } from 'pinia';
+import { useChat } from '@/composables';
 
-const chatStore = useChatStore();
-const { waitingForResponse } = storeToRefs(chatStore);
+const chatStore = useChat();
+const { waitingForResponse } = chatStore;
 const { t } = useI18n();
 
 const input = ref('');

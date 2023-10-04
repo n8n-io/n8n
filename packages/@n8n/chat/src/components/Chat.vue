@@ -4,16 +4,15 @@ import GetStarted from '@/components/GetStarted.vue';
 import GetStartedFooter from '@/components/GetStartedFooter.vue';
 import MessagesList from '@/components/MessagesList.vue';
 import Input from '@/components/Input.vue';
-import { computed, nextTick, onMounted, toRefs } from 'vue';
-import { useI18n, useOptions } from '@/composables';
-import { useChatStore } from '@/stores/chat';
+import { nextTick, onMounted } from 'vue';
+import { useI18n } from '@/composables';
+import { useChat } from '@/composables';
 import { chatEventBus } from '@/event-buses';
 
-const { options } = useOptions();
-const { t, te } = useI18n();
-const chatStore = useChatStore();
+const { t } = useI18n();
+const chatStore = useChat();
 
-const { messages, currentSessionId } = toRefs(chatStore);
+const { messages, currentSessionId } = chatStore;
 
 async function initialize() {
 	await chatStore.loadPreviousSession();
