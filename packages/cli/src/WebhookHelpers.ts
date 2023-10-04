@@ -118,12 +118,12 @@ export const webhookRequestHandler =
 				const isTestWebhook = req.originalUrl.includes('webhook-test');
 				let html = '';
 				if (isTestWebhook) {
-					html = await createErrorPage(
+					html = createErrorPage(
 						"Form Trigger isn't listening yet",
 						'Click the <strong>"Test Step"</strong> button in your form trigger',
 					);
 				} else {
-					html = await createErrorPage(
+					html = createErrorPage(
 						'Problem loading form',
 						'This usually occurs if the n8n workflow serving this form is deactivated or no longer exist',
 					);
