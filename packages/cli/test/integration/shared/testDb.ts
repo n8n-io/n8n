@@ -360,11 +360,11 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(
+export async function createExecution(
 	attributes: Partial<ExecutionEntity & ExecutionData>,
 	workflow: WorkflowEntity,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
 
 	const execution = await Db.collections.Execution.save({
 		finished: finished ?? true,
@@ -374,6 +374,7 @@ async function createExecution(
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
 		status,
+		deletedAt,
 	});
 
 	await Db.collections.ExecutionData.save({

@@ -310,7 +310,7 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
@@ -320,7 +320,7 @@ export const schema = {
 		// Deletes the oldest entries first
 		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
+			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
 			format: Number,
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
