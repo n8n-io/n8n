@@ -2331,6 +2331,10 @@ export interface IN8nUISettings {
 	ai: {
 		enabled: boolean;
 	};
+	workflowHistory: {
+		pruneTime: number;
+		licensePruneTime: number;
+	};
 }
 
 export interface SecretsHelpersBase {

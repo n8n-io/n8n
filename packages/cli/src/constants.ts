@@ -87,6 +87,7 @@ export const LICENSE_QUOTAS = {
 	TRIGGER_LIMIT: 'quota:activeWorkflows',
 	VARIABLES_LIMIT: 'quota:maxVariables',
 	USERS_LIMIT: 'quota:users',
+	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 

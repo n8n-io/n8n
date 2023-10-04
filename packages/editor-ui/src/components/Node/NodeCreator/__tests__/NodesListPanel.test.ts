@@ -58,7 +58,7 @@ describe('NodesListPanel', () => {
 			});
 
 			await nextTick();
-			expect(screen.getByText('Select a trigger')).toBeInTheDocument();
+			expect(screen.getByText('What triggers this workflow?')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 			screen.getByText('On app event').click();
 			await nextTick();

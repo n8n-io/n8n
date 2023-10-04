@@ -244,6 +244,12 @@ export class License {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
 	}
 
+	getWorkflowHistoryPruneLimit() {
+		return (
+			this.getFeatureValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
+		);
+	}
+
 	getPlanName(): string {
 		return this.getFeatureValue('planName') ?? 'Community';
 	}
