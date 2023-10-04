@@ -315,6 +315,21 @@ describe('Node Creator', () => {
 		});
 	});
 
+	it.only('should correctly append a No Op node when Loop Over Items node is added', () => {
+		WorkflowPage.actions.addNodeToCanvas('Manual');
+		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
 	it('should have most relevenat nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
@@ -422,10 +437,16 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'S3');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('no op');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'No Operation, do nothing');
+		nodeCreatorFeature.getters
+			.nodeItemName()
+			.first()
+			.should('have.text', 'No Operation, do nothing');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('do no');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'No Operation, do nothing');
+		nodeCreatorFeature.getters
+			.nodeItemName()
+			.first()
+			.should('have.text', 'No Operation, do nothing');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('htt');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'HTTP Request');
