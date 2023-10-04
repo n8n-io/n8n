@@ -42,6 +42,7 @@ describe('WorkflowHistoryList', () => {
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
+				evaluatedPruneTime: -1,
 			},
 		});
 
@@ -58,6 +59,7 @@ describe('WorkflowHistoryList', () => {
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
+				evaluatedPruneTime: -1,
 				isListLoading: true,
 			},
 		});
@@ -70,7 +72,7 @@ describe('WorkflowHistoryList', () => {
 		const numberOfItems = faker.number.int({ min: 10, max: 50 });
 		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
 
-		const { getAllByTestId, emitted } = renderComponent({
+		const { getAllByTestId, emitted, queryByRole } = renderComponent({
 			pinia,
 			props: {
 				items,
@@ -78,8 +80,11 @@ describe('WorkflowHistoryList', () => {
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
 			},
 		});
+
+		expect(queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument();
 
 		const listItems = getAllByTestId('workflow-history-list-item');
 		const listItem = listItems[items.length - 1];
@@ -107,6 +112,7 @@ describe('WorkflowHistoryList', () => {
 				activeItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
 			},
 		});
 
@@ -124,6 +130,7 @@ describe('WorkflowHistoryList', () => {
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
 			},
 		});
 
@@ -135,5 +142,24 @@ describe('WorkflowHistoryList', () => {
 
 		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([[{ action, id: items[index].versionId }]]);
+	});
+
+	it('should show upgrade message', async () => {
+		const items = Array.from({ length: 5 }, workflowHistoryDataFactory);
+
+		const { getByRole } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actionTypes,
+				activeItem: items[0],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
+				shouldUpgrade: true,
+			},
+		});
+
+		expect(getByRole('link', { name: /upgrade/i })).toBeInTheDocument();
 	});
 });
