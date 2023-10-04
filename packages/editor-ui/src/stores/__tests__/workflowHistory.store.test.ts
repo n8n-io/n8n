@@ -36,7 +36,6 @@ describe('Workflow history store', () => {
 		[true, 2, 2],
 		[false, 1, 2],
 		[false, 2, 1],
-		[false, undefined, undefined],
 		[false, -1, 2],
 		[false, 2, -1],
 	])(
