@@ -56,6 +56,7 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 			categories: [category],
 		},
 		iconUrl: nodeTypeDescription.iconUrl,
+		outputs: nodeTypeDescription.outputs,
 		icon: nodeTypeDescription.icon,
 		defaults: nodeTypeDescription.defaults,
 	};
@@ -225,7 +226,7 @@ export function useActionsGenerator() {
 	}
 
 	function getSimplifiedNodeType(node: INodeTypeDescription): SimplifiedNodeType {
-		const { displayName, defaults, description, name, group, icon, iconUrl, codex } = node;
+		const { displayName, defaults, description, name, group, icon, iconUrl, outputs, codex } = node;
 
 		return {
 			displayName,
@@ -235,6 +236,7 @@ export function useActionsGenerator() {
 			group,
 			icon,
 			iconUrl,
+			outputs,
 			codex,
 		};
 	}
