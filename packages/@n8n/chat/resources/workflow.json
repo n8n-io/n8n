@@ -14,7 +14,10 @@
 			"name": "Webhook",
 			"type": "n8n-nodes-base.webhook",
 			"typeVersion": 1,
-			"position": [100, 480],
+			"position": [
+				900,
+				200
+			],
 			"webhookId": "513107b3-6f3a-4a1e-af21-659f0ed14183"
 		},
 		{
@@ -25,8 +28,16 @@
 			"name": "Chat OpenAI",
 			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
 			"typeVersion": 1,
-			"position": [700, 840],
-			"credentials": {}
+			"position": [
+				1720,
+				620
+			],
+			"credentials": {
+				"openAiApi": {
+					"id": "B5Fiv70Adfg6htxn",
+					"name": "Alex's OpenAI Account"
+				}
+			}
 		},
 		{
 			"parameters": {
@@ -36,7 +47,10 @@
 			"name": "Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
-			"position": [840, 840]
+			"position": [
+				1920,
+				620
+			]
 		},
 		{
 			"parameters": {
@@ -46,7 +60,10 @@
 			"name": "Memory Chat Retriever",
 			"type": "@n8n/n8n-nodes-langchain.memoryChatRetriever",
 			"typeVersion": 1,
-			"position": [780, 240]
+			"position": [
+				1780,
+				-40
+			]
 		},
 		{
 			"parameters": {
@@ -56,7 +73,10 @@
 			"name": "Memory Chat Retriever Window Buffer Memory",
 			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
 			"typeVersion": 1,
-			"position": [800, 440]
+			"position": [
+				1800,
+				160
+			]
 		},
 		{
 			"parameters": {
@@ -67,6 +87,10 @@
 							{
 								"name": "sessionId",
 								"value": "={{ $json.body.sessionId }}"
+							},
+							{
+								"name": "Access-Control-Allow-Headers",
+								"value": "*"
 							}
 						]
 					}
@@ -76,7 +100,10 @@
 			"name": "Respond to Webhook",
 			"type": "n8n-nodes-base.respondToWebhook",
 			"typeVersion": 1,
-			"position": [1460, 500]
+			"position": [
+				2460,
+				220
+			]
 		},
 		{
 			"parameters": {
@@ -98,7 +125,10 @@
 			"name": "Chatbot Action",
 			"type": "n8n-nodes-base.switch",
 			"typeVersion": 1,
-			"position": [540, 480]
+			"position": [
+				1320,
+				200
+			]
 		},
 		{
 			"parameters": {
@@ -108,59 +138,47 @@
 			"name": "Code",
 			"type": "n8n-nodes-base.code",
 			"typeVersion": 2,
-			"position": [1160, 240]
-		},
-		{
-			"parameters": {
-				"jsCode": "for (const item of $input.all()) {\n  item.json.body = JSON.parse(item.json.body);\n}\n\nreturn $input.all();"
-			},
-			"id": "809fe3b8-ad9e-4264-8184-18bdecf581fb",
-			"name": "Parse Request JSON",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [320, 480]
+			"position": [
+				2160,
+				-40
+			]
 		},
 		{
 			"parameters": {
 				"text": "={{ $json.body.message }}",
 				"options": {}
 			},
-			"id": "c43f9232-0636-4c95-a3ad-1addd8c74f6e",
+			"id": "f28f5c00-c742-41d5-8ddb-f0f59ab111a3",
 			"name": "Agent",
 			"type": "@n8n/n8n-nodes-langchain.agent",
 			"typeVersion": 1,
-			"position": [780, 600]
+			"position": [
+				1780,
+				340
+			]
+		},
+		{
+			"parameters": {
+				"jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.body = JSON.parse(item.json.body);\n}\n\nreturn $input.all();"
+			},
+			"id": "415c071b-18b2-4ac5-8634-e3d939bf36ac",
+			"name": "Transform request body",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [
+				1120,
+				200
+			]
 		}
 	],
+	"pinData": {},
 	"connections": {
 		"Webhook": {
 			"main": [
 				[
 					{
-						"node": "Parse Request JSON",
+						"node": "Transform request body",
 						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Chat OpenAI": {
-			"ai_languageModel": [
-				[
-					{
-						"node": "Agent",
-						"type": "ai_languageModel",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Window Buffer Memory": {
-			"ai_memory": [
-				[
-					{
-						"node": "Agent",
-						"type": "ai_memory",
 						"index": 0
 					}
 				]
@@ -217,12 +235,23 @@
 				]
 			]
 		},
-		"Parse Request JSON": {
-			"main": [
+		"Chat OpenAI": {
+			"ai_languageModel": [
 				[
 					{
-						"node": "Chatbot Action",
-						"type": "main",
+						"node": "Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Window Buffer Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "Agent",
+						"type": "ai_memory",
 						"index": 0
 					}
 				]
@@ -238,6 +267,27 @@
 					}
 				]
 			]
+		},
+		"Transform request body": {
+			"main": [
+				[
+					{
+						"node": "Chatbot Action",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
 		}
-	}
+	},
+	"active": true,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "12c145a2-74bf-48b5-a87a-ba707949eaed",
+	"id": "L3FlJuFOxZcHtoFT",
+	"meta": {
+		"instanceId": "374b43d8b8d6299cc777811a4ad220fc688ee2d54a308cfb0de4450a5233ca9e"
+	},
+	"tags": []
 }

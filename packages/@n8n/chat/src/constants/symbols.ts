@@ -1,5 +1,8 @@
 import type { InjectionKey } from 'vue';
-import type { ChatOptions } from '@/types';
+import type { Chat, ChatOptions } from '@/types';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const ChatOptionsSymbol = Symbol('ChatOptions') as InjectionKey<ChatOptions>;
+export const ChatSymbol = 'Chat' as unknown as InjectionKey<Chat>;
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const ChatOptionsSymbol = 'ChatOptions' as unknown as InjectionKey<ChatOptions>;

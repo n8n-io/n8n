@@ -13,5 +13,4 @@ shelljs.cp(packageJsonFilePath, distDirPath);
 shelljs.cp(readmeFilePath, distDirPath);
 shelljs.cp(licenseFilePath, distDirPath);
 
-shelljs.mv(path.resolve(distDirPath, 'chat.es.js'), path.resolve(distDirPath, 'chat.js'));
 shelljs.mv(path.resolve(distDirPath, 'src'), path.resolve(distDirPath, 'types'));
