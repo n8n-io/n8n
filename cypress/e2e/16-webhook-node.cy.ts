@@ -187,10 +187,10 @@ describe('Webhook Trigger node', async () => {
 
 		ndv.getters.backToCanvas().click();
 
-		workflowPage.actions.addNodeToCanvas('Move Binary Data');
+		workflowPage.actions.addNodeToCanvas('Convert to/from binary data');
 		workflowPage.actions.zoomToFit();
 
-		workflowPage.actions.openNode('Move Binary Data');
+		workflowPage.actions.openNode('Convert to/from binary data');
 		cy.getByTestId('parameter-input-mode').click();
 		getVisibleSelect().find('.option-headline').contains('JSON to Binary').click();
 		ndv.getters.backToCanvas().click();

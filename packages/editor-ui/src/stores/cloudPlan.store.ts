@@ -62,7 +62,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		try {
 			if (useUsersStore().isInstanceOwner) {
 				await usersStore.fetchUserCloudAccount();
-				if (!usersStore.currentUserCloudInfo?.confirmed) {
+				if (!usersStore.currentUserCloudInfo?.confirmed && !userIsTrialing.value) {
 					useUIStore().pushBannerToStack('EMAIL_CONFIRMATION');
 				}
 			}
