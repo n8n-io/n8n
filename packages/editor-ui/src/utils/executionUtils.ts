@@ -2,7 +2,6 @@ import { range as _range } from 'lodash-es';
 import type { IExecutionsSummary, ExecutionStatus, IDataObject } from 'n8n-workflow';
 import type { ExecutionFilterType, ExecutionsQueryFilter } from '@/Interface';
 import { isEmpty } from '@/utils/typesUtils';
-import { findGaps } from '@/utils/arrayUtils';
 
 export const executionFilterToQueryFilter = (
 	filter: ExecutionFilterType,
