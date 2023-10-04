@@ -304,6 +304,11 @@ export function generatePairedItemData(length: number): IPairedItemData[] {
 	}));
 }
 
+/**
+ * Output Paired Item Data Array
+ *
+ * @param {number | IPairedItemData | IPairedItemData[] | undefined} pairedItem
+ */
 export function preparePairedItemDataArray(
 	pairedItem: number | IPairedItemData | IPairedItemData[] | undefined,
 ): IPairedItemData[] {

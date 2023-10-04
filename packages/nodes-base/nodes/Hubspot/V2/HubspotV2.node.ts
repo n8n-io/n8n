@@ -46,6 +46,7 @@ import type { IForm } from './FormInterface';
 import type { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -1168,9 +1169,12 @@ export class HubspotV2 implements INodeType {
 						body,
 					);
 				}
+
+				const itemData = generatePairedItemData(items.length);
+
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 				returnData.push(...executionData);
 			} catch (error) {
