@@ -2,6 +2,7 @@
 import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from './constants';
+import { getInstanceId } from 'n8n-core/src/UserSettings';
 
 /**
  * Returns if the given id is a valid workflow id
@@ -102,7 +103,9 @@ export function isObjectLiteral(item: unknown): item is { [key: string]: string 
 	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
 
-export const createErrorPage = (title: string, message: string) => {
+export const createErrorPage = async (title: string, message: string) => {
+	const instanceId = await getInstanceId();
+	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const html = `
 	<!DOCTYPE html>
 <html lang="en">
@@ -111,6 +114,7 @@ export const createErrorPage = (title: string, message: string) => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="https://n8n.io/favicon.ico" />
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
   <title>${title}</title>
   <style>
 	*,
@@ -122,7 +126,7 @@ export const createErrorPage = (title: string, message: string) => {
 	}
 
 	body {
-		font-family: Open Sans;
+		font-family: Open Sans, sans-serif;
 		font-weight: 400;
 		font-size: 12px;
 		display: flex;
@@ -184,7 +188,7 @@ export const createErrorPage = (title: string, message: string) => {
         </div>
       </div>
 			<div class="n8n-link">
-				<a href="https://n8n.io/?utm_source=n8n-internal&amp;utm_medium=form-trigger&amp;utm_campaign=b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"
+				<a href="https://n8n.io/?utm_source=n8n-internal&amp;utm_medium=form-trigger&amp;${utm_campaign}"
 					target="_blank">
 					Form automated with
 					<svg width="73" height="20" viewBox="0 0 73 20" fill="none" xmlns="http://www.w3.org/2000/svg">
