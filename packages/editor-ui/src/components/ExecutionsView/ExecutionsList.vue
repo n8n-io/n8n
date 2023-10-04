@@ -56,7 +56,7 @@ import { useToast, useMessage } from '@/composables';
 import { v4 as uuid } from 'uuid';
 import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { range } from '@/utils/arrayUtils';
+import { range as _range } from 'lodash-es';
 import { debounceHelper } from '@/mixins/debounce';
 import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -386,13 +386,14 @@ export default defineComponent({
 
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
-				const currentId = parseInt(currentItem.id || '0', 10);
-				if (lastId !== 0) {
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && !isNaN(currentId)) {
 					if (currentId - lastId > 1) {
-						gaps.push(...range(lastId + 1, currentId));
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
 					}
 				}
-				lastId = currentId;
+				lastId = parseInt(currentItem.id, 10) || 0;
 
 				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
 				if (executionIndex !== -1) {

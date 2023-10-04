@@ -301,7 +301,7 @@ import type {
 	ExecutionsQueryFilter,
 } from '@/Interface';
 import type { IExecutionsSummary, ExecutionStatus } from 'n8n-workflow';
-import { range } from '@/utils/arrayUtils';
+import { range as _range } from 'lodash-es';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { isEmpty, setPageTitle } from '@/utils';
@@ -591,18 +591,19 @@ export default defineComponent({
 
 			for (let i = pastExecutions.results.length - 1; i >= 0; i--) {
 				const currentItem = pastExecutions.results[i];
-				const currentId = parseInt(currentItem.id || '0', 10);
-				if (lastId !== 0) {
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && !isNaN(currentId)) {
 					// We are doing this iteration to detect possible gaps.
 					// The gaps are used to remove executions that finished
 					// and were deleted from database but were displaying
 					// in this list while running.
 					if (currentId - lastId > 1) {
 						// We have some gaps.
-						gaps.push(...range(lastId + 1, currentId));
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
 					}
 				}
-				lastId = currentId;
+				lastId = parseInt(currentItem.id, 10) || 0;
 
 				// Check new results from end to start
 				// Add new items accordingly.
@@ -696,6 +697,11 @@ export default defineComponent({
 				this.showError(error, this.i18n.baseText('executionsList.showError.loadMore.title'));
 				return;
 			}
+
+			data.results = data.results.map((execution) => {
+				// @ts-ignore
+				return { ...execution, mode: execution.mode };
+			});
 
 			this.finishedExecutions.push(...data.results);
 			this.finishedExecutionsCount = data.count;
@@ -1056,8 +1062,8 @@ export default defineComponent({
 
 .execTable {
 	/*
-	  Table height needs to be set to 0 in order to use height 100% for elements in table cells
-	*/
+    Table height needs to be set to 0 in order to use height 100% for elements in table cells
+  */
 	height: 0;
 	width: 100%;
 	text-align: left;
@@ -1108,8 +1114,8 @@ export default defineComponent({
 			padding: 0 var(--spacing-s) 0 0;
 
 			/*
-			  This is needed instead of table cell border because they are overlapping the sticky header
-			*/
+        This is needed instead of table cell border because they are overlapping the sticky header
+      */
 			&::before {
 				content: '';
 				display: inline-block;
