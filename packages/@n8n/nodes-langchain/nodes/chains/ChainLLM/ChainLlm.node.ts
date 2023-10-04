@@ -18,7 +18,6 @@ async function createSimpleLLMChain(llm: BaseLanguageModel, query: string): Prom
 	const chain = new LLMChain({
 		llm,
 		prompt: PromptTemplate.fromTemplate(query),
-		outputKey: 'output',
 	});
 	const response = (await chain.call({})) as string[];
 
