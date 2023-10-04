@@ -115,7 +115,12 @@ const downloadVersion = async (id: WorkflowVersionId) => {
 				type: 'application/json;charset=utf-8',
 			},
 		);
-		saveAs(blob, activeWorkflow.value.name.replace(/[^a-z0-9]/gi, '_') + '.json');
+		saveAs(
+			blob,
+			`${activeWorkflow.value.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${
+				workflowVersion.versionId
+			}.json`,
+		);
 	}
 };
 
