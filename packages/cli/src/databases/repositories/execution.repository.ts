@@ -119,10 +119,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	setSoftDeletionInterval() {
 		this.logger.debug(
-			`Setting soft-deletion interval (pruning) for executions with rate ${this.rates.hardDeletion}`,
+			`Setting soft-deletion interval (pruning) for executions with rate ${this.rates.softDeletion}`,
 		);
 
-		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.hardDeletion);
+		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.softDeletion);
 	}
 
 	setHardDeletionInterval() {
