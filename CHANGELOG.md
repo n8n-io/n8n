@@ -1,3 +1,23 @@
+## [1.9.1](https://github.com/n8n-io/n8n/compare/n8n@1.9.0...n8n@1.9.1) (2023-10-04)
+
+
+### Bug Fixes
+
+* **core:** Account for itemless case on restoring binary data ID ([#7305](https://github.com/n8n-io/n8n/issues/7305)) ([c479d86](https://github.com/n8n-io/n8n/commit/c479d867af75b001919f1370ff1f97703e503b6d))
+* **core:** Fix pruning of non-finished executions ([#7333](https://github.com/n8n-io/n8n/issues/7333)) ([d8309a1](https://github.com/n8n-io/n8n/commit/d8309a1aff8cb662068ff0651d99789381b553f6))
+* **editor:** Disable email confirmation banner for trialing users ([#7340](https://github.com/n8n-io/n8n/issues/7340)) ([3815327](https://github.com/n8n-io/n8n/commit/3815327666b9df5cda543e3963e3815c30d5a0bc))
+* **editor:** Display value of selected matching column in RMC ([#7298](https://github.com/n8n-io/n8n/issues/7298)) ([9fbd22e](https://github.com/n8n-io/n8n/commit/9fbd22e7d3023694dab6edf66d2e2f9885f61c86))
+* **editor:** Fix canvas endpoint snapping when dragging connection ([#7346](https://github.com/n8n-io/n8n/issues/7346)) ([b4681e7](https://github.com/n8n-io/n8n/commit/b4681e75deab0b4cab07e2f3b66f275f99d82085))
+* **editor:** Fix RLC not loading when an expression can't resolve ([#7295](https://github.com/n8n-io/n8n/issues/7295)) ([116a6df](https://github.com/n8n-io/n8n/commit/116a6df8a8c0c0fc9a15abb1a40a526ca177b7b0))
+* **editor:** Separate cloud endpoint calls ([#7312](https://github.com/n8n-io/n8n/issues/7312)) ([54610b0](https://github.com/n8n-io/n8n/commit/54610b0164d2249a93bab2b739cc639929c7f479))
+* **Jira Software Node:** Get all users in dropdown/RLC ([#7322](https://github.com/n8n-io/n8n/issues/7322)) ([7abf13b](https://github.com/n8n-io/n8n/commit/7abf13b8b8f68e7bb7f7030b83457b71f5f2d354)), closes [#2670](https://github.com/n8n-io/n8n/issues/2670)
+* **Notion Node:** Rename Notion API Key to Internal Integration Token ([#7176](https://github.com/n8n-io/n8n/issues/7176)) ([e606ded](https://github.com/n8n-io/n8n/commit/e606dedef7107d22a4814335eeadadfca4857c5a))
+* **Postgres Node:** Node requires comma-separated string even when using a single parameter through an expression ([#7300](https://github.com/n8n-io/n8n/issues/7300)) ([43534ab](https://github.com/n8n-io/n8n/commit/43534ab31b8bfdb3fde60fb65b6b4d9c076ae249))
+* **Set Node:** Do not stringify null and undefined ([#7313](https://github.com/n8n-io/n8n/issues/7313)) ([326abaa](https://github.com/n8n-io/n8n/commit/326abaa17e478d5036b051c96635c4dea979afe4))
+* **Typeform Trigger Node:** Change output format for TypeForm trigger to object instead of array ([#7315](https://github.com/n8n-io/n8n/issues/7315)) ([b1fc981](https://github.com/n8n-io/n8n/commit/b1fc981202b5f2149a672e5a819d0d1c9a5a7e77))
+
+
+
 # [1.9.0](https://github.com/n8n-io/n8n/compare/n8n@1.8.0...n8n@1.9.0) (2023-09-28)
 
 
