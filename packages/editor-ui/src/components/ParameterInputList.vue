@@ -35,6 +35,15 @@
 				@action="onNoticeAction"
 			/>
 
+			<n8n-button
+				v-else-if="parameter.type === 'button'"
+				class="parameter-item"
+				block
+				@click="onButtonAction(parameter)"
+			>
+				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
+			</n8n-button>
+
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
@@ -150,6 +159,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { getMainAuthField, getNodeAuthFields, isAuthRelatedParameter } from '@/utils';
 import { get, set } from 'lodash-es';
+import { nodeViewEventBus } from '@/event-bus';
 
 const FixedCollectionParameter = defineAsyncComponent(
 	async () => import('./FixedCollectionParameter.vue'),
@@ -271,9 +281,9 @@ export default defineComponent({
 			);
 
 			// Get names of all fields that credentials rendering depends on (using displayOptions > show)
-			if (nodeType && nodeType.credentials) {
+			if (nodeType?.credentials) {
 				for (const cred of nodeType.credentials) {
-					if (cred.displayOptions && cred.displayOptions.show) {
+					if (cred.displayOptions?.show) {
 						Object.keys(cred.displayOptions.show).forEach((fieldName) =>
 							dependencies.add(fieldName),
 						);
@@ -317,7 +327,7 @@ export default defineComponent({
 		},
 
 		mustHideDuringCustomApiCall(parameter: INodeProperties, nodeValues: INodeParameters): boolean {
-			if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+			if (parameter?.displayOptions?.hide) return true;
 
 			const MUST_REMAIN_VISIBLE = [
 				'authentication',
@@ -404,7 +414,7 @@ export default defineComponent({
 				}
 			} while (resolveKeys.length !== 0);
 
-			if (parameterGotResolved === true) {
+			if (parameterGotResolved) {
 				if (this.path) {
 					rawValues = deepCopy(this.nodeValues);
 					set(rawValues, this.path, nodeValues);
@@ -422,6 +432,16 @@ export default defineComponent({
 		onNoticeAction(action: string) {
 			if (action === 'activate') {
 				this.$emit('activate');
+			}
+		},
+		onButtonAction(parameter: INodeProperties) {
+			const action: string | undefined = parameter.typeOptions?.action;
+
+			switch (action) {
+				case 'openChat':
+					this.ndvStore.setActiveNodeName(null);
+					nodeViewEventBus.emit('openChat');
+					break;
 			}
 		},
 		isNodeAuthField(name: string): boolean {

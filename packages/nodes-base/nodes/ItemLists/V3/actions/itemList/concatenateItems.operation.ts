@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
@@ -307,6 +308,7 @@ export async function execute(
 		returnData.push(newItem);
 	} else {
 		let newItems: IDataObject[] = items.map((item) => item.json);
+		let pairedItem: IPairedItemData[] = [];
 		const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
 
 		const fieldsToExclude = prepareFieldsArray(
@@ -320,7 +322,7 @@ export async function execute(
 		);
 
 		if (fieldsToExclude.length || fieldsToInclude.length) {
-			newItems = newItems.reduce((acc, item) => {
+			newItems = newItems.reduce((acc, item, index) => {
 				const newItem: IDataObject = {};
 				let outputFields = Object.keys(item);
 
@@ -340,12 +342,17 @@ export async function execute(
 				if (isEmpty(newItem)) {
 					return acc;
 				}
+
+				pairedItem.push({ item: index });
 				return acc.concat([newItem]);
 			}, [] as IDataObject[]);
+		} else {
+			pairedItem = Array.from({ length: newItems.length }, (_, item) => ({
+				item,
+			}));
 		}
 
-		const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
-
+		const output: INodeExecutionData = { json: { [destinationFieldName]: newItems }, pairedItem };
 		returnData.push(output);
 	}
 

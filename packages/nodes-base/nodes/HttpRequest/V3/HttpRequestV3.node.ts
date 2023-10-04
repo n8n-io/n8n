@@ -1430,6 +1430,10 @@ export class HttpRequestV3 implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			response = promisesResponses.shift();
 			if (response!.status !== 'fulfilled') {
+				if (response.reason.statusCode === 429) {
+					response.reason.message =
+						"Try spacing your requests out using the batching settings under 'Options'";
+				}
 				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();

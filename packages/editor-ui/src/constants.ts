@@ -1,4 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -26,6 +27,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
+export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -35,6 +37,7 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
@@ -86,16 +89,21 @@ export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creati
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
+export const NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS = false;
+export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
+
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
+export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
 export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
+export const GOOGLE_GMAIL_NODE_TYPE = 'n8n-nodes-base.gmail';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
@@ -112,6 +120,7 @@ export const JIRA_NODE_TYPE = 'n8n-nodes-base.jira';
 export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
+export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
@@ -128,6 +137,7 @@ export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
 export const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
+export const TELEGRAM_NODE_TYPE = 'n8n-nodes-base.telegram';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
 export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
@@ -153,7 +163,10 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 ];
+
+export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
@@ -164,6 +177,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 > = {
 	NO_TRIGGER_EXECUTION_TOOLTIP: 'no_trigger_execution_tooltip',
 	PLUS_ENDPOINT: 'plus_endpoint',
+	ADD_INPUT_ENDPOINT: 'add_input_endpoint',
 	TRIGGER_PLACEHOLDER_BUTTON: 'trigger_placeholder_button',
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
@@ -175,16 +189,38 @@ export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const CORE_VARIANT_NODES_CATEGORY = 'Core Variant Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
+export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
+export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
-export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
+export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
+export const AI_CATEGORY_AGENTS = 'Agents';
+export const AI_CATEGORY_CHAINS = 'Chains';
+export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
+export const AI_CATEGORY_MEMORY = 'Memory';
+export const AI_CATEGORY_OUTPUTPARSER = 'Output Parsers';
+export const AI_CATEGORY_TOOLS = 'Tools';
+export const AI_CATEGORY_VECTOR_STORES = 'Vector Stores';
+export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
+export const AI_CATEGORY_EMBEDDING = 'Embeddings';
+export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
+export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
+
+// Node Connection Types
+export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.AiTool,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.Main,
+];
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -591,3 +627,5 @@ export const nonExistingJsonPath = '_!^&*';
 export const ASK_AI_MAX_PROMPT_LENGTH = 600;
 export const ASK_AI_MIN_PROMPT_LENGTH = 15;
 export const ASK_AI_LOADING_DURATION_MS = 12000;
+
+export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
