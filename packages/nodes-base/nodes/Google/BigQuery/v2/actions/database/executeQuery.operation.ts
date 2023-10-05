@@ -225,9 +225,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const jobId = response?.jobReference?.jobId;
 			const raw = rawOutput || (options.dryRun as boolean) || false;
+			const location = options.location || response.jobReference.location;
 
 			if (response.status?.state === 'DONE') {
-				const location = options.location || response.jobReference.location;
 				const qs = { location };
 
 				const queryResponse: IDataObject = await googleApiRequest.call(
