@@ -1092,6 +1092,8 @@ export interface IDisplayOptions {
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 	show?: {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		'@version'?: number[];
 		[key: string]: NodeParameterValue[] | undefined;
 	};
 
