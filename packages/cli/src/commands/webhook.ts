@@ -85,6 +85,7 @@ export class Webhook extends BaseCommand {
 		}
 
 		await this.initCrashJournal();
+		this.logger.debug('Crash journal initialized');
 
 		this.logger.info('Initializing n8n webhook process');
 		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
@@ -92,9 +93,13 @@ export class Webhook extends BaseCommand {
 		await super.init();
 
 		await this.initLicense();
+		this.logger.debug('License init complete');
 		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
+		this.logger.debug('External seecrets init complete');
 	}
 
 	async run() {
