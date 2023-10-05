@@ -3034,7 +3034,10 @@ export class HubspotV2 implements INodeType {
 						throw new NodeOperationError(this.getNode(), error as string);
 					}
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: (error as JsonObject).message } });
+						returnData.push({
+							json: { error: (error as JsonObject).message },
+							pairedItem: { item: i },
+						});
 						continue;
 					}
 					throw error;

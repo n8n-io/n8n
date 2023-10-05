@@ -442,6 +442,7 @@ export class MicrosoftSql implements INodeType {
 
 		// Close the connection
 		await pool.close();
+
 		const itemData = generatePairedItemData(items.length);
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
