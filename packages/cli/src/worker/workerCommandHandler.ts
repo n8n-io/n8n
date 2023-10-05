@@ -7,12 +7,14 @@ import Container from 'typedi';
 import { License } from '@/License';
 import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '../ExternalSecrets/ExternalSecretsManager.ee';
+import type { IExecutionsCurrentSummary } from '@/Interfaces';
 
 export function getWorkerCommandReceivedHandler(options: {
 	queueModeId: string;
 	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
+	getRunningJobSummary: () => Array<IExecutionsCurrentSummary & { name: string }>;
 }) {
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
@@ -41,6 +43,7 @@ export function getWorkerCommandReceivedHandler(options: {
 							payload: {
 								workerId: options.queueModeId,
 								runningJobs: options.getRunningJobIds(),
+								runningJobsSummary: options.getRunningJobSummary(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
 								uptime: process.uptime(),

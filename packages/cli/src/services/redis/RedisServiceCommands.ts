@@ -1,3 +1,5 @@
+import type { IExecutionsCurrentSummary } from '@/Interfaces';
+
 export type RedisServiceCommand =
 	| 'getStatus'
 	| 'getId'
@@ -29,6 +31,7 @@ export type RedisServiceWorkerResponseObject = {
 			payload: {
 				workerId: string;
 				runningJobs: string[];
+				runningJobsSummary: IExecutionsCurrentSummary[];
 				freeMem: number;
 				totalMem: number;
 				uptime: number;

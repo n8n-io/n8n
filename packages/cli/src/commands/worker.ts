@@ -29,7 +29,7 @@ import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
-import type { ICredentialsOverwrite } from '@/Interfaces';
+import type { ICredentialsOverwrite, IExecutionsCurrentSummary } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '../eventbus';
@@ -54,6 +54,10 @@ export class Worker extends BaseCommand {
 
 	static runningJobs: {
 		[key: string]: PCancelable<IRun>;
+	} = {};
+
+	static runningJobsSummary: {
+		[key: string]: IExecutionsCurrentSummary & { name: string };
 	} = {};
 
 	static jobQueue: JobQueue;
@@ -234,11 +238,21 @@ export class Worker extends BaseCommand {
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
+		Worker.runningJobsSummary[job.id] = {
+			id: executionId,
+			name: fullExecutionData.workflowData.name,
+			mode: fullExecutionData.mode,
+			startedAt: fullExecutionData.startedAt,
+			workflowId: fullExecutionData.workflowId ?? '',
+			retryOf: fullExecutionData.retryOf ?? '',
+			status: fullExecutionData.status,
+		};
 
 		// Wait till the execution is finished
 		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
+		delete Worker.runningJobsSummary[job.id];
 
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
 		// already!
@@ -311,6 +325,7 @@ export class Worker extends BaseCommand {
 				instanceId: this.instanceId,
 				redisPublisher: this.redisPublisher,
 				getRunningJobIds: () => Object.keys(Worker.runningJobs),
+				getRunningJobSummary: () => Object.values(Worker.runningJobsSummary),
 			}),
 		);
 	}
