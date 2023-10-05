@@ -15,7 +15,7 @@ describe('Node Creator', () => {
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
-		nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+		nodeCreatorFeature.getters.nodeCreator().contains('What triggers this workflow?').should('be.visible');
 	});
 
 	it('should navigate subcategory', () => {
@@ -73,7 +73,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 
 		nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
-		nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+		nodeCreatorFeature.getters.nodeCreator().contains('What triggers this workflow?').should('be.visible');
 		nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
 		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');

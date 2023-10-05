@@ -28,6 +28,8 @@ const i18n = useI18n();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
+const authorElement = ref<HTMLElement | null>(null);
+const isAuthorElementTruncated = ref(false);
 
 const formattedCreatedAtDate = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
@@ -75,6 +77,8 @@ onMounted(() => {
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isActive: props.isActive,
 	});
+	isAuthorElementTruncated.value =
+		authorElement.value?.scrollWidth > authorElement.value?.clientWidth;
 });
 </script>
 <template>
@@ -89,9 +93,9 @@ onMounted(() => {
 	>
 		<p @click="onItemClick">
 			<time :datetime="item.createdAt">{{ formattedCreatedAtDate }}</time>
-			<n8n-tooltip placement="right-end" :disabled="authors.size < 2">
+			<n8n-tooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 				<template #content>{{ props.item.authors }}</template>
-				<span>{{ authors.label }}</span>
+				<span ref="authorElement">{{ authors.label }}</span>
 			</n8n-tooltip>
 			<data :value="item.versionId">{{ idLabel }}</data>
 		</p>
@@ -128,17 +132,15 @@ onMounted(() => {
 		cursor: pointer;
 
 		time {
-			padding: 0 0 var(--spacing-2xs);
+			padding: 0 0 var(--spacing-3xs);
 			color: var(--color-text-dark);
 			font-size: var(--font-size-s);
 			font-weight: var(--font-weight-bold);
 		}
 
-		span {
-			justify-self: start;
-		}
-
+		span,
 		data {
+			justify-self: start;
 			max-width: 160px;
 			white-space: nowrap;
 			overflow: hidden;

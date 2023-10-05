@@ -196,6 +196,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannerStack: [],
 	}),
 	getters: {
+		logo() {
+			const { releaseChannel } = useSettingsStore().settings;
+			return releaseChannel === 'stable'
+				? 'n8n-logo-expanded.svg'
+				: `n8n-${releaseChannel}-logo.svg`;
+		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;

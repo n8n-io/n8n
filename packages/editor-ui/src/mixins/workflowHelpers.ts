@@ -1,70 +1,70 @@
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WEBHOOK_NODE_TYPE,
-	VIEWS,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 import type {
 	IConnections,
 	IDataObject,
+	IExecuteData,
 	INode,
+	INodeConnection,
+	INodeCredentials,
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
-	NodeParameterValue,
-	INodeCredentials,
+	INodeProperties,
 	INodeType,
 	INodeTypes,
 	IRunExecutionData,
-	IWorkflowIssues,
-	IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-	IExecuteData,
-	INodeConnection,
 	IWebhookDescription,
-	INodeProperties,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowIssues,
 	IWorkflowSettings,
+	NodeParameterValue,
+	Workflow,
 } from 'n8n-workflow';
 import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
 
 import type {
+	ICredentialsResponse,
 	INodeTypesMaxCount,
 	INodeUi,
-	IWorkflowData,
-	IWorkflowDb,
-	IWorkflowDataUpdate,
-	XYPosition,
 	ITag,
+	IWorkflowData,
+	IWorkflowDataUpdate,
+	IWorkflowDb,
 	TargetItem,
-	ICredentialsResponse,
+	XYPosition,
 } from '../Interface';
 
+import { useMessage, useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useToast, useMessage } from '@/composables';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { isEqual } from 'lodash-es';
 
-import { v4 as uuid } from 'uuid';
-import { getSourceItems } from '@/utils';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNDVStore } from '@/stores/ndv.store';
-import { useTemplatesStore } from '@/stores/templates.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getSourceItems } from '@/utils';
+import { v4 as uuid } from 'uuid';
 import { useSettingsStore } from '@/stores/settings.store';
-import { getWorkflowPermissions } from '@/permissions';
-import type { IPermissions } from '@/permissions';
 
 export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
 	const nodeType = useNodeTypesStore().getNodeType(node.type);
@@ -233,35 +233,26 @@ export function resolveRequiredParameters(
 		inputBranchIndex?: number;
 	} = {},
 ): IDataObject | null {
-	const loadOptionsDependsOn = currentParameter?.typeOptions?.loadOptionsDependsOn ?? [];
+	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
-	const initial: { required: INodeParameters; nonrequired: INodeParameters } = {
-		required: {},
-		nonrequired: {},
-	};
+	const resolvedParameters = Object.fromEntries(
+		Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
+			const required = loadOptionsDependsOn.has(name);
 
-	const { required, nonrequired }: INodeParameters = Object.keys(parameters).reduce(
-		(accu, name: string) => {
-			const required = loadOptionsDependsOn.includes(name);
-			accu[required ? 'required' : 'nonrequired'][name] = parameters[name];
-
-			return accu;
-		},
-		initial,
+			if (required) {
+				return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+			} else {
+				try {
+					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+				} catch (error) {
+					// ignore any expressions errors for non required parameters
+					return [name, null];
+				}
+			}
+		}),
 	);
 
-	const resolvedRequired = resolveParameter(required, opts);
-	let resolvedNonrequired: IDataObject | null = {};
-	try {
-		resolvedNonrequired = resolveParameter(nonrequired, opts);
-	} catch (e) {
-		// ignore any expression errors for example
-	}
-
-	return {
-		...resolvedRequired,
-		...(resolvedNonrequired ?? {}),
-	};
+	return resolvedParameters;
 }
 
 function getCurrentWorkflow(copyData?: boolean): Workflow {

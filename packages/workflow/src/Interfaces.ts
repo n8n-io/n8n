@@ -2246,7 +2246,7 @@ export interface IN8nUISettings {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	versionCli: string;
-	isBetaRelease: boolean;
+	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
 		[key: string]: string | number | undefined;
@@ -2328,6 +2328,10 @@ export interface IN8nUISettings {
 	};
 	ai: {
 		enabled: boolean;
+	};
+	workflowHistory: {
+		pruneTime: number;
+		licensePruneTime: number;
 	};
 }
 

@@ -303,7 +303,6 @@ export const routes = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			keepWorkflowAlive: true,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
