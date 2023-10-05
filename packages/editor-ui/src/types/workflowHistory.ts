@@ -1,4 +1,5 @@
-import type { IWorkflowDb } from '@/Interface';
+import type { IConnections } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 
 export type WorkflowHistory = {
 	versionId: string;
@@ -9,8 +10,11 @@ export type WorkflowHistory = {
 
 export type WorkflowVersionId = WorkflowHistory['versionId'];
 
-export type WorkflowVersion = WorkflowHistory &
-	Pick<IWorkflowDb, 'nodes' | 'connections'> & { workflowId: IWorkflowDb['id'] };
+export type WorkflowVersion = WorkflowHistory & {
+	workflowId: string;
+	nodes: INodeUi[];
+	connections: IConnections;
+};
 
 export type WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
 
