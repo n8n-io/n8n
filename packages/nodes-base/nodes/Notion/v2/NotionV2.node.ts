@@ -301,31 +301,7 @@ export class NotionV2 implements INodeType {
 						const results = responseData.results;
 
 						if (fetchNestedBlocks) {
-							let blocksCount = 0;
-							const blocks = [];
-
-							for (const result of results) {
-								const currentLimit = limit - blocksCount;
-								if (currentLimit <= 0) {
-									break;
-								}
-
-								if (result.has_children) {
-									const blockWithChildrens = await notionApiRequestGetBlockChildrens.call(
-										this,
-										[result],
-										currentLimit,
-									);
-
-									blocksCount += (blockWithChildrens as IDataObject[]).length;
-									blocks.push(...(blockWithChildrens as IDataObject[]));
-								} else {
-									blocksCount++;
-									blocks.push(result);
-								}
-							}
-
-							responseData = blocks;
+							responseData = await notionApiRequestGetBlockChildrens.call(this, results, [], limit);
 						} else {
 							responseData = results;
 						}

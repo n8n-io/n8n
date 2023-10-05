@@ -111,20 +111,14 @@ export async function notionApiRequestAllItems(
 export async function notionApiRequestGetBlockChildrens(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	blocks: IDataObject[],
+	responseData: IDataObject[] = [],
 	limit?: number,
 ) {
-	if (blocks.length === 0) {
-		return;
-	}
-	const responseData = blocks;
-
-	let currentLimit;
-
-	if (limit) {
-		currentLimit = limit - blocks.length;
-	}
+	if (blocks.length === 0) return responseData;
 
 	for (const block of blocks) {
+		responseData.push(block);
+
 		if (block.type === 'child_page') continue;
 
 		if (block.has_children) {
@@ -141,19 +135,15 @@ export async function notionApiRequestGetBlockChildrens(
 				...entry,
 			}));
 
-			if (currentLimit) {
-				if (childrens.length > currentLimit) {
-					childrens = childrens.slice(0, currentLimit);
-					responseData.push(...childrens);
-					break;
-				} else {
-					currentLimit -= childrens.length;
-				}
-			}
+			await notionApiRequestGetBlockChildrens.call(this, childrens, responseData);
+		}
 
-			responseData.push(
-				...((await notionApiRequestGetBlockChildrens.call(this, childrens)) as IDataObject[]),
-			);
+		if (limit && responseData.length === limit) {
+			return responseData;
+		}
+
+		if (limit && responseData.length > limit) {
+			return responseData.slice(0, limit);
 		}
 	}
 
