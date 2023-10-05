@@ -97,6 +97,7 @@ export class Webhook extends BaseCommand {
 		await this.initLicense();
 		this.logger.debug('License init complete');
 		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
