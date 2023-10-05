@@ -118,7 +118,7 @@ export async function terminate() {
 export async function truncate(collections: CollectionName[]) {
 	const [tag, rest] = separate(collections, (c) => c === 'Tag');
 
-	if (tag) {
+	if (tag.length) {
 		await Container.get(TagRepository).delete({});
 		await Container.get(WorkflowTagMappingRepository).delete({});
 	}
