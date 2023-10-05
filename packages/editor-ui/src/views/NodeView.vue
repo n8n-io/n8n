@@ -2196,6 +2196,7 @@ export default defineComponent({
 			if (lastSelectedNodeEndpointUuid) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
+					lastSelectedEndpoint &&
 					this.checkNodeConnectionAllowed(
 						lastSelectedNode!,
 						newNodeData,
@@ -2367,7 +2368,14 @@ export default defineComponent({
 			);
 
 			if (targetNodeType?.inputs?.length) {
-				for (const input of targetNodeType?.inputs || []) {
+				const workflow = this.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(targetNode.name);
+				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				if (targetNodeType) {
+					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, targetNodeType);
+				}
+
+				for (const input of inputs || []) {
 					if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
 						// No filters defined or wrong connection type
 						continue;
