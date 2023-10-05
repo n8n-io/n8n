@@ -1,11 +1,11 @@
 import './main.scss';
 
 import { createApp } from 'vue';
-import { createPinia } from 'pinia';
 import App from './App.vue';
 import type { ChatOptions } from '@/types';
-import { ChatOptionsSymbol, defaultMountingTarget, defaultOptions } from '@/constants';
+import { defaultMountingTarget, defaultOptions } from '@/constants';
 import { createDefaultMountingTarget } from '@/utils';
+import { ChatPlugin } from '@/plugins';
 
 export function createChat(options?: Partial<ChatOptions>) {
 	const resolvedOptions: ChatOptions = {
@@ -36,8 +36,7 @@ export function createChat(options?: Partial<ChatOptions>) {
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	const app = createApp(App);
-	app.use(createPinia());
-	app.provide(ChatOptionsSymbol, resolvedOptions);
+	app.use(ChatPlugin, resolvedOptions);
 	app.mount(mountingTarget);
 	return app;
 }

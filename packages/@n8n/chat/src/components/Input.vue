@@ -1,13 +1,11 @@
 <script setup lang="ts">
 // eslint-disable-next-line import/no-unresolved
 import IconSend from 'virtual:icons/mdi/send';
-import { useI18n } from '@/composables';
+import { useI18n, useChat } from '@/composables';
 import { computed, ref } from 'vue';
-import { useChatStore } from '@/stores/chat';
-import { storeToRefs } from 'pinia';
 
-const chatStore = useChatStore();
-const { waitingForResponse } = storeToRefs(chatStore);
+const chatStore = useChat();
+const { waitingForResponse } = chatStore;
 const { t } = useI18n();
 
 const input = ref('');
