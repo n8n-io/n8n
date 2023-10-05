@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
+import type { IWorkflowDataUpdate } from '@/Interface';
 import type {
 	WorkflowHistory,
 	WorkflowVersion,
@@ -42,28 +43,30 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			return null;
 		});
 
-	const cloneIntoNewWorkflow = async (workflowId: string, versionId: string) => {
+	const cloneIntoNewWorkflow = async (workflowId: string, workflowVersionId: string) => {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsStore.fetchWorkflow(workflowId),
-			getWorkflowVersion(workflowId, versionId),
+			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		if (workflow && newWorkflowData && workflowVersion?.nodes && workflowVersion?.connections) {
+		if (workflow && workflowVersion?.nodes && workflowVersion?.connections) {
 			const { connections, nodes } = workflowVersion;
-			const { id, ...newWorkflowData } = workflow;
-			const newWorkflow = {
-				newWorkflowData,
+			const { settings, tags } = workflow;
+			const newWorkflowData: IWorkflowDataUpdate = {
+				settings,
+				tags,
 				nodes,
 				connections,
+				active: false,
 				name: `${workflow.name} (clone)`,
 			};
-			console.log(newWorkflow);
+			await workflowsStore.createNewWorkflow(newWorkflowData);
 		}
 	};
 
 	return {
 		getWorkflowHistory,
 		getWorkflowVersion,
-        cloneIntoNewWorkflow,
+		cloneIntoNewWorkflow,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};
