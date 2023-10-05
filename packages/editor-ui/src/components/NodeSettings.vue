@@ -1023,7 +1023,7 @@ export default defineComponent({
 
 	.node-parameters-wrapper {
 		overflow-y: auto;
-		padding: 0 var(--spacing-m) var(--spacing-m) var(--spacing-m);
+		padding: 0 var(--spacing-m) 200px var(--spacing-m);
 	}
 
 	&.dragging {
