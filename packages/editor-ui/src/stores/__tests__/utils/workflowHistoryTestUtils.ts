@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { WorkflowHistory } from '@/types/workflowHistory';
+import type { WorkflowHistory, WorkflowVersion } from '@/types/workflowHistory';
 
 export const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
 	versionId: faker.string.nanoid(),
@@ -9,9 +9,10 @@ export const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
 	),
 });
 
-export const workflowVersionDataFactory: () => WorkflowHistory = () => ({
+export const workflowVersionDataFactory: () => WorkflowVersion = () => ({
 	...workflowHistoryDataFactory(),
-	workflow: {
-		name: faker.lorem.words(3),
-	},
+	updatedAt: faker.date.past().toDateString(),
+	workflowId: faker.string.nanoid(),
+	connections: {},
+	nodes: [],
 });

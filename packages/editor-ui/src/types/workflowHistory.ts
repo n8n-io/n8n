@@ -9,9 +9,10 @@ export type WorkflowHistory = {
 export type WorkflowVersionId = WorkflowHistory['versionId'];
 
 export type WorkflowVersion = WorkflowHistory & {
+	updatedAt: string;
 	nodes: IWorkflowDb['nodes'];
-	connection: IWorkflowDb['connections'];
-	workflow: IWorkflowDb;
+	connections: IWorkflowDb['connections'];
+	workflowId: IWorkflowDb['id'];
 };
 
 export type WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
