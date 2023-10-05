@@ -38,17 +38,21 @@ export async function getMappingColumns(
 		canBeUsedToMatch: true,
 	}));
 
-	fields.push({
-		id: ROW_NUMBER,
-		displayName: ROW_NUMBER,
-		required: false,
-		defaultMatch: false,
-		display: true,
-		type: 'string',
-		canBeUsedToMatch: true,
-		readOnly: true,
-		removed: true,
-	});
+	const operation = this.getNodeParameter('operation', 0) as string;
+
+	if (operation === 'update') {
+		fields.push({
+			id: ROW_NUMBER,
+			displayName: ROW_NUMBER,
+			required: false,
+			defaultMatch: false,
+			display: true,
+			type: 'string',
+			canBeUsedToMatch: true,
+			readOnly: true,
+			removed: true,
+		});
+	}
 
 	return { fields };
 }

@@ -262,6 +262,7 @@ export async function execute(
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
+	//not used when updating row
 	const columnValues = await sheet.getColumnValues(
 		range,
 		keyIndex,
@@ -284,7 +285,7 @@ export async function execute(
 			if (handlingExtraDataOption === 'ignoreIt') {
 				data.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'error') {
+			if (handlingExtraDataOption === 'error' && columnsToMatchOn[0] !== 'row_number') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (!columnNames.includes(key)) {
 						throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
@@ -295,7 +296,7 @@ export async function execute(
 				});
 				data.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'insertInNewColumn') {
+			if (handlingExtraDataOption === 'insertInNewColumn' && columnsToMatchOn[0] !== 'row_number') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (!columnNames.includes(key)) {
 						newColumns.add(key);
@@ -363,17 +364,24 @@ export async function execute(
 			);
 		}
 
-		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
-			data,
-			columnsToMatchOn[0],
-			range,
-			headerRow,
-			firstDataRow,
-			valueRenderMode,
-			false,
-			[columnNames.concat([...newColumns])],
-			columnValues,
-		);
+		let preparedData;
+		if (columnsToMatchOn[0] === 'row_number') {
+			preparedData = sheet.prepareDataForUpdatingByRowNumber(data, range, [
+				columnNames.concat([...newColumns]),
+			]);
+		} else {
+			preparedData = await sheet.prepareDataForUpdateOrUpsert(
+				data,
+				columnsToMatchOn[0],
+				range,
+				headerRow,
+				firstDataRow,
+				valueRenderMode,
+				false,
+				[columnNames.concat([...newColumns])],
+				columnValues,
+			);
+		}
 
 		updateData.push(...preparedData.updateData);
 	}
