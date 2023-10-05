@@ -53,7 +53,12 @@ const i18n = useI18n();
 					<n8n-icon :class="$style.tooltipIcon" icon="cube" />
 				</n8n-tooltip>
 			</div>
-			<p :class="$style.description" v-if="description" v-text="description" />
+			<p
+				v-if="description"
+				data-test-id="node-creator-item-description"
+				:class="$style.description"
+				v-text="description"
+			/>
 		</div>
 		<slot name="dragContent" />
 		<button :class="$style.panelIcon" v-if="showActionArrow">

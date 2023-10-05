@@ -1713,10 +1713,18 @@ export function getVersionedNodeType(
 
 export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
 	if ('nodeVersions' in object) {
-		return Object.values(object.nodeVersions).map((element) => {
-			element.description.name = object.description.name;
-			return element;
-		});
+		return uniqBy(
+			Object.values(object.nodeVersions)
+				.map((element) => {
+					element.description.name = object.description.name;
+					return element;
+				})
+				.reverse(),
+			(node) => {
+				const { version } = node.description;
+				return Array.isArray(version) ? version.join(',') : version.toString();
+			},
+		);
 	}
 	return [object];
 }
@@ -1734,4 +1742,9 @@ export function getCredentialsForNode(
 	}
 
 	return object.description.credentials ?? [];
+}
+
+export function isNodeOfVersion(node: INodeTypeDescription, version: number): boolean {
+	const nodeVersion = node.version;
+	return Array.isArray(nodeVersion) ? nodeVersion.includes(version) : nodeVersion === version;
 }

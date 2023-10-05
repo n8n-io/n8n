@@ -13,7 +13,7 @@
 	>
 		<template #icon>
 			<div v-if="isSubNode" :class="$style.subNodeBackground"></div>
-			<node-icon :size="24" :class="$style.nodeIcon" :nodeType="nodeType" />
+			<node-icon :class="$style.nodeIcon" :nodeType="nodeType" />
 		</template>
 
 		<template #tooltip v-if="isCommunityNode">
@@ -40,21 +40,21 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue';
+import type { SimplifiedNodeType } from '@/Interface';
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-	CORE_NODES_CATEGORY,
-	CORE_VARIANT_NODES_CATEGORY,
+	CREDENTIAL_ONLY_NODE_PREFIX,
+	DEFAULT_SUBCATEGORY,
 } from '@/constants';
-import type { SimplifiedNodeType } from '@/Interface';
-import { computed, ref } from 'vue';
 
-import NodeIcon from '@/components/NodeIcon.vue';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { isCommunityPackageName } from '@/utils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import NodeIcon from '@/components/NodeIcon.vue';
 
-import { useI18n, useTelemetry } from '@/composables';
 import { useActions } from '../composables/useActions';
+import { useI18n, useTelemetry } from '@/composables';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 export interface Props {
@@ -78,11 +78,10 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
-	const shouldDisplayDescription = !!props.nodeType.codex?.categories?.find(
-		(category) => category === CORE_NODES_CATEGORY || category === CORE_VARIANT_NODES_CATEGORY,
-	);
-
-	if (!shouldDisplayDescription) {
+	if (
+		props.subcategory === DEFAULT_SUBCATEGORY &&
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+	) {
 		return '';
 	}
 

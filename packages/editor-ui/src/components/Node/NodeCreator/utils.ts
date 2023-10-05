@@ -1,9 +1,9 @@
 import type {
-	ActionCreateElement,
-	INodeCreateElement,
 	NodeCreateElement,
-	SimplifiedNodeType,
+	ActionCreateElement,
 	SubcategorizedNodeTypes,
+	SimplifiedNodeType,
+	INodeCreateElement,
 } from '@/Interface';
 import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';

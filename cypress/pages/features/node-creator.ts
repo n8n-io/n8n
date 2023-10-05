@@ -20,6 +20,7 @@ export class NodeCreator extends BasePage {
 		communityNodeTooltip: () => cy.getByTestId('node-item-community-tooltip'),
 		noResults: () => cy.getByTestId('node-creator-no-results'),
 		nodeItemName: () => cy.getByTestId('node-creator-item-name'),
+		nodeItemDescription: () => cy.getByTestId('node-creator-item-description'),
 		activeSubcategory: () => cy.getByTestId('nodes-list-header'),
 		expandedCategories: () =>
 			this.getters.creatorItem().find('>div').filter('.active').invoke('text'),

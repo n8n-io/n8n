@@ -151,6 +151,8 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 
+export const CREDENTIAL_ONLY_NODE_PREFIX = 'n8n-creds-base';
+
 export const EXECUTABLE_TRIGGER_NODE_TYPES = [
 	START_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -186,7 +188,6 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';
-export const CORE_VARIANT_NODES_CATEGORY = 'Core Variant Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
 export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
