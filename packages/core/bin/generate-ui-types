@@ -44,7 +44,7 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 				name: nodeName,
 			} = credentialType.httpRequestNodeVariant;
 
-			httpNodeClone.hidden = hasSupportedNodes;
+			httpNodeClone.description.hidden = hasSupportedNodes;
 			httpNodeClone.description.codex = httpNode.description.codex;
 			httpNodeClone.description.name = `${httpNode.description.name}:${credentialType.name}`;
 			httpNodeClone.description.credentials = [{ name: credentialType.name, required: true }];
@@ -52,11 +52,9 @@ function generateHttpRequestVariantNodes(knownCredentials, credentialTypes, http
 
 			httpNodeClone.description.defaults.name = `${nodeName} HTTP Request`;
 			httpNodeClone.description.description = 'HTTP request';
-			httpNodeClone.description.codex.categories = ['Core Variant Nodes'];
+			httpNodeClone.description.codex.categories = [];
 			httpNodeClone.description.codex.alias = [];
-			httpNodeClone.description.codex.subcategories = {
-				'Core Variant Nodes': ['Http'],
-			};
+			httpNodeClone.description.codex.subcategories = {};
 
 			if (credentialType.icon || credentialType.iconUrl) {
 				httpNodeClone.description.icon = credentialType.icon;
