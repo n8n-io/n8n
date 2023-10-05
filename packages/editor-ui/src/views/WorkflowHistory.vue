@@ -138,6 +138,9 @@ const onAction = async ({
 		case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
 			await downloadVersion(id);
 			break;
+		case WORKFLOW_HISTORY_ACTIONS.CLONE:
+			await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id);
+			break;
 	}
 };
 
