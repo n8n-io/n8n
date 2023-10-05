@@ -17,3 +17,4 @@ export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };
 export * from './errors';
 export { ObjectStoreService } from './ObjectStore/ObjectStore.service.ee';
+export { BinaryData } from './BinaryData/types';
