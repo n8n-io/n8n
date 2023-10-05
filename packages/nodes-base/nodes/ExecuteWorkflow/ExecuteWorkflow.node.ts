@@ -9,6 +9,7 @@ import type {
 	IWorkflowBase,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -203,7 +204,18 @@ export class ExecuteWorkflow implements INodeType {
 				workflowInfo.code = response;
 			}
 
-			const receivedData = await this.executeWorkflow(workflowInfo, items);
+			const receivedData = (await this.executeWorkflow(
+				workflowInfo,
+				items,
+			)) as INodeExecutionData[][];
+
+			const pairedItem = generatePairedItemData(items.length);
+
+			for (const output of receivedData) {
+				for (const item of output) {
+					item.pairedItem = pairedItem;
+				}
+			}
 
 			return receivedData;
 		} catch (error) {
