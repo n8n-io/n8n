@@ -12,7 +12,6 @@ import { jsonParse, NodeApiError } from 'n8n-workflow';
 
 import type { SortData, FileRecord } from '../GenericFunctions';
 import {
-	countBlocks,
 	downloadFiles,
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
@@ -318,7 +317,7 @@ export class NotionV2 implements INodeType {
 										currentLimit,
 									);
 
-									blocksCount += countBlocks(blockWithChildrens as IDataObject[]);
+									blocksCount += (blockWithChildrens as IDataObject[]).length;
 									blocks.push(...(blockWithChildrens as IDataObject[]));
 								} else {
 									blocksCount++;
