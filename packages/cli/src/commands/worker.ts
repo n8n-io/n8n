@@ -261,11 +261,19 @@ export class Worker extends BaseCommand {
 		await super.init();
 
 		await this.initLicense();
-
+		this.logger.debug('License init complete');
 		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
+		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
+		this.logger.debug('Event bus init complete');
+		await this.initRedis();
+		this.logger.debug('Redis init complete');
+		await this.initQueue();
+		this.logger.debug('Queue init complete');
 		await this.initOrchestration();
 		await this.initQueue();
 
@@ -307,8 +315,13 @@ export class Worker extends BaseCommand {
 
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
+		this.logger.debug(
+			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
+		);
+
 		const queue = Container.get(Queue);
 		await queue.init();
+		this.logger.debug('Queue singleton ready');
 		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),

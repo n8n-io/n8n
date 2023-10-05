@@ -1,6 +1,7 @@
 import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { META_KEY } from '../constants';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -345,5 +346,14 @@ describe('NDV', () => {
 
 		ndv.actions.close();
 		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+	});
+
+	it('should not push NDV header out with a lot of code in Code node editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.getters.parameterInput('jsCode').get('.cm-content').type('{selectall}').type('{backspace}');
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.parameterInput('jsCode').get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
 	});
 });

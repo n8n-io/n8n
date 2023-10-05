@@ -25,6 +25,7 @@ const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 beforeAll(async () => {
 	LoggerProxy.init(getLogger());
 	config.set('executions.mode', 'queue');
+	config.set('binaryDataManager.availableModes', 'filesystem');
 	mockInstance(Telemetry);
 	mockInstance(PostHogClient);
 	mockInstance(InternalHooks);

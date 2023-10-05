@@ -10,6 +10,7 @@ import {
 	getTrialExpiredUserResponse,
 	getTrialingUserResponse,
 	getUserCloudInfo,
+	getNotTrialingUserResponse,
 } from './utils/cloudStoreUtils';
 
 let uiStore: ReturnType<typeof useUIStore>;
@@ -123,10 +124,13 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL');
+		// There should be no email confirmation banner for trialing users
+		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
 	});
 
 	it('should add trial over banner to the the stack', async () => {
@@ -137,24 +141,27 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
+		// There should be no email confirmation banner for trialing users
+		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
 	});
 
 	it('should add email confirmation banner to the the stack', async () => {
 		const fetchCloudSpy = vi
 			.spyOn(cloudPlanApi, 'getCurrentPlan')
-			.mockResolvedValue(getTrialExpiredUserResponse());
+			.mockResolvedValue(getNotTrialingUserResponse());
 		const fetchUserCloudAccountSpy = vi
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(false));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
-		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
 		expect(uiStore.bannerStack).toContain('EMAIL_CONFIRMATION');
 	});
 });
