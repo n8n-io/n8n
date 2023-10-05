@@ -91,6 +91,7 @@ export const LICENSE_QUOTAS = {
 	TRIGGER_LIMIT: 'quota:activeWorkflows',
 	VARIABLES_LIMIT: 'quota:maxVariables',
 	USERS_LIMIT: 'quota:users',
+	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
@@ -106,4 +107,5 @@ export const TIME = {
 	SECOND: 1000,
 	MINUTE: 60 * 1000,
 	HOUR: 60 * 60 * 1000,
+	DAY: 24 * 60 * 60 * 1000,
 };

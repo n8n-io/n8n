@@ -2751,7 +2751,11 @@ export default defineComponent({
 
 								if (nodeType && inputs.length === 1) {
 									this.pullConnActiveNodeName = node.name;
-									const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
+									const endpointUUID = this.getInputEndpointUUID(
+										nodeName,
+										connection.parameters.type,
+										0,
+									);
 									if (endpointUUID) {
 										const endpoint = this.instance?.getEndpoint(endpointUUID);
 
