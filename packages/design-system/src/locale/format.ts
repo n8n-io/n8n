@@ -19,7 +19,7 @@ export default function () {
 			args = args[0] as unknown as Array<string | object>;
 		}
 
-		if (!args || !args.hasOwnProperty) {
+		if (!args?.hasOwnProperty) {
 			args = {} as unknown as Array<string | object>;
 		}
 

@@ -34,18 +34,21 @@ const {
 	pluralFieldWordCapitalized,
 } = useNodeSpecificationValues(props.typeOptions);
 
+const initialValue = computed<string | string[]>(() => {
+	return resourceMapperTypeOptions.value?.multiKeyMatch === true
+		? props.initialValue
+		: props.initialValue[0];
+});
+
 // Depending on the mode (multiple/singe key column), the selected value can be a string or an array of strings
 const state = reactive({
-	selected: props.initialValue as string[] | string,
+	selected: initialValue.value,
 });
 
 watch(
 	() => props.initialValue,
 	() => {
-		state.selected =
-			resourceMapperTypeOptions.value?.multiKeyMatch === true
-				? props.initialValue
-				: props.initialValue[0];
+		state.selected = initialValue.value;
 	},
 );
 

@@ -216,6 +216,7 @@ export class Start extends BaseCommand {
 		await this.initBinaryDataService();
 		await this.initExternalHooks();
 		await this.initExternalSecrets();
+		this.initWorkflowHistory();
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
