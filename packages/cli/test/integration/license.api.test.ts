@@ -63,13 +63,13 @@ describe('POST /license/activate', () => {
 
 	test('errors out properly', async () => {
 		License.prototype.activate = jest.fn().mockImplementation(() => {
-			throw new Error(ACTIVATION_FAILED_MESSAGE);
+			throw new Error('some fake error');
 		});
 
 		await authOwnerAgent
 			.post('/license/activate')
 			.send({ activationKey: 'abcde' })
-			.expect(400, { code: 400, message: ACTIVATION_FAILED_MESSAGE });
+			.expect(400, { code: 400, message: `${ACTIVATION_FAILED_MESSAGE}: some fake error` });
 	});
 });
 
