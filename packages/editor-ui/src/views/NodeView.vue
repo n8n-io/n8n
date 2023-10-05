@@ -2196,7 +2196,7 @@ export default defineComponent({
 			const targetEndpoint = lastSelectedNodeEndpointUuid || '';
 
 			// Handle connection of scoped_endpoint types
-			if (lastSelectedNodeEndpointUuid) {
+			if (lastSelectedNodeEndpointUuid && !isAutoAdd) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
 					this.checkNodeConnectionAllowed(
@@ -2224,7 +2224,7 @@ export default defineComponent({
 				}
 			}
 			// If a node is last selected then connect between the active and its child ones
-			if (lastSelectedNode) {
+			if (lastSelectedNode && !isAutoAdd) {
 				await this.$nextTick();
 
 				if (lastSelectedConnection?.__meta) {

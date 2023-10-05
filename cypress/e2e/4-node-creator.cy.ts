@@ -15,7 +15,10 @@ describe('Node Creator', () => {
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
-		nodeCreatorFeature.getters.nodeCreator().contains('What triggers this workflow?').should('be.visible');
+		nodeCreatorFeature.getters
+			.nodeCreator()
+			.contains('What triggers this workflow?')
+			.should('be.visible');
 	});
 
 	it('should navigate subcategory', () => {
@@ -73,7 +76,10 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 
 		nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
-		nodeCreatorFeature.getters.nodeCreator().contains('What triggers this workflow?').should('be.visible');
+		nodeCreatorFeature.getters
+			.nodeCreator()
+			.contains('What triggers this workflow?')
+			.should('be.visible');
 		nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
 		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
@@ -315,9 +321,23 @@ describe('Node Creator', () => {
 		});
 	});
 
-	it.only('should correctly append a No Op node when Loop Over Items node is added', () => {
-		WorkflowPage.actions.addNodeToCanvas('Manual');
+	it('should correctly append a No Op node when Loop Over Items node is added (from add button)', () => {
 		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
+	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
+		WorkflowPage.actions.addNodeToCanvas('Manual');
+		cy.get('.plus-endpoint').should('be.visible').click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
 		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
