@@ -79,8 +79,8 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...dataLocationOnSheet,
-			...outputFormatting,
+			dataLocationOnSheet,
+			outputFormatting,
 			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',

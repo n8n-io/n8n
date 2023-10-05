@@ -194,7 +194,15 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		options: [...cellFormat, ...locationDefine, ...handlingExtraData],
+		options: [
+			cellFormat,
+			locationDefine,
+			handlingExtraData,
+			{
+				...handlingExtraData,
+				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
+			},
+		],
 	},
 ];
 

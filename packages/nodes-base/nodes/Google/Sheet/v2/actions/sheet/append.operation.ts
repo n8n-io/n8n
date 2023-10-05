@@ -154,7 +154,7 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...cellFormat,
+			cellFormat,
 			{
 				displayName: 'Data Location on Sheet',
 				name: 'locationDefine',
@@ -181,7 +181,11 @@ export const description: SheetProperties = [
 					},
 				],
 			},
-			...handlingExtraData,
+			handlingExtraData,
+			{
+				...handlingExtraData,
+				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
+			},
 		],
 	},
 ];
