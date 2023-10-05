@@ -74,11 +74,13 @@ export async function initNodeTypes() {
 /**
  * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryDataService() {
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
 	const binaryDataService = new BinaryDataService();
-
-	await binaryDataService.init(config.getEnv('binaryDataManager'));
-
+	await binaryDataService.init({
+		mode,
+		availableModes: [mode],
+		localStoragePath: '',
+	});
 	Container.set(BinaryDataService, binaryDataService);
 }
 

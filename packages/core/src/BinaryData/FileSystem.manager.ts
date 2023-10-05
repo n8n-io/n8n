@@ -1,18 +1,10 @@
-/**
- * @tech_debt The `workflowId` arguments on write are for compatibility with the
- * `BinaryData.Manager` interface. Unused in filesystem mode until we refactor
- * how we store binary data files in the `/binaryData` dir.
- */
-
-import { createReadStream } from 'fs';
-import fs from 'fs/promises';
-import path from 'path';
+import { createReadStream } from 'node:fs';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
-import { rename } from 'node:fs/promises';
-
-import { FileNotFoundError } from '../errors';
 import { ensureDirExists } from './utils';
+import { FileNotFoundError } from '../errors';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -27,18 +19,36 @@ export class FileSystemManager implements BinaryData.Manager {
 		await ensureDirExists(this.storagePath);
 	}
 
+	async store(
+		workflowId: string,
+		executionId: string,
+		bufferOrStream: Buffer | Readable,
+		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
+	) {
+		const fileId = this.toFileId(workflowId, executionId);
+		const filePath = this.resolvePath(fileId);
+
+		await fs.writeFile(filePath, bufferOrStream);
+
+		const fileSize = await this.getSize(fileId);
+
+		await this.storeMetadata(fileId, { mimeType, fileName, fileSize });
+
+		return { fileId, fileSize };
+	}
+
 	getPath(fileId: string) {
 		return this.resolvePath(fileId);
 	}
 
 	async getAsStream(fileId: string, chunkSize?: number) {
-		const filePath = this.getPath(fileId);
+		const filePath = this.resolvePath(fileId);
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
 	}
 
 	async getAsBuffer(fileId: string) {
-		const filePath = this.getPath(fileId);
+		const filePath = this.resolvePath(fileId);
 
 		try {
 			return await fs.readFile(filePath);
@@ -51,30 +61,6 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(`${fileId}.metadata`);
 
 		return jsonParse(await fs.readFile(filePath, { encoding: 'utf-8' }));
-	}
-
-	async store(
-		_workflowId: string,
-		executionId: string,
-		bufferOrStream: Buffer | Readable,
-		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
-	) {
-		const fileId = this.toFileId(executionId);
-		const filePath = this.getPath(fileId);
-
-		await fs.writeFile(filePath, bufferOrStream);
-
-		const fileSize = await this.getSize(fileId);
-
-		await this.storeMetadata(fileId, { mimeType, fileName, fileSize });
-
-		return { fileId, fileSize };
-	}
-
-	async deleteOne(fileId: string) {
-		const filePath = this.getPath(fileId);
-
-		return fs.rm(filePath);
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
@@ -95,24 +81,25 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async copyByFilePath(
-		_workflowId: string,
+		workflowId: string,
 		executionId: string,
-		filePath: string,
+		sourcePath: string,
 		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
 	) {
-		const newFileId = this.toFileId(executionId);
+		const targetFileId = this.toFileId(workflowId, executionId);
+		const targetPath = this.resolvePath(targetFileId);
 
-		await fs.cp(filePath, this.getPath(newFileId));
+		await fs.cp(sourcePath, targetPath);
 
-		const fileSize = await this.getSize(newFileId);
+		const fileSize = await this.getSize(targetFileId);
 
-		await this.storeMetadata(newFileId, { mimeType, fileName, fileSize });
+		await this.storeMetadata(targetFileId, { mimeType, fileName, fileSize });
 
-		return { fileId: newFileId, fileSize };
+		return { fileId: targetFileId, fileSize };
 	}
 
-	async copyByFileId(_workflowId: string, executionId: string, sourceFileId: string) {
-		const targetFileId = this.toFileId(executionId);
+	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
+		const targetFileId = this.toFileId(workflowId, executionId);
 		const sourcePath = this.resolvePath(sourceFileId);
 		const targetPath = this.resolvePath(targetFileId);
 
@@ -122,12 +109,12 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async rename(oldFileId: string, newFileId: string) {
-		const oldPath = this.getPath(oldFileId);
-		const newPath = this.getPath(newFileId);
+		const oldPath = this.resolvePath(oldFileId);
+		const newPath = this.resolvePath(newFileId);
 
 		await Promise.all([
-			rename(oldPath, newPath),
-			rename(`${oldPath}.metadata`, `${newPath}.metadata`),
+			fs.rename(oldPath, newPath),
+			fs.rename(`${oldPath}.metadata`, `${newPath}.metadata`),
 		]);
 	}
 
@@ -135,7 +122,12 @@ export class FileSystemManager implements BinaryData.Manager {
 	//         private methods
 	// ----------------------------------
 
-	private toFileId(executionId: string) {
+	/**
+	 * @tech_debt The `workflowId` argument is for compatibility with the
+	 * `BinaryData.Manager` interface. Unused here until we refactor
+	 * how we store binary data files in the `/binaryData` dir.
+	 */
+	private toFileId(_workflowId: string, executionId: string) {
 		return [executionId, uuid()].join('');
 	}
 
@@ -156,7 +148,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	private async getSize(fileId: string) {
-		const filePath = this.getPath(fileId);
+		const filePath = this.resolvePath(fileId);
 
 		try {
 			const stats = await fs.stat(filePath);

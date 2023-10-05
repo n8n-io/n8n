@@ -90,7 +90,11 @@ licenseController.post(
 				case 'RESERVATION_CONFLICT':
 					message = 'Activation key not found';
 					break;
+				case 'RESERVATION_DUPLICATE':
+					message = 'Activation key has already been used on this instance';
+					break;
 				default:
+					message += `: ${error.message}`;
 					getLogger().error(message, { stack: error.stack ?? 'n/a' });
 			}
 
