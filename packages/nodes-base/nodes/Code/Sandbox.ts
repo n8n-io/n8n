@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { EventEmitter } from 'events';
 import { ValidationError } from './ValidationError';
 import { isObject } from './utils';
@@ -15,6 +16,7 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 	$getNodeParameter: IExecuteFunctions['getNodeParameter'];
 	$getWorkflowStaticData: IExecuteFunctions['getWorkflowStaticData'];
 	helpers: IExecuteFunctions['helpers'];
+	FormData: typeof FormData;
 }
 
 export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);
@@ -29,6 +31,8 @@ export function getSandboxContext(this: IExecuteFunctions, index: number): Sandb
 		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
 		// $node, $items(), $parameter, $json, $env, etc.
 		...this.getWorkflowDataProxy(index),
+
+		FormData,
 	};
 }
 
