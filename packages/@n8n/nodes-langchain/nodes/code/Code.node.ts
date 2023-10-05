@@ -32,7 +32,6 @@ const connectorTypes = {
 	[NodeConnectionType.AiOutputParser]: 'Output Parser',
 	[NodeConnectionType.AiTextSplitter]: 'Text Splitter',
 	[NodeConnectionType.AiTool]: 'Tool',
-	[NodeConnectionType.AiVectorRetriever]: 'Vector Retriever',
 	[NodeConnectionType.AiVectorStore]: 'Vector Store',
 	[NodeConnectionType.Main]: 'Main',
 };

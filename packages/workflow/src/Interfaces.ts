@@ -1531,8 +1531,6 @@ export const enum NodeConnectionType {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiTool = 'ai_tool',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiVectorRetriever = 'ai_vectorRetriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiVectorStore = 'ai_vectorStore',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	Main = 'main',

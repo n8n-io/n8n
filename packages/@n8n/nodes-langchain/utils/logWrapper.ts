@@ -13,7 +13,6 @@ import { BaseChatModel } from 'langchain/chat_models/base';
 import type { CallbackManagerForLLMRun } from 'langchain/callbacks';
 
 import { Embeddings } from 'langchain/embeddings/base';
-import type { VectorStoreRetriever } from 'langchain/vectorstores/base';
 import { VectorStore } from 'langchain/vectorstores/base';
 import type { Document } from 'langchain/document';
 import { TextSplitter } from 'langchain/text_splitter';
@@ -96,7 +95,6 @@ export function logWrapper(
 		| Document[]
 		| Document
 		| BaseDocumentLoader
-		| VectorStoreRetriever
 		| TextSplitter
 		| VectorStore
 		| N8nBinaryLoader
