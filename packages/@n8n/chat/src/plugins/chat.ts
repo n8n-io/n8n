@@ -6,6 +6,7 @@ import { chatEventBus } from '@/event-buses';
 import * as api from '@/api';
 import { ChatOptionsSymbol, ChatSymbol, localStorageSessionIdKey } from '@/constants';
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export const ChatPlugin: Plugin<ChatOptions> = {
 	install(app, options) {
 		app.provide(ChatOptionsSymbol, options);

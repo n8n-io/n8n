@@ -5,8 +5,7 @@ import GetStartedFooter from '@/components/GetStartedFooter.vue';
 import MessagesList from '@/components/MessagesList.vue';
 import Input from '@/components/Input.vue';
 import { nextTick, onMounted } from 'vue';
-import { useI18n } from '@/composables';
-import { useChat } from '@/composables';
+import { useI18n, useChat } from '@/composables';
 import { chatEventBus } from '@/event-buses';
 
 const { t } = useI18n();
