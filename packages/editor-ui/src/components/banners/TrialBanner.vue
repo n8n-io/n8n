@@ -18,7 +18,7 @@ const messageText = computed(() => {
 });
 
 function onUpdatePlanClick() {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 

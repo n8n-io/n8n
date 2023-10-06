@@ -1627,7 +1627,8 @@ export type CloudUpdateLinkSourceType =
 	| 'sso'
 	| 'usage_page'
 	| 'settings-users'
-	| 'variables';
+	| 'variables'
+	| 'community-nodes';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1642,11 +1643,36 @@ export type UTMCampaign =
 	| 'upgrade-sso'
 	| 'open'
 	| 'upgrade-users'
-	| 'upgrade-variables';
+	| 'upgrade-variables'
+	| 'upgrade-community-nodes';
 
 export type N8nBanners = {
 	[key in BannerName]: {
 		priority: number;
 		component: Component;
 	};
+};
+
+export type AddedNode = {
+	type: string;
+	openDetail?: boolean;
+	isAutoAdd?: boolean;
+	name?: string;
+	position?: XYPosition;
+};
+
+export type AddedNodeConnection = {
+	from: { nodeIndex: number; outputIndex?: number };
+	to: { nodeIndex: number; inputIndex?: number };
+};
+
+export type AddedNodesAndConnections = {
+	nodes: AddedNode[];
+	connections: AddedNodeConnection[];
+};
+
+export type ToggleNodeCreatorOptions = {
+	createNodeActive: boolean;
+	source?: NodeCreatorOpenSource;
+	nodeCreatorView?: string;
 };

@@ -456,7 +456,7 @@ export default defineComponent({
 			});
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 		async initialize() {
 			if (this.isSharingEnabled) {
