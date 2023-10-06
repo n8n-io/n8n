@@ -356,7 +356,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Email Trigger (IMAP)');
 
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Set');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
@@ -364,7 +364,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit F');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
