@@ -570,3 +570,87 @@
 		}
 	}
 }
+
+// Custom (temp) table style
+// * TODO
+// - remove the el-table__row--striped classes, the striped bg is handled by default for all tables
+// - reduce the height of the .name element of the tag table to: min-height: 36px;
+
+.n8n-table {
+	& table {
+	}
+
+	thead {
+		tr {
+			// border: 1px solid var.$table-border-color;
+
+			th {
+				padding: var(--spacing-s) var(--spacing-xs);
+				box-sizing: border-box;
+				background-color: var.$table-header-background-color;
+				border-bottom: 1px solid var.$table-border-color;
+				border-top: 1px solid var.$table-border-color;
+				color: var.$table-header-font-color;
+				font-size: var.$table-header-font-size;
+				font-weight: var.$table-header-font-weight;
+				line-height: 1.4;
+			}
+
+			th:first-child {
+				padding-left: var(--spacing-s);
+				border-left: 1px solid var.$table-border-color;
+				border-top-left-radius: var.$table-border-radius;
+			}
+
+			th:last-child {
+				padding-right: var(--spacing-s);
+				border-right: 1px solid var.$table-border-color;
+				border-top-right-radius: var.$table-border-radius;
+			}
+		}
+	}
+
+	tbody {
+		tr {
+			td {
+				box-sizing: border-box;
+				padding: var(--spacing-2xs) var(--spacing-xs);
+				font-size: var.$table-font-size;
+				line-height: 1.4;
+				border-bottom: 1px solid var.$table-border-color;
+			}
+
+			td:first-child {
+				padding-left: var(--spacing-s);
+				border-left: 1px solid var.$table-border-color;
+			}
+
+			td:last-child {
+				padding-right: var(--spacing-s);
+				border-right: 1px solid var.$table-border-color;
+			}
+		}
+
+		tr:nth-of-type(odd) {
+			td {
+				background-color: var.$table-row-odd-background;
+			}
+		}
+
+		tr:nth-of-type(even) {
+			td {
+				background-color: var.$table-row-even-background;
+			}
+		}
+
+		tr:last-child {
+			td:first-child {
+				border-bottom-left-radius: var.$table-border-radius;
+			}
+
+			td:last-child {
+				border-bottom-right-radius: var.$table-border-radius;
+			}
+		}
+	}
+}

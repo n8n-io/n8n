@@ -115,7 +115,7 @@ export default defineComponent({
 
 <template>
 	<div :class="classes" v-bind="$attrs">
-		<table :class="$style.datatable">
+		<table :class="[$style.datatable, 'n8n-table']">
 			<thead :class="$style.datatableHeader">
 				<tr>
 					<th

@@ -1,6 +1,6 @@
 <template>
 	<el-table
-		class="tags-table"
+		class="tags-table n8n-table"
 		stripe
 		max-height="450"
 		ref="table"

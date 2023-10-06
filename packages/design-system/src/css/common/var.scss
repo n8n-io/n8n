@@ -741,18 +741,25 @@ $dialog-close-top: var(--dialog-close-top, var(--spacing-l));
 
 /* Table
 -------------------------- */
+$table-border-radius: 0;
+$table-font-size: $font-size-small;
+$table-header-font-size: $font-size-small;
+$table-header-font-weight: var(--font-weight-bold);
+$table-row-odd-background: var(--color-background-xlight);
+$table-row-even-background: var(--color-background-light);
+
 /// color||Color|0
-$table-border-color: var(--border-color-light);
+$table-border-color: var(--color-foreground-base);
 $table-border: 1px solid $table-border-color;
 /// color||Color|0
 $table-font-color: var(--color-text-dark);
 /// color||Color|0
-$table-header-font-color: var(--color-text-light);
+$table-header-font-color: var(--color-text-dark);
 /// color||Color|0
 $table-row-hover-background-color: $background-color-base;
 $table-current-row-background-color: $color-primary-light-9;
 /// color||Color|0
-$table-header-background-color: $color-white;
+$table-header-background-color: var(--color-background-light);
 $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
 
 /* Pagination
