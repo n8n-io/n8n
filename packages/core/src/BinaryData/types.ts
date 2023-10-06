@@ -1,5 +1,4 @@
 import type { Readable } from 'stream';
-import type { CONFIG_BINARY_DATA_MODES } from './utils';
 
 export namespace BinaryData {
 	type LegacyMode = 'filesystem';
@@ -9,9 +8,7 @@ export namespace BinaryData {
 	/**
 	 * Binary data mode selectable by user via env var config.
 	 */
-	export type ConfigMode = (typeof CONFIG_BINARY_DATA_MODES)[number];
-
-	export type NonDefaultMode = Exclude<ConfigMode, 'default'>;
+	export type ConfigMode = 'default' | 'filesystem' | 's3';
 
 	/**
 	 * Binary data mode used internally by binary data service. User-selected

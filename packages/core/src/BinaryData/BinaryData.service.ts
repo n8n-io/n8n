@@ -5,7 +5,7 @@ import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
 import { UnknownManagerError, InvalidModeError } from './errors';
-import { areValidModes, toBuffer } from './utils';
+import { areConfigModes, toBuffer } from './utils';
 import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
@@ -19,7 +19,7 @@ export class BinaryDataService {
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) throw new InvalidModeError();
+		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
