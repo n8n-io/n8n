@@ -321,6 +321,35 @@ describe('Node Creator', () => {
 		});
 	});
 
+	it('should correctly append a No Op node when Loop Over Items node is added (from add button)', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
+	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
+		WorkflowPage.actions.addNodeToCanvas('Manual');
+		cy.get('.plus-endpoint').should('be.visible').click();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
 	it('should have most relevenat nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
