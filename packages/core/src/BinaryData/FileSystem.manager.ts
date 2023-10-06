@@ -39,24 +39,6 @@ export class FileSystemManager implements BinaryData.Manager {
 		return { fileId, fileSize };
 	}
 
-	async store(
-		workflowId: string,
-		executionId: string,
-		bufferOrStream: Buffer | Readable,
-		{ mimeType, fileName }: BinaryData.PreWriteMetadata,
-	) {
-		const fileId = this.toFileId(workflowId, executionId);
-		const filePath = this.resolvePath(fileId);
-
-		await fs.writeFile(filePath, bufferOrStream);
-
-		const fileSize = await this.getSize(fileId);
-
-		await this.storeMetadata(fileId, { mimeType, fileName, fileSize });
-
-		return { fileId, fileSize };
-	}
-
 	getPath(fileId: string) {
 		return this.resolvePath(fileId);
 	}
