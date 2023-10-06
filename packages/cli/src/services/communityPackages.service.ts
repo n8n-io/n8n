@@ -254,7 +254,7 @@ export class CommunityPackagesService {
 
 		installedPackages.forEach((installedPackage) => {
 			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!this.loadNodesAndCredentials.isKnown('nodes', installedNode.type)) {
+				if (!this.loadNodesAndCredentials.isKnownNode(installedNode.type)) {
 					// Leave the list ready for installing in case we need.
 					missingPackages.add({
 						packageName: installedPackage.packageName,

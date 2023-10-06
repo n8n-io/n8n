@@ -1,5 +1,8 @@
 import glob from 'fast-glob';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
+import path from 'path';
+import fsPromises from 'fs/promises';
+
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
@@ -9,14 +12,13 @@ import {
 	LazyPackageDirectoryLoader,
 } from 'n8n-core';
 import type {
-	INodesAndCredentials,
 	KnownNodesAndCredentials,
 	INodeTypeDescription,
-	LoadedNodesAndCredentials,
+	INodeTypeData,
+	ICredentialTypeData,
 } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import path from 'path';
 import config from '@/config';
 import {
 	CUSTOM_API_CALL_KEY,
@@ -26,8 +28,13 @@ import {
 	inE2ETests,
 } from '@/constants';
 
+interface LoadedNodesAndCredentials {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+}
+
 @Service()
-export class LoadNodesAndCredentials implements INodesAndCredentials {
+export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -87,8 +94,8 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		this.postProcessors.push(fn);
 	}
 
-	isKnown(kind: 'nodes' | 'credentials', type: string) {
-		return type in this.known[kind];
+	isKnownNode(type: string) {
+		return type in this.known.nodes;
 	}
 
 	get loadedCredentials() {
@@ -133,6 +140,18 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 				ErrorReporter.error(error);
 			}
 		}
+	}
+
+	resolveIcon(packageName: string, url: string): string | undefined {
+		const loader = this.loaders[packageName];
+		if (loader) {
+			const pathPrefix = `/icons/${packageName}/`;
+			const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
+			if (!path.relative(loader.directory, filePath).includes('..')) {
+				return filePath;
+			}
+		}
+		return undefined;
 	}
 
 	getCustomDirectories(): string[] {
@@ -283,5 +302,43 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 		for (const postProcessor of this.postProcessors) {
 			await postProcessor();
 		}
+	}
+
+	async setupHotReload() {
+		const { default: debounce } = await import('lodash/debounce');
+		// eslint-disable-next-line import/no-extraneous-dependencies
+		const { watch } = await import('chokidar');
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { Push } = await import('@/push');
+		const push = Container.get(Push);
+
+		Object.values(this.loaders).forEach(async (loader) => {
+			try {
+				await fsPromises.access(loader.directory);
+			} catch {
+				// If directory doesn't exist, there is nothing to watch
+				return;
+			}
+
+			const realModulePath = path.join(await fsPromises.realpath(loader.directory), path.sep);
+			const reloader = debounce(async () => {
+				const modulesToUnload = Object.keys(require.cache).filter((filePath) =>
+					filePath.startsWith(realModulePath),
+				);
+				modulesToUnload.forEach((filePath) => {
+					delete require.cache[filePath];
+				});
+
+				loader.reset();
+				await loader.loadAll();
+				await this.postProcessLoaders();
+				push.send('nodeDescriptionUpdated', undefined);
+			}, 100);
+
+			const toWatch = loader.isLazyLoaded
+				? ['**/nodes.json', '**/credentials.json']
+				: ['**/*.js', '**/*.json'];
+			watch(toWatch, { cwd: realModulePath }).on('change', reloader);
+		});
 	}
 }

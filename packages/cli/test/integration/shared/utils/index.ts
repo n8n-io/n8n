@@ -55,7 +55,7 @@ export async function initCredentialsTypes(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	Container.get(LoadNodesAndCredentials).loaded.nodes = {
+	Container.get(LoadNodesAndCredentials).loadedNodes = {
 		'n8n-nodes-base.start': {
 			type: new Start(),
 			sourcePath: '',
