@@ -248,6 +248,14 @@ describe('deleteMany()', () => {
 		);
 	});
 
+	it('should not send a deletion request if no prefix match', async () => {
+		objectStoreService.list = jest.fn().mockResolvedValue([]);
+
+		const result = await objectStoreService.deleteMany('non-matching-prefix');
+
+		expect(result).toBeUndefined();
+	});
+
 	it('should throw an error on request failure', async () => {
 		mockAxios.request.mockRejectedValue(mockError);
 

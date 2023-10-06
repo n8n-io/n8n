@@ -222,7 +222,7 @@ export default defineComponent({
 	},
 	methods: {
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
+			void this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
 		cellClassStyle({ row, column }: CellStyle<TableRow>) {
 			if (column.property === 'status') {

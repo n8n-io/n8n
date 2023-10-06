@@ -147,7 +147,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 
 		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
 	} else {
-		emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
+		emit('nodeTypeSelected', [actionData.key as string]);
 	}
 
 	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);
