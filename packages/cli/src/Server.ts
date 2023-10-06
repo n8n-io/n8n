@@ -32,7 +32,6 @@ import {
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
-	FileNotFoundError,
 } from 'n8n-core';
 
 import type {
@@ -74,7 +73,6 @@ import {
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
-	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -99,6 +97,7 @@ import {
 	WorkflowStatisticsController,
 } from '@/controllers';
 
+import { BinaryDataController } from './controllers/binaryData.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
@@ -374,7 +373,6 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
-		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -581,6 +579,7 @@ export class Server extends AbstractServer {
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
+			new BinaryDataController(Container.get(BinaryDataService)),
 		];
 
 		if (isLdapEnabled()) {
@@ -1440,50 +1439,6 @@ export class Server extends AbstractServer {
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<object> => {
 				return timezones;
 			}),
-		);
-
-		// ----------------------------------------
-		// Binary data
-		// ----------------------------------------
-
-		// View or download binary file
-		this.app.get(
-			`/${this.restEndpoint}/data`,
-			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				const { id: binaryDataId, action } = req.query;
-				let { fileName, mimeType } = req.query;
-				const [mode] = binaryDataId.split(':') as ['filesystem' | 's3', string];
-
-				try {
-					const binaryPath = this.binaryDataService.getPath(binaryDataId);
-
-					if (!fileName || !mimeType) {
-						try {
-							const metadata = await this.binaryDataService.getMetadata(binaryDataId);
-							fileName = metadata.fileName;
-							mimeType = metadata.mimeType;
-							res.setHeader('Content-Length', metadata.fileSize);
-						} catch {}
-					}
-
-					if (mimeType) res.setHeader('Content-Type', mimeType);
-
-					if (action === 'download') {
-						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-					}
-
-					if (mode === 's3') {
-						const readStream = await this.binaryDataService.getAsStream(binaryDataId);
-						readStream.pipe(res);
-						return;
-					} else {
-						res.sendFile(binaryPath);
-					}
-				} catch (error) {
-					if (error instanceof FileNotFoundError) res.writeHead(404).end();
-					else throw error;
-				}
-			},
 		);
 
 		// ----------------------------------------
