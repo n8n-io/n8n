@@ -20,6 +20,6 @@ export function toSaveSettings(
 		success:
 			workflowSettings.saveDataSuccessExecution !== 'none' ??
 			defaults.saveDataSuccessExecution !== 'none',
-		manual: workflowSettings?.saveManualExecutions ?? defaults.saveManualExecutions === true,
+		manual: workflowSettings?.saveManualExecutions ?? defaults.saveManualExecutions,
 	};
 }
