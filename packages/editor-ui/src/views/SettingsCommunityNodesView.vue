@@ -214,7 +214,7 @@ export default defineComponent({
 			this.openInstallModal();
 		},
 		goToUpgrade(): void {
-			void this.uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes', 'open');
+			void this.uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
 		},
 		openInstallModal(): void {
 			const telemetryPayload = {
