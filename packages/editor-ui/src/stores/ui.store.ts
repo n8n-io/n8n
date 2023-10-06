@@ -348,16 +348,12 @@ export const useUIStore = defineStore(STORES.UI, {
 
 				const isOwner = useUsersStore().isInstanceOwner;
 
-				if (deploymentType === 'cloud') {
+				if (deploymentType === 'cloud' && isOwner) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
-					if (!isOwner) {
-						linkUrl = `https://${adminPanelHost}/account/change-plan`;
-					} else {
-						const { code } = await useCloudPlanStore().getAutoLoginCode();
-						linkUrl = `https://${adminPanelHost}/login`;
-						searchParams.set('code', code);
-						searchParams.set('returnPath', '/account/change-plan');
-					}
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
+					linkUrl = `https://${adminPanelHost}/login`;
+					searchParams.set('code', code);
+					searchParams.set('returnPath', '/account/change-plan');
 				} else {
 					linkUrl = N8N_PRICING_PAGE_URL;
 				}
