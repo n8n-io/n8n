@@ -382,7 +382,7 @@
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
 						>
-							<div>
+							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
 									{{ key }}
 								</div>
