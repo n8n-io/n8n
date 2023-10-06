@@ -55,10 +55,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
 				type: 'application/json;charset=utf-8',
 			});
-			saveAs(
-				blob,
-				`${workflow.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${workflowVersion.versionId}.json`,
-			);
+			saveAs(blob, `${workflow.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${workflowVersionId}.json`);
 		}
 	};
 
