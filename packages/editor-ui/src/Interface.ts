@@ -1590,7 +1590,8 @@ export type CloudUpdateLinkSourceType =
 	| 'sso'
 	| 'usage_page'
 	| 'settings-users'
-	| 'variables';
+	| 'variables'
+	| 'community-nodes';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
@@ -1605,7 +1606,8 @@ export type UTMCampaign =
 	| 'upgrade-sso'
 	| 'open'
 	| 'upgrade-users'
-	| 'upgrade-variables';
+	| 'upgrade-variables'
+	| 'upgrade-community-nodes';
 
 export type N8nBanners = {
 	[key in BannerName]: {
