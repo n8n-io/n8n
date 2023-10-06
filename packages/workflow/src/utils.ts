@@ -115,6 +115,7 @@ export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefin
 	if (mimeType.startsWith('image/')) return 'image';
 	if (mimeType.startsWith('video/')) return 'video';
 	if (mimeType.startsWith('text/')) return 'text';
+	if (mimeType.startsWith('application/pdf')) return 'pdf';
 	return;
 }
 

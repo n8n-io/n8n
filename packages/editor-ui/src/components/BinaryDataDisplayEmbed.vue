@@ -92,7 +92,8 @@ export default defineComponent({
 		max-width: calc(100% - 1em);
 	}
 
-	&.other {
+	&.other,
+	&.pdf {
 		height: calc(100% - 1em);
 		width: calc(100% - 1em);
 	}
