@@ -139,10 +139,7 @@ describe('ActiveWorkflowRunner', () => {
 	const variablesService = mockInstance(VariablesService);
 	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 	Object.assign(nodesAndCredentials, {
-		loaded: {
-			nodes: MOCK_NODE_TYPES_DATA,
-			credentials: {},
-		},
+		loadedNodes: MOCK_NODE_TYPES_DATA,
 		known: { nodes: {}, credentials: {} },
 		types: { nodes: [], credentials: [] },
 	});

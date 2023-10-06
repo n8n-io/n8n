@@ -4,6 +4,8 @@ import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import path from 'path';
 
+import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
+
 import { GENERATED_STATIC_DIR } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
@@ -18,7 +20,7 @@ export class FrontendService {
 	) {}
 
 	async generateTypes() {
-		this.setOverwrites();
+		this.overwriteCredentialsProperties();
 
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
@@ -27,7 +29,10 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	private writeStaticJSON(name: string, data: object[]) {
+	private writeStaticJSON<T extends INodeTypeBaseDescription | ICredentialType>(
+		name: string,
+		data: T[],
+	) {
 		const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 		stream.write('[\n');
@@ -40,7 +45,7 @@ export class FrontendService {
 		stream.end();
 	}
 
-	private setOverwrites() {
+	private overwriteCredentialsProperties() {
 		const { credentials } = this.loadNodesAndCredentials.types;
 		const credentialsOverwrites = this.credentialsOverwrites.getAll();
 		for (const credential of credentials) {

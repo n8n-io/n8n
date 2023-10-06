@@ -333,6 +333,7 @@ describe('CommunityPackagesService', () => {
 
 	describe('removePackageFromMissingList()', () => {
 		test('should do nothing if key does not exist', () => {
+			setMissingPackages([]);
 			communityPackagesService.removePackageFromMissingList('packageA');
 
 			expect(communityPackagesService.missingPackages).toBeEmptyArray();

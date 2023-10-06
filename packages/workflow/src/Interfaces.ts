@@ -1718,7 +1718,7 @@ export type LoadedNodesAndCredentials = {
 };
 
 export interface INodesAndCredentials {
-	known: KnownNodesAndCredentials;
+	// known: KnownNodesAndCredentials;
 	loaded: LoadedNodesAndCredentials;
 }
 

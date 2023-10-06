@@ -28,7 +28,7 @@ import {
 
 @Service()
 export class LoadNodesAndCredentials implements INodesAndCredentials {
-	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 
@@ -85,6 +85,26 @@ export class LoadNodesAndCredentials implements INodesAndCredentials {
 
 	addPostProcessor(fn: () => Promise<void>) {
 		this.postProcessors.push(fn);
+	}
+
+	isKnown(kind: 'nodes' | 'credentials', type: string) {
+		return type in this.known[kind];
+	}
+
+	get loadedCredentials() {
+		return this.loaded.credentials;
+	}
+
+	get loadedNodes() {
+		return this.loaded.nodes;
+	}
+
+	get knownCredentials() {
+		return this.known.credentials;
+	}
+
+	get knownNodes() {
+		return this.known.nodes;
 	}
 
 	private async loadNodesFromNodeModules(

@@ -17,44 +17,40 @@ describe('CredentialsHelper', () => {
 	const TEST_ENCRYPTION_KEY = 'test';
 
 	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
-		loaded: {
-			nodes: {
-				'test.set': {
-					sourcePath: '',
-					type: {
-						description: {
-							displayName: 'Set',
-							name: 'set',
-							group: ['input'],
-							version: 1,
-							description: 'Sets a value',
-							defaults: {
-								name: 'Set',
-								color: '#0000FF',
-							},
-							inputs: ['main'],
-							outputs: ['main'],
-							properties: [
-								{
-									displayName: 'Value1',
-									name: 'value1',
-									type: 'string',
-									default: 'default-value1',
-								},
-								{
-									displayName: 'Value2',
-									name: 'value2',
-									type: 'string',
-									default: 'default-value2',
-								},
-							],
+		loadedNodes: {
+			'test.set': {
+				sourcePath: '',
+				type: {
+					description: {
+						displayName: 'Set',
+						name: 'set',
+						group: ['input'],
+						version: 1,
+						description: 'Sets a value',
+						defaults: {
+							name: 'Set',
+							color: '#0000FF',
 						},
+						inputs: ['main'],
+						outputs: ['main'],
+						properties: [
+							{
+								displayName: 'Value1',
+								name: 'value1',
+								type: 'string',
+								default: 'default-value1',
+							},
+							{
+								displayName: 'Value2',
+								name: 'value2',
+								type: 'string',
+								default: 'default-value2',
+							},
+						],
 					},
 				},
 			},
-			credentials: {},
 		},
-		known: { nodes: {}, credentials: {} },
 	});
 
 	const nodeTypes = mockInstance(NodeTypes);
@@ -274,7 +270,7 @@ describe('CredentialsHelper', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
-				mockNodesAndCredentials.loaded.credentials = {
+				mockNodesAndCredentials.loadedCredentials = {
 					[testData.input.credentialType.name]: {
 						type: testData.input.credentialType,
 						sourcePath: '',

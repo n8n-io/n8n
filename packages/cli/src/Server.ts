@@ -171,7 +171,7 @@ import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
-import { FrontendService } from './services/frontend.service';
+import type { FrontendService } from './services/frontend.service';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
@@ -364,9 +364,15 @@ export class Server extends AbstractServer {
 		this.credentialTypes = Container.get(CredentialTypes);
 		this.nodeTypes = Container.get(NodeTypes);
 
-		this.frontendService = Container.get(FrontendService);
-		this.loadNodesAndCredentials.addPostProcessor(async () => this.frontendService.generateTypes());
-		await this.frontendService.generateTypes();
+		if (!config.getEnv('endpoints.disableUi')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { FrontendService } = await import('@/services/frontend.service');
+			this.frontendService = Container.get(FrontendService);
+			this.loadNodesAndCredentials.addPostProcessor(async () =>
+				this.frontendService.generateTypes(),
+			);
+			await this.frontendService.generateTypes();
+		}
 
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 		this.waitTracker = Container.get(WaitTracker);
@@ -1493,7 +1499,7 @@ export class Server extends AbstractServer {
 
 						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.frontendService.generateTypes();
+						await this.frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
