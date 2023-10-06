@@ -10,8 +10,8 @@ import type { BufferWindowMemoryInput } from 'langchain/memory';
 import { BufferWindowMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
 
-class MemoryBufferSingleton {
-	private static instance: MemoryBufferSingleton;
+class MemoryChatBufferSingleton {
+	private static instance: MemoryChatBufferSingleton;
 
 	private memoryBuffer: Map<
 		string,
@@ -22,11 +22,11 @@ class MemoryBufferSingleton {
 		this.memoryBuffer = new Map();
 	}
 
-	public static getInstance(): MemoryBufferSingleton {
-		if (!MemoryBufferSingleton.instance) {
-			MemoryBufferSingleton.instance = new MemoryBufferSingleton();
+	public static getInstance(): MemoryChatBufferSingleton {
+		if (!MemoryChatBufferSingleton.instance) {
+			MemoryChatBufferSingleton.instance = new MemoryChatBufferSingleton();
 		}
-		return MemoryBufferSingleton.instance;
+		return MemoryChatBufferSingleton.instance;
 	}
 
 	public async getMemory(
@@ -93,13 +93,6 @@ export class MemoryBufferWindow implements INodeType {
 		outputs: [NodeConnectionType.AiMemory],
 		outputNames: ['Memory'],
 		properties: [
-			// TODO: Should we allow the user to specify the input key?
-			// {
-			// 	displayName: 'Input Key',
-			// 	name: 'inputKey',
-			// 	type: 'string',
-			// 	default: 'input',
-			// },
 			{
 				displayName: 'Session Key',
 				name: 'sessionKey',
@@ -121,7 +114,7 @@ export class MemoryBufferWindow implements INodeType {
 		const sessionKey = this.getNodeParameter('sessionKey', itemIndex) as string;
 		const contextWindowLength = this.getNodeParameter('contextWindowLength', itemIndex) as number;
 		const workflowId = this.getWorkflow().id;
-		const memoryInstance = MemoryBufferSingleton.getInstance();
+		const memoryInstance = MemoryChatBufferSingleton.getInstance();
 
 		const memory = await memoryInstance.getMemory(`${workflowId}__${sessionKey}`, {
 			k: contextWindowLength,
