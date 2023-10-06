@@ -10,6 +10,7 @@ import {
 	getTrialExpiredUserResponse,
 	getTrialingUserResponse,
 	getUserCloudInfo,
+	getNotTrialingUserResponse,
 } from './utils/cloudStoreUtils';
 
 let uiStore: ReturnType<typeof useUIStore>;
@@ -46,26 +47,53 @@ function setupOwnerAndCloudDeployment() {
 }
 
 describe('UI store', () => {
+	let mockedCloudStore;
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		uiStore = useUIStore();
 		settingsStore = useSettingsStore();
 		rootStore = useRootStore();
 		cloudPlanStore = useCloudPlanStore();
+
+		mockedCloudStore = vi.spyOn(cloudPlanStore, 'getAutoLoginCode');
+		mockedCloudStore.mockImplementationOnce(async () => ({
+			code: '123',
+		}));
+
+		global.window = Object.create(window);
+
+		const url = 'https://test.app.n8n.cloud';
+
+		Object.defineProperty(window, 'location', {
+			value: {
+				href: url,
+			},
+			writable: true,
+		});
 	});
 
 	test.each([
-		['default', 'production', 'https://n8n.io/pricing/?ref=test_source'],
-		['default', 'development', 'https://n8n.io/pricing/?ref=test_source'],
 		[
-			'desktop_win',
+			'default',
 			'production',
-			'https://n8n.io/pricing/?utm_source=n8n-internal&utm_medium=desktop&utm_campaign=utm-test-campaign',
+			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
-		['cloud', 'production', 'https://app.n8n.cloud/account/change-plan'],
+		[
+			'default',
+			'development',
+			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
+		],
+		[
+			'cloud',
+			'production',
+			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
+				'/account/change-plan',
+			)}&utm_campaign=utm-test-campaign&source=test_source`,
+		],
 	])(
 		'"upgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment',
-		(type, environment, expectation) => {
+		async (type, environment, expectation) => {
 			settingsStore.setSettings(
 				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 					deployment: {
@@ -79,7 +107,9 @@ describe('UI store', () => {
 				}),
 			);
 
-			expect(uiStore.upgradeLinkUrl('test_source', 'utm-test-campaign')).toBe(expectation);
+			const updateLinkUrl = await uiStore.upgradeLinkUrl('test_source', 'utm-test-campaign', type);
+
+			expect(updateLinkUrl).toBe(expectation);
 		},
 	);
 
@@ -123,10 +153,13 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL');
+		// There should be no email confirmation banner for trialing users
+		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
 	});
 
 	it('should add trial over banner to the the stack', async () => {
@@ -137,24 +170,27 @@ describe('UI store', () => {
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(true));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
 		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
+		// There should be no email confirmation banner for trialing users
+		expect(uiStore.bannerStack).not.toContain('EMAIL_CONFIRMATION');
 	});
 
 	it('should add email confirmation banner to the the stack', async () => {
 		const fetchCloudSpy = vi
 			.spyOn(cloudPlanApi, 'getCurrentPlan')
-			.mockResolvedValue(getTrialExpiredUserResponse());
+			.mockResolvedValue(getNotTrialingUserResponse());
 		const fetchUserCloudAccountSpy = vi
 			.spyOn(cloudPlanApi, 'getCloudUserInfo')
 			.mockResolvedValue(getUserCloudInfo(false));
 		setupOwnerAndCloudDeployment();
-		await cloudPlanStore.getOwnerCurrentPlan();
+		await cloudPlanStore.checkForCloudPlanData();
+		await cloudPlanStore.fetchUserCloudAccount();
 		expect(fetchCloudSpy).toHaveBeenCalled();
 		expect(fetchUserCloudAccountSpy).toHaveBeenCalled();
-		expect(uiStore.bannerStack).toContain('TRIAL_OVER');
 		expect(uiStore.bannerStack).toContain('EMAIL_CONFIRMATION');
 	});
 });

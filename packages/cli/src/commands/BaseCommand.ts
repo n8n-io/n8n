@@ -3,13 +3,13 @@ import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, UserSettings } from 'n8n-core';
+import { BinaryDataService, ObjectStoreService, UserSettings } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
-import { inTest } from '@/constants';
+import { LICENSE_FEATURES, inTest } from '@/constants';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
@@ -21,6 +21,7 @@ import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
+import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -116,7 +117,119 @@ export abstract class BaseCommand extends Command {
 		process.exit(1);
 	}
 
+	async initObjectStoreService() {
+		const isSelected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isAvailable = config.getEnv('binaryDataManager.availableModes').includes('s3');
+
+		if (!isSelected && !isAvailable) return;
+
+		if (isSelected && !isAvailable) {
+			throw new Error(
+				'External storage selected but unavailable. Please make external storage available by adding "s3" to `N8N_AVAILABLE_BINARY_DATA_MODES`.',
+			);
+		}
+
+		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+
+		if (isSelected && isAvailable && isLicensed) {
+			LoggerProxy.debug(
+				'License found for external storage - object store to init in read-write mode',
+			);
+
+			await this._initObjectStoreService();
+
+			return;
+		}
+
+		if (isSelected && isAvailable && !isLicensed) {
+			LoggerProxy.debug(
+				'No license found for external storage - object store to init with writes blocked. To enable writes, please upgrade to a license that supports this feature.',
+			);
+
+			await this._initObjectStoreService({ isReadOnly: true });
+
+			return;
+		}
+
+		if (!isSelected && isAvailable) {
+			LoggerProxy.debug(
+				'External storage unselected but available - object store to init with writes unused',
+			);
+
+			await this._initObjectStoreService();
+
+			return;
+		}
+	}
+
+	private async _initObjectStoreService(options = { isReadOnly: false }) {
+		const objectStoreService = Container.get(ObjectStoreService);
+
+		const host = config.getEnv('externalStorage.s3.host');
+
+		if (host === '') {
+			throw new Error(
+				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
+			);
+		}
+
+		const bucket = {
+			name: config.getEnv('externalStorage.s3.bucket.name'),
+			region: config.getEnv('externalStorage.s3.bucket.region'),
+		};
+
+		if (bucket.name === '') {
+			throw new Error(
+				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
+			);
+		}
+
+		if (bucket.region === '') {
+			throw new Error(
+				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
+			);
+		}
+
+		const credentials = {
+			accessKey: config.getEnv('externalStorage.s3.credentials.accessKey'),
+			accessSecret: config.getEnv('externalStorage.s3.credentials.accessSecret'),
+		};
+
+		if (credentials.accessKey === '') {
+			throw new Error(
+				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
+			);
+		}
+
+		if (credentials.accessSecret === '') {
+			throw new Error(
+				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
+			);
+		}
+
+		LoggerProxy.debug('Initializing object store service');
+
+		try {
+			await objectStoreService.init(host, bucket, credentials);
+			objectStoreService.setReadonly(options.isReadOnly);
+
+			LoggerProxy.debug('Object store init completed');
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+
+			LoggerProxy.debug('Object store init failed', { error });
+		}
+	}
+
 	async initBinaryDataService() {
+		try {
+			await this.initObjectStoreService();
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+			LoggerProxy.error(`Failed to init object store: ${error.message}`, { error });
+			process.exit(1);
+		}
+
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 	}
@@ -151,6 +264,10 @@ export abstract class BaseCommand extends Command {
 	async initExternalSecrets() {
 		const secretsManager = Container.get(ExternalSecretsManager);
 		await secretsManager.init();
+	}
+
+	initWorkflowHistory() {
+		Container.get(WorkflowHistoryManager).init();
 	}
 
 	async finally(error: Error | undefined) {

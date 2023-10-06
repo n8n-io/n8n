@@ -63,6 +63,7 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { executionsController } from '@/executions/executions.controller';
 import { WorkflowHistoryController } from '@/workflows/workflowHistory/workflowHistory.controller.ee';
+import { BinaryDataController } from '@/controllers/binaryData.controller';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -306,6 +307,9 @@ export const setupTestServer = ({
 						break;
 					case 'workflowHistory':
 						registerController(app, config, Container.get(WorkflowHistoryController));
+						break;
+					case 'binaryData':
+						registerController(app, config, Container.get(BinaryDataController));
 						break;
 				}
 			}

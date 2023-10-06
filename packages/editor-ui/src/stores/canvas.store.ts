@@ -18,11 +18,7 @@ import type {
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
-import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
-import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
-import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import type { Connection } from '@jsplumb/core';
-import { EndpointFactory, Connectors } from '@jsplumb/core';
 import { MoveNodeCommand } from '@/models/history';
 import {
 	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
@@ -66,10 +62,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 			jsPlumbInstanceRef.value.elementsDraggable = !readOnly;
 		}
 	});
-
-	Connectors.register(N8nConnector.type, N8nConnector);
-	N8nPlusEndpointRenderer.register();
-	EndpointFactory.registerHandler(N8nPlusEndpointHandler);
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
 		const position = getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
