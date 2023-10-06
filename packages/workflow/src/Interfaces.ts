@@ -806,6 +806,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				): NodeExecutionWithMetadata[];
 				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
 	};
 
