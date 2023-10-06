@@ -1,13 +1,13 @@
-import {
-	NodeOperationError,
-	type IExecuteFunctions,
-	type IExecuteWorkflowInfo,
-	type INodeExecutionData,
-	type INodeType,
-	type INodeTypeDescription,
+import { NodeOperationError } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { getWorkflowInfo } from './GenericFunctions';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -82,7 +82,9 @@ export class ExecuteWorkflow implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'The workflow to execute',
+				hint: 'Can be found in the URL of the workflow',
+				description:
+					"Note on using an expression here: if this node is set to run once with all items, they will all be sent to the <em>same</em> workflow. That workflow's ID will be calculated by evaluating the expression for the <strong>first input item</strong>.",
 			},
 
 			// ----------------------------------
@@ -149,63 +151,92 @@ export class ExecuteWorkflow implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Options',
-				name: 'options',
-				type: 'collection',
-				placeholder: 'Add Field',
-				default: {},
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
-						displayName: 'Send Items Separately',
-						name: 'sendSeparately',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to send items separately to the executed workflow rather than sending them all at once. Use it to send each item to a different workflow.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Run once with all items',
+						value: 'once',
+						description: 'Pass all items into a single execution of the sub-workflow',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Run once for each item',
+						value: 'each',
+						description: 'Call the sub-workflow individually for each item',
 					},
 				],
+				default: 'once',
 			},
 		],
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
-		const sendSeparately = this.getNodeParameter('options.sendSeparately', 0, false) as boolean;
+		const mode = this.getNodeParameter('mode', 0, false) as string;
+		const items = this.getInputData();
 
-		try {
-			const items = this.getInputData();
-			if (sendSeparately) {
-				const returnData = [];
+		if (mode === 'each') {
+			const returnData: INodeExecutionData[][] = [];
 
-				for (let i = 0; i < items.length; i++) {
-					try {
-						const workflowInfo = await getWorkflowInfo.call(this, source, i);
-						const workflowResult = await this.executeWorkflow(workflowInfo, [items[i]]);
+			for (let i = 0; i < items.length; i++) {
+				try {
+					const workflowInfo = await getWorkflowInfo.call(this, source, i);
+					const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(workflowInfo, [
+						items[i],
+					]);
 
-						if (Array.isArray(workflowResult) && workflowResult.length > 0) {
-							returnData.push(workflowResult[0]);
-						} else {
-							returnData.push([]);
+					for (const [outputIndex, outputData] of workflowResult.entries()) {
+						for (const item of outputData) {
+							item.pairedItem = { item: i };
 						}
-					} catch (error) {
-						throw new NodeOperationError(this.getNode(), error, {
-							message: `Error executing workflow with item at index ${i}`,
-							description: error.message,
-							itemIndex: i,
-						});
+
+						if (returnData[outputIndex] === undefined) {
+							returnData[outputIndex] = [];
+						}
+
+						returnData[outputIndex].push(...outputData);
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						return [[{ json: { error: error.message }, pairedItem: { item: i } }]];
+					}
+					throw new NodeOperationError(this.getNode(), error, {
+						message: `Error executing workflow with item at index ${i}`,
+						description: error.message,
+						itemIndex: i,
+					});
+				}
+			}
+
+			return returnData;
+		} else {
+			try {
+				const workflowInfo = await getWorkflowInfo.call(this, source);
+				const workflowResult: INodeExecutionData[][] = await this.executeWorkflow(
+					workflowInfo,
+					items,
+				);
+
+				const pairedItem = generatePairedItemData(items.length);
+
+				for (const output of workflowResult) {
+					for (const item of output) {
+						item.pairedItem = pairedItem;
 					}
 				}
-				const flattenedData = returnData.flat();
-				return [flattenedData];
-			} else {
-				const workflowInfo: IExecuteWorkflowInfo = await getWorkflowInfo.call(this, source);
-				return await this.executeWorkflow(workflowInfo, items);
+
+				return workflowResult;
+			} catch (error) {
+				const pairedItem = generatePairedItemData(items.length);
+				if (this.continueOnFail()) {
+					return [[{ json: { error: error.message }, pairedItem }]];
+				}
+				throw error;
 			}
-		} catch (error) {
-			if (this.continueOnFail()) {
-				return [[{ json: { error: error.message } }]];
-			}
-			throw error;
 		}
 	}
 }
