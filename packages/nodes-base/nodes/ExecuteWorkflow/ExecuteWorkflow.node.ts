@@ -15,7 +15,7 @@ export class ExecuteWorkflow implements INodeType {
 		name: 'executeWorkflow',
 		icon: 'fa:sign-in-alt',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: 1,
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
