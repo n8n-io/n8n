@@ -12,7 +12,7 @@ import {
 	getUserCloudInfo,
 	getNotTrialingUserResponse,
 } from './utils/cloudStoreUtils';
-import { IRole } from '@/Interface';
+import type { IRole } from '@/Interface';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -74,7 +74,7 @@ describe('UI store', () => {
 		});
 	});
 
-	test.only.each([
+	test.each([
 		[
 			'default',
 			'production',
