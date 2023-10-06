@@ -175,12 +175,8 @@ export class CommunityPackagesController {
 		);
 
 		try {
-			const missingPackages = config.getEnv('nodes.packagesMissing') as string | undefined;
-			if (missingPackages) {
-				hydratedPackages = this.communityPackagesService.matchMissingPackages(
-					hydratedPackages,
-					missingPackages,
-				);
+			if (this.communityPackagesService.hasMissingPackages) {
+				hydratedPackages = this.communityPackagesService.matchMissingPackages(hydratedPackages);
 			}
 		} catch {}
 

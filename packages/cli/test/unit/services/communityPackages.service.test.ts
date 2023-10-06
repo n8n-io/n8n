@@ -238,12 +238,12 @@ describe('CommunityPackagesService', () => {
 	describe('matchMissingPackages()', () => {
 		test('should not match failed packages that do not exist', () => {
 			const fakePkgs = mockPackagePair();
-			const notFoundPkgNames = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${NODE_PACKAGE_PREFIX}another-very-long-name-that-never-is-seen`;
+			setMissingPackages([
+				`${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0`,
+				`${NODE_PACKAGE_PREFIX}another-very-long-name-that-never-is-seen`,
+			]);
 
-			const matchedPackages = communityPackagesService.matchMissingPackages(
-				fakePkgs,
-				notFoundPkgNames,
-			);
+			const matchedPackages = communityPackagesService.matchMissingPackages(fakePkgs);
 
 			expect(matchedPackages).toEqual(fakePkgs);
 
@@ -255,12 +255,15 @@ describe('CommunityPackagesService', () => {
 
 		test('should match failed packages that should be present', () => {
 			const [pkgA, pkgB] = mockPackagePair();
-			const notFoundPkgNames = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${pkgA.packageName}@${pkgA.installedVersion}`;
+			setMissingPackages([
+				`${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0`,
+				`${pkgA.packageName}@${pkgA.installedVersion}`,
+			]);
 
-			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages(
-				[pkgA, pkgB],
-				notFoundPkgNames,
-			);
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
+				pkgA,
+				pkgB,
+			]);
 
 			expect(matchedPkgA.failedLoading).toBe(true);
 			expect(matchedPkgB.failedLoading).toBeUndefined();
@@ -268,11 +271,14 @@ describe('CommunityPackagesService', () => {
 
 		test('should match failed packages even if version is wrong', () => {
 			const [pkgA, pkgB] = mockPackagePair();
-			const notFoundPackageList = `${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0 ${pkgA.packageName}@123.456.789`;
-			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages(
-				[pkgA, pkgB],
-				notFoundPackageList,
-			);
+			setMissingPackages([
+				`${NODE_PACKAGE_PREFIX}very-long-name-that-should-never-be-generated@1.0.0`,
+				`${pkgA.packageName}@123.456.789`,
+			]);
+			const [matchedPkgA, matchedPkgB] = communityPackagesService.matchMissingPackages([
+				pkgA,
+				pkgB,
+			]);
 
 			expect(matchedPkgA.failedLoading).toBe(true);
 			expect(matchedPkgB.failedLoading).toBeUndefined();
@@ -310,47 +316,49 @@ describe('CommunityPackagesService', () => {
 
 	describe('hasPackageLoadedSuccessfully()', () => {
 		test('should return true when failed package list does not exist', () => {
-			config.set<string>('nodes.packagesMissing', undefined);
-
+			setMissingPackages([]);
 			expect(communityPackagesService.hasPackageLoaded('package')).toBe(true);
 		});
 
 		test('should return true when package is not in the list of missing packages', () => {
-			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.1.0');
-
+			setMissingPackages(['packageA@0.1.0', 'packageB@0.1.0']);
 			expect(communityPackagesService.hasPackageLoaded('packageC')).toBe(true);
 		});
 
 		test('should return false when package is in the list of missing packages', () => {
-			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.1.0');
-
+			setMissingPackages(['packageA@0.1.0', 'packageB@0.1.0']);
 			expect(communityPackagesService.hasPackageLoaded('packageA')).toBe(false);
 		});
 	});
 
 	describe('removePackageFromMissingList()', () => {
 		test('should do nothing if key does not exist', () => {
-			config.set<string>('nodes.packagesMissing', undefined);
-
 			communityPackagesService.removePackageFromMissingList('packageA');
 
-			expect(config.get('nodes.packagesMissing')).toBeUndefined();
+			expect(communityPackagesService.missingPackages).toBeEmptyArray();
 		});
 
 		test('should remove only correct package from list', () => {
-			config.set('nodes.packagesMissing', 'packageA@0.1.0 packageB@0.2.0 packageC@0.2.0');
+			setMissingPackages(['packageA@0.1.0', 'packageB@0.2.0', 'packageC@0.2.0']);
 
 			communityPackagesService.removePackageFromMissingList('packageB');
 
-			expect(config.get('nodes.packagesMissing')).toBe('packageA@0.1.0 packageC@0.2.0');
+			expect(communityPackagesService.missingPackages).toEqual([
+				'packageA@0.1.0',
+				'packageC@0.2.0',
+			]);
 		});
 
 		test('should not remove if package is not in the list', () => {
-			const failedToLoadList = 'packageA@0.1.0 packageB@0.2.0 packageB@0.2.0';
-			config.set('nodes.packagesMissing', failedToLoadList);
+			const failedToLoadList = ['packageA@0.1.0', 'packageB@0.2.0', 'packageB@0.2.0'];
+			setMissingPackages(failedToLoadList);
 			communityPackagesService.removePackageFromMissingList('packageC');
 
-			expect(config.get('nodes.packagesMissing')).toBe(failedToLoadList);
+			expect(communityPackagesService.missingPackages).toEqual(failedToLoadList);
 		});
 	});
+
+	const setMissingPackages = (missingPackages: string[]) => {
+		Object.assign(communityPackagesService, { missingPackages });
+	};
 });

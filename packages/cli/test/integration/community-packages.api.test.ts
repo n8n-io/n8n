@@ -1,5 +1,8 @@
 import path from 'path';
+import type { SuperAgentTest } from 'supertest';
 
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { Push } from '@/push';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
@@ -14,12 +17,10 @@ import {
 	mockPackageName,
 } from './shared/utils';
 
-import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { InstalledNodes } from '@db/entities/InstalledNodes';
-import type { SuperAgentTest } from 'supertest';
-
-const communityPackagesService = mockInstance(CommunityPackagesService);
-const mockLoadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+const communityPackagesService = mockInstance(CommunityPackagesService, {
+	hasMissingPackages: false,
+});
+mockInstance(LoadNodesAndCredentials);
 mockInstance(Push);
 
 const testServer = setupTestServer({ endpointGroups: ['community-packages'] });

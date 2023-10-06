@@ -437,7 +437,7 @@ export class Server extends AbstractServer {
 	/**
 	 * Returns the current settings for the frontend
 	 */
-	getSettingsForFrontend(): IN8nUISettings {
+	private async getSettingsForFrontend(): Promise<IN8nUISettings> {
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = getInstanceBaseUrl();
 		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
@@ -501,8 +501,11 @@ export class Server extends AbstractServer {
 			this.frontendSettings.variables.limit = getVariablesLimit();
 		}
 
-		if (config.get('nodes.packagesMissing').length > 0) {
-			this.frontendSettings.missingPackages = true;
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			this.frontendSettings.missingPackages =
+				Container.get(CommunityPackagesService).hasMissingPackages;
 		}
 
 		this.frontendSettings.mfa.enabled = isMfaFeatureEnabled();

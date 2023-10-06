@@ -9,7 +9,6 @@ import type { PublicInstalledPackage } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
 
-import config from '@/config';
 import { toError } from '@/utils';
 import { InstalledPackagesRepository } from '@/databases/repositories/installedPackages.repository';
 import type { InstalledPackages } from '@/databases/entities/InstalledPackages';
@@ -45,10 +44,16 @@ const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
 export class CommunityPackagesService {
+	missingPackages: string[] = [];
+
 	constructor(
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
+
+	get hasMissingPackages() {
+		return this.missingPackages.length > 0;
+	}
 
 	async findInstalledPackage(packageName: string) {
 		return this.installedPackageRepository.findOne({
@@ -175,9 +180,8 @@ export class CommunityPackagesService {
 		}, []);
 	}
 
-	matchMissingPackages(installedPackages: PublicInstalledPackage[], missingPackages: string) {
-		const missingPackagesList = missingPackages
-			.split(' ')
+	matchMissingPackages(installedPackages: PublicInstalledPackage[]) {
+		const missingPackagesList = this.missingPackages
 			.map((name) => {
 				try {
 					// Strip away versions but maintain scope and package name
@@ -223,30 +227,22 @@ export class CommunityPackagesService {
 	}
 
 	hasPackageLoaded(packageName: string) {
-		const missingPackages = config.getEnv('nodes.packagesMissing') as string | undefined;
+		if (!this.missingPackages.length) return true;
 
-		if (!missingPackages) return true;
-
-		return !missingPackages
-			.split(' ')
-			.some(
-				(packageNameAndVersion) =>
-					packageNameAndVersion.startsWith(packageName) &&
-					packageNameAndVersion.replace(packageName, '').startsWith('@'),
-			);
+		return !this.missingPackages.some(
+			(packageNameAndVersion) =>
+				packageNameAndVersion.startsWith(packageName) &&
+				packageNameAndVersion.replace(packageName, '').startsWith('@'),
+		);
 	}
 
 	removePackageFromMissingList(packageName: string) {
 		try {
-			const failedPackages = config.get('nodes.packagesMissing').split(' ');
-
-			const packageFailedToLoad = failedPackages.filter(
+			this.missingPackages = this.missingPackages.filter(
 				(packageNameAndVersion) =>
 					!packageNameAndVersion.startsWith(packageName) ||
 					!packageNameAndVersion.replace(packageName, '').startsWith('@'),
 			);
-
-			config.set('nodes.packagesMissing', packageFailedToLoad.join(' '));
 		} catch {
 			// do nothing
 		}
@@ -268,7 +264,7 @@ export class CommunityPackagesService {
 			});
 		});
 
-		config.set('nodes.packagesMissing', '');
+		this.missingPackages = [];
 
 		if (missingPackages.size === 0) return;
 
@@ -292,11 +288,8 @@ export class CommunityPackagesService {
 			}
 		}
 
-		config.set(
-			'nodes.packagesMissing',
-			Array.from(missingPackages)
-				.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
-				.join(' '),
+		this.missingPackages = [...missingPackages].map(
+			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
 		);
 	}
 

@@ -805,12 +805,6 @@ export const schema = {
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
 		},
-		packagesMissing: {
-			// Used to have a persistent list of packages
-			doc: 'Contains a comma separated list of packages that failed to load during startup',
-			format: String,
-			default: '',
-		},
 	},
 
 	logs: {
