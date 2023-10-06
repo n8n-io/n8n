@@ -132,7 +132,18 @@ export class MessageEventBus extends EventEmitter {
 			this.logWriter?.startLogging();
 			await this.send(unsentAndUnfinished.unsentMessages);
 
-			const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+			let unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+
+			// if we are in queue mode, running jobs may still be running on a worker despite the main process
+			// crashing, so we can't just mark them as crashed
+			if (config.get('executions.mode') !== 'queue') {
+				const dbUnfinishedExecutionIds = (
+					await Container.get(ExecutionRepository).findAllPotentiallyRunningExecutionIds()
+				).map((e) => e.id);
+				unfinishedExecutionIds = Array.from(
+					new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
+				);
+			}
 
 			if (unfinishedExecutionIds.length > 0) {
 				LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
@@ -160,11 +171,19 @@ export class MessageEventBus extends EventEmitter {
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
 						LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
-						await recoverExecutionDataFromEventLogMessages(
-							executionId,
-							unsentAndUnfinished.unfinishedExecutions[executionId],
-							true,
-						);
+						if (
+							!unsentAndUnfinished.unfinishedExecutions[executionId] ||
+							unsentAndUnfinished.unfinishedExecutions[executionId].length === 0
+						) {
+							LoggerProxy.debug("No event messages found, marking execution as 'crashed'");
+							await Container.get(ExecutionRepository).markAsCrashed([executionId]);
+						} else {
+							await recoverExecutionDataFromEventLogMessages(
+								executionId,
+								unsentAndUnfinished.unfinishedExecutions[executionId],
+								true,
+							);
+						}
 					}
 				}
 				// remove the recovery process flag file
