@@ -1859,6 +1859,7 @@
 	"workflowHistory.limit": "Version history is limited to {evaluatedPruneTime} days",
 	"workflowHistory.upgrade": "{link} to activate full history",
 	"workflowHistory.upgrade.link": "Upgrade plan",
+	"workflowHistory.action.error.title": "Failed to {action}",
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",

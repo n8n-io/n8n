@@ -3,7 +3,7 @@ import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
 import { VIEWS } from '@/constants';
-import { useI18n } from '@/composables';
+import { useI18n, useToast } from '@/composables';
 import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
@@ -35,6 +35,7 @@ const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
+const toast = useToast();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -110,19 +111,28 @@ const onAction = async ({
 	id: WorkflowVersionId;
 	data: { formattedCreatedAt: string };
 }) => {
-	switch (action) {
-		case WORKFLOW_HISTORY_ACTIONS.OPEN:
-			openInNewTab(id);
-			break;
-		case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-			await workflowHistoryStore.downloadVersion(route.params.workflowId, id);
-			break;
-		case WORKFLOW_HISTORY_ACTIONS.CLONE:
-			await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
-			break;
-		case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-			await workflowHistoryStore.restoreWorkflow(route.params.workflowId, id);
-			break;
+	try {
+		switch (action) {
+			case WORKFLOW_HISTORY_ACTIONS.OPEN:
+				openInNewTab(id);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
+				await workflowHistoryStore.downloadVersion(route.params.workflowId, id);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.CLONE:
+				await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
+				await workflowHistoryStore.restoreWorkflow(route.params.workflowId, id);
+				break;
+		}
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('workflowHistory.action.error.title', {
+				interpolate: { action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase() },
+			}),
+		);
 	}
 };
 
