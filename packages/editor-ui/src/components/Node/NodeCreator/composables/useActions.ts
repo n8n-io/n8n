@@ -2,6 +2,9 @@ import { getCurrentInstance, computed } from 'vue';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import type {
 	ActionTypeDescription,
+	AddedNode,
+	AddedNodeConnection,
+	AddedNodesAndConnections,
 	INodeCreateElement,
 	IUpdateInformation,
 	LabelCreateElement,
@@ -9,11 +12,14 @@ import type {
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
+	NO_OP_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	SPLIT_IN_BATCHES_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { i18n } from '@/plugins/i18n';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import type { Telemetry } from '@/plugins/telemetry';
@@ -144,15 +150,13 @@ export const useActions = () => {
 		};
 	}
 
-	function getNodeTypesWithManualTrigger(nodeType?: string): string[] {
-		if (!nodeType) return [];
-
+	function shouldPrependManualTrigger(addedNodes: AddedNode[]): boolean {
 		const { selectedView, openSource } = useNodeCreatorStore();
 		const { workflowTriggerNodes } = useWorkflowsStore();
-		const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
+		const hasTrigger = addedNodes.some((node) => useNodeTypesStore().isTriggerNode(node.type));
 		const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 		const isTriggerPanel = selectedView === TRIGGER_NODE_CREATOR_VIEW;
-		const isStickyNode = nodeType === STICKY_NODE_TYPE;
+		const onlyStickyNodes = addedNodes.every((node) => node.type === STICKY_NODE_TYPE);
 		const singleNodeOpenSources = [
 			NODE_CREATOR_OPEN_SOURCES.PLUS_ENDPOINT,
 			NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
@@ -162,16 +166,65 @@ export const useActions = () => {
 		// If the node creator was opened from the plus endpoint, node connection action, or node connection drop
 		// then we do not want to append the manual trigger
 		const isSingleNodeOpenSource = singleNodeOpenSources.includes(openSource);
-		const shouldAppendManualTrigger =
+		return (
 			!isSingleNodeOpenSource &&
-			!isTrigger &&
+			!hasTrigger &&
 			!workflowContainsTrigger &&
 			isTriggerPanel &&
-			!isStickyNode;
+			!onlyStickyNodes
+		);
+	}
 
-		const nodeTypes = shouldAppendManualTrigger ? [MANUAL_TRIGGER_NODE_TYPE, nodeType] : [nodeType];
+	function getAddedNodesAndConnections(addedNodes: AddedNode[]): AddedNodesAndConnections {
+		if (addedNodes.length === 0) {
+			return { nodes: [], connections: [] };
+		}
 
-		return nodeTypes;
+		const nodes: AddedNode[] = [];
+		const connections: AddedNodeConnection[] = [];
+
+		const nodeToAutoOpen = addedNodes.find((node) => node.type !== MANUAL_TRIGGER_NODE_TYPE);
+
+		if (nodeToAutoOpen) {
+			nodeToAutoOpen.openDetail = true;
+		}
+
+		if (shouldPrependManualTrigger(addedNodes)) {
+			addedNodes.unshift({ type: MANUAL_TRIGGER_NODE_TYPE, isAutoAdd: true });
+			connections.push({
+				from: { nodeIndex: 0 },
+				to: { nodeIndex: 1 },
+			});
+		}
+
+		addedNodes.forEach((node, index) => {
+			nodes.push(node);
+
+			switch (node.type) {
+				case SPLIT_IN_BATCHES_NODE_TYPE: {
+					const splitInBatchesIndex = index;
+					const noOpIndex = splitInBatchesIndex + 1;
+					nodes.push({
+						type: NO_OP_NODE_TYPE,
+						isAutoAdd: true,
+						name: i18n.baseText('nodeView.replaceMe'),
+					});
+					connections.push(
+						{
+							from: { nodeIndex: splitInBatchesIndex, outputIndex: 1 },
+							to: { nodeIndex: noOpIndex },
+						},
+						{
+							from: { nodeIndex: noOpIndex },
+							to: { nodeIndex: splitInBatchesIndex },
+						},
+					);
+					break;
+				}
+			}
+		});
+
+		return { nodes, connections };
 	}
 
 	// Hook into addNode action to set the last node parameters & track the action selected
@@ -211,7 +264,7 @@ export const useActions = () => {
 		actionsCategoryLocales,
 		getPlaceholderTriggerActions,
 		parseCategoryActions,
-		getNodeTypesWithManualTrigger,
+		getAddedNodesAndConnections,
 		getActionData,
 		setAddedNodeActionParameters,
 	};
