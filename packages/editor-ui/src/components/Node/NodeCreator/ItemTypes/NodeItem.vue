@@ -42,7 +42,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { SimplifiedNodeType } from '@/Interface';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, DEFAULT_SUBCATEGORY } from '@/constants';
+import {
+	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	DEFAULT_SUBCATEGORY,
+	DRAG_EVENT_DATA_KEY,
+} from '@/constants';
 
 import { isCommunityPackageName } from '@/utils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
@@ -67,7 +71,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
-const { getNodeTypesWithManualTrigger } = useActions();
+const { getAddedNodesAndConnections } = useActions();
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
@@ -140,8 +144,8 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.dropEffect = 'copy';
 		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
-			'nodeTypeName',
-			getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+			DRAG_EVENT_DATA_KEY,
+			JSON.stringify(getAddedNodesAndConnections([{ type: props.nodeType.name }])),
 		);
 	}
 
