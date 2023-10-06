@@ -64,10 +64,10 @@ export class PersonalSettingsPage extends BasePage {
 			mfaSetupModal.getters.copySecretToClipboardButton().should('be.visible');
 			mfaSetupModal.getters.copySecretToClipboardButton().realClick();
 			cy.readClipboard().then((secret) => {
-				cy.log(secret);
 				const token = generateOTPToken(secret);
 
 				mfaSetupModal.getters.tokenInput().type(token);
+				mfaSetupModal.getters.downloadRecoveryCodesButton().should('be.visible');
 				mfaSetupModal.getters.downloadRecoveryCodesButton().click();
 				mfaSetupModal.getters.saveButton().click();
 			});
