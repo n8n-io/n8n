@@ -112,7 +112,7 @@ export const schema = {
 				},
 				rejectUnauthorized: {
 					doc: 'If unauthorized SSL connections should be rejected',
-					format: 'Boolean',
+					format: Boolean,
 					default: true,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
@@ -208,7 +208,7 @@ export const schema = {
 		},
 		onboardingFlowDisabled: {
 			doc: 'Show onboarding flow in new workflow',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
@@ -281,7 +281,7 @@ export const schema = {
 		},
 		saveExecutionProgress: {
 			doc: 'Whether or not to save progress for each node executed',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
@@ -293,7 +293,7 @@ export const schema = {
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
@@ -305,7 +305,7 @@ export const schema = {
 		// a future version.
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
@@ -331,7 +331,7 @@ export const schema = {
 		health: {
 			active: {
 				doc: 'If health checks should be enabled',
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
 			},
@@ -393,7 +393,7 @@ export const schema = {
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
 				tls: {
-					format: 'Boolean',
+					format: Boolean,
 					default: false,
 					env: 'QUEUE_BULL_REDIS_TLS',
 					doc: 'Enable TLS on Redis connections. Default: false',
@@ -531,7 +531,7 @@ export const schema = {
 		},
 		metrics: {
 			enable: {
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'N8N_METRICS',
 				doc: 'Enable /metrics endpoint. Default: false',
