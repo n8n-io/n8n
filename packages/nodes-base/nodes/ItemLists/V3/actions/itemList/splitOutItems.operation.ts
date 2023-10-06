@@ -1,4 +1,5 @@
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -103,14 +104,15 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
 			.split(',')
-			.map((field) => field.trim());
+			.map((field) => field.trim().replace(/^\$json\./, ''));
+
 		const disableDotNotation = this.getNodeParameter(
 			'options.disableDotNotation',
 			0,
 			false,
 		) as boolean;
 
-		const includeBinary = this.getNodeParameter('options.includeBinary', i, false) as boolean;
+		// const includeBinary = this.getNodeParameter('options.includeBinary', i, false) as boolean;
 
 		const destinationFields = (
 			this.getNodeParameter('options.destinationFieldName', i, '') as string
@@ -134,54 +136,74 @@ export async function execute(
 		const multiSplit = fieldsToSplitOut.length > 1;
 
 		const item = { ...items[i].json };
-		const splited: IDataObject[] = [];
+		const splited: INodeExecutionData[] = [];
 		for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 			const destinationFieldName = destinationFields[entryIndex] || '';
 
-			let arrayToSplit;
-			if (!disableDotNotation) {
-				arrayToSplit = get(item, fieldToSplitOut);
+			let entityToSplit: IDataObject[] = [];
+
+			if (fieldToSplitOut === '$binary') {
+				entityToSplit = Object.entries(items[i].binary || {}).map(([key, value]) => ({
+					[key]: value,
+				}));
+			} else if (fieldToSplitOut === '$json') {
+				entityToSplit = Object.values(item) as IDataObject[];
 			} else {
-				arrayToSplit = item[fieldToSplitOut];
+				if (!disableDotNotation) {
+					entityToSplit = get(item, fieldToSplitOut) as IDataObject[];
+				} else {
+					entityToSplit = item[fieldToSplitOut] as IDataObject[];
+				}
+
+				if (entityToSplit === undefined) {
+					entityToSplit = [];
+				}
+
+				if (typeof entityToSplit !== 'object' || entityToSplit === null) {
+					entityToSplit = [entityToSplit];
+				}
+
+				if (!Array.isArray(entityToSplit)) {
+					entityToSplit = Object.values(entityToSplit);
+				}
 			}
 
-			if (arrayToSplit === undefined) {
-				arrayToSplit = [];
-			}
-
-			if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
-				arrayToSplit = [arrayToSplit];
-			}
-
-			if (!Array.isArray(arrayToSplit)) {
-				arrayToSplit = Object.values(arrayToSplit);
-			}
-
-			for (const [elementIndex, element] of arrayToSplit.entries()) {
+			for (const [elementIndex, element] of entityToSplit.entries()) {
 				if (splited[elementIndex] === undefined) {
-					splited[elementIndex] = {};
+					splited[elementIndex] = { json: {}, pairedItem: { item: i } };
 				}
 
 				const fieldName = destinationFieldName || fieldToSplitOut;
+				let json = element;
 
-				if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
+				if (fieldToSplitOut === '$binary') {
+					if (splited[elementIndex].binary === undefined) {
+						splited[elementIndex].binary = {};
+					}
+					splited[elementIndex].binary![Object.keys(element)[0]] = Object.values(
+						element,
+					)[0] as IBinaryData;
+
+					json = {};
+				}
+
+				if (typeof json === 'object' && json !== null && include === 'noOtherFields') {
 					if (destinationFieldName === '' && !multiSplit) {
-						splited[elementIndex] = { ...splited[elementIndex], ...element };
+						splited[elementIndex] = {
+							json: { ...splited[elementIndex].json, ...json },
+							pairedItem: { item: i },
+						};
 					} else {
-						splited[elementIndex][fieldName] = element;
+						splited[elementIndex].json[fieldName] = json;
 					}
 				} else {
-					splited[elementIndex][fieldName] = element;
+					splited[elementIndex][fieldName] = json;
 				}
 			}
 		}
 
 		for (const splitEntry of splited) {
-			let newItem: IDataObject = {};
-
-			if (include === 'noOtherFields') {
-				newItem = splitEntry;
-			}
+			let newItem: INodeExecutionData = splitEntry;
 
 			if (include === 'allOtherFields') {
 				const itemCopy = deepCopy(item);
@@ -192,7 +214,7 @@ export async function execute(
 						delete itemCopy[fieldToSplitOut];
 					}
 				}
-				newItem = { ...itemCopy, ...splitEntry };
+				newItem.json = { ...itemCopy, ...splitEntry.json };
 			}
 
 			if (include === 'selectedOtherFields') {
@@ -209,22 +231,16 @@ export async function execute(
 
 				for (const field of fieldsToInclude) {
 					if (!disableDotNotation) {
-						splitEntry[field] = get(item, field);
+						splitEntry.json[field] = get(item, field);
 					} else {
-						splitEntry[field] = item[field];
+						splitEntry.json[field] = item[field];
 					}
 				}
 
 				newItem = splitEntry;
 			}
 
-			returnData.push({
-				json: newItem,
-				binary: includeBinary ? items[i].binary : undefined,
-				pairedItem: {
-					item: i,
-				},
-			});
+			returnData.push(newItem);
 		}
 	}
 
