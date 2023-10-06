@@ -199,7 +199,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 
 			return {
-				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
 				feature: {
 					unavailable: {
 						title: `contextual.feature.unavailable.title${contextKey}`,
