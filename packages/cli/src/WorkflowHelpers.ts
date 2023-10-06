@@ -23,7 +23,11 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import type { IExecutionDb, IWorkflowErrorData, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import type {
+	ExecutionPayload,
+	IWorkflowErrorData,
+	IWorkflowExecutionDataProcess,
+} from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 // eslint-disable-next-line import/no-cycle
 import { WorkflowRunner } from '@/WorkflowRunner';
@@ -70,6 +74,7 @@ export function generateFailedExecutionFromError(
 			},
 			executionData: {
 				contextData: {},
+				metadata: {},
 				nodeExecutionStack: [
 					{
 						node,
@@ -186,7 +191,7 @@ export async function executeErrorWorkflow(
 					initialNode,
 				);
 
-				const fullExecutionData: IExecutionDb = {
+				const fullExecutionData: ExecutionPayload = {
 					data: fakeExecution.data,
 					mode: fakeExecution.mode,
 					finished: false,
@@ -248,6 +253,7 @@ export async function executeErrorWorkflow(
 			},
 			executionData: {
 				contextData: {},
+				metadata: {},
 				nodeExecutionStack,
 				waitingExecution: {},
 				waitingExecutionSource: {},

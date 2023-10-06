@@ -1,9 +1,11 @@
 import type {
+	AI_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	SignInType,
 	FAKE_DOOR_FEATURES,
 	TRIGGER_NODE_CREATOR_VIEW,
 	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 } from './constants';
 
 import type { IMenuItem } from 'n8n-design-system';
@@ -41,10 +43,12 @@ import type {
 	IUserSettings,
 	IN8nUISettings,
 	BannerName,
+	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
+import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
 
@@ -163,6 +167,22 @@ export interface INodeTranslationHeaders {
 	};
 }
 
+export interface IAiDataContent {
+	data: INodeExecutionData[] | null;
+	inOut: 'input' | 'output';
+	type: NodeConnectionType;
+	metadata: {
+		executionTime: number;
+		startTime: number;
+	};
+}
+
+export interface IAiData {
+	data: IAiDataContent[];
+	node: string;
+	runIndex: number;
+}
+
 export interface IStartRunData {
 	workflowData: IWorkflowData;
 	startNodes?: string[];
@@ -213,6 +233,7 @@ export interface IWorkflowDataUpdate {
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -224,15 +245,16 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: {
-		nodes: INodeUi[];
-		connections: IConnections;
-	};
+	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
 }
 
 export interface INewWorkflowData {
 	name: string;
 	onboardingFlowEnabled: boolean;
+}
+
+export interface WorkflowMetadata {
+	onboardingId?: string;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -251,6 +273,7 @@ export interface IWorkflowDb {
 	ownedBy?: Partial<IUser>;
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
+	meta?: WorkflowMetadata;
 }
 
 // Identical to cli.Interfaces.ts
@@ -736,12 +759,24 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 
 export type SimplifiedNodeType = Pick<
 	INodeTypeDescription,
-	'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
+	| 'displayName'
+	| 'description'
+	| 'name'
+	| 'group'
+	| 'icon'
+	| 'iconUrl'
+	| 'codex'
+	| 'defaults'
+	| 'outputs'
 >;
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
 	icon?: string;
+	iconProps?: {
+		color?: string;
+	};
+	panelClass?: string;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -887,7 +922,7 @@ export interface WorkflowsState {
 	activeWorkflowExecution: IExecutionsSummary | null;
 	currentWorkflowExecutions: IExecutionsSummary[];
 	activeExecutionId: string | null;
-	executingNode: string | null;
+	executingNode: string[];
 	executionWaitingForWebhook: boolean;
 	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
@@ -935,7 +970,7 @@ export interface IRootState {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
-	executingNode: string | null;
+	executingNode: string[];
 	executionWaitingForWebhook: boolean;
 	pushConnectionActive: boolean;
 	saveDataErrorExecution: string;
@@ -1009,7 +1044,7 @@ export type NewCredentialsModal = ModalState & {
 	showAuthSelector?: boolean;
 };
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1076,6 +1111,7 @@ export interface UIState {
 	stateIsDirty: boolean;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
+	lastSelectedNodeEndpointUuid: string | null;
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -1084,7 +1120,7 @@ export interface UIState {
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
-	banners: { [key in BannerName]: { dismissed: boolean; type?: 'temporary' | 'permanent' } };
+	bannerStack: BannerName[];
 }
 
 export type IFakeDoor = {
@@ -1105,12 +1141,17 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW;
+export type NodeFilterType =
+	| typeof REGULAR_NODE_CREATOR_VIEW
+	| typeof TRIGGER_NODE_CREATOR_VIEW
+	| typeof AI_NODE_CREATOR_VIEW
+	| typeof AI_OTHERS_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''
 	| 'no_trigger_execution_tooltip'
 	| 'plus_endpoint'
+	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
 	| 'node_connection_action'
@@ -1192,6 +1233,7 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
+	currentUserCloudInfo: Cloud.UserAccount | null;
 }
 
 export interface IWorkflowsState {
@@ -1529,6 +1571,13 @@ export declare namespace Cloud {
 		length: number;
 		gracePeriod: number;
 	}
+
+	export type UserAccount = {
+		confirmed: boolean;
+		username: string;
+		email: string;
+		hasEarlyAccess?: boolean;
+	};
 }
 
 export interface CloudPlanState {
@@ -1594,3 +1643,10 @@ export type UTMCampaign =
 	| 'open'
 	| 'upgrade-users'
 	| 'upgrade-variables';
+
+export type N8nBanners = {
+	[key in BannerName]: {
+		priority: number;
+		component: Component;
+	};
+};

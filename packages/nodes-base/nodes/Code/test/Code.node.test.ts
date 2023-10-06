@@ -3,7 +3,7 @@ import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, IWorkflowDataProxyData } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { normalizeItems } from 'n8n-core';
-import { testWorkflows, getWorkflowFilenames, initBinaryDataManager } from '@test/nodes/Helpers';
+import { testWorkflows, getWorkflowFilenames, initBinaryDataService } from '@test/nodes/Helpers';
 import { Code } from '../Code.node';
 import { ValidationError } from '../ValidationError';
 
@@ -11,7 +11,7 @@ describe('Test Code Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);
 
 	beforeAll(async () => {
-		await initBinaryDataManager();
+		await initBinaryDataService();
 	});
 
 	testWorkflows(workflows);

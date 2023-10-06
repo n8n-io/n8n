@@ -6,7 +6,7 @@ import nock from 'nock';
 
 describe('Test QuickChart Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataManager();
+		await Helpers.initBinaryDataService();
 		nock.disableNetConnect();
 		nock('https://quickchart.io')
 			.persist()

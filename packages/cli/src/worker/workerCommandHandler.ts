@@ -5,9 +5,11 @@ import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServiceP
 import * as os from 'os';
 import Container from 'typedi';
 import { License } from '@/License';
+import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
+import { ExternalSecretsManager } from '../ExternalSecrets/ExternalSecretsManager.ee';
 
 export function getWorkerCommandReceivedHandler(options: {
-	uniqueInstanceId: string;
+	queueModeId: string;
 	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
@@ -25,16 +27,19 @@ export function getWorkerCommandReceivedHandler(options: {
 				return;
 			}
 			if (message) {
-				if (message.targets && !message.targets.includes(options.uniqueInstanceId)) {
+				LoggerProxy.debug(
+					`RedisCommandHandler(worker): Received command message ${message.command} from ${message.senderId}`,
+				);
+				if (message.targets && !message.targets.includes(options.queueModeId)) {
 					return; // early return if the message is not for this worker
 				}
 				switch (message.command) {
 					case 'getStatus':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 							payload: {
-								workerId: options.uniqueInstanceId,
+								workerId: options.queueModeId,
 								runningJobs: options.getRunningJobIds(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
@@ -53,18 +58,51 @@ export function getWorkerCommandReceivedHandler(options: {
 						break;
 					case 'getId':
 						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
+							workerId: options.queueModeId,
 							command: message.command,
 						});
 						break;
 					case 'restartEventBus':
-						await options.redisPublisher.publishToWorkerChannel({
-							workerId: options.uniqueInstanceId,
-							command: message.command,
-							payload: {
-								result: 'success',
-							},
-						});
+						try {
+							await Container.get(MessageEventBus).restart();
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'success',
+								},
+							});
+						} catch (error) {
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'error',
+									error: (error as Error).message,
+								},
+							});
+						}
+						break;
+					case 'reloadExternalSecretsProviders':
+						try {
+							await Container.get(ExternalSecretsManager).reloadAllProviders();
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'success',
+								},
+							});
+						} catch (error) {
+							await options.redisPublisher.publishToWorkerChannel({
+								workerId: options.queueModeId,
+								command: message.command,
+								payload: {
+									result: 'error',
+									error: (error as Error).message,
+								},
+							});
+						}
 						break;
 					case 'reloadLicense':
 						await Container.get(License).reload();

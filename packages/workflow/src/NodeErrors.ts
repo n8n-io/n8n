@@ -91,7 +91,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'403': 'Forbidden - perhaps check your credentials?',
 	'404': 'The resource you are requesting could not be found',
 	'405': 'Method not allowed - please check you are using the right HTTP method',
-	'429': 'The service is receiving too many requests from you! Perhaps take a break?',
+	'429': 'The service is receiving too many requests from you',
 
 	'5XX': 'The service failed to process your request',
 	'500': 'The service was not able to process your request',
@@ -104,7 +104,7 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
 const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
-type Severity = 'warning' | 'error';
+export type Severity = 'warning' | 'error';
 
 interface ExecutionBaseErrorOptions {
 	cause?: Error | JsonObject;
@@ -135,6 +135,8 @@ export abstract class ExecutionBaseError extends Error {
 	context: IDataObject = {};
 
 	lineNumber: number | undefined;
+
+	severity: Severity = 'error';
 
 	constructor(message: string, { cause }: ExecutionBaseErrorOptions) {
 		const options = cause instanceof Error ? { cause } : {};
@@ -170,8 +172,6 @@ export abstract class ExecutionBaseError extends Error {
  */
 export abstract class NodeError extends ExecutionBaseError {
 	node: INode;
-
-	severity: Severity = 'error';
 
 	constructor(node: INode, error: Error | JsonObject) {
 		const message = error instanceof Error ? error.message : '';

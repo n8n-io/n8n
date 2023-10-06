@@ -5,6 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -27,6 +28,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -49,9 +51,9 @@ import type {
 	NewCredentialsModal,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from './workflows.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import type { BaseTextKey } from '@/plugins/i18n';
@@ -67,6 +69,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		activeCredentialType: null,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[CHAT_EMBED_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -101,6 +106,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_LM_CHAT_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
@@ -184,15 +192,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
-		banners: {
-			V1: { dismissed: true },
-			TRIAL: { dismissed: true },
-			TRIAL_OVER: { dismissed: true },
-			NON_PRODUCTION_LICENSE: { dismissed: true },
-		},
 		bannersHeight: 0,
+		bannerStack: [],
 	}),
 	getters: {
+		logo() {
+			const { releaseChannel } = useSettingsStore().settings;
+			return releaseChannel === 'stable'
+				? 'n8n-logo-expanded.svg'
+				: `n8n-${releaseChannel}-logo.svg`;
+		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;
@@ -563,36 +572,23 @@ export const useUIStore = defineStore(STORES.UI, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});
-				this.banners[name].dismissed = true;
-				this.banners[name].type = 'permanent';
+				this.removeBannerFromStack(name);
 				return;
 			}
-			this.banners[name].dismissed = true;
-			this.banners[name].type = 'temporary';
-		},
-		showBanner(name: BannerName): void {
-			this.banners[name].dismissed = false;
+			this.removeBannerFromStack(name);
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
 		},
-		async initBanners(): Promise<void> {
-			const cloudPlanStore = useCloudPlanStore();
-			if (cloudPlanStore.userIsTrialing) {
-				await this.dismissBanner('V1', 'temporary');
-				if (cloudPlanStore.trialExpired) {
-					this.showBanner('TRIAL_OVER');
-				} else {
-					this.showBanner('TRIAL');
-				}
-			}
+		pushBannerToStack(name: BannerName) {
+			if (this.bannerStack.includes(name)) return;
+			this.bannerStack.push(name);
 		},
-		async dismissAllBanners() {
-			return Promise.all([
-				this.dismissBanner('TRIAL', 'temporary'),
-				this.dismissBanner('TRIAL_OVER', 'temporary'),
-				this.dismissBanner('V1', 'temporary'),
-			]);
+		removeBannerFromStack(name: BannerName) {
+			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
+		},
+		clearBannerStack() {
+			this.bannerStack = [];
 		},
 	},
 });

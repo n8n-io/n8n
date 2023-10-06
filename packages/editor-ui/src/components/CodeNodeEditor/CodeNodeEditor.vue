@@ -94,6 +94,11 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+
+		rows: {
+			type: Number,
+			default: -1,
+		},
 		modelValue: {
 			type: String,
 		},
@@ -315,7 +320,7 @@ export default defineComponent({
 			...readOnlyEditorExtensions,
 			EditorState.readOnly.of(isReadOnly),
 			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({ isReadOnly }),
+			codeNodeEditorTheme({ isReadOnly, customMinHeight: this.rows }),
 		];
 
 		if (!isReadOnly) {

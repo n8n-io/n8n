@@ -1,7 +1,7 @@
 import { Container } from 'typedi';
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
+import { BinaryDataService, UserSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
@@ -72,11 +72,16 @@ export async function initNodeTypes() {
 }
 
 /**
- * Initialize a BinaryManager for test runs.
+ * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryManager() {
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	await BinaryDataManager.init(binaryDataConfig);
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({
+		mode,
+		availableModes: [mode],
+		localStoragePath: '',
+	});
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 /**

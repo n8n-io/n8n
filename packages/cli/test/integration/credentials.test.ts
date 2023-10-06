@@ -124,12 +124,10 @@ describe('POST /credentials', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}),
-		);
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}
 	});
 
 	test('should fail with missing encryption key', async () => {
@@ -370,18 +368,16 @@ describe('PATCH /credentials/:id', () => {
 	test('should fail with invalid inputs', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent
-					.patch(`/credentials/${savedCredential.id}`)
-					.send(invalidPayload);
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent
+				.patch(`/credentials/${savedCredential.id}`)
+				.send(invalidPayload);
 
-				if (response.statusCode === 500) {
-					console.log(response.statusCode, response.body);
-				}
-				expect(response.statusCode).toBe(400);
-			}),
-		);
+			if (response.statusCode === 500) {
+				console.log(response.statusCode, response.body);
+			}
+			expect(response.statusCode).toBe(400);
+		}
 	});
 
 	test('should fail if cred not found', async () => {

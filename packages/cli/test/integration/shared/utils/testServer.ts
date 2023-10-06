@@ -64,6 +64,8 @@ import {
 import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
+import { executionsController } from '@/executions/executions.controller';
+import { WorkflowHistoryController } from '@/workflows/workflowHistory/workflowHistory.controller.ee';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -93,7 +95,14 @@ const classifyEndpointGroups = (endpointGroups: EndpointGroup[]) => {
 	const routerEndpoints: EndpointGroup[] = [];
 	const functionEndpoints: EndpointGroup[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'workflows', 'publicApi', 'license', 'variables'];
+	const ROUTER_GROUP = [
+		'credentials',
+		'workflows',
+		'publicApi',
+		'license',
+		'variables',
+		'executions',
+	];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -133,6 +142,9 @@ export const setupTestServer = ({
 	app.use(rawBodyReader);
 	app.use(cookieParser());
 
+	const logger = getLogger();
+	LoggerProxy.init(logger);
+
 	const testServer: TestServer = {
 		app,
 		httpServer: app.listen(0),
@@ -143,9 +155,6 @@ export const setupTestServer = ({
 
 	beforeAll(async () => {
 		await testDb.init();
-
-		const logger = getLogger();
-		LoggerProxy.init(logger);
 
 		// Mock all telemetry.
 		mockInstance(InternalHooks);
@@ -175,6 +184,7 @@ export const setupTestServer = ({
 				workflows: { controller: workflowsController, path: 'workflows' },
 				license: { controller: licenseController, path: 'license' },
 				variables: { controller: variablesController, path: 'variables' },
+				executions: { controller: executionsController, path: 'executions' },
 			};
 
 			if (enablePublicAPI) {
@@ -302,6 +312,9 @@ export const setupTestServer = ({
 						break;
 					case 'externalSecrets':
 						registerController(app, config, Container.get(ExternalSecretsController));
+						break;
+					case 'workflowHistory':
+						registerController(app, config, Container.get(WorkflowHistoryController));
 						break;
 				}
 			}

@@ -195,11 +195,14 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.6.0
-        version: 2.6.0
+        specifier: ~2.6.1
+        version: 2.6.1
       '@oclif/command':
         specifier: ^1.8.16
-        version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+        version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
+      '@oclif/config':
+        specifier: ^1.18.17
+        version: 1.18.17
       '@oclif/core':
         specifier: ^1.16.4
         version: 1.16.6
@@ -570,18 +573,15 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      aws4:
+        specifier: ^1.8.0
+        version: 1.11.0
       axios:
         specifier: ^0.21.1
         version: 0.21.4
       concat-stream:
         specifier: ^2.0.0
         version: 2.0.0
-      content-disposition:
-        specifier: ^0.5.4
-        version: 0.5.4
-      content-type:
-        specifier: ^1.0.4
-        version: 1.0.4
       cron:
         specifier: ~1.7.2
         version: 1.7.2
@@ -624,19 +624,22 @@ importers:
       qs:
         specifier: ^6.10.1
         version: 6.11.0
+      typedi:
+        specifier: ^0.10.0
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
+      xml2js:
+        specifier: ^0.5.0
+        version: 0.5.0
     devDependencies:
+      '@types/aws4':
+        specifier: ^1.5.1
+        version: 1.11.2
       '@types/concat-stream':
         specifier: ^2.0.0
         version: 2.0.0
-      '@types/content-disposition':
-        specifier: ^0.5.5
-        version: 0.5.5
-      '@types/content-type':
-        specifier: ^1.1.5
-        version: 1.1.5
       '@types/cron':
         specifier: ~1.7.1
         version: 1.7.3
@@ -658,6 +661,9 @@ importers:
       '@types/uuid':
         specifier: ^8.3.2
         version: 8.3.4
+      '@types/xml2js':
+        specifier: ^0.4.11
+        version: 0.4.11
 
   packages/design-system:
     dependencies:
@@ -781,7 +787,7 @@ importers:
     dependencies:
       '@codemirror/autocomplete':
         specifier: ^6.4.0
-        version: 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+        version: 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/commands':
         specifier: ^6.1.0
         version: 6.1.2
@@ -793,7 +799,7 @@ importers:
         version: 6.0.1
       '@codemirror/lang-python':
         specifier: ^6.1.2
-        version: 6.1.2(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+        version: 6.1.2(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/language':
         specifier: ^6.2.1
         version: 6.2.1
@@ -836,9 +842,12 @@ importers:
       '@jsplumb/util':
         specifier: ^5.13.2
         version: 5.13.2
+      '@lezer/common':
+        specifier: ^1.0.4
+        version: 1.1.0
       '@n8n/codemirror-lang-sql':
         specifier: ^1.0.2
-        version: 1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+        version: 1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@vueuse/components':
         specifier: ^10.2.0
         version: 10.2.0(vue@3.3.4)
@@ -853,7 +862,7 @@ importers:
         version: 1.0.0
       codemirror-lang-n8n-expression:
         specifier: ^0.2.0
-        version: 0.2.0(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+        version: 0.2.0(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       copy-to-clipboard:
         specifier: ^3.3.3
         version: 3.3.3
@@ -926,6 +935,9 @@ importers:
       vue-json-pretty:
         specifier: 2.2.4
         version: 2.2.4(vue@3.3.4)
+      vue-markdown-render:
+        specifier: ^2.0.1
+        version: 2.0.1
       vue-router:
         specifier: ^4.2.2
         version: 4.2.2(vue@3.3.4)
@@ -974,7 +986,7 @@ importers:
     dependencies:
       '@oclif/command':
         specifier: ^1.5.18
-        version: 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+        version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
       '@oclif/errors':
         specifier: ^1.2.2
         version: 1.3.6
@@ -1183,6 +1195,9 @@ importers:
       tmp-promise:
         specifier: ^3.0.2
         version: 3.0.3
+      typedi:
+        specifier: ^0.10.0
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
       uuid:
         specifier: ^8.3.2
         version: 8.3.2
@@ -1289,6 +1304,9 @@ importers:
 
   packages/workflow:
     dependencies:
+      '@n8n/tournament':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@n8n_io/riot-tmpl':
         specifier: ^4.0.0
         version: 4.0.0
@@ -3522,7 +3540,7 @@ packages:
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
     dev: true
 
-  /@codemirror/autocomplete@6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+  /@codemirror/autocomplete@6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-HLF2PnZAm1s4kGs30EiqKMgD7XsYaQ0XJnMR0rofEWQ5t5D60SfqpDIkIh1ze5tiEbyUWm8+VJ6W1/erVvBMIA==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
@@ -3533,7 +3551,7 @@ packages:
       '@codemirror/language': 6.2.1
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.5.1
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
     dev: false
 
   /@codemirror/commands@6.1.2:
@@ -3542,13 +3560,13 @@ packages:
       '@codemirror/language': 6.2.1
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.5.1
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
     dev: false
 
-  /@codemirror/lang-css@6.0.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+  /@codemirror/lang-css@6.0.1(@codemirror/view@6.5.1)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-rlLq1Dt0WJl+2epLQeAsfqIsx3lGu4HStHCJu95nGGuz2P2fNugbU3dQYafr2VRjM4eMC9HviI6jvS98CNtG5w==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/language': 6.2.1
       '@codemirror/state': 6.1.4
       '@lezer/css': 1.1.1
@@ -3560,12 +3578,12 @@ packages:
   /@codemirror/lang-javascript@6.1.2:
     resolution: {integrity: sha512-OcwLfZXdQ1OHrLiIcKCn7MqZ7nx205CMKlhe+vL88pe2ymhT9+2P+QhwkYGxMICj8TDHyp8HFKVwpiisUT7iEQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.5.1
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
       '@lezer/javascript': 1.0.2
     dev: false
 
@@ -3576,10 +3594,10 @@ packages:
       '@lezer/json': 1.0.0
     dev: false
 
-  /@codemirror/lang-python@6.1.2(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+  /@codemirror/lang-python@6.1.2(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-nbQfifLBZstpt6Oo4XxA2LOzlSp4b/7Bc5cmodG1R+Cs5PLLCTUvsMNWDnziiCfTOG/SW1rVzXq/GbIr6WXlcw==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/language': 6.2.1
       '@lezer/python': 1.1.5
     transitivePeerDependencies:
@@ -3593,7 +3611,7 @@ packages:
     dependencies:
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.5.1
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
       style-mod: 4.0.0
@@ -4501,8 +4519,8 @@ packages:
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
     dev: false
 
-  /@lezer/common@1.0.1:
-    resolution: {integrity: sha512-8TR5++Q/F//tpDsLd5zkrvEX5xxeemafEaek7mUp7Y+bI8cKQXdSqhzTOBaOogETcMOVr0pT3BBPXp13477ciw==}
+  /@lezer/common@1.1.0:
+    resolution: {integrity: sha512-XPIN3cYDXsoJI/oDWoR2tD++juVrhgIago9xyKhZ7IhGlzdDM9QgC8D8saKNCz5pindGcznFr2HBSsEQSWnSjw==}
     dev: false
 
   /@lezer/css@1.1.1:
@@ -4515,13 +4533,13 @@ packages:
   /@lezer/highlight@1.1.1:
     resolution: {integrity: sha512-duv9D23O9ghEDnnUDmxu+L8pJy4nYo4AbCOHIudUhscrLSazqeJeK1V50EU6ZufWF1zv0KJwu/frFRyZWXxHBQ==}
     dependencies:
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
     dev: false
 
   /@lezer/html@1.3.0:
     resolution: {integrity: sha512-jU/ah8DEoiECLTMouU/X/ujIg6k9WQMIOFMaCLebzaXfrguyGaR3DpTgmk0tbljiuIJ7hlmVJPcJcxGzmCd0Mg==}
     dependencies:
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
     dev: false
@@ -4543,7 +4561,7 @@ packages:
   /@lezer/lr@1.2.3:
     resolution: {integrity: sha512-qpB7rBzH8f6Mzjv2AVZRahcm+2Cf7nbIH++uXbvVOL1yIRvVWQ3HAM/saeBLCyz/togB7LGo76qdJYL1uKQlqA==}
     dependencies:
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
     dev: false
 
   /@lezer/python@1.1.5:
@@ -4634,10 +4652,10 @@ packages:
     dev: false
     optional: true
 
-  /@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+  /@n8n/codemirror-lang-sql@1.0.2(@codemirror/view@6.5.1)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-sOf/KyewSu3Ikij0CkRtzJJDhRDZcwNCEYl8UdH4U/riL0/XZGcBD7MYofCCcKszanJZiEWRZ2KU1sRp234iMg==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/language': 6.2.1
       '@codemirror/state': 6.1.4
       '@lezer/highlight': 1.1.1
@@ -4645,6 +4663,16 @@ packages:
     transitivePeerDependencies:
       - '@codemirror/view'
       - '@lezer/common'
+    dev: false
+
+  /@n8n/tournament@1.0.2:
+    resolution: {integrity: sha512-fTpi7F8ra5flGSVfRzohPyG7czAAKCZPlLjdKdwbLJivLoI/Ekhgodov1jfVSCVFVbwQ06gRQRxLEDzl2jl8ig==}
+    engines: {node: '>=18.10', pnpm: '>=8.6'}
+    dependencies:
+      '@n8n_io/riot-tmpl': 4.0.1
+      ast-types: 0.16.1
+      esprima-next: 5.8.4
+      recast: 0.22.0
     dev: false
 
   /@n8n/vm2@3.9.20:
@@ -4656,8 +4684,8 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.6.0:
-    resolution: {integrity: sha512-jPUn8xKAZMWgFw8w6BwqbdlZ1Et4tZcPUdOfEzxpWxEmgtCEAdbl3V0ygP3pTXyWY0hblvv8QzbHOUrK25hQSA==}
+  /@n8n_io/license-sdk@2.6.1:
+    resolution: {integrity: sha512-N4yBzgNIRrQlhy+BWyEC9cbf86asPxryWbJpmrfeaqkFpBR6Z5yIqmWRGnLs7XKVC9se8cdWlF7EWKtaH6oDPA==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       crypto-js: 4.1.1
@@ -4668,6 +4696,12 @@ packages:
 
   /@n8n_io/riot-tmpl@4.0.0:
     resolution: {integrity: sha512-/xw8HQgYQlBCrt3IKpNSSB1CgpP7XArw1QTRjP+KEw+OHT8XGvHxXrW9VGdUu9RwDnzm/LFu+dNLeDmwJMeOwQ==}
+    dependencies:
+      eslint-config-riot: 1.0.0
+    dev: false
+
+  /@n8n_io/riot-tmpl@4.0.1:
+    resolution: {integrity: sha512-/zdRbEfTFjsm1NqnpPQHgZTkTdbp5v3VUxGeMA9098sps8jRCTraQkc3AQstJgHUm7ylBXJcIVhnVeLUMWAfwQ==}
     dependencies:
       eslint-config-riot: 1.0.0
     dev: false
@@ -4723,6 +4757,37 @@ packages:
     dev: false
     optional: true
 
+  /@oclif/command@1.8.18(@oclif/config@1.18.17):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.17
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.5.4
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
+  /@oclif/command@1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1):
+    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
+    engines: {node: '>=12.0.0'}
+    peerDependencies:
+      '@oclif/config': ^1
+    dependencies:
+      '@oclif/config': 1.18.17
+      '@oclif/errors': 1.3.6
+      '@oclif/help': 1.0.3(supports-color@8.1.1)
+      '@oclif/parser': 3.8.8
+      debug: 4.3.4(supports-color@8.1.1)
+      semver: 7.5.4
+    transitivePeerDependencies:
+      - supports-color
+
   /@oclif/command@1.8.18(@oclif/config@1.18.2):
     resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
     engines: {node: '>=12.0.0'}
@@ -4739,40 +4804,24 @@ packages:
       - supports-color
     dev: true
 
-  /@oclif/command@1.8.18(@oclif/config@1.18.5):
-    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
-    engines: {node: '>=12.0.0'}
-    peerDependencies:
-      '@oclif/config': ^1
+  /@oclif/config@1.18.17:
+    resolution: {integrity: sha512-k77qyeUvjU8qAJ3XK3fr/QVAqsZO8QOBuESnfeM5HHtPNLSyfVcwiMM2zveSW5xRdLSG3MfV8QnLVkuyCL2ENg==}
+    engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
-      '@oclif/config': 1.18.5(supports-color@8.1.1)
       '@oclif/errors': 1.3.6
-      '@oclif/help': 1.0.3(supports-color@8.1.1)
-      '@oclif/parser': 3.8.8
+      '@oclif/parser': 3.8.17
       debug: 4.3.4(supports-color@8.1.1)
-      semver: 7.5.4
-    transitivePeerDependencies:
-      - supports-color
-    dev: true
-
-  /@oclif/command@1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1):
-    resolution: {integrity: sha512-qTad+jtiriMMbkw6ArtcUY89cwLwmwDnD4KSGT+OQiZKYtegp3NUCM9JN8lfj/aKC+0kvSitJM4ULzbgiVTKQQ==}
-    engines: {node: '>=12.0.0'}
-    peerDependencies:
-      '@oclif/config': ^1
-    dependencies:
-      '@oclif/config': 1.18.5(supports-color@8.1.1)
-      '@oclif/errors': 1.3.6
-      '@oclif/help': 1.0.3(supports-color@8.1.1)
-      '@oclif/parser': 3.8.8
-      debug: 4.3.4(supports-color@8.1.1)
-      semver: 7.5.4
+      globby: 11.1.0
+      is-wsl: 2.2.0
+      tslib: 2.6.1
     transitivePeerDependencies:
       - supports-color
 
   /@oclif/config@1.18.2:
     resolution: {integrity: sha512-cE3qfHWv8hGRCP31j7fIS7BfCflm/BNZ2HNqHexH+fDrdF2f1D5S8VmXWLC77ffv3oDvWyvE9AZeR0RfmHCCaA==}
     engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       '@oclif/errors': 1.3.6
       '@oclif/parser': 3.8.8
@@ -4787,6 +4836,7 @@ packages:
   /@oclif/config@1.18.5(supports-color@8.1.1):
     resolution: {integrity: sha512-R6dBedaUVn5jtAh79aaRm7jezx4l3V7Im9NORlLmudz5BL1foMeuXEvnqm+bMiejyexVA+oi9mto6YKZPzo/5Q==}
     engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
       '@oclif/errors': 1.3.6
       '@oclif/parser': 3.8.8
@@ -4836,11 +4886,11 @@ packages:
     engines: {node: '>=8.10.0'}
     hasBin: true
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)
-      '@oclif/config': 1.18.5(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.17)
+      '@oclif/config': 1.18.17
       '@oclif/errors': 1.3.6
       '@oclif/plugin-help': 3.2.18
-      cli-ux: 5.6.7(@oclif/config@1.18.5)
+      cli-ux: 5.6.7(@oclif/config@1.18.17)
       debug: 4.3.4(supports-color@8.1.1)
       find-yarn-workspace-root: 2.0.0
       fs-extra: 8.1.0
@@ -4892,6 +4942,16 @@ packages:
 
   /@oclif/linewrap@1.0.0:
     resolution: {integrity: sha512-Ups2dShK52xXa8w6iBWLgcjPJWjais6KPJQq3gQ/88AY6BXoTX+MIGFPrWQO1KLMiQfoTpcLnUwloN4brrVUHw==}
+
+  /@oclif/parser@3.8.17:
+    resolution: {integrity: sha512-l04iSd0xoh/16TGVpXb81Gg3z7tlQGrEup16BrVLsZBK6SEYpYHRJZnM32BwZrHI97ZSFfuSwVlzoo6HdsaK8A==}
+    engines: {node: '>=8.0.0'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+    dependencies:
+      '@oclif/errors': 1.3.6
+      '@oclif/linewrap': 1.0.0
+      chalk: 4.1.2
+      tslib: 2.6.1
 
   /@oclif/parser@3.8.8:
     resolution: {integrity: sha512-OgqQAtpyq1XFJG3dvLl9aqiO+F5pubkzt7AivUDkNoa6/hNgVZ79vvTO8sqo5XAAhOm/fcTSerZ35OTnTJb1ng==}
@@ -6762,7 +6822,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.11
+      vue-component-type-helpers: 1.8.15
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -6967,14 +7027,6 @@ packages:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
       '@types/node': 18.16.16
-
-  /@types/content-disposition@0.5.5:
-    resolution: {integrity: sha512-v6LCdKfK6BwcqMo+wYW05rLS12S0ZO0Fl4w1h4aaZMD7bqT3gVUns6FvLJKGZHQmYn3SX55JWGpziwJRwVgutA==}
-    dev: true
-
-  /@types/content-type@1.1.5:
-    resolution: {integrity: sha512-dgMN+syt1xb7Hk8LU6AODOfPlvz5z1CbXpPuJE5ZrX9STfBOIXF09pEB8N7a97WT9dbngt3ksDCm6GW6yMrxfQ==}
-    dev: true
 
   /@types/convict@6.1.1:
     resolution: {integrity: sha512-R+JLaTvhsD06p4jyjUDtbd5xMtZTRE3c0iI+lrFWZogSVEjgTWPYwvJPVf+t92E+yrlbXa4X4Eg9ro6gPdUt4w==}
@@ -8910,7 +8962,6 @@ packages:
       is-nan: 1.3.2
       object-is: 1.1.5
       util: 0.12.5
-    dev: true
 
   /assertion-error@1.1.0:
     resolution: {integrity: sha512-jgsaNduz+ndvGyFt3uSuWqvy4lCnIJiovtouQN5JZHOKCS2QuhEdbcQHFhVksz2N2U9hXJo8odG7ETyWlEeuDw==}
@@ -8939,7 +8990,6 @@ packages:
     engines: {node: '>=4'}
     dependencies:
       tslib: 2.6.1
-    dev: true
 
   /astral-regex@2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
@@ -9933,12 +9983,12 @@ packages:
       string-width: 4.2.3
     dev: true
 
-  /cli-ux@5.6.7(@oclif/config@1.18.5):
+  /cli-ux@5.6.7(@oclif/config@1.18.17):
     resolution: {integrity: sha512-dsKAurMNyFDnO6X1TiiRNiVbL90XReLKcvIq4H777NMqXGBxBws23ag8ubCJE97vVZEgWG2eSUhsyLf63Jv8+g==}
     engines: {node: '>=8.0.0'}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     dependencies:
-      '@oclif/command': 1.8.18(@oclif/config@1.18.5)(supports-color@8.1.1)
+      '@oclif/command': 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
       '@oclif/errors': 1.3.6
       '@oclif/linewrap': 1.0.0
       '@oclif/screen': 1.0.4
@@ -10058,23 +10108,23 @@ packages:
   /codemirror-lang-html-n8n@1.0.0:
     resolution: {integrity: sha512-ofNP6VTDGJ5rue+kTCZlDZdF1PnE0sl2cAkfrsCAd5MlBgDmqTwuFJIkTI6KXOJXs0ucdTYH6QLhy9BSW7EaOQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
-      '@codemirror/lang-css': 6.0.1(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
+      '@codemirror/lang-css': 6.0.1(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/lang-javascript': 6.1.2
       '@codemirror/language': 6.2.1
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.5.1
-      '@lezer/common': 1.0.1
+      '@lezer/common': 1.1.0
       '@lezer/css': 1.1.1
       '@lezer/highlight': 1.1.1
       '@lezer/html': 1.3.0
       '@lezer/lr': 1.2.3
     dev: false
 
-  /codemirror-lang-n8n-expression@0.2.0(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1):
+  /codemirror-lang-n8n-expression@0.2.0(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0):
     resolution: {integrity: sha512-kdlpzevdCpWcpbNcwES9YZy+rDFwWOdO6Z78SWxT6jMhCPmdHQmO+gJ39aXAXlUI7OGLfOBtg1/ONxPjRpEIYQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.0.1)
+      '@codemirror/autocomplete': 6.4.0(@codemirror/language@6.2.1)(@codemirror/state@6.1.4)(@codemirror/view@6.5.1)(@lezer/common@1.1.0)
       '@codemirror/language': 6.2.1
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
@@ -11302,6 +11352,10 @@ packages:
     resolution: {integrity: sha512-GHrMyVZQWvTIdDtpiEXdHZnFQKzeO09apj8Cbl4pKWy4i0Oprcq17usfDt5aO63swf0JOeMWjWQE/LzgSRuWpA==}
     dev: false
 
+  /entities@2.1.0:
+    resolution: {integrity: sha512-hCx1oky9PFrJ611mf0ifBLBRW8lUUVRlFolb5gWRfIELabBlbp9xZvrqZLZAs+NxFnbfQoeGd8wDkygjg7U85w==}
+    dev: false
+
   /entities@2.2.0:
     resolution: {integrity: sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==}
     dev: false
@@ -11503,7 +11557,6 @@ packages:
 
   /es6-object-assign@1.1.0:
     resolution: {integrity: sha512-MEl9uirslVwqQU369iHNWZXsI8yaZYGg/D65aOgZkeyFJwHYSxilf7rQzXKI7DdDuBPrBXbfk3sl9hJhmd5AUw==}
-    dev: true
 
   /es6-symbol@3.1.3:
     resolution: {integrity: sha512-NJ6Yn3FuDinBaBRWl/q5X/s4koRHBrgKAu+yGI6JCBeiu3qrcbJhwT2GeR/EXVfylRk8dpQVJoLEFhK+Mu31NA==}
@@ -15571,6 +15624,12 @@ packages:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
     dev: true
 
+  /linkify-it@3.0.3:
+    resolution: {integrity: sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==}
+    dependencies:
+      uc.micro: 1.0.6
+    dev: false
+
   /linkify-it@4.0.0:
     resolution: {integrity: sha512-QAxkXyzT/TXgwGyY4rTgC95Ex6/lZ5/lYTV9nug6eJt93BCBQGOE47D/g2+/m5J1MrVLr2ot97OXkBZ9bBpR4A==}
     dependencies:
@@ -16071,6 +16130,17 @@ packages:
 
   /markdown-it-task-lists@2.1.1:
     resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
+    dev: false
+
+  /markdown-it@12.3.2:
+    resolution: {integrity: sha512-TchMembfxfNVpHkbtriWltGWc+m3xszaRD0CZup7GFFhzIgQqxIfn3eGj1yZpfuflzPvfkt611B2Q/Bsk1YnGg==}
+    hasBin: true
+    dependencies:
+      argparse: 2.0.1
+      entities: 2.1.0
+      linkify-it: 3.0.3
+      mdurl: 1.0.1
+      uc.micro: 1.0.6
     dev: false
 
   /markdown-it@13.0.1:
@@ -18657,7 +18727,6 @@ packages:
       esprima: 4.0.1
       source-map: 0.6.1
       tslib: 2.6.1
-    dev: true
 
   /recast@0.23.3:
     resolution: {integrity: sha512-HbCVFh2ANP6a09nzD4lx7XthsxMOJWKX5pIcUwtLrmeEIl3I0DwjCoVXDE0Aobk+7k/mS3H50FK4iuYArpcT6Q==}
@@ -21732,8 +21801,8 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.11:
-    resolution: {integrity: sha512-CWItFzuEWjkSXDeMGwQEc5cFH4FaueyPQHfi1mBDe+wA2JABqNjFxFUtmZJ9WHkb0HpEwqgBg1umiXrWYXkXHw==}
+  /vue-component-type-helpers@1.8.15:
+    resolution: {integrity: sha512-RKiPRKW4BdwgmQ9vaNkHYKAThdTbgU4TOphVyyzqxRwsOJOoRIrb+vB49XLvs5CKPNrvxMXZMwPe5FyJCqFWyg==}
     dev: true
 
   /vue-component-type-helpers@1.8.4:
@@ -21816,6 +21885,13 @@ packages:
     peerDependencies:
       vue: '>=3.0.0'
     dependencies:
+      vue: 3.3.4
+    dev: false
+
+  /vue-markdown-render@2.0.1:
+    resolution: {integrity: sha512-/UBCu0OrZ9zzEDtiZVwlV/CQ+CgcwViServGis3TRXSVc6+6lJxcaOcD43vRoQzYfPa9r9WDt0Q7GyupOmpEWA==}
+    dependencies:
+      markdown-it: 12.3.2
       vue: 3.3.4
     dev: false
 
