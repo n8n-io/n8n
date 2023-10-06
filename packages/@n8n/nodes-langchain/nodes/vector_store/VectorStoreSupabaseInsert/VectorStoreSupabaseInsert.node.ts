@@ -10,8 +10,8 @@ import type { Document } from 'langchain/document';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { processDocuments } from '../shared/processDocuments';
 
 export class VectorStoreSupabaseInsert implements INodeType {
 	description: INodeTypeDescription = {
@@ -111,23 +111,16 @@ export class VectorStoreSupabaseInsert implements INodeType {
 		)) as Embeddings;
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
-		let processedDocuments: Document[];
-
-		if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
-			processedDocuments = await documentInput.process(items);
-		} else {
-			processedDocuments = documentInput;
-		}
+		const { processedDocuments, serializedDocuments } = await processDocuments(
+			documentInput,
+			items,
+		);
 
 		await SupabaseVectorStore.fromDocuments(processedDocuments, embeddings, {
 			client,
 			tableName,
 			queryName,
 		});
-
-		const serializedDocuments = processedDocuments.map(({ metadata, pageContent }) => ({
-			json: { metadata, pageContent },
-		}));
 
 		return this.prepareOutputData(serializedDocuments);
 	}

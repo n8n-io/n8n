@@ -8,8 +8,8 @@ import {
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { processDocuments } from '../shared/processDocuments';
 
 export class VectorStoreZepInsert implements INodeType {
 	description: INodeTypeDescription = {
@@ -124,13 +124,10 @@ export class VectorStoreZepInsert implements INodeType {
 			0,
 		)) as Embeddings;
 
-		let processedDocuments: Document[];
-
-		if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
-			processedDocuments = await documentInput.process(items);
-		} else {
-			processedDocuments = documentInput;
-		}
+		const { processedDocuments, serializedDocuments } = await processDocuments(
+			documentInput,
+			items,
+		);
 
 		const zepConfig = {
 			apiUrl: credentials.apiUrl,
@@ -140,10 +137,6 @@ export class VectorStoreZepInsert implements INodeType {
 		};
 
 		await ZepVectorStore.fromDocuments(processedDocuments, embeddings, zepConfig);
-
-		const serializedDocuments = processedDocuments.map(({ metadata, pageContent }) => ({
-			json: { metadata, pageContent },
-		}));
 
 		return this.prepareOutputData(serializedDocuments);
 	}
