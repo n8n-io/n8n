@@ -1,10 +1,12 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
+import { saveAs } from 'file-saver';
 import type { IWorkflowDataUpdate } from '@/Interface';
 import type {
 	WorkflowHistory,
 	WorkflowVersion,
 	WorkflowHistoryRequestParams,
+	WorkflowVersionId,
 } from '@/types/workflowHistory';
 import * as whApi from '@/api/workflowHistory';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -43,6 +45,23 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			return null;
 		});
 
+	const downloadVersion = async (workflowId: string, workflowVersionId: WorkflowVersionId) => {
+		const [workflow, workflowVersion] = await Promise.all([
+			workflowsStore.fetchWorkflow(workflowId),
+			getWorkflowVersion(workflowId, workflowVersionId),
+		]);
+		if (workflowVersion?.nodes && workflowVersion?.connections && workflow) {
+			const { connections, nodes } = workflowVersion;
+			const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
+				type: 'application/json;charset=utf-8',
+			});
+			saveAs(
+				blob,
+				`${workflow.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${workflowVersion.versionId}.json`,
+			);
+		}
+	};
+
 	const cloneIntoNewWorkflow = async (
 		workflowId: string,
 		workflowVersionId: string,
@@ -78,6 +97,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	return {
 		getWorkflowHistory,
 		getWorkflowVersion,
+		downloadVersion,
 		cloneIntoNewWorkflow,
 		restoreWorkflow,
 		evaluatedPruneTime,

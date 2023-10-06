@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { saveAs } from 'file-saver';
 import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
@@ -102,28 +101,6 @@ const openInNewTab = (id: WorkflowVersionId) => {
 	window.open(href, '_blank');
 };
 
-const downloadVersion = async (id: WorkflowVersionId) => {
-	const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
-		route.params.workflowId,
-		id,
-	);
-	if (workflowVersion?.nodes && workflowVersion?.connections && activeWorkflow.value) {
-		const { connections, nodes } = workflowVersion;
-		const blob = new Blob(
-			[JSON.stringify({ ...activeWorkflow.value, nodes, connections }, null, 2)],
-			{
-				type: 'application/json;charset=utf-8',
-			},
-		);
-		saveAs(
-			blob,
-			`${activeWorkflow.value.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${
-				workflowVersion.versionId
-			}.json`,
-		);
-	}
-};
-
 const onAction = async ({
 	action,
 	id,
@@ -138,7 +115,7 @@ const onAction = async ({
 			openInNewTab(id);
 			break;
 		case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-			await downloadVersion(id);
+			await workflowHistoryStore.downloadVersion(route.params.workflowId, id);
 			break;
 		case WORKFLOW_HISTORY_ACTIONS.CLONE:
 			await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
