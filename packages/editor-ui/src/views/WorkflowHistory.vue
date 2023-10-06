@@ -130,7 +130,9 @@ const onAction = async ({
 		toast.showError(
 			error,
 			i18n.baseText('workflowHistory.action.error.title', {
-				interpolate: { action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase() },
+				interpolate: {
+					action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase(),
+				},
 			}),
 		);
 	}
