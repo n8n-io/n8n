@@ -31,6 +31,8 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -214,6 +216,8 @@ export class Start extends BaseCommand {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -225,6 +229,13 @@ export class Start extends BaseCommand {
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
+		}
+	}
+
+	async initOrchestration() {
+		if (config.get('executions.mode') === 'queue') {
+			await Container.get(OrchestrationMainService).init();
+			await Container.get(OrchestrationHandlerMainService).init();
 		}
 	}
 
