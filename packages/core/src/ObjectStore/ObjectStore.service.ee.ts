@@ -149,6 +149,8 @@ export class ObjectStoreService {
 	async deleteMany(prefix: string) {
 		const objects = await this.list(prefix);
 
+		if (objects.length === 0) return;
+
 		const innerXml = objects.map(({ key }) => `<Object><Key>${key}</Key></Object>`).join('\n');
 
 		const body = ['<Delete>', innerXml, '</Delete>'].join('\n');
