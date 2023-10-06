@@ -213,18 +213,18 @@ export const cellFormat: INodeProperties = {
 	options: [
 		{
 			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-			name: 'Let n8n format',
-			value: 'RAW',
-			description: 'Cells have the same types as the input data',
-		},
-		{
-			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 			name: 'Let Google Sheets format',
 			value: 'USER_ENTERED',
 			description: 'Cells are styled as if you typed the values into Google Sheets directly',
 		},
+		{
+			// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+			name: 'Let n8n format',
+			value: 'RAW',
+			description: 'Cells have the same types as the input data',
+		},
 	],
-	default: 'RAW',
+	default: 'USER_ENTERED',
 	description: 'Determines how data should be interpreted',
 };
 
