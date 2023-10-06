@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@/composables';
 import Modal from '@/components/Modal.vue';
+import { useUIStore } from '@/stores';
 
 const props = defineProps<{
 	modalName: string;
@@ -17,6 +18,11 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+
+const closeModal = () => {
+	uiStore.closeModal(props.modalName);
+};
 </script>
 
 <template>
@@ -57,7 +63,12 @@ const i18n = useI18n();
 					size="medium"
 					:key="index"
 					:type="button.type"
-					@click="button.action"
+					@click="
+						() => {
+							button.action();
+							closeModal();
+						}
+					"
 				>
 					{{ button.text }}
 				</n8n-button>
