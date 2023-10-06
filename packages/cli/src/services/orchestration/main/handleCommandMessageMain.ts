@@ -1,5 +1,5 @@
 import { LoggerProxy } from 'n8n-workflow';
-import { messageToRedisServiceCommandObject } from '../helpers';
+import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 import config from '@/config';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
@@ -27,6 +27,7 @@ export async function handleCommandMessageMain(messageString: string) {
 		}
 		switch (message.command) {
 			case 'reloadLicense':
+				debounceMessageReceiver(message, 500);
 				if (isMainInstance) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 					LoggerProxy.error(
@@ -37,8 +38,10 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(License).reload();
 				break;
 			case 'restartEventBus':
+				debounceMessageReceiver(message, 200);
 				await Container.get(MessageEventBus).restart();
 			case 'reloadExternalSecretsProviders':
+				debounceMessageReceiver(message, 200);
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 			default:
 				break;
