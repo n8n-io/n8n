@@ -3,6 +3,7 @@ import { useHistoryStore } from '@/stores/history.store';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
 import type {
+	ConnectionTypes,
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
@@ -18,14 +19,17 @@ import type {
 	INode,
 	INodePropertyOptions,
 	IDataObject,
+	Workflow,
+	INodeInputConfiguration,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
+	NodePanelType,
 } from '@/Interface';
 
 import { get } from 'lodash-es';
@@ -84,6 +88,24 @@ export const nodeHelpers = defineComponent({
 			return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
 		},
 
+		// Updates all the issues on all the nodes
+		refreshNodeIssues(): void {
+			const nodes = this.workflowsStore.allNodes;
+			let nodeType: INodeTypeDescription | null;
+			let foundNodeIssues: INodeIssues | null;
+
+			nodes.forEach((node) => {
+				if (node.disabled === true) {
+					return;
+				}
+				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				foundNodeIssues = this.getNodeIssues(nodeType, node);
+				if (foundNodeIssues !== null) {
+					node.issues = foundNodeIssues;
+				}
+			});
+		},
+
 		// Returns all the issues of the node
 		getNodeIssues(
 			nodeType: INodeTypeDescription | null,
@@ -123,6 +145,14 @@ export const nodeHelpers = defineComponent({
 					} else {
 						NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
 					}
+				}
+
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
+				if (nodeIssues === null) {
+					nodeIssues = nodeInputIssues;
+				} else {
+					NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
 				}
 			}
 
@@ -166,6 +196,25 @@ export const nodeHelpers = defineComponent({
 					],
 				},
 			};
+		},
+
+		updateNodesInputIssues() {
+			const nodes = this.workflowsStore.allNodes;
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+
+			for (const node of nodes) {
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) {
+					return;
+				}
+				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
+
+				this.workflowsStore.setNodeIssue({
+					node: node.name,
+					type: 'input',
+					value: nodeInputIssues?.input ? nodeInputIssues.input : null,
+				});
+			}
 		},
 
 		// Updates the execution issues.
@@ -240,6 +289,45 @@ export const nodeHelpers = defineComponent({
 				type: 'parameters',
 				value: newIssues,
 			});
+		},
+
+		// Returns all the input-issues of the node
+		getNodeInputIssues(
+			workflow: Workflow,
+			node: INodeUi,
+			nodeType?: INodeTypeDescription,
+		): INodeIssues | null {
+			const foundIssues: INodeIssueObjectProperty = {};
+
+			const workflowNode = workflow.getNode(node.name);
+			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			if (nodeType && workflowNode) {
+				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
+			}
+
+			inputs.forEach((input) => {
+				if (typeof input === 'string' || input.required !== true) {
+					return;
+				}
+
+				const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
+
+				if (parentNodes.length === 0) {
+					foundIssues[input.type] = [
+						this.$locale.baseText('nodeIssues.input.missing', {
+							interpolate: { inputName: input.displayName || input.type },
+						}),
+					];
+				}
+			});
+
+			if (Object.keys(foundIssues).length) {
+				return {
+					input: foundIssues,
+				};
+			}
+
+			return null;
 		},
 
 		// Returns all the credential-issues of the node
@@ -414,14 +502,20 @@ export const nodeHelpers = defineComponent({
 			}
 		},
 
-		getNodeInputData(node: INodeUi | null, runIndex = 0, outputIndex = 0): INodeExecutionData[] {
+		getNodeInputData(
+			node: INodeUi | null,
+			runIndex = 0,
+			outputIndex = 0,
+			paneType: NodePanelType = 'output',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		): INodeExecutionData[] {
 			if (node === null) {
 				return [];
 			}
-
 			if (this.workflowsStore.getWorkflowExecution === null) {
 				return [];
 			}
+
 			const executionData = this.workflowsStore.getWorkflowExecution.data;
 			if (!executionData?.resultData) {
 				// unknown status
@@ -429,31 +523,39 @@ export const nodeHelpers = defineComponent({
 			}
 			const runData = executionData.resultData.runData;
 
-			if (
-				!runData?.[node.name]?.[runIndex].data ||
-				runData[node.name][runIndex].data === undefined
-			) {
+			const taskData = get(runData, `[${node.name}][${runIndex}]`);
+			if (!taskData) {
 				return [];
 			}
 
-			return this.getMainInputData(runData[node.name][runIndex].data!, outputIndex);
+			let data: ITaskDataConnections | undefined = taskData.data!;
+			if (paneType === 'input' && taskData.inputOverride) {
+				data = taskData.inputOverride!;
+			}
+
+			if (!data) {
+				return [];
+			}
+
+			return this.getInputData(data, outputIndex, connectionType);
 		},
 
 		// Returns the data of the main input
-		getMainInputData(
+		getInputData(
 			connectionsData: ITaskDataConnections,
 			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			if (
 				!connectionsData ||
-				!connectionsData.hasOwnProperty('main') ||
-				connectionsData.main === undefined ||
-				connectionsData.main.length < outputIndex ||
-				connectionsData.main[outputIndex] === null
+				!connectionsData.hasOwnProperty(connectionType) ||
+				connectionsData[connectionType] === undefined ||
+				connectionsData[connectionType].length < outputIndex ||
+				connectionsData[connectionType][outputIndex] === null
 			) {
 				return [];
 			}
-			return connectionsData.main[outputIndex] as INodeExecutionData[];
+			return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
 		},
 
 		// Returns all the binary data of all the entries
@@ -462,6 +564,7 @@ export const nodeHelpers = defineComponent({
 			node: string | null,
 			runIndex: number,
 			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): IBinaryKeyData[] {
 			if (node === null) {
 				return [];
@@ -473,7 +576,11 @@ export const nodeHelpers = defineComponent({
 				return [];
 			}
 
-			const inputData = this.getMainInputData(runData[node][runIndex].data!, outputIndex);
+			const inputData = this.getInputData(
+				runData[node][runIndex].data!,
+				outputIndex,
+				connectionType,
+			);
 
 			const returnData: IBinaryKeyData[] = [];
 			for (let i = 0; i < inputData.length; i++) {
@@ -509,6 +616,7 @@ export const nodeHelpers = defineComponent({
 				this.workflowsStore.clearNodeExecutionData(node.name);
 				this.updateNodeParameterIssues(node);
 				this.updateNodeCredentialIssues(node);
+				this.updateNodesInputIssues();
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(
 						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
@@ -531,6 +639,9 @@ export const nodeHelpers = defineComponent({
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
 				try {
+					ExpressionEvaluatorProxy.setEvaluator(
+						useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+					);
 					return workflow.expression.getSimpleParameterValue(
 						data as INode,
 						nodeType.subtitle,
