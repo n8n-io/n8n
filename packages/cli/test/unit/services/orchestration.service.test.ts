@@ -10,6 +10,8 @@ import { mockInstance } from '../../integration/shared/utils';
 import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
 import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import * as helpers from '@/services/orchestration/helpers';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 
 const os = Container.get(OrchestrationMainService);
 const handler = Container.get(OrchestrationHandlerMainService);
@@ -33,6 +35,7 @@ const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
 describe('Orchestration Service', () => {
 	beforeAll(async () => {
 		mockInstance(RedisService);
+		mockInstance(ExternalSecretsManager);
 		LoggerProxy.init(getLogger());
 		jest.mock('ioredis', () => {
 			const Redis = require('ioredis-mock');
@@ -125,5 +128,25 @@ describe('Orchestration Service', () => {
 		await os.getWorkerIds();
 		expect(os.redisPublisher.publishToCommandChannel).toHaveBeenCalled();
 		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockRestore();
+	});
+
+	test('should prevent receiving commands too often', async () => {
+		setDefaultConfig();
+		jest.spyOn(helpers, 'debounceMessageReceiver');
+		const res1 = await handleCommandMessageMain(
+			JSON.stringify({
+				senderId: 'test',
+				command: 'reloadExternalSecretsProviders',
+			}),
+		);
+		const res2 = await handleCommandMessageMain(
+			JSON.stringify({
+				senderId: 'test',
+				command: 'reloadExternalSecretsProviders',
+			}),
+		);
+		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
+		expect(res1!.payload).toBeUndefined();
+		expect(res2!.payload!.result).toEqual('debounced');
 	});
 });

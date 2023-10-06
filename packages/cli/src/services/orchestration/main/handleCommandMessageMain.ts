@@ -27,7 +27,12 @@ export async function handleCommandMessageMain(messageString: string) {
 		}
 		switch (message.command) {
 			case 'reloadLicense':
-				debounceMessageReceiver(message, 500);
+				if (!debounceMessageReceiver(message, 500)) {
+					message.payload = {
+						result: 'debounced',
+					};
+					return message;
+				}
 				if (isMainInstance) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 					LoggerProxy.error(
@@ -38,10 +43,20 @@ export async function handleCommandMessageMain(messageString: string) {
 				await Container.get(License).reload();
 				break;
 			case 'restartEventBus':
-				debounceMessageReceiver(message, 200);
+				if (!debounceMessageReceiver(message, 200)) {
+					message.payload = {
+						result: 'debounced',
+					};
+					return message;
+				}
 				await Container.get(MessageEventBus).restart();
 			case 'reloadExternalSecretsProviders':
-				debounceMessageReceiver(message, 200);
+				if (!debounceMessageReceiver(message, 200)) {
+					message.payload = {
+						result: 'debounced',
+					};
+					return message;
+				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
 			default:
 				break;

@@ -26,7 +26,6 @@ export function debounceMessageReceiver(message: RedisServiceCommandObject, time
 	const now = new Date();
 	const lastReceivedDate = lastReceived[message.command];
 	if (lastReceivedDate && now.getTime() - lastReceivedDate.getTime() < timeout) {
-		console.log(lastReceivedDate.getTime(), now.getTime() - lastReceivedDate.getTime());
 		return false;
 	}
 	lastReceived[message.command] = now;
