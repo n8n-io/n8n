@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
-import { onBeforeMount, onUnmounted, ref, watchEffect, computed } from 'vue';
+import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
 import { VIEWS } from '@/constants';
@@ -9,6 +9,8 @@ import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
 	WorkflowHistoryRequestParams,
+	WorkflowHistory,
+	WorkflowVersion,
 } from '@/types/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
@@ -48,12 +50,14 @@ const editorRoute = computed(() => ({
 	},
 }));
 const activeWorkflow = ref<IWorkflowDb | null>(null);
+const workflowHistory = ref<WorkflowHistory[]>([]);
+const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
 const activeWorkflowVersionPreview = computed<IWorkflowDb | null>(() => {
-	if (workflowHistoryStore.activeWorkflowVersion && activeWorkflow.value) {
+	if (activeWorkflowVersion.value && activeWorkflow.value) {
 		return {
 			...activeWorkflow.value,
-			nodes: workflowHistoryStore.activeWorkflowVersion.nodes,
-			connections: workflowHistoryStore.activeWorkflowVersion.connections,
+			nodes: activeWorkflowVersion.value.nodes,
+			connections: activeWorkflowVersion.value.connections,
 		};
 	}
 	return null;
@@ -65,7 +69,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 		queryParams,
 	);
 	lastReceivedItemsLength.value = history.length;
-	workflowHistoryStore.addWorkflowHistory(history);
+	workflowHistory.value.push(...history);
 };
 
 onBeforeMount(async () => {
@@ -76,19 +80,15 @@ onBeforeMount(async () => {
 	activeWorkflow.value = workflow;
 	isListLoading.value = false;
 
-	if (!route.params.versionId && workflowHistoryStore.workflowHistory.length) {
+	if (!route.params.versionId && workflowHistory.value.length) {
 		await router.replace({
 			name: VIEWS.WORKFLOW_HISTORY,
 			params: {
 				workflowId: route.params.workflowId,
-				versionId: workflowHistoryStore.workflowHistory[0].versionId,
+				versionId: workflowHistory.value[0].versionId,
 			},
 		});
 	}
-});
-
-onUnmounted(() => {
-	workflowHistoryStore.reset();
 });
 
 const openInNewTab = (id: WorkflowVersionId) => {
@@ -165,7 +165,7 @@ watchEffect(async () => {
 			route.params.workflowId,
 			route.params.versionId,
 		);
-		workflowHistoryStore.setActiveWorkflowVersion(workflowVersion);
+		activeWorkflowVersion.value = workflowVersion;
 	}
 });
 </script>
@@ -187,9 +187,9 @@ watchEffect(async () => {
 		</div>
 		<div :class="$style.listComponentWrapper">
 			<workflow-history-list
-				:items="workflowHistoryStore.workflowHistory"
+				:items="workflowHistory"
 				:lastReceivedItemsLength="lastReceivedItemsLength"
-				:activeItem="workflowHistoryStore.activeWorkflowVersion"
+				:activeItem="activeWorkflowVersion"
 				:actionTypes="workflowHistoryActionTypes"
 				:requestNumberOfItems="requestNumberOfItems"
 				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"

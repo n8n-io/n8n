@@ -106,7 +106,13 @@
 				:to="workflowHistoryRoute"
 				:class="$style.workflowHistoryButton"
 			>
-				<n8n-icon icon="history" size="medium" />
+				<n8n-icon-button
+					:disabled="isWorkflowHistoryButtonDisabled"
+					type="tertiary"
+					icon="history"
+					size="medium"
+					text
+				/>
 			</router-link>
 			<div :class="$style.workflowMenuContainer">
 				<input
@@ -354,6 +360,9 @@ export default defineComponent({
 					workflowId: this.currentWorkflowId,
 				},
 			};
+		},
+		isWorkflowHistoryButtonDisabled(): boolean {
+			return this.workflowsStore.isNewWorkflow;
 		},
 	},
 	methods: {
@@ -714,5 +723,11 @@ $--header-spacing: 20px;
 .workflowHistoryButton {
 	margin-left: var(--spacing-l);
 	color: var(--color-text-dark);
+
+	:disabled {
+		background: transparent;
+		border: none;
+		opacity: 0.5;
+	}
 }
 </style>
