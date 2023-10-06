@@ -1,4 +1,3 @@
-import { createReadStream } from 'node:fs';
 import { Service } from 'typedi';
 import express from 'express';
 import { BinaryDataService, FileNotFoundError, isValidNonDefaultMode } from 'n8n-core';
@@ -31,8 +30,6 @@ export class BinaryDataController {
 		let { fileName, mimeType } = req.query;
 
 		try {
-			const binaryFilePath = this.binaryDataService.getPath(binaryDataId);
-
 			if (!fileName || !mimeType) {
 				try {
 					const metadata = await this.binaryDataService.getMetadata(binaryDataId);
@@ -48,11 +45,7 @@ export class BinaryDataController {
 				res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 			}
 
-			if (mode === 's3') {
-				return await this.binaryDataService.getAsStream(binaryDataId);
-			} else {
-				return createReadStream(binaryFilePath);
-			}
+			return await this.binaryDataService.getAsStream(binaryDataId);
 		} catch (error) {
 			if (error instanceof FileNotFoundError) return res.writeHead(404).end();
 			else throw error;

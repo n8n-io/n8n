@@ -1,16 +1,9 @@
-import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import { Readable } from 'node:stream';
 import { BinaryDataService, FileNotFoundError } from 'n8n-core';
 import * as testDb from './shared/testDb';
 import { mockInstance, setupTestServer } from './shared/utils';
 import type { SuperAgentTest } from 'supertest';
-
-jest.mock('fs', () => {
-	return {
-		...jest.requireActual('fs'),
-		createReadStream: jest.fn(),
-	};
-});
 
 jest.mock('fs/promises');
 
@@ -39,7 +32,9 @@ describe('GET /binary-data', () => {
 	const mimeType = 'text/plain';
 	const fileName = 'test.txt';
 	const buffer = Buffer.from('content');
-	const bufferResponse = '{"data":{"type":"Buffer","data":[99,111,110,116,101,110,116]}}';
+	const mockStream = new Readable();
+	mockStream.push(buffer);
+	mockStream.push(null);
 
 	describe('should reject on missing or invalid binary data ID', () => {
 		test.each([['view'], ['download']])('on request to %s', async (action) => {
@@ -69,8 +64,7 @@ describe('GET /binary-data', () => {
 
 	describe('should return binary data [filesystem]', () => {
 		test.each([['view'], ['download']])('on request to %s', async (action) => {
-			binaryDataService.getPath.mockReturnValue(binaryFilePath);
-			fs.createReadStream = jest.fn().mockReturnValue(buffer);
+			binaryDataService.getAsStream.mockResolvedValue(mockStream);
 
 			const res = await authOwnerAgent
 				.get('/binary-data')
@@ -85,16 +79,15 @@ describe('GET /binary-data', () => {
 			const contentDisposition =
 				action === 'download' ? `attachment; filename="${fileName}"` : undefined;
 
-			expect(res.text).toBe(bufferResponse);
-			expect(res.headers['content-type']).toBe(mimeType + '; charset=utf-8');
-			expect(res.headers['content-length']).toBe(bufferResponse.length.toString());
+			expect(binaryDataService.getAsStream).toHaveBeenCalledWith(fsBinaryDataId);
+			expect(res.headers['content-type']).toBe(mimeType);
 			expect(res.headers['content-disposition']).toBe(contentDisposition);
 		});
 	});
 
 	describe('should return 404 on file not found [filesystem]', () => {
 		test.each(['view', 'download'])('on request to %s', async (action) => {
-			binaryDataService.getPath.mockImplementation(throwFileNotFound);
+			binaryDataService.getAsStream.mockImplementation(throwFileNotFound);
 
 			await authOwnerAgent
 				.get('/binary-data')
@@ -110,7 +103,7 @@ describe('GET /binary-data', () => {
 
 	describe('should return binary data [s3]', () => {
 		test.each([['view'], ['download']])('on request to %s', async (action) => {
-			binaryDataService.getPath.mockReturnValue(binaryFilePath);
+			binaryDataService.getAsStream.mockResolvedValue(mockStream);
 
 			const res = await authOwnerAgent
 				.get('/binary-data')
@@ -127,14 +120,14 @@ describe('GET /binary-data', () => {
 			const contentDisposition =
 				action === 'download' ? `attachment; filename="${fileName}"` : undefined;
 
-			expect(res.headers['content-type']).toBe(mimeType + '; charset=utf-8');
+			expect(res.headers['content-type']).toBe(mimeType);
 			expect(res.headers['content-disposition']).toBe(contentDisposition);
 		});
 	});
 
 	describe('should return 404 on file not found [s3]', () => {
 		test.each(['view', 'download'])('on request to %s', async (action) => {
-			binaryDataService.getPath.mockImplementation(throwFileNotFound);
+			binaryDataService.getAsStream.mockImplementation(throwFileNotFound);
 
 			await authOwnerAgent
 				.get('/binary-data')
