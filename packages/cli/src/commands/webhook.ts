@@ -7,6 +7,8 @@ import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 import { IConfig } from '@oclif/config';
+import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
+import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -94,6 +96,8 @@ export class Webhook extends BaseCommand {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -114,5 +118,10 @@ export class Webhook extends BaseCommand {
 
 	async catch(error: Error) {
 		await this.exitWithCrash('Exiting due to an error.', error);
+	}
+
+	async initOrchestration() {
+		await Container.get(OrchestrationWebhookService).init();
+		await Container.get(OrchestrationHandlerWebhookService).init();
 	}
 }

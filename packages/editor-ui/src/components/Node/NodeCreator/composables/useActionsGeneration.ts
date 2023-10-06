@@ -15,6 +15,7 @@ const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 function translate(...args: Parameters<typeof i18n.baseText>) {
 	return i18n.baseText(...args);
 }
+
 // Memoize the translation function so we don't have to re-translate the same string
 // multiple times when generating the actions
 const cachedBaseText = memoize(translate, (...args) => JSON.stringify(args));
@@ -159,12 +160,26 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 				const isSingleResource = options.length === 1;
 
 				// Match operations for the resource by checking if displayOptions matches or contains the resource name
-				const operations = nodeTypeDescription.properties.find(
-					(operation) =>
-						operation.name === 'operation' &&
-						(operation.displayOptions?.show?.resource?.includes(resourceOption.value) ||
-							isSingleResource),
-				);
+				const operations = nodeTypeDescription.properties.find((operation) => {
+					const isOperation = operation.name === 'operation';
+					const isMatchingResource =
+						operation.displayOptions?.show?.resource?.includes(resourceOption.value) ||
+						isSingleResource;
+
+					// If the operation doesn't have a version defined, it should be
+					// available for all versions. Otherwise, make sure the node type
+					// version matches the operation version
+					const operationVersions = operation.displayOptions?.show?.['@version'];
+					const nodeTypeVersions = Array.isArray(nodeTypeDescription.version)
+						? nodeTypeDescription.version
+						: [nodeTypeDescription.version];
+
+					const isMatchingVersion = operationVersions
+						? operationVersions.some((version) => nodeTypeVersions.includes(version))
+						: true;
+
+					return isOperation && isMatchingResource && isMatchingVersion;
+				});
 
 				if (!operations?.options) return;
 

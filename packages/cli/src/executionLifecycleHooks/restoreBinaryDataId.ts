@@ -1,13 +1,14 @@
 import Container from 'typedi';
 import { BinaryDataService } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
+import type { BinaryData } from 'n8n-core';
 
-export function isMissingExecutionId(binaryDataId: string) {
-	const UUID_CHAR_LENGTH = 36;
-
-	return [UUID_CHAR_LENGTH + 'filesystem:'.length, UUID_CHAR_LENGTH + 's3:'.length].some(
-		(incorrectLength) => binaryDataId.length === incorrectLength,
-	);
+export function isMissingExecutionId(
+	fileId: string,
+	mode: BinaryData.NonDefaultMode,
+	uuidV4CharLength = 36,
+) {
+	return mode === 'filesystem' ? uuidV4CharLength === fileId.length : fileId.includes('/temp/');
 }
 
 /**
@@ -19,6 +20,9 @@ export function isMissingExecutionId(binaryDataId: string) {
  * ```txt
  * filesystem:11869055-83c4-4493-876a-9092c4708b9b ->
  * filesystem:39011869055-83c4-4493-876a-9092c4708b9b
+ *
+ * s3:workflows/123/executions/temp/binary_data/69055-83c4-4493-876a-9092c4708b9b ->
+ * s3:workflows/123/executions/390/binary_data/69055-83c4-4493-876a-9092c4708b9b
  * ```
  */
 export async function restoreBinaryDataId(run: IRun, executionId: string) {
@@ -27,13 +31,18 @@ export async function restoreBinaryDataId(run: IRun, executionId: string) {
 	const promises = Object.keys(runData).map(async (nodeName) => {
 		const binaryDataId = runData[nodeName]?.[0]?.data?.main?.[0]?.[0]?.binary?.data.id;
 
-		if (!binaryDataId || !isMissingExecutionId(binaryDataId)) return;
+		if (!binaryDataId) return;
 
-		const [mode, incorrectFileId] = binaryDataId.split(':');
-		const correctFileId = `${executionId}${incorrectFileId}`;
+		const [mode, fileId] = binaryDataId.split(':') as [BinaryData.NonDefaultMode, string];
+
+		if (!isMissingExecutionId(fileId, mode)) return;
+
+		const correctFileId =
+			mode === 'filesystem' ? `${executionId}${fileId}` : fileId.replace('temp', executionId);
+
+		await Container.get(BinaryDataService).rename(fileId, correctFileId);
+
 		const correctBinaryDataId = `${mode}:${correctFileId}`;
-
-		await Container.get(BinaryDataService).rename(incorrectFileId, correctFileId);
 
 		// @ts-expect-error Validated at the top
 		run.data.resultData.runData[nodeName][0].data.main[0][0].binary.data.id = correctBinaryDataId;

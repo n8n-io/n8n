@@ -5,17 +5,18 @@ import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServiceP
 import * as os from 'os';
 import Container from 'typedi';
 import { License } from '@/License';
-import { MessageEventBus } from '../eventbus/MessageEventBus/MessageEventBus';
-import { ExternalSecretsManager } from '../ExternalSecrets/ExternalSecretsManager.ee';
-import type { IExecutionsCurrentSummary } from '@/Interfaces';
+import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
+import { debounceMessageReceiver } from '../helpers';
 
-export function getWorkerCommandReceivedHandler(options: {
+export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
 	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
-	getRunningJobSummary: () => Array<IExecutionsCurrentSummary & { name: string }>;
-}) {
+}
+
+export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
 			if (!messageString) return;
@@ -37,6 +38,7 @@ export function getWorkerCommandReceivedHandler(options: {
 				}
 				switch (message.command) {
 					case 'getStatus':
+						if (!debounceMessageReceiver(message, 200)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,
@@ -60,12 +62,14 @@ export function getWorkerCommandReceivedHandler(options: {
 						});
 						break;
 					case 'getId':
+						if (!debounceMessageReceiver(message, 200)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,
 						});
 						break;
 					case 'restartEventBus':
+						if (!debounceMessageReceiver(message, 100)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
 							await options.redisPublisher.publishToWorkerChannel({
@@ -87,6 +91,7 @@ export function getWorkerCommandReceivedHandler(options: {
 						}
 						break;
 					case 'reloadExternalSecretsProviders':
+						if (!debounceMessageReceiver(message, 200)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
 							await options.redisPublisher.publishToWorkerChannel({
@@ -108,9 +113,11 @@ export function getWorkerCommandReceivedHandler(options: {
 						}
 						break;
 					case 'reloadLicense':
+						if (!debounceMessageReceiver(message, 500)) return;
 						await Container.get(License).reload();
 						break;
 					case 'stopWorker':
+						if (!debounceMessageReceiver(message, 500)) return;
 						// TODO: implement proper shutdown
 						// await this.stopProcess();
 						break;
