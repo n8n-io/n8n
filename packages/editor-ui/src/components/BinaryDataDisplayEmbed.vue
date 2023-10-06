@@ -7,6 +7,10 @@
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
+			<audio v-if="binaryData.fileType === 'audio'" controls autoplay>
+				<source :src="embedSource" :type="binaryData.mimeType" />
+				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+			</audio>
 			<vue-json-pretty
 				v-else-if="binaryData.fileType === 'json'"
 				:data="jsonData"
