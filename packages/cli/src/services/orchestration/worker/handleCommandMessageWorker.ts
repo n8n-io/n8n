@@ -1,20 +1,13 @@
 import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
-import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import * as os from 'os';
 import Container from 'typedi';
 import { License } from '@/License';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { debounceMessageReceiver } from '../helpers';
-
-export interface WorkerCommandReceivedHandlerOptions {
-	queueModeId: string;
-	instanceId: string;
-	redisPublisher: RedisServicePubSubPublisher;
-	getRunningJobIds: () => string[];
-}
+import { debounceMessageReceiver, getOsCpuString } from '../helpers';
+import type { WorkerCommandReceivedHandlerOptions } from './types';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
@@ -45,11 +38,12 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 							payload: {
 								workerId: options.queueModeId,
 								runningJobs: options.getRunningJobIds(),
+								runningJobsSummary: options.getRunningJobsSummary(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
 								uptime: process.uptime(),
 								loadAvg: os.loadavg(),
-								cpus: os.cpus().map((cpu) => `${cpu.model} - speed: ${cpu.speed}`),
+								cpus: getOsCpuString(),
 								arch: os.arch(),
 								platform: os.platform(),
 								hostname: os.hostname(),
