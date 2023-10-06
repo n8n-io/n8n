@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { INodeExecutionData } from 'n8n-workflow';
 import {
 	NodeConnectionType,
+	type INodeExecutionData,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
