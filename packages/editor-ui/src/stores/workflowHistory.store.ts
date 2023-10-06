@@ -83,11 +83,15 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		}
 	};
 
-	const restoreWorkflow = async (workflowId: string, workflowVersionId: string) => {
+	const restoreWorkflow = async (
+		workflowId: string,
+		workflowVersionId: string,
+		active: boolean,
+	) => {
 		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
 		if (workflowVersion?.nodes && workflowVersion?.connections) {
 			const { connections, nodes } = workflowVersion;
-			await workflowsStore.updateWorkflow(workflowId, { connections, nodes }, true);
+			await workflowsStore.updateWorkflow(workflowId, { active, connections, nodes }, true);
 		}
 	};
 

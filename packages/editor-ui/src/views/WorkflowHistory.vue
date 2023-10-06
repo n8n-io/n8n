@@ -2,7 +2,7 @@
 import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
 import { useI18n, useToast } from '@/composables';
 import type {
 	WorkflowHistoryActionTypes,
@@ -102,6 +102,60 @@ const openInNewTab = (id: WorkflowVersionId) => {
 	window.open(href, '_blank');
 };
 
+const openRestorationModal = async (
+	isWorkflowActivated: boolean,
+	formattedCreatedAt: string,
+): Promise<boolean | null> => {
+	return new Promise((resolve, reject) => {
+		const buttons = [
+			{
+				text: i18n.baseText('workflowHistory.action.restore.modal.button.cancel'),
+				type: 'tertiary',
+				action: () => {
+					resolve(null);
+					uiStore.closeModal(WORKFLOW_HISTORY_VERSION_RESTORE);
+				},
+			},
+		];
+
+		if (isWorkflowActivated) {
+			buttons.push({
+				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
+				type: 'tertiary',
+				action: () => {
+					resolve(false);
+					uiStore.closeModal(WORKFLOW_HISTORY_VERSION_RESTORE);
+				},
+			});
+		}
+
+		buttons.push({
+			text: i18n.baseText('workflowHistory.action.restore.modal.button.restore'),
+			type: 'primary',
+			action: () => {
+				resolve(true);
+				uiStore.closeModal(WORKFLOW_HISTORY_VERSION_RESTORE);
+			},
+		});
+
+		try {
+			uiStore.openModalWithData({
+				name: WORKFLOW_HISTORY_VERSION_RESTORE,
+				data: {
+					beforeClose: () => {
+						resolve(null);
+					},
+					isWorkflowActivated,
+					formattedCreatedAt,
+					buttons,
+				},
+			});
+		} catch (error) {
+			reject(error);
+		}
+	});
+};
+
 const onAction = async ({
 	action,
 	id,
@@ -123,7 +177,11 @@ const onAction = async ({
 				await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				await workflowHistoryStore.restoreWorkflow(route.params.workflowId, id);
+				const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
+				const shouldActivate = await openRestorationModal(workflow.active, data.formattedCreatedAt);
+				if (shouldActivate !== null) {
+					await workflowHistoryStore.restoreWorkflow(route.params.workflowId, id, shouldActivate);
+				}
 				break;
 		}
 	} catch (error) {
@@ -158,10 +216,11 @@ const onUpgrade = () => {
 
 watchEffect(async () => {
 	if (route.params.versionId) {
-		const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
-			route.params.workflowId,
-			route.params.versionId,
-		);
+		const [workflow, workflowVersion] = await Promise.all([
+			workflowsStore.fetchWorkflow(route.params.workflowId),
+			workflowHistoryStore.getWorkflowVersion(route.params.workflowId, route.params.versionId),
+		]);
+		activeWorkflow.value = workflow;
 		activeWorkflowVersion.value = workflowVersion;
 	}
 });

@@ -139,6 +139,16 @@
 				<DebugPaywallModal data-test-id="debug-paywall-modal" :modalName="modalName" :data="data" />
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_RESTORE">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryVersionRestoreModal
+					data-test-id="workflow-history-version-restore-modal"
+					:modalName="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -172,6 +182,7 @@ import {
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -202,6 +213,7 @@ import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
 import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
 import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
 import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 
 export default defineComponent({
 	name: 'Modals',
@@ -234,6 +246,7 @@ export default defineComponent({
 		ExternalSecretsProviderModal,
 		DebugPaywallModal,
 		MfaSetupModal,
+		WorkflowHistoryVersionRestoreModal,
 	},
 	data: () => ({
 		CHAT_EMBED_MODAL_KEY,
@@ -263,6 +276,7 @@ export default defineComponent({
 		EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 		DEBUG_PAYWALL_MODAL_KEY,
 		MFA_SETUP_MODAL_KEY,
+		WORKFLOW_HISTORY_VERSION_RESTORE,
 	}),
 });
 </script>
