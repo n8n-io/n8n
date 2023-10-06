@@ -75,6 +75,7 @@ export class NDV extends BasePage {
 		resourceMapperRemoveFieldButton: (fieldName: string) => cy.getByTestId(`remove-field-button-${fieldName}`),
 		resourceMapperColumnsOptionsButton: () => cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
+		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
 	};
 
 	actions = {

@@ -401,10 +401,10 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import {
-	CODE_NODE_TYPE,
 	CUSTOM_API_CALL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	HTML_NODE_TYPE,
+	NODES_USING_CODE_NODE_EDITOR,
 } from '@/constants';
 
 import type { PropType } from 'vue';
@@ -1052,7 +1052,7 @@ export default defineComponent({
 			this.$emit('focus');
 		},
 		isCodeNode(node: INodeUi): boolean {
-			return node.type === CODE_NODE_TYPE;
+			return NODES_USING_CODE_NODE_EDITOR.includes(node.type);
 		},
 		isHtmlNode(node: INodeUi): boolean {
 			return node.type === HTML_NODE_TYPE;

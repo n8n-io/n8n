@@ -178,7 +178,11 @@ import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
-import { isWorkflowHistoryEnabled } from './workflows/workflowHistory/workflowHistoryHelper.ee';
+import {
+	getWorkflowHistoryLicensePruneTime,
+	getWorkflowHistoryPruneTime,
+	isWorkflowHistoryEnabled,
+} from './workflows/workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
@@ -249,6 +253,7 @@ export class Server extends AbstractServer {
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
+			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
@@ -348,6 +353,10 @@ export class Server extends AbstractServer {
 			},
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
+			},
+			workflowHistory: {
+				pruneTime: -1,
+				licensePruneTime: -1,
 			},
 		};
 	}
@@ -493,6 +502,13 @@ export class Server extends AbstractServer {
 
 		if (isVariablesEnabled()) {
 			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
+
+		if (isWorkflowHistoryEnabled()) {
+			Object.assign(this.frontendSettings.workflowHistory, {
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
+			});
 		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -1430,28 +1446,39 @@ export class Server extends AbstractServer {
 		// Binary data
 		// ----------------------------------------
 
-		// Download binary
+		// View or download binary file
 		this.app.get(
-			`/${this.restEndpoint}/data/:path`,
+			`/${this.restEndpoint}/data`,
 			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				// TODO UM: check if this needs permission check for UM
-				const identifier = req.params.path;
+				const { id: binaryDataId, action } = req.query;
+				let { fileName, mimeType } = req.query;
+				const [mode] = binaryDataId.split(':') as ['filesystem' | 's3', string];
+
 				try {
-					const binaryPath = this.binaryDataService.getPath(identifier);
-					let { mode, fileName, mimeType } = req.query;
+					const binaryPath = this.binaryDataService.getPath(binaryDataId);
+
 					if (!fileName || !mimeType) {
 						try {
-							const metadata = await this.binaryDataService.getMetadata(identifier);
+							const metadata = await this.binaryDataService.getMetadata(binaryDataId);
 							fileName = metadata.fileName;
 							mimeType = metadata.mimeType;
 							res.setHeader('Content-Length', metadata.fileSize);
 						} catch {}
 					}
+
 					if (mimeType) res.setHeader('Content-Type', mimeType);
-					if (mode === 'download') {
+
+					if (action === 'download') {
 						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 					}
-					res.sendFile(binaryPath);
+
+					if (mode === 's3') {
+						const readStream = await this.binaryDataService.getAsStream(binaryDataId);
+						readStream.pipe(res);
+						return;
+					} else {
+						res.sendFile(binaryPath);
+					}
 				} catch (error) {
 					if (error instanceof FileNotFoundError) res.writeHead(404).end();
 					else throw error;

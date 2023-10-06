@@ -10,7 +10,11 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { STORES, VIEWS } from '@/constants';
-import type { WorkflowHistory } from '@/types/workflowHistory';
+import {
+	workflowHistoryDataFactory,
+	workflowVersionDataFactory,
+} from '@/stores/__tests__/utils/workflowHistoryTestUtils';
+import type { WorkflowVersion } from '@/types/workflowHistory';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -29,24 +33,9 @@ vi.mock('vue-router', () => {
 	};
 });
 
-const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
-	versionId: faker.string.nanoid(),
-	createdAt: faker.date.past().toDateString(),
-	authors: Array.from({ length: faker.number.int({ min: 2, max: 5 }) }, faker.person.fullName).join(
-		', ',
-	),
-});
-
-const workflowVersionDataFactory: () => WorkflowHistory = () => ({
-	...workflowHistoryDataFactory(),
-	workflow: {
-		name: faker.lorem.words(3),
-	},
-});
-
 const workflowId = faker.string.nanoid();
 const historyData = Array.from({ length: 5 }, workflowHistoryDataFactory);
-const versionData = {
+const versionData: WorkflowVersion = {
 	...workflowVersionDataFactory(),
 	...historyData[0],
 };
@@ -87,8 +76,8 @@ describe('WorkflowHistory', () => {
 		route = useRoute();
 		router = useRouter();
 
-		vi.spyOn(workflowHistoryStore, 'workflowHistory', 'get').mockReturnValue(historyData);
-		vi.spyOn(workflowHistoryStore, 'activeWorkflowVersion', 'get').mockReturnValue(versionData);
+		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
+		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
 

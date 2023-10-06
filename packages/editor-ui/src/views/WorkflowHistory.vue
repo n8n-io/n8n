@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { saveAs } from 'file-saver';
-import { onBeforeMount, ref, watchEffect } from 'vue';
+import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import type { IWorkflowDb } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
 import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
 	WorkflowHistoryRequestParams,
+	WorkflowHistory,
+	WorkflowVersion,
 } from '@/types/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -34,26 +38,54 @@ const router = useRouter();
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
 
+const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
+const lastReceivedItemsLength = ref(0);
+const editorRoute = computed(() => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: route.params.workflowId,
+	},
+}));
+const activeWorkflow = ref<IWorkflowDb | null>(null);
+const workflowHistory = ref<WorkflowHistory[]>([]);
+const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
+const activeWorkflowVersionPreview = computed<IWorkflowDb | null>(() => {
+	if (activeWorkflowVersion.value && activeWorkflow.value) {
+		return {
+			...activeWorkflow.value,
+			nodes: activeWorkflowVersion.value.nodes,
+			connections: activeWorkflowVersion.value.connections,
+		};
+	}
+	return null;
+});
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
 		queryParams,
 	);
-	workflowHistoryStore.addWorkflowHistory(history);
+	lastReceivedItemsLength.value = history.length;
+	workflowHistory.value.push(...history);
 };
 
 onBeforeMount(async () => {
-	await loadMore({ take: requestNumberOfItems.value });
+	const [workflow] = await Promise.all([
+		workflowsStore.fetchWorkflow(route.params.workflowId),
+		loadMore({ take: requestNumberOfItems.value }),
+	]);
+	activeWorkflow.value = workflow;
+	isListLoading.value = false;
 
-	if (!route.params.versionId) {
+	if (!route.params.versionId && workflowHistory.value.length) {
 		await router.replace({
 			name: VIEWS.WORKFLOW_HISTORY,
 			params: {
 				workflowId: route.params.workflowId,
-				versionId: workflowHistoryStore.workflowHistory[0].versionId,
+				versionId: workflowHistory.value[0].versionId,
 			},
 		});
 	}
@@ -75,12 +107,20 @@ const downloadVersion = async (id: WorkflowVersionId) => {
 		route.params.workflowId,
 		id,
 	);
-	if (workflowVersion?.workflow) {
-		const { workflow } = workflowVersion;
-		const blob = new Blob([JSON.stringify(workflow, null, 2)], {
-			type: 'application/json;charset=utf-8',
-		});
-		saveAs(blob, workflow.name.replace(/[^a-z0-9]/gi, '_') + '.json');
+	if (workflowVersion?.nodes && workflowVersion?.connections && activeWorkflow.value) {
+		const { connections, nodes } = workflowVersion;
+		const blob = new Blob(
+			[JSON.stringify({ ...activeWorkflow.value, nodes, connections }, null, 2)],
+			{
+				type: 'application/json;charset=utf-8',
+			},
+		);
+		saveAs(
+			blob,
+			`${activeWorkflow.value.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${
+				workflowVersion.versionId
+			}.json`,
+		);
 	}
 };
 
@@ -125,42 +165,47 @@ watchEffect(async () => {
 			route.params.workflowId,
 			route.params.versionId,
 		);
-		workflowHistoryStore.setActiveWorkflowVersion(workflowVersion);
+		activeWorkflowVersion.value = workflowVersion;
 	}
 });
 </script>
 <template>
 	<div :class="$style.view">
 		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
-			{{ workflowHistoryStore.activeWorkflowVersion?.workflow?.name }}
+			{{ activeWorkflow?.name }}
 		</n8n-heading>
 		<div :class="$style.corner">
 			<n8n-heading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}
 			</n8n-heading>
-			<n8n-button type="tertiary" icon="times" size="small" text square />
+			<router-link :to="editorRoute">
+				<n8n-button type="tertiary" icon="times" size="small" text square />
+			</router-link>
 		</div>
-		<workflow-history-content
-			:class="$style.contentComponent"
-			:workflow-version="workflowHistoryStore.activeWorkflowVersion"
-		/>
-		<workflow-history-list
-			:class="$style.listComponent"
-			:items="workflowHistoryStore.workflowHistory"
-			:active-item="workflowHistoryStore.activeWorkflowVersion"
-			:action-types="workflowHistoryActionTypes"
-			:request-number-of-items="requestNumberOfItems"
-			:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-			:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
-			@action="onAction"
-			@preview="onPreview"
-			@load-more="loadMore"
-			@upgrade="onUpgrade"
-		/>
+		<div :class="$style.contentComponentWrapper">
+			<workflow-history-content :workflow-version="activeWorkflowVersionPreview" />
+		</div>
+		<div :class="$style.listComponentWrapper">
+			<workflow-history-list
+				:items="workflowHistory"
+				:lastReceivedItemsLength="lastReceivedItemsLength"
+				:activeItem="activeWorkflowVersion"
+				:actionTypes="workflowHistoryActionTypes"
+				:requestNumberOfItems="requestNumberOfItems"
+				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
+				:evaluatedPruneTime="workflowHistoryStore.evaluatedPruneTime"
+				:isListLoading="isListLoading"
+				@action="onAction"
+				@preview="onPreview"
+				@load-more="loadMore"
+				@upgrade="onUpgrade"
+			/>
+		</div>
 	</div>
 </template>
 <style module lang="scss">
 .view {
+	position: relative;
 	display: grid;
 	width: 100%;
 	grid-template-areas: 'header corner' 'content list';
@@ -188,12 +233,26 @@ watchEffect(async () => {
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
-.contentComponent {
+.contentComponentWrapper {
 	grid-area: content;
+	position: relative;
+	z-index: 1;
 }
 
-.listComponent {
+.listComponentWrapper {
 	grid-area: list;
-	grid-area: list;
+	position: relative;
+	z-index: 2;
+
+	&::before {
+		content: '';
+		display: block;
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: var(--border-width-base);
+		background-color: var(--color-foreground-base);
+	}
 }
 </style>
