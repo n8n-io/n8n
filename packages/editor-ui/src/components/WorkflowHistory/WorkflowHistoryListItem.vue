@@ -39,7 +39,7 @@ const formattedCreatedAt = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
 	const [date, time] = dateformat(
 		props.item.createdAt,
-		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '} mmm d"#"HH:MM`,
+		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM`,
 	).split('#');
 
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
