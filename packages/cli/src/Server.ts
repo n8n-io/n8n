@@ -25,8 +25,8 @@ import axios from 'axios';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
+import type { BinaryDataService } from 'n8n-core';
 import {
-	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
@@ -579,7 +579,7 @@ export class Server extends AbstractServer {
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
-			new BinaryDataController(Container.get(BinaryDataService)),
+			Container.get(BinaryDataController),
 		];
 
 		if (isLdapEnabled()) {
