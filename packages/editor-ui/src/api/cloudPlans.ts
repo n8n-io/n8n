@@ -18,5 +18,5 @@ export async function confirmEmail(context: IRestApiContext): Promise<Cloud.User
 }
 
 export async function getAdminPanelLoginCode(context: IRestApiContext): Promise<{ code: string }> {
-	return get(context.baseUrl, '/admin/login/code');
+	return get(context.baseUrl, '/cloud/proxy/login/code');
 }
