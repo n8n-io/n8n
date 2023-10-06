@@ -87,10 +87,12 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		// binary files stored in nested dirs - `filesystem-v2`
 
-		const workflowDirs = ids.map(({ workflowId }) => this.resolvePath(`workflows/${workflowId}`));
+		const binaryDataDirs = ids.map(({ workflowId, executionId }) =>
+			this.resolvePath(`workflows/${workflowId}/executions/${executionId}/binary_data/`),
+		);
 
 		await Promise.all(
-			workflowDirs.map(async (dir) => {
+			binaryDataDirs.map(async (dir) => {
 				await fs.rm(dir, { recursive: true });
 			}),
 		);
