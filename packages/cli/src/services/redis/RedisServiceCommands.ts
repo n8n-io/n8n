@@ -1,4 +1,4 @@
-import type { IExecutionsCurrentSummary } from '@/Interfaces';
+import type { WorkerJobStatusSummary } from '../orchestration/worker/types';
 
 export type RedisServiceCommand =
 	| 'getStatus'
@@ -31,12 +31,12 @@ export type RedisServiceWorkerResponseObject = {
 			payload: {
 				workerId: string;
 				runningJobs: string[];
-				runningJobsSummary: IExecutionsCurrentSummary[];
+				runningJobsSummary: WorkerJobStatusSummary[];
 				freeMem: number;
 				totalMem: number;
 				uptime: number;
 				loadAvg: number[];
-				cpus: string[];
+				cpus: string;
 				arch: string;
 				platform: NodeJS.Platform;
 				hostname: string;

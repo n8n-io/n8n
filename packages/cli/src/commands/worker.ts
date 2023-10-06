@@ -29,7 +29,7 @@ import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
-import type { ICredentialsOverwrite, IExecutionsCurrentSummary } from '@/Interfaces';
+import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { eventBus } from '@/eventbus';
@@ -38,6 +38,7 @@ import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessage
 import { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -57,7 +58,7 @@ export class Worker extends BaseCommand {
 	} = {};
 
 	static runningJobsSummary: {
-		[key: string]: IExecutionsCurrentSummary & { name: string };
+		[jobId: string]: WorkerJobStatusSummary;
 	} = {};
 
 	static jobQueue: JobQueue;
@@ -237,11 +238,12 @@ export class Worker extends BaseCommand {
 
 		Worker.runningJobs[job.id] = workflowRun;
 		Worker.runningJobsSummary[job.id] = {
-			id: executionId,
-			name: fullExecutionData.workflowData.name,
+			jobId: job.id.toString(),
+			executionId,
+			workflowId: fullExecutionData.workflowId ?? '',
+			workflowName: fullExecutionData.workflowData.name,
 			mode: fullExecutionData.mode,
 			startedAt: fullExecutionData.startedAt,
-			workflowId: fullExecutionData.workflowId ?? '',
 			retryOf: fullExecutionData.retryOf ?? '',
 			status: fullExecutionData.status,
 		};
@@ -319,7 +321,7 @@ export class Worker extends BaseCommand {
 			instanceId: this.instanceId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
 			getRunningJobIds: () => Object.keys(Worker.runningJobs),
-			getRunningJobSummary: () => Object.values(Worker.runningJobsSummary),
+			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
 		});
 	}
 
