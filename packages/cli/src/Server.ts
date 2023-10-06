@@ -25,7 +25,6 @@ import axios from 'axios';
 import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
-import type { BinaryDataService } from 'n8n-core';
 import {
 	Credentials,
 	LoadMappingOptions,
@@ -206,8 +205,6 @@ export class Server extends AbstractServer {
 	postHog: PostHogClient;
 
 	push: Push;
-
-	binaryDataService: BinaryDataService;
 
 	constructor() {
 		super('main');
