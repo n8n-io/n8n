@@ -233,8 +233,10 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		await Container.get(OrchestrationMainService).init();
-		await Container.get(OrchestrationHandlerMainService).init();
+		if (config.get('executions.mode') === 'queue') {
+			await Container.get(OrchestrationMainService).init();
+			await Container.get(OrchestrationHandlerMainService).init();
+		}
 	}
 
 	async run() {
