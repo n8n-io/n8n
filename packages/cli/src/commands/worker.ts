@@ -38,6 +38,7 @@ import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessage
 import { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -54,6 +55,10 @@ export class Worker extends BaseCommand {
 
 	static runningJobs: {
 		[key: string]: PCancelable<IRun>;
+	} = {};
+
+	static runningJobsSummary: {
+		[jobId: string]: WorkerJobStatusSummary;
 	} = {};
 
 	static jobQueue: JobQueue;
@@ -232,11 +237,22 @@ export class Worker extends BaseCommand {
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
+		Worker.runningJobsSummary[job.id] = {
+			jobId: job.id.toString(),
+			executionId,
+			workflowId: fullExecutionData.workflowId ?? '',
+			workflowName: fullExecutionData.workflowData.name,
+			mode: fullExecutionData.mode,
+			startedAt: fullExecutionData.startedAt,
+			retryOf: fullExecutionData.retryOf ?? '',
+			status: fullExecutionData.status,
+		};
 
 		// Wait till the execution is finished
 		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
+		delete Worker.runningJobsSummary[job.id];
 
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
 		// already!
@@ -305,6 +321,7 @@ export class Worker extends BaseCommand {
 			instanceId: this.instanceId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
 			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
 		});
 	}
 
