@@ -84,7 +84,7 @@ function addStickyNote() {
 	position[0] -= DEFAULT_STICKY_WIDTH / 2;
 	position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
-	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE }]));
+	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
 }
 
 function closeNodeCreator() {
