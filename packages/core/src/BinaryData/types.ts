@@ -11,6 +11,8 @@ export namespace BinaryData {
 	 */
 	export type ConfigMode = (typeof CONFIG_BINARY_DATA_MODES)[number];
 
+	export type NonDefaultMode = Exclude<ConfigMode, 'default'>;
+
 	/**
 	 * Binary data mode used internally by binary data service. User-selected
 	 * legacy modes are replaced with upgraded modes.

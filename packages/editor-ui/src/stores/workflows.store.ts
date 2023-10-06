@@ -125,7 +125,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		workflowsById: {},
 		subWorkflowExecutionError: null,
 		activeExecutionId: null,
-		executingNode: null,
+		executingNode: [],
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
 		isInDebugMode: false,
@@ -261,6 +261,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		isNodePristine(): (name: string) => boolean {
 			return (nodeName: string) =>
 				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine;
+		},
+		isNodeExecuting(): (nodeName: string) => boolean {
+			return (nodeName: string) => this.executingNode.includes(nodeName);
 		},
 		// Executions getters
 		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
@@ -434,8 +437,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.setWorkflowTagIds([]);
 
 			this.activeExecutionId = null;
-			this.executingNode = null;
+			this.executingNode.length = 0;
 			this.executionWaitingForWebhook = false;
+		},
+
+		addExecutingNode(nodeName: string): void {
+			this.executingNode.push(nodeName);
+		},
+
+		removeExecutingNode(nodeName: string): void {
+			this.executingNode = this.executingNode.filter((name) => name !== nodeName);
 		},
 
 		setWorkflowId(id: string): void {

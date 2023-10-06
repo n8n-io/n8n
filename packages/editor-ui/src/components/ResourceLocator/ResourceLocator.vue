@@ -58,6 +58,7 @@
 							v-for="mode in parameter.modes"
 							:key="mode.name"
 							:value="mode.name"
+							:label="getModeLabel(mode)"
 							:disabled="isValueExpression && mode.name === 'list'"
 							:title="
 								isValueExpression && mode.name === 'list'
@@ -65,7 +66,7 @@
 									: ''
 							"
 						>
-							{{ getModeLabel(mode.name) || mode.displayName }}
+							{{ getModeLabel(mode) }}
 						</n8n-option>
 					</n8n-select>
 				</div>
@@ -143,8 +144,27 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
+import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
+import DraggableTarget from '@/components/DraggableTarget.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
+import ParameterIssues from '@/components/ParameterIssues.vue';
+import { debounceHelper } from '@/mixins/debounce';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import {
+	getAppNameFromNodeName,
+	getMainAuthField,
+	hasOnlyListMode,
+	isResourceLocatorValue,
+} from '@/utils';
+import stringify from 'fast-json-stable-stringify';
+import type { EventBus } from 'n8n-design-system/utils';
+import { createEventBus } from 'n8n-design-system/utils';
 import type {
 	ILoadOptions,
 	INode,
@@ -156,29 +176,10 @@ import type {
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
-import DraggableTarget from '@/components/DraggableTarget.vue';
-import ParameterIssues from '@/components/ParameterIssues.vue';
-import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
+import { mapStores } from 'pinia';
 import type { PropType } from 'vue';
-import type { IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
-import { debounceHelper } from '@/mixins/debounce';
-import stringify from 'fast-json-stable-stringify';
-import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
-import {
-	getAppNameFromNodeName,
-	isResourceLocatorValue,
-	hasOnlyListMode,
-	getMainAuthField,
-} from '@/utils';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { createEventBus } from 'n8n-design-system/utils';
-import type { EventBus } from 'n8n-design-system/utils';
+import { defineComponent } from 'vue';
+import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -573,12 +574,12 @@ export default defineComponent({
 			}
 			return null;
 		},
-		getModeLabel(name: string): string | null {
-			if (name === 'id' || name === 'url' || name === 'list') {
-				return this.$locale.baseText(`resourceLocator.mode.${name}`);
+		getModeLabel(mode: INodePropertyMode): string | null {
+			if (mode.name === 'id' || mode.name === 'url' || mode.name === 'list') {
+				return this.$locale.baseText(`resourceLocator.mode.${mode.name}`);
 			}
 
-			return null;
+			return mode.displayName;
 		},
 		onInputChange(value: string): void {
 			const params: INodeParameterResourceLocator = { __rl: true, value, mode: this.selectedMode };

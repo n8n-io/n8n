@@ -5,6 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -27,6 +28,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
@@ -69,6 +71,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[ABOUT_MODAL_KEY]: {
 				open: false,
 			},
+			[CHAT_EMBED_MODAL_KEY]: {
+				open: false,
+			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
 				open: false,
 			},
@@ -101,6 +106,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_LM_CHAT_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
@@ -188,6 +196,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannerStack: [],
 	}),
 	getters: {
+		logo() {
+			const { releaseChannel } = useSettingsStore().settings;
+			return releaseChannel === 'stable'
+				? 'n8n-logo-expanded.svg'
+				: `n8n-${releaseChannel}-logo.svg`;
+		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;

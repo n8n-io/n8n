@@ -91,6 +91,19 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		variables: {
 			limit: 100,
 		},
+		expressions: {
+			evaluator: 'tournament',
+		},
+		banners: {
+			dismissed: [],
+		},
+		ai: {
+			enabled: false,
+		},
+		workflowHistory: {
+			pruneTime: -1,
+			licensePruneTime: -1,
+		},
 	},
 	promptsData: {
 		message: '',

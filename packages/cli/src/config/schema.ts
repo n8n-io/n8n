@@ -310,7 +310,7 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
@@ -320,7 +320,7 @@ export const schema = {
 		// Deletes the oldest entries first
 		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
+			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
 			format: Number,
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
@@ -430,6 +430,13 @@ export const schema = {
 			doc: 'Type of n8n instance',
 			format: ['main', 'webhook', 'worker'] as const,
 			default: 'main',
+		},
+
+		releaseChannel: {
+			doc: 'N8N release channel',
+			format: ['stable', 'beta', 'nightly', 'dev'] as const,
+			default: 'dev',
+			env: 'N8N_RELEASE_TYPE',
 		},
 	},
 
@@ -1257,6 +1264,22 @@ export const schema = {
 			format: ['rsa', 'ed25519'] as const,
 			default: 'ed25519',
 			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
+		},
+	},
+
+	workflowHistory: {
+		enabled: {
+			doc: 'Whether to save workflow history versions',
+			format: Boolean,
+			default: true,
+			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
+		},
+
+		pruneTime: {
+			doc: 'Time (in hours) to keep workflow history versions for',
+			format: Number,
+			default: -1,
+			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
 };

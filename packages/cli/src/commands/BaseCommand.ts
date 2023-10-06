@@ -23,6 +23,7 @@ import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
+import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -94,14 +95,12 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected setInstanceQueueModeId() {
-		if (config.getEnv('executions.mode') === 'queue') {
-			if (config.get('redis.queueModeId')) {
-				this.queueModeId = config.get('redis.queueModeId');
-				return;
-			}
-			this.queueModeId = generateHostInstanceId(this.instanceType);
-			config.set('redis.queueModeId', this.queueModeId);
+		if (config.get('redis.queueModeId')) {
+			this.queueModeId = config.get('redis.queueModeId');
+			return;
 		}
+		this.queueModeId = generateHostInstanceId(this.instanceType);
+		config.set('redis.queueModeId', this.queueModeId);
 	}
 
 	protected async stopProcess() {
@@ -273,6 +272,10 @@ export abstract class BaseCommand extends Command {
 	async initExternalSecrets() {
 		const secretsManager = Container.get(ExternalSecretsManager);
 		await secretsManager.init();
+	}
+
+	initWorkflowHistory() {
+		Container.get(WorkflowHistoryManager).init();
 	}
 
 	async finally(error: Error | undefined) {

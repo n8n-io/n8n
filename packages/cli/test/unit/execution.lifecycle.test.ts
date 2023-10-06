@@ -4,7 +4,7 @@ import { mockInstance } from '../integration/shared/utils/mocking';
 import type { IRun } from 'n8n-workflow';
 import config from '@/config';
 
-function toIRun(item: object) {
+function toIRun(item?: object) {
 	return {
 		data: {
 			resultData: {
