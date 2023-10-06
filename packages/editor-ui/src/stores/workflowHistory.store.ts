@@ -43,7 +43,11 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			return null;
 		});
 
-	const cloneIntoNewWorkflow = async (workflowId: string, workflowVersionId: string) => {
+	const cloneIntoNewWorkflow = async (
+		workflowId: string,
+		workflowVersionId: string,
+		data: { formattedCreatedAt: string },
+	) => {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
@@ -57,9 +61,17 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 				nodes,
 				connections,
 				active: false,
-				name: `${workflow.name} (clone)`,
+				name: `${workflow.name} (${data.formattedCreatedAt})`,
 			};
 			await workflowsStore.createNewWorkflow(newWorkflowData);
+		}
+	};
+
+	const restoreWorkflow = async (workflowId: string, workflowVersionId: string) => {
+		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
+		if (workflowVersion?.nodes && workflowVersion?.connections) {
+			const { connections, nodes } = workflowVersion;
+			await workflowsStore.updateWorkflow(workflowId, { connections, nodes }, true);
 		}
 	};
 
@@ -67,6 +79,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		getWorkflowHistory,
 		getWorkflowVersion,
 		cloneIntoNewWorkflow,
+		restoreWorkflow,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};

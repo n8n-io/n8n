@@ -127,9 +127,11 @@ const downloadVersion = async (id: WorkflowVersionId) => {
 const onAction = async ({
 	action,
 	id,
+	data,
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
+	data: { formattedCreatedAt: string };
 }) => {
 	switch (action) {
 		case WORKFLOW_HISTORY_ACTIONS.OPEN:
@@ -139,7 +141,10 @@ const onAction = async ({
 			await downloadVersion(id);
 			break;
 		case WORKFLOW_HISTORY_ACTIONS.CLONE:
-			await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id);
+			await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
+			break;
+		case WORKFLOW_HISTORY_ACTIONS.RESTORE:
+			await workflowHistoryStore.restoreWorkflow(route.params.workflowId, id);
 			break;
 	}
 };
