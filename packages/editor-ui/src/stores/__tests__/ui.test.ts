@@ -99,7 +99,7 @@ describe('UI store', () => {
 			'cloud',
 			'production',
 			'member',
-			'https://app.n8n.cloud/account/change-plan?utm_campaign=utm-test-campaign&source=test_source',
+			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 	])(
 		'"upgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
