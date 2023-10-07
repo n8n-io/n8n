@@ -6,6 +6,8 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
+
+import type { ClientOptions } from 'openai';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -55,6 +57,13 @@ export class EmbeddingsOpenAi implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Base URL',
+						name: 'baseURL',
+						default: 'https://api.openai.com/v1',
+						description: 'Override the default base URL for the API',
+						type: 'string',
+					},
+					{
 						displayName: 'Batch Size',
 						name: 'batchSize',
 						default: 512,
@@ -87,18 +96,28 @@ export class EmbeddingsOpenAi implements INodeType {
 		const credentials = await this.getCredentials('openAiApi');
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			baseURL?: string;
 			batchSize?: number;
 			stripNewLines?: boolean;
 			timeout?: number;
 		};
+
 		if (options.timeout === -1) {
 			options.timeout = undefined;
 		}
 
-		const embeddings = new OpenAIEmbeddings({
-			openAIApiKey: credentials.apiKey as string,
-			...options,
-		});
+		const configuration: ClientOptions = {};
+		if (options.baseURL) {
+			configuration.baseURL = options.baseURL;
+		}
+
+		const embeddings = new OpenAIEmbeddings(
+			{
+				openAIApiKey: credentials.apiKey as string,
+				...options,
+			},
+			configuration,
+		);
 
 		return {
 			response: logWrapper(embeddings, this),

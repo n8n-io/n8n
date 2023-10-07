@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import type { ClientOptions } from 'openai';
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { logWrapper } from '../../../utils/logWrapper';
 
@@ -48,7 +49,8 @@ export class LmChatOpenAi implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: 'https://api.openai.com',
+			baseURL:
+				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
 			{
@@ -62,7 +64,7 @@ export class LmChatOpenAi implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '/v1/models',
+								url: '={{ $parameter.options?.baseURL?.split("/").slice(-1).pop() || "v1"  }}/models',
 							},
 							output: {
 								postReceive: [
@@ -112,6 +114,13 @@ export class LmChatOpenAi implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
+					{
+						displayName: 'Base URL',
+						name: 'baseURL',
+						default: 'https://api.openai.com/v1',
+						description: 'Override the default base URL for the API',
+						type: 'string',
+					},
 					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',
@@ -175,12 +184,26 @@ export class LmChatOpenAi implements INodeType {
 		const credentials = await this.getCredentials('openAiApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as object;
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			baseURL?: string;
+			frequencyPenalty?: number;
+			maxTokens?: number;
+			presencePenalty?: number;
+			temperature?: number;
+			timeout?: number;
+			topP?: number;
+		};
+
+		const configuration: ClientOptions = {};
+		if (options.baseURL) {
+			configuration.baseURL = options.baseURL;
+		}
 
 		const model = new ChatOpenAI({
 			openAIApiKey: credentials.apiKey as string,
 			modelName,
 			...options,
+			configuration,
 		});
 
 		return {
