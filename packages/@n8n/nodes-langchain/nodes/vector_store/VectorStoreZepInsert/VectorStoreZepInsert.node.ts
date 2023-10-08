@@ -131,6 +131,7 @@ export class VectorStoreZepInsert implements INodeType {
 
 		const zepConfig = {
 			apiUrl: credentials.apiUrl,
+			apiKey: credentials.apiKey,
 			collectionName,
 			embeddingDimensions: options.embeddingDimensions ?? 1536,
 			isAutoEmbedded: options.isAutoEmbedded ?? true,
