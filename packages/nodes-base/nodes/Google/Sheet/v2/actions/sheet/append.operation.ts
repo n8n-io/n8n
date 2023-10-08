@@ -3,7 +3,6 @@ import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleShee
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
-import { generatePairedItemData, wrapData } from '../../../../../../utils/utilities';
 
 export const description: SheetProperties = [
 	{
@@ -235,10 +234,13 @@ export async function execute(
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
 		return items;
 	} else {
-		const itemData = generatePairedItemData(items.length);
-		const executionData = this.helpers.constructExecutionMetaData(wrapData(setData), {
-			itemData,
-		});
-		return executionData;
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of setData.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItems: { item: index },
+			});
+		}
+		return returnData;
 	}
 }

@@ -9,7 +9,6 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
-import { generatePairedItemData, wrapData } from '../../../../../../utils/utilities';
 
 export const description: SheetProperties = [
 	{
@@ -381,10 +380,14 @@ export async function execute(
 		if (!updateData.length) {
 			return [];
 		}
-		const itemData = generatePairedItemData(items.length);
-		const executionData = this.helpers.constructExecutionMetaData(wrapData(mappedValues), {
-			itemData,
-		});
-		return executionData;
+
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of mappedValues.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItems: { item: index },
+			});
+		}
+		return returnData;
 	}
 }
