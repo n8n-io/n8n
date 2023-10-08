@@ -26,13 +26,11 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
-	FileNotFoundError,
 } from 'n8n-core';
 
 import type {
@@ -74,7 +72,6 @@ import {
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
-	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -99,6 +96,7 @@ import {
 	WorkflowStatisticsController,
 } from '@/controllers';
 
+import { BinaryDataController } from './controllers/binaryData.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
@@ -207,8 +205,6 @@ export class Server extends AbstractServer {
 	postHog: PostHogClient;
 
 	push: Push;
-
-	binaryDataService: BinaryDataService;
 
 	constructor() {
 		super('main');
@@ -374,7 +370,6 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
-		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -581,6 +576,7 @@ export class Server extends AbstractServer {
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
+			Container.get(BinaryDataController),
 		];
 
 		if (isLdapEnabled()) {
@@ -1440,39 +1436,6 @@ export class Server extends AbstractServer {
 			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<object> => {
 				return timezones;
 			}),
-		);
-
-		// ----------------------------------------
-		// Binary data
-		// ----------------------------------------
-
-		// Download binary
-		this.app.get(
-			`/${this.restEndpoint}/data/:path`,
-			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				// TODO UM: check if this needs permission check for UM
-				const identifier = req.params.path;
-				try {
-					const binaryPath = this.binaryDataService.getPath(identifier);
-					let { mode, fileName, mimeType } = req.query;
-					if (!fileName || !mimeType) {
-						try {
-							const metadata = await this.binaryDataService.getMetadata(identifier);
-							fileName = metadata.fileName;
-							mimeType = metadata.mimeType;
-							res.setHeader('Content-Length', metadata.fileSize);
-						} catch {}
-					}
-					if (mimeType) res.setHeader('Content-Type', mimeType);
-					if (mode === 'download') {
-						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-					}
-					res.sendFile(binaryPath);
-				} catch (error) {
-					if (error instanceof FileNotFoundError) res.writeHead(404).end();
-					else throw error;
-				}
-			},
 		);
 
 		// ----------------------------------------

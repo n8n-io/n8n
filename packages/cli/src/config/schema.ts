@@ -908,7 +908,7 @@ export const schema = {
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: ['default', 'filesystem'] as const,
+			format: ['default', 'filesystem', 's3'] as const,
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',
@@ -918,6 +918,45 @@ export const schema = {
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+	},
+
+	externalStorage: {
+		s3: {
+			host: {
+				format: String,
+				default: '',
+				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
+				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
+			},
+			bucket: {
+				name: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
+					doc: 'Name of the n8n bucket in S3-compatible external storage',
+				},
+				region: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
+					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
+				},
+			},
+			credentials: {
+				accessKey: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
+					doc: 'Access key in S3-compatible external storage',
+				},
+				accessSecret: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
+					doc: 'Access secret in S3-compatible external storage',
+				},
+			},
 		},
 	},
 
