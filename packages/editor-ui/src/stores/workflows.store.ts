@@ -1393,7 +1393,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const rootStore = useRootStore();
 			let restUrl = rootStore.getRestUrl;
 			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
-			const url = new URL(`${restUrl}/data`);
+			const url = new URL(`${restUrl}/binary-data`);
 			url.searchParams.append('id', binaryDataId);
 			url.searchParams.append('action', action);
 			if (fileName) url.searchParams.append('fileName', fileName);
