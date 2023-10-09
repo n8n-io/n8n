@@ -1672,7 +1672,6 @@ export default defineComponent({
 
 .editMode {
 	height: 100%;
-	max-height: calc(100% - var(--spacing-3xl));
 	display: flex;
 	flex-direction: column;
 	justify-content: stretch;
