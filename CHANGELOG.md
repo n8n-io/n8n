@@ -1,3 +1,19 @@
+## [1.9.2](https://github.com/n8n-io/n8n/compare/n8n@1.9.1...n8n@1.9.2) (2023-10-09)
+
+
+### Bug Fixes
+
+* **core:** Add an option to enable postgres ssl with default certs ([#6889](https://github.com/n8n-io/n8n/issues/6889)) ([0de6d7d](https://github.com/n8n-io/n8n/commit/0de6d7d9123ae6f63308187a484695ff4e633f8f))
+* **editor:** Fix disappearing NDV header in code nodes ([#7290](https://github.com/n8n-io/n8n/issues/7290)) ([7d87392](https://github.com/n8n-io/n8n/commit/7d8739246689088d44d2e4655855982e64ced91a))
+* **editor:** Remove excess margin below run data editor ([#7372](https://github.com/n8n-io/n8n/issues/7372)) ([8c38984](https://github.com/n8n-io/n8n/commit/8c3898427cc0d363233a576eb320b233586dd63c))
+* **editor:** Use display option's @Version specifier  ([#7351](https://github.com/n8n-io/n8n/issues/7351)) ([73a98cb](https://github.com/n8n-io/n8n/commit/73a98cb13e74fb0547fe2bfb9ff1153a312dd3f1))
+* **Google BigQuery Node:** Location default to jobReference ([#7354](https://github.com/n8n-io/n8n/issues/7354)) ([489a12d](https://github.com/n8n-io/n8n/commit/489a12d9ff39339ab1b8fa4715b5e416f50d90d7))
+* **Google Drive Trigger Node:** Add Shared Drives support ([#7369](https://github.com/n8n-io/n8n/issues/7369)) ([138d26c](https://github.com/n8n-io/n8n/commit/138d26c4b39e8add7e0647f42d8a1d84fa3a2ad0))
+* **Google Sheets Node:** Fix "Maximum call stack size exceeded" error on too many rows ([#7384](https://github.com/n8n-io/n8n/issues/7384)) ([200fb54](https://github.com/n8n-io/n8n/commit/200fb54a5f10136dfc5604089ed5e74ca7f70fb5))
+* **HTML Node:** Update property fields to not use expressions on drag ([#7379](https://github.com/n8n-io/n8n/issues/7379)) ([4517001](https://github.com/n8n-io/n8n/commit/4517001c0d0ff2e8ebfb50f2d79aa880b0f7263c))
+
+
+
 ## [1.9.1](https://github.com/n8n-io/n8n/compare/n8n@1.9.0...n8n@1.9.1) (2023-10-04)
 
 
