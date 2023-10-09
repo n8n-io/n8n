@@ -24,7 +24,7 @@ type WorkflowHistoryActionRecord = {
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
 	deactivateAndRestore = 'deactivateAndRestore',
-	doNothing = 'doNothing',
+	cancel = 'cancel',
 }
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
@@ -118,7 +118,7 @@ const openRestorationModal = async (
 				text: i18n.baseText('workflowHistory.action.restore.modal.button.cancel'),
 				type: 'tertiary',
 				action: () => {
-					resolve(WorkflowHistoryVersionRestoreModalActions.doNothing);
+					resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
 				},
 			},
 		];
@@ -146,7 +146,7 @@ const openRestorationModal = async (
 				name: WORKFLOW_HISTORY_VERSION_RESTORE,
 				data: {
 					beforeClose: () => {
-						resolve(WorkflowHistoryVersionRestoreModalActions.doNothing);
+						resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
 					},
 					isWorkflowActivated,
 					formattedCreatedAt,
@@ -186,7 +186,7 @@ const onAction = async ({
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
 				const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
-				if (modalAction === WorkflowHistoryVersionRestoreModalActions.doNothing) {
+				if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
 					break;
 				}
 				await workflowHistoryStore.restoreWorkflow(
