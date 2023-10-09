@@ -1,4 +1,4 @@
-import type { ISettingsState, IUsersState } from '@/Interface';
+import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 
 export const retry = async (assertion: () => any, { interval = 20, timeout = 1000 } = {}) => {
