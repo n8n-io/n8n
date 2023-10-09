@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import type { WorkflowVersion } from '@/types/workflowHistory';
+import type { IWorkflowDb } from '@/Interface';
+import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 const props = defineProps<{
-	workflowVersion: WorkflowVersion | null;
+	workflowVersion: IWorkflowDb | null;
 }>();
 </script>
 
 <template>
 	<div :class="$style.content">
-		{{ props.workflowVersion }}
+		<WorkflowPreview
+			v-if="props.workflowVersion"
+			:workflow="props.workflowVersion"
+			:loading="false"
+		/>
 	</div>
 </template>
 
