@@ -97,10 +97,10 @@ describe('WorkflowHistoryList', () => {
 		await userEvent.click(within(listItem).getByText(/ID: /));
 		expect(emitted().preview).toEqual([
 			[
-				expect.objectContaining({
+				{
 					id: items[items.length - 1].versionId,
 					event: expect.any(MouseEvent),
-				}),
+				},
 			],
 		]);
 
@@ -147,7 +147,15 @@ describe('WorkflowHistoryList', () => {
 		expect(actionsDropdown).toBeInTheDocument();
 
 		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
-		expect(emitted().action).toEqual([[{ action, id: items[index].versionId }]]);
+		expect(emitted().action).toEqual([
+			[
+				{
+					action,
+					id: items[index].versionId,
+					data: { formattedCreatedAt: expect.any(String) },
+				},
+			],
+		]);
 	});
 
 	it('should show upgrade message', async () => {

@@ -19,7 +19,11 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowVersionId },
+		value: {
+			action: WorkflowHistoryActionTypes[number];
+			id: WorkflowVersionId;
+			data: { formattedCreatedAt: string };
+		},
 	): void;
 	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'mounted', value: { index: number; offsetTop: number; isActive: boolean }): void;
@@ -32,11 +36,11 @@ const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
 
-const formattedCreatedAtDate = computed<string>(() => {
+const formattedCreatedAt = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
 	const [date, time] = dateformat(
 		props.item.createdAt,
-		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '} mmm d"#"HH:MM`,
+		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM`,
 	).split('#');
 
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
@@ -61,7 +65,11 @@ const idLabel = computed<string>(() =>
 );
 
 const onAction = (action: WorkflowHistoryActionTypes[number]) => {
-	emit('action', { action, id: props.item.versionId });
+	emit('action', {
+		action,
+		id: props.item.versionId,
+		data: { formattedCreatedAt: formattedCreatedAt.value },
+	});
 };
 
 const onVisibleChange = (visible: boolean) => {
@@ -96,7 +104,7 @@ onMounted(() => {
 		<section @click="onItemClick">
 			<p>
 				<span :class="$style.label">{{ i18n.baseText('workflowHistory.content.title') }}:</span>
-				<time :datetime="item.createdAt">{{ formattedCreatedAtDate }}</time>
+				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
 			</p>
 			<p>
 				<span :class="$style.label">{{ i18n.baseText('workflowHistory.content.editedBy') }}:</span>
