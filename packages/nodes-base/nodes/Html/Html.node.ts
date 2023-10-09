@@ -115,6 +115,7 @@ export class Html implements INodeType {
 				displayName: 'Binary Property',
 				name: 'dataPropertyName',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['extractHtmlContent'],
@@ -130,6 +131,7 @@ export class Html implements INodeType {
 				displayName: 'JSON Property',
 				name: 'dataPropertyName',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['extractHtmlContent'],
