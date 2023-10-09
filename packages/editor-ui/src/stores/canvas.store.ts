@@ -38,6 +38,8 @@ import {
 	CONNECTOR_PAINT_STYLE_PRIMARY,
 	CONNECTOR_ARROW_OVERLAYS,
 	getMousePosition,
+	SIDEBAR_WIDTH,
+	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
 
@@ -92,6 +94,21 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const getNodesWithPlaceholderNode = (): INodeUi[] =>
 		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
+	const canvasPositionFromPagePosition = (position: XYPosition): XYPosition => {
+		const sidebarWidth = isDemo.value
+			? 0
+			: uiStore.sidebarMenuCollapsed
+			? SIDEBAR_WIDTH
+			: SIDEBAR_WIDTH_EXPANDED;
+
+		const relativeX = position[0] - sidebarWidth;
+		const relativeY = isDemo.value
+			? position[1]
+			: position[1] - uiStore.bannersHeight - uiStore.headerHeight;
+
+		return [relativeX, relativeY];
+	};
+
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
 		jsPlumbInstanceRef.value?.setZoom(zoomLevel);
@@ -102,6 +119,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleReset({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -110,6 +128,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleBigger({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -118,6 +137,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleSmaller({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -150,7 +170,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			const { scale, offset } = applyScale(scaleFactor)({
 				scale: nodeViewScale.value,
 				offset: uiStore.nodeViewOffsetPosition,
-				origin: getMousePosition(e),
+				origin: canvasPositionFromPagePosition(getMousePosition(e)),
 			});
 			setZoomLevel(scale, offset);
 			return;
@@ -276,6 +296,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		jsPlumbInstance,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
+		canvasPositionFromPagePosition,
 		setZoomLevel,
 		resetZoom,
 		zoomIn,

@@ -206,7 +206,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			);
 	});
 
-	it.only('should zoom using pinch to zoom', () => {
+	it('should zoom using pinch to zoom', () => {
 		WorkflowPage.actions.pinchToZoom(2, 'zoomIn');
 		WorkflowPage.getters
 			.nodeView()

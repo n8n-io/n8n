@@ -16,7 +16,7 @@ import type { Route } from 'vue-router';
 const SCALE_INCREASE_FACTOR = 1.25;
 const SCALE_DECREASE_FACTOR = 0.75;
 const MIN_SCALE = 0.2;
-const MAX_SCALE = 10;
+const MAX_SCALE = 5;
 
 const clamp = (min: number, max: number) => (num: number) => {
 	return Math.max(min, Math.min(max, num));
@@ -32,8 +32,10 @@ export const applyScale =
 
 		const xOrigin = origin?.[0] ?? window.innerWidth / 2;
 		const yOrigin = origin?.[1] ?? window.innerHeight / 2;
-		xOffset = scaleChange * (xOffset - xOrigin) + xOrigin;
-		yOffset = scaleChange * (yOffset - yOrigin) + yOrigin;
+
+		// Calculate the new offsets based on the zoom origin
+		xOffset = xOrigin - scaleChange * (xOrigin - xOffset);
+		yOffset = yOrigin - scaleChange * (yOrigin - yOffset);
 
 		return {
 			scale: newScale,

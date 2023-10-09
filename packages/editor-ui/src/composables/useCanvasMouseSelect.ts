@@ -179,18 +179,9 @@ export default function useCanvasMouseSelect() {
 	}
 
 	function getMousePositionWithinNodeView(event: MouseEvent | TouchEvent): XYPosition {
-		const [mouseX, mouseY] = getMousePosition(event);
+		const mousePosition = getMousePosition(event);
 
-		const sidebarWidth = canvasStore.isDemo
-			? 0
-			: uiStore.sidebarMenuCollapsed
-			? SIDEBAR_WIDTH
-			: SIDEBAR_WIDTH_EXPANDED;
-
-		const relativeX = mouseX - sidebarWidth;
-		const relativeY = canvasStore.isDemo
-			? mouseY
-			: mouseY - uiStore.bannersHeight - uiStore.headerHeight;
+		const [relativeX, relativeY] = canvasStore.canvasPositionFromPagePosition(mousePosition);
 		const nodeViewScale = canvasStore.nodeViewScale;
 		const nodeViewOffsetPosition = uiStore.nodeViewOffsetPosition;
 
