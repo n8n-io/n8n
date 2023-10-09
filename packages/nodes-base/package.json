@@ -683,6 +683,7 @@
       "dist/nodes/RespondToWebhook/RespondToWebhook.node.js",
       "dist/nodes/Rocketchat/Rocketchat.node.js",
       "dist/nodes/RssFeedRead/RssFeedRead.node.js",
+      "dist/nodes/RssFeedRead/RssFeedReadTrigger.node.js",
       "dist/nodes/Rundeck/Rundeck.node.js",
       "dist/nodes/S3/S3.node.js",
       "dist/nodes/Salesforce/Salesforce.node.js",
