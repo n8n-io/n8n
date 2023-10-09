@@ -1,31 +1,29 @@
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import { defineStore } from 'pinia';
-import * as whApi from '@/api/workflowHistory';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { saveAs } from 'file-saver';
+import type { IWorkflowDataUpdate } from '@/Interface';
 import type {
 	WorkflowHistory,
 	WorkflowVersion,
 	WorkflowHistoryRequestParams,
+	WorkflowVersionId,
 } from '@/types/workflowHistory';
+import * as whApi from '@/api/workflowHistory';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
 
-	const workflowHistory = ref<WorkflowHistory[]>([]);
-	const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
 	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory.licensePruneTime);
 	const pruneTime = computed(() => settingsStore.settings.workflowHistory.pruneTime);
 	const evaluatedPruneTime = computed(() => Math.min(pruneTime.value, licensePruneTime.value));
 	const shouldUpgrade = computed(
 		() => licensePruneTime.value !== -1 && licensePruneTime.value === pruneTime.value,
 	);
-
-	const reset = () => {
-		workflowHistory.value = [];
-		activeWorkflowVersion.value = null;
-	};
 
 	const getWorkflowHistory = async (
 		workflowId: string,
@@ -37,9 +35,6 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 				console.error(error);
 				return [] as WorkflowHistory[];
 			});
-	const addWorkflowHistory = (history: WorkflowHistory[]) => {
-		workflowHistory.value = workflowHistory.value.concat(history);
-	};
 
 	const getWorkflowVersion = async (
 		workflowId: string,
@@ -49,18 +44,66 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			console.error(error);
 			return null;
 		});
-	const setActiveWorkflowVersion = (version: WorkflowVersion | null) => {
-		activeWorkflowVersion.value = version;
+
+	const downloadVersion = async (workflowId: string, workflowVersionId: WorkflowVersionId) => {
+		const [workflow, workflowVersion] = await Promise.all([
+			workflowsStore.fetchWorkflow(workflowId),
+			getWorkflowVersion(workflowId, workflowVersionId),
+		]);
+		if (workflow && workflowVersion) {
+			const { connections, nodes } = workflowVersion;
+			const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
+				type: 'application/json;charset=utf-8',
+			});
+			saveAs(blob, `${workflow.name}-${workflowVersionId}.json`);
+		}
+	};
+
+	const cloneIntoNewWorkflow = async (
+		workflowId: string,
+		workflowVersionId: string,
+		data: { formattedCreatedAt: string },
+	) => {
+		const [workflow, workflowVersion] = await Promise.all([
+			workflowsStore.fetchWorkflow(workflowId),
+			getWorkflowVersion(workflowId, workflowVersionId),
+		]);
+		if (workflow && workflowVersion) {
+			const { connections, nodes } = workflowVersion;
+			const { name } = workflow;
+			const newWorkflowData: IWorkflowDataUpdate = {
+				nodes,
+				connections,
+				name: `${name} (${data.formattedCreatedAt})`,
+			};
+			await workflowsStore.createNewWorkflow(newWorkflowData);
+		}
+	};
+
+	const restoreWorkflow = async (
+		workflowId: string,
+		workflowVersionId: string,
+		shouldDeactivate: boolean,
+	) => {
+		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
+		if (workflowVersion?.nodes && workflowVersion?.connections) {
+			const { connections, nodes } = workflowVersion;
+			const updateData: IWorkflowDataUpdate = { connections, nodes };
+
+			if (shouldDeactivate) {
+				updateData.active = false;
+			}
+
+			await workflowsStore.updateWorkflow(workflowId, updateData, true);
+		}
 	};
 
 	return {
-		reset,
 		getWorkflowHistory,
-		addWorkflowHistory,
 		getWorkflowVersion,
-		setActiveWorkflowVersion,
-		workflowHistory,
-		activeWorkflowVersion,
+		downloadVersion,
+		cloneIntoNewWorkflow,
+		restoreWorkflow,
 		evaluatedPruneTime,
 		shouldUpgrade,
 	};
