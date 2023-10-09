@@ -6,29 +6,33 @@ import RunData from '@/components/RunData.vue';
 import { STORES, VIEWS } from '@/constants';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
+import type { IRunDataDisplayMode } from '@/Interface';
 
 describe('RunData', () => {
 	it('should render data correctly even when "item.json" has another "json" key', async () => {
-		const { getByText, getAllByTestId, getByTestId } = render([
-			{
-				json: {
-					id: 1,
-					name: 'Test 1',
+		const { getByText, getAllByTestId, getByTestId } = render(
+			[
+				{
 					json: {
-						data: 'Json data 1',
+						id: 1,
+						name: 'Test 1',
+						json: {
+							data: 'Json data 1',
+						},
 					},
 				},
-			},
-			{
-				json: {
-					id: 2,
-					name: 'Test 2',
+				{
 					json: {
-						data: 'Json data 2',
+						id: 2,
+						name: 'Test 2',
+						json: {
+							data: 'Json data 2',
+						},
 					},
 				},
-			},
-		]);
+			],
+			'schema',
+		);
 
 		await userEvent.click(getByTestId('ndv-pin-data'));
 		await waitFor(() => getAllByTestId('run-data-schema-item'), { timeout: 1000 });
@@ -36,32 +40,33 @@ describe('RunData', () => {
 		expect(getByText('Json data 1')).toBeInTheDocument();
 	});
 
-	it.skip('should render view and download options for PDFs', async () => {
-		const { getByTestId } = render([
-			{
-				json: {},
-				binary: {
-					data: {
-						data: 'filesystem',
-						id: 'filesystem:12110d8f95e1c-c64f-4dbe-8ea6-a5282d957737',
-						directory: 'somewhere',
-						fileExtension: 'pdf',
-						fileName: 'test.pdf',
-						fileSize: '11.5 kB',
-						fileType: 'pdf',
-						mimeType: 'application/pdf',
+	it('should render view and download options for PDFs', async () => {
+		const { getByTestId } = render(
+			[
+				{
+					json: {},
+					binary: {
+						data: {
+							data: 'filesystem',
+							id: 'filesystem:12110d8f95e1c-c64f-4dbe-8ea6-a5282d957737',
+							directory: 'somewhere',
+							fileExtension: 'pdf',
+							fileName: 'test.pdf',
+							fileSize: '11.5 kB',
+							fileType: 'pdf',
+							mimeType: 'application/pdf',
+						},
 					},
 				},
-				pairedItem: {
-					item: 0,
-				},
-			},
-		]);
+			],
+			'binary',
+		);
+		// await userEvent.click(getByTestId('radio-button-binary'));
 		const binaryData = getByTestId('ndv-binary-data_0');
 		binaryData.querySelector('a');
 	});
 
-	const render = (outputData: unknown[]) =>
+	const render = (outputData: unknown[], displayMode: IRunDataDisplayMode) =>
 		createComponentRenderer(RunData, {
 			props: {
 				nodeUi: {
@@ -71,6 +76,7 @@ describe('RunData', () => {
 			data() {
 				return {
 					canPinData: true,
+					showData: true,
 				};
 			},
 			global: {
@@ -100,7 +106,7 @@ describe('RunData', () => {
 					},
 					[STORES.NDV]: {
 						output: {
-							displayMode: 'schema',
+							displayMode,
 						},
 						activeNodeName: 'Test Node',
 					},
