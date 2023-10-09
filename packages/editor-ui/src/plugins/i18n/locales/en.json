@@ -1866,6 +1866,8 @@
 	"workflowHistory.action.restore.modal.button.deactivateAndRestore": "Deactivate and restore",
 	"workflowHistory.action.restore.modal.button.restore": "Restore",
 	"workflowHistory.action.restore.modal.button.cancel": "Cancel",
+	"workflowHistory.action.restore.success.title": "Successfully restored workflow version",
+	"workflowHistory.action.clone.success.title": "Successfully cloned workflow version",
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",

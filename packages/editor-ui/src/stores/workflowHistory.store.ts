@@ -70,14 +70,11 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		]);
 		if (workflow && workflowVersion?.nodes && workflowVersion?.connections) {
 			const { connections, nodes } = workflowVersion;
-			const { settings, tags } = workflow;
+			const { name } = workflow;
 			const newWorkflowData: IWorkflowDataUpdate = {
-				settings,
-				tags,
 				nodes,
 				connections,
-				active: false,
-				name: `${workflow.name} (${data.formattedCreatedAt})`,
+				name: `${name} (${data.formattedCreatedAt})`,
 			};
 			await workflowsStore.createNewWorkflow(newWorkflowData);
 		}

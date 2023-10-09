@@ -178,6 +178,10 @@ const onAction = async ({
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
 				await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.action.clone.success.title'),
+					type: 'success',
+				});
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
@@ -190,6 +194,10 @@ const onAction = async ({
 					id,
 					modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
 				);
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.action.restore.success.title'),
+					type: 'success',
+				});
 				break;
 		}
 	} catch (error) {
