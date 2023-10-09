@@ -432,7 +432,7 @@
 										v-if="isViewable(index, key)"
 										size="small"
 										:label="$locale.baseText('runData.showBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-view-binary-data"
 										@click="displayBinaryData(index, key)"
 									/>
 									<n8n-button
@@ -440,7 +440,7 @@
 										size="small"
 										type="secondary"
 										:label="$locale.baseText('runData.downloadBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-download-binary-data"
 										@click="downloadBinaryData(index, key)"
 									/>
 								</div>

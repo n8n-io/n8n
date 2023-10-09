@@ -40,19 +40,14 @@ describe('RunData', () => {
 		expect(getByText('Json data 1')).toBeInTheDocument();
 	});
 
-	it('should render view and download options for PDFs', async () => {
+	it('should render view and download buttons for PDFs', async () => {
 		const { getByTestId } = render(
 			[
 				{
 					json: {},
 					binary: {
 						data: {
-							data: 'filesystem',
-							id: 'filesystem:12110d8f95e1c-c64f-4dbe-8ea6-a5282d957737',
-							directory: 'somewhere',
-							fileExtension: 'pdf',
 							fileName: 'test.pdf',
-							fileSize: '11.5 kB',
 							fileType: 'pdf',
 							mimeType: 'application/pdf',
 						},
@@ -61,9 +56,29 @@ describe('RunData', () => {
 			],
 			'binary',
 		);
-		// await userEvent.click(getByTestId('radio-button-binary'));
-		const binaryData = getByTestId('ndv-binary-data_0');
-		binaryData.querySelector('a');
+		expect(getByTestId('ndv-view-binary-data')).toBeInTheDocument();
+		expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+	});
+
+	it('should not render a view button for unknown content-type', async () => {
+		const { getByTestId, queryByTestId } = render(
+			[
+				{
+					json: {},
+					binary: {
+						data: {
+							fileName: 'test.xyz',
+							mimeType: 'application/octet-stream',
+						},
+					},
+				},
+			],
+			'binary',
+		);
+		expect(queryByTestId('ndv-view-binary-data')).not.toBeInTheDocument();
+		expect(getByTestId('ndv-download-binary-data')).toBeInTheDocument();
+		expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
 	});
 
 	const render = (outputData: unknown[], displayMode: IRunDataDisplayMode) =>
