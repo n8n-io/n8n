@@ -11,4 +11,3 @@ packages/**/.turbo
 .github
 *.tsbuildinfo
 packages/cli/dist/**/e2e.*
-packages/cli/dist/ReloadNodesAndCredentials.*

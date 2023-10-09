@@ -1,4 +1,6 @@
+import { Service } from 'typedi';
 import { Request, Response, NextFunction } from 'express';
+import config from '@/config';
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
@@ -9,12 +11,9 @@ import { NodeRequest } from '@/requests';
 import { BadRequestError, InternalServerError } from '@/ResponseHelper';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { InternalHooks } from '@/InternalHooks';
 import { Push } from '@/push';
-import { Config } from '@/config';
-import { CommunityPackageService } from '@/services/communityPackage.service';
-import Container from 'typedi';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -33,24 +32,20 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
+@Service()
 @Authorized(['global', 'owner'])
-@RestController('/nodes')
-export class NodesController {
-	private communityPackageService: CommunityPackageService;
-
+@RestController('/community-packages')
+export class CommunityPackagesController {
 	constructor(
-		private config: Config,
-		private loadNodesAndCredentials: LoadNodesAndCredentials,
 		private push: Push,
 		private internalHooks: InternalHooks,
-	) {
-		this.communityPackageService = Container.get(CommunityPackageService);
-	}
+		private communityPackagesService: CommunityPackagesService,
+	) {}
 
 	// TODO: move this into a new decorator `@IfConfig('executions.mode', 'queue')`
 	@Middleware()
 	checkIfCommunityNodesEnabled(req: Request, res: Response, next: NextFunction) {
-		if (this.config.getEnv('executions.mode') === 'queue' && req.method !== 'GET')
+		if (config.getEnv('executions.mode') === 'queue' && req.method !== 'GET')
 			res.status(400).json({
 				status: 'error',
 				message: 'Package management is disabled when running in "queue" mode',
@@ -69,7 +64,7 @@ export class NodesController {
 		let parsed: CommunityPackages.ParsedPackageName;
 
 		try {
-			parsed = this.communityPackageService.parseNpmPackageName(name);
+			parsed = this.communityPackagesService.parseNpmPackageName(name);
 		} catch (error) {
 			throw new BadRequestError(
 				error instanceof Error ? error.message : 'Failed to parse package name',
@@ -85,8 +80,8 @@ export class NodesController {
 			);
 		}
 
-		const isInstalled = await this.communityPackageService.isPackageInstalled(parsed.packageName);
-		const hasLoaded = this.communityPackageService.hasPackageLoaded(name);
+		const isInstalled = await this.communityPackagesService.isPackageInstalled(parsed.packageName);
+		const hasLoaded = this.communityPackagesService.hasPackageLoaded(name);
 
 		if (isInstalled && hasLoaded) {
 			throw new BadRequestError(
@@ -97,7 +92,7 @@ export class NodesController {
 			);
 		}
 
-		const packageStatus = await this.communityPackageService.checkNpmPackageStatus(name);
+		const packageStatus = await this.communityPackagesService.checkNpmPackageStatus(name);
 
 		if (packageStatus.status !== 'OK') {
 			throw new BadRequestError(`Package "${name}" is banned so it cannot be installed`);
@@ -105,7 +100,7 @@ export class NodesController {
 
 		let installedPackage: InstalledPackages;
 		try {
-			installedPackage = await this.loadNodesAndCredentials.installNpmModule(
+			installedPackage = await this.communityPackagesService.installNpmModule(
 				parsed.packageName,
 				parsed.version,
 			);
@@ -130,7 +125,7 @@ export class NodesController {
 			throw new (clientError ? BadRequestError : InternalServerError)(message);
 		}
 
-		if (!hasLoaded) this.communityPackageService.removePackageFromMissingList(name);
+		if (!hasLoaded) this.communityPackagesService.removePackageFromMissingList(name);
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
@@ -156,7 +151,7 @@ export class NodesController {
 
 	@Get('/')
 	async getInstalledPackages() {
-		const installedPackages = await this.communityPackageService.getAllInstalledPackages();
+		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
 		if (installedPackages.length === 0) return [];
 
@@ -164,7 +159,7 @@ export class NodesController {
 
 		try {
 			const command = ['npm', 'outdated', '--json'].join(' ');
-			await this.communityPackageService.executeNpmCommand(command, { doNotHandleError: true });
+			await this.communityPackagesService.executeNpmCommand(command, { doNotHandleError: true });
 		} catch (error) {
 			// when there are updates, npm exits with code 1
 			// when there are no updates, command succeeds
@@ -174,18 +169,14 @@ export class NodesController {
 			}
 		}
 
-		let hydratedPackages = this.communityPackageService.matchPackagesWithUpdates(
+		let hydratedPackages = this.communityPackagesService.matchPackagesWithUpdates(
 			installedPackages,
 			pendingUpdates,
 		);
 
 		try {
-			const missingPackages = this.config.get('nodes.packagesMissing') as string | undefined;
-			if (missingPackages) {
-				hydratedPackages = this.communityPackageService.matchMissingPackages(
-					hydratedPackages,
-					missingPackages,
-				);
+			if (this.communityPackagesService.hasMissingPackages) {
+				hydratedPackages = this.communityPackagesService.matchMissingPackages(hydratedPackages);
 			}
 		} catch {}
 
@@ -201,21 +192,21 @@ export class NodesController {
 		}
 
 		try {
-			this.communityPackageService.parseNpmPackageName(name); // sanitize input
+			this.communityPackagesService.parseNpmPackageName(name); // sanitize input
 		} catch (error) {
 			const message = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
 			throw new BadRequestError(message);
 		}
 
-		const installedPackage = await this.communityPackageService.findInstalledPackage(name);
+		const installedPackage = await this.communityPackagesService.findInstalledPackage(name);
 
 		if (!installedPackage) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
-			await this.loadNodesAndCredentials.removeNpmModule(name, installedPackage);
+			await this.communityPackagesService.removeNpmModule(name, installedPackage);
 		} catch (error) {
 			const message = [
 				`Error removing package "${name}"`,
@@ -252,15 +243,15 @@ export class NodesController {
 		}
 
 		const previouslyInstalledPackage =
-			await this.communityPackageService.findInstalledPackage(name);
+			await this.communityPackagesService.findInstalledPackage(name);
 
 		if (!previouslyInstalledPackage) {
 			throw new BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
-			const newInstalledPackage = await this.loadNodesAndCredentials.updateNpmModule(
-				this.communityPackageService.parseNpmPackageName(name).packageName,
+			const newInstalledPackage = await this.communityPackagesService.updateNpmModule(
+				this.communityPackagesService.parseNpmPackageName(name).packageName,
 				previouslyInstalledPackage,
 			);
 
