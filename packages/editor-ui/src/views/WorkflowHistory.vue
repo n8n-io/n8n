@@ -227,7 +227,7 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 };
 
 const onUpgrade = () => {
-	uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 };
 
 watchEffect(async () => {

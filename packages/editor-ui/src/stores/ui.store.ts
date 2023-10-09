@@ -35,6 +35,7 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
+	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 import type {
@@ -57,8 +58,6 @@ import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
@@ -218,7 +217,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 
 			return {
-				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
 				feature: {
 					unavailable: {
 						title: `contextual.feature.unavailable.title${contextKey}`,
@@ -347,18 +345,29 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		upgradeLinkUrl() {
-			return (source: string, utm_campaign: string): string => {
-				const linkUrlTranslationKey = this.contextBasedTranslationKeys
-					.upgradeLinkUrl as BaseTextKey;
-				let linkUrl = locale.baseText(linkUrlTranslationKey);
+			return async (source: string, utm_campaign: string, deploymentType: string) => {
+				let linkUrl = '';
 
-				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${linkUrl}?ref=${source}`;
-				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
+				const searchParams = new URLSearchParams();
+
+				if (deploymentType === 'cloud') {
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
+					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					linkUrl = `https://${adminPanelHost}/login`;
+					searchParams.set('code', code);
+					searchParams.set('returnPath', '/account/change-plan');
+				} else {
+					linkUrl = N8N_PRICING_PAGE_URL;
 				}
 
-				return linkUrl;
+				if (utm_campaign) {
+					searchParams.set('utm_campaign', utm_campaign);
+				}
+
+				if (source) {
+					searchParams.set('source', source);
+				}
+				return `${linkUrl}?${searchParams.toString()}`;
 			};
 		},
 		headerHeight() {
@@ -546,25 +555,30 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(
+		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,
 			utm_campaign: UTMCampaign,
 			mode: 'open' | 'redirect' = 'open',
-		): void {
+		): Promise<void> {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
+			const deploymentType = useSettingsStore().deploymentType;
+
 			useTelemetryStore().track('User clicked upgrade CTA', {
 				source,
 				isTrial: userIsTrialing,
-				deploymentType: useSettingsStore().deploymentType,
+				deploymentType,
 				trialDaysLeft,
 				executionsLeft,
 				workflowsLeft,
 			});
+
+			const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
+
 			if (mode === 'open') {
-				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+				window.open(upgradeLink, '_blank');
 			} else {
-				location.href = this.upgradeLinkUrl(source, utm_campaign);
+				location.href = upgradeLink;
 			}
 		},
 		async dismissBanner(

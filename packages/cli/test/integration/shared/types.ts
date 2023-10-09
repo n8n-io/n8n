@@ -34,7 +34,8 @@ export type EndpointGroup =
 	| 'mfa'
 	| 'metrics'
 	| 'executions'
-	| 'workflowHistory';
+	| 'workflowHistory'
+	| 'binaryData';
 
 export interface SetupProps {
 	applyAuth?: boolean;
