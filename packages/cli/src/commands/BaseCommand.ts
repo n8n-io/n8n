@@ -10,8 +10,6 @@ import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
 import { LICENSE_FEATURES, inTest } from '@/constants';
-import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
@@ -29,8 +27,6 @@ export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
 
 	protected externalHooks: IExternalHooksClass;
-
-	protected loadNodesAndCredentials: LoadNodesAndCredentials;
 
 	protected nodeTypes: NodeTypes;
 
@@ -54,12 +50,8 @@ export abstract class BaseCommand extends Command {
 		// Make sure the settings exist
 		this.userSettings = await UserSettings.prepareUserSettings();
 
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await this.loadNodesAndCredentials.init();
+		await Container.get(LoadNodesAndCredentials).init();
 		this.nodeTypes = Container.get(NodeTypes);
-		this.nodeTypes.init();
-		const credentialTypes = Container.get(CredentialTypes);
-		CredentialsOverwrites(credentialTypes);
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
