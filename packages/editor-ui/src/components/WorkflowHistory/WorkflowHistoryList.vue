@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import type { UserAction } from 'n8n-design-system';
 import { useI18n } from '@/composables';
 import type {
@@ -13,7 +13,7 @@ import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistor
 const props = defineProps<{
 	items: WorkflowHistory[];
 	activeItem: WorkflowHistory | null;
-	actionTypes: WorkflowHistoryActionTypes;
+	actions: UserAction[];
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
 	evaluatedPruneTime: number;
@@ -36,14 +36,6 @@ const i18n = useI18n();
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
 const observer = ref<IntersectionObserver | null>(null);
-
-const actions = computed<UserAction[]>(() =>
-	props.actionTypes.map((value) => ({
-		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
-		disabled: false,
-		value,
-	})),
-);
 
 const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
@@ -110,8 +102,8 @@ const onItemMounted = ({
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:is-active="item.versionId === props.activeItem?.versionId"
-			:actions="actions"
+			:isActive="item.versionId === props.activeItem?.versionId"
+			:actions="props.actions"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"

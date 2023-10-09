@@ -2,7 +2,7 @@
 import { saveAs } from 'file-saver';
 import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, UserAction } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { useI18n } from '@/composables';
 import type {
@@ -52,16 +52,13 @@ const editorRoute = computed(() => ({
 const activeWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
 const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
-const activeWorkflowVersionPreview = computed<IWorkflowDb | null>(() => {
-	if (activeWorkflowVersion.value && activeWorkflow.value) {
-		return {
-			...activeWorkflow.value,
-			nodes: activeWorkflowVersion.value.nodes,
-			connections: activeWorkflowVersion.value.connections,
-		};
-	}
-	return null;
-});
+const actions = computed<UserAction[]>(() =>
+	workflowHistoryActionTypes.map((value) => ({
+		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
+		disabled: false,
+		value,
+	})),
+);
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
@@ -183,14 +180,19 @@ watchEffect(async () => {
 			</router-link>
 		</div>
 		<div :class="$style.contentComponentWrapper">
-			<workflow-history-content :workflow-version="activeWorkflowVersionPreview" />
+			<workflow-history-content
+				:workflow="activeWorkflow"
+				:workflow-version="activeWorkflowVersion"
+				:actions="actions"
+				@action="onAction"
+			/>
 		</div>
 		<div :class="$style.listComponentWrapper">
 			<workflow-history-list
 				:items="workflowHistory"
 				:lastReceivedItemsLength="lastReceivedItemsLength"
 				:activeItem="activeWorkflowVersion"
-				:actionTypes="workflowHistoryActionTypes"
+				:actions="actions"
 				:requestNumberOfItems="requestNumberOfItems"
 				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
 				:evaluatedPruneTime="workflowHistoryStore.evaluatedPruneTime"
