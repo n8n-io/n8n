@@ -21,12 +21,6 @@ export const retry = async (assertion: () => any, { interval = 20, timeout = 100
 
 export const waitAllPromises = async () => new Promise((resolve) => setTimeout(resolve));
 
-export const USER_STORE_DEFAULT_STATE: IUsersState = {
-	currentUserId: null,
-	users: {},
-	currentUserCloudInfo: null,
-};
-
 export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 	settings: {
 		allowedModules: {},
