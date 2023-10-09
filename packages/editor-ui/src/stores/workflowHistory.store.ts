@@ -50,12 +50,12 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		if (workflowVersion?.nodes && workflowVersion?.connections && workflow) {
+		if (workflow && workflowVersion) {
 			const { connections, nodes } = workflowVersion;
 			const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
 				type: 'application/json;charset=utf-8',
 			});
-			saveAs(blob, `${workflow.name.replace(/[^a-zA-Z0-9]/gi, '_')}-${workflowVersionId}.json`);
+			saveAs(blob, `${workflow.name}-${workflowVersionId}.json`);
 		}
 	};
 
@@ -68,7 +68,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		if (workflow && workflowVersion?.nodes && workflowVersion?.connections) {
+		if (workflow && workflowVersion) {
 			const { connections, nodes } = workflowVersion;
 			const { name } = workflow;
 			const newWorkflowData: IWorkflowDataUpdate = {
