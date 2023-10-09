@@ -21,7 +21,9 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The name of the input fields to break out into separate items',
+		placeholder: 'Drag fields from the left or type their names',
+		description:
+			'The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.',
 		requiresDataPath: 'multiple',
 	},
 	{
