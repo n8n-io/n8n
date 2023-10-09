@@ -150,7 +150,7 @@ export async function execute(
 		};
 
 		if (embeds) {
-			body.embeds = prepareEmbeds.call(this, embeds);
+			body.embeds = prepareEmbeds.call(this, embeds, i);
 		}
 
 		try {

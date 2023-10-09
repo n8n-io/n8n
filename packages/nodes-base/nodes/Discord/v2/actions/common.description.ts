@@ -296,6 +296,17 @@ export const simplifyBoolean: INodeProperties = {
 // embeds -----------------------------------------------------------------------------------------
 const embedFields: INodeProperties[] = [
 	{
+		displayName: 'Description (Required)',
+		name: 'description',
+		type: 'string',
+		default: '',
+		description: 'The description of embed',
+		placeholder: 'e.g. My description',
+		typeOptions: {
+			rows: 2,
+		},
+	},
+	{
 		displayName: 'Author',
 		name: 'author',
 		type: 'string',
@@ -311,17 +322,6 @@ const embedFields: INodeProperties[] = [
 		default: '',
 		description: 'Color code of the embed',
 		placeholder: 'e.g. 12123432',
-	},
-	{
-		displayName: 'Description',
-		name: 'description',
-		type: 'string',
-		default: '',
-		description: 'The description of embed',
-		placeholder: 'e.g. My description',
-		typeOptions: {
-			rows: 2,
-		},
 	},
 	{
 		displayName: 'Timestamp',

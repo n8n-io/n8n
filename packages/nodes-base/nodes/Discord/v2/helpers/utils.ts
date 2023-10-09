@@ -25,8 +25,17 @@ export const createSimplifyFunction =
 	};
 
 export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex = 0) {
-	const errorData = error.cause.error;
+	let errorData = error.cause.error;
 	const errorOptions: IDataObject = { itemIndex };
+
+	if (!errorData && error.description) {
+		try {
+			const errorString = (error.description as string).split(' - ')[1];
+			if (errorString) {
+				errorData = jsonParse(errorString);
+			}
+		} catch (err) {}
+	}
 
 	if (errorData?.message) {
 		errorOptions.message = errorData.message;
@@ -98,28 +107,35 @@ export function prepareOptions(options: IDataObject, guildId?: string) {
 	return options;
 }
 
-export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
+export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[], i = 0) {
 	return embeds
-		.map((embed) => {
+		.map((embed, index) => {
+			let embedReturnData: IDataObject = {};
+
 			if (embed.inputMethod === 'json') {
 				if (typeof embed.json === 'object') {
-					return embed.json;
+					embedReturnData = embed.json as IDataObject;
 				}
 				try {
-					return jsonParse(embed.json as string);
+					embedReturnData = jsonParse(embed.json as string);
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), 'Not a valid JSON', error);
 				}
+			} else {
+				delete embed.inputMethod;
+
+				for (const key of Object.keys(embed)) {
+					if (embed[key] !== '') {
+						embedReturnData[key] = embed[key];
+					}
+				}
 			}
 
-			const embedReturnData: IDataObject = {};
-
-			delete embed.inputMethod;
-
-			for (const key of Object.keys(embed)) {
-				if (embed[key] !== '') {
-					embedReturnData[key] = embed[key];
-				}
+			if (!embedReturnData.description) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Description is required, embed ${index} in item ${i} is missing it`,
+				);
 			}
 
 			if (embedReturnData.author) {
