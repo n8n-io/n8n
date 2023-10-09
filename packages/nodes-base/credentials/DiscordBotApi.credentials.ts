@@ -18,6 +18,7 @@ export class DiscordBotApi implements ICredentialType {
 			name: 'botToken',
 			type: 'string',
 			default: '',
+			required: true,
 			typeOptions: {
 				password: true,
 			},
