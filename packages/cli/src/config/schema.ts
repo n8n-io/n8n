@@ -92,6 +92,12 @@ export const schema = {
 			},
 
 			ssl: {
+				enabled: {
+					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
+					format: 'Boolean',
+					default: false,
+					env: 'DB_POSTGRESDB_SSL_ENABLED',
+				},
 				ca: {
 					doc: 'SSL certificate authority',
 					format: String,
