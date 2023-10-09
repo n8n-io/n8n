@@ -127,8 +127,9 @@ const onAction = ({
 }
 
 .card {
-	padding: 0;
+	padding: var(--spacing-s) var(--spacing-l) 0 var(--spacing-xl);
 	border: 0;
+	align-items: start;
 
 	.text {
 		display: flex;
@@ -141,16 +142,24 @@ const onAction = ({
 			padding: 0;
 			cursor: default;
 
-			&:first-child * {
-				font-size: var(--font-size-m);
+			&:first-child {
+				padding-top: var(--spacing-2xs);
+				padding-bottom: var(--spacing-xs);
+				* {
+					font-size: var(--font-size-m);
+				}
 			}
 
-			&:last-child * {
-				font-size: var(--font-size-2xs);
+			&:last-child {
+				padding-top: var(--spacing-xs);
+
+				* {
+					font-size: var(--font-size-2xs);
+				}
 			}
 
 			.label {
-				padding-right: var(--spacing-3xs);
+				padding-right: var(--spacing-4xs);
 			}
 
 			* {
