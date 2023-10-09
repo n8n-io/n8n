@@ -13,9 +13,8 @@ import { RedisServiceBaseSender } from './RedisServiceBaseClasses';
 
 @Service()
 export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
-	async init(senderId?: string): Promise<void> {
+	async init(): Promise<void> {
 		await super.init('publisher');
-		this.setSenderId(senderId);
 	}
 
 	async publish(channel: string, message: string): Promise<void> {
@@ -29,8 +28,12 @@ export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 		await this.publish(EVENT_BUS_REDIS_CHANNEL, message.toString());
 	}
 
-	async publishToCommandChannel(message: RedisServiceCommandObject): Promise<void> {
-		await this.publish(COMMAND_REDIS_CHANNEL, JSON.stringify(message));
+	async publishToCommandChannel(
+		message: Omit<RedisServiceCommandObject, 'senderId'>,
+	): Promise<void> {
+		const messageWithSenderId = message as RedisServiceCommandObject;
+		messageWithSenderId.senderId = this.senderId;
+		await this.publish(COMMAND_REDIS_CHANNEL, JSON.stringify(messageWithSenderId));
 	}
 
 	async publishToWorkerChannel(message: RedisServiceWorkerResponseObject): Promise<void> {

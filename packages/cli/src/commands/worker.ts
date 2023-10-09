@@ -29,15 +29,16 @@ import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from '@/services/ownership.service';
-import { generateHostInstanceId } from '@/databases/utils/generators';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { eventBus } from '../eventbus';
-import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
-import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
-import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
+import { eventBus } from '@/eventbus';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { IConfig } from '@oclif/config';
+import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -56,11 +57,11 @@ export class Worker extends BaseCommand {
 		[key: string]: PCancelable<IRun>;
 	} = {};
 
+	static runningJobsSummary: {
+		[jobId: string]: WorkerJobStatusSummary;
+	} = {};
+
 	static jobQueue: JobQueue;
-
-	readonly uniqueInstanceId = generateHostInstanceId('worker');
-
-	redisPublisher: RedisServicePubSubPublisher;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -236,11 +237,22 @@ export class Worker extends BaseCommand {
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
+		Worker.runningJobsSummary[job.id] = {
+			jobId: job.id.toString(),
+			executionId,
+			workflowId: fullExecutionData.workflowId ?? '',
+			workflowName: fullExecutionData.workflowData.name,
+			mode: fullExecutionData.mode,
+			startedAt: fullExecutionData.startedAt,
+			retryOf: fullExecutionData.retryOf ?? '',
+			status: fullExecutionData.status,
+		};
 
 		// Wait till the execution is finished
 		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
+		delete Worker.runningJobsSummary[job.id];
 
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
 		// already!
@@ -250,25 +262,49 @@ export class Worker extends BaseCommand {
 		};
 	}
 
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
+		this.setInstanceType('worker');
+		this.setInstanceQueueModeId();
+	}
+
 	async init() {
 		await this.initCrashJournal();
-		await super.init();
-		this.logger.debug(`Worker ID: ${this.uniqueInstanceId}`);
-		this.logger.debug('Starting n8n worker...');
 
-		await this.initLicense('worker');
-		await this.initBinaryManager();
+		this.logger.debug('Starting n8n worker...');
+		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+
+		await super.init();
+
+		await this.initLicense();
+		this.logger.debug('License init complete');
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
+		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
-		await this.initRedis();
+		this.logger.debug('Event bus init complete');
 		await this.initQueue();
+		this.logger.debug('Queue init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initQueue();
+
+		await Container.get(OrchestrationWorkerService).publishToEventLog(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId: this.queueModeId,
+				},
+			}),
+		);
 	}
 
 	async initEventBus() {
 		await eventBus.initialize({
-			workerId: this.uniqueInstanceId,
-			uniqueInstanceId: this.uniqueInstanceId,
+			workerId: this.queueModeId,
 		});
 	}
 
@@ -278,29 +314,15 @@ export class Worker extends BaseCommand {
 	 * A subscription connection to redis is created to subscribe to commands from the main process
 	 * The subscription connection adds a handler to handle the command messages
 	 */
-	async initRedis() {
-		this.redisPublisher = Container.get(RedisServicePubSubPublisher);
-		this.redisSubscriber = Container.get(RedisServicePubSubSubscriber);
-		await this.redisPublisher.init();
-		await this.redisPublisher.publishToEventLog(
-			new EventMessageGeneric({
-				eventName: 'n8n.worker.started',
-				payload: {
-					workerId: this.uniqueInstanceId,
-				},
-			}),
-		);
-		await this.redisSubscriber.subscribeToCommandChannel();
-		this.redisSubscriber.addMessageHandler(
-			'WorkerCommandReceivedHandler',
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			getWorkerCommandReceivedHandler({
-				uniqueInstanceId: this.uniqueInstanceId,
-				instanceId: this.instanceId,
-				redisPublisher: this.redisPublisher,
-				getRunningJobIds: () => Object.keys(Worker.runningJobs),
-			}),
-		);
+	async initOrchestration() {
+		await Container.get(OrchestrationWorkerService).init();
+		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
+			queueModeId: this.queueModeId,
+			instanceId: this.instanceId,
+			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
+			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
+		});
 	}
 
 	async initQueue() {
@@ -309,8 +331,13 @@ export class Worker extends BaseCommand {
 
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
+		this.logger.debug(
+			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
+		);
+
 		const queue = Container.get(Queue);
 		await queue.init();
+		this.logger.debug('Queue singleton ready');
 		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),

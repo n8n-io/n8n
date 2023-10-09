@@ -38,6 +38,7 @@ describe('License', () => {
 			logger: expect.anything(),
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -56,6 +57,7 @@ describe('License', () => {
 			logger: expect.anything(),
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});

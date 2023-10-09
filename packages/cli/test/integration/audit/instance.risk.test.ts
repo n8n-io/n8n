@@ -14,6 +14,11 @@ import { toReportTitle } from '@/audit/utils';
 import config from '@/config';
 import { generateNanoId } from '@db/utils/generators';
 
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
+LoggerProxy.init(getLogger());
+
 beforeAll(async () => {
 	await testDb.init();
 

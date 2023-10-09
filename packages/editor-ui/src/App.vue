@@ -43,7 +43,7 @@ import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast } from '@/composables';
+import { useGlobalLinkActions, useTitleChange, useToast, useExternalHooks } from '@/composables';
 import {
 	useUIStore,
 	useSettingsStore,
@@ -58,7 +58,7 @@ import {
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
-import { useExternalHooks } from '@/composables';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'App',
@@ -113,6 +113,8 @@ export default defineComponent({
 			try {
 				await this.settingsStore.getSettings();
 				this.settingsInitialized = true;
+				// Re-compute title since settings are now available
+				useTitleChange().titleReset();
 			} catch (e) {
 				this.showToast({
 					title: this.$locale.baseText('startupError'),
@@ -143,19 +145,18 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
-		async initBanners() {
-			return this.uiStore.initBanners();
-		},
-		async checkForCloudPlanData() {
-			return this.cloudPlanStore.checkForCloudPlanData();
+		async checkForCloudData() {
+			await this.cloudPlanStore.checkForCloudPlanData();
+			await this.cloudPlanStore.fetchUserCloudAccount();
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
+			ExpressionEvaluatorProxy.setEvaluator(useSettingsStore().settings.expressions.evaluator);
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {
 			this.uiStore.currentView = this.$route.name || '';
-			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
+			if (this.$route?.meta?.templatesEnabled) {
 				this.templatesStore.setSessionId();
 			} else {
 				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
@@ -238,8 +239,7 @@ export default defineComponent({
 		await this.authenticate();
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		await this.checkForCloudPlanData();
-		void this.initBanners();
+		await this.checkForCloudData();
 		void this.postAuthenticate();
 
 		this.loading = false;

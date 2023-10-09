@@ -3,6 +3,7 @@ import type {
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
@@ -304,4 +305,10 @@ export function capitalize(str: string): string {
 	chars[0] = chars[0].toUpperCase();
 
 	return chars.join('');
+}
+
+export function generatePairedItemData(length: number): IPairedItemData[] {
+	return Array.from({ length }, (_, item) => ({
+		item,
+	}));
 }

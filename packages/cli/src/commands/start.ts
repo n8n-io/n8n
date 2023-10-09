@@ -29,6 +29,10 @@ import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { IConfig } from '@oclif/config';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -63,6 +67,12 @@ export class Start extends BaseCommand {
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected server = new Server();
+
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
+		this.setInstanceType('main');
+		this.setInstanceQueueModeId();
+	}
 
 	/**
 	 * Opens the UI in browser
@@ -102,6 +112,8 @@ export class Start extends BaseCommand {
 			// Shut down License manager to unclaim any floating entitlements
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
+
+			Container.get(ExecutionRepository).clearTimers();
 
 			await Container.get(InternalHooks).onN8nStop();
 
@@ -193,17 +205,37 @@ export class Start extends BaseCommand {
 	async init() {
 		await this.initCrashJournal();
 
-		await super.init();
 		this.logger.info('Initializing n8n process');
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.debug('Main Instance running in queue mode');
+			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		}
+
+		await super.init();
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
-		await this.initLicense('main');
-		await this.initBinaryManager();
+		await this.initLicense();
+		this.logger.debug('License init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
 		await this.initExternalSecrets();
+		this.logger.debug('External secrets init complete');
+		this.initWorkflowHistory();
+		this.logger.debug('Workflow history init complete');
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
+		}
+	}
+
+	async initOrchestration() {
+		if (config.get('executions.mode') === 'queue') {
+			await Container.get(OrchestrationMainService).init();
+			await Container.get(OrchestrationHandlerMainService).init();
 		}
 	}
 

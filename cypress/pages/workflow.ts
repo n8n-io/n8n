@@ -142,6 +142,12 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			if (opts?.action) {
+				// Expand actions category if it's collapsed
+				nodeCreator.getters.getCategoryItem('Actions').parent().then(($el) => {
+					if ($el.attr('data-category-collapsed') === 'true') {
+						nodeCreator.getters.getCategoryItem('Actions').click();
+					}
+				});
 				nodeCreator.getters.getCreatorItem(opts.action).click();
 			} else if (!opts?.keepNdvOpen) {
 				cy.get('body').type('{esc}');
@@ -303,6 +309,12 @@ export class WorkflowPage extends BasePage {
 		},
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
+		},
+		shouldHaveWorkflowName: (name: string) => {
+			this.getters
+			.workflowNameInputContainer()
+			.invoke('attr', 'title')
+			.should('include', name);
 		},
 	};
 }

@@ -16,7 +16,7 @@ import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { copyInputItems, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
 
@@ -146,7 +146,7 @@ export async function execute(
 					}, [] as string[]),
 				),
 			];
-			insertItems = copyInputItems(items, columns);
+			insertItems = this.helpers.copyInputItems(items, columns);
 		}
 
 		if (dataMode === DATA_MODE.MANUAL) {

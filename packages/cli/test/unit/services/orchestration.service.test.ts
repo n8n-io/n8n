@@ -2,20 +2,25 @@ import Container from 'typedi';
 import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
-import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
 import { mockInstance } from '../../integration/shared/utils';
-import { handleWorkerResponseMessage } from '../../../src/services/orchestration/handleWorkerResponseMessage';
-import { handleCommandMessage } from '../../../src/services/orchestration/handleCommandMessage';
-import { License } from '../../../src/License';
+import { handleWorkerResponseMessageMain } from '@/services/orchestration/main/handleWorkerResponseMessageMain';
+import { handleCommandMessageMain } from '@/services/orchestration/main/handleCommandMessageMain';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import * as helpers from '@/services/orchestration/helpers';
+import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 
-const os = Container.get(OrchestrationService);
+const os = Container.get(OrchestrationMainService);
+const handler = Container.get(OrchestrationHandlerMainService);
+
+let queueModeId: string;
 
 function setDefaultConfig() {
 	config.set('executions.mode', 'queue');
+	config.set('generic.instanceType', 'main');
 }
 
 const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
@@ -27,18 +32,10 @@ const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
 	},
 };
 
-const eventBusMessage = new EventMessageWorkflow({
-	eventName: 'n8n.workflow.success',
-	id: 'test',
-	message: 'test',
-	payload: {
-		test: 'test',
-	},
-});
-
 describe('Orchestration Service', () => {
 	beforeAll(async () => {
 		mockInstance(RedisService);
+		mockInstance(ExternalSecretsManager);
 		LoggerProxy.init(getLogger());
 		jest.mock('ioredis', () => {
 			const Redis = require('ioredis-mock');
@@ -74,6 +71,7 @@ describe('Orchestration Service', () => {
 			});
 		});
 		setDefaultConfig();
+		queueModeId = config.get('redis.queueModeId');
 	});
 
 	afterAll(async () => {
@@ -83,54 +81,72 @@ describe('Orchestration Service', () => {
 	});
 
 	test('should initialize', async () => {
-		await os.init('test-orchestration-service');
+		await os.init();
+		await handler.init();
 		expect(os.redisPublisher).toBeDefined();
-		expect(os.redisSubscriber).toBeDefined();
-		expect(os.uniqueInstanceId).toBeDefined();
+		expect(handler.redisSubscriber).toBeDefined();
+		expect(queueModeId).toBeDefined();
 	});
 
 	test('should handle worker responses', async () => {
-		const response = await handleWorkerResponseMessage(
+		const response = await handleWorkerResponseMessageMain(
 			JSON.stringify(workerRestartEventbusResponse),
 		);
 		expect(response.command).toEqual('restartEventBus');
 	});
 
 	test('should handle command messages from others', async () => {
-		const license = Container.get(License);
-		license.instanceId = 'test';
-		jest.spyOn(license, 'reload');
-		const responseFalseId = await handleCommandMessage(
+		jest.spyOn(LoggerProxy, 'error');
+		const responseFalseId = await handleCommandMessageMain(
 			JSON.stringify({
 				senderId: 'test',
 				command: 'reloadLicense',
 			}),
-			os.uniqueInstanceId,
 		);
 		expect(responseFalseId).toBeDefined();
 		expect(responseFalseId!.command).toEqual('reloadLicense');
 		expect(responseFalseId!.senderId).toEqual('test');
-		expect(license.reload).toHaveBeenCalled();
-		jest.spyOn(license, 'reload').mockRestore();
+		expect(LoggerProxy.error).toHaveBeenCalled();
+		jest.spyOn(LoggerProxy, 'error').mockRestore();
 	});
 
 	test('should reject command messages from iteslf', async () => {
 		jest.spyOn(eventBus, 'restart');
-		const response = await handleCommandMessage(
-			JSON.stringify({ ...workerRestartEventbusResponse, senderId: os.uniqueInstanceId }),
-			os.uniqueInstanceId,
+		const response = await handleCommandMessageMain(
+			JSON.stringify({ ...workerRestartEventbusResponse, senderId: queueModeId }),
 		);
 		expect(response).toBeDefined();
 		expect(response!.command).toEqual('restartEventBus');
-		expect(response!.senderId).toEqual(os.uniqueInstanceId);
+		expect(response!.senderId).toEqual(queueModeId);
 		expect(eventBus.restart).not.toHaveBeenCalled();
 		jest.spyOn(eventBus, 'restart').mockRestore();
 	});
 
 	test('should send command messages', async () => {
-		jest.spyOn(os.redisPublisher, 'publishToCommandChannel');
+		setDefaultConfig();
+		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockImplementation(async () => {});
 		await os.getWorkerIds();
 		expect(os.redisPublisher.publishToCommandChannel).toHaveBeenCalled();
 		jest.spyOn(os.redisPublisher, 'publishToCommandChannel').mockRestore();
+	});
+
+	test('should prevent receiving commands too often', async () => {
+		setDefaultConfig();
+		jest.spyOn(helpers, 'debounceMessageReceiver');
+		const res1 = await handleCommandMessageMain(
+			JSON.stringify({
+				senderId: 'test',
+				command: 'reloadExternalSecretsProviders',
+			}),
+		);
+		const res2 = await handleCommandMessageMain(
+			JSON.stringify({
+				senderId: 'test',
+				command: 'reloadExternalSecretsProviders',
+			}),
+		);
+		expect(helpers.debounceMessageReceiver).toHaveBeenCalledTimes(2);
+		expect(res1!.payload).toBeUndefined();
+		expect(res2!.payload!.result).toEqual('debounced');
 	});
 });

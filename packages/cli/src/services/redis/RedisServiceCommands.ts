@@ -1,9 +1,12 @@
+import type { WorkerJobStatusSummary } from '../orchestration/worker/types';
+
 export type RedisServiceCommand =
 	| 'getStatus'
 	| 'getId'
 	| 'restartEventBus'
 	| 'stopWorker'
-	| 'reloadLicense';
+	| 'reloadLicense'
+	| 'reloadExternalSecretsProviders';
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.
@@ -12,7 +15,7 @@ export type RedisServiceCommand =
  * @field payload: Optional arguments to be sent with the command.
  */
 type RedisServiceBaseCommand = {
-	senderId?: string;
+	senderId: string;
 	command: RedisServiceCommand;
 	payload?: {
 		[key: string]: string | number | boolean | string[] | number[] | boolean[];
@@ -28,11 +31,12 @@ export type RedisServiceWorkerResponseObject = {
 			payload: {
 				workerId: string;
 				runningJobs: string[];
+				runningJobsSummary: WorkerJobStatusSummary[];
 				freeMem: number;
 				totalMem: number;
 				uptime: number;
 				loadAvg: number[];
-				cpus: string[];
+				cpus: string;
 				arch: string;
 				platform: NodeJS.Platform;
 				hostname: string;
@@ -44,6 +48,13 @@ export type RedisServiceWorkerResponseObject = {
 	  }
 	| {
 			command: 'restartEventBus';
+			payload: {
+				result: 'success' | 'error';
+				error?: string;
+			};
+	  }
+	| {
+			command: 'reloadExternalSecretsProviders';
 			payload: {
 				result: 'success' | 'error';
 				error?: string;

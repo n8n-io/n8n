@@ -103,7 +103,7 @@ const onAddActivationKey = () => {
 };
 
 const onViewPlans = () => {
-	uiStore.goToUpgrade('usage_page', 'open');
+	void uiStore.goToUpgrade('usage_page', 'open');
 	sendUsageTelemetry('view_plans');
 };
 

@@ -26,13 +26,11 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataManager,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
-	FileNotFoundError,
 } from 'n8n-core';
 
 import type {
@@ -74,7 +72,6 @@ import {
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
-	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -99,6 +96,7 @@ import {
 	WorkflowStatisticsController,
 } from '@/controllers';
 
+import { BinaryDataController } from './controllers/binaryData.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
@@ -178,6 +176,12 @@ import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
+import {
+	getWorkflowHistoryLicensePruneTime,
+	getWorkflowHistoryPruneTime,
+	isWorkflowHistoryEnabled,
+} from './workflows/workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
 
@@ -245,6 +249,7 @@ export class Server extends AbstractServer {
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
 			versionCli: '',
+			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
 				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
@@ -336,11 +341,18 @@ export class Server extends AbstractServer {
 			variables: {
 				limit: 0,
 			},
+			expressions: {
+				evaluator: config.getEnv('expression.evaluator'),
+			},
 			banners: {
 				dismissed: [],
 			},
 			ai: {
 				enabled: config.getEnv('ai.enabled'),
+			},
+			workflowHistory: {
+				pruneTime: -1,
+				licensePruneTime: -1,
 			},
 		};
 	}
@@ -396,13 +408,14 @@ export class Server extends AbstractServer {
 				),
 				executions_data_prune: config.getEnv('executions.pruneData'),
 				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
 			},
 			deploymentType: config.getEnv('deployment.type'),
 			binaryDataMode: binaryDataConfig.mode,
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
+			licensePlanName: Container.get(License).getPlanName(),
+			licenseTenantId: config.getEnv('license.tenantId'),
 		};
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
@@ -465,6 +478,7 @@ export class Server extends AbstractServer {
 				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
 			),
 			debugInEditor: isDebugInEditorLicensed(),
+			workflowHistory: isWorkflowHistoryEnabled(),
 		});
 
 		if (isLdapEnabled()) {
@@ -483,6 +497,13 @@ export class Server extends AbstractServer {
 
 		if (isVariablesEnabled()) {
 			this.frontendSettings.variables.limit = getVariablesLimit();
+		}
+
+		if (isWorkflowHistoryEnabled()) {
+			Object.assign(this.frontendSettings.workflowHistory, {
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
+			});
 		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -554,6 +575,8 @@ export class Server extends AbstractServer {
 			Container.get(WorkflowStatisticsController),
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
+			Container.get(WorkflowHistoryController),
+			Container.get(BinaryDataController),
 		];
 
 		if (isLdapEnabled()) {
@@ -1416,40 +1439,6 @@ export class Server extends AbstractServer {
 		);
 
 		// ----------------------------------------
-		// Binary data
-		// ----------------------------------------
-
-		// Download binary
-		this.app.get(
-			`/${this.restEndpoint}/data/:path`,
-			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				// TODO UM: check if this needs permission check for UM
-				const identifier = req.params.path;
-				const binaryDataManager = BinaryDataManager.getInstance();
-				try {
-					const binaryPath = binaryDataManager.getBinaryPath(identifier);
-					let { mode, fileName, mimeType } = req.query;
-					if (!fileName || !mimeType) {
-						try {
-							const metadata = await binaryDataManager.getBinaryMetadata(identifier);
-							fileName = metadata.fileName;
-							mimeType = metadata.mimeType;
-							res.setHeader('Content-Length', metadata.fileSize);
-						} catch {}
-					}
-					if (mimeType) res.setHeader('Content-Type', mimeType);
-					if (mode === 'download') {
-						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-					}
-					res.sendFile(binaryPath);
-				} catch (error) {
-					if (error instanceof FileNotFoundError) res.writeHead(404).end();
-					else throw error;
-				}
-			},
-		);
-
-		// ----------------------------------------
 		// Settings
 		// ----------------------------------------
 
@@ -1470,9 +1459,7 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 
 		if (!eventBus.isInitialized) {
-			await eventBus.initialize({
-				uniqueInstanceId: this.uniqueInstanceId,
-			});
+			await eventBus.initialize();
 		}
 
 		if (this.endpointPresetCredentials !== '') {

@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.7.0",
+  "version": "1.10.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -190,6 +190,7 @@
       "dist/credentials/Ldap.credentials.js",
       "dist/credentials/LemlistApi.credentials.js",
       "dist/credentials/LinearApi.credentials.js",
+      "dist/credentials/LinearOAuth2Api.credentials.js",
       "dist/credentials/LineNotifyOAuth2Api.credentials.js",
       "dist/credentials/LingvaNexApi.credentials.js",
       "dist/credentials/LinkedInOAuth2Api.credentials.js",
@@ -873,6 +874,7 @@
     "snowflake-sdk": "^1.8.0",
     "ssh2-sftp-client": "^7.0.0",
     "tmp-promise": "^3.0.2",
+    "typedi": "^0.10.0",
     "uuid": "^8.3.2",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz",
     "xml2js": "^0.5.0"

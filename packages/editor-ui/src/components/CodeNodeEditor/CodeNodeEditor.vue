@@ -320,7 +320,7 @@ export default defineComponent({
 			...readOnlyEditorExtensions,
 			EditorState.readOnly.of(isReadOnly),
 			EditorView.editable.of(!isReadOnly),
-			codeNodeEditorTheme({ isReadOnly }),
+			codeNodeEditorTheme({ isReadOnly, customMinHeight: this.rows }),
 		];
 
 		if (!isReadOnly) {
@@ -354,16 +354,8 @@ export default defineComponent({
 		const [languageSupport, ...otherExtensions] = this.languageExtensions;
 		extensions.push(this.languageCompartment.of(languageSupport), ...otherExtensions);
 
-		let doc = this.modelValue ?? this.placeholder;
-
-		const lines = doc.split('\n');
-
-		if (lines.length < this.rows) {
-			doc += '\n'.repeat(this.rows - lines.length);
-		}
-
 		const state = EditorState.create({
-			doc,
+			doc: this.modelValue ?? this.placeholder,
 			extensions,
 		});
 

@@ -19,7 +19,6 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
-import { OrchestrationService } from './services/orchestration.service';
 
 export abstract class AbstractServer {
 	protected server: Server;
@@ -114,11 +113,6 @@ export abstract class AbstractServer {
 				else res.send('n8n is starting up. Please wait');
 			} else sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
 		});
-
-		if (config.getEnv('executions.mode') === 'queue') {
-			// will start the redis connections
-			await Container.get(OrchestrationService).init(this.uniqueInstanceId);
-		}
 	}
 
 	async init(): Promise<void> {
