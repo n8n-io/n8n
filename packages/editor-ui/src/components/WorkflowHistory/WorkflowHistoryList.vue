@@ -24,7 +24,11 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowVersionId },
+		value: {
+			action: WorkflowHistoryActionTypes[number];
+			id: WorkflowVersionId;
+			data: { formattedCreatedAt: string };
+		},
 	): void;
 	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
@@ -67,12 +71,14 @@ const observeElement = (element: Element) => {
 const onAction = ({
 	action,
 	id,
+	data,
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
+	data: { formattedCreatedAt: string };
 }) => {
 	shouldAutoScroll.value = false;
-	emit('action', { action, id });
+	emit('action', { action, id, data });
 };
 
 const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {

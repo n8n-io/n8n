@@ -36,6 +36,7 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -155,6 +156,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[DEBUG_PAYWALL_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
 				open: false,
 			},
 		},
