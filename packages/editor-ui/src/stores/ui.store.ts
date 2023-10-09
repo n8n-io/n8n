@@ -55,7 +55,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { getStyleTokenValue } from '@/utils/htmlUtils';
@@ -346,9 +346,11 @@ export const useUIStore = defineStore(STORES.UI, {
 
 				const searchParams = new URLSearchParams();
 
-				if (deploymentType === 'cloud') {
-					const { code } = await useCloudPlanStore().getAutoLoginCode();
+				const isOwner = useUsersStore().isInstanceOwner;
+
+				if (deploymentType === 'cloud' && isOwner) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
 					linkUrl = `https://${adminPanelHost}/login`;
 					searchParams.set('code', code);
 					searchParams.set('returnPath', '/account/change-plan');
