@@ -12,20 +12,21 @@ import {
 	getUserCloudInfo,
 	getNotTrialingUserResponse,
 } from './utils/cloudStoreUtils';
+import type { IRole } from '@/Interface';
 
 let uiStore: ReturnType<typeof useUIStore>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let rootStore: ReturnType<typeof useRootStore>;
 let cloudPlanStore: ReturnType<typeof useCloudPlanStore>;
 
-function setOwnerUser() {
+function setUser(role: IRole) {
 	useUsersStore().addUsers([
 		{
 			id: '1',
 			isPending: false,
 			globalRole: {
 				id: '1',
-				name: 'owner',
+				name: role,
 				createdAt: new Date(),
 			},
 		},
@@ -35,7 +36,7 @@ function setOwnerUser() {
 }
 
 function setupOwnerAndCloudDeployment() {
-	setOwnerUser();
+	setUser('owner');
 	settingsStore.setSettings(
 		merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 			n8nMetadata: {
@@ -77,23 +78,34 @@ describe('UI store', () => {
 		[
 			'default',
 			'production',
+			'owner',
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 		[
 			'default',
 			'development',
+			'owner',
 			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
 		],
 		[
 			'cloud',
 			'production',
+			'owner',
 			`https://app.n8n.cloud/login?code=123&returnPath=${encodeURIComponent(
 				'/account/change-plan',
 			)}&utm_campaign=utm-test-campaign&source=test_source`,
 		],
+		[
+			'cloud',
+			'production',
+			'member',
+			'https://n8n.io/pricing?utm_campaign=utm-test-campaign&source=test_source',
+		],
 	])(
-		'"upgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment',
-		async (type, environment, expectation) => {
+		'"upgradeLinkUrl" should generate the correct URL for "%s" deployment and "%s" license environment and user role "%s"',
+		async (type, environment, role, expectation) => {
+			setUser(role as IRole);
+
 			settingsStore.setSettings(
 				merge({}, SETTINGS_STORE_DEFAULT_STATE.settings, {
 					deployment: {
