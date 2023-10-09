@@ -1712,17 +1712,6 @@ type LoadedData<T> = Record<string, LoadedClass<T>>;
 export type ICredentialTypeData = LoadedData<ICredentialType>;
 export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
 
-export type LoadedNodesAndCredentials = {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-};
-
-export interface INodesAndCredentials {
-	known: KnownNodesAndCredentials;
-	loaded: LoadedNodesAndCredentials;
-	credentialTypes: ICredentialTypes;
-}
-
 export interface IRun {
 	data: IRunExecutionData;
 	finished?: boolean;
