@@ -8,11 +8,15 @@ import type {
 } from '@/types/workflowHistory';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
+import { useI18n } from '@/composables';
+
+const i18n = useI18n();
 
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: UserAction[];
+	isListLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -52,20 +56,55 @@ const onAction = ({
 
 <template>
 	<div :class="$style.content">
-		<workflow-history-list-item
-			v-if="props.workflowVersion"
-			:full="true"
-			:index="-1"
-			:item="props.workflowVersion"
-			:isActive="false"
-			:actions="props.actions"
-			@action="onAction"
-		/>
 		<WorkflowPreview
 			v-if="props.workflowVersion"
 			:workflow="workflowVersionPreview"
-			:loading="false"
+			:loading="props.isListLoading"
+			loaderType="spinner"
 		/>
+		<ul :class="$style.info">
+			<workflow-history-list-item
+				:class="$style.card"
+				v-if="props.workflowVersion"
+				:full="true"
+				:index="-1"
+				:item="props.workflowVersion"
+				:isActive="false"
+				:actions="props.actions"
+				@action="onAction"
+			>
+				<template #default="{ formattedCreatedAt }">
+					<section :class="$style.text">
+						<p>
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.content.title') }}:
+							</span>
+							<time :datetime="props.workflowVersion.createdAt">{{ formattedCreatedAt }}</time>
+						</p>
+						<p>
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.content.editedBy') }}:
+							</span>
+							<span>{{ props.workflowVersion.authors }}</span>
+						</p>
+						<p>
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.content.versionId') }}:
+							</span>
+							<data :value="props.workflowVersion.versionId">{{
+								props.workflowVersion.versionId
+							}}</data>
+						</p>
+					</section>
+				</template>
+				<template #action-toggle-button>
+					<n8n-button type="tertiary" size="small">
+						{{ i18n.baseText('workflowHistory.content.actions') }}
+						<n8n-icon class="ml-3xs" icon="chevron-down" size="small" />
+					</n8n-button>
+				</template>
+			</workflow-history-list-item>
+		</ul>
 	</div>
 </template>
 
@@ -81,11 +120,45 @@ const onAction = ({
 
 .info {
 	position: absolute;
+	z-index: 1;
 	top: 0;
 	left: 0;
 	width: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+}
+
+.card {
+	padding: 0;
+	border: 0;
+
+	.text {
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 auto;
+
+		p {
+			display: flex;
+			align-items: center;
+			padding: 0;
+			cursor: default;
+
+			&:first-child * {
+				font-size: var(--font-size-m);
+			}
+
+			&:last-child * {
+				font-size: var(--font-size-2xs);
+			}
+
+			.label {
+				padding-right: var(--spacing-3xs);
+			}
+
+			* {
+				max-width: unset;
+				padding: 0;
+				font-size: var(--font-size-s);
+			}
+		}
+	}
 }
 </style>

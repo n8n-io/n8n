@@ -256,6 +256,7 @@ watchEffect(async () => {
 				:workflow="activeWorkflow"
 				:workflow-version="activeWorkflowVersion"
 				:actions="actions"
+				:isListLoading="isListLoading"
 				@action="onAction"
 			/>
 		</div>
