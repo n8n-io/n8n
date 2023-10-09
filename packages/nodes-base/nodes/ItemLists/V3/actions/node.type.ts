@@ -4,7 +4,6 @@ type NodeMap = {
 	itemList:
 		| 'concatenateItems'
 		| 'limit'
-		| 'manageBinaries'
 		| 'removeDuplicates'
 		| 'sort'
 		| 'splitOutItems'

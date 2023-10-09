@@ -106,17 +106,11 @@ export async function execute(
 			.split(',')
 			.map((field) => field.trim().replace(/^\$json\./, ''));
 
-		const disableDotNotation = this.getNodeParameter(
-			'options.disableDotNotation',
-			0,
-			false,
-		) as boolean;
+		const options = this.getNodeParameter('options', i, {});
 
-		// const includeBinary = this.getNodeParameter('options.includeBinary', i, false) as boolean;
+		const disableDotNotation = options.disableDotNotation as boolean;
 
-		const destinationFields = (
-			this.getNodeParameter('options.destinationFieldName', i, '') as string
-		)
+		const destinationFields = ((options.destinationFieldName as string) || '')
 			.split(',')
 			.filter((field) => field.trim() !== '')
 			.map((field) => field.trim());
@@ -146,8 +140,6 @@ export async function execute(
 				entityToSplit = Object.entries(items[i].binary || {}).map(([key, value]) => ({
 					[key]: value,
 				}));
-			} else if (fieldToSplitOut === '$json') {
-				entityToSplit = Object.values(item) as IDataObject[];
 			} else {
 				if (!disableDotNotation) {
 					entityToSplit = get(item, fieldToSplitOut) as IDataObject[];
@@ -174,7 +166,6 @@ export async function execute(
 				}
 
 				const fieldName = destinationFieldName || fieldToSplitOut;
-				let json = element;
 
 				if (fieldToSplitOut === '$binary') {
 					if (splited[elementIndex].binary === undefined) {
@@ -184,20 +175,20 @@ export async function execute(
 						element,
 					)[0] as IBinaryData;
 
-					json = {};
+					continue;
 				}
 
-				if (typeof json === 'object' && json !== null && include === 'noOtherFields') {
+				if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
 					if (destinationFieldName === '' && !multiSplit) {
 						splited[elementIndex] = {
-							json: { ...splited[elementIndex].json, ...json },
+							json: { ...splited[elementIndex].json, ...element },
 							pairedItem: { item: i },
 						};
 					} else {
-						splited[elementIndex].json[fieldName] = json;
+						splited[elementIndex].json[fieldName] = element;
 					}
 				} else {
-					splited[elementIndex][fieldName] = json;
+					splited[elementIndex].json[fieldName] = element;
 				}
 			}
 		}
@@ -238,6 +229,16 @@ export async function execute(
 				}
 
 				newItem = splitEntry;
+			}
+
+			const includeBinary = options.includeBinary as boolean;
+
+			if (includeBinary) {
+				if (items[i].binary && !newItem.binary) {
+					newItem.binary = items[i].binary;
+				}
+			} else if (includeBinary !== undefined) {
+				delete newItem.binary;
 			}
 
 			returnData.push(newItem);
