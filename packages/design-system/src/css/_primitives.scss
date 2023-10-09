@@ -31,7 +31,7 @@
 
 	--prim-color-primary-shade-100: hsl(
 		var(--prim-color-primary-h),
-		var(--prim-color-primary-s),
+		calc(var(--prim-color-primary-s) - 15%),
 		calc(var(--prim-color-primary-l) - 10%)
 	);
 	--prim-color-primary: hsl(

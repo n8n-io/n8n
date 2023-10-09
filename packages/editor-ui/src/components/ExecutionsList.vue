@@ -1167,6 +1167,7 @@ export default defineComponent({
 .loadedAll {
 	text-align: center;
 	font-size: var(--font-size-s);
+	color: var(--color-text-light);
 	margin: var(--spacing-l) 0;
 }
 
