@@ -29,10 +29,7 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	private writeStaticJSON<T extends INodeTypeBaseDescription | ICredentialType>(
-		name: string,
-		data: T[],
-	) {
+	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
 		const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 		stream.write('[\n');
