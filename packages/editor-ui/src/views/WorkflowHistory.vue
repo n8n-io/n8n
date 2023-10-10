@@ -266,16 +266,6 @@ watchEffect(async () => {
 				<n8n-button type="tertiary" icon="times" size="small" text square />
 			</router-link>
 		</div>
-		<div :class="$style.contentComponentWrapper">
-			<workflow-history-content
-				v-if="canRender"
-				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
-				:actions="actions"
-				:isListLoading="isListLoading"
-				@action="onAction"
-			/>
-		</div>
 		<div :class="$style.listComponentWrapper">
 			<workflow-history-list
 				v-if="canRender"
@@ -291,6 +281,16 @@ watchEffect(async () => {
 				@preview="onPreview"
 				@load-more="loadMore"
 				@upgrade="onUpgrade"
+			/>
+		</div>
+		<div :class="$style.contentComponentWrapper">
+			<workflow-history-content
+				v-if="canRender"
+				:workflow="activeWorkflow"
+				:workflow-version="activeWorkflowVersion"
+				:actions="actions"
+				:isListLoading="isListLoading"
+				@action="onAction"
 			/>
 		</div>
 	</div>
@@ -328,13 +328,11 @@ watchEffect(async () => {
 .contentComponentWrapper {
 	grid-area: content;
 	position: relative;
-	z-index: 2;
 }
 
 .listComponentWrapper {
 	grid-area: list;
 	position: relative;
-	z-index: 1;
 
 	&::before {
 		content: '';
