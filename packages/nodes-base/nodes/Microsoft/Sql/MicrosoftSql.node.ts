@@ -25,7 +25,7 @@ import {
 	extractValues,
 	formatColumns,
 } from './GenericFunctions';
-import { chunk, flatten, getResolvables } from '@utils/utilities';
+import { chunk, flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
@@ -442,9 +442,11 @@ export class MicrosoftSql implements INodeType {
 
 		// Close the connection
 		await pool.close();
+
+		const itemData = generatePairedItemData(items.length);
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnItems.push(...executionData);

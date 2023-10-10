@@ -33,7 +33,7 @@ import {
 	optionsProperties,
 	fromFileV2Properties,
 } from '../description';
-import { flattenObject } from '@utils/utilities';
+import { flattenObject, generatePairedItemData } from '@utils/utilities';
 
 export class SpreadsheetFileV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -202,6 +202,7 @@ export class SpreadsheetFileV2 implements INodeType {
 
 			return [newItems];
 		} else if (operation === 'toFile') {
+			const pairedItem = generatePairedItemData(items.length);
 			try {
 				// Write the workflow data to spreadsheet file
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
@@ -260,9 +261,7 @@ export class SpreadsheetFileV2 implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
-					pairedItem: {
-						item: 0,
-					},
+					pairedItem,
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -279,9 +278,7 @@ export class SpreadsheetFileV2 implements INodeType {
 						json: {
 							error: error.message,
 						},
-						pairedItem: {
-							item: 0,
-						},
+						pairedItem,
 					});
 				} else {
 					throw error;
