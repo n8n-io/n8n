@@ -491,8 +491,6 @@ export const createPage = (
 						formData.append(multiselect.id, JSON.stringify(selectedValues));
 					});
 
-					formData.append("submittedAt", (new Date()).toISOString());
-
 					document.querySelector('#submit-btn').disabled = true;
 					document.querySelector('#submit-btn').style.cursor = 'not-allowed';
 					document.querySelector('#submit-btn span').style.display = 'inline-block';

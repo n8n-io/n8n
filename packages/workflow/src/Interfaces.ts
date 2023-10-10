@@ -2161,8 +2161,7 @@ export type FieldType =
 	| 'time'
 	| 'array'
 	| 'object'
-	| 'options'
-	| 'url';
+	| 'options';
 
 export type ValidationResult = {
 	valid: boolean;

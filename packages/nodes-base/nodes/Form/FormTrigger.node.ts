@@ -1,12 +1,12 @@
-import {
-	FORM_TRIGGER_PATH_IDENTIFIER,
-	jsonParse,
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
+import type {
+	IHookFunctions,
+	IDataObject,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookResponseData,
+	IWebhookFunctions,
 } from 'n8n-workflow';
+import { FORM_TRIGGER_PATH_IDENTIFIER, jsonParse } from 'n8n-workflow';
 
 import { createPage } from './templates';
 import type { FormField } from './interfaces';
@@ -216,10 +216,33 @@ export class FormTrigger implements INodeType {
 		],
 	};
 
+	webhookMethods = {
+		setup: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+				if (webhookData.webhookId === undefined) {
+					return false;
+				}
+
+				return true;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				return true;
+			},
+		},
+	};
+
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 		const formFields = this.getNodeParameter('formFields.values', []) as FormField[];
+
+		// if (formFields.length === 1 && formFields[0].fieldLabel === '') {
+		// 	formFields = [];
+		// }
 
 		//Show the form on GET request
 		if (webhookName === 'setup') {
@@ -265,7 +288,7 @@ export class FormTrigger implements INodeType {
 
 			returnData[field.fieldLabel] = value;
 		}
-		returnData.submittedAt = bodyData.submittedAt;
+		returnData.submittedAt = new Date().toISOString();
 		returnData.formMode = mode;
 
 		const webhookResponse: IDataObject = { status: 200 };
