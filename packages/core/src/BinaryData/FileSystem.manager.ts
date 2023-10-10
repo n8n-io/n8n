@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
-import { ensureDirExists } from './utils';
+import { assertDir } from './utils';
 import { FileNotFoundError } from '../errors';
 
 import type { Readable } from 'stream';
@@ -16,7 +16,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	constructor(private storagePath: string) {}
 
 	async init() {
-		await ensureDirExists(this.storagePath);
+		await assertDir(this.storagePath);
 	}
 
 	async store(
@@ -27,6 +27,8 @@ export class FileSystemManager implements BinaryData.Manager {
 	) {
 		const fileId = this.toFileId(workflowId, executionId);
 		const filePath = this.resolvePath(fileId);
+
+		await assertDir(path.dirname(filePath));
 
 		await fs.writeFile(filePath, bufferOrStream);
 
@@ -64,6 +66,10 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	async deleteMany(ids: BinaryData.IdsForDeletion) {
+		if (ids.length === 0) return;
+
+		// binary files stored in single dir - `filesystem`
+
 		const executionIds = ids.map((o) => o.executionId);
 
 		const set = new Set(executionIds);
@@ -78,6 +84,18 @@ export class FileSystemManager implements BinaryData.Manager {
 				await Promise.all([fs.rm(filePath), fs.rm(`${filePath}.metadata`)]);
 			}
 		}
+
+		// binary files stored in nested dirs - `filesystem-v2`
+
+		const binaryDataDirs = ids.map(({ workflowId, executionId }) =>
+			this.resolvePath(`workflows/${workflowId}/executions/${executionId}/binary_data/`),
+		);
+
+		await Promise.all(
+			binaryDataDirs.map(async (dir) => {
+				await fs.rm(dir, { recursive: true });
+			}),
+		);
 	}
 
 	async copyByFilePath(
@@ -88,6 +106,8 @@ export class FileSystemManager implements BinaryData.Manager {
 	) {
 		const targetFileId = this.toFileId(workflowId, executionId);
 		const targetPath = this.resolvePath(targetFileId);
+
+		await assertDir(path.dirname(targetPath));
 
 		await fs.cp(sourcePath, targetPath);
 
@@ -103,6 +123,8 @@ export class FileSystemManager implements BinaryData.Manager {
 		const sourcePath = this.resolvePath(sourceFileId);
 		const targetPath = this.resolvePath(targetFileId);
 
+		await assertDir(path.dirname(targetPath));
+
 		await fs.copyFile(sourcePath, targetPath);
 
 		return targetFileId;
@@ -112,10 +134,17 @@ export class FileSystemManager implements BinaryData.Manager {
 		const oldPath = this.resolvePath(oldFileId);
 		const newPath = this.resolvePath(newFileId);
 
+		await assertDir(path.dirname(newPath));
+
 		await Promise.all([
 			fs.rename(oldPath, newPath),
 			fs.rename(`${oldPath}.metadata`, `${newPath}.metadata`),
 		]);
+
+		const [tempDirParent] = oldPath.split('/temp/');
+		const tempDir = path.join(tempDirParent, 'temp');
+
+		await fs.rm(tempDir, { recursive: true });
 	}
 
 	// ----------------------------------
@@ -123,12 +152,15 @@ export class FileSystemManager implements BinaryData.Manager {
 	// ----------------------------------
 
 	/**
-	 * @tech_debt The `workflowId` argument is for compatibility with the
-	 * `BinaryData.Manager` interface. Unused here until we refactor
-	 * how we store binary data files in the `/binaryData` dir.
+	 * Generate an ID for a binary data file.
+	 *
+	 * The legacy ID format `{executionId}{uuid}` for `filesystem` mode is
+	 * no longer used on write, only when reading old stored execution data.
 	 */
-	private toFileId(_workflowId: string, executionId: string) {
-		return [executionId, uuid()].join('');
+	private toFileId(workflowId: string, executionId: string) {
+		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
+
+		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 	}
 
 	private resolvePath(...args: string[]) {
