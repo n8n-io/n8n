@@ -51,6 +51,7 @@ export class FrontendService {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly license: License,
 	) {
 		this.initSettings();
 	}
@@ -114,7 +115,7 @@ export class FrontendService {
 				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
 			defaultLocale: config.getEnv('defaultLocale'),
 			userManagement: {
-				quota: Container.get(License).getUsersLimit(),
+				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
 				smtpSetup: isEmailSetUp(),
 				authenticationMethod: getCurrentAuthenticationMethod(),
@@ -220,7 +221,7 @@ export class FrontendService {
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
-			quota: Container.get(License).getUsersLimit(),
+			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
 			showSetupOnFirstLoad:
 				!config.getEnv('userManagement.isInstanceOwnerSetUp') &&
@@ -247,9 +248,7 @@ export class FrontendService {
 			variables: isVariablesEnabled(),
 			sourceControl: isSourceControlLicensed(),
 			externalSecrets: isExternalSecretsEnabled(),
-			showNonProdBanner: Container.get(License).isFeatureEnabled(
-				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
-			),
+			showNonProdBanner: this.license.isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: isDebugInEditorLicensed(),
 			workflowHistory: isWorkflowHistoryEnabled(),
 		});
