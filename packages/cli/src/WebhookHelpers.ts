@@ -64,7 +64,6 @@ import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
 import { WorkflowsService } from './workflows/workflows.services';
-import { createErrorPage } from './utils';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -116,19 +115,8 @@ export const webhookRequestHandler =
 				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
 			) {
 				const isTestWebhook = req.originalUrl.includes('webhook-test');
-				let html = '';
-				if (isTestWebhook) {
-					html = createErrorPage(
-						"Form Trigger isn't listening yet",
-						'Click the <strong>"Test Step"</strong> button in your form trigger',
-					);
-				} else {
-					html = createErrorPage(
-						'Problem loading form',
-						'This usually occurs if the n8n workflow serving this form is deactivated or no longer exist',
-					);
-				}
-				return ResponseHelper.sendSuccessResponse(res, html, true, 404);
+				res.status(404);
+				return res.render('form-trigger-404', { isTestWebhook });
 			} else {
 				return ResponseHelper.sendErrorResponse(res, error as Error);
 			}
