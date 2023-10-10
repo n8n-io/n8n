@@ -29,21 +29,13 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		queryParams: WorkflowHistoryRequestParams,
 	): Promise<WorkflowHistory[]> =>
-		whApi
-			.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams)
-			.catch((error) => {
-				console.error(error);
-				return [] as WorkflowHistory[];
-			});
+		whApi.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams);
 
 	const getWorkflowVersion = async (
 		workflowId: string,
 		versionId: string,
 	): Promise<WorkflowVersion | null> =>
-		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId).catch((error) => {
-			console.error(error);
-			return null;
-		});
+		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
 
 	const downloadVersion = async (workflowId: string, workflowVersionId: WorkflowVersionId) => {
 		const [workflow, workflowVersion] = await Promise.all([

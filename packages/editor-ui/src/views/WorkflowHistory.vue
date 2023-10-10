@@ -242,12 +242,11 @@ watchEffect(async () => {
 		return;
 	}
 	try {
-		const [workflow, workflowVersion] = await Promise.all([
-			workflowsStore.fetchWorkflow(route.params.workflowId),
-			workflowHistoryStore.getWorkflowVersion(route.params.workflowId, route.params.versionId),
-		]);
-		activeWorkflow.value = workflow;
-		activeWorkflowVersion.value = workflowVersion;
+		activeWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
+			route.params.workflowId,
+			route.params.versionId,
+		);
+		activeWorkflow.value = await workflowsStore.fetchWorkflow(route.params.workflowId);
 	} catch (error) {
 		canRender.value = false;
 		toast.showError(error, i18n.baseText('workflowHistory.title'));
