@@ -64,7 +64,6 @@
     "luxon": "^3.3.0",
     "n8n-design-system": "workspace:*",
     "n8n-workflow": "workspace:*",
-    "normalize-wheel": "^1.0.1",
     "pinia": "^2.1.6",
     "prettier": "^3.0.3",
     "qrcode.vue": "^3.3.4",

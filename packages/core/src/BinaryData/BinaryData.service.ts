@@ -4,8 +4,8 @@ import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
-import { UnknownBinaryDataManagerError, InvalidBinaryDataModeError } from './errors';
-import { areValidModes, toBuffer } from './utils';
+import { UnknownManagerError, InvalidModeError } from './errors';
+import { areConfigModes, toBuffer } from './utils';
 import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
@@ -14,21 +14,20 @@ import type { INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
-	private mode: BinaryData.Mode = 'default';
+	private mode: BinaryData.ServiceMode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) {
-			throw new InvalidBinaryDataModeError();
-		}
+		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
-		this.mode = config.mode;
+		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
 		if (config.availableModes.includes('filesystem')) {
 			const { FileSystemManager } = await import('./FileSystem.manager');
 
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
+			this.managers['filesystem-v2'] = this.managers.filesystem;
 
 			await this.managers.filesystem.init();
 		}
@@ -200,9 +199,6 @@ export class BinaryDataService {
 	//         private methods
 	// ----------------------------------
 
-	/**
-	 * Create an identifier `${mode}:{fileId}` for `IBinaryData['id']`.
-	 */
 	private createBinaryDataId(fileId: string) {
 		return `${this.mode}:${fileId}`;
 	}
@@ -253,6 +249,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new UnknownBinaryDataManagerError(mode);
+		throw new UnknownManagerError(mode);
 	}
 }

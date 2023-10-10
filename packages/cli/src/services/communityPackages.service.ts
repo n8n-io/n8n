@@ -1,13 +1,14 @@
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-
-import { LoggerProxy as Logger } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
 import { Service } from 'typedi';
 import { promisify } from 'util';
 import axios from 'axios';
 
-import config from '@/config';
+import { LoggerProxy as Logger } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
+import { UserSettings } from 'n8n-core';
+import type { PackageDirectoryLoader } from 'n8n-core';
+
 import { toError } from '@/utils';
 import { InstalledPackagesRepository } from '@/databases/repositories/installedPackages.repository';
 import type { InstalledPackages } from '@/databases/entities/InstalledPackages';
@@ -18,11 +19,8 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import type { PackageDirectoryLoader } from 'n8n-core';
 import type { CommunityPackages } from '@/Interfaces';
-import type { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,
@@ -45,8 +43,17 @@ const asyncExec = promisify(exec);
 const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 
 @Service()
-export class CommunityPackageService {
-	constructor(private readonly installedPackageRepository: InstalledPackagesRepository) {}
+export class CommunityPackagesService {
+	missingPackages: string[] = [];
+
+	constructor(
+		private readonly installedPackageRepository: InstalledPackagesRepository,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+	) {}
+
+	get hasMissingPackages() {
+		return this.missingPackages.length > 0;
+	}
 
 	async findInstalledPackage(packageName: string) {
 		return this.installedPackageRepository.findOne({
@@ -173,9 +180,8 @@ export class CommunityPackageService {
 		}, []);
 	}
 
-	matchMissingPackages(installedPackages: PublicInstalledPackage[], missingPackages: string) {
-		const missingPackagesList = missingPackages
-			.split(' ')
+	matchMissingPackages(installedPackages: PublicInstalledPackage[]) {
+		const missingPackagesList = this.missingPackages
 			.map((name) => {
 				try {
 					// Strip away versions but maintain scope and package name
@@ -221,45 +227,34 @@ export class CommunityPackageService {
 	}
 
 	hasPackageLoaded(packageName: string) {
-		const missingPackages = config.get('nodes.packagesMissing') as string | undefined;
+		if (!this.missingPackages.length) return true;
 
-		if (!missingPackages) return true;
-
-		return !missingPackages
-			.split(' ')
-			.some(
-				(packageNameAndVersion) =>
-					packageNameAndVersion.startsWith(packageName) &&
-					packageNameAndVersion.replace(packageName, '').startsWith('@'),
-			);
+		return !this.missingPackages.some(
+			(packageNameAndVersion) =>
+				packageNameAndVersion.startsWith(packageName) &&
+				packageNameAndVersion.replace(packageName, '').startsWith('@'),
+		);
 	}
 
 	removePackageFromMissingList(packageName: string) {
 		try {
-			const failedPackages = config.get('nodes.packagesMissing').split(' ');
-
-			const packageFailedToLoad = failedPackages.filter(
+			this.missingPackages = this.missingPackages.filter(
 				(packageNameAndVersion) =>
 					!packageNameAndVersion.startsWith(packageName) ||
 					!packageNameAndVersion.replace(packageName, '').startsWith('@'),
 			);
-
-			config.set('nodes.packagesMissing', packageFailedToLoad.join(' '));
 		} catch {
 			// do nothing
 		}
 	}
 
-	async setMissingPackages(
-		loadNodesAndCredentials: LoadNodesAndCredentials,
-		{ reinstallMissingPackages }: { reinstallMissingPackages: boolean },
-	) {
+	async setMissingPackages({ reinstallMissingPackages }: { reinstallMissingPackages: boolean }) {
 		const installedPackages = await this.getAllInstalledPackages();
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
 		installedPackages.forEach((installedPackage) => {
 			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!loadNodesAndCredentials.known.nodes[installedNode.type]) {
+				if (!this.loadNodesAndCredentials.isKnownNode(installedNode.type)) {
 					// Leave the list ready for installing in case we need.
 					missingPackages.add({
 						packageName: installedPackage.packageName,
@@ -269,7 +264,7 @@ export class CommunityPackageService {
 			});
 		});
 
-		config.set('nodes.packagesMissing', '');
+		this.missingPackages = [];
 
 		if (missingPackages.size === 0) return;
 
@@ -283,10 +278,7 @@ export class CommunityPackageService {
 				// Optimistic approach - stop if any installation fails
 
 				for (const missingPackage of missingPackages) {
-					await loadNodesAndCredentials.installNpmModule(
-						missingPackage.packageName,
-						missingPackage.version,
-					);
+					await this.installNpmModule(missingPackage.packageName, missingPackage.version);
 
 					missingPackages.delete(missingPackage);
 				}
@@ -296,11 +288,79 @@ export class CommunityPackageService {
 			}
 		}
 
-		config.set(
-			'nodes.packagesMissing',
-			Array.from(missingPackages)
-				.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
-				.join(' '),
+		this.missingPackages = [...missingPackages].map(
+			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
 		);
+	}
+
+	async installNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
+		return this.installOrUpdateNpmModule(packageName, { version });
+	}
+
+	async updateNpmModule(
+		packageName: string,
+		installedPackage: InstalledPackages,
+	): Promise<InstalledPackages> {
+		return this.installOrUpdateNpmModule(packageName, { installedPackage });
+	}
+
+	async removeNpmModule(packageName: string, installedPackage: InstalledPackages): Promise<void> {
+		await this.executeNpmCommand(`npm remove ${packageName}`);
+		await this.removePackageFromDatabase(installedPackage);
+		await this.loadNodesAndCredentials.unloadPackage(packageName);
+		await this.loadNodesAndCredentials.postProcessLoaders();
+	}
+
+	private async installOrUpdateNpmModule(
+		packageName: string,
+		options: { version?: string } | { installedPackage: InstalledPackages },
+	) {
+		const isUpdate = 'installedPackage' in options;
+		const command = isUpdate
+			? `npm update ${packageName}`
+			: `npm install ${packageName}${options.version ? `@${options.version}` : ''}`;
+
+		try {
+			await this.executeNpmCommand(command);
+		} catch (error) {
+			if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
+				throw new Error(`The npm package "${packageName}" could not be found.`);
+			}
+			throw error;
+		}
+
+		let loader: PackageDirectoryLoader;
+		try {
+			loader = await this.loadNodesAndCredentials.loadPackage(packageName);
+		} catch (error) {
+			// Remove this package since loading it failed
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await this.executeNpmCommand(removeCommand);
+			} catch {}
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+		}
+
+		if (loader.loadedNodes.length > 0) {
+			// Save info to DB
+			try {
+				if (isUpdate) {
+					await this.removePackageFromDatabase(options.installedPackage);
+				}
+				const installedPackage = await this.persistInstalledPackage(loader);
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				return installedPackage;
+			} catch (error) {
+				throw new Error(`Failed to save installed package: ${packageName}`, { cause: error });
+			}
+		} else {
+			// Remove this package since it contains no loadable nodes
+			const removeCommand = `npm remove ${packageName}`;
+			try {
+				await this.executeNpmCommand(removeCommand);
+			} catch {}
+
+			throw new Error(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
+		}
 	}
 }
