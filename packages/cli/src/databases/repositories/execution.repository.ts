@@ -1,5 +1,14 @@
 import { Service } from 'typedi';
-import { Brackets, DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+	Brackets,
+	DataSource,
+	Not,
+	In,
+	IsNull,
+	LessThanOrEqual,
+	MoreThanOrEqual,
+	Repository,
+} from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
@@ -110,13 +119,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	setSoftDeletionInterval() {
-		this.logger.debug('Setting soft-deletion interval (pruning) for executions');
+		this.logger.debug(
+			`Setting soft-deletion interval (pruning) for executions every ${
+				this.rates.softDeletion / TIME.MINUTE
+			} min`,
+		);
 
-		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.hardDeletion);
+		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.softDeletion);
 	}
 
 	setHardDeletionInterval() {
-		this.logger.debug('Setting hard-deletion interval for executions');
+		this.logger.debug(
+			`Setting hard-deletion interval for executions every ${
+				this.rates.hardDeletion / TIME.MINUTE
+			} min`,
+		);
 
 		this.intervals.hardDeletion = setInterval(
 			async () => this.hardDelete(),
@@ -487,7 +504,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
-			.where(
+			.where({
+				deletedAt: IsNull(),
+				// Only mark executions as deleted if they are in an end state
+				status: Not(In(['new', 'running', 'waiting'])),
+			})
+			.andWhere(
 				new Brackets((qb) =>
 					countBasedWhere
 						? qb.where(timeBasedWhere).orWhere(countBasedWhere)

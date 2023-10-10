@@ -81,7 +81,6 @@ export async function notionApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -107,6 +106,48 @@ export async function notionApiRequestAllItems(
 	} while (responseData.has_more !== false);
 
 	return returnData;
+}
+
+export async function notionApiRequestGetBlockChildrens(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	blocks: IDataObject[],
+	responseData: IDataObject[] = [],
+	limit?: number,
+) {
+	if (blocks.length === 0) return responseData;
+
+	for (const block of blocks) {
+		responseData.push(block);
+
+		if (block.type === 'child_page') continue;
+
+		if (block.has_children) {
+			let childrens = await notionApiRequestAllItems.call(
+				this,
+				'results',
+				'GET',
+				`/blocks/${block.id}/children`,
+			);
+
+			childrens = (childrens || []).map((entry: IDataObject) => ({
+				object: entry.object,
+				parent_id: block.id,
+				...entry,
+			}));
+
+			await notionApiRequestGetBlockChildrens.call(this, childrens, responseData);
+		}
+
+		if (limit && responseData.length === limit) {
+			return responseData;
+		}
+
+		if (limit && responseData.length > limit) {
+			return responseData.slice(0, limit);
+		}
+	}
+
+	return responseData;
 }
 
 export function getBlockTypes() {
@@ -279,6 +320,10 @@ function getDateFormat(includeTime: boolean) {
 	return '';
 }
 
+function isEmpty(value: unknown): boolean {
+	return value === undefined || value === null || value === '';
+}
+
 function getPropertyKeyValue(
 	this: IExecuteFunctions,
 	value: any,
@@ -327,7 +372,16 @@ function getPropertyKeyValue(
 			};
 			break;
 		case 'multi_select':
+			if (isEmpty(value.multiSelectValue)) {
+				result = {
+					type: 'multi_select',
+					multi_select: [],
+				};
+				break;
+			}
+
 			const multiSelectValue = value.multiSelectValue;
+
 			result = {
 				type: 'multi_select',
 				multi_select: (Array.isArray(multiSelectValue)
@@ -362,6 +416,14 @@ function getPropertyKeyValue(
 			};
 			break;
 		case 'select':
+			if (isEmpty(value.selectValue)) {
+				result = {
+					type: 'select',
+					select: null,
+				};
+				break;
+			}
+
 			result = {
 				type: 'select',
 				select: version === 1 ? { id: value.selectValue } : { name: value.selectValue },

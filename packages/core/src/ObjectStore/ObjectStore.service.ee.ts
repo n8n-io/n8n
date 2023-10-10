@@ -4,31 +4,56 @@ import { createHash } from 'node:crypto';
 import axios from 'axios';
 import { Service } from 'typedi';
 import { sign } from 'aws4';
-import { isStream, parseXml } from './utils';
-import { ExternalStorageRequestFailed } from './errors';
+import { isStream, parseXml, writeBlockedMessage } from './utils';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import type { AxiosRequestConfig, Method } from 'axios';
+import type { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import type { Request as Aws4Options, Credentials as Aws4Credentials } from 'aws4';
-import type { ListPage, ObjectStore, RawListPage } from './types';
+import type {
+	Bucket,
+	ConfigSchemaCredentials,
+	ListPage,
+	RawListPage,
+	RequestOptions,
+} from './types';
 import type { Readable } from 'stream';
 import type { BinaryData } from '..';
 
 @Service()
 export class ObjectStoreService {
-	private credentials: Aws4Credentials;
+	private host = '';
 
-	constructor(
-		private bucket: { region: string; name: string },
-		credentials: { accountId: string; secretKey: string },
-	) {
+	private bucket: Bucket = { region: '', name: '' };
+
+	private credentials: Aws4Credentials = { accessKeyId: '', secretAccessKey: '' };
+
+	private isReady = false;
+
+	private isReadOnly = false;
+
+	private logger = Logger;
+
+	async init(host: string, bucket: Bucket, credentials: ConfigSchemaCredentials) {
+		this.host = host;
+		this.bucket.name = bucket.name;
+		this.bucket.region = bucket.region;
+
 		this.credentials = {
-			accessKeyId: credentials.accountId,
-			secretAccessKey: credentials.secretKey,
+			accessKeyId: credentials.accessKey,
+			secretAccessKey: credentials.accessSecret,
 		};
+
+		await this.checkConnection();
+
+		this.setReady(true);
 	}
 
-	get host() {
-		return `${this.bucket.name}.s3.${this.bucket.region}.amazonaws.com`;
+	setReadonly(newState: boolean) {
+		this.isReadOnly = newState;
+	}
+
+	setReady(newState: boolean) {
+		this.isReady = newState;
 	}
 
 	/**
@@ -37,7 +62,9 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html
 	 */
 	async checkConnection() {
-		return this.request('HEAD', this.host);
+		if (this.isReady) return;
+
+		return this.request('HEAD', this.host, this.bucket.name);
 	}
 
 	/**
@@ -46,6 +73,8 @@ export class ObjectStoreService {
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 	 */
 	async put(filename: string, buffer: Buffer, metadata: BinaryData.PreWriteMetadata = {}) {
+		if (this.isReadOnly) return this.blockWrite(filename);
+
 		const headers: Record<string, string | number> = {
 			'Content-Length': buffer.length,
 			'Content-MD5': createHash('md5').update(buffer).digest('base64'),
@@ -54,7 +83,9 @@ export class ObjectStoreService {
 		if (metadata.fileName) headers['x-amz-meta-filename'] = metadata.fileName;
 		if (metadata.mimeType) headers['Content-Type'] = metadata.mimeType;
 
-		return this.request('PUT', this.host, `/${filename}`, { headers, body: buffer });
+		const path = `/${this.bucket.name}/${filename}`;
+
+		return this.request('PUT', this.host, path, { headers, body: buffer });
 	}
 
 	/**
@@ -62,9 +93,11 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async get(path: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
-	async get(path: string, { mode }: { mode: 'stream' }): Promise<Readable>;
-	async get(path: string, { mode }: { mode: 'stream' | 'buffer' }) {
+	async get(fileId: string, { mode }: { mode: 'buffer' }): Promise<Buffer>;
+	async get(fileId: string, { mode }: { mode: 'stream' }): Promise<Readable>;
+	async get(fileId: string, { mode }: { mode: 'stream' | 'buffer' }) {
+		const path = `${this.bucket.name}/${fileId}`;
+
 		const { data } = await this.request('GET', this.host, path, {
 			responseType: mode === 'buffer' ? 'arraybuffer' : 'stream',
 		});
@@ -81,14 +114,16 @@ export class ObjectStoreService {
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingMetadata.html
 	 */
-	async getMetadata(path: string) {
+	async getMetadata(fileId: string) {
 		type Response = {
 			headers: {
 				'content-length': string;
 				'content-type'?: string;
 				'x-amz-meta-filename'?: string;
-			} & Record<string, string | number>;
+			} & BinaryData.PreWriteMetadata;
 		};
+
+		const path = `${this.bucket.name}/${fileId}`;
 
 		const response: Response = await this.request('HEAD', this.host, path);
 
@@ -96,12 +131,14 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * Delete an object in the configured bucket.
+	 * Delete a single object in the configured bucket.
 	 *
 	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html
 	 */
-	async deleteOne(path: string) {
-		return this.request('DELETE', this.host, `/${encodeURIComponent(path)}`);
+	async deleteOne(fileId: string) {
+		const path = `${this.bucket.name}/${fileId}`;
+
+		return this.request('DELETE', this.host, path);
 	}
 
 	/**
@@ -111,6 +148,8 @@ export class ObjectStoreService {
 	 */
 	async deleteMany(prefix: string) {
 		const objects = await this.list(prefix);
+
+		if (objects.length === 0) return;
 
 		const innerXml = objects.map(({ key }) => `<Object><Key>${key}</Key></Object>`).join('\n');
 
@@ -122,13 +161,13 @@ export class ObjectStoreService {
 			'Content-MD5': createHash('md5').update(body).digest('base64'),
 		};
 
-		return this.request('POST', this.host, '/?delete', { headers, body });
+		const path = `${this.bucket.name}/?delete`;
+
+		return this.request('POST', this.host, path, { headers, body });
 	}
 
 	/**
 	 * List objects with a common prefix in the configured bucket.
-	 *
-	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 	 */
 	async list(prefix: string) {
 		const items = [];
@@ -149,16 +188,18 @@ export class ObjectStoreService {
 	}
 
 	/**
-	 * Fetch a page of objects with a common prefix in the configured bucket. Max 1000 per page.
+	 * Fetch a page of objects with a common prefix in the configured bucket.
+	 *
+	 * Max 1000 objects per page - set by AWS.
+	 *
+	 * @doc https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 	 */
 	async getListPage(prefix: string, nextPageToken?: string) {
-		const bucketlessHost = this.host.split('.').slice(1).join('.');
-
 		const qs: Record<string, string | number> = { 'list-type': 2, prefix };
 
 		if (nextPageToken) qs['continuation-token'] = nextPageToken;
 
-		const { data } = await this.request('GET', bucketlessHost, `/${this.bucket.name}`, { qs });
+		const { data } = await this.request('GET', this.host, this.bucket.name, { qs });
 
 		if (typeof data !== 'string') {
 			throw new TypeError(`Expected XML string but received ${typeof data}`);
@@ -193,11 +234,19 @@ export class ObjectStoreService {
 		return path.concat(`?${qsParams}`);
 	}
 
-	private async request<T = unknown>(
+	private async blockWrite(filename: string): Promise<AxiosResponse> {
+		const logMessage = writeBlockedMessage(filename);
+
+		this.logger.warn(logMessage);
+
+		return { status: 403, statusText: 'Forbidden', data: logMessage, headers: {}, config: {} };
+	}
+
+	private async request(
 		method: Method,
 		host: string,
 		rawPath = '',
-		{ qs, headers, body, responseType }: ObjectStore.RequestOptions = {},
+		{ qs, headers, body, responseType }: RequestOptions = {},
 	) {
 		const path = this.toPath(rawPath, qs);
 
@@ -224,9 +273,17 @@ export class ObjectStoreService {
 		if (responseType) config.responseType = responseType;
 
 		try {
-			return await axios.request<T>(config);
-		} catch (error) {
-			throw new ExternalStorageRequestFailed(error, config);
+			this.logger.debug('Sending request to S3', { config });
+
+			return await axios.request<unknown>(config);
+		} catch (e) {
+			const error = e instanceof Error ? e : new Error(`${e}`);
+
+			const message = `Request to S3 failed: ${error.message}`;
+
+			this.logger.error(message, { config });
+
+			throw new Error(message, { cause: { error, details: config } });
 		}
 	}
 }

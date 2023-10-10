@@ -29,12 +29,9 @@ import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import Container, { Service } from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
-import { RedisService } from '@/services/redis.service';
-import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
-import { EVENT_BUS_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -53,10 +50,6 @@ export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
-
-	redisPublisher: RedisServicePubSubPublisher;
-
-	redisSubscriber: RedisServicePubSubSubscriber;
 
 	logWriter: MessageEventBusLogWriter;
 
@@ -89,20 +82,6 @@ export class MessageEventBus extends EventEmitter {
 	async initialize(options?: MessageEventBusInitializeOptions): Promise<void> {
 		if (this.isInitialized) {
 			return;
-		}
-
-		if (config.getEnv('executions.mode') === 'queue') {
-			this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
-			this.redisSubscriber = await Container.get(RedisService).getPubSubSubscriber();
-			await this.redisSubscriber.subscribeToEventLog();
-			this.redisSubscriber.addMessageHandler(
-				'MessageEventBusMessageReceiver',
-				async (channel: string, messageString: string) => {
-					if (channel === EVENT_BUS_REDIS_CHANNEL) {
-						await this.handleRedisEventBusMessage(messageString);
-					}
-				},
-			);
 		}
 
 		LoggerProxy.debug('Initializing event bus...');
@@ -211,7 +190,9 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(
+				OrchestrationMainService,
+			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return destination;
 	}
@@ -237,7 +218,9 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(
+				OrchestrationMainService,
+			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return result;
 	}
@@ -251,14 +234,6 @@ export class MessageEventBus extends EventEmitter {
 			}
 		}
 		return eventData;
-	}
-
-	async broadcastRestartEventbusAfterDestinationUpdate() {
-		if (config.getEnv('executions.mode') === 'queue') {
-			await this.redisPublisher.publishToCommandChannel({
-				command: 'restartEventBus',
-			});
-		}
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -281,7 +256,6 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
-		await this.redisSubscriber?.unSubscribeFromEventLog();
 		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
 	}

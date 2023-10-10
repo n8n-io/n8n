@@ -25,7 +25,7 @@ export class TypeformTrigger implements INodeType {
 		name: 'typeformTrigger',
 		icon: 'file:typeform.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '=Form ID: {{$parameter["formId"]}}',
 		description: 'Starts the workflow on a Typeform form submission',
 		defaults: {
@@ -220,6 +220,7 @@ export class TypeformTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const version = this.getNode().typeVersion;
 		const bodyData = this.getBodyData();
 
 		const simplifyAnswers = this.getNodeParameter('simplifyAnswers') as boolean;
@@ -278,7 +279,23 @@ export class TypeformTrigger implements INodeType {
 		}
 
 		if (onlyAnswers) {
-			// Return only the answer
+			// Return only the answers
+			if (version >= 1.1) {
+				return {
+					workflowData: [
+						this.helpers.returnJsonArray([
+							answers.reduce(
+								(acc, answer) => {
+									acc[answer.field.id] = answer;
+									return acc;
+								},
+								{} as Record<string, ITypeformAnswer>,
+							),
+						]),
+					],
+				};
+			}
+
 			return {
 				workflowData: [this.helpers.returnJsonArray([answers as unknown as IDataObject])],
 			};
