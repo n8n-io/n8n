@@ -185,6 +185,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
 			);
 		},
+		isStableRelease(): boolean {
+			return this.settings.releaseChannel === 'stable';
+		},
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
