@@ -13,47 +13,42 @@ import type { Route } from 'vue-router';
 	'@/utils'.
 */
 
-export const scaleSmaller = ({ scale, offset: [xOffset, yOffset] }: IZoomConfig): IZoomConfig => {
-	scale /= 1.25;
-	xOffset /= 1.25;
-	yOffset /= 1.25;
-	xOffset += window.innerWidth / 10;
-	yOffset += window.innerHeight / 10;
+const SCALE_INCREASE_FACTOR = 1.25;
+const SCALE_DECREASE_FACTOR = 0.75;
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 5;
 
-	return {
-		scale,
-		offset: [xOffset, yOffset],
-	};
+const clamp = (min: number, max: number) => (num: number) => {
+	return Math.max(min, Math.min(max, num));
 };
 
-export const scaleBigger = ({ scale, offset: [xOffset, yOffset] }: IZoomConfig): IZoomConfig => {
-	scale *= 1.25;
-	xOffset -= window.innerWidth / 10;
-	yOffset -= window.innerHeight / 10;
-	xOffset *= 1.25;
-	yOffset *= 1.25;
+const clampScale = clamp(MIN_SCALE, MAX_SCALE);
 
-	return {
-		scale,
-		offset: [xOffset, yOffset],
+export const applyScale =
+	(scale: number) =>
+	({ scale: initialScale, offset: [xOffset, yOffset], origin }: IZoomConfig): IZoomConfig => {
+		const newScale = clampScale(initialScale * scale);
+		const scaleChange = newScale / initialScale;
+
+		const xOrigin = origin?.[0] ?? window.innerWidth / 2;
+		const yOrigin = origin?.[1] ?? window.innerHeight / 2;
+
+		// Calculate the new offsets based on the zoom origin
+		xOffset = xOrigin - scaleChange * (xOrigin - xOffset);
+		yOffset = yOrigin - scaleChange * (yOrigin - yOffset);
+
+		return {
+			scale: newScale,
+			offset: [xOffset, yOffset],
+		};
 	};
-};
+
+export const scaleBigger = applyScale(SCALE_INCREASE_FACTOR);
+
+export const scaleSmaller = applyScale(SCALE_DECREASE_FACTOR);
 
 export const scaleReset = (config: IZoomConfig): IZoomConfig => {
-	if (config.scale > 1) {
-		// zoomed in
-		while (config.scale > 1) {
-			config = scaleSmaller(config);
-		}
-	} else {
-		while (config.scale < 1) {
-			config = scaleBigger(config);
-		}
-	}
-
-	config.scale = 1;
-
-	return config;
+	return applyScale(1 / config.scale)(config);
 };
 
 export const closestNumberDivisibleBy = (inputNumber: number, divisibleBy: number): number => {
@@ -111,4 +106,20 @@ export const getConnectionInfo = (
 		];
 	}
 	return null;
+};
+
+export const normalizeWheelEventDelta = (event: WheelEvent): { deltaX: number; deltaY: number } => {
+	const factorByMode: Record<number, number> = {
+		[WheelEvent.DOM_DELTA_PIXEL]: 1,
+		[WheelEvent.DOM_DELTA_LINE]: 8,
+		[WheelEvent.DOM_DELTA_PAGE]: 24,
+	};
+
+	const factor = factorByMode[event.deltaMode] ?? 1;
+
+	return { deltaX: event.deltaX * factor, deltaY: event.deltaY * factor };
+};
+
+export const getScaleFromWheelEventDelta = (delta: number): number => {
+	return 1 - delta / 100;
 };

@@ -3,6 +3,7 @@ import type {
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
@@ -290,4 +291,15 @@ export function flattenObject(data: IDataObject) {
 		}
 	}
 	return returnData;
+}
+
+/**
+ * Generate Paired Item Data by length of input array
+ *
+ * @param {number} length
+ */
+export function generatePairedItemData(length: number): IPairedItemData[] {
+	return Array.from({ length }, (_, item) => ({
+		item,
+	}));
 }

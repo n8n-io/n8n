@@ -101,6 +101,19 @@
 				data-test-id="workflow-save-button"
 				@click="onSaveButtonClick"
 			/>
+			<router-link
+				v-if="isWorkflowHistoryFeatureEnabled"
+				:to="workflowHistoryRoute"
+				:class="$style.workflowHistoryButton"
+			>
+				<n8n-icon-button
+					:disabled="isWorkflowHistoryButtonDisabled"
+					type="tertiary"
+					icon="history"
+					size="medium"
+					text
+				/>
+			</router-link>
 			<div :class="$style.workflowMenuContainer">
 				<input
 					:class="$style.hiddenInput"
@@ -335,6 +348,23 @@ export default defineComponent({
 
 			return actions;
 		},
+		isWorkflowHistoryFeatureEnabled(): boolean {
+			return (
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory) &&
+				this.settingsStore.isDevRelease
+			);
+		},
+		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
+			return {
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId: this.currentWorkflowId,
+				},
+			};
+		},
+		isWorkflowHistoryButtonDisabled(): boolean {
+			return this.workflowsStore.isNewWorkflow;
+		},
 	},
 	methods: {
 		async onSaveButtonClick() {
@@ -389,7 +419,7 @@ export default defineComponent({
 
 			const saved = await this.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', {
-				workflow_id: this.currentWorkflowId as string,
+				workflow_id: this.currentWorkflowId,
 				new_tag_count: tags.length,
 			});
 
@@ -595,7 +625,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 	},
 	watch: {
@@ -689,5 +719,16 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
+}
+
+.workflowHistoryButton {
+	margin-left: var(--spacing-l);
+	color: var(--color-text-dark);
+
+	:disabled {
+		background: transparent;
+		border: none;
+		opacity: 0.5;
+	}
 }
 </style>

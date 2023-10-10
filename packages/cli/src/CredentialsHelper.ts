@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -89,13 +88,11 @@ const mockNodeTypes: INodeTypes = {
 };
 
 export class CredentialsHelper extends ICredentialsHelper {
-	constructor(
-		encryptionKey: string,
-		private credentialTypes = Container.get(CredentialTypes),
-		private nodeTypes = Container.get(NodeTypes),
-	) {
-		super(encryptionKey);
-	}
+	private credentialTypes = Container.get(CredentialTypes);
+
+	private nodeTypes = Container.get(NodeTypes);
+
+	private credentialsOverwrites = Container.get(CredentialsOverwrites);
 
 	/**
 	 * Add the required authentication information to the request
@@ -388,7 +385,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = CredentialsOverwrites().applyOverwrite(type, decryptedDataOriginal);
+		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
+			type,
+			decryptedDataOriginal,
+		);
 
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(

@@ -18,7 +18,11 @@ const props = defineProps<{
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowVersionId },
+		value: {
+			action: WorkflowHistoryActionTypes[number];
+			id: WorkflowVersionId;
+			data: { formattedCreatedAt: string };
+		},
 	): void;
 	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'mounted', value: { index: number; offsetTop: number; isActive: boolean }): void;
@@ -28,12 +32,14 @@ const i18n = useI18n();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
+const authorElement = ref<HTMLElement | null>(null);
+const isAuthorElementTruncated = ref(false);
 
-const formattedCreatedAtDate = computed<string>(() => {
+const formattedCreatedAt = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
 	const [date, time] = dateformat(
 		props.item.createdAt,
-		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '} mmm d"#"HH:MM`,
+		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM`,
 	).split('#');
 
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
@@ -58,7 +64,11 @@ const idLabel = computed<string>(() =>
 );
 
 const onAction = (action: WorkflowHistoryActionTypes[number]) => {
-	emit('action', { action, id: props.item.versionId });
+	emit('action', {
+		action,
+		id: props.item.versionId,
+		data: { formattedCreatedAt: formattedCreatedAt.value },
+	});
 };
 
 const onVisibleChange = (visible: boolean) => {
@@ -75,6 +85,8 @@ onMounted(() => {
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isActive: props.isActive,
 	});
+	isAuthorElementTruncated.value =
+		authorElement.value?.scrollWidth > authorElement.value?.clientWidth;
 });
 </script>
 <template>
@@ -88,10 +100,10 @@ onMounted(() => {
 		}"
 	>
 		<p @click="onItemClick">
-			<time :datetime="item.createdAt">{{ formattedCreatedAtDate }}</time>
-			<n8n-tooltip placement="right-end" :disabled="authors.size < 2">
+			<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
+			<n8n-tooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 				<template #content>{{ props.item.authors }}</template>
-				<span>{{ authors.label }}</span>
+				<span ref="authorElement">{{ authors.label }}</span>
 			</n8n-tooltip>
 			<data :value="item.versionId">{{ idLabel }}</data>
 		</p>
@@ -128,17 +140,15 @@ onMounted(() => {
 		cursor: pointer;
 
 		time {
-			padding: 0 0 var(--spacing-2xs);
+			padding: 0 0 var(--spacing-3xs);
 			color: var(--color-text-dark);
 			font-size: var(--font-size-s);
 			font-weight: var(--font-weight-bold);
 		}
 
-		span {
-			justify-self: start;
-		}
-
+		span,
 		data {
+			justify-self: start;
 			max-width: 160px;
 			white-space: nowrap;
 			overflow: hidden;

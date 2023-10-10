@@ -31,10 +31,11 @@ import { useKeyboardNavigation } from './composables/useKeyboardNavigation';
 import { useActionsGenerator } from './composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useUIStore } from '@/stores';
+import { DRAG_EVENT_DATA_KEY } from '@/constants';
 
 export interface Props {
 	active?: boolean;
-	onNodeTypeSelected?: (nodeType: string) => void;
+	onNodeTypeSelected?: (nodeType: string[]) => void;
 }
 
 const props = defineProps<Props>();
@@ -93,12 +94,12 @@ function onDrop(event: DragEvent) {
 		return;
 	}
 
-	const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+	const dragData = event.dataTransfer.getData(DRAG_EVENT_DATA_KEY);
 	const nodeCreatorBoundingRect = (state.nodeCreator as Element).getBoundingClientRect();
 
 	// Abort drag end event propagation if dropped inside nodes panel
 	if (
-		nodeTypeName &&
+		dragData &&
 		event.pageX >= nodeCreatorBoundingRect.x &&
 		event.pageY >= nodeCreatorBoundingRect.y
 	) {

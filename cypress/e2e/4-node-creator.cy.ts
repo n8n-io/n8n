@@ -321,13 +321,42 @@ describe('Node Creator', () => {
 		});
 	});
 
+	it('should correctly append a No Op node when Loop Over Items node is added (from add button)', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
+	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
+		WorkflowPage.actions.addNodeToCanvas('Manual');
+		cy.get('.plus-endpoint').should('be.visible').click();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
 	it('should have most relevenat nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Email Trigger (IMAP)');
 
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Set');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
@@ -335,7 +364,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit F');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');

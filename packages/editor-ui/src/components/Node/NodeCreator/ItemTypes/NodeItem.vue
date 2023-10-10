@@ -46,6 +46,7 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_SUBCATEGORY,
+	DRAG_EVENT_DATA_KEY,
 } from '@/constants';
 
 import { isCommunityPackageName } from '@/utils';
@@ -71,7 +72,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { actions } = useNodeCreatorStore();
-const { getNodeTypesWithManualTrigger } = useActions();
+const { getAddedNodesAndConnections } = useActions();
 
 const dragging = ref(false);
 const draggablePosition = ref({ x: -100, y: -100 });
@@ -151,8 +152,8 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.dropEffect = 'copy';
 		event.dataTransfer.setDragImage(draggableDataTransfer.value as Element, 0, 0);
 		event.dataTransfer.setData(
-			'nodeTypeName',
-			getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+			DRAG_EVENT_DATA_KEY,
+			JSON.stringify(getAddedNodesAndConnections([{ type: props.nodeType.name }])),
 		);
 	}
 
