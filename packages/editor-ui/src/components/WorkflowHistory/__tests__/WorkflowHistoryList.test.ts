@@ -4,7 +4,8 @@ import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
-import type { WorkflowHistory, WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';
+import { workflowHistoryDataFactory } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 
 vi.stubGlobal(
 	'IntersectionObserver',
@@ -15,14 +16,6 @@ vi.stubGlobal(
 		unobserve: vi.fn(),
 	})),
 );
-
-const workflowHistoryDataFactory: () => WorkflowHistory = () => ({
-	versionId: faker.string.nanoid(),
-	createdAt: faker.date.past().toDateString(),
-	authors: Array.from({ length: faker.number.int({ min: 1, max: 5 }) }, faker.person.fullName).join(
-		', ',
-	),
-});
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
 
@@ -40,43 +33,68 @@ describe('WorkflowHistoryList', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render empty list', () => {
-		const { getByText } = renderComponent({
+	it('should render empty list when not loading and no items', () => {
+		const { getByText, queryByRole } = renderComponent({
 			pinia,
 			props: {
 				items: [],
 				actionTypes,
 				activeItem: null,
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 0,
+				evaluatedPruneTime: -1,
 			},
 		});
 
+		expect(queryByRole('status')).not.toBeInTheDocument();
 		expect(getByText(/No versions yet/)).toBeInTheDocument();
+	});
+
+	it('should show loader but no empty list message when loading', () => {
+		const { queryByText, getByRole } = renderComponent({
+			pinia,
+			props: {
+				items: [],
+				actionTypes,
+				activeItem: null,
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 0,
+				evaluatedPruneTime: -1,
+				isListLoading: true,
+			},
+		});
+
+		expect(getByRole('status')).toBeInTheDocument();
+		expect(queryByText(/No versions yet/)).not.toBeInTheDocument();
 	});
 
 	it('should render list and delegate preview event', async () => {
 		const numberOfItems = faker.number.int({ min: 10, max: 50 });
 		const items = Array.from({ length: numberOfItems }, workflowHistoryDataFactory);
 
-		const { getAllByTestId, emitted } = renderComponent({
+		const { getAllByTestId, emitted, queryByRole } = renderComponent({
 			pinia,
 			props: {
 				items,
 				actionTypes,
 				activeItem: null,
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
 			},
 		});
+
+		expect(queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument();
 
 		const listItems = getAllByTestId('workflow-history-list-item');
 		const listItem = listItems[items.length - 1];
 		await userEvent.click(within(listItem).getByText(/ID: /));
 		expect(emitted().preview).toEqual([
 			[
-				expect.objectContaining({
+				{
 					id: items[items.length - 1].versionId,
 					event: expect.any(MouseEvent),
-				}),
+				},
 			],
 		]);
 
@@ -93,6 +111,8 @@ describe('WorkflowHistoryList', () => {
 				actionTypes,
 				activeItem: items[0],
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
 			},
 		});
 
@@ -109,6 +129,8 @@ describe('WorkflowHistoryList', () => {
 				actionTypes,
 				activeItem: null,
 				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
 			},
 		});
 
@@ -119,6 +141,33 @@ describe('WorkflowHistoryList', () => {
 		expect(actionsDropdown).toBeInTheDocument();
 
 		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
-		expect(emitted().action).toEqual([[{ action, id: items[index].versionId }]]);
+		expect(emitted().action).toEqual([
+			[
+				{
+					action,
+					id: items[index].versionId,
+					data: { formattedCreatedAt: expect.any(String) },
+				},
+			],
+		]);
+	});
+
+	it('should show upgrade message', async () => {
+		const items = Array.from({ length: 5 }, workflowHistoryDataFactory);
+
+		const { getByRole } = renderComponent({
+			pinia,
+			props: {
+				items,
+				actionTypes,
+				activeItem: items[0],
+				requestNumberOfItems: 20,
+				lastReceivedItemsLength: 20,
+				evaluatedPruneTime: -1,
+				shouldUpgrade: true,
+			},
+		});
+
+		expect(getByRole('link', { name: /upgrade/i })).toBeInTheDocument();
 	});
 });

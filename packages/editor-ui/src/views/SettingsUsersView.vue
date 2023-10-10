@@ -214,7 +214,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
 		},
 	},
 });

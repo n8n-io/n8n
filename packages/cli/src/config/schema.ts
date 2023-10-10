@@ -92,6 +92,12 @@ export const schema = {
 			},
 
 			ssl: {
+				enabled: {
+					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
+					format: 'Boolean',
+					default: false,
+					env: 'DB_POSTGRESDB_SSL_ENABLED',
+				},
 				ca: {
 					doc: 'SSL certificate authority',
 					format: String,
@@ -310,7 +316,7 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
@@ -320,7 +326,7 @@ export const schema = {
 		// Deletes the oldest entries first
 		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
+			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
 			format: Number,
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
@@ -812,12 +818,6 @@ export const schema = {
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
 		},
-		packagesMissing: {
-			// Used to have a persistent list of packages
-			doc: 'Contains a comma separated list of packages that failed to load during startup',
-			format: String,
-			default: '',
-		},
 	},
 
 	logs: {
@@ -908,7 +908,7 @@ export const schema = {
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: ['default', 'filesystem'] as const,
+			format: ['default', 'filesystem', 's3'] as const,
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',
@@ -918,6 +918,45 @@ export const schema = {
 			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
+		},
+	},
+
+	externalStorage: {
+		s3: {
+			host: {
+				format: String,
+				default: '',
+				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
+				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
+			},
+			bucket: {
+				name: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
+					doc: 'Name of the n8n bucket in S3-compatible external storage',
+				},
+				region: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
+					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
+				},
+			},
+			credentials: {
+				accessKey: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
+					doc: 'Access key in S3-compatible external storage',
+				},
+				accessSecret: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
+					doc: 'Access secret in S3-compatible external storage',
+				},
+			},
 		},
 	},
 
@@ -1225,6 +1264,22 @@ export const schema = {
 			format: ['rsa', 'ed25519'] as const,
 			default: 'ed25519',
 			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
+		},
+	},
+
+	workflowHistory: {
+		enabled: {
+			doc: 'Whether to save workflow history versions',
+			format: Boolean,
+			default: true,
+			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
+		},
+
+		pruneTime: {
+			doc: 'Time (in hours) to keep workflow history versions for',
+			format: Number,
+			default: -1,
+			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
 };

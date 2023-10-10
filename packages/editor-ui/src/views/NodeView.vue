@@ -97,7 +97,7 @@
 					:create-node-active="createNodeActive"
 					:node-view-scale="nodeViewScale"
 					@toggleNodeCreator="onToggleNodeCreator"
-					@addNode="onAddNode"
+					@addNodes="onAddNodes"
 				/>
 			</Suspense>
 			<Suspense>
@@ -217,11 +217,11 @@ import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	EnterpriseEditionFeature,
 	REGULAR_NODE_CREATOR_VIEW,
-	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
+	DRAG_EVENT_DATA_KEY,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -264,7 +264,13 @@ import type {
 	Workflow,
 	ConnectionTypes,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionType, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import {
+	deepCopy,
+	jsonParse,
+	NodeConnectionType,
+	NodeHelpers,
+	TelemetryHelpers,
+} from 'n8n-workflow';
 import type {
 	ICredentialsResponse,
 	IExecutionResponse,
@@ -282,6 +288,7 @@ import type {
 	IUser,
 	INodeUpdatePropertiesInformation,
 	NodeCreatorOpenSource,
+	AddedNodesAndConnections,
 } from '@/Interface';
 
 import { debounceHelper } from '@/mixins/debounce';
@@ -341,6 +348,7 @@ import { useViewStacks } from '@/components/Node/NodeCreator/composables/useView
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
+	name?: string;
 }
 
 const NodeCreation = defineAsyncComponent(async () => import('@/components/Node/NodeCreation.vue'));
@@ -1741,32 +1749,22 @@ export default defineComponent({
 			event.preventDefault();
 		},
 
-		onDrop(event: DragEvent) {
+		async onDrop(event: DragEvent) {
 			if (!event.dataTransfer) {
 				return;
 			}
 
-			const nodeTypeNames = event.dataTransfer.getData('nodeTypeName').split(',');
-
-			if (nodeTypeNames) {
+			const dropData = jsonParse<AddedNodesAndConnections>(
+				event.dataTransfer.getData(DRAG_EVENT_DATA_KEY),
+			);
+			if (dropData) {
 				const mousePosition = this.getMousePositionWithinNodeView(event);
+				const insertNodePosition = [
+					mousePosition[0] - NodeViewUtils.NODE_SIZE / 2 + NodeViewUtils.GRID_SIZE,
+					mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
+				] as XYPosition;
 
-				const nodesToAdd = nodeTypeNames.map((nodeTypeName: string, index: number) => {
-					return {
-						nodeTypeName,
-						position: [
-							// If adding more than one node, offset the X position
-							mousePosition[0] -
-								NodeViewUtils.NODE_SIZE / 2 +
-								NodeViewUtils.NODE_SIZE * index * 2 +
-								NodeViewUtils.GRID_SIZE,
-							mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-						] as XYPosition,
-						dragAndDrop: true,
-					};
-				});
-
-				this.onAddNode(nodesToAdd, true);
+				await this.onAddNodes(dropData, true, insertNodePosition);
 				this.createNodeActive = false;
 			}
 		},
@@ -1810,7 +1808,10 @@ export default defineComponent({
 			});
 		},
 
-		async getNewNodeWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
+		async getNewNodeWithDefaultCredential(
+			nodeTypeData: INodeTypeDescription,
+			overrides: Partial<INodeUi>,
+		) {
 			let nodeVersion = nodeTypeData.defaultVersion;
 
 			if (nodeVersion === undefined) {
@@ -1821,7 +1822,7 @@ export default defineComponent({
 
 			const newNodeData: INodeUi = {
 				id: uuid(),
-				name: nodeTypeData.defaults.name as string,
+				name: overrides.name ?? (nodeTypeData.defaults.name as string),
 				type: nodeTypeData.name,
 				typeVersion: nodeVersion,
 				position: [0, 0],
@@ -1922,7 +1923,9 @@ export default defineComponent({
 				return;
 			}
 
-			const newNodeData = await this.getNewNodeWithDefaultCredential(nodeTypeData);
+			const newNodeData = await this.getNewNodeWithDefaultCredential(nodeTypeData, {
+				name: options.name,
+			});
 
 			// when pulling new connection from node or injecting into a connection
 			const lastSelectedNode = this.lastSelectedNode;
@@ -2193,7 +2196,7 @@ export default defineComponent({
 			const targetEndpoint = lastSelectedNodeEndpointUuid || '';
 
 			// Handle connection of scoped_endpoint types
-			if (lastSelectedNodeEndpointUuid) {
+			if (lastSelectedNodeEndpointUuid && !isAutoAdd) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
 					this.checkNodeConnectionAllowed(
@@ -2221,7 +2224,7 @@ export default defineComponent({
 				}
 			}
 			// If a node is last selected then connect between the active and its child ones
-			if (lastSelectedNode) {
+			if (lastSelectedNode && !isAutoAdd) {
 				await this.$nextTick();
 
 				if (lastSelectedConnection?.__meta) {
@@ -2743,7 +2746,11 @@ export default defineComponent({
 
 								if (nodeType && inputs.length === 1) {
 									this.pullConnActiveNodeName = node.name;
-									const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
+									const endpointUUID = this.getInputEndpointUUID(
+										nodeName,
+										connection.parameters.type,
+										0,
+									);
 									if (endpointUUID) {
 										const endpoint = this.instance?.getEndpoint(endpointUUID);
 
@@ -4149,15 +4156,7 @@ export default defineComponent({
 				this.instance.setSuspendDrawing(false, true);
 			});
 		},
-		onToggleNodeCreator({
-			source,
-			createNodeActive,
-			nodeCreatorView,
-		}: {
-			source?: NodeCreatorOpenSource;
-			createNodeActive: boolean;
-			nodeCreatorView?: string;
-		}) {
+		onToggleNodeCreator({ source, createNodeActive, nodeCreatorView }: ToggleNodeCreatorOptions) {
 			if (createNodeActive === this.createNodeActive) return;
 
 			if (!nodeCreatorView) {
@@ -4196,52 +4195,43 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
-		onAddNode(
-			nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>,
-			dragAndDrop: boolean,
+		async onAddNodes(
+			{ nodes, connections }: AddedNodesAndConnections,
+			dragAndDrop = false,
+			position?: XYPosition,
 		) {
-			nodeTypes.forEach(({ nodeTypeName, position }, index) => {
-				const isManualTrigger = nodeTypeName === MANUAL_TRIGGER_NODE_TYPE;
-				const openNDV = !isManualTrigger && (nodeTypes.length === 1 || index > 0);
-				void this.addNode(
-					nodeTypeName,
-					{ position, dragAndDrop },
-					openNDV,
+			let currentPosition = position;
+			for (const { type, isAutoAdd, name, openDetail, position: nodePosition } of nodes) {
+				await this.addNode(
+					type,
+					{ position: nodePosition ?? currentPosition, dragAndDrop, name },
+					openDetail ?? false,
 					true,
-					nodeTypes.length > 1 && index < 1,
+					isAutoAdd,
 				);
-				if (index === 0) return;
-				// If there's more than one node, we want to connect them
-				// this has to be done in mutation subscriber to make sure both nodes already
-				// exist
-				const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
-					if (name === 'addNode' && args[0].type === nodeTypeName) {
-						after(async () => {
-							const lastAddedNode = this.nodes[this.nodes.length - 1];
-							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
 
-							// Position the added node to the right side of the previously added one
-							lastAddedNode.position = [
-								previouslyAddedNode.position[0] +
-									NodeViewUtils.NODE_SIZE * 2 +
-									NodeViewUtils.GRID_SIZE,
-								previouslyAddedNode.position[1],
-							];
-							await this.$nextTick();
-							this.connectTwoNodes(
-								previouslyAddedNode.name,
-								0,
-								lastAddedNode.name,
-								0,
-								NodeConnectionType.Main,
-							);
+				const lastAddedNode = this.nodes[this.nodes.length - 1];
+				currentPosition = [
+					lastAddedNode.position[0] + NodeViewUtils.NODE_SIZE * 2 + NodeViewUtils.GRID_SIZE,
+					lastAddedNode.position[1],
+				];
+			}
 
-							actionWatcher();
-						});
-					}
-				});
-			});
+			const newNodesOffset = this.nodes.length - nodes.length;
+			for (const { from, to } of connections) {
+				const fromNode = this.nodes[newNodesOffset + from.nodeIndex];
+				const toNode = this.nodes[newNodesOffset + to.nodeIndex];
+
+				this.connectTwoNodes(
+					fromNode.name,
+					from.outputIndex ?? 0,
+					toNode.name,
+					to.inputIndex ?? 0,
+					NodeConnectionType.Main,
+				);
+			}
 		},
+
 		async saveCurrentWorkflowExternal(callback: () => void) {
 			await this.saveCurrentWorkflow();
 			callback?.();

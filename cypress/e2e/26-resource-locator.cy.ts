@@ -7,6 +7,7 @@ const credentialsModal = new CredentialsModal();
 
 const NO_CREDENTIALS_MESSAGE = 'Please add your credential';
 const INVALID_CREDENTIALS_MESSAGE = 'Please check your credential';
+const MODE_SELECTOR_LIST = 'From list';
 
 describe('Resource Locator', () => {
 	beforeEach(() => {
@@ -18,6 +19,14 @@ describe('Resource Locator', () => {
 		workflowPage.actions.addNodeToCanvas('Google Sheets', true, true);
 		ndv.getters.resourceLocator('documentId').should('be.visible');
 		ndv.getters.resourceLocator('sheetName').should('be.visible');
+		ndv.getters
+			.resourceLocatorModeSelector('documentId')
+			.find('input')
+			.should('have.value', MODE_SELECTOR_LIST);
+		ndv.getters
+			.resourceLocatorModeSelector('sheetName')
+			.find('input')
+			.should('have.value', MODE_SELECTOR_LIST);
 	});
 
 	it('should show appropriate error when credentials are not set', () => {

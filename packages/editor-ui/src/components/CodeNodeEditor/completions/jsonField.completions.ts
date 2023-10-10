@@ -275,7 +275,16 @@ export const jsonFieldCompletions = defineComponent({
 		 * `index` is only passed for `all()`.
 		 */
 		getJsonOutput(quotedNodeName: string, options?: { accessor?: string; index?: number }) {
-			const nodeName = quotedNodeName.replace(/['"]/g, '');
+			let nodeName = quotedNodeName;
+
+			const isSingleQuoteWrapped = quotedNodeName.startsWith("'") && quotedNodeName.endsWith("'");
+			const isDoubleQuoteWrapped = quotedNodeName.startsWith('"') && quotedNodeName.endsWith('"');
+
+			if (isSingleQuoteWrapped) {
+				nodeName = quotedNodeName.replace(/^'/, '').replace(/'$/, '');
+			} else if (isDoubleQuoteWrapped) {
+				nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
+			}
 
 			const pinData: IPinData | undefined = this.workflowsStore.getPinData;
 
