@@ -56,7 +56,7 @@ export class LmChatOllama implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				default: '',
+				default: 'llama2',
 				description:
 					'The model which will generate the completion. To download models, visit <a href="https://ollama.ai/library">Ollama Models Library</a>.',
 				typeOptions: {
