@@ -46,31 +46,58 @@ export class LmOllama implements INodeType {
 				required: true,
 			},
 		],
+		requestDefaults: {
+			ignoreHttpStatusErrors: true,
+			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/$"), "") }}',
+		},
 		properties: [
 			{
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				options: [
-					{
-						name: 'Llama2',
-						value: 'llama2',
-					},
-					{
-						name: 'Llama2 13B',
-						value: 'llama2:13b',
-					},
-					{
-						name: 'Llama2 70B',
-						value: 'llama2:70b',
-					},
-					{
-						name: 'Llama2 Uncensored',
-						value: 'llama2-uncensored',
-					},
-				],
-				description: 'The model which will generate the completion',
 				default: 'llama2',
+				description:
+					'The model which will generate the completion. To download models, visit <a href="https://ollama.ai/library">Ollama Models Library</a>.',
+				typeOptions: {
+					loadOptions: {
+						routing: {
+							request: {
+								method: 'GET',
+								url: '/api/tags',
+							},
+							output: {
+								postReceive: [
+									{
+										type: 'rootProperty',
+										properties: {
+											property: 'models',
+										},
+									},
+									{
+										type: 'setKeyValue',
+										properties: {
+											name: '={{$responseItem.name}}',
+											value: '={{$responseItem.name}}',
+										},
+									},
+									{
+										type: 'sort',
+										properties: {
+											key: 'name',
+										},
+									},
+								],
+							},
+						},
+					},
+				},
+				routing: {
+					send: {
+						type: 'body',
+						property: 'model',
+					},
+				},
+				required: true,
 			},
 			{
 				displayName: 'Options',
