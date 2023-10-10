@@ -14,8 +14,11 @@ const WorkflowPage = new WorkflowPageClass();
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
 const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
-const ZOOM_OUT_X1_FACTOR = 0.8;
-const ZOOM_OUT_X2_FACTOR = 0.64;
+const ZOOM_OUT_X1_FACTOR = 0.75;
+const ZOOM_OUT_X2_FACTOR = 0.5625;
+
+const PINCH_ZOOM_IN_FACTOR = 1.32;
+const PINCH_ZOOM_OUT_FACTOR = 0.4752;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {
@@ -200,6 +203,26 @@ describe('Canvas Node Manipulation and Navigation', () => {
 				'have.css',
 				'transform',
 				`matrix(${ZOOM_OUT_X2_FACTOR}, 0, 0, ${ZOOM_OUT_X2_FACTOR}, 0, 0)`,
+			);
+	});
+
+	it('should zoom using pinch to zoom', () => {
+		WorkflowPage.actions.pinchToZoom(2, 'zoomIn');
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${PINCH_ZOOM_IN_FACTOR}, 0, 0, ${PINCH_ZOOM_IN_FACTOR}, 0, 0)`,
+			);
+
+		WorkflowPage.actions.pinchToZoom(4, 'zoomOut');
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${PINCH_ZOOM_OUT_FACTOR}, 0, 0, ${PINCH_ZOOM_OUT_FACTOR}, 0, 0)`,
 			);
 	});
 

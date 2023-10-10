@@ -382,7 +382,7 @@
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
 						>
-							<div>
+							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
 									{{ key }}
 								</div>
@@ -432,7 +432,7 @@
 										v-if="isViewable(index, key)"
 										size="small"
 										:label="$locale.baseText('runData.showBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-view-binary-data"
 										@click="displayBinaryData(index, key)"
 									/>
 									<n8n-button
@@ -440,7 +440,7 @@
 										size="small"
 										type="secondary"
 										:label="$locale.baseText('runData.downloadBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-download-binary-data"
 										@click="downloadBinaryData(index, key)"
 									/>
 								</div>
@@ -1320,7 +1320,7 @@ export default defineComponent({
 		},
 		isViewable(index: number, key: string): boolean {
 			const { fileType } = this.binaryData[index][key];
-			return !!fileType && ['image', 'video', 'text', 'json'].includes(fileType);
+			return !!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf'].includes(fileType);
 		},
 		isDownloadable(index: number, key: string): boolean {
 			const { mimeType, fileName } = this.binaryData[index][key];

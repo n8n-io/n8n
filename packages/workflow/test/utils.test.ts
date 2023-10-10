@@ -1,4 +1,4 @@
-import { jsonParse, jsonStringify, deepCopy, isObjectEmpty } from '@/utils';
+import { jsonParse, jsonStringify, deepCopy, isObjectEmpty, fileTypeFromMimeType } from '@/utils';
 
 describe('isObjectEmpty', () => {
 	it('should handle null and undefined', () => {
@@ -188,5 +188,43 @@ describe('deepCopy', () => {
 		expect(copy.deep.props.circular).not.toBe(object);
 		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
 		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
+	});
+});
+
+describe('fileTypeFromMimeType', () => {
+	it('should recognize json', () => {
+		expect(fileTypeFromMimeType('application/json')).toEqual('json');
+	});
+
+	it('should recognize image', () => {
+		expect(fileTypeFromMimeType('image/jpeg')).toEqual('image');
+		expect(fileTypeFromMimeType('image/png')).toEqual('image');
+		expect(fileTypeFromMimeType('image/avif')).toEqual('image');
+		expect(fileTypeFromMimeType('image/webp')).toEqual('image');
+	});
+
+	it('should recognize audio', () => {
+		expect(fileTypeFromMimeType('audio/wav')).toEqual('audio');
+		expect(fileTypeFromMimeType('audio/webm')).toEqual('audio');
+		expect(fileTypeFromMimeType('audio/ogg')).toEqual('audio');
+		expect(fileTypeFromMimeType('audio/mp3')).toEqual('audio');
+	});
+
+	it('should recognize video', () => {
+		expect(fileTypeFromMimeType('video/mp4')).toEqual('video');
+		expect(fileTypeFromMimeType('video/webm')).toEqual('video');
+		expect(fileTypeFromMimeType('video/ogg')).toEqual('video');
+	});
+
+	it('should recognize text', () => {
+		expect(fileTypeFromMimeType('text/plain')).toEqual('text');
+		expect(fileTypeFromMimeType('text/css')).toEqual('text');
+		expect(fileTypeFromMimeType('text/html')).toEqual('text');
+		expect(fileTypeFromMimeType('text/javascript')).toEqual('text');
+		expect(fileTypeFromMimeType('application/javascript')).toEqual('text');
+	});
+
+	it('should recognize pdf', () => {
+		expect(fileTypeFromMimeType('application/pdf')).toEqual('pdf');
 	});
 });

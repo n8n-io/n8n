@@ -70,7 +70,9 @@ describe('WorkflowHistoryListItem', () => {
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId(`action-${action}`));
-		expect(emitted().action).toEqual([[{ action, id: item.versionId }]]);
+		expect(emitted().action).toEqual([
+			[{ action, id: item.versionId, data: { formattedCreatedAt: expect.any(String) } }],
+		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
 		expect(emitted().mounted).toEqual([[{ index: 2, isActive: true, offsetTop: 0 }]]);
