@@ -29,7 +29,7 @@ import {
 	toFileProperties,
 	optionsProperties,
 } from '../description';
-import { flattenObject } from '@utils/utilities';
+import { flattenObject, generatePairedItemData } from '@utils/utilities';
 import { oldVersionNotice } from '@utils/descriptions';
 
 export class SpreadsheetFileV1 implements INodeType {
@@ -57,6 +57,7 @@ export class SpreadsheetFileV1 implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const pairedItem = generatePairedItemData(items.length);
 
 		const operation = this.getNodeParameter('operation', 0);
 
@@ -227,9 +228,7 @@ export class SpreadsheetFileV1 implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
-					pairedItem: {
-						item: 0,
-					},
+					pairedItem,
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -246,9 +245,7 @@ export class SpreadsheetFileV1 implements INodeType {
 						json: {
 							error: error.message,
 						},
-						pairedItem: {
-							item: 0,
-						},
+						pairedItem,
 					});
 				} else {
 					throw error;
