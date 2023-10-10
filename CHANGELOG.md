@@ -1,3 +1,14 @@
+## [1.9.3](https://github.com/n8n-io/n8n/compare/n8n@1.9.2...n8n@1.9.3) (2023-10-10)
+
+
+### Bug Fixes
+
+* **editor:** Fix completions for `.json` on quoted node name in Code node ([#7382](https://github.com/n8n-io/n8n/issues/7382)) ([c8ae64b](https://github.com/n8n-io/n8n/commit/c8ae64b3aac46c45bd90924a6260fe140ac448bc)), closes [/linear.app/n8n/issue/PAY-635/autocomplete-only-supports-3-levels-of-children#comment-234f738](https://github.com//linear.app/n8n/issue/PAY-635/autocomplete-only-supports-3-levels-of-children/issues/comment-234f738)
+* **editor:** Revert  connection snapping changes ([2e43ee6](https://github.com/n8n-io/n8n/commit/2e43ee6d4b75dd65011eb608c71f3a1bef7505f4))
+* **Notion Node:** Handle empty values correctly for Notion selects + multi selects ([#7383](https://github.com/n8n-io/n8n/issues/7383)) ([0c3070f](https://github.com/n8n-io/n8n/commit/0c3070f699e032071a245438e69e880187886cc9))
+
+
+
 ## [1.9.2](https://github.com/n8n-io/n8n/compare/n8n@1.9.1...n8n@1.9.2) (2023-10-09)
 
 
