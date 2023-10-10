@@ -349,8 +349,9 @@ export default defineComponent({
 			return actions;
 		},
 		isWorkflowHistoryFeatureEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.WorkflowHistory,
+			return (
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory) &&
+				this.settingsStore.isDevRelease
 			);
 		},
 		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
