@@ -101,19 +101,6 @@
 				data-test-id="workflow-save-button"
 				@click="onSaveButtonClick"
 			/>
-			<router-link
-				v-if="isWorkflowHistoryFeatureEnabled"
-				:to="workflowHistoryRoute"
-				:class="$style.workflowHistoryButton"
-			>
-				<n8n-icon-button
-					:disabled="isWorkflowHistoryButtonDisabled"
-					type="tertiary"
-					icon="history"
-					size="medium"
-					text
-				/>
-			</router-link>
 			<div :class="$style.workflowMenuContainer">
 				<input
 					:class="$style.hiddenInput"
@@ -347,22 +334,6 @@ export default defineComponent({
 			}
 
 			return actions;
-		},
-		isWorkflowHistoryFeatureEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.WorkflowHistory,
-			);
-		},
-		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
-			return {
-				name: VIEWS.WORKFLOW_HISTORY,
-				params: {
-					workflowId: this.currentWorkflowId,
-				},
-			};
-		},
-		isWorkflowHistoryButtonDisabled(): boolean {
-			return this.workflowsStore.isNewWorkflow;
 		},
 	},
 	methods: {
@@ -718,16 +689,5 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
-}
-
-.workflowHistoryButton {
-	margin-left: var(--spacing-l);
-	color: var(--color-text-dark);
-
-	:disabled {
-		background: transparent;
-		border: none;
-		opacity: 0.5;
-	}
 }
 </style>
