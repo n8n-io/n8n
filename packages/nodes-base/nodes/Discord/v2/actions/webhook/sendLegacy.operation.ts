@@ -93,7 +93,6 @@ const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		resource: ['webhook'],
 		operation: ['sendLegacy'],
 	},
 	hide: {

@@ -40,17 +40,19 @@ export const versionDescription: INodeTypeDescription = {
 	],
 	properties: [
 		{
-			displayName: 'Authentication',
+			displayName: 'Connection Type',
 			name: 'authentication',
 			type: 'options',
 			options: [
 				{
 					name: 'Bot Token',
 					value: 'botToken',
+					description: 'Manage messages, channels, and members on a server',
 				},
 				{
 					name: 'Webhook',
 					value: 'webhook',
+					description: 'Send messages to a specific channel',
 				},
 			],
 			default: 'botToken',
@@ -73,37 +75,15 @@ export const versionDescription: INodeTypeDescription = {
 					name: 'Member',
 					value: 'member',
 				},
-				{
-					name: 'Webhook',
-					value: 'webhook',
-				},
 			],
 			default: 'channel',
-		},
-		{
-			displayName: 'You need to use Webhook credentials to access this resource',
-			name: 'webhookAuthRequired',
-			type: 'notice',
-			default: '',
 			displayOptions: {
-				show: {
-					authentication: ['botToken'],
-					resource: ['webhook'],
-				},
-			},
-		},
-		{
-			displayName: 'You need to use Bot Token credentials to access this resource',
-			name: 'webhookAuthRequired',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
+				hide: {
 					authentication: ['webhook'],
-					resource: ['channel', 'message', 'member'],
 				},
 			},
 		},
+
 		...message.description,
 		...channel.description,
 		...member.description,

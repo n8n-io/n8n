@@ -12,7 +12,6 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: ['webhook'],
 				authentication: ['webhook'],
 			},
 		},

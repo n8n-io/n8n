@@ -10,7 +10,12 @@ import type { Discord } from './node.type';
 export async function router(this: IExecuteFunctions) {
 	let returnData: INodeExecutionData[] = [];
 
-	const resource = this.getNodeParameter<Discord>('resource', 0);
+	let resource = 'webhook';
+	//resource parameter is hidden when authentication is set to webhook
+	//prevent error when getting resource parameter
+	try {
+		resource = this.getNodeParameter<Discord>('resource', 0);
+	} catch (error) {}
 	const operation = this.getNodeParameter('operation', 0);
 
 	let guildId = '';
