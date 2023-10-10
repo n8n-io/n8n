@@ -1,7 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
-import normalizeWheel from 'normalize-wheel';
 import {
 	useWorkflowsStore,
 	useNodeTypesStore,
@@ -10,7 +9,14 @@ import {
 	useSourceControlStore,
 } from '@/stores';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
+import {
+	applyScale,
+	getScaleFromWheelEventDelta,
+	normalizeWheelEventDelta,
+	scaleBigger,
+	scaleReset,
+	scaleSmaller,
+} from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
@@ -31,6 +37,9 @@ import {
 	CONNECTOR_PAINT_STYLE_DEFAULT,
 	CONNECTOR_PAINT_STYLE_PRIMARY,
 	CONNECTOR_ARROW_OVERLAYS,
+	getMousePosition,
+	SIDEBAR_WIDTH,
+	SIDEBAR_WIDTH_EXPANDED,
 } from '@/utils/nodeViewUtils';
 import type { PointXY } from '@jsplumb/util';
 
@@ -64,7 +73,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	});
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
-		const position = getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
+		const position = getMidCanvasPosition(nodeViewScale.value, offset ?? [0, 0]);
 
 		position[0] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
 		position[1] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
@@ -85,6 +94,21 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const getNodesWithPlaceholderNode = (): INodeUi[] =>
 		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
+	const canvasPositionFromPagePosition = (position: XYPosition): XYPosition => {
+		const sidebarWidth = isDemo.value
+			? 0
+			: uiStore.sidebarMenuCollapsed
+			? SIDEBAR_WIDTH
+			: SIDEBAR_WIDTH_EXPANDED;
+
+		const relativeX = position[0] - sidebarWidth;
+		const relativeY = isDemo.value
+			? position[1]
+			: position[1] - uiStore.bannersHeight - uiStore.headerHeight;
+
+		return [relativeX, relativeY];
+	};
+
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
 		jsPlumbInstanceRef.value?.setZoom(zoomLevel);
@@ -95,6 +119,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleReset({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -103,6 +128,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleBigger({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -111,6 +137,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const { scale, offset } = scaleSmaller({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
+			origin: canvasPositionFromPagePosition([window.innerWidth / 2, window.innerHeight / 2]),
 		});
 		setZoomLevel(scale, offset);
 	};
@@ -125,29 +152,30 @@ export const useCanvasStore = defineStore('canvas', () => {
 		setZoomLevel(zoomLevel, offset);
 	};
 
-	const wheelMoveWorkflow = (e: WheelEvent) => {
-		const normalized = normalizeWheel(e);
+	const wheelMoveWorkflow = (deltaX: number, deltaY: number, shiftKeyPressed = false) => {
 		const offsetPosition = uiStore.nodeViewOffsetPosition;
-		const nodeViewOffsetPositionX =
-			offsetPosition[0] - (e.shiftKey ? normalized.pixelY : normalized.pixelX);
-		const nodeViewOffsetPositionY =
-			offsetPosition[1] - (e.shiftKey ? normalized.pixelX : normalized.pixelY);
+		const nodeViewOffsetPositionX = offsetPosition[0] - (shiftKeyPressed ? deltaY : deltaX);
+		const nodeViewOffsetPositionY = offsetPosition[1] - (shiftKeyPressed ? deltaX : deltaY);
 		uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 	};
 
 	const wheelScroll = (e: WheelEvent) => {
-		//* Control + scroll zoom
-		if (e.ctrlKey) {
-			if (e.deltaY > 0) {
-				zoomOut();
-			} else {
-				zoomIn();
-			}
+		// Prevent browser back/forward gesture, default pinch to zoom etc.
+		e.preventDefault();
 
-			e.preventDefault();
+		const { deltaX, deltaY } = normalizeWheelEventDelta(e);
+
+		if (e.ctrlKey || e.metaKey) {
+			const scaleFactor = getScaleFromWheelEventDelta(deltaY);
+			const { scale, offset } = applyScale(scaleFactor)({
+				scale: nodeViewScale.value,
+				offset: uiStore.nodeViewOffsetPosition,
+				origin: canvasPositionFromPagePosition(getMousePosition(e)),
+			});
+			setZoomLevel(scale, offset);
 			return;
 		}
-		wheelMoveWorkflow(e);
+		wheelMoveWorkflow(deltaX, deltaY, e.shiftKey);
 	};
 
 	function initInstance(container: Element) {
@@ -268,6 +296,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		jsPlumbInstance,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
+		canvasPositionFromPagePosition,
 		setZoomLevel,
 		resetZoom,
 		zoomIn,

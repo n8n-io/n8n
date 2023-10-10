@@ -20,3 +20,6 @@ export function toStream(buffer: Buffer) {
 
 	return duplexStream;
 }
+
+export const toFileId = (workflowId: string, executionId: string, fileUuid: string) =>
+	`workflows/${workflowId}/executions/${executionId}/binary_data/${fileUuid}`;
