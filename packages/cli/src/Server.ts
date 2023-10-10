@@ -11,7 +11,7 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
+import { join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -86,7 +86,6 @@ import {
 	LdapController,
 	MeController,
 	MFAController,
-	NodesController,
 	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
@@ -172,6 +171,7 @@ import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import type { FrontendService } from './services/frontend.service';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
@@ -201,6 +201,8 @@ export class Server extends AbstractServer {
 	nodeTypes: NodeTypes;
 
 	credentialTypes: ICredentialTypes;
+
+	frontendService: FrontendService;
 
 	postHog: PostHogClient;
 
@@ -362,6 +364,16 @@ export class Server extends AbstractServer {
 		this.credentialTypes = Container.get(CredentialTypes);
 		this.nodeTypes = Container.get(NodeTypes);
 
+		if (!config.getEnv('endpoints.disableUi')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { FrontendService } = await import('@/services/frontend.service');
+			this.frontendService = Container.get(FrontendService);
+			this.loadNodesAndCredentials.addPostProcessor(async () =>
+				this.frontendService.generateTypes(),
+			);
+			await this.frontendService.generateTypes();
+		}
+
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 		this.waitTracker = Container.get(WaitTracker);
 		this.postHog = Container.get(PostHogClient);
@@ -419,8 +431,7 @@ export class Server extends AbstractServer {
 		};
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
-			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
-			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
 		void Db.collections.Workflow.findOne({
@@ -435,7 +446,7 @@ export class Server extends AbstractServer {
 	/**
 	 * Returns the current settings for the frontend
 	 */
-	getSettingsForFrontend(): IN8nUISettings {
+	private async getSettingsForFrontend(): Promise<IN8nUISettings> {
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = getInstanceBaseUrl();
 		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
@@ -506,8 +517,11 @@ export class Server extends AbstractServer {
 			});
 		}
 
-		if (config.get('nodes.packagesMissing').length > 0) {
-			this.frontendSettings.missingPackages = true;
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			this.frontendSettings.missingPackages =
+				Container.get(CommunityPackagesService).hasMissingPackages;
 		}
 
 		this.frontendSettings.mfa.enabled = isMfaFeatureEnabled();
@@ -585,9 +599,11 @@ export class Server extends AbstractServer {
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			controllers.push(
-				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesController } = await import(
+				'@/controllers/communityPackages.controller'
 			);
+			controllers.push(Container.get(CommunityPackagesController));
 		}
 
 		if (inE2ETests) {
@@ -1480,9 +1496,9 @@ export class Server extends AbstractServer {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.loadNodesAndCredentials.generateTypesForFrontend();
+						await this.frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1509,22 +1525,13 @@ export class Server extends AbstractServer {
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				let { scope, packageName } = req.params;
 				if (scope) packageName = `@${scope}/${packageName}`;
-				const loader = this.loadNodesAndCredentials.loaders[packageName];
-				if (loader) {
-					const pathPrefix = `/icons/${packageName}/`;
-					const filePath = pathResolve(
-						loader.directory,
-						req.originalUrl.substring(pathPrefix.length),
-					);
-					if (pathRelative(loader.directory, filePath).includes('..')) {
-						return res.status(404).end();
-					}
+				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+				if (filePath) {
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath);
 					} catch {}
 				}
-
 				res.sendStatus(404);
 			};
 

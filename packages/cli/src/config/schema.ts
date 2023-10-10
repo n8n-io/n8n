@@ -92,6 +92,12 @@ export const schema = {
 			},
 
 			ssl: {
+				enabled: {
+					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
+					format: 'Boolean',
+					default: false,
+					env: 'DB_POSTGRESDB_SSL_ENABLED',
+				},
 				ca: {
 					doc: 'SSL certificate authority',
 					format: String,
@@ -811,12 +817,6 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
-		},
-		packagesMissing: {
-			// Used to have a persistent list of packages
-			doc: 'Contains a comma separated list of packages that failed to load during startup',
-			format: String,
-			default: '',
 		},
 	},
 

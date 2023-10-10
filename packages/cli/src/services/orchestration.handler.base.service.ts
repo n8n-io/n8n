@@ -1,7 +1,7 @@
 import Container from 'typedi';
-import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/handleCommandMessageWorker';
 import { RedisService } from './redis.service';
 import type { RedisServicePubSubSubscriber } from './redis/RedisServicePubSubSubscriber';
+import type { WorkerCommandReceivedHandlerOptions } from './orchestration/worker/types';
 
 export abstract class OrchestrationHandlerService {
 	protected initialized = false;
