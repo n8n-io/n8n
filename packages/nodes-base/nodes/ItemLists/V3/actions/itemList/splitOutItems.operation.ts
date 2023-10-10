@@ -239,8 +239,6 @@ export async function execute(
 				if (items[i].binary && !newItem.binary) {
 					newItem.binary = items[i].binary;
 				}
-			} else if (includeBinary !== undefined) {
-				delete newItem.binary;
 			}
 
 			returnData.push(newItem);
