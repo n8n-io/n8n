@@ -48,7 +48,7 @@ export class LmOllama implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '={{ $credentials.baseUrl }}',
+			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/$"), "") }}',
 		},
 		properties: [
 			{
@@ -63,7 +63,7 @@ export class LmOllama implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '={{ $credentials.baseUrl }}/api/tags',
+								url: '/api/tags',
 							},
 							output: {
 								postReceive: [
