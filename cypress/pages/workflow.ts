@@ -143,11 +143,14 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			if (opts?.action) {
 				// Expand actions category if it's collapsed
-				nodeCreator.getters.getCategoryItem('Actions').parent().then(($el) => {
-					if ($el.attr('data-category-collapsed') === 'true') {
-						nodeCreator.getters.getCategoryItem('Actions').click();
-					}
-				});
+				nodeCreator.getters
+					.getCategoryItem('Actions')
+					.parent()
+					.then(($el) => {
+						if ($el.attr('data-category-collapsed') === 'true') {
+							nodeCreator.getters.getCategoryItem('Actions').click();
+						}
+					});
 				nodeCreator.getters.getCreatorItem(opts.action).click();
 			} else if (!opts?.keepNdvOpen) {
 				cy.get('body').type('{esc}');
@@ -249,6 +252,17 @@ export class WorkflowPage extends BasePage {
 		zoomToFit: () => {
 			cy.getByTestId('zoom-to-fit').click();
 		},
+		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
+			// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
+			this.getters.nodeViewBackground().trigger('wheel', {
+				force: true,
+				bubbles: true,
+				ctrlKey: true,
+				pageX: cy.window().innerWidth / 2,
+				pageY: cy.window().innerHeight / 2,
+				deltaY: mode === 'zoomOut' ? 16 * steps : -16 * steps,
+			});
+		},
 		hitUndo: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
 		},
@@ -311,10 +325,7 @@ export class WorkflowPage extends BasePage {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
 		},
 		shouldHaveWorkflowName: (name: string) => {
-			this.getters
-			.workflowNameInputContainer()
-			.invoke('attr', 'title')
-			.should('include', name);
+			this.getters.workflowNameInputContainer().invoke('attr', 'title').should('include', name);
 		},
 	};
 }
