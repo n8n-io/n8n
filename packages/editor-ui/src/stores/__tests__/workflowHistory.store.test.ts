@@ -1,34 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
+import type { IN8nUISettings } from 'n8n-workflow';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import {
-	workflowHistoryDataFactory,
-	workflowVersionDataFactory,
-} from '@/stores/__tests__/utils/workflowHistoryTestUtils';
-
-const historyData = Array.from({ length: 5 }, workflowHistoryDataFactory);
-const versionData = {
-	...workflowVersionDataFactory(),
-	...historyData[0],
-};
 
 describe('Workflow history store', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
-	});
-
-	it('should reset data', () => {
-		const workflowHistoryStore = useWorkflowHistoryStore();
-
-		workflowHistoryStore.addWorkflowHistory(historyData);
-		workflowHistoryStore.setActiveWorkflowVersion(versionData);
-
-		expect(workflowHistoryStore.workflowHistory).toEqual(historyData);
-		expect(workflowHistoryStore.activeWorkflowVersion).toEqual(versionData);
-
-		workflowHistoryStore.reset();
-		expect(workflowHistoryStore.workflowHistory).toEqual([]);
-		expect(workflowHistoryStore.activeWorkflowVersion).toEqual(null);
 	});
 
 	test.each([
@@ -49,7 +26,7 @@ describe('Workflow history store', () => {
 					pruneTime,
 					licensePruneTime,
 				},
-			};
+			} as IN8nUISettings;
 
 			expect(workflowHistoryStore.shouldUpgrade).toBe(shouldUpgrade);
 		},

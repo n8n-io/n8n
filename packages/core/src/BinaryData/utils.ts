@@ -15,6 +15,10 @@ export function areValidModes(modes: string[]): modes is BinaryData.Mode[] {
 	return modes.every((m) => BINARY_DATA_MODES.includes(m as BinaryData.Mode));
 }
 
+export function isValidNonDefaultMode(mode: string): mode is BinaryData.NonDefaultMode {
+	return BINARY_DATA_MODES.filter((m) => m !== 'default').includes(mode as BinaryData.Mode);
+}
+
 export async function ensureDirExists(dir: string) {
 	try {
 		await fs.access(dir);

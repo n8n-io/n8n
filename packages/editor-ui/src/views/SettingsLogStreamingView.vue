@@ -188,7 +188,7 @@ export default defineComponent({
 			this.$forceUpdate();
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
