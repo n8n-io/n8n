@@ -30,148 +30,77 @@ function getDataId(run: IRun, kind: 'binary' | 'json') {
 
 const binaryDataService = mockInstance(BinaryDataService);
 
-describe('on filesystem mode', () => {
-	describe('restoreBinaryDataId()', () => {
-		beforeAll(() => {
-			config.set('binaryDataManager.mode', 'filesystem');
-		});
-
-		afterEach(() => {
-			jest.clearAllMocks();
-		});
-
-		it('should restore if binary data ID is missing execution ID', async () => {
-			const executionId = '999';
-			const incorrectFileId = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
-			const run = toIRun({
-				binary: {
-					data: { id: `filesystem:${incorrectFileId}` },
-				},
+for (const mode of ['filesystem-v2', 's3'] as const) {
+	describe(`on ${mode} mode`, () => {
+		describe('restoreBinaryDataId()', () => {
+			beforeAll(() => {
+				config.set('binaryDataManager.mode', mode);
 			});
 
-			await restoreBinaryDataId(run, executionId);
+			afterEach(() => {
+				jest.clearAllMocks();
+			});
 
-			const correctFileId = `${executionId}${incorrectFileId}`;
-			const correctBinaryDataId = `filesystem:${correctFileId}`;
+			it('should restore if binary data ID is missing execution ID', async () => {
+				const workflowId = '6HYhhKmJch2cYxGj';
+				const executionId = 'temp';
+				const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
 
-			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
-			expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
-		});
+				const incorrectFileId = `workflows/${workflowId}/executions/temp/binary_data/${binaryDataFileUuid}`;
 
-		it('should do nothing if binary data ID is not missing execution ID', async () => {
-			const executionId = '999';
-			const fileId = `${executionId}a5c3f1ed-9d59-4155-bc68-9a370b3c51f6`;
-			const binaryDataId = `filesystem:${fileId}`;
-			const run = toIRun({
-				binary: {
-					data: {
-						id: binaryDataId,
+				const run = toIRun({
+					binary: {
+						data: { id: `s3:${incorrectFileId}` },
 					},
-				},
+				});
+
+				await restoreBinaryDataId(run, executionId);
+
+				const correctFileId = incorrectFileId.replace('temp', executionId);
+				const correctBinaryDataId = `s3:${correctFileId}`;
+
+				expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
+				expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
 			});
 
-			await restoreBinaryDataId(run, executionId);
+			it('should do nothing if binary data ID is not missing execution ID', async () => {
+				const workflowId = '6HYhhKmJch2cYxGj';
+				const executionId = '999';
+				const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
-			expect(getDataId(run, 'binary')).toBe(binaryDataId);
-		});
+				const fileId = `workflows/${workflowId}/executions/${executionId}/binary_data/${binaryDataFileUuid}`;
 
-		it('should do nothing if no binary data ID', async () => {
-			const executionId = '999';
-			const dataId = '123';
-			const run = toIRun({
-				json: {
-					data: { id: dataId },
-				},
-			});
+				const binaryDataId = `s3:${fileId}`;
 
-			await restoreBinaryDataId(run, executionId);
-
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
-			expect(getDataId(run, 'json')).toBe(dataId);
-		});
-	});
-});
-
-describe('on s3 mode', () => {
-	describe('restoreBinaryDataId()', () => {
-		beforeAll(() => {
-			config.set('binaryDataManager.mode', 's3');
-		});
-
-		afterEach(() => {
-			jest.clearAllMocks();
-		});
-
-		it('should restore if binary data ID is missing execution ID', async () => {
-			const workflowId = '6HYhhKmJch2cYxGj';
-			const executionId = 'temp';
-			const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
-
-			const incorrectFileId = `workflows/${workflowId}/executions/temp/binary_data/${binaryDataFileUuid}`;
-
-			const run = toIRun({
-				binary: {
-					data: { id: `s3:${incorrectFileId}` },
-				},
-			});
-
-			await restoreBinaryDataId(run, executionId);
-
-			const correctFileId = incorrectFileId.replace('temp', executionId);
-			const correctBinaryDataId = `s3:${correctFileId}`;
-
-			expect(binaryDataService.rename).toHaveBeenCalledWith(incorrectFileId, correctFileId);
-			expect(getDataId(run, 'binary')).toBe(correctBinaryDataId);
-		});
-
-		it('should do nothing if binary data ID is not missing execution ID', async () => {
-			const workflowId = '6HYhhKmJch2cYxGj';
-			const executionId = '999';
-			const binaryDataFileUuid = 'a5c3f1ed-9d59-4155-bc68-9a370b3c51f6';
-
-			const fileId = `workflows/${workflowId}/executions/${executionId}/binary_data/${binaryDataFileUuid}`;
-
-			const binaryDataId = `s3:${fileId}`;
-
-			const run = toIRun({
-				binary: {
-					data: {
-						id: binaryDataId,
+				const run = toIRun({
+					binary: {
+						data: {
+							id: binaryDataId,
+						},
 					},
-				},
+				});
+
+				await restoreBinaryDataId(run, executionId);
+
+				expect(binaryDataService.rename).not.toHaveBeenCalled();
+				expect(getDataId(run, 'binary')).toBe(binaryDataId);
 			});
 
-			await restoreBinaryDataId(run, executionId);
+			it('should do nothing if no binary data ID', async () => {
+				const executionId = '999';
+				const dataId = '123';
 
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
-			expect(getDataId(run, 'binary')).toBe(binaryDataId);
-		});
+				const run = toIRun({
+					json: {
+						data: { id: dataId },
+					},
+				});
 
-		it('should do nothing if no binary data ID', async () => {
-			const executionId = '999';
-			const dataId = '123';
+				await restoreBinaryDataId(run, executionId);
 
-			const run = toIRun({
-				json: {
-					data: { id: dataId },
-				},
+				expect(binaryDataService.rename).not.toHaveBeenCalled();
+				expect(getDataId(run, 'json')).toBe(dataId);
 			});
-
-			await restoreBinaryDataId(run, executionId);
-
-			expect(binaryDataService.rename).not.toHaveBeenCalled();
-			expect(getDataId(run, 'json')).toBe(dataId);
 		});
 	});
-
-	it('should do nothing on itemless case', async () => {
-		const executionId = '999';
-
-		const promise = restoreBinaryDataId(toIRun(), executionId);
-
-		await expect(promise).resolves.not.toThrow();
-
-		expect(binaryDataService.rename).not.toHaveBeenCalled();
-	});
-});
+}

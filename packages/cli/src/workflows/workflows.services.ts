@@ -35,6 +35,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
+import { BinaryDataService } from 'n8n-core';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -463,7 +464,13 @@ export class WorkflowsService {
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
+		const idsForDeletion = await Db.collections.Execution.find({
+			select: ['id'],
+			where: { workflowId },
+		}).then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
+
 		await Db.collections.Workflow.delete(workflowId);
+		await Container.get(BinaryDataService).deleteMany(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await Container.get(ExternalHooks).run('workflow.afterDelete', [workflowId]);

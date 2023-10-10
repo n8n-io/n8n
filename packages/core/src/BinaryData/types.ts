@@ -1,14 +1,30 @@
 import type { Readable } from 'stream';
-import type { BINARY_DATA_MODES } from './utils';
 
 export namespace BinaryData {
-	export type Mode = (typeof BINARY_DATA_MODES)[number];
+	type LegacyMode = 'filesystem';
 
-	export type NonDefaultMode = Exclude<Mode, 'default'>;
+	type UpgradedMode = 'filesystem-v2';
+
+	/**
+	 * Binary data mode selectable by user via env var config.
+	 */
+	export type ConfigMode = 'default' | 'filesystem' | 's3';
+
+	/**
+	 * Binary data mode used internally by binary data service. User-selected
+	 * legacy modes are replaced with upgraded modes.
+	 */
+	export type ServiceMode = Exclude<ConfigMode, LegacyMode> | UpgradedMode;
+
+	/**
+	 * Binary data mode in binary data ID in stored execution data. Both legacy
+	 * and upgraded modes may be present, except default in-memory mode.
+	 */
+	export type StoredMode = Exclude<ConfigMode | UpgradedMode, 'default'>;
 
 	export type Config = {
-		mode: Mode;
-		availableModes: string[];
+		mode: ConfigMode;
+		availableModes: ConfigMode[];
 		localStoragePath: string;
 	};
 
