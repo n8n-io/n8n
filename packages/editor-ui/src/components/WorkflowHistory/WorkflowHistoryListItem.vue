@@ -145,6 +145,7 @@ onMounted(() => {
 		display: grid;
 		padding: var(--spacing-s);
 		cursor: pointer;
+		flex: 1 1 auto;
 
 		time {
 			padding: 0 0 var(--spacing-5xs);
