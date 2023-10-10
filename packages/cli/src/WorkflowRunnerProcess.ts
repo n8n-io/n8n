@@ -35,8 +35,6 @@ import {
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
@@ -115,8 +113,6 @@ class WorkflowRunnerProcess {
 		await loadNodesAndCredentials.init();
 
 		const nodeTypes = Container.get(NodeTypes);
-		const credentialTypes = Container.get(CredentialTypes);
-		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
