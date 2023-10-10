@@ -137,7 +137,6 @@ export default defineComponent({
 
 	&:hover {
 		background-color: var(--color-background-base);
-		// color: initial !important;
 		color: var(--color-primary);
 	}
 }
