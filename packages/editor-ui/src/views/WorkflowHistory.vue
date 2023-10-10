@@ -73,7 +73,7 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 		queryParams,
 	);
 	lastReceivedItemsLength.value = history.length;
-	workflowHistory.value.push(...history);
+	workflowHistory.value = workflowHistory.value.concat(history);
 };
 
 onBeforeMount(async () => {
@@ -197,6 +197,10 @@ const onAction = async ({
 					id,
 					modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
 				);
+				const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
+					take: 1,
+				});
+				workflowHistory.value = history.concat(workflowHistory.value);
 				toast.showMessage({
 					title: i18n.baseText('workflowHistory.action.restore.success.title'),
 					type: 'success',
@@ -234,6 +238,9 @@ const onUpgrade = () => {
 };
 
 watchEffect(async () => {
+	if (!route.params.versionId) {
+		return;
+	}
 	try {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsStore.fetchWorkflow(route.params.workflowId),
