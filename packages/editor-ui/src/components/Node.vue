@@ -820,12 +820,7 @@ export default defineComponent({
 
 .select-background {
 	display: block;
-	background-color: hsla(
-		var(--color-foreground-base-h),
-		var(--color-foreground-base-s),
-		var(--color-foreground-base-l),
-		60%
-	);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
