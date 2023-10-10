@@ -16,6 +16,7 @@ import {
 	workflowVersionDataFactory,
 } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 import type { WorkflowVersion } from '@/types/workflowHistory';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -79,7 +80,7 @@ describe('WorkflowHistory', () => {
 		route = useRoute();
 		router = useRouter();
 
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue(null);
+		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
