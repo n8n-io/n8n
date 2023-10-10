@@ -1,23 +1,200 @@
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import uniq from 'lodash/uniq';
 import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import path from 'path';
 
-import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	IN8nUISettings,
+	INodeTypeBaseDescription,
+	ITelemetrySettings,
+} from 'n8n-workflow';
 
-import { GENERATED_STATIC_DIR } from '@/constants';
+import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { License } from '@/License';
+import {
+	getInstanceBaseUrl,
+	isEmailSetUp,
+	isSharingEnabled,
+} from '@/UserManagement/UserManagementHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import { LoggerProxy } from 'n8n-workflow';
+import config from '@/config';
+import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
+import { isApiEnabled } from '@/PublicApi';
+import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
+import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from '@/Ldap/helpers';
+import { getSamlLoginLabel, isSamlLicensed, isSamlLoginEnabled } from '@/sso/saml/samlHelpers';
+import {
+	isAdvancedExecutionFiltersEnabled,
+	isDebugInEditorLicensed,
+} from '@/executions/executionHelpers';
+import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
+import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
+import { isExternalSecretsEnabled } from '@/ExternalSecrets/externalSecretsHelper.ee';
+import {
+	getWorkflowHistoryLicensePruneTime,
+	getWorkflowHistoryPruneTime,
+	isWorkflowHistoryEnabled,
+} from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { isMfaFeatureEnabled } from '@/Mfa/helpers';
 
 @Service()
 export class FrontendService {
+	settings: IN8nUISettings;
+
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
-	) {}
+	) {
+		this.initSettings();
+	}
+
+	private initSettings() {
+		const instanceBaseUrl = getInstanceBaseUrl();
+		const restEndpoint = config.getEnv('endpoints.rest');
+
+		const telemetrySettings: ITelemetrySettings = {
+			enabled: config.getEnv('diagnostics.enabled'),
+		};
+
+		if (telemetrySettings.enabled) {
+			const conf = config.getEnv('diagnostics.config.frontend');
+			const [key, url] = conf.split(';');
+
+			if (!key || !url) {
+				LoggerProxy.warn('Diagnostics frontend config is invalid');
+				telemetrySettings.enabled = false;
+			}
+
+			telemetrySettings.config = { key, url };
+		}
+
+		this.settings = {
+			endpointWebhook: config.getEnv('endpoints.webhook'),
+			endpointWebhookTest: config.getEnv('endpoints.webhookTest'),
+			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
+			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
+			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
+			executionTimeout: config.getEnv('executions.timeout'),
+			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
+			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
+			timezone: config.getEnv('generic.timezone'),
+			urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
+			urlBaseEditor: instanceBaseUrl,
+			versionCli: '',
+			releaseChannel: config.getEnv('generic.releaseChannel'),
+			oauthCallbackUrls: {
+				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
+				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
+			},
+			versionNotifications: {
+				enabled: config.getEnv('versionNotifications.enabled'),
+				endpoint: config.getEnv('versionNotifications.endpoint'),
+				infoUrl: config.getEnv('versionNotifications.infoUrl'),
+			},
+			instanceId: '',
+			telemetry: telemetrySettings,
+			posthog: {
+				enabled: config.getEnv('diagnostics.enabled'),
+				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				autocapture: false,
+				disableSessionRecording: config.getEnv(
+					'diagnostics.config.posthog.disableSessionRecording',
+				),
+				debug: config.getEnv('logs.level') === 'debug',
+			},
+			personalizationSurveyEnabled:
+				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
+			defaultLocale: config.getEnv('defaultLocale'),
+			userManagement: {
+				quota: Container.get(License).getUsersLimit(),
+				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+				smtpSetup: isEmailSetUp(),
+				authenticationMethod: getCurrentAuthenticationMethod(),
+			},
+			sso: {
+				saml: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+				ldap: {
+					loginEnabled: false,
+					loginLabel: '',
+				},
+			},
+			publicApi: {
+				enabled: isApiEnabled(),
+				latestVersion: 1,
+				path: config.getEnv('publicApi.path'),
+				swaggerUi: {
+					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+				},
+			},
+			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
+			logLevel: config.getEnv('logs.level'),
+			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
+			templates: {
+				enabled: config.getEnv('templates.enabled'),
+				host: config.getEnv('templates.host'),
+			},
+			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
+			executionMode: config.getEnv('executions.mode'),
+			pushBackend: config.getEnv('push.backend'),
+			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			deployment: {
+				type: config.getEnv('deployment.type'),
+			},
+			isNpmAvailable: false,
+			allowedModules: {
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
+			},
+			enterprise: {
+				sharing: false,
+				ldap: false,
+				saml: false,
+				logStreaming: false,
+				advancedExecutionFilters: false,
+				variables: false,
+				sourceControl: false,
+				auditLogs: false,
+				externalSecrets: false,
+				showNonProdBanner: false,
+				debugInEditor: false,
+				workflowHistory: false,
+			},
+			mfa: {
+				enabled: false,
+			},
+			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
+			variables: {
+				limit: 0,
+			},
+			expressions: {
+				evaluator: config.getEnv('expression.evaluator'),
+			},
+			banners: {
+				dismissed: [],
+			},
+			ai: {
+				enabled: config.getEnv('ai.enabled'),
+			},
+			workflowHistory: {
+				pruneTime: -1,
+				licensePruneTime: -1,
+			},
+		};
+	}
 
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
@@ -27,6 +204,94 @@ export class FrontendService {
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
 		this.writeStaticJSON('credentials', credentials);
+	}
+
+	async getSettings(): Promise<IN8nUISettings> {
+		const restEndpoint = config.getEnv('endpoints.rest');
+
+		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
+		const instanceBaseUrl = getInstanceBaseUrl();
+		this.settings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
+		this.settings.urlBaseEditor = instanceBaseUrl;
+		this.settings.oauthCallbackUrls = {
+			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
+			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
+		};
+
+		// refresh user management status
+		Object.assign(this.settings.userManagement, {
+			quota: Container.get(License).getUsersLimit(),
+			authenticationMethod: getCurrentAuthenticationMethod(),
+			showSetupOnFirstLoad:
+				!config.getEnv('userManagement.isInstanceOwnerSetUp') &&
+				!config.getEnv('deployment.type').startsWith('desktop_'),
+		});
+
+		let dismissedBanners: string[] = [];
+
+		try {
+			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
+		} catch {
+			// not yet in DB
+		}
+
+		this.settings.banners.dismissed = dismissedBanners;
+
+		// refresh enterprise status
+		Object.assign(this.settings.enterprise, {
+			sharing: isSharingEnabled(),
+			logStreaming: isLogStreamingEnabled(),
+			ldap: isLdapEnabled(),
+			saml: isSamlLicensed(),
+			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
+			variables: isVariablesEnabled(),
+			sourceControl: isSourceControlLicensed(),
+			externalSecrets: isExternalSecretsEnabled(),
+			showNonProdBanner: Container.get(License).isFeatureEnabled(
+				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
+			),
+			debugInEditor: isDebugInEditorLicensed(),
+			workflowHistory: isWorkflowHistoryEnabled(),
+		});
+
+		if (isLdapEnabled()) {
+			Object.assign(this.settings.sso.ldap, {
+				loginLabel: getLdapLoginLabel(),
+				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
+
+		if (isSamlLicensed()) {
+			Object.assign(this.settings.sso.saml, {
+				loginLabel: getSamlLoginLabel(),
+				loginEnabled: isSamlLoginEnabled(),
+			});
+		}
+
+		if (isVariablesEnabled()) {
+			this.settings.variables.limit = getVariablesLimit();
+		}
+
+		if (isWorkflowHistoryEnabled()) {
+			Object.assign(this.settings.workflowHistory, {
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
+			});
+		}
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
+		}
+
+		this.settings.mfa.enabled = isMfaFeatureEnabled();
+
+		return this.settings;
+	}
+
+	addToSettings(newSettings: Record<string, unknown>) {
+		this.settings = { ...this.settings, ...newSettings };
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
