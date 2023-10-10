@@ -116,20 +116,21 @@ describe('Webhook API', () => {
 				.field('field1', 'value1')
 				.field('field2', 'value2')
 				.field('field2', 'value3')
-				.attach('file', Buffer.from('random-text'))
+				.attach('file1', Buffer.from('random-text'))
+				.attach('file2', Buffer.from('random-text'))
+				.attach('file2', Buffer.from('random-text'))
 				.set('content-type', 'multipart/form-data');
 
 			expect(response.statusCode).toEqual(200);
 			expect(response.body.type).toEqual('multipart/form-data');
-			const {
-				data,
-				files: {
-					file: [file],
-				},
-			} = response.body.body;
+			const { data, files } = response.body.body;
 			expect(data).toEqual({ field1: 'value1', field2: ['value2', 'value3'] });
-			expect(file.mimetype).toEqual('application/octet-stream');
-			expect(readFileSync(file.filepath, 'utf-8')).toEqual('random-text');
+
+			expect(files.file1).not.toBeInstanceOf(Array);
+			expect(files.file1.mimetype).toEqual('application/octet-stream');
+			expect(readFileSync(files.file1.filepath, 'utf-8')).toEqual('random-text');
+			expect(files.file2).toBeInstanceOf(Array);
+			expect(files.file2.length).toEqual(2);
 		});
 	});
 
