@@ -16,32 +16,18 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import {
-	getInstanceBaseUrl,
-	isEmailSetUp,
-	isSharingEnabled,
-} from '@/UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl, isEmailSetUp } from '@/UserManagement/UserManagementHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
-import { isApiEnabled } from '@/PublicApi';
-import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
-import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from '@/Ldap/helpers';
-import { getSamlLoginLabel, isSamlLicensed, isSamlLoginEnabled } from '@/sso/saml/samlHelpers';
-import {
-	isAdvancedExecutionFiltersEnabled,
-	isDebugInEditorLicensed,
-} from '@/executions/executionHelpers';
-import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
-import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
-import { isExternalSecretsEnabled } from '@/ExternalSecrets/externalSecretsHelper.ee';
+import { getLdapLoginLabel } from '@/Ldap/helpers';
+import { getSamlLoginLabel } from '@/sso/saml/samlHelpers';
+import { getVariablesLimit } from '@/environments/variables/enviromentHelpers';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-	isWorkflowHistoryEnabled,
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
-import { isMfaFeatureEnabled } from '@/Mfa/helpers';
 
 @Service()
 export class FrontendService {
@@ -131,7 +117,7 @@ export class FrontendService {
 				},
 			},
 			publicApi: {
-				enabled: isApiEnabled(),
+				enabled: !config.get('publicApi.disabled') && !this.license.isAPIDisabled(),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
 				swaggerUi: {
@@ -240,38 +226,39 @@ export class FrontendService {
 
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
-			sharing: isSharingEnabled(),
-			logStreaming: isLogStreamingEnabled(),
-			ldap: isLdapEnabled(),
-			saml: isSamlLicensed(),
-			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
-			variables: isVariablesEnabled(),
-			sourceControl: isSourceControlLicensed(),
-			externalSecrets: isExternalSecretsEnabled(),
+			sharing: this.license.isSharingEnabled(),
+			logStreaming: this.license.isLogStreamingEnabled(),
+			ldap: this.license.isLdapEnabled(),
+			saml: this.license.isSamlEnabled(),
+			advancedExecutionFilters: this.license.isAdvancedExecutionFiltersEnabled(),
+			variables: this.license.isVariablesEnabled(),
+			sourceControl: this.license.isSourceControlLicensed(),
+			externalSecrets: this.license.isExternalSecretsEnabled(),
 			showNonProdBanner: this.license.isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
-			debugInEditor: isDebugInEditorLicensed(),
-			workflowHistory: isWorkflowHistoryEnabled(),
+			debugInEditor: this.license.isDebugInEditorLicensed(),
+			workflowHistory:
+				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
 		});
 
-		if (isLdapEnabled()) {
+		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
 				loginLabel: getLdapLoginLabel(),
-				loginEnabled: isLdapLoginEnabled(),
+				loginEnabled: config.getEnv('sso.ldap.loginEnabled'),
 			});
 		}
 
-		if (isSamlLicensed()) {
+		if (this.license.isSamlEnabled()) {
 			Object.assign(this.settings.sso.saml, {
 				loginLabel: getSamlLoginLabel(),
-				loginEnabled: isSamlLoginEnabled(),
+				loginEnabled: config.getEnv('sso.saml.loginEnabled'),
 			});
 		}
 
-		if (isVariablesEnabled()) {
+		if (this.license.isVariablesEnabled()) {
 			this.settings.variables.limit = getVariablesLimit();
 		}
 
-		if (isWorkflowHistoryEnabled()) {
+		if (this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled')) {
 			Object.assign(this.settings.workflowHistory, {
 				pruneTime: getWorkflowHistoryPruneTime(),
 				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
@@ -284,7 +271,7 @@ export class FrontendService {
 			this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
 		}
 
-		this.settings.mfa.enabled = isMfaFeatureEnabled();
+		this.settings.mfa.enabled = config.get('mfa.enabled');
 
 		return this.settings;
 	}
