@@ -3,12 +3,7 @@ import type { INodeUi, XYPosition } from '@/Interface';
 import useDeviceSupport from './useDeviceSupport';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	getMousePosition,
-	getRelativePosition,
-	SIDEBAR_WIDTH,
-	SIDEBAR_WIDTH_EXPANDED,
-} from '@/utils/nodeViewUtils';
+import { getMousePosition, getRelativePosition } from '@/utils/nodeViewUtils';
 import { ref, onMounted, computed } from 'vue';
 import { useCanvasStore } from '@/stores/canvas.store';
 
