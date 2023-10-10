@@ -116,6 +116,7 @@ const onAction = ({
 	top: 0;
 	width: 100%;
 	height: 100%;
+	overflow: auto;
 }
 
 .info {
@@ -143,15 +144,15 @@ const onAction = ({
 			cursor: default;
 
 			&:first-child {
-				padding-top: var(--spacing-2xs);
-				padding-bottom: var(--spacing-xs);
+				padding-top: var(--spacing-3xs);
+				padding-bottom: var(--spacing-3xs);
 				* {
 					font-size: var(--font-size-m);
 				}
 			}
 
 			&:last-child {
-				padding-top: var(--spacing-xs);
+				padding-top: var(--spacing-3xs);
 
 				* {
 					font-size: var(--font-size-2xs);
@@ -164,6 +165,10 @@ const onAction = ({
 
 			* {
 				max-width: unset;
+				justify-self: unset;
+				white-space: unset;
+				overflow: hidden;
+				text-overflow: unset;
 				padding: 0;
 				font-size: var(--font-size-s);
 			}

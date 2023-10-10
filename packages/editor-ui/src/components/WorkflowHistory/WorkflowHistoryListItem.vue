@@ -39,7 +39,7 @@ const formattedCreatedAt = computed<string>(() => {
 	const currentYear = new Date().getFullYear().toString();
 	const [date, time] = dateformat(
 		props.item.createdAt,
-		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM`,
+		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM:ss`,
 	).split('#');
 
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
@@ -144,11 +144,10 @@ onMounted(() => {
 	p {
 		display: grid;
 		padding: var(--spacing-s);
-		line-height: unset;
 		cursor: pointer;
 
 		time {
-			padding: 0 0 var(--spacing-3xs);
+			padding: 0 0 var(--spacing-5xs);
 			color: var(--color-text-dark);
 			font-size: var(--font-size-s);
 			font-weight: var(--font-weight-bold);
@@ -161,7 +160,7 @@ onMounted(() => {
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
-			padding-top: var(--spacing-4xs);
+			margin-top: calc(var(--spacing-4xs) * -1);
 			font-size: var(--font-size-2xs);
 		}
 	}

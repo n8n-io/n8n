@@ -46,6 +46,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
+const canRender = ref(true);
 const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
@@ -76,21 +77,26 @@ const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 };
 
 onBeforeMount(async () => {
-	const [workflow] = await Promise.all([
-		workflowsStore.fetchWorkflow(route.params.workflowId),
-		loadMore({ take: requestNumberOfItems.value }),
-	]);
-	activeWorkflow.value = workflow;
-	isListLoading.value = false;
+	try {
+		const [workflow] = await Promise.all([
+			workflowsStore.fetchWorkflow(route.params.workflowId),
+			loadMore({ take: requestNumberOfItems.value }),
+		]);
+		activeWorkflow.value = workflow;
+		isListLoading.value = false;
 
-	if (!route.params.versionId && workflowHistory.value.length) {
-		await router.replace({
-			name: VIEWS.WORKFLOW_HISTORY,
-			params: {
-				workflowId: route.params.workflowId,
-				versionId: workflowHistory.value[0].versionId,
-			},
-		});
+		if (!route.params.versionId && workflowHistory.value.length) {
+			await router.replace({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId: route.params.workflowId,
+					versionId: workflowHistory.value[0].versionId,
+				},
+			});
+		}
+	} catch (error) {
+		canRender.value = false;
+		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	}
 });
 
@@ -228,13 +234,16 @@ const onUpgrade = () => {
 };
 
 watchEffect(async () => {
-	if (route.params.versionId) {
+	try {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsStore.fetchWorkflow(route.params.workflowId),
 			workflowHistoryStore.getWorkflowVersion(route.params.workflowId, route.params.versionId),
 		]);
 		activeWorkflow.value = workflow;
 		activeWorkflowVersion.value = workflowVersion;
+	} catch (error) {
+		canRender.value = false;
+		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	}
 });
 </script>
@@ -253,6 +262,7 @@ watchEffect(async () => {
 		</div>
 		<div :class="$style.contentComponentWrapper">
 			<workflow-history-content
+				v-if="canRender"
 				:workflow="activeWorkflow"
 				:workflow-version="activeWorkflowVersion"
 				:actions="actions"
@@ -262,6 +272,7 @@ watchEffect(async () => {
 		</div>
 		<div :class="$style.listComponentWrapper">
 			<workflow-history-list
+				v-if="canRender"
 				:items="workflowHistory"
 				:lastReceivedItemsLength="lastReceivedItemsLength"
 				:activeItem="activeWorkflowVersion"
@@ -311,13 +322,13 @@ watchEffect(async () => {
 .contentComponentWrapper {
 	grid-area: content;
 	position: relative;
-	z-index: 1;
+	z-index: 2;
 }
 
 .listComponentWrapper {
 	grid-area: list;
 	position: relative;
-	z-index: 2;
+	z-index: 1;
 
 	&::before {
 		content: '';
