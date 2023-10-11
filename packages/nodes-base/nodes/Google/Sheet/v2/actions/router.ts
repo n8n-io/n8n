@@ -6,7 +6,7 @@ import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import type { GoogleSheets, ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const operationResult: INodeExecutionData[] = [];
+	let operationResult: INodeExecutionData[] = [];
 
 	try {
 		const resource = this.getNodeParameter('resource', 0);
@@ -17,6 +17,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			operation,
 		} as GoogleSheets;
 
+		let results: INodeExecutionData[] | undefined;
 		if (googleSheets.resource === 'sheet') {
 			const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
 			const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
@@ -49,16 +50,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 			}
 
-			operationResult.push(
-				...(await sheet[googleSheets.operation].execute.call(
-					this,
-					googleSheet,
-					sheetName,
-					sheetId,
-				)),
+			results = await sheet[googleSheets.operation].execute.call(
+				this,
+				googleSheet,
+				sheetName,
+				sheetId,
 			);
 		} else if (googleSheets.resource === 'spreadsheet') {
-			operationResult.push(...(await spreadsheet[googleSheets.operation].execute.call(this)));
+			results = await spreadsheet[googleSheets.operation].execute.call(this);
+		}
+		if (results?.length) {
+			operationResult = operationResult.concat(results);
 		}
 	} catch (err) {
 		if (this.continueOnFail()) {

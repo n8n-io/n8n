@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { readFile, stat } from 'fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
-
-import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
-import { LogCatch } from '../decorators/LogCatch.decorator';
+import { UnknownBinaryDataManagerError, InvalidBinaryDataModeError } from './errors';
 import { areValidModes, toBuffer } from './utils';
+import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -20,15 +19,27 @@ export class BinaryDataService {
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataMode();
+		if (!areValidModes(config.availableModes)) {
+			throw new InvalidBinaryDataModeError();
+		}
 
 		this.mode = config.mode;
 
 		if (config.availableModes.includes('filesystem')) {
 			const { FileSystemManager } = await import('./FileSystem.manager');
+
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
 
 			await this.managers.filesystem.init();
+		}
+
+		if (config.availableModes.includes('s3')) {
+			const { ObjectStoreManager } = await import('./ObjectStore.manager');
+			const { ObjectStoreService } = await import('../ObjectStore/ObjectStore.service.ee');
+
+			this.managers.s3 = new ObjectStoreManager(Container.get(ObjectStoreService));
+
+			await this.managers.s3.init();
 		}
 	}
 
@@ -242,6 +253,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new UnknownBinaryDataManager(mode);
+		throw new UnknownBinaryDataManagerError(mode);
 	}
 }

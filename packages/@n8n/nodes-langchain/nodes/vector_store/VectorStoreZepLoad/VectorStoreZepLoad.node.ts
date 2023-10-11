@@ -98,6 +98,7 @@ export class VectorStoreZepLoad implements INodeType {
 
 		const zepConfig = {
 			apiUrl: credentials.apiUrl,
+			apiKey: credentials.apiKey,
 			collectionName,
 			embeddingDimensions: options.embeddingDimensions ?? 1536,
 		};

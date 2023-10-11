@@ -11,7 +11,7 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
+import { join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -26,13 +26,11 @@ import type { RequestOptions } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 
 import {
-	BinaryDataService,
 	Credentials,
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
-	FileNotFoundError,
 } from 'n8n-core';
 
 import type {
@@ -74,7 +72,6 @@ import {
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
-	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -89,7 +86,6 @@ import {
 	LdapController,
 	MeController,
 	MFAController,
-	NodesController,
 	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
@@ -99,6 +95,7 @@ import {
 	WorkflowStatisticsController,
 } from '@/controllers';
 
+import { BinaryDataController } from './controllers/binaryData.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
@@ -174,6 +171,7 @@ import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import type { FrontendService } from './services/frontend.service';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
@@ -204,11 +202,11 @@ export class Server extends AbstractServer {
 
 	credentialTypes: ICredentialTypes;
 
+	frontendService: FrontendService;
+
 	postHog: PostHogClient;
 
 	push: Push;
-
-	binaryDataService: BinaryDataService;
 
 	constructor() {
 		super('main');
@@ -366,6 +364,16 @@ export class Server extends AbstractServer {
 		this.credentialTypes = Container.get(CredentialTypes);
 		this.nodeTypes = Container.get(NodeTypes);
 
+		if (!config.getEnv('endpoints.disableUi')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { FrontendService } = await import('@/services/frontend.service');
+			this.frontendService = Container.get(FrontendService);
+			this.loadNodesAndCredentials.addPostProcessor(async () =>
+				this.frontendService.generateTypes(),
+			);
+			await this.frontendService.generateTypes();
+		}
+
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 		this.waitTracker = Container.get(WaitTracker);
 		this.postHog = Container.get(PostHogClient);
@@ -374,7 +382,6 @@ export class Server extends AbstractServer {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		this.push = Container.get(Push);
-		this.binaryDataService = Container.get(BinaryDataService);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -424,8 +431,7 @@ export class Server extends AbstractServer {
 		};
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
-			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
-			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
 		void Db.collections.Workflow.findOne({
@@ -440,7 +446,7 @@ export class Server extends AbstractServer {
 	/**
 	 * Returns the current settings for the frontend
 	 */
-	getSettingsForFrontend(): IN8nUISettings {
+	private async getSettingsForFrontend(): Promise<IN8nUISettings> {
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = getInstanceBaseUrl();
 		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
@@ -511,8 +517,11 @@ export class Server extends AbstractServer {
 			});
 		}
 
-		if (config.get('nodes.packagesMissing').length > 0) {
-			this.frontendSettings.missingPackages = true;
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			this.frontendSettings.missingPackages =
+				Container.get(CommunityPackagesService).hasMissingPackages;
 		}
 
 		this.frontendSettings.mfa.enabled = isMfaFeatureEnabled();
@@ -581,6 +590,7 @@ export class Server extends AbstractServer {
 			Container.get(ExternalSecretsController),
 			Container.get(OrchestrationController),
 			Container.get(WorkflowHistoryController),
+			Container.get(BinaryDataController),
 		];
 
 		if (isLdapEnabled()) {
@@ -589,9 +599,11 @@ export class Server extends AbstractServer {
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			controllers.push(
-				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesController } = await import(
+				'@/controllers/communityPackages.controller'
 			);
+			controllers.push(Container.get(CommunityPackagesController));
 		}
 
 		if (inE2ETests) {
@@ -1443,39 +1455,6 @@ export class Server extends AbstractServer {
 		);
 
 		// ----------------------------------------
-		// Binary data
-		// ----------------------------------------
-
-		// Download binary
-		this.app.get(
-			`/${this.restEndpoint}/data/:path`,
-			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
-				// TODO UM: check if this needs permission check for UM
-				const identifier = req.params.path;
-				try {
-					const binaryPath = this.binaryDataService.getPath(identifier);
-					let { mode, fileName, mimeType } = req.query;
-					if (!fileName || !mimeType) {
-						try {
-							const metadata = await this.binaryDataService.getMetadata(identifier);
-							fileName = metadata.fileName;
-							mimeType = metadata.mimeType;
-							res.setHeader('Content-Length', metadata.fileSize);
-						} catch {}
-					}
-					if (mimeType) res.setHeader('Content-Type', mimeType);
-					if (mode === 'download') {
-						res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-					}
-					res.sendFile(binaryPath);
-				} catch (error) {
-					if (error instanceof FileNotFoundError) res.writeHead(404).end();
-					else throw error;
-				}
-			},
-		);
-
-		// ----------------------------------------
 		// Settings
 		// ----------------------------------------
 
@@ -1517,9 +1496,9 @@ export class Server extends AbstractServer {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.loadNodesAndCredentials.generateTypesForFrontend();
+						await this.frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1546,22 +1525,13 @@ export class Server extends AbstractServer {
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				let { scope, packageName } = req.params;
 				if (scope) packageName = `@${scope}/${packageName}`;
-				const loader = this.loadNodesAndCredentials.loaders[packageName];
-				if (loader) {
-					const pathPrefix = `/icons/${packageName}/`;
-					const filePath = pathResolve(
-						loader.directory,
-						req.originalUrl.substring(pathPrefix.length),
-					);
-					if (pathRelative(loader.directory, filePath).includes('..')) {
-						return res.status(404).end();
-					}
+				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+				if (filePath) {
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath);
 					} catch {}
 				}
-
 				res.sendStatus(404);
 			};
 

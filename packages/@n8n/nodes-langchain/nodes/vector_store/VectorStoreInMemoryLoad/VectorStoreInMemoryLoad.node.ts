@@ -1,26 +1,25 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import {
 	NodeConnectionType,
+	type SupplyData,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
-	type SupplyData,
 } from 'n8n-workflow';
-import type { Document } from 'langchain/document';
-import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import type { Embeddings } from 'langchain/embeddings/base';
+import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 import { logWrapper } from '../../../utils/logWrapper';
 
-export class VectorStoreInMemory implements INodeType {
+export class VectorStoreInMemoryLoad implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'In Memory Vector Store',
-		name: 'vectorStoreInMemory',
+		displayName: 'In Memory Vector Store Load',
+		name: 'vectorStoreInMemoryLoad',
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
-		description: 'Stores vectors in memory',
+		description: 'Load embedded data from an in-memory vector store',
 		defaults: {
-			name: 'In Memory Vector Store',
+			name: 'In Memory Vector Store Load',
 		},
 		codex: {
 			categories: ['AI'],
@@ -38,44 +37,42 @@ export class VectorStoreInMemory implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [
 			{
-				displayName: 'Document',
-				type: NodeConnectionType.AiDocument,
-				required: false,
-			},
-			{
 				displayName: 'Embedding',
 				maxConnections: 1,
 				type: NodeConnectionType.AiEmbedding,
-				required: false,
+				required: true,
 			},
 		],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiVectorStore],
 		outputNames: ['Vector Store'],
 		properties: [
 			{
-				displayName: 'Specify the document to load in the document loader sub-node',
-				name: 'notice',
-				type: 'notice',
-				default: '',
+				displayName: 'Memory Key',
+				name: 'memoryKey',
+				type: 'string',
+				default: 'vector_store_key',
+				description:
+					'The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.',
 			},
 		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const documents = (await this.getInputConnectionData(
-			NodeConnectionType.AiDocument,
-			itemIndex,
-		)) as Document[];
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
 			itemIndex,
 		)) as Embeddings;
 
-		const documentsStore = await MemoryVectorStore.fromDocuments(documents, embeddings);
+		const workflowId = this.getWorkflow().id;
+		const memoryKey = this.getNodeParameter('memoryKey', 0) as string;
+
+		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings);
+		const vectorStoreInstance = await vectorStoreSingleton.getVectorStore(
+			`${workflowId}__${memoryKey}`,
+		);
 
 		return {
-			response: logWrapper(documentsStore, this),
+			response: logWrapper(vectorStoreInstance, this),
 		};
 	}
 }

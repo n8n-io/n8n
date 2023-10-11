@@ -9,8 +9,8 @@ import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
-import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { processDocuments } from '../shared/processDocuments';
 
 export class VectorStorePineconeInsert implements INodeType {
 	description: INodeTypeDescription = {
@@ -121,22 +121,15 @@ export class VectorStorePineconeInsert implements INodeType {
 			await pineconeIndex.delete1({ deleteAll: true, namespace });
 		}
 
-		let processedDocuments: Document[];
-
-		if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
-			processedDocuments = await documentInput.process(items);
-		} else {
-			processedDocuments = documentInput;
-		}
+		const { processedDocuments, serializedDocuments } = await processDocuments(
+			documentInput,
+			items,
+		);
 
 		await PineconeStore.fromDocuments(processedDocuments, embeddings, {
 			namespace: namespace || undefined,
 			pineconeIndex,
 		});
-
-		const serializedDocuments = processedDocuments.map(({ metadata, pageContent }) => ({
-			json: { metadata, pageContent },
-		}));
 
 		return this.prepareOutputData(serializedDocuments);
 	}

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -13,6 +13,7 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
+    "dev:ai": "turbo run dev --parallel --filter='./packages/@n8n/nodes-langchain' --filter='./packages/cli' --filter='./packages/core'",
     "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",

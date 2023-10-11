@@ -40,7 +40,7 @@ const defaultCodeExecute = `const { PromptTemplate } = require('langchain/prompt
 
 const query = 'Tell me a joke';
 const prompt = PromptTemplate.fromTemplate(query);
-const llm = await this.getInputConnectionData('languageModel', 0);
+const llm = await this.getInputConnectionData('ai_languageModel', 0);
 let chain = prompt.pipe(llm);
 const output = await chain.invoke();
 return [ {json: { output } } ];`;
@@ -78,6 +78,9 @@ function getSandbox(
 	context.getNode = this.getNode;
 	// eslint-disable-next-line @typescript-eslint/unbound-method
 	context.getNodeOutputs = this.getNodeOutputs;
+	// eslint-disable-next-line @typescript-eslint/unbound-method
+	context.logger = this.logger;
+
 	if (options?.addItems) {
 		context.items = context.$input.all();
 	}
