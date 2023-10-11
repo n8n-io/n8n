@@ -24,6 +24,8 @@ import type { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventB
 import type { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import type { EventNamesTypes } from '@/eventbus/EventMessageClasses';
+import { EventMessageWorkflow } from '@/eventbus/EventMessageClasses/EventMessageWorkflow';
+import { EventMessageNode } from '@/eventbus/EventMessageClasses/EventMessageNode';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -388,4 +390,54 @@ test('DELETE /eventbus/destination delete all destinations by id', async () => {
 	);
 
 	expect(Object.keys(eventBus.destinations).length).toBe(0);
+});
+
+test('should not find unfinished executions in recovery process', async () => {
+	eventBus.logWriter?.putMessage(
+		new EventMessageWorkflow({
+			eventName: 'n8n.workflow.started',
+			payload: { executionId: '509', isManual: false },
+		}),
+	);
+	eventBus.logWriter?.putMessage(
+		new EventMessageNode({
+			eventName: 'n8n.node.started',
+			payload: { executionId: '509', nodeName: 'Set', workflowName: 'test' },
+		}),
+	);
+	eventBus.logWriter?.putMessage(
+		new EventMessageNode({
+			eventName: 'n8n.node.finished',
+			payload: { executionId: '509', nodeName: 'Set', workflowName: 'test' },
+		}),
+	);
+	eventBus.logWriter?.putMessage(
+		new EventMessageWorkflow({
+			eventName: 'n8n.workflow.success',
+			payload: { executionId: '509', success: true },
+		}),
+	);
+	const unfinishedExecutions = await eventBus.getUnfinishedExecutions();
+
+	expect(Object.keys(unfinishedExecutions).length).toBe(0);
+});
+
+test('should not find unfinished executions in recovery process', async () => {
+	eventBus.logWriter?.putMessage(
+		new EventMessageWorkflow({
+			eventName: 'n8n.workflow.started',
+			payload: { executionId: '510', isManual: false },
+		}),
+	);
+	eventBus.logWriter?.putMessage(
+		new EventMessageNode({
+			eventName: 'n8n.node.started',
+			payload: { executionId: '510', nodeName: 'Set', workflowName: 'test' },
+		}),
+	);
+
+	const unfinishedExecutions = await eventBus.getUnfinishedExecutions();
+
+	expect(Object.keys(unfinishedExecutions).length).toBe(1);
+	expect(Object.keys(unfinishedExecutions)).toContain('510');
 });
