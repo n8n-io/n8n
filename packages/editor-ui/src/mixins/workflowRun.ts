@@ -3,7 +3,12 @@ import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
 import type { IRunData, IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, TelemetryHelpers } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	TelemetryHelpers,
+	FORM_TRIGGER_PATH_IDENTIFIER,
+} from 'n8n-workflow';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -263,14 +268,8 @@ export const workflowRun = defineComponent({
 
 				if (runWorkflowApiResponse.waitingForWebhook) {
 					for (const node of workflowData.nodes) {
-						const name = node.name as string;
-						const nodeByName = this.workflowsStore.getNodeByName(name);
-						const type = nodeByName
-							? this.nodeTypesStore.getNodeType(node.type, node.typeVersion)
-							: null;
-
-						if (type && type.name === FORM_TRIGGER_NODE_TYPE) {
-							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.webhookId}/n8n-form`;
+						if (node.type === FORM_TRIGGER_NODE_TYPE) {
+							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.webhookId}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 							openPopUpWindow(testUrl);
 						}
 					}
