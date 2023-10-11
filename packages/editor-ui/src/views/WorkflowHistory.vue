@@ -177,7 +177,7 @@ const onAction = async ({
 				openInNewTab(id);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-				await workflowHistoryStore.downloadVersion(route.params.workflowId, id);
+				await workflowHistoryStore.downloadVersion(route.params.workflowId, id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
 				await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
