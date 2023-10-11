@@ -196,6 +196,10 @@ describe('fileTypeFromMimeType', () => {
 		expect(fileTypeFromMimeType('application/json')).toEqual('json');
 	});
 
+	it('should recognize html', () => {
+		expect(fileTypeFromMimeType('text/html')).toEqual('html');
+	});
+
 	it('should recognize image', () => {
 		expect(fileTypeFromMimeType('image/jpeg')).toEqual('image');
 		expect(fileTypeFromMimeType('image/png')).toEqual('image');
@@ -219,7 +223,7 @@ describe('fileTypeFromMimeType', () => {
 	it('should recognize text', () => {
 		expect(fileTypeFromMimeType('text/plain')).toEqual('text');
 		expect(fileTypeFromMimeType('text/css')).toEqual('text');
-		expect(fileTypeFromMimeType('text/html')).toEqual('text');
+		expect(fileTypeFromMimeType('text/html')).not.toEqual('text');
 		expect(fileTypeFromMimeType('text/javascript')).toEqual('text');
 		expect(fileTypeFromMimeType('application/javascript')).toEqual('text');
 	});

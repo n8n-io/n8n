@@ -35,7 +35,7 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
-export type BinaryFileType = 'text' | 'json' | 'image' | 'audio' | 'video' | 'pdf';
+export type BinaryFileType = 'text' | 'json' | 'image' | 'audio' | 'video' | 'pdf' | 'html';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
