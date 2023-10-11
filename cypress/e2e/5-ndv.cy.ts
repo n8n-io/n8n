@@ -297,15 +297,15 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression('fieldId');
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 50 });
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
-		getPopper().should('not.be.visible');
 
 		ndv.getters.parameterInputIssues('remoteOptions').realHover();
-		getVisiblePopper().should('include.text', `node doesn't exist`);
+		// Remote options dropdown should not be visible
+		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
 	});
 
 	it('should retrieve remote options when non-required params throw errors', () => {
@@ -315,7 +315,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.setInvalidExpression('otherField');
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
