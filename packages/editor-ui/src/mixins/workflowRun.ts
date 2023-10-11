@@ -268,7 +268,7 @@ export const workflowRun = defineComponent({
 
 				if (runWorkflowApiResponse.waitingForWebhook) {
 					for (const node of workflowData.nodes) {
-						if (node.type === FORM_TRIGGER_NODE_TYPE) {
+						if (node.type === FORM_TRIGGER_NODE_TYPE && !node.disabled) {
 							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.webhookId}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 							openPopUpWindow(testUrl);
 						}
