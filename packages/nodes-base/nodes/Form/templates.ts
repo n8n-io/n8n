@@ -403,18 +403,51 @@ export const createPage = (
 	instanceId?: string,
 ) => {
 	const { formHtml, variables, validationCases } = prepareFormGroups(formFields);
+	const head = `
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<link rel="icon" type="image/png" href="https://n8n.io/favicon.ico" />
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+	<title>${formTitle}</title>
+	<style>${styles}</style>
+</head>
+	`;
+
+	if (formFields.length === 1 && formFields[0].fieldLabel === '') {
+		const message = testRun ? 'Please add at least one field to your form' : 'Problem loading form';
+		const text = testRun
+			? ''
+			: '<p>This usually occurs if the n8n workflow serving this form is deactivated or no longer exist</p>';
+
+		return `
+<!DOCTYPE html>
+<html lang="en">
+	${head}
+
+	<body>
+		<div class="container">
+			<section>
+				${testRun ? testNotice : ''}
+				<div class="card">
+					<div class="form-header">
+						<h1>${message}</h1>
+						${text}
+					</div>
+				</div>
+				${automatedWith(instanceId)}
+			</section>
+		</div>
+	</body>
+</html>
+	`;
+	}
+
 	const form = createForm(formTitle, formDescription, formHtml);
 	return `
 	<!DOCTYPE html>
 	<html lang="en">
-		<head>
-			<meta charset="UTF-8" />
-			<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-			<link rel="icon" type="image/png" href="https://n8n.io/favicon.ico" />
-			<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
-			<title>${formTitle}</title>
-			<style>${styles}</style>
-		</head>
+		${head}
 
 		<body>
 			<div class="modal"></div>

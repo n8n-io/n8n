@@ -81,8 +81,7 @@ export class FormTrigger implements INodeType {
 				name: 'formFields',
 				placeholder: 'Add Form Field',
 				type: 'fixedCollection',
-				// default: { values: [{ label: '', fieldType: 'text' }] },
-				default: {},
+				default: { values: [{ label: '', fieldType: 'text' }] },
 				typeOptions: {
 					multipleValues: true,
 					sortable: true,
@@ -245,10 +244,6 @@ export class FormTrigger implements INodeType {
 		const webhookName = this.getWebhookName();
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 		const formFields = this.getNodeParameter('formFields.values', []) as FormField[];
-
-		// if (formFields.length === 1 && formFields[0].fieldLabel === '') {
-		// 	formFields = [];
-		// }
 
 		//Show the form on GET request
 		if (webhookName === 'setup') {
