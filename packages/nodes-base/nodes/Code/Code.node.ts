@@ -111,7 +111,7 @@ export class Code implements INodeType {
 			}
 
 			const Sandbox = language === 'python' ? PythonSandbox : JavaScriptSandbox;
-			const sandbox = new Sandbox(context, code, index, this.helpers);
+			const sandbox = new Sandbox(context, code, index, this.helpers, nodeMode);
 			sandbox.on(
 				'output',
 				workflowMode === 'manual'

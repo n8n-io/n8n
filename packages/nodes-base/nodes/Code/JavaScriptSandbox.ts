@@ -1,5 +1,5 @@
 import { NodeVM, makeResolverFromLegacyOptions } from '@n8n/vm2';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { CodeExecutionMode, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
@@ -27,6 +27,7 @@ export class JavaScriptSandbox extends Sandbox {
 		private jsCode: string,
 		itemIndex: number | undefined,
 		helpers: IExecuteFunctions['helpers'],
+		nodeMode: CodeExecutionMode,
 	) {
 		super(
 			{
@@ -38,6 +39,11 @@ export class JavaScriptSandbox extends Sandbox {
 			itemIndex,
 			helpers,
 		);
+
+		if (nodeMode === 'runOnceForEachItem') {
+			this.validateCode();
+		}
+
 		this.vm = new NodeVM({
 			console: 'redirect',
 			sandbox: context,
@@ -46,6 +52,28 @@ export class JavaScriptSandbox extends Sandbox {
 		});
 
 		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
+	}
+
+	private validateCode() {
+		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
+		if (match?.groups?.disallowedMethod) {
+			const { disallowedMethod } = match.groups;
+
+			const lineNumber =
+				this.jsCode.split('\n').findIndex((line) => {
+					return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
+				}) + 1;
+
+			const disallowedMethodFound = lineNumber !== 0;
+
+			if (disallowedMethodFound) {
+				throw new ValidationError({
+					message: `Can't use .${disallowedMethod}() here`,
+					description: "This is only available in 'Run Once for All Items' mode",
+					lineNumber,
+				});
+			}
+		}
 	}
 
 	async runCodeAllItems(): Promise<INodeExecutionData[]> {
@@ -72,28 +100,6 @@ export class JavaScriptSandbox extends Sandbox {
 
 	async runCodeEachItem(): Promise<INodeExecutionData | undefined> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-
-		const match = this.jsCode.match(/\$input\.(?<disallowedMethod>first|last|all|itemMatching)/);
-
-		if (match?.groups?.disallowedMethod) {
-			const { disallowedMethod } = match.groups;
-
-			const lineNumber =
-				this.jsCode.split('\n').findIndex((line) => {
-					return line.includes(disallowedMethod) && !line.startsWith('//') && !line.startsWith('*');
-				}) + 1;
-
-			const disallowedMethodFound = lineNumber !== 0;
-
-			if (disallowedMethodFound) {
-				throw new ValidationError({
-					message: `Can't use .${disallowedMethod}() here`,
-					description: "This is only available in 'Run Once for All Items' mode",
-					itemIndex: this.itemIndex,
-					lineNumber,
-				});
-			}
-		}
 
 		let executionResult: INodeExecutionData;
 
