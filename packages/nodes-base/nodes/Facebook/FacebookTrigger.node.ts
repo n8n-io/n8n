@@ -18,7 +18,7 @@ import { snakeCase } from 'change-case';
 
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
 
-import type { FacebookEvent, FacebookWebhookSubscription } from './types';
+import type { FacebookWebhookSubscription } from './types';
 
 export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
