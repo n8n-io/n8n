@@ -82,7 +82,7 @@
 	--color-code-tags-keyword: var(--prim-color-alt-g);
 	--color-code-tags-operator: var(--prim-color-primary0);
 	--color-code-tags-variable: var(--prim-color-alt-c-shade-100);
-	--color-code-tags-definition: var(--prim-color-alt-e-shade-100);
+	--color-code-tags-definition: var(--prim-color-alt-e-shade-150);
 	--color-json-default: var(-prim-color-secondary-shade-100);
 	--color-json-null: var(--prim-color-alt-c);
 	--color-json-boolean: var(--prim-color-alt-a);
@@ -135,7 +135,7 @@
 	--color-button-secondary-active-background: var(--prim-color-primary-tint-250);
 	--color-button-secondary-focus-outline: var(--prim-gray-120);
 	--color-button-secondary-disabled-font: var(--prim-gray-200);
-	--color-button-secondary-disabled-border: var(--prim-gray-320);
+	--color-button-secondary-disabled-border: var(--prim-gray-200);
 
 	// Table
 	--color-table-header-background: var(--prim-gray-740);

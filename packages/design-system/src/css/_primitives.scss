@@ -184,15 +184,15 @@
 	--prim-color-alt-d-s: 100%;
 	--prim-color-alt-d-l: 92%;
 
-	--prim-color-alt-d: hsl(
-		var(--prim-color-alt-d-h),
-		var(--prim-color-alt-d-s),
-		var(--prim-color-alt-d-l)
-	);
 	--prim-color-alt-d-shade-150: hsl(
 		var(--prim-color-alt-d-h),
 		var(--prim-color-alt-d-s),
 		calc(var(--prim-color-alt-d-l) - 15%)
+	);
+	--prim-color-alt-d: hsl(
+		var(--prim-color-alt-d-h),
+		var(--prim-color-alt-d-s),
+		var(--prim-color-alt-d-l)
 	);
 
 	// Color Alternate E
@@ -200,15 +200,20 @@
 	--prim-color-alt-e-s: 67%;
 	--prim-color-alt-e-l: 57%;
 
-	--prim-color-alt-e: hsl(
+	--prim-color-alt-e-shade-150: hsl(
 		var(--prim-color-alt-e-h),
 		var(--prim-color-alt-e-s),
-		var(--prim-color-alt-e-l)
+		calc(var(--prim-color-alt-e-l) - 15%)
 	);
 	--prim-color-alt-e-shade-100: hsl(
 		var(--prim-color-alt-e-h),
 		var(--prim-color-alt-e-s),
-		calc(var(--prim-color-alt-e-l) + 10%)
+		calc(var(--prim-color-alt-e-l) - 10%)
+	);
+	--prim-color-alt-e: hsl(
+		var(--prim-color-alt-e-h),
+		var(--prim-color-alt-e-s),
+		var(--prim-color-alt-e-l)
 	);
 
 	// Color Alternate F
