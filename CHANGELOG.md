@@ -1,3 +1,17 @@
+## [1.10.1](https://github.com/n8n-io/n8n/compare/n8n@1.10.0...n8n@1.10.1) (2023-10-11)
+
+
+### Bug Fixes
+
+* **editor:** Make workflow history button available only for dev builds ([#7392](https://github.com/n8n-io/n8n/issues/7392)) ([f2a7b41](https://github.com/n8n-io/n8n/commit/f2a7b4135e643a9c77117e8a94e1f0213181c512))
+
+
+### Features
+
+* **Loop Over Items (Split in Batches) Node:** Automatically add a loop + rename ([#7228](https://github.com/n8n-io/n8n/issues/7228)) ([ea877c1](https://github.com/n8n-io/n8n/commit/ea877c13f19511703034caf15a3b32b6e4b8ffe4))
+
+
+
 # [1.10.0](https://github.com/n8n-io/n8n/compare/n8n@1.9.0...n8n@1.10.0) (2023-10-05)
 
 
