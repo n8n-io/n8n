@@ -29,23 +29,19 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		queryParams: WorkflowHistoryRequestParams,
 	): Promise<WorkflowHistory[]> =>
-		whApi
-			.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams)
-			.catch((error) => {
-				console.error(error);
-				return [] as WorkflowHistory[];
-			});
+		whApi.getWorkflowHistory(rootStore.getRestApiContext, workflowId, queryParams);
 
 	const getWorkflowVersion = async (
 		workflowId: string,
 		versionId: string,
 	): Promise<WorkflowVersion | null> =>
-		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId).catch((error) => {
-			console.error(error);
-			return null;
-		});
+		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
 
-	const downloadVersion = async (workflowId: string, workflowVersionId: WorkflowVersionId) => {
+	const downloadVersion = async (
+		workflowId: string,
+		workflowVersionId: WorkflowVersionId,
+		data: { formattedCreatedAt: string },
+	) => {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
@@ -55,7 +51,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
 				type: 'application/json;charset=utf-8',
 			});
-			saveAs(blob, `${workflow.name}-${workflowVersionId}.json`);
+			saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
 		}
 	};
 
