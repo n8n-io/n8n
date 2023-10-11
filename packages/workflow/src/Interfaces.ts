@@ -1630,7 +1630,8 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
-	hidden?: boolean; // If true the webhook will not be displayed in the editor
+	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
+	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
 
 export interface ProxyInput {

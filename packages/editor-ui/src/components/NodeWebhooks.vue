@@ -29,13 +29,13 @@
 				</div>
 
 				<n8n-tooltip
-					v-for="(webhook, index) in webhooksNode.filter((webhook) => !webhook.hidden)"
+					v-for="(webhook, index) in webhooksNode.filter((webhook) => !webhook.ndvHideUrl)"
 					:key="index"
 					class="item"
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div v-if="showHttpLabel" class="webhook-wrapper">
+					<div v-if="!webhook.ndvHideMethod" class="webhook-wrapper">
 						<div class="http-field">
 							<div class="http-method">
 								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
@@ -96,9 +96,6 @@ export default defineComponent({
 			return (this.nodeType as INodeTypeDescription).webhooks!.filter(
 				(webhookData) => webhookData.restartWebhook !== true,
 			);
-		},
-		showHttpLabel(): boolean {
-			return this.nodeType.name !== FORM_TRIGGER_NODE_TYPE;
 		},
 		baseText() {
 			const nodeType = this.nodeType.name;

@@ -30,13 +30,14 @@ export class FormTrigger implements INodeType {
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: FORM_TRIGGER_PATH_IDENTIFIER,
-				hidden: true,
+				ndvHideUrl: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: '={{$parameter["responseMode"]}}',
 				path: FORM_TRIGGER_PATH_IDENTIFIER,
+				ndvHideMethod: true,
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the form',
@@ -49,8 +50,12 @@ export class FormTrigger implements INodeType {
 				active:
 					"Form Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test Step' button, then fill out the test form that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a form submission via the Production Form URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
 			},
-			activationHint:
-				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new form submissions created via the Production URL.',
+			activationHint: {
+				active:
+					"This node will also trigger automatically on new form submissions (but those executions won't show up here).",
+				inactive:
+					'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new form submissions created via the Production URL.',
+			},
 		},
 		properties: [
 			{

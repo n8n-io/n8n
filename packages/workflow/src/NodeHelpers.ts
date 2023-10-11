@@ -1209,7 +1209,6 @@ export const validateFieldType = (
 			}
 			return { valid: true, newValue: value };
 		}
-
 		default: {
 			return { valid: true, newValue: value };
 		}
