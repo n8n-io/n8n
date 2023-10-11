@@ -13,6 +13,8 @@ import { useTitleChange } from '@/composables/useTitleChange';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
+import { FORM_TRIGGER_NODE_TYPE } from '../constants';
+import { openPopUpWindow } from '@/utils/executionUtils';
 
 export const workflowRun = defineComponent({
 	mixins: [externalHooks, workflowHelpers],
@@ -258,6 +260,21 @@ export const workflowRun = defineComponent({
 				this.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
+
+				if (runWorkflowApiResponse.waitingForWebhook) {
+					for (const node of workflowData.nodes) {
+						const name = node.name as string;
+						const nodeByName = this.workflowsStore.getNodeByName(name);
+						const type = nodeByName
+							? this.nodeTypesStore.getNodeType(node.type, node.typeVersion)
+							: null;
+
+						if (type && type.name === FORM_TRIGGER_NODE_TYPE) {
+							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.webhookId}/n8n-form`;
+							openPopUpWindow(testUrl);
+						}
+					}
+				}
 
 				await this.$externalHooks().run('workflowRun.runWorkflow', {
 					nodeName: options.destinationNode,
