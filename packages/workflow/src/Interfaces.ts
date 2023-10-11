@@ -35,7 +35,7 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
-export type BinaryFileType = 'text' | 'json' | 'image' | 'video';
+export type BinaryFileType = 'text' | 'json' | 'image' | 'audio' | 'video' | 'pdf';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
@@ -806,6 +806,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 				): NodeExecutionWithMetadata[];
 				assertBinaryData(itemIndex: number, propertyName: string): IBinaryData;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+				copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[];
 			};
 	};
 
@@ -1710,17 +1711,6 @@ export interface LoadedClass<T> {
 type LoadedData<T> = Record<string, LoadedClass<T>>;
 export type ICredentialTypeData = LoadedData<ICredentialType>;
 export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
-
-export type LoadedNodesAndCredentials = {
-	nodes: INodeTypeData;
-	credentials: ICredentialTypeData;
-};
-
-export interface INodesAndCredentials {
-	known: KnownNodesAndCredentials;
-	loaded: LoadedNodesAndCredentials;
-	credentialTypes: ICredentialTypes;
-}
 
 export interface IRun {
 	data: IRunExecutionData;

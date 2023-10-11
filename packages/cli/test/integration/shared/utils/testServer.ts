@@ -25,7 +25,6 @@ import {
 	LdapController,
 	MFAController,
 	MeController,
-	NodesController,
 	OwnerController,
 	PasswordResetController,
 	TagsController,
@@ -34,12 +33,10 @@ import {
 import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
 
 import { InternalHooks } from '@/InternalHooks';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { PostHogClient } from '@/posthog';
 import { variablesController } from '@/environments/variables/variables.controller';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { handleLdapInit } from '@/Ldap/helpers';
-import { Push } from '@/push';
 import { setSamlLoginEnabled } from '@/sso/saml/samlHelpers';
 import { SamlController } from '@/sso/saml/routes/saml.controller.ee';
 import { EventBusController } from '@/eventbus/eventBus.controller';
@@ -66,6 +63,7 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { executionsController } from '@/executions/executions.controller';
 import { WorkflowHistoryController } from '@/workflows/workflowHistory/workflowHistory.controller.ee';
+import { BinaryDataController } from '@/controllers/binaryData.controller';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -241,17 +239,11 @@ export const setupTestServer = ({
 					case 'sourceControl':
 						registerController(app, config, Container.get(SourceControlController));
 						break;
-					case 'nodes':
-						registerController(
-							app,
-							config,
-							new NodesController(
-								config,
-								Container.get(LoadNodesAndCredentials),
-								Container.get(Push),
-								internalHooks,
-							),
+					case 'community-packages':
+						const { CommunityPackagesController } = await import(
+							'@/controllers/communityPackages.controller'
 						);
+						registerController(app, config, Container.get(CommunityPackagesController));
 					case 'me':
 						registerController(
 							app,
@@ -315,6 +307,9 @@ export const setupTestServer = ({
 						break;
 					case 'workflowHistory':
 						registerController(app, config, Container.get(WorkflowHistoryController));
+						break;
+					case 'binaryData':
+						registerController(app, config, Container.get(BinaryDataController));
 						break;
 				}
 			}
