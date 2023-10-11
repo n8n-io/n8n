@@ -297,7 +297,7 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 50 });
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 100 });
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
