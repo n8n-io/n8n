@@ -1,13 +1,18 @@
 export function createPage({
 	instanceId,
 	webhookUrl,
-	title,
-	mode,
+	i18n: { en },
+	initialMessages,
+	authentication,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
-	title: string;
+	i18n: {
+		en: Record<string, string>;
+	};
+	initialMessages: string[];
 	mode: 'test' | 'production';
+	authentication: 'none' | 'basicAuth' | 'headerAuth';
 }) {
 	return `<doctype html>
 	<html lang="en">
@@ -22,17 +27,39 @@ export function createPage({
 			<script type="module">
 				import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
-				createChat({
-				  mode: 'fullscreen',
-					webhookUrl: '${webhookUrl}',
-					webhookConfig: {
-						headers: {
-							'Content-Type': 'application/json'
+				(async function () {
+					const authentication = '${authentication}';
+					if (authentication === 'headerAuth') {
+						try {
+							const response = await fetch('/rest/login', {
+									method: 'GET'
+							});
+
+							if (response.status !== 200) {
+								throw new Error('Not logged in');
+							}
+						} catch (error) {
+							window.location.href = '/signin';
+							return;
 						}
 					}
-				});
+
+					createChat({
+						mode: 'fullscreen',
+						webhookUrl: '${webhookUrl}',
+						webhookConfig: {
+							headers: {
+								'Content-Type': 'application/json',
+								'X-Instance-Id': '${instanceId}',
+							}
+						},
+						i18n: {
+							${en ? `en: ${JSON.stringify(en)},` : ''}
+						},
+						${initialMessages.length ? `initialMessages: ${JSON.stringify(initialMessages)},` : ''}
+					});
+				})();
 			</script>
 		</body>
-	</html>
-	`;
+	</html>`;
 }

@@ -5,11 +5,8 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import {
-	authenticationProperty,
-	credentialsProperty,
-} from 'n8n-nodes-base/nodes/Webhook/description';
 import { createPage } from './templates';
+import { validateAuth } from './GenericFunctions';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
@@ -22,24 +19,35 @@ export class ChatTrigger implements INodeType {
 		version: 1,
 		description: 'Runs the flow when an n8n generated webchat is submitted',
 		defaults: {
-			name: 'n8n Chat 3 Trigger',
+			name: 'Chat Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
-		credentials: credentialsProperty(),
+		credentials: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
+				name: 'httpBasicAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['basicAuth'],
+					},
+				},
+			},
+		],
 		webhooks: [
 			{
 				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
-				hidden: true,
 			},
 			{
 				name: 'default',
 				httpMethod: 'POST',
 				responseMode: 'responseNode',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				ndvHideMethod: true,
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
@@ -56,37 +64,126 @@ export class ChatTrigger implements INodeType {
 				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new chat messages created via the Production URL.',
 		},
 		properties: [
-			authenticationProperty(),
 			{
-				displayName: 'Chat Title',
-				name: 'chatTitle',
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate',
+			},
+			{
+				displayName: 'Initial Messages',
+				name: 'initialMessages',
 				type: 'string',
+				typeOptions: {
+					rows: 3,
+				},
+				placeholder: 'Add Message',
 				default: '',
-				placeholder: 'e.g. Contact us',
-				required: true,
-				description: 'Shown at the top of the chat',
+				description: 'Default messages shown at the start of the chat, one per line',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				options: [
+					{
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. Welcome',
+						description: 'Shown at the top of the chat',
+					},
+					{
+						displayName: 'Subtitle',
+						name: 'subtitle',
+						type: 'string',
+						default: '',
+						placeholder: "e.g. We're here for you",
+						description: 'Shown at the top of the chat, under the title',
+					},
+					{
+						displayName: 'Get Started',
+						name: 'getStarted',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. New Conversation',
+						description: 'Shown at the start of the chat, in the middle of the chat window',
+					},
+					{
+						displayName: 'Input Placeholder',
+						name: 'inputPlaceholder',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. Type your message here',
+						description: 'Shown as placeholder text in the chat input field',
+					},
+				],
 			},
 		],
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
-		const webhookUrl = this.getNodeWebhookUrl('default');
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
+		const res = this.getResponseObject();
+
+		try {
+			await validateAuth(this);
+		} catch (error) {
+			if (error) {
+				res.writeHead(error.responseCode, { 'WWW-Authenticate': 'Basic realm="Webhook"' });
+				res.end(error.message);
+				return { noWebhookResponse: true };
+			}
+			throw error;
+		}
 
 		// Show the chat on GET request
 		if (webhookName === 'setup') {
-			const formTitle = this.getNodeParameter('chatTitle', '') as string;
+			const webhookUrlRaw = this.getNodeWebhookUrl('default') as string;
+			const webhookUrl =
+				mode === 'test' ? webhookUrlRaw.replace('/webhook', '/webhook-test') : webhookUrlRaw;
+			const authentication = this.getNodeParameter('authentication') as
+				| 'none'
+				| 'basicAuth'
+				| 'headerAuth';
+			const additionalFields = this.getNodeParameter('additionalFields', {});
+			const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
+			const initialMessages = initialMessagesRaw
+				.split('\n')
+				.filter((line) => line)
+				.map((line) => line.trim());
 			const instanceId = await this.getInstanceId();
 
 			const page = createPage({
-				title: formTitle,
+				i18n: {
+					en: additionalFields as Record<string, string>,
+				},
+				initialMessages,
 				webhookUrl,
 				mode,
 				instanceId,
+				authentication,
 			});
 
-			const res = this.getResponseObject();
 			res.status(200).send(page).end();
 			return {
 				noWebhookResponse: true,
@@ -98,8 +195,6 @@ export class ChatTrigger implements INodeType {
 		returnData.sessionId = bodyData.sessionId;
 		returnData.action = bodyData.action;
 		returnData.message = bodyData.message;
-
-		console.log(bodyData, bodyData.action, mode, returnData);
 
 		const webhookResponse: IDataObject = { status: 200 };
 		return {

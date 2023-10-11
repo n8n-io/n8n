@@ -122,6 +122,7 @@
     "@types/temp": "^0.9.1",
     "@xata.io/cli": "^0.13.4",
     "@xata.io/client": "^0.26.2",
+    "basic-auth": "^2.0.1",
     "cohere-ai": "^6.2.2",
     "google-auth-library": "^9.0.0",
     "html-to-text": "^9.0.5",
