@@ -3,6 +3,7 @@ import { Service } from 'typedi';
 import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
+
 import {
 	getRedisClusterClient,
 	getRedisClusterNodes,
@@ -67,8 +68,28 @@ export class Queue {
 		});
 	}
 
+	async add(jobData: JobData, jobOptions: object): Promise<Job> {
+		return this.jobQueue.add(jobData, jobOptions);
+	}
+
+	async getJob(jobId: JobId): Promise<Job | null> {
+		return this.jobQueue.getJob(jobId);
+	}
+
 	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Job[]> {
 		return this.jobQueue.getJobs(jobTypes);
+	}
+
+	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
+		return this.jobQueue.process(concurrency, fn);
+	}
+
+	async ping(): Promise<string> {
+		return this.jobQueue.client.ping();
+	}
+
+	async pause(isLocal?: boolean): Promise<void> {
+		return this.jobQueue.pause(isLocal);
 	}
 
 	getBullObjectInstance(): JobQueue {

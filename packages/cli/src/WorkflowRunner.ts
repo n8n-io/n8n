@@ -37,7 +37,7 @@ import type {
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
+import type { Job, JobData, JobResponse } from '@/Queue';
 // eslint-disable-next-line import/no-cycle
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
@@ -60,7 +60,7 @@ export class WorkflowRunner {
 
 	push: Push;
 
-	jobQueue: JobQueue;
+	jobQueue: Queue;
 
 	constructor() {
 		this.push = Container.get(Push);
@@ -172,8 +172,7 @@ export class WorkflowRunner {
 		await initErrorHandling();
 
 		if (executionsMode === 'queue') {
-			const queue = Container.get(Queue);
-			this.jobQueue = queue.getBullObjectInstance();
+			this.jobQueue = Container.get(Queue);
 		}
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
