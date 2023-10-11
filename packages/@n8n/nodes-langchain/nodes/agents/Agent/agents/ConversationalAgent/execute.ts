@@ -40,6 +40,7 @@ export async function conversationalAgentExecute(
 	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
 		humanMessage?: string;
+		maxIterations?: number;
 	};
 
 	const agentExecutor = await initializeAgentExecutorWithOptions(tools, model, {
@@ -49,6 +50,7 @@ export async function conversationalAgentExecute(
 		// memory option, but the memoryKey set on it must be "chat_history".
 		agentType: 'chat-conversational-react-description',
 		memory,
+		maxIterations: options.maxIterations ?? 10,
 		agentArgs: {
 			systemMessage: options.systemMessage,
 			humanMessage: options.humanMessage,
