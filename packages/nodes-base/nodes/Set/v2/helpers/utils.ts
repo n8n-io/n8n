@@ -52,7 +52,7 @@ export function composeReturnItem(
 ) {
 	const newItem: INodeExecutionData = {
 		json: {},
-		pairedItem: inputItem.pairedItem,
+		pairedItem: { item: itemIndex },
 	};
 
 	if (options.includeBinary && inputItem.binary !== undefined) {
