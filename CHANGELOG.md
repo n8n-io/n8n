@@ -1,3 +1,42 @@
+# [1.11.0](https://github.com/n8n-io/n8n/compare/n8n@1.10.0...n8n@1.11.0) (2023-10-11)
+
+
+### Bug Fixes
+
+* Add role check for upgrade path ([#7374](https://github.com/n8n-io/n8n/issues/7374)) ([a43f720](https://github.com/n8n-io/n8n/commit/a43f720658aedf8a52f713c28b29ed08bfad33c8))
+* **core:** Add an option to enable postgres ssl with default certs ([#6889](https://github.com/n8n-io/n8n/issues/6889)) ([789e1e7](https://github.com/n8n-io/n8n/commit/789e1e7ed41838bdadb5e8cb429aa76610fa5749))
+* **core:** Fix error on missing paired item data ([#7399](https://github.com/n8n-io/n8n/issues/7399)) ([47e8953](https://github.com/n8n-io/n8n/commit/47e8953ec9cccaddc603aff4c6e6fce88258e6d0))
+* **core:** Missing pairing info ([#7326](https://github.com/n8n-io/n8n/issues/7326)) ([e2c3c7a](https://github.com/n8n-io/n8n/commit/e2c3c7acebdae2014b32620277fce70d0db85dd0))
+* **core:** Prevent object deletion request on no prefix match ([#7366](https://github.com/n8n-io/n8n/issues/7366)) ([63e11e4](https://github.com/n8n-io/n8n/commit/63e11e4be93a50fe753d84771dbc72ead38fdc0e))
+* **editor:** Fix completions for `.json` on quoted node name in Code node ([#7382](https://github.com/n8n-io/n8n/issues/7382)) ([86e7ec7](https://github.com/n8n-io/n8n/commit/86e7ec796acd9d8fbe8e42a5beba687cd6133a2f)), closes [/linear.app/n8n/issue/PAY-635/autocomplete-only-supports-3-levels-of-children#comment-234f738](https://github.com//linear.app/n8n/issue/PAY-635/autocomplete-only-supports-3-levels-of-children/issues/comment-234f738)
+* **editor:** Implement canvas zoom UX improvements ([#7376](https://github.com/n8n-io/n8n/issues/7376)) ([7e06b31](https://github.com/n8n-io/n8n/commit/7e06b31a5f3de8f073e7ef42be24e04899091486))
+* **editor:** Make workflow history button available only for dev builds ([#7392](https://github.com/n8n-io/n8n/issues/7392)) ([7ed466d](https://github.com/n8n-io/n8n/commit/7ed466db7faa9af88e54276bc6cb9a6dc9e80493))
+* **editor:** Remove excess margin below run data editor ([#7372](https://github.com/n8n-io/n8n/issues/7372)) ([3fa2764](https://github.com/n8n-io/n8n/commit/3fa27647d8e8a39812d9802d4c0954b3135db847))
+* **editor:** Sanitize HTML binary-data before rendering in the UI ([#7400](https://github.com/n8n-io/n8n/issues/7400)) ([2b075bf](https://github.com/n8n-io/n8n/commit/2b075bfc2da02afc43c1ebfee565b849c87aee49))
+* **editor:** Use display option's @Version specifier  ([#7351](https://github.com/n8n-io/n8n/issues/7351)) ([afbf0c3](https://github.com/n8n-io/n8n/commit/afbf0c3d5e50976ca5d9f4c08051ea7bd3d2b354))
+* **Google BigQuery Node:** Location default to jobReference ([#7354](https://github.com/n8n-io/n8n/issues/7354)) ([97bb703](https://github.com/n8n-io/n8n/commit/97bb703d0a13cf979a2c462c87570707d5032867))
+* **Google Drive Trigger Node:** Add Shared Drives support ([#7369](https://github.com/n8n-io/n8n/issues/7369)) ([3e7a4d3](https://github.com/n8n-io/n8n/commit/3e7a4d3b2cc12fcb1b011fccd0773bb807986884))
+* **Google Sheets Node:** Fix "Maximum call stack size exceeded" error on too many rows ([#7384](https://github.com/n8n-io/n8n/issues/7384)) ([732b15a](https://github.com/n8n-io/n8n/commit/732b15a1faeab5b802dfddb282418601f34ade27))
+* **HTML Node:** Update property fields to not use expressions on drag ([#7379](https://github.com/n8n-io/n8n/issues/7379)) ([77643e5](https://github.com/n8n-io/n8n/commit/77643e5ccbc2f68cd240c7aa7e21c0efbcc08b63))
+* **Notion Node:** Handle empty values correctly for Notion selects + multi selects ([#7383](https://github.com/n8n-io/n8n/issues/7383)) ([fbcd1d4](https://github.com/n8n-io/n8n/commit/fbcd1d40edfa8737a8786a8f961723c42f84a851))
+* **Set Node:** Increase search priority ([#7358](https://github.com/n8n-io/n8n/issues/7358)) ([e5ad1e7](https://github.com/n8n-io/n8n/commit/e5ad1e7e4df33a06c9649fe0652edfc80f7cb818))
+* **Webhook Node:** Backward compatible form-data parsing for non-array files ([#7385](https://github.com/n8n-io/n8n/issues/7385)) ([6479eb1](https://github.com/n8n-io/n8n/commit/6479eb180ff9a43791b5211157f5c450e1463ffd))
+
+
+### Features
+
+* **core:** Add Job Summary to Worker response ([#7360](https://github.com/n8n-io/n8n/issues/7360)) ([b8608ce](https://github.com/n8n-io/n8n/commit/b8608cee6d5ab96ec38a8a7f5428d02ce01366ee))
+* **core:** Integrate object store as binary data manager ([#7253](https://github.com/n8n-io/n8n/issues/7253)) ([1a661e6](https://github.com/n8n-io/n8n/commit/1a661e6d00e907b9bc4bdc248db6dbc25972294b)), closes [#7225](https://github.com/n8n-io/n8n/issues/7225)
+* **core:** Switch binary filesystem mode to nested path structure ([#7307](https://github.com/n8n-io/n8n/issues/7307)) ([0847623](https://github.com/n8n-io/n8n/commit/0847623f85192232d129778ab4295be3cd685877)), closes [#7253](https://github.com/n8n-io/n8n/issues/7253)
+* **editor:** Make PDF and Audio binary-data viewable in the UI ([#7367](https://github.com/n8n-io/n8n/issues/7367)) ([8187be1](https://github.com/n8n-io/n8n/commit/8187be1b7dd723fec9591e2fc4f57a782f3ca398)), closes [#7361](https://github.com/n8n-io/n8n/issues/7361)
+* **editor:** Support autologin for upgrade path ([#7316](https://github.com/n8n-io/n8n/issues/7316)) ([1dfa052](https://github.com/n8n-io/n8n/commit/1dfa052301c4580838bc17830676c8fb383a00b4))
+* **Execute Workflow Node:** Run once for each item mode ([#7289](https://github.com/n8n-io/n8n/issues/7289)) ([c8c14ca](https://github.com/n8n-io/n8n/commit/c8c14ca0af1faaf680c97868210b7372ac8ac61e))
+* **Item Lists Node:** Split merge binary data ([#7297](https://github.com/n8n-io/n8n/issues/7297)) ([965db8f](https://github.com/n8n-io/n8n/commit/965db8f7f272056d10515a94a3b0b69b75913a9a))
+* **Loop Over Items (Split in Batches) Node:** Automatically add a loop + rename ([#7228](https://github.com/n8n-io/n8n/issues/7228)) ([7b773cc](https://github.com/n8n-io/n8n/commit/7b773cc5cc77853f73db186f7f7a7fbc6379db31))
+* **Notion Node:** Fetch child blocks recursively ([#7304](https://github.com/n8n-io/n8n/issues/7304)) ([193181a](https://github.com/n8n-io/n8n/commit/193181a9c62d21812e5452b06606c63f26f6b9d0))
+
+
+
 # [1.10.0](https://github.com/n8n-io/n8n/compare/n8n@1.9.0...n8n@1.10.0) (2023-10-05)
 
 
