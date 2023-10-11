@@ -88,18 +88,12 @@ export class OutputParserStructured implements INodeType {
 
 		let itemSchema: object;
 		try {
-			itemSchema = jsonParse(schema);
+			itemSchema = jsonParse<JSONSchema7>(schema);
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 		}
 
-		// As we always want to return an array wrap it accordingly
-		const returnSchema: JSONSchema7 = {
-			type: 'array',
-			items: itemSchema,
-		};
-
-		const zodSchemaString = parseSchema(returnSchema);
+		const zodSchemaString = parseSchema(itemSchema);
 
 		// TODO: This is obviously not great and should be replaced later!!!
 		// const createZodSchema = new Function('z', `return (${zodSchemaString})`);
