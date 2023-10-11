@@ -11,7 +11,7 @@
   "main": "index.js",
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "dev": "tsc --watch",
+    "dev": "pnpm run watch",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json && gulp build:icons && pnpm build:metadata",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
