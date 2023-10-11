@@ -22,7 +22,7 @@ export type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes'
+	| 'community-packages'
 	| 'ldap'
 	| 'saml'
 	| 'sourceControl'
@@ -34,7 +34,8 @@ export type EndpointGroup =
 	| 'mfa'
 	| 'metrics'
 	| 'executions'
-	| 'workflowHistory';
+	| 'workflowHistory'
+	| 'binaryData';
 
 export interface SetupProps {
 	applyAuth?: boolean;

@@ -83,10 +83,9 @@ export default defineComponent({
 		},
 		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
 			return (
 				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
 			);
 		},
 		workflowRunning(): boolean {
@@ -224,7 +223,10 @@ export default defineComponent({
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow({
+						destinationNode: this.nodeName,
+						source: 'RunData.ExecuteNodeButton',
+					});
 					this.$emit('execute');
 				}
 			}

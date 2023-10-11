@@ -191,14 +191,20 @@ export async function execute(
 				);
 			}
 
-			const { name, value } = validateEntry(entry, node, i, options.ignoreConversionErrors);
+			const { name, value } = validateEntry(
+				entry,
+				node,
+				i,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
 			newData[name] = value;
 		}
 
 		return composeReturnItem.call(this, i, item, newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			return { json: { error: (error as Error).message } };
+			return { json: { error: (error as Error).message, pairedItem: { item: i } } };
 		}
 		throw new NodeOperationError(this.getNode(), error as Error, {
 			itemIndex: i,

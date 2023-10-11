@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import type { UserAction } from 'n8n-design-system';
 import { useI18n } from '@/composables';
 import type {
@@ -10,25 +10,25 @@ import type {
 } from '@/types/workflowHistory';
 import WorkflowHistoryListItem from '@/components/WorkflowHistory/WorkflowHistoryListItem.vue';
 
-const props = withDefaults(
-	defineProps<{
-		items: WorkflowHistory[];
-		activeItem: WorkflowHistory | null;
-		actionTypes: WorkflowHistoryActionTypes;
-		requestNumberOfItems: number;
-		shouldUpgrade: boolean;
-		maxRetentionPeriod: number;
-	}>(),
-	{
-		items: () => [],
-		shouldUpgrade: false,
-		maxRetentionPeriod: 0,
-	},
-);
+const props = defineProps<{
+	items: WorkflowHistory[];
+	activeItem: WorkflowHistory | null;
+	actions: UserAction[];
+	requestNumberOfItems: number;
+	lastReceivedItemsLength: number;
+	evaluatedPruneTime: number;
+	shouldUpgrade?: boolean;
+	isListLoading?: boolean;
+}>();
+
 const emit = defineEmits<{
 	(
 		event: 'action',
-		value: { action: WorkflowHistoryActionTypes[number]; id: WorkflowVersionId },
+		value: {
+			action: WorkflowHistoryActionTypes[number];
+			id: WorkflowVersionId;
+			data: { formattedCreatedAt: string };
+		},
 	): void;
 	(event: 'preview', value: { event: MouseEvent; id: WorkflowVersionId }): void;
 	(event: 'loadMore', value: WorkflowHistoryRequestParams): void;
@@ -40,14 +40,6 @@ const i18n = useI18n();
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
 const observer = ref<IntersectionObserver | null>(null);
-
-const actions = computed<UserAction[]>(() =>
-	props.actionTypes.map((value) => ({
-		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
-		disabled: false,
-		value,
-	})),
-);
 
 const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
@@ -71,12 +63,14 @@ const observeElement = (element: Element) => {
 const onAction = ({
 	action,
 	id,
+	data,
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
+	data: { formattedCreatedAt: string };
 }) => {
 	shouldAutoScroll.value = false;
-	emit('action', { action, id });
+	emit('action', { action, id, data });
 };
 
 const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) => {
@@ -98,7 +92,10 @@ const onItemMounted = ({
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
 
-	if (index === props.items.length - 1 && props.items.length >= props.requestNumberOfItems) {
+	if (
+		index === props.items.length - 1 &&
+		props.lastReceivedItemsLength === props.requestNumberOfItems
+	) {
 		observeElement(listElement.value?.children[index] as Element);
 	}
 };
@@ -111,22 +108,34 @@ const onItemMounted = ({
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:is-active="item.versionId === props.activeItem?.versionId"
-			:actions="actions"
+			:isActive="item.versionId === props.activeItem?.versionId"
+			:actions="props.actions"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"
 		/>
-		<li v-if="!props.items.length" :class="$style.empty">
+		<li v-if="!props.items.length && !props.isListLoading" :class="$style.empty">
 			{{ i18n.baseText('workflowHistory.empty') }}
 			<br />
 			{{ i18n.baseText('workflowHistory.hint') }}
 		</li>
-		<li v-if="props.shouldUpgrade && props.maxRetentionPeriod > 0" :class="$style.retention">
+		<li
+			v-if="props.isListLoading"
+			:class="$style.loader"
+			role="status"
+			aria-live="polite"
+			aria-busy="true"
+			:aria-label="i18n.baseText('generic.loading')"
+		>
+			<n8n-loading :rows="3" class="mb-xs" />
+			<n8n-loading :rows="3" class="mb-xs" />
+			<n8n-loading :rows="3" class="mb-xs" />
+		</li>
+		<li v-if="props.shouldUpgrade" :class="$style.retention">
 			<span>
 				{{
 					i18n.baseText('workflowHistory.limit', {
-						interpolate: { maxRetentionPeriod: props.maxRetentionPeriod },
+						interpolate: { evaluatedPruneTime: props.evaluatedPruneTime },
 					})
 				}}
 			</span>
@@ -143,19 +152,12 @@ const onItemMounted = ({
 
 <style module lang="scss">
 .list {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
 	height: 100%;
 	overflow: auto;
-	position: relative;
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		bottom: 0;
-		left: 0;
-		width: var(--border-width-base);
-		background-color: var(--color-foreground-base);
-	}
 }
 
 .empty {
@@ -169,6 +171,10 @@ const onItemMounted = ({
 	color: var(--color-text-base);
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-loose);
+}
+
+.loader {
+	padding: 0 var(--spacing-s);
 }
 
 .retention {

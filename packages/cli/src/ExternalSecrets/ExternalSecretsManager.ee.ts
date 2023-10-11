@@ -20,7 +20,7 @@ import {
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import { OrchestrationService } from '@/services/orchestration.service';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 
 const logger = getLogger();
 
@@ -83,7 +83,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(OrchestrationService).broadcastReloadExternalSecretsProviders();
+		await Container.get(OrchestrationMainService).broadcastReloadExternalSecretsProviders();
 	}
 
 	private async getEncryptionKey(): Promise<string> {

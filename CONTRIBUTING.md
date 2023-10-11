@@ -65,7 +65,7 @@ dependencies are installed and the packages get linked correctly. Here's a short
 
 #### pnpm
 
-[pnpm](https://pnpm.io/) version 8.7 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+[pnpm](https://pnpm.io/) version 8.9 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
 
 ##### pnpm workspaces
 

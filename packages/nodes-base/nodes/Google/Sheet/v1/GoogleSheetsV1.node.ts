@@ -26,6 +26,7 @@ import { googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
 import { getGoogleAccessToken } from '../../GenericFunctions';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export class GoogleSheetsV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -295,7 +296,16 @@ export class GoogleSheetsV1 implements INodeType {
 						returnData = [];
 					}
 
-					return [this.helpers.returnJsonArray(returnData)];
+					const pairedItem = generatePairedItemData(items.length);
+
+					const lookupOutput = returnData.map((item) => {
+						return {
+							json: item,
+							pairedItem,
+						};
+					});
+
+					return [lookupOutput];
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return [this.helpers.returnJsonArray({ error: error.message })];
