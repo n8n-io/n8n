@@ -758,7 +758,6 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: string): IContextObject;
 	getExecuteData(): IExecuteData;
-	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 };
 
@@ -792,6 +791,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			currentNodeRunIndex: number,
 			data: INodeExecutionData[][] | ExecutionError,
 		): void;
+		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 
 		nodeHelpers: NodeHelperFunctions;
 		helpers: RequestHelperFunctions &
