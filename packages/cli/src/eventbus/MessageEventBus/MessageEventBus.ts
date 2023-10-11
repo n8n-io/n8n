@@ -171,11 +171,10 @@ export class MessageEventBus extends EventEmitter {
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
 						LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
-						if (
-							!unsentAndUnfinished.unfinishedExecutions[executionId] ||
-							unsentAndUnfinished.unfinishedExecutions[executionId].length === 0
-						) {
-							LoggerProxy.debug("No event messages found, marking execution as 'crashed'");
+						if (!unsentAndUnfinished.unfinishedExecutions[executionId]?.length) {
+							LoggerProxy.debug(
+								`No event messages found, marking execution ${executionId} as 'crashed'`,
+							);
 							await Container.get(ExecutionRepository).markAsCrashed([executionId]);
 						} else {
 							await recoverExecutionDataFromEventLogMessages(

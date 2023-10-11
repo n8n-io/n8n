@@ -297,7 +297,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findAllPotentiallyRunningExecutionIds() {
 		const executions = await this.find({
 			where: {
-				status: In(['running', 'retrying', 'new', 'unknown']),
+				status: In(['running', 'new', 'unknown']),
 			},
 			select: ['id', 'status'],
 		});
