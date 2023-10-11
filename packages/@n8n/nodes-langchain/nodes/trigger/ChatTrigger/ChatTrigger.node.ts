@@ -1,28 +1,32 @@
-import {
-	type IDataObject,
-	type INodeType,
-	type INodeTypeDescription,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
+import type {
+	IDataObject,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	INodeType,
+	INodeTypeDescription,
 } from 'n8n-workflow';
-
+import {
+	authenticationProperty,
+	credentialsProperty,
+} from 'n8n-nodes-base/nodes/Webhook/description';
 import { createPage } from './templates';
 
-const CHAT_TRIGGER_PATH_IDENTIFIER = 'n8n-chat';
+const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
 export class ChatTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'n8n Chat Trigger',
+		displayName: 'Chat Trigger',
 		name: 'chatTrigger',
 		icon: 'fa:comments',
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow when an n8n generated webchat is submitted',
 		defaults: {
-			name: 'n8n Chat Trigger',
+			name: 'n8n Chat 3 Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
+		credentials: credentialsProperty(),
 		webhooks: [
 			{
 				name: 'setup',
@@ -34,7 +38,7 @@ export class ChatTrigger implements INodeType {
 			{
 				name: 'default',
 				httpMethod: 'POST',
-				responseMode: '={{$parameter["responseMode"]}}',
+				responseMode: 'responseNode',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 			},
 		],
@@ -49,9 +53,10 @@ export class ChatTrigger implements INodeType {
 					"Chat Trigger have two modes: test and production. <br /> <br /> <b>Use test mode while you build your workflow</b>. Click the 'Test Step' button, then fill out the test chat that opens in a popup tab. The executions will show up in the editor.<br /> <br /> <b>Use production mode to run your workflow automatically</b>. <a data-key=\"activate\">Activate</a> the workflow, then make requests to the production URL. Then every time there's a chat submission via the Production Chat URL, the workflow will execute. These executions will show up in the executions list, but not in the editor.",
 			},
 			activationHint:
-				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new chat submissions created via the Production URL.',
+				'<a data-key="activate">Activate</a> this workflow to have it also run automatically for new chat messages created via the Production URL.',
 		},
 		properties: [
+			authenticationProperty(),
 			{
 				displayName: 'Chat Title',
 				name: 'chatTitle',
@@ -61,30 +66,12 @@ export class ChatTrigger implements INodeType {
 				required: true,
 				description: 'Shown at the top of the chat',
 			},
-			{
-				displayName: 'Respond When',
-				name: 'responseMode',
-				type: 'options',
-				options: [
-					{
-						name: 'Chat Is Submitted',
-						value: 'onReceived',
-						description: 'As soon as this node receives the chat submission',
-					},
-					{
-						name: 'Workflow Finishes',
-						value: 'lastNode',
-						description: 'When the last node of the workflow is executed',
-					},
-				],
-				default: 'onReceived',
-				description: 'When to respond to the chat submission',
-			},
 		],
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const webhookName = this.getWebhookName();
+		const webhookUrl = this.getNodeWebhookUrl('default');
 		const mode = this.getMode() === 'manual' ? 'test' : 'production';
 
 		// Show the chat on GET request
@@ -94,6 +81,7 @@ export class ChatTrigger implements INodeType {
 
 			const page = createPage({
 				title: formTitle,
+				webhookUrl,
 				mode,
 				instanceId,
 			});
@@ -105,14 +93,15 @@ export class ChatTrigger implements INodeType {
 			};
 		}
 
-		const bodyData = (this.getBodyData().data as IDataObject) ?? {};
-
+		const bodyData = this.getBodyData() ?? {};
 		const returnData: IDataObject = {};
-		returnData.submittedAt = bodyData.submittedAt;
-		returnData.formMode = mode;
+		returnData.sessionId = bodyData.sessionId;
+		returnData.action = bodyData.action;
+		returnData.message = bodyData.message;
+
+		console.log(bodyData, bodyData.action, mode, returnData);
 
 		const webhookResponse: IDataObject = { status: 200 };
-
 		return {
 			webhookResponse,
 			workflowData: [this.helpers.returnJsonArray(returnData)],
