@@ -419,7 +419,7 @@ test('should not find unfinished executions in recovery process', async () => {
 	);
 	const unfinishedExecutions = await eventBus.getUnfinishedExecutions();
 
-	expect(Object.keys(unfinishedExecutions).length).toBe(0);
+	expect(Object.keys(unfinishedExecutions)).toHaveLength(0);
 });
 
 test('should not find unfinished executions in recovery process', async () => {
@@ -438,6 +438,6 @@ test('should not find unfinished executions in recovery process', async () => {
 
 	const unfinishedExecutions = await eventBus.getUnfinishedExecutions();
 
-	expect(Object.keys(unfinishedExecutions).length).toBe(1);
+	expect(Object.keys(unfinishedExecutions)).toHaveLength(1);
 	expect(Object.keys(unfinishedExecutions)).toContain('510');
 });

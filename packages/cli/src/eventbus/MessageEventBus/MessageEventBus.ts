@@ -1,6 +1,7 @@
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
+import { In } from 'typeorm';
 import type {
 	EventMessageTypes,
 	EventNamesTypes,
@@ -138,7 +139,12 @@ export class MessageEventBus extends EventEmitter {
 			// crashing, so we can't just mark them as crashed
 			if (config.get('executions.mode') !== 'queue') {
 				const dbUnfinishedExecutionIds = (
-					await Container.get(ExecutionRepository).findAllPotentiallyRunningExecutionIds()
+					await Container.get(ExecutionRepository).find({
+						where: {
+							status: In(['running', 'new', 'unknown']),
+						},
+						select: ['id'],
+					})
 				).map((e) => e.id);
 				unfinishedExecutionIds = Array.from(
 					new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),

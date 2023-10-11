@@ -294,16 +294,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
-	async findAllPotentiallyRunningExecutionIds() {
-		const executions = await this.find({
-			where: {
-				status: In(['running', 'new', 'unknown']),
-			},
-			select: ['id', 'status'],
-		});
-		return executions;
-	}
-
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
