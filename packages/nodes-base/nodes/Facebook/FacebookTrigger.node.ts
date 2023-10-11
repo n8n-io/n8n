@@ -253,13 +253,11 @@ export class FacebookTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as unknown as FacebookEvent;
+		const bodyData = this.getBodyData();
 		const query = this.getQueryData() as IDataObject;
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
-		const object = this.getNodeParameter('object') as string;
-		const fields = this.getNodeParameter('fields') as string[];
 		const credentials = await this.getCredentials('facebookGraphAppApi');
 		// Check if we're getting facebook's challenge request (https://developers.facebook.com/docs/graph-api/webhooks/getting-started)
 		if (this.getWebhookName() === 'setup') {
@@ -287,20 +285,8 @@ export class FacebookTrigger implements INodeType {
 			}
 		}
 
-		if (bodyData.object !== object) {
-			return {};
-		}
-
-		const events = bodyData.entry.map((entry) =>
-			entry.changes.filter((change) => fields.includes(change.field)),
-		);
-
-		if (events.length === 0) {
-			return {};
-		}
-
 		return {
-			workflowData: [this.helpers.returnJsonArray(events as unknown as IDataObject[])],
+			workflowData: [this.helpers.returnJsonArray(bodyData.entry as IDataObject[])],
 		};
 	}
 }
