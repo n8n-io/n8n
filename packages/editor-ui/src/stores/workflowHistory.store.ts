@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { saveAs } from 'file-saver';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { IWorkflowDataUpdate, IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowHistory,
 	WorkflowVersion,
@@ -34,7 +34,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const getWorkflowVersion = async (
 		workflowId: string,
 		versionId: string,
-	): Promise<WorkflowVersion | null> =>
+	): Promise<WorkflowVersion> =>
 		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
 
 	const downloadVersion = async (
@@ -46,34 +46,30 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			workflowsStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		if (workflow && workflowVersion) {
-			const { connections, nodes } = workflowVersion;
-			const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
-				type: 'application/json;charset=utf-8',
-			});
-			saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
-		}
+		const { connections, nodes } = workflowVersion;
+		const blob = new Blob([JSON.stringify({ ...workflow, nodes, connections }, null, 2)], {
+			type: 'application/json;charset=utf-8',
+		});
+		saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
 	};
 
 	const cloneIntoNewWorkflow = async (
 		workflowId: string,
 		workflowVersionId: string,
 		data: { formattedCreatedAt: string },
-	) => {
+	): Promise<IWorkflowDb> => {
 		const [workflow, workflowVersion] = await Promise.all([
 			workflowsStore.fetchWorkflow(workflowId),
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
-		if (workflow && workflowVersion) {
-			const { connections, nodes } = workflowVersion;
-			const { name } = workflow;
-			const newWorkflowData: IWorkflowDataUpdate = {
-				nodes,
-				connections,
-				name: `${name} (${data.formattedCreatedAt})`,
-			};
-			await workflowsStore.createNewWorkflow(newWorkflowData);
-		}
+		const { connections, nodes } = workflowVersion;
+		const { name } = workflow;
+		const newWorkflowData: IWorkflowDataUpdate = {
+			nodes,
+			connections,
+			name: `${name} (${data.formattedCreatedAt})`,
+		};
+		return workflowsStore.createNewWorkflow(newWorkflowData);
 	};
 
 	const restoreWorkflow = async (
