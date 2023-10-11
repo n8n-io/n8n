@@ -9,12 +9,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { STORES, VIEWS } from '@/constants';
 import {
 	workflowHistoryDataFactory,
 	workflowVersionDataFactory,
 } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 import type { WorkflowVersion } from '@/types/workflowHistory';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -63,6 +65,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let workflowHistoryStore: ReturnType<typeof useWorkflowHistoryStore>;
+let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let windowOpenSpy: SpyInstance;
 
 describe('WorkflowHistory', () => {
@@ -73,9 +76,11 @@ describe('WorkflowHistory', () => {
 			},
 		});
 		workflowHistoryStore = useWorkflowHistoryStore();
+		workflowsStore = useWorkflowsStore();
 		route = useRoute();
 		router = useRouter();
 
+		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);

@@ -699,7 +699,7 @@ export class WorkflowDataProxy {
 						' <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">More info</a>';
 
 					context.description += moreInfoLink;
-					context.descriptionTemplate += moreInfoLink;
+					if (context.descriptionTemplate) context.descriptionTemplate += moreInfoLink;
 				}
 			}
 
