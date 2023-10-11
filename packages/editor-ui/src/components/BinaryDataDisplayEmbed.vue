@@ -7,16 +7,17 @@
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
-			<audio v-if="binaryData.fileType === 'audio'" controls autoplay>
+			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</audio>
 			<vue-json-pretty
 				v-else-if="binaryData.fileType === 'json'"
-				:data="jsonData"
+				:data="data"
 				:deep="3"
 				:showLength="true"
 			/>
+			<run-data-html v-else-if="binaryData.fileType === 'html'" :inputHtml="data" />
 			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()" />
 		</span>
 	</span>
@@ -30,11 +31,13 @@ import { jsonParse } from 'n8n-workflow';
 import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import { useWorkflowsStore } from '@/stores';
+import RunDataHtml from '@/components/RunDataHtml.vue';
 
 export default defineComponent({
 	name: 'BinaryDataDisplayEmbed',
 	components: {
 		VueJsonPretty,
+		RunDataHtml,
 	},
 	props: {
 		binaryData: {
@@ -47,27 +50,29 @@ export default defineComponent({
 			isLoading: true,
 			embedSource: '',
 			error: false,
-			jsonData: '',
+			data: '',
 		};
 	},
 	computed: {
 		...mapStores(useWorkflowsStore),
 	},
 	async mounted() {
-		const { id, data, fileName, fileType, mimeType } = (this.binaryData || {}) as IBinaryData;
+		const { id, data, fileName, fileType, mimeType } = this.binaryData;
 		const isJSONData = fileType === 'json';
+		const isHTMLData = fileType === 'html';
 
 		if (!id) {
-			if (isJSONData) {
-				this.jsonData = jsonParse(atob(data));
+			if (isJSONData || isHTMLData) {
+				this.data = jsonParse(atob(data));
 			} else {
 				this.embedSource = 'data:' + mimeType + ';base64,' + data;
 			}
 		} else {
 			try {
 				const binaryUrl = this.workflowsStore.getBinaryUrl(id, 'view', fileName, mimeType);
-				if (isJSONData) {
-					this.jsonData = await (await fetch(binaryUrl)).json();
+				if (isJSONData || isHTMLData) {
+					const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+					this.data = await (isJSONData ? fetchedData.json() : fetchedData.text());
 				} else {
 					this.embedSource = binaryUrl;
 				}
@@ -80,7 +85,7 @@ export default defineComponent({
 	},
 	methods: {
 		embedClass(): string[] {
-			const { fileType } = (this.binaryData || {}) as IBinaryData;
+			const { fileType } = this.binaryData;
 			return [fileType ?? 'other'];
 		},
 	},
