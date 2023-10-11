@@ -246,6 +246,14 @@ watchEffect(async () => {
 			route.params.workflowId,
 			route.params.versionId,
 		);
+	} catch (error) {
+		toast.showError(
+			new Error(`${error.message} "${route.params.versionId}"&nbsp;`),
+			i18n.baseText('workflowHistory.title'),
+		);
+	}
+
+	try {
 		activeWorkflow.value = await workflowsStore.fetchWorkflow(route.params.workflowId);
 	} catch (error) {
 		canRender.value = false;
