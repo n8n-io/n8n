@@ -440,7 +440,7 @@ export class MicrosoftSql implements INodeType {
 			}
 		}
 
-		// Close the connection
+		// shuts down the connection pool associated with the db object to allow the process to finish
 		await pool.close();
 
 		const itemData = generatePairedItemData(items.length);
