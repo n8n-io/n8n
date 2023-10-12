@@ -9,12 +9,72 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { StructuredOutputParser } from 'langchain/output_parsers';
 import { parseSchema } from 'json-schema-to-zod';
 import { z } from 'zod';
 import type { JSONSchema7 } from 'json-schema';
+import { StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputParserException } from 'langchain/schema/output_parser';
+import get from 'lodash/get';
 import { logWrapper } from '../../../utils/logWrapper';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
+	async parse(text: string): Promise<z.infer<T>> {
+		try {
+			const parsed = (await super.parse(text)) as object;
+
+			return (
+				get(parsed, '__structured__output.__structured__output__object') ??
+				get(parsed, '__structured__output.__structured__output__array') ??
+				get(parsed, '__structured__output') ??
+				parsed
+			);
+		} catch (e) {
+			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+			throw new OutputParserException(`Failed to parse. Text: "${text}". Error: ${e}`, text);
+		}
+	}
+
+	static fromZedJsonSchema(
+		schema: JSONSchema7,
+	): StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>> {
+		// Make sure to remove the description from root schema
+		const { description, ...restOfSchema } = schema;
+
+		// We want to wrap the schema in a way that it can be used for both object and array
+		// outputs and allows us to parse and display them correctly
+		const returnSchema = {
+			type: 'object',
+			properties: {
+				__structured__output: {
+					type: 'object',
+					properties: {
+						__structured__output__object: {
+							type: 'object',
+							description:
+								'Use this wrapper when you have a single data entry that conforms to the itemSchema. Ideal for object-like outputs representing a singular entity. Example: { foo: "bar", foo2: ["bar2", "bar3"] }',
+							...restOfSchema,
+						},
+						__structured__output__array: {
+							type: 'array',
+							description:
+								'Use this wrapper when you have multiple data entries, each conforming to the itemSchema. Ideal for array-like outputs representing a list of entities. Example: [ { foo: "bar", cities: ["foo1", "foo2"] }, ... ]',
+							items: schema,
+						},
+					},
+				},
+			},
+		};
+
+		const zodSchemaString = parseSchema(returnSchema as JSONSchema7);
+
+		// TODO: This is obviously not great and should be replaced later!!!
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		const zodSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
+
+		return N8nStructuredOutputParser.fromZodSchema(zodSchema);
+	}
+}
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
@@ -86,22 +146,14 @@ export class OutputParserStructured implements INodeType {
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const schema = this.getNodeParameter('jsonSchema', itemIndex) as string;
 
-		let itemSchema: object;
+		let itemSchema: JSONSchema7;
 		try {
 			itemSchema = jsonParse<JSONSchema7>(schema);
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 		}
 
-		const zodSchemaString = parseSchema(itemSchema);
-
-		// TODO: This is obviously not great and should be replaced later!!!
-		// const createZodSchema = new Function('z', `return (${zodSchemaString})`);
-		// const zodSchema = createZodSchema(z);
-		// eslint-disable-next-line @typescript-eslint/no-implied-eval
-		const zodSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
-
-		const parser = StructuredOutputParser.fromZodSchema(zodSchema);
+		const parser = N8nStructuredOutputParser.fromZedJsonSchema(itemSchema);
 
 		return {
 			response: logWrapper(parser, this),
