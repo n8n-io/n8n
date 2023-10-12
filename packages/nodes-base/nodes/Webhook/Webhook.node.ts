@@ -96,7 +96,6 @@ export class Webhook extends Node {
 	async webhook(context: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const options = context.getNodeParameter('options', {}) as {
 			binaryData: boolean;
-			domainAllowlist: string;
 			ignoreBots: boolean;
 			rawBody: Buffer;
 			responseData?: string;
@@ -105,29 +104,6 @@ export class Webhook extends Node {
 		const resp = context.getResponseObject();
 
 		try {
-			if (options.domainAllowlist) {
-				const domainAllowlist = options.domainAllowlist.split(',').map((entry) => entry.trim());
-				const origin = req.headers.origin;
-				if (!origin) {
-					throw new WebhookAuthorizationError(403);
-				}
-
-				const originUrl = new URL(origin);
-				const isAllowlisted = domainAllowlist.find((entry) => {
-					const isOriginMatch = originUrl.hostname === entry;
-					const isWildcard = entry.startsWith('*.');
-					const isWildcardSubdomainMatch =
-						isWildcard && originUrl.hostname.endsWith(entry.slice(1));
-					const isWildcardOriginMatch = isWildcard && originUrl.hostname === entry.slice(2);
-
-					return isOriginMatch || isWildcardSubdomainMatch || isWildcardOriginMatch;
-				});
-
-				if (!isAllowlisted) {
-					throw new WebhookAuthorizationError(403);
-				}
-			}
-
 			if (options.ignoreBots && isbot(req.headers['user-agent']))
 				throw new WebhookAuthorizationError(403);
 			await this.validateAuth(context);

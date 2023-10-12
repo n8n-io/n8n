@@ -1,4 +1,4 @@
-import { NodeVM, makeResolverFromLegacyOptions, type Resolver } from '@n8n/vm2';
+import { NodeVM, makeResolverFromLegacyOptions } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { ValidationError } from './ValidationError';
@@ -27,7 +27,6 @@ export class JavaScriptSandbox extends Sandbox {
 		private jsCode: string,
 		itemIndex: number | undefined,
 		helpers: IExecuteFunctions['helpers'],
-		options?: { resolver?: Resolver },
 	) {
 		super(
 			{
@@ -42,28 +41,17 @@ export class JavaScriptSandbox extends Sandbox {
 		this.vm = new NodeVM({
 			console: 'redirect',
 			sandbox: context,
-			require: options?.resolver ?? vmResolver,
+			require: vmResolver,
 			wasm: false,
 		});
 
 		this.vm.on('console.log', (...args: unknown[]) => this.emit('output', ...args));
 	}
 
-	async runCode(): Promise<unknown> {
-		const script = `module.exports = async function() {${this.jsCode}\n}()`;
-		try {
-			return await this.vm.run(script, __dirname);
-		} catch (error) {
-			throw new ExecutionError(error);
-		}
-	}
-
-	async runCodeAllItems(options?: {
-		multiOutput?: boolean;
-	}): Promise<INodeExecutionData[] | INodeExecutionData[][]> {
+	async runCodeAllItems(): Promise<INodeExecutionData[]> {
 		const script = `module.exports = async function() {${this.jsCode}\n}()`;
 
-		let executionResult: INodeExecutionData | INodeExecutionData[] | INodeExecutionData[][];
+		let executionResult: INodeExecutionData | INodeExecutionData[];
 
 		try {
 			executionResult = await this.vm.run(script, __dirname);
@@ -79,25 +67,7 @@ export class JavaScriptSandbox extends Sandbox {
 
 		if (executionResult === null) return [];
 
-		if (options?.multiOutput === true) {
-			// Check if executionResult is an array of arrays
-			if (!Array.isArray(executionResult) || executionResult.some((item) => !Array.isArray(item))) {
-				throw new ValidationError({
-					message: "The code doesn't return an array of arrays",
-					description:
-						'Please return an array of arrays. One array for the different outputs and one for the different items that get returned.',
-					itemIndex: this.itemIndex,
-				});
-			}
-
-			return executionResult.map((data) => {
-				return this.validateRunCodeAllItems(data);
-			});
-		}
-
-		return this.validateRunCodeAllItems(
-			executionResult as INodeExecutionData | INodeExecutionData[],
-		);
+		return this.validateRunCodeAllItems(executionResult);
 	}
 
 	async runCodeEachItem(): Promise<INodeExecutionData | undefined> {

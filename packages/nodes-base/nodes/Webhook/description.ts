@@ -222,16 +222,6 @@ export const optionsProperty: INodeProperties = {
 				'Name of the binary property to write the data of the received file to. If the data gets received via "Form-Data Multipart" it will be the prefix and a number starting with 0 will be attached to it.',
 		},
 		{
-			displayName: 'Domain Allowlist',
-			name: 'domainAllowlist',
-			type: 'string',
-			default: '',
-			description:
-				'Domains to allow requests from. Separate multiple by comma. Wildcards are supported.',
-			placeholder: '*.example.com',
-			displayOptions: {},
-		},
-		{
 			displayName: 'Ignore Bots',
 			name: 'ignoreBots',
 			type: 'boolean',
