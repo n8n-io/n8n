@@ -17,16 +17,19 @@ import { OutputParserException } from 'langchain/schema/output_parser';
 import get from 'lodash/get';
 import { logWrapper } from '../../../utils/logWrapper';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const STRUCTURED_OUTPUT_KEY = '__structured__output';
+const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
+const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
+
 class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
 	async parse(text: string): Promise<z.infer<T>> {
 		try {
 			const parsed = (await super.parse(text)) as object;
 
 			return (
-				get(parsed, '__structured__output.__structured__output__object') ??
-				get(parsed, '__structured__output.__structured__output__array') ??
-				get(parsed, '__structured__output') ??
+				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_OBJECT_KEY}`) ??
+				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_ARRAY_KEY}`) ??
+				get(parsed, STRUCTURED_OUTPUT_KEY) ??
 				parsed
 			);
 		} catch (e) {
@@ -46,16 +49,16 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 		const returnSchema = {
 			type: 'object',
 			properties: {
-				__structured__output: {
+				[STRUCTURED_OUTPUT_KEY]: {
 					type: 'object',
 					properties: {
-						__structured__output__object: {
+						[STRUCTURED_OUTPUT_OBJECT_KEY]: {
 							type: 'object',
 							description:
 								'Use this wrapper when you have a single data entry that conforms to the itemSchema. Ideal for object-like outputs representing a singular entity. Example: { foo: "bar", foo2: ["bar2", "bar3"] }',
 							...restOfSchema,
 						},
-						__structured__output__array: {
+						[STRUCTURED_OUTPUT_ARRAY_KEY]: {
 							type: 'array',
 							description:
 								'Use this wrapper when you have multiple data entries, each conforming to the itemSchema. Ideal for array-like outputs representing a list of entities. Example: [ { foo: "bar", cities: ["foo1", "foo2"] }, ... ]',
