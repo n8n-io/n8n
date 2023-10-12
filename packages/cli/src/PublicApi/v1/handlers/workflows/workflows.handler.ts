@@ -179,10 +179,6 @@ export = {
 				}
 			}
 
-			if (isWorkflowHistoryLicensed()) {
-				await Container.get(WorkflowHistoryService).saveVersion(req.user, sharedWorkflow.workflow);
-			}
-
 			if (sharedWorkflow.workflow.active) {
 				try {
 					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
@@ -194,6 +190,14 @@ export = {
 			}
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
+
+			if (isWorkflowHistoryLicensed() && updatedWorkflow) {
+				await Container.get(WorkflowHistoryService).saveVersion(
+					req.user,
+					updatedWorkflow,
+					sharedWorkflow.workflowId,
+				);
+			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);
