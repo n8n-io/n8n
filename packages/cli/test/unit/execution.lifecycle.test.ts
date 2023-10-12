@@ -112,7 +112,7 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 				expect(binaryDataService.rename).not.toHaveBeenCalled();
 			});
 
-			it('should do nothing if no data is undefined', async () => {
+			it('should do nothing if data is undefined', async () => {
 				const executionId = '999';
 
 				const run = toIRun({
