@@ -19,19 +19,20 @@ const actions: UserAction[] = actionTypes.map((value) => ({
 const renderComponent = createComponentRenderer(WorkflowHistoryContent);
 
 let pinia: ReturnType<typeof createPinia>;
-
-const postMessageSpy = vi.fn();
-Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
-	writable: true,
-	value: {
-		postMessage: postMessageSpy,
-	},
-});
+let postMessageSpy: vi.SpyInstance;
 
 describe('WorkflowHistoryContent', () => {
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
+
+		postMessageSpy = vi.fn();
+		Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+			writable: true,
+			value: {
+				postMessage: postMessageSpy,
+			},
+		});
 	});
 
 	it('should use the list item component to render version data', () => {
@@ -80,7 +81,7 @@ describe('WorkflowHistoryContent', () => {
 			},
 		});
 
-		window.postMessage('{"command": "n8nReady"}', '*');
+		window.postMessage('{"command":"n8nReady"}', '*');
 
 		await waitFor(() => {
 			expect(postMessageSpy).toHaveBeenCalledWith(expect.not.stringContaining('pinData'), '*');

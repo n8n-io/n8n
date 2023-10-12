@@ -26,7 +26,7 @@ import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n, useToast } from '@/composables';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 const props = withDefaults(
 	defineProps<{
