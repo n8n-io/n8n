@@ -163,6 +163,11 @@ export const validateEntry = (
 ) => {
 	let entryValue = entry[entry.type];
 	const name = entry.name;
+
+	if (nodeVersion && nodeVersion >= 3.2 && (entryValue === undefined || entryValue === null)) {
+		return { name, value: null };
+	}
+
 	const entryType = entry.type.replace('Value', '') as FieldType;
 
 	const description = `To fix the error try to change the type for the field "${name}" or activate the option “Ignore Type Conversion Errors” to apply a less strict type validation`;
