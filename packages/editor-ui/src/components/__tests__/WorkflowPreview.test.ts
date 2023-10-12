@@ -211,4 +211,17 @@ describe('WorkflowPreview', () => {
 			expect(iframe?.classList.toString()).not.toContain('openNDV');
 		});
 	});
+
+	it('should not emit "close" event if iframe sends "error" command', async () => {
+		const { emitted } = renderComponent({
+			pinia,
+			props: {},
+		});
+
+		window.postMessage('{"command":"error"}', '*');
+
+		await waitFor(() => {
+			expect(emitted().close).toBeDefined();
+		});
+	});
 });
