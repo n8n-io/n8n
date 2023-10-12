@@ -93,7 +93,7 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		await Promise.all(
 			binaryDataDirs.map(async (dir) => {
-				await fs.rm(dir, { recursive: true });
+				await fs.rm(dir, { recursive: true, force: true });
 			}),
 		);
 	}
