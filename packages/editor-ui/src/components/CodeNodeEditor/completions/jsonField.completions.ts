@@ -1,14 +1,13 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { escape, toVariableOption } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
-import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
 
-export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
+export const jsonFieldCompletions = defineComponent({
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 	},
@@ -276,7 +275,16 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		 * `index` is only passed for `all()`.
 		 */
 		getJsonOutput(quotedNodeName: string, options?: { accessor?: string; index?: number }) {
-			const nodeName = quotedNodeName.replace(/['"]/g, '');
+			let nodeName = quotedNodeName;
+
+			const isSingleQuoteWrapped = quotedNodeName.startsWith("'") && quotedNodeName.endsWith("'");
+			const isDoubleQuoteWrapped = quotedNodeName.startsWith('"') && quotedNodeName.endsWith('"');
+
+			if (isSingleQuoteWrapped) {
+				nodeName = quotedNodeName.replace(/^'/, '').replace(/'$/, '');
+			} else if (isDoubleQuoteWrapped) {
+				nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
+			}
 
 			const pinData: IPinData | undefined = this.workflowsStore.getPinData;
 

@@ -12,6 +12,7 @@ export class KitemakerApi implements ICredentialType {
 			displayName: 'Personal Access Token',
 			name: 'personalAccessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

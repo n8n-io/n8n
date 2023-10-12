@@ -79,7 +79,6 @@ export class Credentials extends ICredentials {
 			throw new Error('No data was set.');
 		}
 
-		// eslint-disable-next-line no-prototype-builtins
 		if (!fullData.hasOwnProperty(key)) {
 			throw new Error(`No data for key "${key}" exists.`);
 		}
@@ -126,6 +125,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -327,7 +327,6 @@ export function getExecuteFunctions(
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					console.error(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},

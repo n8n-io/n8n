@@ -3,16 +3,14 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Inline expression editor', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openInlineExpressionEditor();
+
+		cy.on('uncaught:exception', (err) => err.name !== 'ExpressionError');
 	});
 
 	it('should resolve primitive resolvables', () => {
@@ -67,6 +65,7 @@ describe('Inline expression editor', () => {
 	it('should resolve $parameter[]', () => {
 		WorkflowPage.getters.inlineExpressionEditorInput().clear();
 		WorkflowPage.getters.inlineExpressionEditorInput().type('{{');
+		// Resolving $parameter is slow, especially on CI runner
 		WorkflowPage.getters.inlineExpressionEditorInput().type('$parameter["operation"]');
 		WorkflowPage.getters.inlineExpressionEditorOutput().contains(/^get$/);
 	});

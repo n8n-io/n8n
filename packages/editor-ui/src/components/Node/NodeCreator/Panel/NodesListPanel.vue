@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { getCurrentInstance, computed, onMounted, onUnmounted, watch } from 'vue';
+import { computed, onMounted, onUnmounted, watch } from 'vue';
 import type { INodeCreateElement } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_VIEW } from '@/constants';
+import {
+	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+	TRIGGER_NODE_CREATOR_VIEW,
+} from '@/constants';
 
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView } from '../viewsData';
+import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
+import { useI18n } from '@/composables';
 
-const instance = getCurrentInstance();
+const i18n = useI18n();
 
 const { mergedNodes } = useNodeCreatorStore();
 const { pushViewStack, popViewStack, updateCurrentViewStack } = useViewStacks();
@@ -25,10 +31,10 @@ const viewStacks = computed(() => useViewStacks().viewStacks);
 const isActionsMode = computed(() => useViewStacks().activeViewStackMode === 'actions');
 const searchPlaceholder = computed(() =>
 	isActionsMode.value
-		? instance?.proxy?.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
+		? i18n.baseText('nodeCreator.actionsCategory.searchActions', {
 				interpolate: { node: activeViewStack.value.title as string },
 		  })
-		: instance?.proxy?.$locale.baseText('nodeCreator.searchBar.searchNodes'),
+		: i18n.baseText('nodeCreator.searchBar.searchNodes'),
 );
 
 const nodeCreatorView = computed(() => useNodeCreatorStore().selectedView);
@@ -58,15 +64,27 @@ onUnmounted(() => {
 watch(
 	() => nodeCreatorView.value,
 	(selectedView) => {
-		const view =
-			selectedView === TRIGGER_NODE_CREATOR_VIEW
-				? TriggerView(instance?.proxy?.$locale)
-				: RegularView(instance?.proxy?.$locale);
+		const views = {
+			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+			[AI_NODE_CREATOR_VIEW]: AIView,
+			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
+		};
+
+		const itemKey = selectedView;
+		const matchedView = views[itemKey];
+
+		if (!matchedView) {
+			console.warn(`No view found for ${itemKey}`);
+			return;
+		}
+		const view = matchedView(mergedNodes);
 
 		pushViewStack({
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
 			items: view.items as INodeCreateElement[],
+			info: view.info,
 			hasSearch: true,
 			mode: 'nodes',
 			rootView: selectedView,
@@ -88,13 +106,25 @@ function onBackButton() {
 		:name="`panel-slide-${activeViewStack.transitionDirection}`"
 		@afterLeave="onTransitionEnd"
 	>
-		<aside :class="$style.nodesListPanel" @keydown.capture.stop :key="`${activeViewStack.uuid}`">
+		<aside
+			:class="[$style.nodesListPanel, activeViewStack.panelClass]"
+			@keydown.capture.stop
+			:key="`${activeViewStack.uuid}`"
+		>
 			<header
-				:class="{ [$style.header]: true, [$style.hasBg]: !activeViewStack.subtitle }"
+				:class="{
+					[$style.header]: true,
+					[$style.hasBg]: !activeViewStack.subtitle,
+					'nodes-list-panel-header': true,
+				}"
 				data-test-id="nodes-list-header"
 			>
 				<div :class="$style.top">
-					<button :class="$style.backButton" @click="onBackButton" v-if="viewStacks.length > 1">
+					<button
+						:class="$style.backButton"
+						@click="onBackButton"
+						v-if="viewStacks.length > 1 && !activeViewStack.preventBack"
+					>
 						<font-awesome-icon :class="$style.backButtonIcon" icon="arrow-left" size="2x" />
 					</button>
 					<n8n-node-icon
@@ -106,7 +136,7 @@ function onBackButton() {
 						:color="activeViewStack.nodeIcon.color"
 						:circle="false"
 						:showTooltip="false"
-						:size="16"
+						:size="20"
 					/>
 					<p :class="$style.title" v-text="activeViewStack.title" v-if="activeViewStack.title" />
 				</div>
@@ -124,15 +154,21 @@ function onBackButton() {
 						? searchPlaceholder
 						: $locale.baseText('nodeCreator.searchBar.searchNodes')
 				"
-				@input="onSearch"
-				:value="activeViewStack.search"
+				:modelValue="activeViewStack.search"
+				@update:modelValue="onSearch"
 			/>
 			<div :class="$style.renderedItems">
+				<n8n-notice
+					v-if="activeViewStack.info && !activeViewStack.search"
+					:class="$style.info"
+					:content="activeViewStack.info"
+					theme="info"
+				/>
 				<!-- Actions mode -->
-				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-on="$listeners" />
+				<ActionsRenderer v-if="isActionsMode && activeViewStack.subcategory" v-bind="$attrs" />
 
 				<!-- Nodes Mode -->
-				<NodesRenderer v-else :rootView="nodeCreatorView" v-on="$listeners" />
+				<NodesRenderer v-else :rootView="nodeCreatorView" v-bind="$attrs" />
 			</div>
 		</aside>
 	</transition>
@@ -149,18 +185,21 @@ function onBackButton() {
 	right: 0;
 }
 
-:global(.panel-slide-out-enter),
+:global(.panel-slide-out-enter-from),
 :global(.panel-slide-in-leave-to) {
 	transform: translateX(0);
 	z-index: -1;
 }
 
 :global(.panel-slide-out-leave-to),
-:global(.panel-slide-in-enter) {
+:global(.panel-slide-in-enter-from) {
 	transform: translateX(100%);
 	// Make sure the leaving panel stays on top
 	// for the slide-out panel effect
 	z-index: 1;
+}
+.info {
+	margin: var(--spacing-2xs) var(--spacing-s);
 }
 .backButton {
 	background: transparent;
@@ -175,7 +214,7 @@ function onBackButton() {
 	padding: 0;
 }
 .nodeIcon {
-	--node-icon-size: 16px;
+	--node-icon-size: 20px;
 	margin-right: var(--spacing-s);
 }
 .renderedItems {
@@ -254,5 +293,15 @@ function onBackButton() {
 }
 .offsetSubtitle {
 	margin-left: calc(var(--spacing-xl) + var(--spacing-4xs));
+}
+</style>
+
+<style lang="scss">
+@each $node-type in $supplemental-node-types {
+	.nodes-list-panel-#{$node-type} .nodes-list-panel-header {
+		.n8n-node-icon svg {
+			color: var(--node-type-#{$node-type}-color);
+		}
+	}
 }
 </style>

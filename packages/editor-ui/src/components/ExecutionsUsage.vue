@@ -6,7 +6,7 @@
 			</n8n-text>
 		</div>
 		<div v-else-if="!isTrialExpired && trialHasExecutionsLeft" :class="$style.usageText">
-			<i18n path="executionUsage.currentUsage">
+			<i18n-t tag="span" keypath="executionUsage.currentUsage">
 				<template #text>
 					<n8n-text size="small" color="text-dark">
 						{{ locale.baseText('executionUsage.currentUsage.text') }}
@@ -21,7 +21,7 @@
 						}}
 					</n8n-text>
 				</template>
-			</i18n>
+			</i18n-t>
 		</div>
 		<div v-else-if="!trialHasExecutionsLeft" :class="$style.usageText">
 			<n8n-text size="small">
@@ -114,7 +114,7 @@ const maxExecutions = computed(() => {
 });
 
 const onUpgradeClicked = () => {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 };
 </script>
 

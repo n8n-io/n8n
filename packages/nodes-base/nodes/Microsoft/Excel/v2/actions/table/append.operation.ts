@@ -1,6 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { processJsonInput, updateDisplayOptions } from '@utils/utilities';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+import { generatePairedItemData, processJsonInput, updateDisplayOptions } from '@utils/utilities';
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
@@ -260,7 +264,7 @@ export async function execute(
 		const dataProperty = (options.dataProperty as string) || 'data';
 
 		returnData.push(
-			...prepareOutput(this.getNode(), responseData as ExcelResponse, {
+			...prepareOutput.call(this, this.getNode(), responseData as ExcelResponse, {
 				columnsRow,
 				dataProperty,
 				rawData,
@@ -268,9 +272,10 @@ export async function execute(
 		);
 	} catch (error) {
 		if (this.continueOnFail()) {
+			const itemData = generatePairedItemData(this.getInputData().length);
 			const executionErrorData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray({ error: error.message }),
-				{ itemData: { item: 0 } },
+				{ itemData },
 			);
 			returnData.push(...executionErrorData);
 		} else {

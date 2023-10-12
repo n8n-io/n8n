@@ -1,14 +1,17 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
 
-import { getResolvables, updateDisplayOptions } from '@utils/utilities';
-
 import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { getResolvables, updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -23,17 +26,10 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
+			rows: 5,
 			sqlDialect: 'MySQL',
 		},
-		hint: 'Prefer using query parameters over n8n expressions to avoid SQL injection attacks',
-	},
-	{
-		displayName: `
-		To use query parameters in your SQL query, reference them as $1, $2, $3, etc in the corresponding order. <a target="_blank" href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/">More info</a>.
-		`,
-		name: 'notice',
-		type: 'notice',
-		default: '',
+		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
 	},
 	optionsCollection,
 ];

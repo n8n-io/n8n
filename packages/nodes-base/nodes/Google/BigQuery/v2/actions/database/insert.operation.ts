@@ -1,8 +1,12 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { updateDisplayOptions } from '@utils/utilities';
+import { generatePairedItemData, updateDisplayOptions } from '@utils/utilities';
 import type { TableSchema } from '../../helpers/interfaces';
 import { checkSchema, wrapData } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
@@ -221,6 +225,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		}
 	}
 
+	const itemData = generatePairedItemData(items.length);
 	for (let i = 0; i < rows.length; i += batchSize) {
 		const batch = rows.slice(i, i + batchSize);
 		body.rows = batch;
@@ -275,7 +280,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 		const executionData = this.helpers.constructExecutionMetaData(
 			wrapData(responseData as IDataObject[]),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnData.push(...executionData);

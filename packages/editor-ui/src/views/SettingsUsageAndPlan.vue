@@ -1,18 +1,19 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router/composables';
-import { Notification } from 'element-ui';
+import { useRoute, useRouter } from 'vue-router';
 import type { UsageTelemetry } from '@/stores/usage.store';
 import { useUsageStore } from '@/stores/usage.store';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores';
 import { N8N_PRICING_PAGE_URL } from '@/constants';
+import { useToast } from '@/composables';
 
 const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
+const toast = useToast();
 
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
@@ -26,7 +27,8 @@ const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const showActivationSuccess = () => {
-	Notification.success({
+	toast.showMessage({
+		type: 'success',
 		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
 		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
 			interpolate: {
@@ -36,16 +38,15 @@ const showActivationSuccess = () => {
 					: locale.baseText('settings.usageAndPlan.edition'),
 			},
 		}),
-		position: 'bottom-right',
 	});
 };
 
 const showActivationError = (error: Error) => {
-	Notification.error({
-		title: locale.baseText('settings.usageAndPlan.license.activation.error.title'),
-		message: error.message,
-		position: 'bottom-right',
-	});
+	toast.showError(
+		error,
+		locale.baseText('settings.usageAndPlan.license.activation.error.title'),
+		error.message,
+	);
 };
 
 const onLicenseActivation = async () => {
@@ -86,11 +87,7 @@ onMounted(async () => {
 		if (!error.name) {
 			error.name = locale.baseText('settings.usageAndPlan.error');
 		}
-		Notification.error({
-			title: error.name,
-			message: error.message,
-			position: 'bottom-right',
-		});
+		toast.showError(error, error.name, error.message);
 	}
 });
 
@@ -106,7 +103,7 @@ const onAddActivationKey = () => {
 };
 
 const onViewPlans = () => {
-	uiStore.goToUpgrade('usage_page', 'open');
+	void uiStore.goToUpgrade('usage_page', 'open');
 	sendUsageTelemetry('view_plans');
 };
 
@@ -129,7 +126,7 @@ const openPricingPage = () => {
 </script>
 
 <template>
-	<div>
+	<div class="settings-usage-and-plan">
 		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
 		<n8n-action-box
 			v-if="usageStore.isDesktop"
@@ -137,11 +134,11 @@ const openPricingPage = () => {
 			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
 			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
 			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
-			@click="openPricingPage"
+			@click:button="openPricingPage"
 		/>
 		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">
-				<i18n path="settings.usageAndPlan.description">
+				<i18n-t keypath="settings.usageAndPlan.description" tag="span">
 					<template #name>{{ usageStore.planName }}</template>
 					<template #type>
 						<span v-if="usageStore.planId">{{
@@ -149,7 +146,7 @@ const openPricingPage = () => {
 						}}</span>
 						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
-				</i18n>
+				</i18n-t>
 			</n8n-heading>
 
 			<div :class="$style.quota">
@@ -163,7 +160,11 @@ const openPricingPage = () => {
 							:style="{ width: `${usageStore.executionPercentage}%` }"
 						></span>
 					</span>
-					<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
+					<i18n-t
+						tag="span"
+						:class="$style.count"
+						keypath="settings.usageAndPlan.activeWorkflows.count"
+					>
 						<template #count>{{ usageStore.executionCount }}</template>
 						<template #limit>
 							<span v-if="usageStore.executionLimit < 0">{{
@@ -171,7 +172,7 @@ const openPricingPage = () => {
 							}}</span>
 							<span v-else>{{ usageStore.executionLimit }}</span>
 						</template>
-					</i18n>
+					</i18n-t>
 				</div>
 			</div>
 
@@ -206,22 +207,22 @@ const openPricingPage = () => {
 				top="0"
 				@closed="onDialogClosed"
 				@opened="onDialogOpened"
-				:visible.sync="activationKeyModal"
+				v-model="activationKeyModal"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
+				:modal-class="$style.center"
 			>
 				<template #default>
 					<n8n-input
 						ref="activationKeyInput"
 						v-model="activationKey"
-						size="medium"
 						:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
 					/>
 				</template>
 				<template #footer>
-					<n8n-button @click="activationKeyModal = false" size="medium" type="secondary">
+					<n8n-button @click="activationKeyModal = false" type="secondary">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</n8n-button>
-					<n8n-button @click="onLicenseActivation" size="medium">
+					<n8n-button @click="onLicenseActivation">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</n8n-button>
 				</template>
@@ -232,6 +233,10 @@ const openPricingPage = () => {
 
 <style lang="scss" module>
 @import '@/styles/css-animation-helpers.scss';
+
+.center > div {
+	justify-content: center;
+}
 
 .actionBox {
 	margin: var(--spacing-2xl) 0 0;
@@ -324,17 +329,19 @@ div[class*='info'] > span > span:last-child {
 </style>
 
 <style lang="scss" scoped>
-:deep(.el-dialog__wrapper) {
-	display: flex;
-	align-items: center;
-	justify-content: center;
+.settings-usage-and-plan {
+	:deep(.el-dialog__wrapper) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 
-	.el-dialog {
-		margin: 0;
+		.el-dialog {
+			margin: 0;
 
-		.el-dialog__footer {
-			button {
-				margin-left: var(--spacing-xs);
+			.el-dialog__footer {
+				button {
+					margin-left: var(--spacing-xs);
+				}
 			}
 		}
 	}

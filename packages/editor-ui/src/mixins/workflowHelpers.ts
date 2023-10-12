@@ -1,68 +1,105 @@
-import { defineComponent } from 'vue';
-import { mapStores } from 'pinia';
 import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WEBHOOK_NODE_TYPE,
-	VIEWS,
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
 } from '@/constants';
+import { mapStores } from 'pinia';
+import { defineComponent } from 'vue';
 
 import type {
 	IConnections,
 	IDataObject,
+	IExecuteData,
 	INode,
+	INodeConnection,
+	INodeCredentials,
 	INodeExecutionData,
 	INodeIssues,
 	INodeParameters,
-	NodeParameterValue,
-	INodeCredentials,
+	INodeProperties,
 	INodeType,
 	INodeTypes,
 	IRunExecutionData,
-	IWorkflowIssues,
-	IWorkflowDataProxyAdditionalKeys,
-	Workflow,
-	IExecuteData,
-	INodeConnection,
 	IWebhookDescription,
+	IWorkflowDataProxyAdditionalKeys,
+	IWorkflowIssues,
+	IWorkflowSettings,
+	NodeParameterValue,
+	Workflow,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, ExpressionEvaluatorProxy, NodeHelpers } from 'n8n-workflow';
 
 import type {
+	ICredentialsResponse,
 	INodeTypesMaxCount,
 	INodeUi,
-	IWorkflowData,
-	IWorkflowDb,
-	IWorkflowDataUpdate,
-	XYPosition,
 	ITag,
+	IWorkflowData,
+	IWorkflowDataUpdate,
+	IWorkflowDb,
 	TargetItem,
+	XYPosition,
 } from '../Interface';
 
+import { useMessage, useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
-import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { useToast, useMessage } from '@/composables';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { isEqual } from 'lodash-es';
 
-import { v4 as uuid } from 'uuid';
-import { getSourceItems } from '@/utils';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useRootStore } from '@/stores/n8nRoot.store';
-import type { IWorkflowSettings } from 'n8n-workflow';
-import { useNDVStore } from '@/stores/ndv.store';
-import { useTemplatesStore } from '@/stores/templates.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
-import { useUsersStore } from '@/stores/users.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
-import type { ICredentialsResponse } from '@/Interface';
-import { useEnvironmentsStore } from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getSourceItems } from '@/utils';
+import { v4 as uuid } from 'uuid';
+import { useSettingsStore } from '@/stores/settings.store';
+
+export function getParentMainInputNode(workflow: Workflow, node: INode): INode {
+	const nodeType = useNodeTypesStore().getNodeType(node.type);
+	if (nodeType) {
+		const outputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType);
+
+		if (!!outputs.find((output) => output !== NodeConnectionType.Main)) {
+			// Get the first node which is connected to a non-main output
+			const nonMainNodesConnected = outputs?.reduce((acc, outputName) => {
+				const parentNodes = workflow.getChildNodes(node.name, outputName);
+				if (parentNodes.length > 0) {
+					acc.push(...parentNodes);
+				}
+				return acc;
+			}, [] as string[]);
+
+			if (nonMainNodesConnected.length) {
+				const returnNode = workflow.getNode(nonMainNodesConnected[0]);
+				if (returnNode === null) {
+					// This should theoretically never happen as the node is connected
+					// but who knows and it makes TS happy
+					throw new Error(
+						`The node "${nonMainNodesConnected[0]}" which is a connection of "${node.name}" could not be found!`,
+					);
+				}
+
+				// The chain of non-main nodes is potentially not finished yet so
+				// keep on going
+				return getParentMainInputNode(workflow, returnNode);
+			}
+		}
+	}
+
+	return node;
+}
 
 export function resolveParameter(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
@@ -71,14 +108,21 @@ export function resolveParameter(
 		inputNodeName?: string;
 		inputRunIndex?: number;
 		inputBranchIndex?: number;
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 	} = {},
 ): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
-	const inputName = 'main';
-	const activeNode = useNDVStore().activeNode;
+	const inputName = NodeConnectionType.Main;
+	let activeNode = useNDVStore().activeNode;
 
 	const workflow = getCurrentWorkflow();
+
+	// Should actually just do that for incoming data and not things like parameters
+	if (activeNode) {
+		activeNode = getParentMainInputNode(workflow, activeNode);
+	}
+
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
 	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
@@ -121,7 +165,7 @@ export function resolveParameter(
 	);
 
 	let runExecutionData: IRunExecutionData;
-	if (executionData === null || !executionData.data) {
+	if (!executionData?.data) {
 		runExecutionData = {
 			resultData: {
 				runData: {},
@@ -146,6 +190,8 @@ export function resolveParameter(
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+
+		...opts.additionalKeys,
 	};
 
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
@@ -157,6 +203,10 @@ export function resolveParameter(
 		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
 	}
 	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
+
+	ExpressionEvaluatorProxy.setEvaluator(
+		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+	);
 
 	return workflow.expression.getParameterValue(
 		parameter,
@@ -173,8 +223,68 @@ export function resolveParameter(
 	) as IDataObject;
 }
 
+export function resolveRequiredParameters(
+	currentParameter: INodeProperties,
+	parameters: INodeParameters,
+	opts: {
+		targetItem?: TargetItem;
+		inputNodeName?: string;
+		inputRunIndex?: number;
+		inputBranchIndex?: number;
+	} = {},
+): IDataObject | null {
+	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
+
+	const resolvedParameters = Object.fromEntries(
+		Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
+			const required = loadOptionsDependsOn.has(name);
+
+			if (required) {
+				return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+			} else {
+				try {
+					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+				} catch (error) {
+					// ignore any expressions errors for non required parameters
+					return [name, null];
+				}
+			}
+		}),
+	);
+
+	return resolvedParameters;
+}
+
 function getCurrentWorkflow(copyData?: boolean): Workflow {
 	return useWorkflowsStore().getCurrentWorkflow(copyData);
+}
+
+function getConnectedNodes(
+	direction: 'upstream' | 'downstream',
+	workflow: Workflow,
+	nodeName: string,
+): string[] {
+	let checkNodes: string[];
+	if (direction === 'downstream') {
+		checkNodes = workflow.getChildNodes(nodeName);
+	} else if (direction === 'upstream') {
+		checkNodes = workflow.getParentNodes(nodeName);
+	} else {
+		throw new Error(`The direction "${direction}" is not supported!`);
+	}
+
+	// Find also all nodes which are connected to the child nodes via a non-main input
+	let connectedNodes: string[] = [];
+	checkNodes.forEach((checkNode) => {
+		connectedNodes = [
+			...connectedNodes,
+			checkNode,
+			...workflow.getParentNodes(checkNode, 'ALL_NON_MAIN'),
+		];
+	});
+
+	// Remove duplicates
+	return [...new Set(connectedNodes)];
 }
 
 function getNodes(): INodeUi[] {
@@ -207,7 +317,7 @@ function connectionInputData(
 		) {
 			connectionInputData = [];
 		} else {
-			connectionInputData = _executeData.data![inputName][nodeConnection.sourceIndex];
+			connectionInputData = _executeData.data[inputName][nodeConnection.sourceIndex];
 
 			if (connectionInputData !== null) {
 				// Update the pairedItem information on items
@@ -260,8 +370,8 @@ function connectionInputData(
 	return connectionInputData;
 }
 
-function executeData(
-	parentNode: string[],
+export function executeData(
+	parentNodes: string[],
 	currentNode: string,
 	inputName: string,
 	runIndex: number,
@@ -272,12 +382,10 @@ function executeData(
 		source: null,
 	} as IExecuteData;
 
-	if (parentNode.length) {
-		// Add the input data to be able to also resolve the short expression format
-		// which does not use the node name
-		const parentNodeName = parentNode[0];
-		const workflowsStore = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore();
 
+	// Find the parent node which has data
+	for (const parentNodeName of parentNodes) {
 		if (workflowsStore.shouldReplaceInputDataWithPinData) {
 			const parentPinData = workflowsStore.getPinData![parentNodeName];
 
@@ -292,7 +400,6 @@ function executeData(
 		}
 
 		// populate `executeData` from `runData`
-
 		const workflowRunData = workflowsStore.getWorkflowRunData;
 		if (workflowRunData === null) {
 			return executeData;
@@ -311,18 +418,41 @@ function executeData(
 			executeData.data = workflowRunData[parentNodeName][runIndex].data!;
 			if (workflowRunData[currentNode] && workflowRunData[currentNode][runIndex]) {
 				executeData.source = {
-					[inputName]: workflowRunData[currentNode][runIndex].source!,
+					[inputName]: workflowRunData[currentNode][runIndex].source,
 				};
 			} else {
+				const workflow = getCurrentWorkflow();
+
+				let previousNodeOutput: number | undefined;
+				// As the node can be connected through either of the outputs find the correct one
+				// and set it to make pairedItem work on not executed nodes
+				if (workflow.connectionsByDestinationNode[currentNode]?.main) {
+					mainConnections: for (const mainConnections of workflow.connectionsByDestinationNode[
+						currentNode
+					].main) {
+						for (const connection of mainConnections) {
+							if (
+								connection.type === NodeConnectionType.Main &&
+								connection.node === parentNodeName
+							) {
+								previousNodeOutput = connection.index;
+								break mainConnections;
+							}
+						}
+					}
+				}
+
 				// The current node did not get executed in UI yet so build data manually
 				executeData.source = {
 					[inputName]: [
 						{
 							previousNode: parentNodeName,
+							previousNodeOutput,
 						},
 					],
 				};
 			}
+			return executeData;
 		}
 	}
 
@@ -354,8 +484,11 @@ export const workflowHelpers = defineComponent({
 	},
 	methods: {
 		resolveParameter,
+		resolveRequiredParameters,
 		getCurrentWorkflow,
+		getConnectedNodes,
 		getNodes,
+		getParentMainInputNode,
 		getWorkflow,
 		getNodeTypes,
 		connectionInputData,
@@ -569,9 +702,7 @@ export const workflowHelpers = defineComponent({
 							continue;
 						}
 
-						if (
-							this.displayParameter(node.parameters, credentialTypeDescription, '', node) === false
-						) {
+						if (!this.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
 							// Credential should not be displayed so do also not save
 							continue;
 						}
@@ -646,6 +777,7 @@ export const workflowHelpers = defineComponent({
 				inputRunIndex?: number;
 				inputBranchIndex?: number;
 				c?: number;
+				additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 			} = {},
 		) {
 			const parameters = {
@@ -657,19 +789,27 @@ export const workflowHelpers = defineComponent({
 				return null;
 			}
 
-			if (typeof returnData['__xxxxxxx__'] === 'object') {
+			const obj = returnData.__xxxxxxx__;
+			if (typeof obj === 'object') {
+				const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
+				if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
 				const workflow = getCurrentWorkflow();
-				return workflow.expression.convertObjectValueToString(returnData['__xxxxxxx__'] as object);
+				return workflow.expression.convertObjectValueToString(obj as object);
 			}
-			return returnData['__xxxxxxx__'];
+			return obj;
 		},
 
-		async updateWorkflow({ workflowId, active }: { workflowId: string; active?: boolean }) {
+		async updateWorkflow(
+			{ workflowId, active }: { workflowId: string; active?: boolean },
+			partialData = false,
+		) {
 			let data: IWorkflowDataUpdate = {};
 
 			const isCurrentWorkflow = workflowId === this.workflowsStore.workflowId;
 			if (isCurrentWorkflow) {
-				data = await this.getWorkflowDataToSave();
+				data = partialData
+					? { versionId: this.workflowsStore.workflowVersionId }
+					: await this.getWorkflowDataToSave();
 			} else {
 				const { versionId } = await this.workflowsStore.fetchWorkflow(workflowId);
 				data.versionId = versionId;
@@ -699,6 +839,10 @@ export const workflowHelpers = defineComponent({
 			redirect = true,
 			forceSave = false,
 		): Promise<boolean> {
+			if (this.readOnlyEnv) {
+				return;
+			}
+
 			const currentWorkflow = id || this.$route.params.name;
 			const isLoading = this.loadingService !== null;
 
@@ -748,6 +892,8 @@ export const workflowHelpers = defineComponent({
 
 				return true;
 			} catch (error) {
+				console.error(error);
+
 				this.uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 100) {
@@ -819,8 +965,6 @@ export const workflowHelpers = defineComponent({
 
 				const workflowDataRequest: IWorkflowDataUpdate =
 					data || (await this.getWorkflowDataToSave());
-				// make sure that the new ones are not active
-				workflowDataRequest.active = false;
 				const changedNodes = {} as IDataObject;
 
 				if (resetNodeIds) {
@@ -903,7 +1047,7 @@ export const workflowHelpers = defineComponent({
 				if (redirect) {
 					void this.$router.replace({
 						name: VIEWS.WORKFLOW,
-						params: { name: workflowData.id as string, action: 'workflowSave' },
+						params: { name: workflowData.id, action: 'workflowSave' },
 					});
 				}
 

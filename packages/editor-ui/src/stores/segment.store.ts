@@ -13,7 +13,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
 const EVENTS = {
-	SHOW_CHECKLIST: 'Show checklist',
 	ADDED_MANUAL_TRIGGER: 'User added manual trigger',
 	ADDED_SCHEDULE_TRIGGER: 'User added schedule trigger',
 	ADDED_DATA_TRIGGER: 'User added data trigger',
@@ -33,15 +32,6 @@ export const useSegment = defineStore('segment', () => {
 		if (settingsStore.telemetry.enabled) {
 			window.analytics?.track(eventName, properties);
 		}
-	};
-
-	const showAppCuesChecklist = () => {
-		const isInIframe = window.location !== window.parent.location;
-		if (isInIframe) {
-			return;
-		}
-
-		track(EVENTS.SHOW_CHECKLIST);
 	};
 
 	const trackAddedTrigger = (nodeTypeName: string) => {
@@ -67,7 +57,11 @@ export const useSegment = defineStore('segment', () => {
 			const nodeRunData = runData.data.resultData.runData[nodeName];
 			const node = workflowsStore.getNodeByName(nodeName);
 			const nodeTypeName = node ? node.type : 'unknown';
-			if (nodeRunData[0].data && nodeRunData[0].data.main.some((out) => out && out?.length > 1)) {
+			if (
+				nodeRunData[0].data &&
+				nodeRunData[0].data.main &&
+				nodeRunData[0].data.main.some((out) => out && out?.length > 1)
+			) {
 				multipleOutputNodes.add(nodeTypeName);
 			}
 			if (node && !node.disabled) {
@@ -123,7 +117,6 @@ export const useSegment = defineStore('segment', () => {
 	};
 
 	return {
-		showAppCuesChecklist,
 		track,
 		trackAddedTrigger,
 		trackSuccessfulWorkflowExecution,

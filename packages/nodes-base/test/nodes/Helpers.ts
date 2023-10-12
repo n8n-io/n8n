@@ -3,7 +3,8 @@ import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
 import { get } from 'lodash';
-import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { Container } from 'typedi';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -123,6 +124,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -182,6 +184,7 @@ export function WorkflowExecuteAdditionalData(
 		webhookTestBaseUrl: 'webhook-test',
 		userId: '123',
 		variables: {},
+		instanceBaseUrl: '',
 	};
 }
 
@@ -214,16 +217,14 @@ export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
-export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
-	const temporaryDir = createTemporaryDir();
-	await BinaryDataManager.init({
-		mode,
-		availableModes: mode,
-		localStoragePath: temporaryDir,
-		binaryDataTTL: 1,
-		persistedBinaryDataTTL: 1,
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({
+		mode: 'default',
+		availableModes: [mode],
+		localStoragePath: createTemporaryDir(),
 	});
-	return temporaryDir;
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 const credentialTypes = new CredentialType();
@@ -321,6 +322,15 @@ export const equalityTest = async (testData: WorkflowTestData, types: INodeTypes
 	const resultNodeData = getResultNodeData(result, testData);
 	resultNodeData.forEach(({ nodeName, resultData }) => {
 		const msg = `Equality failed for "${testData.description}" at node "${nodeName}"`;
+		resultData.forEach((item) => {
+			item?.forEach(({ binary }) => {
+				if (binary) {
+					// @ts-ignore
+					delete binary.data.data;
+					delete binary.data.directory;
+				}
+			});
+		});
 		return expect(resultData, msg).toEqual(testData.output.nodeData[nodeName]);
 	});
 
@@ -344,19 +354,31 @@ export const workflowToTests = (workflowFiles: string[]) => {
 	const testCases: WorkflowTestData[] = [];
 	for (const filePath of workflowFiles) {
 		const description = filePath.replace('.json', '');
-		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
+		const workflowData = readJsonFileSync<IWorkflowBase & Pick<WorkflowTestData, 'trigger'>>(
+			filePath,
+		);
+		const testDir = path.join(baseDir, path.dirname(filePath));
+		workflowData.nodes.forEach((node) => {
+			if (node.parameters) {
+				node.parameters = JSON.parse(
+					JSON.stringify(node.parameters).replace(/"C:\\\\Test\\\\(.*)"/, `"${testDir}/$1"`),
+				);
+			}
+		});
 		if (workflowData.pinData === undefined) {
 			throw new Error('Workflow data does not contain pinData');
 		}
 
 		const nodeData = preparePinData(workflowData.pinData);
-
 		delete workflowData.pinData;
+
+		const { trigger } = workflowData;
+		delete workflowData.trigger;
 
 		const input = { workflowData };
 		const output = { nodeData };
 
-		testCases.push({ description, input, output });
+		testCases.push({ description, input, output, trigger });
 	}
 	return testCases;
 };

@@ -12,7 +12,7 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
 		</template>
@@ -31,13 +31,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 
+import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
 import { useToast } from '@/composables';
 import Modal from '@/components/Modal.vue';
 import type { IFormInputs } from '@/Interface';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'ChangePasswordModal',
@@ -66,7 +66,7 @@ export default defineComponent({
 		...mapStores(useUsersStore),
 	},
 	mounted() {
-		this.config = [
+		const form: IFormInputs = [
 			{
 				name: 'currentPassword',
 				properties: {
@@ -107,6 +107,8 @@ export default defineComponent({
 				},
 			},
 		];
+
+		this.config = form;
 	},
 	methods: {
 		passwordsMatch(value: string | number | boolean | null | undefined) {
@@ -127,7 +129,7 @@ export default defineComponent({
 				this.password = e.value;
 			}
 		},
-		async onSubmit(values: { [key: string]: string }) {
+		async onSubmit(values: { currentPassword: string; password: string }) {
 			try {
 				this.loading = true;
 				await this.usersStore.updateCurrentUserPassword(values);

@@ -1,10 +1,9 @@
-import type { IExecuteFunctions } from 'n8n-core';
-
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -47,6 +46,7 @@ import type { IForm } from './FormInterface';
 import type { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -1153,7 +1153,6 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/add`,
 						body,
 					);
-					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
 				//https://legacydocs.hubspot.com/docs/methods/lists/remove_contact_from_list
 				if (operation === 'remove') {
@@ -1169,8 +1168,15 @@ export class HubspotV2 implements INodeType {
 						`/contacts/v1/lists/${listId}/remove`,
 						body,
 					);
-					returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 				}
+
+				const itemData = generatePairedItemData(items.length);
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: (error as JsonObject).message } });
@@ -3028,13 +3034,16 @@ export class HubspotV2 implements INodeType {
 						throw new NodeOperationError(this.getNode(), error as string);
 					}
 					if (this.continueOnFail()) {
-						returnData.push({ json: { error: (error as JsonObject).message } });
+						returnData.push({
+							json: { error: (error as JsonObject).message },
+							pairedItem: { item: i },
+						});
 						continue;
 					}
 					throw error;
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

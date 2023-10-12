@@ -1,18 +1,11 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
-/* eslint-disable no-prototype-builtins */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-continue */
-/* eslint-disable no-restricted-syntax */
 
 import type {
 	IConnections,
@@ -48,6 +41,7 @@ import type {
 	IRun,
 	IRunNodeResponse,
 	NodeParameterValueType,
+	ConnectionTypes,
 } from './Interfaces';
 import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -63,7 +57,7 @@ function dedupe<T>(arr: T[]): T[] {
 }
 
 export class Workflow {
-	id: string | undefined;
+	id: string;
 
 	name: string | undefined;
 
@@ -99,7 +93,7 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id;
+		this.id = parameters.id as string;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
@@ -214,7 +208,6 @@ export class Workflow {
 				continue;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
 				continue;
 			}
@@ -482,7 +475,6 @@ export class Workflow {
 		const returnData: any = {};
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			returnData[parameterName] = this.renameNodeInParameterValue(
 				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
@@ -566,11 +558,11 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 */
 	getHighestNode(
 		nodeName: string,
-		type = 'main',
+		type: ConnectionTypes = 'main',
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -648,17 +640,25 @@ export class Workflow {
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
 	 */
-	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
+	getChildNodes(
+		nodeName: string,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		depth = -1,
+	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
 	}
 
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
-	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
+	getParentNodes(
+		nodeName: string,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		depth = -1,
+	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
 	}
 
@@ -666,15 +666,15 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		type = 'main',
+		connectionType: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
-		checkedNodes?: string[],
+		checkedNodesIncoming?: string[],
 	): string[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
@@ -688,57 +688,71 @@ export class Workflow {
 			return [];
 		}
 
-		if (!connections[nodeName].hasOwnProperty(type)) {
-			// Node does not have incoming connections of given type
-			return [];
+		let types: ConnectionTypes[];
+		if (connectionType === 'ALL') {
+			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
+		} else if (connectionType === 'ALL_NON_MAIN') {
+			types = Object.keys(connections[nodeName]).filter(
+				(type) => type !== 'main',
+			) as ConnectionTypes[];
+		} else {
+			types = [connectionType];
 		}
 
-		checkedNodes = checkedNodes || [];
-
-		if (checkedNodes.includes(nodeName)) {
-			// Node got checked already before
-			return [];
-		}
-
-		checkedNodes.push(nodeName);
-
-		const returnNodes: string[] = [];
 		let addNodes: string[];
 		let nodeIndex: number;
 		let i: number;
 		let parentNodeName: string;
-		connections[nodeName][type].forEach((connectionsByIndex) => {
-			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.includes(connection.node)) {
-					// Node got checked already before
-					return;
-				}
+		const returnNodes: string[] = [];
 
-				returnNodes.unshift(connection.node);
+		types.forEach((type) => {
+			if (!connections[nodeName].hasOwnProperty(type)) {
+				// Node does not have incoming connections of given type
+				return;
+			}
 
-				addNodes = this.getConnectedNodes(
-					connections,
-					connection.node,
-					type,
-					newDepth,
-					checkedNodes,
-				);
+			const checkedNodes = checkedNodesIncoming ? [...checkedNodesIncoming] : [];
 
-				for (i = addNodes.length; i--; i > 0) {
-					// Because nodes can have multiple parents it is possible that
-					// parts of the tree is parent of both and to not add nodes
-					// twice check first if they already got added before.
-					parentNodeName = addNodes[i];
-					nodeIndex = returnNodes.indexOf(parentNodeName);
+			if (checkedNodes.includes(nodeName)) {
+				// Node got checked already before
+				return;
+			}
 
-					if (nodeIndex !== -1) {
-						// Node got found before so remove it from current location
-						// that node-order stays correct
-						returnNodes.splice(nodeIndex, 1);
+			checkedNodes.push(nodeName);
+
+			connections[nodeName][type].forEach((connectionsByIndex) => {
+				connectionsByIndex.forEach((connection) => {
+					if (checkedNodes.includes(connection.node)) {
+						// Node got checked already before
+						return;
 					}
 
-					returnNodes.unshift(parentNodeName);
-				}
+					returnNodes.unshift(connection.node);
+
+					addNodes = this.getConnectedNodes(
+						connections,
+						connection.node,
+						connectionType,
+						newDepth,
+						checkedNodes,
+					);
+
+					for (i = addNodes.length; i--; i > 0) {
+						// Because nodes can have multiple parents it is possible that
+						// parts of the tree is parent of both and to not add nodes
+						// twice check first if they already got added before.
+						parentNodeName = addNodes[i];
+						nodeIndex = returnNodes.indexOf(parentNodeName);
+
+						if (nodeIndex !== -1) {
+							// Node got found before so remove it from current location
+							// that node-order stays correct
+							returnNodes.splice(nodeIndex, 1);
+						}
+
+						returnNodes.unshift(parentNodeName);
+					}
+				});
 			});
 		});
 
@@ -764,7 +778,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type = 'main';
+		const type: ConnectionTypes = 'main';
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -830,7 +844,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type = 'main',
+		type: ConnectionTypes = 'main',
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {
@@ -981,12 +995,52 @@ export class Workflow {
 		return this.__getStartNode(Object.keys(this.nodes));
 	}
 
-	/**
-	 * Executes the Webhooks method of the node
-	 *
-	 * @param {WebhookSetupMethodNames} method The name of the method to execute
-	 */
-	async runWebhookMethod(
+	async createWebhookIfNotExists(
+		webhookData: IWebhookData,
+		nodeExecuteFunctions: INodeExecuteFunctions,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		isTest?: boolean,
+	): Promise<void> {
+		const webhookExists = await this.runWebhookMethod(
+			'checkExists',
+			webhookData,
+			nodeExecuteFunctions,
+			mode,
+			activation,
+			isTest,
+		);
+		if (!webhookExists) {
+			// If webhook does not exist yet create it
+			await this.runWebhookMethod(
+				'create',
+				webhookData,
+				nodeExecuteFunctions,
+				mode,
+				activation,
+				isTest,
+			);
+		}
+	}
+
+	async deleteWebhook(
+		webhookData: IWebhookData,
+		nodeExecuteFunctions: INodeExecuteFunctions,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		isTest?: boolean,
+	) {
+		await this.runWebhookMethod(
+			'delete',
+			webhookData,
+			nodeExecuteFunctions,
+			mode,
+			activation,
+			isTest,
+		);
+	}
+
+	private async runWebhookMethod(
 		method: WebhookSetupMethodNames,
 		webhookData: IWebhookData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
@@ -1182,18 +1236,26 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (
-			nodeType.execute ||
-			nodeType.executeSingle ||
-			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
-		) {
-			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
+		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
+			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-				// We always use the data of main input and the first input for executeSingle
+			if (inputData.main?.length > 0) {
+				// We always use the data of main input and the first input for execute
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
+			}
+
+			const forceInputNodeExecution = this.settings.executionOrder !== 'v1';
+			if (!forceInputNodeExecution) {
+				// If the nodes do not get force executed data of some inputs may be missing
+				// for that reason do we use the data of the first one that contains any
+				for (const mainData of inputData.main) {
+					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
+				}
 			}
 
 			if (connectionInputData.length === 0) {
@@ -1227,35 +1289,7 @@ export class Workflow {
 			inputData = newInputData;
 		}
 
-		if (nodeType.executeSingle) {
-			const returnPromises: Array<Promise<INodeExecutionData>> = [];
-
-			for (let itemIndex = 0; itemIndex < connectionInputData.length; itemIndex++) {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
-					this,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					inputData,
-					node,
-					itemIndex,
-					additionalData,
-					executionData,
-					mode,
-				);
-
-				returnPromises.push(nodeType.executeSingle.call(thisArgs));
-			}
-
-			if (returnPromises.length === 0) {
-				return { data: null };
-			}
-
-			const promiseResults = await Promise.all(returnPromises);
-			if (promiseResults) {
-				return { data: [promiseResults] };
-			}
-		} else if (nodeType.execute) {
+		if (nodeType.execute) {
 			const context = nodeExecuteFunctions.getExecuteFunctions(
 				this,
 				runExecutionData,
@@ -1351,8 +1385,6 @@ export class Workflow {
 				),
 			};
 		}
-
-		return { data: null };
 	}
 }
 

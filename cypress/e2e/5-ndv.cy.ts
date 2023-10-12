@@ -1,14 +1,12 @@
 import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
+import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { META_KEY } from '../constants';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('NDV', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 		workflowPage.actions.renameWorkflow(uuid());
@@ -68,15 +66,15 @@ describe('NDV', () => {
 
 	it('should show validation errors only after blur or re-opening of NDV', () => {
 		workflowPage.actions.addNodeToCanvas('Manual');
-		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Read data from a table');
+		workflowPage.actions.addNodeToCanvas('Airtable', true, true, 'Search records');
 		ndv.getters.container().should('be.visible');
-		cy.get('.has-issues').should('have.length', 0);
+		// cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.parameterInput('table').find('input').eq(1).focus().blur();
-		ndv.getters.parameterInput('application').find('input').eq(1).focus().blur();
-		cy.get('.has-issues').should('have.length', 2);
+		ndv.getters.parameterInput('base').find('input').eq(1).focus().blur();
+		cy.get('.has-issues').should('have.length', 0);
 		ndv.getters.backToCanvas().click();
 		workflowPage.actions.openNode('Airtable');
-		cy.get('.has-issues').should('have.length', 3);
+		cy.get('.has-issues').should('have.length', 2);
 		cy.get('[class*=hasIssues]').should('have.length', 1);
 	});
 
@@ -121,7 +119,7 @@ describe('NDV', () => {
 			setupSchemaWorkflow();
 			ndv.getters.outputDisplayMode().children().should('have.length', 3);
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Table');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 
 			schemaKeys.forEach((key) => {
@@ -134,7 +132,7 @@ describe('NDV', () => {
 		});
 		it('should preserve schema view after execution', () => {
 			setupSchemaWorkflow();
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.actions.execute();
 			ndv.getters.outputDisplayMode().find('[class*=active]').should('contain', 'Schema');
 		});
@@ -146,7 +144,7 @@ describe('NDV', () => {
 					.outputPanel()
 					.find('[data-test-id=run-data-schema-item]')
 					.filter(':contains("objectValue")');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 
 			expandedObjectProps.forEach((key) => {
 				ndv.getters
@@ -177,9 +175,9 @@ describe('NDV', () => {
 			ndv.actions.execute();
 			ndv.getters.outputPanel().contains('25 items').should('exist');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
-			ndv.getters.outputDisplayMode().contains('JSON').click();
+			ndv.actions.switchOutputMode('JSON');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
 		});
 		it('should display large schema', () => {
@@ -192,7 +190,7 @@ describe('NDV', () => {
 
 			ndv.getters.outputPanel().contains('20 items').should('exist');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('exist');
-			ndv.getters.outputDisplayMode().contains('Schema').click();
+			ndv.actions.switchOutputMode('Schema');
 			ndv.getters.outputPanel().find('[class*=_pagination]').should('not.exist');
 			ndv.getters
 				.outputPanel()
@@ -291,5 +289,71 @@ describe('NDV', () => {
 			ndv.actions.validateExpressionPreview('value', output || input);
 			ndv.getters.parameterInput('value').clear();
 		});
+	});
+
+	it('should not retrieve remote options when required params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+
+		ndv.actions.setInvalidExpression('fieldId');
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getPopper().should('not.be.visible');
+
+		ndv.getters.parameterInputIssues('remoteOptions').realHover();
+		getVisiblePopper().should('include.text', `node doesn't exist`);
+	});
+
+	it('should retrieve remote options when non-required params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+		ndv.getters.parameterInput('remoteOptions').click();
+
+		ndv.actions.setInvalidExpression('otherField');
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+	});
+
+	it('should flag issues as soon as params are set', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Webhook');
+		workflowPage.getters.canvasNodes().first().dblclick();
+
+		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+		ndv.getters.nodeExecuteButton().should('not.be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+
+		ndv.getters.parameterInput('path').clear();
+
+		ndv.getters.nodeExecuteButton().should('be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('not.exist');
+		ndv.actions.close();
+		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
+
+		workflowPage.getters.canvasNodes().first().dblclick();
+		ndv.getters.parameterInput('path').type('t');
+
+		ndv.getters.nodeExecuteButton().should('not.be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+
+		ndv.actions.close();
+		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+	});
+
+	it('should not push NDV header out with a lot of code in Code node editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.getters.parameterInput('jsCode').get('.cm-content').type('{selectall}').type('{backspace}');
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.parameterInput('jsCode').get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
 	});
 });

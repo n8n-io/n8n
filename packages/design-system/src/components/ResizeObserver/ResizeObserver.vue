@@ -68,9 +68,9 @@ export default defineComponent({
 			observer.observe(this.$refs.root as HTMLDivElement);
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.enabled) {
-			this.observer?.disconnect(); // eslint-disable-line
+			this.observer?.disconnect();
 		}
 	},
 });

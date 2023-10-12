@@ -7,7 +7,7 @@
 		:wrapperClosable="false"
 		direction="btt"
 		width="120px"
-		class="value-survey"
+		:class="$style.valueSurvey"
 	>
 		<template #header>
 			<div :class="$style.title">
@@ -37,8 +37,7 @@
 						<n8n-input
 							v-model="form.email"
 							placeholder="Your email address"
-							size="medium"
-							@input="onInputChange"
+							@update:modelValue="onInputChange"
 						/>
 						<div :class="$style.button">
 							<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
@@ -66,7 +65,7 @@ import ModalDrawer from '@/components/ModalDrawer.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 import { useToast } from '@/composables';
 
 const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
@@ -255,10 +254,9 @@ export default defineComponent({
 .disclaimer {
 	margin-top: var(--spacing-4xs);
 }
-</style>
 
-<style lang="scss">
-.value-survey {
+.valueSurvey {
+	background: var(--color-background-dark);
 	height: 120px;
 	top: auto;
 
@@ -266,32 +264,25 @@ export default defineComponent({
 		height: 140px;
 	}
 
-	.el-drawer {
-		background: var(--color-background-dark);
+	@media (max-width: $breakpoint-xs) {
+		height: 140px !important;
+	}
 
-		@media (max-width: $breakpoint-xs) {
-			height: 140px !important;
-		}
+	header {
+		height: 50px;
+		margin: 0;
+		padding: 18px 0 16px;
 
-		&__header {
-			height: 50px;
-			margin: 0;
-			padding: 18px 0 16px;
+		button {
+			top: 12px;
+			right: 16px;
+			position: absolute;
+			font-weight: var(--font-weight-bold);
+			color: var(--color-text-xlight);
 
-			.el-drawer__close-btn {
-				top: 12px;
-				right: 16px;
-				position: absolute;
-
-				@media (max-width: $breakpoint-xs) {
-					top: 2px;
-					right: 2px;
-				}
-			}
-
-			.el-dialog__close {
-				font-weight: var(--font-weight-bold);
-				color: var(--color-text-xlight);
+			@media (max-width: $breakpoint-xs) {
+				top: 2px;
+				right: 2px;
 			}
 		}
 	}

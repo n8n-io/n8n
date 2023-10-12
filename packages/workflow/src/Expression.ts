@@ -1,7 +1,8 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
+import * as tmpl from '@n8n_io/riot-tmpl';
 
 import type {
+	IDataObject,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -14,37 +15,43 @@ import type {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError } from './ExpressionError';
+import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
-// eslint-disable-next-line import/no-cycle
 import { extend, extendOptional } from './Extensions';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
 import { extendSyntax } from './Extensions/ExpressionExtension';
+import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
 
-// Set it to use double curly brackets instead of single ones
-tmpl.brackets.set('{{ }}');
+const IS_FRONTEND_IN_DEV_MODE =
+	typeof process === 'object' &&
+	Object.keys(process).length === 1 &&
+	'env' in process &&
+	Object.keys(process.env).length === 0;
+
+const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
+
+export const isSyntaxError = (error: unknown): error is SyntaxError =>
+	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
+
+export const isExpressionError = (error: unknown): error is ExpressionError =>
+	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
+
+export const isTypeError = (error: unknown): error is TypeError =>
+	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
 // Make sure that error get forwarded
-tmpl.tmpl.errorHandler = (error: Error) => {
-	if (error instanceof ExpressionError) {
-		if (error.context.failExecution) {
-			throw error;
-		}
-
-		if (typeof process === 'undefined' && error.clientOnly) {
-			throw error;
-		}
-	}
-};
+setErrorHandler((error: Error) => {
+	if (isExpressionError(error)) throw error;
+});
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
 
 const fnConstructors = {
 	sync: Function.prototype.constructor,
-	// eslint-disable-next-line @typescript-eslint/ban-types
+
 	async: AsyncFunction.prototype.constructor,
 	mock: () => {
 		throw new ExpressionError('Arbitrary code execution detected');
@@ -58,8 +65,8 @@ export class Expression {
 		this.workflow = workflow;
 	}
 
-	static resolveWithoutWorkflow(expression: string) {
-		return tmpl.tmpl(expression, {});
+	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
+		return tmpl.tmpl(expression, data);
 	}
 
 	/**
@@ -98,6 +105,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -112,6 +120,7 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
@@ -122,7 +131,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
-		// eslint-disable-next-line no-param-reassign
+
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
@@ -140,6 +149,7 @@ export class Expression {
 			executeData,
 			-1,
 			selfData,
+			contextNodeName,
 		);
 		const data = dataProxy.getDataProxy();
 
@@ -330,37 +340,13 @@ export class Expression {
 			[Function, AsyncFunction].forEach(({ prototype }) =>
 				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
 			);
-			return tmpl.tmpl(expression, data);
+			return evaluateExpression(expression, data);
 		} catch (error) {
-			if (error instanceof ExpressionError) {
-				// Ignore all errors except if they are ExpressionErrors and they are supposed
-				// to fail the execution
-				if (error.context.failExecution) {
-					throw error;
-				}
+			if (isExpressionError(error)) throw error;
 
-				if (typeof process === 'undefined' && error.clientOnly) {
-					throw error;
-				}
-			}
+			if (isSyntaxError(error)) throw new Error('invalid syntax');
 
-			// Syntax errors resolve to `Error` on the frontend and `null` on the backend.
-			// This is a temporary divergence in evaluation behavior until we make the
-			// breaking change to allow syntax errors to fail executions.
-			if (
-				typeof process === 'undefined' &&
-				error instanceof Error &&
-				error.name === 'SyntaxError'
-			) {
-				throw new Error('invalid syntax');
-			}
-
-			if (
-				typeof process === 'undefined' &&
-				error instanceof Error &&
-				error.name === 'TypeError' &&
-				error.message.endsWith('is not a function')
-			) {
+			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
@@ -373,6 +359,7 @@ export class Expression {
 				value: fnConstructors.async,
 			});
 		}
+
 		return null;
 	}
 
@@ -388,8 +375,8 @@ export class Expression {
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue?: boolean | number | string,
-	): boolean | number | string | undefined {
+		defaultValue?: boolean | number | string | unknown[],
+	): boolean | number | string | undefined | unknown[] {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -492,6 +479,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	getParameterValue(
 		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
@@ -505,6 +493,7 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
 		const isComplexParameter = (value: NodeParameterValueType) => {
@@ -530,6 +519,7 @@ export class Expression {
 					executeData,
 					returnObjectAsString,
 					selfData,
+					contextNodeName,
 				);
 			}
 
@@ -547,6 +537,7 @@ export class Expression {
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		};
 
@@ -566,6 +557,7 @@ export class Expression {
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		}
 
@@ -588,7 +580,7 @@ export class Expression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const [key, value] of Object.entries(parameterValue)) {
 			returnData[key] = resolveParameterValue(
 				value as NodeParameterValueType,

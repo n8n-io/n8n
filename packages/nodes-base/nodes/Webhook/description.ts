@@ -16,7 +16,7 @@ export const defaultWebhookDescription: IWebhookDescription = {
 };
 
 export const credentialsProperty = (
-	propertyName: string = 'authentication',
+	propertyName = 'authentication',
 ): INodeTypeDescription['credentials'] => [
 	{
 		name: 'httpBasicAuth',
@@ -38,9 +38,7 @@ export const credentialsProperty = (
 	},
 ];
 
-export const authenticationProperty = (
-	propertyName: string = 'authentication',
-): INodeProperties => ({
+export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
 	displayName: 'Authentication',
 	name: propertyName,
 	type: 'options',

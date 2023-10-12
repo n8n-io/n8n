@@ -568,6 +568,6 @@ export class Bitwarden implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

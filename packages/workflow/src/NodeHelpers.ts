@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-continue */
+
 /* eslint-disable prefer-spread */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
@@ -19,7 +15,6 @@ import type {
 	IContextObject,
 	INode,
 	INodeCredentialDescription,
-	INodeExecutionData,
 	INodeIssueObjectProperty,
 	INodeIssues,
 	INodeParameterResourceLocator,
@@ -36,11 +31,16 @@ import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValue,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	FieldType,
 	INodePropertyOptions,
 	ResourceMapperValue,
 	ValidationResult,
+	ConnectionTypes,
+	INodeTypeDescription,
+	INodeOutputConfiguration,
+	INodeInputConfiguration,
+	GenericValue,
 } from './Interfaces';
 import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
@@ -415,7 +415,6 @@ export function getContext(
 	}
 
 	if (runExecutionData.executionData.contextData[key] === undefined) {
-		// eslint-disable-next-line no-param-reassign
 		runExecutionData.executionData.contextData[key] = {};
 	}
 
@@ -640,7 +639,7 @@ export function getNodeParameters(
 							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
-						nodeValues[nodeProperties.name] || nodeProperties.default;
+						nodeValues[nodeProperties.name] ?? nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else if (
@@ -853,30 +852,7 @@ export function getNodeParameters(
 }
 
 /**
- * Brings the output data in a format that can be returned from a node
- *
- * @param {number} [outputIndex=0]
- */
-export async function prepareOutputData(
-	outputData: INodeExecutionData[],
-	outputIndex = 0,
-): Promise<INodeExecutionData[][]> {
-	// TODO: Check if node has output with that index
-	const returnData = [];
-
-	for (let i = 0; i < outputIndex; i++) {
-		returnData.push([]);
-	}
-
-	returnData.push(outputData);
-
-	return returnData;
-}
-
-/**
  * Returns all the webhooks which should be created for the give node
- *
- *
  */
 export function getNodeWebhooks(
 	workflow: Workflow,
@@ -973,7 +949,7 @@ export function getNodeWebhooks(
 		}
 
 		returnData.push({
-			httpMethod: httpMethod.toString() as WebhookHttpMethod,
+			httpMethod: httpMethod.toString() as IHttpRequestMethods,
 			node: node.name,
 			path,
 			webhookDescription,
@@ -1033,6 +1009,65 @@ export function getNodeWebhookUrl(
 	return `${baseUrl}/${getNodeWebhookPath(workflowId, node, path, isFullPath)}`;
 }
 
+export function getConnectionTypes(
+	connections: Array<ConnectionTypes | INodeInputConfiguration | INodeOutputConfiguration>,
+): ConnectionTypes[] {
+	return connections
+		.map((connection) => {
+			if (typeof connection === 'string') {
+				return connection;
+			}
+			return connection.type;
+		})
+		.filter((connection) => connection !== undefined);
+}
+
+export function getNodeInputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeInputConfiguration> {
+	if (Array.isArray(nodeTypeData.inputs)) {
+		return nodeTypeData.inputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return (workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.inputs,
+			'internal',
+			'',
+			{},
+		) || []) as ConnectionTypes[];
+	} catch (e) {
+		throw new Error(`Could not calculate inputs dynamically for node "${node.name}"`);
+	}
+}
+
+export function getNodeOutputs(
+	workflow: Workflow,
+	node: INode,
+	nodeTypeData: INodeTypeDescription,
+): Array<ConnectionTypes | INodeOutputConfiguration> {
+	if (Array.isArray(nodeTypeData.outputs)) {
+		return nodeTypeData.outputs;
+	}
+
+	// Calculate the outputs dynamically
+	try {
+		return (workflow.expression.getSimpleParameterValue(
+			node,
+			nodeTypeData.outputs,
+			'internal',
+			'',
+			{},
+		) || []) as ConnectionTypes[];
+	} catch (e) {
+		throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+	}
+}
+
 /**
  * Returns all the parameter-issues of the node
  *
@@ -1077,7 +1112,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		nodeIssues.push('Execution Error.');
 	}
 
-	const objectProperties = ['parameters', 'credentials'];
+	const objectProperties = ['parameters', 'credentials', 'input'];
 
 	let issueText: string;
 	let parameterName: string;
@@ -1110,7 +1145,7 @@ export const validateFieldType = (
 	options?: INodePropertyOptions[],
 ): ValidationResult => {
 	if (value === null || value === undefined) return { valid: true };
-	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'.`;
+	const defaultErrorMessage = `'${fieldName}' expects a ${type} but we got '${String(value)}'`;
 	switch (type.toLowerCase()) {
 		case 'number': {
 			try {
@@ -1198,12 +1233,16 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 		return value.toLowerCase() === 'true';
 	}
 
-	const num = Number(value);
-	if (num === 0) {
-		return false;
-	} else if (num === 1) {
-		return true;
+	// If value is not a empty string, try to parse it to a number
+	if (!(typeof value === 'string' && value.trim() === '')) {
+		const num = Number(value);
+		if (num === 0) {
+			return false;
+		} else if (num === 1) {
+			return true;
+		}
 	}
+
 	throw new Error(`Could not parse '${String(value)}' to boolean.`);
 };
 
@@ -1243,7 +1282,17 @@ export const tryToParseTime = (value: unknown): string => {
 
 export const tryToParseArray = (value: unknown): unknown[] => {
 	try {
-		const parsed = JSON.parse(String(value));
+		if (typeof value === 'object' && Array.isArray(value)) {
+			return value;
+		}
+
+		let parsed;
+		try {
+			parsed = JSON.parse(String(value));
+		} catch (e) {
+			parsed = JSON.parse(String(value).replace(/'/g, '"'));
+		}
+
 		if (!Array.isArray(parsed)) {
 			throw new Error(`The value "${String(value)}" is not a valid array.`);
 		}
@@ -1258,7 +1307,6 @@ export const tryToParseObject = (value: unknown): object => {
 		return value;
 	}
 	try {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const o = JSON.parse(String(value));
 		if (typeof o !== 'object' || Array.isArray(o)) {
 			throw new Error(`The value "${String(value)}" is not a valid object.`);
@@ -1318,7 +1366,7 @@ export const validateResourceMapperParameter = (
 		const key = `${nodeProperties.name}.${field.id}`;
 		const fieldErrors: string[] = [];
 		if (field.required && !skipRequiredCheck) {
-			if (value.value === null || fieldValue === null || fieldValue === undefined) {
+			if (value.value === null || fieldValue === undefined) {
 				const error = `${fieldWordSingular} "${field.id}" is required`;
 				fieldErrors.push(error);
 			}
@@ -1334,6 +1382,30 @@ export const validateResourceMapperParameter = (
 		}
 	});
 	return issues;
+};
+
+export const validateParameter = (
+	nodeProperties: INodeProperties,
+	value: GenericValue,
+	type: FieldType,
+): string | undefined => {
+	const nodeName = nodeProperties.name;
+	const options = type === 'options' ? nodeProperties.options : undefined;
+
+	if (!value?.toString().startsWith('=')) {
+		const validationResult = validateFieldType(
+			nodeName,
+			value,
+			type,
+			options as INodePropertyOptions[],
+		);
+
+		if (!validationResult.valid && validationResult.errorMessage) {
+			return validationResult.errorMessage;
+		}
+	}
+
+	return undefined;
 };
 
 /**
@@ -1459,6 +1531,19 @@ export function getParameterIssues(
 				}
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
+		}
+	} else if (nodeProperties.validateType) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		const error = validateParameter(nodeProperties, value, nodeProperties.validateType);
+		if (error) {
+			if (foundIssues.parameters === undefined) {
+				foundIssues.parameters = {};
+			}
+			if (foundIssues.parameters[nodeProperties.name] === undefined) {
+				foundIssues.parameters[nodeProperties.name] = [];
+			}
+
+			foundIssues.parameters[nodeProperties.name].push(error);
 		}
 	}
 
@@ -1601,6 +1686,8 @@ export function mergeNodeProperties(
 ): void {
 	let existingIndex: number;
 	for (const property of addProperties) {
+		if (property.doNotInherit) continue;
+
 		existingIndex = mainProperties.findIndex((element) => element.name === property.name);
 
 		if (existingIndex === -1) {

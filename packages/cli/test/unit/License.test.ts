@@ -9,7 +9,7 @@ const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
 const MOCK_ACTIVATION_KEY = 'activation-key';
-const MOCK_FEATURE_FLAG = 'feat:mock';
+const MOCK_FEATURE_FLAG = 'feat:sharing';
 const MOCK_MAIN_PLAN_ID = '1b765dc4-d39d-4ffe-9885-c56dd67c4b26';
 
 describe('License', () => {
@@ -17,6 +17,7 @@ describe('License', () => {
 		config.set('license.serverUrl', MOCK_SERVER_URL);
 		config.set('license.autoRenewEnabled', true);
 		config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
+		config.set('license.tenantId', 1);
 	});
 
 	let license: License;
@@ -30,11 +31,33 @@ describe('License', () => {
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: false,
+			renewOnInit: true,
 			deviceFingerprint: expect.any(Function),
 			productIdentifier: `n8n-${N8N_VERSION}`,
 			logger: expect.anything(),
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
+			server: MOCK_SERVER_URL,
+			tenantId: 1,
+		});
+	});
+
+	test('initializes license manager for worker', async () => {
+		license = new License();
+		await license.init(MOCK_INSTANCE_ID, 'worker');
+		expect(LicenseManager).toHaveBeenCalledWith({
+			autoRenewEnabled: false,
+			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: true,
+			renewOnInit: false,
+			deviceFingerprint: expect.any(Function),
+			productIdentifier: `n8n-${N8N_VERSION}`,
+			logger: expect.anything(),
+			loadCertStr: expect.any(Function),
+			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
@@ -71,9 +94,9 @@ describe('License', () => {
 	});
 
 	test('check fetching feature values', async () => {
-		await license.getFeatureValue(MOCK_FEATURE_FLAG, false);
+		license.getFeatureValue(MOCK_FEATURE_FLAG);
 
-		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG, false);
+		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check management jwt', async () => {

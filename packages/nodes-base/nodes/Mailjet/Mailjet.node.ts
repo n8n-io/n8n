@@ -322,6 +322,6 @@ export class Mailjet implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

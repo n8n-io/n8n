@@ -3,7 +3,6 @@ import path from 'path';
 import { UserSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
-import { copyTable } from '@/databases/utils/migrationHelpers';
 
 export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigration {
 	transaction = false as const;
@@ -118,7 +117,7 @@ export class MigrateIntegerKeysToString1690000000002 implements IrreversibleMigr
 				"data" text NOT NULL, "status" varchar,
 				FOREIGN KEY("workflowId") REFERENCES "${tablePrefix}workflow_entity" ("id") ON DELETE CASCADE
 			);`);
-		await copyTable({ tablePrefix, queryRunner }, 'execution_entity', 'TMP_execution_entity');
+		await context.copyTable('execution_entity', 'TMP_execution_entity');
 		await queryRunner.query(`DROP TABLE "${tablePrefix}execution_entity";`);
 		await queryRunner.query(
 			`ALTER TABLE "${tablePrefix}TMP_execution_entity" RENAME TO "${tablePrefix}execution_entity";`,
@@ -199,11 +198,11 @@ function getSqliteDbFileSize(): number {
 	return size;
 }
 
-const pruneExecutionsData = async ({ queryRunner, tablePrefix }: MigrationContext) => {
+const pruneExecutionsData = async ({ queryRunner, tablePrefix, logger }: MigrationContext) => {
 	if (migrationsPruningEnabled) {
 		const dbFileSize = getSqliteDbFileSize();
 		if (dbFileSize < DESIRED_DATABASE_FILE_SIZE) {
-			console.log(`DB Size not large enough to prune: ${dbFileSize}`);
+			logger.debug(`DB Size not large enough to prune: ${dbFileSize}`);
 			return;
 		}
 
@@ -224,6 +223,6 @@ const pruneExecutionsData = async ({ queryRunner, tablePrefix }: MigrationContex
 		await queryRunner.query(removalQuery);
 		console.timeEnd('pruningData');
 	} else {
-		console.log('Pruning was requested, but was not enabled');
+		logger.debug('Pruning was requested, but was not enabled');
 	}
 };

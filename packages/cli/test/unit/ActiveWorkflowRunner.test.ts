@@ -1,8 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
+import { Container } from 'typedi';
 
-import type { ICredentialTypes, INodesAndCredentials } from 'n8n-workflow';
-import { LoggerProxy, NodeOperationError, Workflow } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { LoggerProxy, NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -11,19 +12,19 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
-import { randomEmail, randomName } from '../integration/shared/random';
-import * as Helpers from './Helpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { mock } from 'jest-mock-extended';
-import type { ExternalHooks } from '@/ExternalHooks';
-import { Container } from 'typedi';
+import { ExternalHooks } from '@/ExternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { NodeTypes } from '@/NodeTypes';
+import { SecretsHelper } from '@/SecretsHelpers';
+import { WebhookService } from '@/services/webhook.service';
+import { VariablesService } from '@/environments/variables/variables.service';
+
+import { mockInstance } from '../integration/shared/utils/';
+import { randomEmail, randomName } from '../integration/shared/random';
+import * as Helpers from './Helpers';
 
 /**
  * TODO:
@@ -51,7 +52,7 @@ const generateWorkflows = (count: number): WorkflowEntity[] => {
 	for (let i = 0; i < count; i++) {
 		const workflow = new WorkflowEntity();
 		Object.assign(workflow, {
-			id: i + 1,
+			id: (i + 1).toString(),
 			name: randomName(),
 			active: true,
 			createdAt: new Date(),
@@ -97,7 +98,7 @@ jest.mock('@/Db', () => {
 				find: jest.fn(async () => generateWorkflows(databaseActiveWorkflowsCount)),
 				findOne: jest.fn(async (searchParams) => {
 					return databaseActiveWorkflowsList.find(
-						(workflow) => workflow.id.toString() === searchParams.where.id.toString(),
+						(workflow) => workflow.id === searchParams.where.id.toString(),
 					);
 				}),
 				update: jest.fn(),
@@ -110,13 +111,6 @@ jest.mock('@/Db', () => {
 					};
 					return fakeQueryBuilder;
 				}),
-			},
-			Webhook: {
-				clear: jest.fn(),
-				delete: jest.fn(),
-			},
-			Variables: {
-				find: jest.fn(() => []),
 			},
 		},
 	};
@@ -137,30 +131,24 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 );
 
 describe('ActiveWorkflowRunner', () => {
-	let externalHooks: ExternalHooks;
-	let activeWorkflowRunner: ActiveWorkflowRunner;
+	mockInstance(ActiveExecutions);
+	const externalHooks = mockInstance(ExternalHooks);
+	const webhookService = mockInstance(WebhookService);
+	mockInstance(Push);
+	mockInstance(SecretsHelper);
+	const variablesService = mockInstance(VariablesService);
+	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+	Object.assign(nodesAndCredentials, {
+		loadedNodes: MOCK_NODE_TYPES_DATA,
+		known: { nodes: {}, credentials: {} },
+		types: { nodes: [], credentials: [] },
+	});
+
+	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 	beforeAll(async () => {
 		LoggerProxy.init(getLogger());
-		const nodesAndCredentials: INodesAndCredentials = {
-			loaded: {
-				nodes: MOCK_NODE_TYPES_DATA,
-				credentials: {},
-			},
-			known: { nodes: {}, credentials: {} },
-			credentialTypes: {} as ICredentialTypes,
-		};
-		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
-		mockInstance(Push);
-	});
-
-	beforeEach(() => {
-		externalHooks = mock();
-		activeWorkflowRunner = new ActiveWorkflowRunner(
-			new ActiveExecutions(),
-			externalHooks,
-			Container.get(NodeTypes),
-		);
+		variablesService.getAllCached.mockResolvedValue([]);
 	});
 
 	afterEach(async () => {
@@ -174,7 +162,7 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		expect(await activeWorkflowRunner.getActiveWorkflows()).toHaveLength(0);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
+		expect(webhookService.deleteInstanceWebhooks).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 	});
 
@@ -185,7 +173,7 @@ describe('ActiveWorkflowRunner', () => {
 			databaseActiveWorkflowsCount,
 		);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(mocked(Db.collections.Webhook.clear)).toHaveBeenCalled();
+		expect(webhookService.deleteInstanceWebhooks).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalled();
 	});
 
@@ -259,5 +247,36 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		activeWorkflowRunner.executeErrorWorkflow(error, workflowData, 'trigger');
 		expect(workflowExecuteAdditionalDataExecuteErrorWorkflowSpy).toHaveBeenCalledTimes(1);
+	});
+
+	describe('init()', () => {
+		it('should execute error workflow on failure to activate due to 401', async () => {
+			databaseActiveWorkflowsCount = 1;
+
+			jest.spyOn(ActiveWorkflowRunner.prototype, 'add').mockImplementation(() => {
+				throw new NodeApiError(
+					{
+						id: 'a75dcd1b-9fed-4643-90bd-75933d67936c',
+						name: 'Github Trigger',
+						type: 'n8n-nodes-base.githubTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					} as INode,
+					{
+						httpCode: '401',
+						message: 'Authorization failed - please check your credentials',
+					},
+				);
+			});
+
+			const executeSpy = jest.spyOn(ActiveWorkflowRunner.prototype, 'executeErrorWorkflow');
+
+			await activeWorkflowRunner.init();
+
+			const [error, workflow] = executeSpy.mock.calls[0];
+
+			expect(error.message).toContain('Authorization');
+			expect(workflow.id).toBe('1');
+		});
 	});
 });

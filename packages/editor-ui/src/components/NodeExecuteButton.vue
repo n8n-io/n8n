@@ -1,20 +1,23 @@
 <template>
-	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<template #content>
-			<div>{{ disabledHint }}</div>
-		</template>
-		<div>
-			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
-				:disabled="disabled || !!disabledHint"
-				:label="buttonLabel"
-				:type="type"
-				:size="size"
-				:transparentBackground="transparent"
-				@click="onClick"
-			/>
-		</div>
-	</n8n-tooltip>
+	<div>
+		<n8n-tooltip placement="bottom" :disabled="!disabledHint">
+			<template #content>
+				<div>{{ disabledHint }}</div>
+			</template>
+			<div>
+				<n8n-button
+					v-bind="$attrs"
+					:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
+					:disabled="disabled || !!disabledHint"
+					:label="buttonLabel"
+					:type="type"
+					:size="size"
+					:transparentBackground="transparent"
+					@click="onClick"
+				/>
+			</div>
+		</n8n-tooltip>
+	</div>
 </template>
 
 <script lang="ts">
@@ -32,6 +35,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast, useMessage } from '@/composables';
 
 export default defineComponent({
+	inheritAttrs: false,
 	mixins: [workflowRun, pinData],
 	props: {
 		nodeName: {
@@ -62,6 +66,7 @@ export default defineComponent({
 		return {
 			...useToast(),
 			...useMessage(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...workflowRun.setup?.(props),
 		};
 	},
@@ -78,10 +83,9 @@ export default defineComponent({
 		},
 		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
 			return (
 				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
 			);
 		},
 		workflowRunning(): boolean {
@@ -94,10 +98,10 @@ export default defineComponent({
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
 		isPollingTypeNode(): boolean {
-			return !!(this.nodeType && this.nodeType.polling);
+			return !!this.nodeType?.polling;
 		},
 		isScheduleTrigger(): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
+			return !!this.nodeType?.group.includes('schedule');
 		},
 		isWebhookNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
@@ -124,9 +128,7 @@ export default defineComponent({
 		},
 		hasIssues(): boolean {
 			return Boolean(
-				this.node &&
-					this.node.issues &&
-					(this.node.issues.parameters || this.node.issues.credentials),
+				this.node?.issues && (this.node.issues.parameters || this.node.issues.credentials),
 			);
 		},
 		disabledHint(): string {
@@ -166,7 +168,7 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
 
-			if (this.isPollingTypeNode || (this.nodeType && this.nodeType.mockManualExecution)) {
+			if (this.isPollingTypeNode || this.nodeType?.mockManualExecution) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
@@ -216,11 +218,15 @@ export default defineComponent({
 						node_type: this.nodeType ? this.nodeType.name : null,
 						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
+						session_id: this.ndvStore.sessionId,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow({
+						destinationNode: this.nodeName,
+						source: 'RunData.ExecuteNodeButton',
+					});
 					this.$emit('execute');
 				}
 			}

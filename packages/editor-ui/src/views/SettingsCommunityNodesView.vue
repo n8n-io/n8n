@@ -38,7 +38,7 @@
 				:buttonText="getEmptyStateButtonText"
 				:calloutText="actionBoxConfig.calloutText"
 				:calloutTheme="actionBoxConfig.calloutTheme"
-				@click="onClickEmptyStateButton"
+				@click:button="onClickEmptyStateButton"
 			/>
 		</div>
 		<div :class="$style.cardsContainer" v-else>
@@ -55,6 +55,7 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
@@ -79,6 +80,7 @@ export default defineComponent({
 	setup(props) {
 		return {
 			...useToast(),
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			...pushConnection.setup?.(props),
 		};
 	},
@@ -92,7 +94,7 @@ export default defineComponent({
 		this.pushConnect();
 
 		try {
-			this.$data.loading = true;
+			this.loading = true;
 			await this.communityNodesStore.fetchInstalledPackages();
 
 			const installedPackages: PublicInstalledPackage[] =
@@ -126,15 +128,15 @@ export default defineComponent({
 				this.$locale.baseText('settings.communityNodes.fetchError.message'),
 			);
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 		try {
 			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
 		} finally {
-			this.$data.loading = false;
+			this.loading = false;
 		}
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		this.pushDisconnect();
 	},
 	computed: {
@@ -189,7 +191,7 @@ export default defineComponent({
 			if (this.settingsStore.isQueueModeEnabled) {
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning', {
-						interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL },
+						interpolate: { docURL: COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL },
 					}),
 					calloutTheme: 'warning',
 					hideButton: true,
@@ -212,11 +214,7 @@ export default defineComponent({
 			this.openInstallModal();
 		},
 		goToUpgrade(): void {
-			const linkUrl = `${this.$locale.baseText(
-				'contextual.upgradeLinkUrl.desktop',
-			)}&utm_campaign=upgrade-community-nodes&selfHosted=true`;
-
-			window.open(linkUrl, '_blank');
+			void this.uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
 		},
 		openInstallModal(): void {
 			const telemetryPayload = {

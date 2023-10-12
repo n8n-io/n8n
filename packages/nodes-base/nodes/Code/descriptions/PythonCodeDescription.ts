@@ -7,6 +7,7 @@ const commonDescription: INodeProperties = {
 	typeOptions: {
 		editor: 'codeNodeEditor',
 		editorLanguage: 'python',
+		rows: 5,
 	},
 	default: '',
 	description:
@@ -44,20 +45,5 @@ export const pythonCodeDescription: INodeProperties[] = [
 			},
 		},
 		default: '',
-	},
-	{
-		displayName: 'Python Modules',
-		name: 'modules',
-		displayOptions: {
-			show: {
-				language: ['python'],
-			},
-		},
-		type: 'string',
-		default: '',
-		placeholder: 'opencv-python',
-		description:
-			'Comma-separated list of Python modules to load. They have to be installed to be able to be loaded and imported.',
-		noDataExpression: true,
 	},
 ];

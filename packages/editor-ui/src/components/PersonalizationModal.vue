@@ -18,6 +18,8 @@
 					:inputs="survey"
 					:columnView="true"
 					:eventBus="formBus"
+					:teleported="teleported"
+					tagSize="small"
 					@submit="onSubmit"
 				/>
 			</div>
@@ -135,12 +137,19 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
+import { usePostHog } from '@/stores';
 
 export default defineComponent({
 	name: 'PersonalizationModal',
 	mixins: [workflowHelpers],
 	components: { Modal },
+	props: {
+		teleported: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			isSaving: false,
@@ -158,7 +167,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore, usePostHog),
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -623,7 +632,7 @@ export default defineComponent({
 			this.formBus.emit('submit');
 		},
 		async onSubmit(values: IPersonalizationLatestVersion): Promise<void> {
-			this.$data.isSaving = true;
+			this.isSaving = true;
 
 			try {
 				const survey: Record<string, GenericValue> = {
@@ -637,6 +646,8 @@ export default defineComponent({
 
 				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationLatestVersion);
 
+				this.posthogStore.setMetadata(survey, 'user');
+
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
 				}
@@ -646,7 +657,7 @@ export default defineComponent({
 				this.showError(e, 'Error while submitting results');
 			}
 
-			this.$data.isSaving = false;
+			this.isSaving = false;
 			this.closeDialog();
 		},
 		async fetchOnboardingPrompt() {

@@ -1,5 +1,10 @@
-import type { IExecuteFunctions } from 'n8n-core';
-import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+	IPairedItemData,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
@@ -8,7 +13,7 @@ import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import set from 'lodash/set';
 
-import { prepareFieldsArray } from '../../helpers/utils';
+import { addBinariesToItem, prepareFieldsArray } from '../../helpers/utils';
 import { disableDotNotationBoolean } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
@@ -154,13 +159,15 @@ const properties: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
-		displayOptions: {
-			hide: {
-				aggregate: ['aggregateAllItemData'],
-			},
-		},
 		options: [
-			disableDotNotationBoolean,
+			{
+				...disableDotNotationBoolean,
+				displayOptions: {
+					hide: {
+						'/aggregate': ['aggregateAllItemData'],
+					},
+				},
+			},
 			{
 				displayName: 'Merge Lists',
 				name: 'mergeLists',
@@ -168,6 +175,31 @@ const properties: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to merge the output into a single flat list (rather than a list of lists), if the field to aggregate is a list',
+				displayOptions: {
+					hide: {
+						'/aggregate': ['aggregateAllItemData'],
+					},
+				},
+			},
+			{
+				displayName: 'Include Binaries',
+				name: 'includeBinaries',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include the binary data in the new item',
+			},
+			{
+				displayName: 'Keep Only Unique Binaries',
+				name: 'keepOnlyUnique',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to keep only unique binaries by comparing mime types, file types, file sizes and file extensions',
+				displayOptions: {
+					show: {
+						includeBinaries: [true],
+					},
+				},
 			},
 			{
 				displayName: 'Keep Missing And Null Values',
@@ -176,6 +208,11 @@ const properties: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to add a null entry to the aggregated list when there is a missing or null value',
+				displayOptions: {
+					hide: {
+						'/aggregate': ['aggregateAllItemData'],
+					},
+				},
 			},
 		],
 	},
@@ -194,7 +231,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	const returnData: INodeExecutionData[] = [];
+	let returnData: INodeExecutionData = { json: {}, pairedItem: [] };
 
 	const aggregate = this.getNodeParameter('aggregate', 0, '') as string;
 
@@ -300,9 +337,10 @@ export async function execute(
 			}
 		}
 
-		returnData.push(newItem);
+		returnData = newItem;
 	} else {
 		let newItems: IDataObject[] = items.map((item) => item.json);
+		let pairedItem: IPairedItemData[] = [];
 		const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
 
 		const fieldsToExclude = prepareFieldsArray(
@@ -316,7 +354,7 @@ export async function execute(
 		);
 
 		if (fieldsToExclude.length || fieldsToInclude.length) {
-			newItems = newItems.reduce((acc, item) => {
+			newItems = newItems.reduce((acc, item, index) => {
 				const newItem: IDataObject = {};
 				let outputFields = Object.keys(item);
 
@@ -336,14 +374,34 @@ export async function execute(
 				if (isEmpty(newItem)) {
 					return acc;
 				}
+
+				pairedItem.push({ item: index });
 				return acc.concat([newItem]);
 			}, [] as IDataObject[]);
+		} else {
+			pairedItem = Array.from({ length: newItems.length }, (_, item) => ({
+				item,
+			}));
 		}
 
-		const output: INodeExecutionData = { json: { [destinationFieldName]: newItems } };
+		const output: INodeExecutionData = { json: { [destinationFieldName]: newItems }, pairedItem };
 
-		returnData.push(output);
+		returnData = output;
 	}
 
-	return returnData;
+	const includeBinaries = this.getNodeParameter('options.includeBinaries', 0, false) as boolean;
+
+	if (includeBinaries) {
+		const pairedItems = (returnData.pairedItem || []) as IPairedItemData[];
+
+		const aggregatedItems = pairedItems.map((item) => {
+			return items[item.item];
+		});
+
+		const keepOnlyUnique = this.getNodeParameter('options.keepOnlyUnique', 0, false) as boolean;
+
+		addBinariesToItem(returnData, aggregatedItems, keepOnlyUnique);
+	}
+
+	return [returnData];
 }

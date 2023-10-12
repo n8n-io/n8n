@@ -6,6 +6,9 @@ import { WebhookServer } from '@/WebhookServer';
 import { Queue } from '@/Queue';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
+import { IConfig } from '@oclif/config';
+import { OrchestrationWebhookService } from '@/services/orchestration/webhook/orchestration.webhook.service';
+import { OrchestrationHandlerWebhookService } from '@/services/orchestration/webhook/orchestration.handler.webhook.service';
 
 export class Webhook extends BaseCommand {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -17,6 +20,15 @@ export class Webhook extends BaseCommand {
 	};
 
 	protected server = new WebhookServer();
+
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
+		this.setInstanceType('webhook');
+		if (this.queueModeId) {
+			this.logger.debug(`Webhook Instance queue mode id: ${this.queueModeId}`);
+		}
+		this.setInstanceQueueModeId();
+	}
 
 	/**
 	 * Stops n8n in a graceful way.
@@ -46,7 +58,7 @@ export class Webhook extends BaseCommand {
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
@@ -75,16 +87,29 @@ export class Webhook extends BaseCommand {
 		}
 
 		await this.initCrashJournal();
+		this.logger.debug('Crash journal initialized');
+
+		this.logger.info('Initializing n8n webhook process');
+		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+
 		await super.init();
 
 		await this.initLicense();
-		await this.initBinaryManager();
+		this.logger.debug('License init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
+		await this.initExternalSecrets();
+		this.logger.debug('External seecrets init complete');
 	}
 
 	async run() {
 		await Container.get(Queue).init();
 		await this.server.start();
+		this.logger.debug(`Webhook listener ID: ${this.server.uniqueInstanceId}`);
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close
@@ -93,5 +118,10 @@ export class Webhook extends BaseCommand {
 
 	async catch(error: Error) {
 		await this.exitWithCrash('Exiting due to an error.', error);
+	}
+
+	async initOrchestration() {
+		await Container.get(OrchestrationWebhookService).init();
+		await Container.get(OrchestrationHandlerWebhookService).init();
 	}
 }

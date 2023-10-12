@@ -1,7 +1,7 @@
 <template>
 	<div
-		:class="{ 'node-wrapper': true, 'node-wrapper--trigger': isTriggerNode }"
-		:style="nodePosition"
+		:class="nodeWrapperClass"
+		:style="nodeWrapperStyles"
 		:id="nodeId"
 		data-test-id="canvas-node"
 		:ref="data.name"
@@ -34,7 +34,7 @@
 					v-if="!data.disabled"
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
-					<div v-if="hasIssues" class="node-issues">
+					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
 						<n8n-tooltip placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
@@ -70,8 +70,7 @@
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip
 						placement="top"
-						manual
-						:value="showTriggerNodeTooltip"
+						:visible="showTriggerNodeTooltip"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
@@ -82,8 +81,7 @@
 					<n8n-tooltip
 						v-if="isTriggerNode"
 						placement="top"
-						manual
-						:value="pinDataDiscoveryTooltipVisible"
+						:visible="pinDataDiscoveryTooltipVisible"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
@@ -98,6 +96,7 @@
 					:nodeType="nodeType"
 					:size="40"
 					:shrink="false"
+					:colorDefault="iconColorDefault"
 					:disabled="this.data.disabled"
 				/>
 			</div>
@@ -140,7 +139,7 @@
 					v-touch:tap="executeNode"
 					class="option"
 					:title="$locale.baseText('node.executeNode')"
-					v-if="!workflowRunning"
+					v-if="!workflowRunning && !isConfigNode"
 					data-test-id="execute-node-button"
 				>
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
@@ -155,7 +154,7 @@
 			></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name ph-no-capture" :title="nodeTitle">
+			<div class="node-name" :title="nodeTitle">
 				<p data-test-id="canvas-node-box-title">
 					{{ nodeTitle }}
 				</p>
@@ -169,13 +168,14 @@
 </template>
 
 <script lang="ts">
-import Vue, { defineComponent } from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-	WAIT_TIME_UNLIMITED,
 	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
@@ -184,7 +184,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
 import type { IExecutionsSummary, INodeTypeDescription, ITaskData } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -227,6 +227,12 @@ export default defineComponent({
 		},
 		isScheduledGroup(): boolean {
 			return this.nodeType?.group.includes('schedule') === true;
+		},
+		iconColorDefault(): string | undefined {
+			if (this.isConfigNode) {
+				return 'var(--color-text-base)';
+			}
+			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
@@ -273,7 +279,7 @@ export default defineComponent({
 			return !!(this.nodeType && this.nodeType.polling);
 		},
 		isExecuting(): boolean {
-			return this.workflowsStore.executingNode === this.data.name;
+			return this.workflowsStore.isNodeExecuting(this.data.name);
 		},
 		isSingleActiveTriggerNode(): boolean {
 			const nodes = this.workflowsStore.workflowTriggerNodes.filter((node: INodeUi) => {
@@ -285,6 +291,20 @@ export default defineComponent({
 		},
 		isManualTypeNode(): boolean {
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
+		},
+		isConfigNode(): boolean {
+			return this.nodeTypesStore.isConfigNode(
+				this.getCurrentWorkflow(),
+				this.data,
+				this.data?.type ?? '',
+			);
+		},
+		isConfigurableNode(): boolean {
+			return this.nodeTypesStore.isConfigurableNode(
+				this.getCurrentWorkflow(),
+				this.data,
+				this.data?.type ?? '',
+			);
 		},
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
@@ -304,6 +324,54 @@ export default defineComponent({
 		},
 		sameTypeNodes(): INodeUi[] {
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
+		},
+		nodeWrapperClass(): object {
+			const classes = {
+				'node-wrapper': true,
+				'node-wrapper--trigger': this.isTriggerNode,
+				'node-wrapper--configurable': this.isConfigurableNode,
+				'node-wrapper--config': this.isConfigNode,
+			};
+
+			if (this.outputs.length) {
+				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
+				const otherOutputs = outputTypes.filter(
+					(outputName) => outputName !== NodeConnectionType.Main,
+				);
+				if (otherOutputs.length) {
+					otherOutputs.forEach((outputName) => {
+						classes[`node-wrapper--connection-type-${outputName}`] = true;
+					});
+				}
+			}
+
+			return classes;
+		},
+		nodeWrapperStyles(): object {
+			const styles: {
+				[key: string]: string | number;
+			} = {
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
+			};
+
+			const nonMainInputs = this.inputs.filter((input) => input !== NodeConnectionType.Main);
+			if (nonMainInputs.length) {
+				const requiredNonMainInputs = this.inputs.filter(
+					(input) => typeof input !== 'string' && input.required,
+				);
+
+				let spacerCount = 0;
+				if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+					const requiredNonMainInputsCount = requiredNonMainInputs.length;
+					const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+					spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+				}
+
+				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
+			}
+
+			return styles;
 		},
 		nodeClass(): object {
 			return {
@@ -349,22 +417,7 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(
-				this.data.disabled &&
-				this.nodeType &&
-				this.nodeType.inputs.length === 1 &&
-				this.nodeType.outputs.length === 1
-			);
-		},
-		nodePosition(): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				left: this.position[0] + 'px',
-				top: this.position[1] + 'px',
-			};
-
-			return returnStyles;
+			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -382,7 +435,7 @@ export default defineComponent({
 		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
-			if (workflowExecution && workflowExecution.waitTill) {
+			if (workflowExecution?.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
@@ -406,27 +459,35 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		nodeStyle(): object {
+			const returnStyles: {
+				[key: string]: string;
+			} = {};
+
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.isConfigurableNode || this.isConfigNode) {
+				borderColor = getStyleTokenValue('--color-foreground-dark');
+			}
 
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
+					returnStyles['border-width'] = '2px';
+					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
+					returnStyles['border-width'] = '2px';
+					returnStyles['border-style'] = 'solid';
 					borderColor = getStyleTokenValue('--color-success');
 				}
 			}
 
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				'border-color': borderColor,
-			};
+			returnStyles['border-color'] = borderColor;
 
 			return returnStyles;
 		},
@@ -437,7 +498,7 @@ export default defineComponent({
 			);
 		},
 		shiftOutputCount(): boolean {
-			return !!(this.nodeType && this.nodeType.outputs.length > 2);
+			return !!(this.nodeType && this.outputs.length > 2);
 		},
 		shouldShowTriggerTooltip(): boolean {
 			return (
@@ -486,6 +547,10 @@ export default defineComponent({
 			}
 		},
 		nodeRunData(newValue) {
+			if (!this.data) {
+				return;
+			}
+
 			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
 		},
 	},
@@ -500,7 +565,9 @@ export default defineComponent({
 		}
 	},
 	mounted() {
-		this.setSubtitle();
+		setTimeout(() => {
+			this.setSubtitle();
+		}, 0);
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {
@@ -537,10 +604,18 @@ export default defineComponent({
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
-			const nodeSubtitle =
-				this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+			// why is this not a computed property? because it's a very expensive operation
+			// it requires expressions to resolve each subtitle...
+			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
+			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
+			try {
+				const nodeSubtitle =
+					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
-			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+			} catch (e) {
+				// avoid breaking UI if expression error occurs
+			}
 		},
 		disableNode() {
 			if (this.data !== null) {
@@ -567,28 +642,26 @@ export default defineComponent({
 				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
-		deleteNode() {
+		async deleteNode() {
 			this.$telemetry.track('User clicked node hover button', {
 				node_type: this.data.type,
 				button_name: 'delete',
 				workflow_id: this.workflowsStore.workflowId,
 			});
 
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
-			});
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
 		},
-		duplicateNode() {
+		async duplicateNode() {
 			this.$telemetry.track('User clicked node hover button', {
 				node_type: this.data.type,
 				button_name: 'duplicate',
 				workflow_id: this.workflowsStore.workflowId,
 			});
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('duplicateNode', this.data.name);
-			});
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('duplicateNode', this.data.name);
 		},
 
 		onClick(event: MouseEvent) {
@@ -609,7 +682,7 @@ export default defineComponent({
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart() {
-			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -622,19 +695,26 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .node-wrapper {
+	--node-width: 100px;
+	--node-height: 100px;
+
+	--configurable-node-min-input-count: 4;
+	--configurable-node-input-width: 65px;
+
 	position: absolute;
-	width: 100px;
-	height: 100px;
+	width: var(--node-width);
+	height: var(--node-height);
 
 	.node-description {
 		position: absolute;
-		top: 100px;
-		left: -50px;
+		top: var(--node-height);
+		left: calc(var(--node-width) / 2 * -1);
 		line-height: 1.5;
 		text-align: center;
 		cursor: default;
 		padding: 8px;
-		width: 200px;
+		width: 100%;
+		min-width: calc(var(--node-width) * 2);
 		pointer-events: none; // prevent container from being draggable
 
 		.node-name > p {
@@ -670,9 +750,9 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-background-xlight);
+			background-color: $node-background-default;
 			&.executing {
-				background-color: var(--color-primary-tint-3) !important;
+				background-color: $node-background-executing !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -753,10 +833,9 @@ export default defineComponent({
 			position: absolute;
 			top: -25px;
 			left: -10px;
-			width: 120px;
+			width: calc(var(--node-width) + 20px);
 			height: 26px;
 			font-size: 0.9em;
-			text-align: left;
 			z-index: 10;
 			color: #aaa;
 			text-align: center;
@@ -779,6 +858,17 @@ export default defineComponent({
 					font-size: 1.2em;
 				}
 			}
+
+			&:after {
+				content: '';
+				display: block;
+				position: absolute;
+				left: 0;
+				right: 0;
+				top: -1rem;
+				bottom: -1rem;
+				z-index: -1;
+			}
 		}
 
 		&.is-touch-device .node-options {
@@ -790,9 +880,121 @@ export default defineComponent({
 			}
 		}
 	}
+
+	&--config {
+		--configurable-node-input-width: 55px;
+		--node-width: 75px;
+		--node-height: 75px;
+
+		& [class*='node-wrapper--connection-type'] {
+			--configurable-node-options: -10px;
+		}
+		.node-default {
+			.node-options {
+				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
+				height: 25px;
+			}
+
+			.node-icon {
+				scale: 0.75;
+			}
+		}
+
+		.node-default {
+			.node-box {
+				border: 2px solid var(--color-foreground-xdark);
+				//background-color: $node-background-type-other;
+				border-radius: 50px;
+
+				&.executing {
+					background-color: $node-background-executing-other !important;
+				}
+
+				.node-executing-info {
+					font-size: 2.85em;
+				}
+			}
+		}
+
+		@each $node-type in $supplemental-node-types {
+			&.node-wrapper--connection-type-#{$node-type} {
+				.node-default .node-box {
+					background: var(--node-type-#{$node-type}-background);
+				}
+
+				.node-description {
+					.node-subtitle {
+						color: var(--node-type-#{$node-type}-color);
+					}
+				}
+			}
+		}
+
+		.node-info-icon {
+			bottom: 4px !important;
+			right: 50% !important;
+			transform: translateX(50%) scale(0.75);
+		}
+
+		&.node-wrapper--configurable {
+			--configurable-node-icon-offset: 20px;
+
+			.node-info-icon {
+				bottom: 1px !important;
+				right: 1px !important;
+			}
+		}
+	}
+
+	&--configurable {
+		--node-width: var(
+			--configurable-node-width,
+			calc(
+				max(var(--configurable-node-input-count, 5), var(--configurable-node-min-input-count)) *
+					var(--configurable-node-input-width)
+			)
+		);
+		--configurable-node-icon-offset: 40px;
+		--configurable-node-icon-size: 30px;
+		--configurable-node-options: -10px;
+
+		.node-description {
+			top: calc(50%);
+			transform: translateY(-50%);
+			left: calc(
+				var(--configurable-node-icon-offset) + var(--configurable-node-icon-size) + var(--spacing-s)
+			);
+			text-align: left;
+			overflow: auto;
+			white-space: normal;
+			min-width: unset;
+			max-width: calc(
+				var(--node-width) - var(--configurable-node-icon-offset) - var(
+						--configurable-node-icon-size
+					) - 2 * var(--spacing-s)
+			);
+		}
+
+		.node-default {
+			.node-icon {
+				left: var(--configurable-node-icon-offset);
+			}
+
+			.node-options {
+				left: var(--configurable-node-options, 65px);
+				height: 25px;
+			}
+
+			.node-executing-info {
+				left: -67px;
+			}
+		}
+	}
+
 	&--trigger .node-default .node-box {
 		border-radius: 32px 8px 8px 32px;
 	}
+
 	.trigger-icon {
 		position: absolute;
 		right: 100%;
@@ -809,6 +1011,8 @@ export default defineComponent({
 }
 
 .select-background {
+	--node--selected--box-shadow-radius: 8px;
+
 	display: block;
 	background-color: hsla(
 		var(--color-foreground-base-h),
@@ -819,13 +1023,24 @@ export default defineComponent({
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
-	left: -8px !important;
-	top: -8px !important;
-	height: 116px;
-	width: 116px !important;
+	left: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	top: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	height: calc(100% + 2 * var(--node--selected--box-shadow-radius));
+	width: calc(100% + 2 * var(--node--selected--box-shadow-radius)) !important;
 
 	.node-wrapper--trigger & {
 		border-radius: 36px 8px 8px 36px;
+	}
+
+	.node-wrapper--config & {
+		--node--selected--box-shadow-radius: 4px;
+		border-radius: 60px;
+		background-color: hsla(
+			var(--color-foreground-base-h),
+			60%,
+			var(--color-foreground-base-l),
+			80%
+		);
 	}
 }
 
@@ -928,6 +1143,7 @@ export default defineComponent({
 	path:not(.jtk-connector-outline) {
 		stroke: var(--color-success-light);
 	}
+	path[jtk-overlay-id='reverse-arrow'],
 	path[jtk-overlay-id='endpoint-arrow'],
 	path[jtk-overlay-id='midpoint-arrow'] {
 		fill: var(--color-success-light);
@@ -1072,8 +1288,94 @@ export default defineComponent({
 	}
 }
 
+.diamond-output-endpoint {
+	--diamond-output-endpoint--transition-duration: 0.15s;
+
+	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
+	transform: rotate(45deg);
+	z-index: 10;
+}
+
+.add-input-endpoint {
+	--add-input-endpoint--transition-duration: 0.15s;
+
+	&:not(.jtk-endpoint-connected) {
+		cursor: pointer;
+	}
+
+	&.add-input-endpoint-multiple {
+		z-index: 100;
+		cursor: pointer;
+	}
+
+	&.jtk-endpoint-connected {
+		z-index: 10;
+	}
+
+	.add-input-endpoint-default {
+		transition: transform var(--add-input-endpoint--transition-duration) ease;
+	}
+
+	.add-input-endpoint-diamond {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-line {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-plus-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--color-foreground-xlight);
+		stroke: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-plus-icon {
+		stroke: none;
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-connected-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--color-foreground-xdark);
+		stroke: var(--color-foreground-xdark);
+	}
+
+	&.rect-input-endpoint-hover {
+		.add-input-endpoint-plus-rectangle {
+			stroke: var(--svg-color, var(--color-primary));
+		}
+
+		.add-input-endpoint-plus-icon {
+			fill: var(--svg-color, var(--color-primary));
+		}
+	}
+
+	&.jtk-endpoint-connected:not(.add-input-endpoint-multiple) {
+		.add-input-endpoint-unconnected {
+			display: none;
+		}
+
+		&.rect-input-endpoint-hover {
+			.add-input-endpoint-connected-rectangle {
+				fill: var(--svg-color, var(--color-primary));
+				stroke: var(--svg-color, var(--color-primary));
+			}
+		}
+	}
+}
+
 .node-input-endpoint-label,
 .node-output-endpoint-label {
+	--node-endpoint-label--transition-duration: 0.15s;
+
 	background-color: hsla(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -1084,11 +1386,25 @@ export default defineComponent({
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	transition: color var(--node-endpoint-label--transition-duration) ease;
+
+	@each $node-type in $supplemental-node-types {
+		&.node-connection-type-#{$node-type} {
+			color: var(--node-type-supplemental-label-color);
+		}
+	}
 }
 
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
+
+	&--data {
+		text-align: center;
+		margin-top: calc(var(--spacing-l) * -1);
+		margin-left: 0;
+	}
 }
+
 .node-input-endpoint-label {
 	text-align: right;
 	margin-left: -25px;
@@ -1096,7 +1412,14 @@ export default defineComponent({
 	&--moved {
 		margin-left: -40px;
 	}
+
+	&--data {
+		text-align: center;
+		margin-top: calc(var(--spacing-5xs) * -1);
+		margin-left: 0;
+	}
 }
+
 .hover-message.jtk-overlay {
 	--hover-message-width: 110px;
 	font-weight: var(--font-weight-bold);

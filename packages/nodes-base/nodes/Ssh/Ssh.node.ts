@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
+import { formatPrivateKey } from '@utils/utilities';
+
 import { rm, writeFile } from 'fs/promises';
 
 import { file as tmpFile } from 'tmp-promise';
@@ -45,14 +47,6 @@ async function resolveHomeDir(
 	}
 
 	return path;
-}
-
-function sanitizePrivateKey(privateKey: string) {
-	const [openSshKey, bodySshKey, endSshKey] = privateKey
-		.split('-----')
-		.filter((item) => item !== '');
-
-	return `-----${openSshKey}-----\n${bodySshKey.replace(/ /g, '\n')}\n-----${endSshKey}-----`;
 }
 
 export class Ssh implements INodeType {
@@ -304,15 +298,11 @@ export class Ssh implements INodeType {
 							password: credentials.password as string,
 						});
 					} else {
-						const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
-						temporaryFiles.push(path);
-						await writeFile(path, sanitizePrivateKey(credentials.privateKey as string));
-
 						const options: Config = {
 							host: credentials.host as string,
 							username: credentials.username as string,
 							port: credentials.port as number,
-							privateKey: path,
+							privateKey: formatPrivateKey(credentials.privateKey as string),
 						};
 
 						if (credentials.passphrase) {
@@ -364,16 +354,11 @@ export class Ssh implements INodeType {
 				});
 			} else if (authentication === 'privateKey') {
 				const credentials = await this.getCredentials('sshPrivateKey');
-
-				const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
-				temporaryFiles.push(path);
-				await writeFile(path, sanitizePrivateKey(credentials.privateKey as string));
-
 				const options: Config = {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,
-					privateKey: path,
+					privateKey: formatPrivateKey(credentials.privateKey as string),
 				};
 
 				if (credentials.passphrase) {
@@ -456,7 +441,7 @@ export class Ssh implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -517,9 +502,9 @@ export class Ssh implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnItems);
+			return [returnItems];
 		}
 	}
 }

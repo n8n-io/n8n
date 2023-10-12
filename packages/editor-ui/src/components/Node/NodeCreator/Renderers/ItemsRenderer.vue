@@ -36,7 +36,7 @@ const activeItemId = computed(() => useKeyboardNavigation()?.activeItemId);
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
-	if (props.elements.length <= LAZY_LOAD_THRESHOLD || props.lazyRender === false) {
+	if (props.elements.length <= LAZY_LOAD_THRESHOLD || !props.lazyRender) {
 		renderedItems.value = props.elements;
 		return;
 	}
@@ -125,7 +125,7 @@ watch(
 			:data-keyboard-nav-id="item.uuid"
 			@click="wrappedEmit('selected', item)"
 		>
-			<template v-if="renderedItems.includes(item)">
+			<div v-if="renderedItems.includes(item)">
 				<label-item v-if="item.type === 'label'" :item="item" />
 				<subcategory-item v-if="item.type === 'subcategory'" :item="item.properties" />
 
@@ -148,7 +148,7 @@ watch(
 					:view="item.properties"
 					:class="$style.viewItem"
 				/>
-			</template>
+			</div>
 
 			<n8n-loading :loading="true" :rows="1" variant="p" :class="$style.itemSkeleton" v-else />
 		</div>
@@ -197,19 +197,21 @@ watch(
 	}
 }
 .view {
-	margin-top: var(--spacing-s);
-	padding-top: var(--spacing-xs);
 	position: relative;
 
-	&::after {
-		content: '';
-		position: absolute;
-		left: var(--spacing-s);
-		right: var(--spacing-s);
-		top: 0;
-		margin: auto;
-		bottom: 0;
-		border-top: 1px solid var(--color-foreground-base);
+	&:last-child {
+		margin-top: var(--spacing-s);
+		padding-top: var(--spacing-xs);
+		&:after {
+			content: '';
+			position: absolute;
+			left: var(--spacing-s);
+			right: var(--spacing-s);
+			top: 0;
+			margin: auto;
+			bottom: 0;
+			border-top: 1px solid var(--color-foreground-base);
+		}
 	}
 }
 </style>

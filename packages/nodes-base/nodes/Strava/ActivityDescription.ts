@@ -234,10 +234,11 @@ export const activityFields: INodeProperties[] = [
 					'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
 			},
 			{
-				displayName: 'Mute activity',
+				displayName: 'Mute Activity',
 				name: 'hide_from_home',
 				type: 'boolean',
 				default: false,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description: 'Do not publish to Home or Club feeds',
 			},
 			{

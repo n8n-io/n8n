@@ -698,10 +698,11 @@ export class FileMaker implements INodeType {
 		const credentials = await this.getCredentials('fileMaker');
 
 		let token;
+
 		try {
 			token = await getToken.call(this);
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), new Error('Login fail', { cause: error }));
+			throw new NodeOperationError(this.getNode(), error as string);
 		}
 
 		let requestOptions: OptionsWithUri;
@@ -818,21 +819,19 @@ export class FileMaker implements INodeType {
 				try {
 					response = await this.helpers.request(requestOptions);
 				} catch (error) {
-					response = error.response.body;
+					response = error.error;
 				}
 
 				if (typeof response === 'string') {
 					throw new NodeOperationError(
 						this.getNode(),
-						'Response body is not valid JSON. Change "Response Format" to "String"',
+						'DataAPI response body is not valid JSON. Is the DataAPI enabled?',
 						{ itemIndex: i },
 					);
 				}
 				returnData.push({ json: response });
 			}
 		} catch (error) {
-			await logout.call(this, token as string);
-
 			if (error.node) {
 				throw error;
 			}
@@ -843,6 +842,7 @@ export class FileMaker implements INodeType {
 			);
 		}
 
-		return this.prepareOutputData(returnData);
+		await logout.call(this, token as string);
+		return [returnData];
 	}
 }

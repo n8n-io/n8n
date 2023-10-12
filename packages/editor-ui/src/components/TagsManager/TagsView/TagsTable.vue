@@ -1,5 +1,6 @@
 <template>
 	<el-table
+		class="tags-table"
 		stripe
 		max-height="450"
 		ref="table"
@@ -15,9 +16,9 @@
 					<transition name="fade" mode="out-in">
 						<n8n-input
 							v-if="scope.row.create || scope.row.update"
-							:value="newName"
+							:modelValue="newName"
 							:maxlength="maxLength"
-							@input="onNewNameChange"
+							@update:modelValue="onNewNameChange"
 							ref="nameInput"
 						></n8n-input>
 						<span v-else-if="scope.row.delete">
@@ -107,7 +108,7 @@
 </template>
 
 <script lang="ts">
-import type { Table as ElTable } from 'element-ui';
+import type { ElTable } from 'element-plus';
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
 import type { ITagRow } from '@/Interface';
 import { defineComponent } from 'vue';
@@ -214,6 +215,12 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.tags-table {
+	:deep(tr.disabled) {
+		pointer-events: none;
+	}
+}
+
 .name {
 	min-height: 45px;
 	display: flex;
@@ -246,10 +253,6 @@ export default defineComponent({
 .ops.main {
 	display: none;
 	margin-left: 2px;
-}
-
-::v-deep tr.disabled {
-	pointer-events: none;
 }
 
 tr:hover .ops:not(.disabled) {

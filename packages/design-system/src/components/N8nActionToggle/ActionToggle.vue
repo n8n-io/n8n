@@ -1,19 +1,20 @@
 <template>
-	<span :class="$style.container" data-test-id="action-toggle">
+	<span @click.stop.prevent :class="$style.container" data-test-id="action-toggle">
 		<el-dropdown
 			:placement="placement"
 			:size="size"
 			trigger="click"
-			@click.native.stop
 			@command="onCommand"
 			@visible-change="onVisibleChange"
 		>
-			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
-				<n8n-icon
-					:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
-					:size="iconSize"
-				/>
-			</span>
+			<slot>
+				<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
+					<n8n-icon
+						:icon="iconOrientation === 'horizontal' ? 'ellipsis-h' : 'ellipsis-v'"
+						:size="iconSize"
+					/>
+				</span>
+			</slot>
 
 			<template #dropdown>
 				<el-dropdown-menu data-test-id="action-toggle-dropdown">
@@ -22,6 +23,7 @@
 						:key="action.value"
 						:command="action.value"
 						:disabled="action.disabled"
+						:data-test-id="`action-${action.value}`"
 					>
 						{{ action.label }}
 						<div :class="$style.iconContainer">
@@ -42,11 +44,7 @@
 <script lang="ts">
 import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
-import {
-	Dropdown as ElDropdown,
-	DropdownMenu as ElDropdownMenu,
-	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 import type { UserAction } from '@/types';
 

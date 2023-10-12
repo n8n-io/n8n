@@ -8,7 +8,12 @@ import {
 } from '@/audit/constants';
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
-import { generateNanoId } from '@/databases/utils/generators';
+import { generateNanoId } from '@db/utils/generators';
+
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
+
+LoggerProxy.init(getLogger());
 
 beforeAll(async () => {
 	await testDb.init();

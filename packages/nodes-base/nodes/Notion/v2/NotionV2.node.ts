@@ -24,6 +24,7 @@ import {
 	mapSorting,
 	notionApiRequest,
 	notionApiRequestAllItems,
+	notionApiRequestGetBlockChildrens,
 	simplifyObjects,
 	validateJSON,
 } from '../GenericFunctions';
@@ -273,6 +274,7 @@ export class NotionV2 implements INodeType {
 						this.getNodeParameter('blockId', i, '', { extractValue: true }) as string,
 					);
 					const returnAll = this.getNodeParameter('returnAll', i);
+					const fetchNestedBlocks = this.getNodeParameter('fetchNestedBlocks', i) as boolean;
 
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -282,8 +284,13 @@ export class NotionV2 implements INodeType {
 							`/blocks/${blockId}/children`,
 							{},
 						);
+
+						if (fetchNestedBlocks) {
+							responseData = await notionApiRequestGetBlockChildrens.call(this, responseData);
+						}
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i);
+						const limit = this.getNodeParameter('limit', i);
+						qs.page_size = limit;
 						responseData = await notionApiRequest.call(
 							this,
 							'GET',
@@ -291,7 +298,13 @@ export class NotionV2 implements INodeType {
 							{},
 							qs,
 						);
-						responseData = responseData.results;
+						const results = responseData.results;
+
+						if (fetchNestedBlocks) {
+							responseData = await notionApiRequestGetBlockChildrens.call(this, results, [], limit);
+						} else {
+							responseData = results;
+						}
 					}
 
 					responseData = responseData.map((_data: IDataObject) => ({
@@ -768,6 +781,6 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

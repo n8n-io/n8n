@@ -9,7 +9,7 @@
 					</template>
 					<div>
 						<n8n-button
-							:disabled="ssoStore.isSamlLoginEnabled"
+							:disabled="ssoStore.isSamlLoginEnabled || !settingsStore.isBelowUserQuota"
 							:label="$locale.baseText('settings.users.invite')"
 							@click="onInvite"
 							size="large"
@@ -19,7 +19,7 @@
 				</n8n-tooltip>
 			</div>
 		</div>
-		<div v-if="!settingsStore.isUserManagementEnabled" :class="$style.setupInfoContainer">
+		<div v-if="!settingsStore.isBelowUserQuota" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.title)
@@ -32,20 +32,15 @@
 				:buttonText="
 					$locale.baseText(uiStore.contextBasedTranslationKeys.users.settings.unavailable.button)
 				"
-				@click="goToUpgrade"
+				@click:button="goToUpgrade"
 			/>
 		</div>
-		<div v-else-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
-			<n8n-action-box
-				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
-				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="`${
-					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
-				}`"
-				@click="redirectToSetup"
-			/>
-		</div>
-		<div :class="$style.usersContainer" v-else>
+		<!-- If there's more than 1 user it means the account quota was more than 1 in the past. So we need to allow instance owner to be able to delete users and transfer workflows.
+		-->
+		<div
+			:class="$style.usersContainer"
+			v-if="settingsStore.isBelowUserQuota || usersStore.allUsers.length > 1"
+		>
 			<n8n-users-list
 				:actions="usersListActions"
 				:users="usersStore.allUsers"
@@ -99,12 +94,16 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
 					value: 'copyInviteLink',
-					guard: (user) => !user.firstName && !!user.inviteAcceptUrl,
+					guard: (user) =>
+						this.settingsStore.isBelowUserQuota && !user.firstName && !!user.inviteAcceptUrl,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.reinvite'),
 					value: 'reinvite',
-					guard: (user) => !user.firstName && this.settingsStore.isSmtpSetup,
+					guard: (user) =>
+						this.settingsStore.isBelowUserQuota &&
+						!user.firstName &&
+						this.settingsStore.isSmtpSetup,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.delete'),
@@ -113,6 +112,7 @@ export default defineComponent({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyPasswordResetLink'),
 					value: 'copyPasswordResetLink',
+					guard: () => this.settingsStore.isBelowUserQuota,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.allowSSOManualLogin'),
@@ -214,7 +214,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
+			void this.uiStore.goToUpgrade('settings-users', 'upgrade-users');
 		},
 	},
 });

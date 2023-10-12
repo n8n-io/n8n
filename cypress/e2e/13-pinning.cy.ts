@@ -2,7 +2,7 @@ import {
 	HTTP_REQUEST_NODE_NAME,
 	MANUAL_TRIGGER_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 } from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
@@ -10,10 +10,6 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
-	before(() => {
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});
@@ -83,7 +79,7 @@ describe('Data pinning', () => {
 		ndv.actions.setPinnedData(Array(3).fill({ pipedrive: 123 }));
 		ndv.actions.close();
 
-		workflowPage.actions.addNodeToCanvas(SET_NODE_NAME, true, true);
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
 		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
 
 		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
@@ -94,10 +90,9 @@ describe('Data pinning', () => {
 
 function setExpressionOnStringValueInSet(expression: string) {
 	cy.get('button').contains('Execute node').click();
-	cy.get('input[placeholder="Add Value"]').click();
-	cy.get('span').contains('String').click();
+	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
 
-	ndv.getters.nthParam(3).contains('Expression').invoke('show').click();
+	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
 
 	ndv.getters
 		.inlineExpressionEditorInput()

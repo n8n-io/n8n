@@ -123,7 +123,7 @@ defineExpose({
 				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
 				:path="parameter.name"
 				:displayOptions="false"
-				@valueChanged="valueChanged"
+				@update="valueChanged"
 			/>
 		</div>
 		<div>
@@ -140,7 +140,7 @@ defineExpose({
 			:label="prop.value"
 			:class="$style.authRadioButton"
 			border
-			@change="onAuthTypeChange"
+			@update:modelValue="onAuthTypeChange"
 			>{{ prop.name }}</el-radio
 		>
 	</div>

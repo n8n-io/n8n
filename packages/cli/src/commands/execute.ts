@@ -10,7 +10,6 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart, isWorkflowIdValid } from '@/utils';
-import { initEvents } from '@/events';
 import { BaseCommand } from './BaseCommand';
 import { Container } from 'typedi';
 
@@ -34,11 +33,8 @@ export class Execute extends BaseCommand {
 
 	async init() {
 		await super.init();
-		await this.initBinaryManager();
+		await this.initBinaryDataService();
 		await this.initExternalHooks();
-
-		// Add event handlers
-		initEvents();
 	}
 
 	async run() {
@@ -74,11 +70,7 @@ export class Execute extends BaseCommand {
 
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
-			if (
-				workflowData === null ||
-				workflowData.nodes === undefined ||
-				workflowData.connections === undefined
-			) {
+			if (workflowData?.nodes === undefined || workflowData.connections === undefined) {
 				this.logger.info(`The file "${flags.file}" does not contain valid workflow data.`);
 				return;
 			}

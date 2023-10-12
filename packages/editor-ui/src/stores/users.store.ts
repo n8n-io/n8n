@@ -8,12 +8,10 @@ import {
 	login,
 	loginCurrentUser,
 	logout,
-	preOwnerSetup,
 	reinvite,
 	sendForgotPasswordEmail,
 	setupOwner,
 	signup,
-	skipOwnerSetup,
 	submitPersonalizationSurvey,
 	updateCurrentUser,
 	updateCurrentUserPassword,
@@ -24,6 +22,7 @@ import {
 } from '@/api/users';
 import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import type {
+	Cloud,
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
@@ -39,6 +38,9 @@ import { useRootStore } from './n8nRoot.store';
 import { usePostHog } from './posthog.store';
 import { useSettingsStore } from './settings.store';
 import { useUIStore } from './ui.store';
+import { useCloudPlanStore } from './cloudPlan.store';
+import { disableMfa, enableMfa, getMfaQR, verifyMfaToken } from '@/api/mfa';
+import { confirmEmail, getCloudUserInfo } from '@/api/cloudPlans';
 
 const isDefaultUser = (user: IUserResponse | null) =>
 	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
@@ -52,6 +54,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
 		currentUserId: null,
 		users: {},
+		currentUserCloudInfo: null,
 	}),
 	getters: {
 		allUsers(): IUser[] {
@@ -68,6 +71,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		isInstanceOwner(): boolean {
 			return isInstanceOwner(this.currentUser);
+		},
+		mfaEnabled(): boolean {
+			return this.currentUser?.mfaEnabled ?? false;
 		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
@@ -168,7 +174,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 
 			usePostHog().init(user.featureFlags);
 		},
-		async loginWithCreds(params: { email: string; password: string }): Promise<void> {
+		async loginWithCreds(params: {
+			email: string;
+			password: string;
+			mfaToken?: string;
+			mfaRecoveryCode?: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await login(rootStore.getRestApiContext, params);
 			if (!user) {
@@ -184,10 +195,10 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
+			useCloudPlanStore().reset();
 			usePostHog().reset();
-		},
-		async preOwnerSetup() {
-			return preOwnerSetup(useRootStore().getRestApiContext);
+			this.currentUserCloudInfo = null;
+			useUIStore().clearBannerStack();
 		},
 		async createOwner(params: {
 			firstName: string;
@@ -202,6 +213,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
 				settingsStore.stopShowingSetupPage();
+				usePostHog().init(user.featureFlags);
 			}
 		},
 		async validateSignupToken(params: {
@@ -223,22 +235,21 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			if (user) {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
+				usePostHog().init(user.featureFlags);
 			}
-
-			usePostHog().init(user.featureFlags);
 		},
 		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await sendForgotPasswordEmail(rootStore.getRestApiContext, params);
 		},
-		async validatePasswordToken(params: { token: string; userId: string }): Promise<void> {
+		async validatePasswordToken(params: { token: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await validatePasswordToken(rootStore.getRestApiContext, params);
 		},
 		async changePassword(params: {
 			token: string;
 			password: string;
-			userId: string;
+			mfaToken?: string;
 		}): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
@@ -332,13 +343,43 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 			}
 		},
-		async skipOwnerSetup(): Promise<void> {
+		async getMfaQR(): Promise<{ qrCode: string; secret: string; recoveryCodes: string[] }> {
+			const rootStore = useRootStore();
+			return getMfaQR(rootStore.getRestApiContext);
+		},
+		async verifyMfaToken(data: { token: string }): Promise<void> {
+			const rootStore = useRootStore();
+			return verifyMfaToken(rootStore.getRestApiContext, data);
+		},
+		async enableMfa(data: { token: string }) {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await enableMfa(rootStore.getRestApiContext, data);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = true;
+			}
+		},
+		async disabledMfa() {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await disableMfa(rootStore.getRestApiContext);
+			const currentUser = usersStore.currentUser;
+			if (currentUser) {
+				currentUser.mfaEnabled = false;
+			}
+		},
+		async fetchUserCloudAccount() {
+			let cloudUser: Cloud.UserAccount | null = null;
 			try {
-				const rootStore = useRootStore();
-				const settingsStore = useSettingsStore();
-				settingsStore.stopShowingSetupPage();
-				await skipOwnerSetup(rootStore.getRestApiContext);
-			} catch (error) {}
+				cloudUser = await getCloudUserInfo(useRootStore().getRestApiContext);
+				this.currentUserCloudInfo = cloudUser;
+			} catch (error) {
+				throw new Error(error);
+			}
+		},
+		async confirmEmail() {
+			await confirmEmail(useRootStore().getRestApiContext);
 		},
 	},
 });

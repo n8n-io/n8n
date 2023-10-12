@@ -6,7 +6,13 @@ import { Container } from 'typedi';
 import { flags } from '@oclif/command';
 import { WorkflowExecute } from 'n8n-core';
 
-import type { ExecutionStatus, IExecuteResponsePromiseData, INodeTypes, IRun } from 'n8n-workflow';
+import type {
+	ExecutionError,
+	ExecutionStatus,
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+} from 'n8n-workflow';
 import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -18,11 +24,21 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import config from '@/config';
 import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
 import { BaseCommand } from './BaseCommand';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
+import { OwnershipService } from '@/services/ownership.service';
+import type { ICredentialsOverwrite } from '@/Interfaces';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { rawBodyReader, bodyParser } from '@/middlewares';
+import { eventBus } from '@/eventbus';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { IConfig } from '@oclif/config';
+import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -41,7 +57,13 @@ export class Worker extends BaseCommand {
 		[key: string]: PCancelable<IRun>;
 	} = {};
 
+	static runningJobsSummary: {
+		[jobId: string]: WorkerJobStatusSummary;
+	} = {};
+
 	static jobQueue: JobQueue;
+
+	redisSubscriber: RedisServicePubSubSubscriber;
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -78,7 +100,7 @@ export class Worker extends BaseCommand {
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
 					);
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 			}
 		} catch (error) {
@@ -112,7 +134,7 @@ export class Worker extends BaseCommand {
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
-		const workflowOwner = await getWorkflowOwner(workflowId);
+		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
 		let { staticData } = fullExecutionData.workflowData;
 		if (loadStaticData) {
@@ -162,7 +184,9 @@ export class Worker extends BaseCommand {
 			fullExecutionData.mode,
 			job.data.executionId,
 			fullExecutionData.workflowData,
-			{ retryOf: fullExecutionData.retryOf as string },
+			{
+				retryOf: fullExecutionData.retryOf as string,
+			},
 		);
 
 		try {
@@ -176,7 +200,7 @@ export class Worker extends BaseCommand {
 				);
 				await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
 			}
-			return { success: true };
+			return { success: true, error: error as ExecutionError };
 		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
@@ -213,45 +237,111 @@ export class Worker extends BaseCommand {
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
+		Worker.runningJobsSummary[job.id] = {
+			jobId: job.id.toString(),
+			executionId,
+			workflowId: fullExecutionData.workflowId ?? '',
+			workflowName: fullExecutionData.workflowData.name,
+			mode: fullExecutionData.mode,
+			startedAt: fullExecutionData.startedAt,
+			retryOf: fullExecutionData.retryOf ?? '',
+			status: fullExecutionData.status,
+		};
 
 		// Wait till the execution is finished
 		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
+		delete Worker.runningJobsSummary[job.id];
+
+		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
+		// already!
 
 		return {
 			success: true,
 		};
 	}
 
-	async init() {
-		await this.initCrashJournal();
-		await super.init();
-		this.logger.debug('Starting n8n worker...');
-
-		await this.initLicense();
-		await this.initBinaryManager();
-		await this.initExternalHooks();
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
+		this.setInstanceType('worker');
+		this.setInstanceQueueModeId();
 	}
 
-	async run() {
+	async init() {
+		await this.initCrashJournal();
+
+		this.logger.debug('Starting n8n worker...');
+		this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+
+		await super.init();
+
+		await this.initLicense();
+		this.logger.debug('License init complete');
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
+		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
+		await this.initExternalSecrets();
+		this.logger.debug('External secrets init complete');
+		await this.initEventBus();
+		this.logger.debug('Event bus init complete');
+		await this.initQueue();
+		this.logger.debug('Queue init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initQueue();
+
+		await Container.get(OrchestrationWorkerService).publishToEventLog(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId: this.queueModeId,
+				},
+			}),
+		);
+	}
+
+	async initEventBus() {
+		await eventBus.initialize({
+			workerId: this.queueModeId,
+		});
+	}
+
+	/**
+	 * Initializes the redis connection
+	 * A publishing connection to redis is created to publish events to the event log
+	 * A subscription connection to redis is created to subscribe to commands from the main process
+	 * The subscription connection adds a handler to handle the command messages
+	 */
+	async initOrchestration() {
+		await Container.get(OrchestrationWorkerService).init();
+		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
+			queueModeId: this.queueModeId,
+			instanceId: this.instanceId,
+			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
+			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
+		});
+	}
+
+	async initQueue() {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Worker);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
+
+		this.logger.debug(
+			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
+		);
 
 		const queue = Container.get(Queue);
 		await queue.init();
+		this.logger.debug('Queue singleton ready');
 		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),
 		);
-
-		this.logger.info('\nn8n worker is now ready');
-		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${flags.concurrency}`);
-		this.logger.info('');
 
 		Worker.jobQueue.on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used
@@ -298,70 +388,116 @@ export class Worker extends BaseCommand {
 				throw error;
 			}
 		});
+	}
 
-		if (config.getEnv('queue.health.active')) {
-			const port = config.getEnv('queue.health.port');
+	async setupHealthMonitor() {
+		const port = config.getEnv('queue.health.port');
 
-			const app = express();
-			app.disable('x-powered-by');
+		const app = express();
+		app.disable('x-powered-by');
 
-			const server = http.createServer(app);
+		const server = http.createServer(app);
 
-			app.get(
-				'/healthz',
-				// eslint-disable-next-line consistent-return
+		app.get(
+			'/healthz',
+
+			async (req: express.Request, res: express.Response) => {
+				LoggerProxy.debug('Health check started!');
+
+				const connection = Db.getConnection();
+
+				try {
+					if (!connection.isInitialized) {
+						// Connection is not active
+						throw new Error('No active database connection!');
+					}
+					// DB ping
+					await connection.query('SELECT 1');
+				} catch (e) {
+					LoggerProxy.error('No Database connection!', e as Error);
+					const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
+					return ResponseHelper.sendErrorResponse(res, error);
+				}
+
+				// Just to be complete, generally will the worker stop automatically
+				// if it loses the connection to redis
+				try {
+					// Redis ping
+					await Worker.jobQueue.client.ping();
+				} catch (e) {
+					LoggerProxy.error('No Redis connection!', e as Error);
+					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
+					return ResponseHelper.sendErrorResponse(res, error);
+				}
+
+				// Everything fine
+				const responseData = {
+					status: 'ok',
+				};
+
+				LoggerProxy.debug('Health check completed successfully!');
+
+				ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
+			},
+		);
+
+		let presetCredentialsLoaded = false;
+		const endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+		if (endpointPresetCredentials !== '') {
+			// POST endpoint to set preset credentials
+			app.post(
+				`/${endpointPresetCredentials}`,
+				rawBodyReader,
+				bodyParser,
 				async (req: express.Request, res: express.Response) => {
-					LoggerProxy.debug('Health check started!');
+					if (!presetCredentialsLoaded) {
+						const body = req.body as ICredentialsOverwrite;
 
-					const connection = Db.getConnection();
-
-					try {
-						if (!connection.isInitialized) {
-							// Connection is not active
-							throw new Error('No active database connection!');
+						if (req.contentType !== 'application/json') {
+							ResponseHelper.sendErrorResponse(
+								res,
+								new Error(
+									'Body must be a valid JSON, make sure the content-type is application/json',
+								),
+							);
+							return;
 						}
-						// DB ping
-						await connection.query('SELECT 1');
-					} catch (e) {
-						LoggerProxy.error('No Database connection!', e as Error);
-						const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
-						return ResponseHelper.sendErrorResponse(res, error);
+
+						Container.get(CredentialsOverwrites).setData(body);
+						presetCredentialsLoaded = true;
+						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
+					} else {
+						ResponseHelper.sendErrorResponse(res, new Error('Preset credentials can be set once'));
 					}
-
-					// Just to be complete, generally will the worker stop automatically
-					// if it loses the connection to redis
-					try {
-						// Redis ping
-						await Worker.jobQueue.client.ping();
-					} catch (e) {
-						LoggerProxy.error('No Redis connection!', e as Error);
-						const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
-						return ResponseHelper.sendErrorResponse(res, error);
-					}
-
-					// Everything fine
-					const responseData = {
-						status: 'ok',
-					};
-
-					LoggerProxy.debug('Health check completed successfully!');
-
-					ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 				},
 			);
+		}
 
-			server.listen(port, () => {
-				this.logger.info(`\nn8n worker health check via, port ${port}`);
-			});
+		server.on('error', (error: Error & { code: string }) => {
+			if (error.code === 'EADDRINUSE') {
+				this.logger.error(
+					`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
+				);
+				process.exit(1);
+			}
+		});
 
-			server.on('error', (error: Error & { code: string }) => {
-				if (error.code === 'EADDRINUSE') {
-					this.logger.error(
-						`n8n's port ${port} is already in use. Do you have the n8n main process running on that port?`,
-					);
-					process.exit(1);
-				}
-			});
+		await new Promise<void>((resolve) => server.listen(port, () => resolve()));
+		await this.externalHooks.run('worker.ready');
+		this.logger.info(`\nn8n worker health check via, port ${port}`);
+	}
+
+	async run() {
+		// eslint-disable-next-line @typescript-eslint/no-shadow
+		const { flags } = this.parse(Worker);
+
+		this.logger.info('\nn8n worker is now ready');
+		this.logger.info(` * Version: ${N8N_VERSION}`);
+		this.logger.info(` * Concurrency: ${flags.concurrency}`);
+		this.logger.info('');
+
+		if (config.getEnv('queue.health.active')) {
+			await this.setupHealthMonitor();
 		}
 
 		// Make sure that the process does not close

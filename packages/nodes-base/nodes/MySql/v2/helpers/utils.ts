@@ -7,7 +7,7 @@ import type {
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
-import { NodeOperationError, deepCopy } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	Mysql2Pool,
@@ -19,22 +19,7 @@ import type {
 } from './interfaces';
 
 import { BATCH_MODE } from './interfaces';
-
-export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
-	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	return items.map((item) => {
-		newItem = {};
-		for (const property of properties) {
-			if (item.json[property] === undefined) {
-				newItem[property] = null;
-			} else {
-				newItem[property] = deepCopy(item.json[property]);
-			}
-		}
-		return newItem;
-	});
-}
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export const prepareQueryAndReplacements = (rawQuery: string, replacements?: QueryValues) => {
 	if (replacements === undefined) {
@@ -138,6 +123,7 @@ export function prepareOutput(
 			itemData: IPairedItemData | IPairedItemData[];
 		},
 	) => NodeExecutionWithMetadata[],
+	itemData: IPairedItemData | IPairedItemData[],
 ) {
 	const returnData: INodeExecutionData[] = [];
 
@@ -149,7 +135,7 @@ export function prepareOutput(
 			};
 
 			const executionData = constructExecutionHelper(wrapData(item), {
-				itemData: { item: index },
+				itemData,
 			});
 
 			returnData.push(...executionData);
@@ -157,9 +143,9 @@ export function prepareOutput(
 	} else {
 		response
 			.filter((entry) => Array.isArray(entry))
-			.forEach((entry, index) => {
+			.forEach((entry) => {
 				const executionData = constructExecutionHelper(wrapData(entry), {
-					itemData: { item: index },
+					itemData,
 				});
 
 				returnData.push(...executionData);
@@ -167,7 +153,23 @@ export function prepareOutput(
 	}
 
 	if (!returnData.length) {
-		returnData.push({ json: { success: true } });
+		if ((options?.nodeVersion as number) < 2.2) {
+			returnData.push({ json: { success: true }, pairedItem: itemData });
+		} else {
+			const isSelectQuery = statements
+				.filter((statement) => !statement.startsWith('--'))
+				.every((statement) =>
+					statement
+						.replace(/\/\*.*?\*\//g, '') // remove multiline comments
+						.replace(/\n/g, '')
+						.toLowerCase()
+						.startsWith('select'),
+				);
+
+			if (!isSelectQuery) {
+				returnData.push({ json: { success: true }, pairedItem: itemData });
+			}
+		}
 	}
 
 	return returnData;
@@ -218,8 +220,17 @@ export function configureQueryRunner(
 					response = [response];
 				}
 
+				//because single query is used in this mode mapping itemIndex not posible, setting all items as paired
+				const pairedItem = generatePairedItemData(queries.length);
+
 				returnData.push(
-					...prepareOutput(response, options, statements, this.helpers.constructExecutionMetaData),
+					...prepareOutput(
+						response,
+						options,
+						statements,
+						this.helpers.constructExecutionMetaData,
+						pairedItem,
+					),
 				);
 			} catch (err) {
 				const error = parseMySqlError.call(this, err, 0, formatedQueries);
@@ -250,6 +261,7 @@ export function configureQueryRunner(
 								options,
 								statements,
 								this.helpers.constructExecutionMetaData,
+								{ item: index },
 							),
 						);
 					} catch (err) {
@@ -288,6 +300,7 @@ export function configureQueryRunner(
 								options,
 								statements,
 								this.helpers.constructExecutionMetaData,
+								{ item: index },
 							),
 						);
 					} catch (err) {

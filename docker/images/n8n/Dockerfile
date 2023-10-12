@@ -1,4 +1,4 @@
-ARG NODE_VERSION=16
+ARG NODE_VERSION=18
 FROM n8nio/base:${NODE_VERSION}
 
 ARG N8N_VERSION
@@ -6,6 +6,7 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 
 ENV N8N_VERSION=${N8N_VERSION}
 ENV NODE_ENV=production
+ENV N8N_RELEASE_TYPE=stable
 RUN set -eux; \
 	apkArch="$(apk --print-arch)"; \
 	case "$apkArch" in \
@@ -15,12 +16,15 @@ RUN set -eux; \
 	case "$apkArch" in \
 	'armv7') apk del build-dependencies;; \
 	esac && \
+	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-design-system && \
+	rm -rf /usr/local/lib/node_modules/n8n/node_modules/n8n-editor-ui/node_modules && \
 	find /usr/local/lib/node_modules/n8n -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" | xargs rm && \
 	rm -rf /root/.npm
 
-# Set a custom user to not have n8n run as root
-USER root
-WORKDIR /data
-RUN apk --no-cache add su-exec
-COPY docker-entrypoint.sh /docker-entrypoint.sh
+COPY docker-entrypoint.sh /
+
+RUN \
+	mkdir .n8n && \
+	chown node:node .n8n
+USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

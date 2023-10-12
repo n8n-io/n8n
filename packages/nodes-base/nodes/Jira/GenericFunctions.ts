@@ -3,16 +3,16 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeListSearchItems,
+	INodePropertyOptions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
 	body: any = {},
@@ -227,5 +227,42 @@ export function filterSortSearchListItems(items: INodeListSearchItems[], filter?
 				return 1;
 			}
 			return 0;
+		});
+}
+
+export async function getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+	const maxResults = 1000;
+	const query: IDataObject = { maxResults };
+	let endpoint = '/api/2/users/search';
+
+	if (jiraVersion === 'server') {
+		endpoint = '/api/2/user/search';
+		query.username = "'";
+	}
+
+	const users = [];
+	let hasNextPage: boolean;
+
+	do {
+		const usersPage = (await jiraSoftwareCloudApiRequest.call(
+			this,
+			endpoint,
+			'GET',
+			{},
+			{ ...query, startAt: users.length },
+		)) as IDataObject[];
+		users.push(...usersPage);
+		hasNextPage = usersPage.length === maxResults;
+	} while (hasNextPage);
+
+	return users
+		.filter((user) => user.active)
+		.map((user) => ({
+			name: user.displayName as string,
+			value: (user.accountId ?? user.name) as string,
+		}))
+		.sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
+			return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
 		});
 }

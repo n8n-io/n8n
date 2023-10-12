@@ -277,6 +277,7 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				required: true,
 			},
@@ -485,7 +486,7 @@ export class Crypto implements INodeType {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						if (binaryData.id) {
-							const binaryStream = this.helpers.getBinaryStream(binaryData.id);
+							const binaryStream = await this.helpers.getBinaryStream(binaryData.id);
 							hashOrHmac.setEncoding(encoding);
 							await pipeline(binaryStream, hashOrHmac);
 							newValue = hashOrHmac.read();
@@ -551,6 +552,6 @@ export class Crypto implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

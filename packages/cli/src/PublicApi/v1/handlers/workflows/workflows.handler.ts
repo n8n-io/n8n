@@ -11,15 +11,12 @@ import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service.ee';
 import {
 	getWorkflowById,
 	getSharedWorkflow,
 	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
-	hasStartNode,
-	getStartNode,
 	getSharedWorkflows,
 	createWorkflow,
 	getWorkflowIdsViaTags,
@@ -28,6 +25,9 @@ import {
 } from './workflows.service';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
+import { RoleService } from '@/services/role.service';
+import { isWorkflowHistoryLicensed } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 
 export = {
 	createWorkflow: [
@@ -37,15 +37,11 @@ export = {
 
 			workflow.active = false;
 
-			if (!hasStartNode(workflow)) {
-				workflow.nodes.push(getStartNode());
-			}
-
 			await replaceInvalidCredentials(workflow);
 
 			addNodeIds(workflow);
 
-			const role = await getWorkflowOwnerRole();
+			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
@@ -101,7 +97,7 @@ export = {
 				...(active !== undefined && { active }),
 			};
 
-			if (isInstanceOwner(req.user)) {
+			if (req.user.isOwner) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
 					where.id = In(workflowIds);
@@ -164,10 +160,6 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (!hasStartNode(updateData)) {
-				updateData.nodes.push(getStartNode());
-			}
-
 			await replaceInvalidCredentials(updateData);
 			addNodeIds(updateData);
 
@@ -185,6 +177,10 @@ export = {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
 				}
+			}
+
+			if (isWorkflowHistoryLicensed()) {
+				await Container.get(WorkflowHistoryService).saveVersion(req.user, sharedWorkflow.workflow);
 			}
 
 			if (sharedWorkflow.workflow.active) {

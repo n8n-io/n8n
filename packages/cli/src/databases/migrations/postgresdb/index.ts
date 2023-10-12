@@ -28,8 +28,8 @@ import { AddTriggerCountColumn1669823906995 } from './1669823906995-AddTriggerCo
 import { RemoveWorkflowDataLoadedFlag1671726148421 } from './1671726148421-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
 import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
-import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
-import { PurgeInvalidWorkflowConnections1675940580449 } from './1675940580449-PurgeInvalidWorkflowConnections';
+import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
+import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { AddStatusToExecutions1674138566000 } from './1674138566000-AddStatusToExecutions';
 import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExecutionStatus';
 import { UpdateRunningExecutionStatus1677236854063 } from './1677236854063-UpdateRunningExecutionStatus';
@@ -38,6 +38,17 @@ import { CreateVariables1677501636754 } from './1677501636754-CreateVariables';
 import { AddUserActivatedProperty1681134145996 } from './1681134145996-AddUserActivatedProperty';
 import { MigrateIntegerKeysToString1690000000000 } from './1690000000000-MigrateIntegerKeysToString';
 import { SeparateExecutionData1690000000020 } from './1690000000020-SeparateExecutionData';
+import { RemoveSkipOwnerSetup1681134145997 } from './1681134145997-RemoveSkipOwnerSetup';
+import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
+import { AddMissingPrimaryKeyOnExecutionData1690787606731 } from './1690787606731-AddMissingPrimaryKeyOnExecutionData';
+import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
+import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
+import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-DisallowOrphanExecutions';
+import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
+import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
+import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
+import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -79,4 +90,15 @@ export const postgresMigrations: Migration[] = [
 	AddUserActivatedProperty1681134145996,
 	MigrateIntegerKeysToString1690000000000,
 	SeparateExecutionData1690000000020,
+	RemoveSkipOwnerSetup1681134145997,
+	RemoveResetPasswordColumns1690000000030,
+	AddMissingPrimaryKeyOnExecutionData1690787606731,
+	CreateWorkflowNameIndex1691088862123,
+	AddMfaColumns1690000000030,
+	CreateWorkflowHistoryTable1692967111175,
+	DisallowOrphanExecutions1693554410387,
+	ExecutionSoftDelete1693491613982,
+	AddWorkflowMetadata1695128658538,
+	MigrateToTimestampTz1694091729095,
+	ModifyWorkflowHistoryNodesAndConnections1695829275184,
 ];

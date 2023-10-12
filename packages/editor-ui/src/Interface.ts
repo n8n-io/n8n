@@ -1,5 +1,13 @@
-import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type {
+	AI_NODE_CREATOR_VIEW,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	SignInType,
+	FAKE_DOOR_FEATURES,
+	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+} from './constants';
+
 import type { IMenuItem } from 'n8n-design-system';
 import type {
 	GenericValue,
@@ -30,19 +38,17 @@ import type {
 	FeatureFlags,
 	ExecutionStatus,
 	ITelemetryTrackProperties,
-	IN8nUISettings,
 	IUserManagementSettings,
 	WorkflowSettings,
 	IUserSettings,
+	IN8nUISettings,
+	BannerName,
+	INodeExecutionData,
+	INodeProperties,
 } from 'n8n-workflow';
-import type { SignInType } from './constants';
-import type {
-	FAKE_DOOR_FEATURES,
-	TRIGGER_NODE_CREATOR_VIEW,
-	REGULAR_NODE_CREATOR_VIEW,
-} from './constants';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy } from '@/utils/typeHelpers';
+import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
+import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
 
@@ -61,6 +67,10 @@ declare global {
 						isIdentifiedID?: boolean;
 						featureFlags: FeatureFlags;
 					};
+					session_recording?: {
+						maskAllInputs?: boolean;
+						maskInputFn?: ((text: string, element?: HTMLElement) => string) | null;
+					};
 				},
 			): void;
 			isFeatureEnabled?(flagName: string): boolean;
@@ -73,6 +83,12 @@ declare global {
 			reset?(resetDeviceId?: boolean): void;
 			onFeatureFlags?(callback: (keys: string[], map: FeatureFlags) => void): void;
 			reloadFeatureFlags?(): void;
+			capture?(event: string, properties: IDataObject): void;
+			register?(metadata: IDataObject): void;
+			people?: {
+				set?(metadata: IDataObject): void;
+			};
+			debug?(): void;
 		};
 		analytics?: {
 			track(event: string, proeprties?: ITelemetryTrackProperties): void;
@@ -151,6 +167,22 @@ export interface INodeTranslationHeaders {
 	};
 }
 
+export interface IAiDataContent {
+	data: INodeExecutionData[] | null;
+	inOut: 'input' | 'output';
+	type: NodeConnectionType;
+	metadata: {
+		executionTime: number;
+		startTime: number;
+	};
+}
+
+export interface IAiData {
+	data: IAiDataContent[];
+	node: string;
+	runIndex: number;
+}
+
 export interface IStartRunData {
 	workflowData: IWorkflowData;
 	startNodes?: string[];
@@ -201,6 +233,7 @@ export interface IWorkflowDataUpdate {
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
 	versionId?: string;
+	meta?: WorkflowMetadata;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -212,15 +245,16 @@ export interface IWorkflowToShare extends IWorkflowDataUpdate {
 export interface IWorkflowTemplate {
 	id: number;
 	name: string;
-	workflow: {
-		nodes: INodeUi[];
-		connections: IConnections;
-	};
+	workflow: Pick<IWorkflowData, 'nodes' | 'connections' | 'settings' | 'pinData'>;
 }
 
 export interface INewWorkflowData {
 	name: string;
 	onboardingFlowEnabled: boolean;
+}
+
+export interface WorkflowMetadata {
+	onboardingId?: string;
 }
 
 // Almost identical to cli.Interfaces.ts
@@ -239,6 +273,7 @@ export interface IWorkflowDb {
 	ownedBy?: Partial<IUser>;
 	versionId: string;
 	usedCredentials?: IUsedCredential[];
+	meta?: WorkflowMetadata;
 }
 
 // Identical to cli.Interfaces.ts
@@ -572,9 +607,12 @@ export interface CurrentUserResponse extends IUserResponse {
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
+	hasRecoveryCodesLeft: boolean;
 	isOwner: boolean;
 	inviteAcceptUrl?: string;
 	fullName?: string;
+	createdAt?: string;
+	mfaEnabled: boolean;
 }
 
 export interface IVersionNotificationSettings {
@@ -702,6 +740,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	maxExecutionTimeout?: number;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
+	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
 }
 
 export interface ITimeoutHMS {
@@ -710,7 +749,7 @@ export interface ITimeoutHMS {
 	seconds: number;
 }
 
-export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
+export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR' | 'DEBUG';
 
 export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 
@@ -718,15 +757,26 @@ export type ActionsRecord<T extends SimplifiedNodeType[]> = {
 	[K in ExtractActionKeys<T[number]>]: ActionTypeDescription[];
 };
 
-export interface SimplifiedNodeType
-	extends Pick<
-		INodeTypeDescription,
-		'displayName' | 'description' | 'name' | 'group' | 'icon' | 'iconUrl' | 'codex' | 'defaults'
-	> {}
+export type SimplifiedNodeType = Pick<
+	INodeTypeDescription,
+	| 'displayName'
+	| 'description'
+	| 'name'
+	| 'group'
+	| 'icon'
+	| 'iconUrl'
+	| 'codex'
+	| 'defaults'
+	| 'outputs'
+>;
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
 	icon?: string;
+	iconProps?: {
+		color?: string;
+	};
+	panelClass?: string;
 	title?: string;
 	subcategory?: string;
 	defaults?: INodeParameters;
@@ -872,7 +922,7 @@ export interface WorkflowsState {
 	activeWorkflowExecution: IExecutionsSummary | null;
 	currentWorkflowExecutions: IExecutionsSummary[];
 	activeExecutionId: string | null;
-	executingNode: string | null;
+	executingNode: string[];
 	executionWaitingForWebhook: boolean;
 	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
@@ -882,6 +932,7 @@ export interface WorkflowsState {
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
+	isInDebugMode?: boolean;
 }
 
 export interface RootState {
@@ -919,7 +970,7 @@ export interface IRootState {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	executionId: string | null;
-	executingNode: string | null;
+	executingNode: string[];
 	executionWaitingForWebhook: boolean;
 	pushConnectionActive: boolean;
 	saveDataErrorExecution: string;
@@ -993,7 +1044,7 @@ export type NewCredentialsModal = ModalState & {
 	showAuthSelector?: boolean;
 };
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1060,6 +1111,7 @@ export interface UIState {
 	stateIsDirty: boolean;
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
+	lastSelectedNodeEndpointUuid: string | null;
 	nodeViewOffsetPosition: XYPosition;
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
@@ -1067,7 +1119,10 @@ export interface UIState {
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;
+	bannersHeight: number;
+	bannerStack: BannerName[];
 }
+
 export type IFakeDoor = {
 	id: FAKE_DOOR_FEATURES;
 	featureName: string;
@@ -1086,12 +1141,17 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type NodeFilterType = typeof REGULAR_NODE_CREATOR_VIEW | typeof TRIGGER_NODE_CREATOR_VIEW;
+export type NodeFilterType =
+	| typeof REGULAR_NODE_CREATOR_VIEW
+	| typeof TRIGGER_NODE_CREATOR_VIEW
+	| typeof AI_NODE_CREATOR_VIEW
+	| typeof AI_OTHERS_NODE_CREATOR_VIEW;
 
 export type NodeCreatorOpenSource =
 	| ''
 	| 'no_trigger_execution_tooltip'
 	| 'plus_endpoint'
+	| 'add_input_endpoint'
 	| 'trigger_placeholder_button'
 	| 'tab'
 	| 'node_connection_action'
@@ -1126,6 +1186,9 @@ export interface ISettingsState {
 	saml: {
 		loginLabel: string;
 		loginEnabled: boolean;
+	};
+	mfa: {
+		enabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1170,6 +1233,7 @@ export interface IVersionsState {
 export interface IUsersState {
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
+	currentUserCloudInfo: Cloud.UserAccount | null;
 }
 
 export interface IWorkflowsState {
@@ -1194,6 +1258,7 @@ export interface IRestApiContext {
 export interface IZoomConfig {
 	scale: number;
 	offset: XYPosition;
+	origin?: XYPosition;
 }
 
 export interface IBounds {
@@ -1439,16 +1504,17 @@ export type SamlPreferencesExtractedData = {
 	returnUrl: string;
 };
 
+export type SshKeyTypes = ['ed25519', 'rsa'];
+
 export type SourceControlPreferences = {
 	connected: boolean;
 	repositoryUrl: string;
-	authorName: string;
-	authorEmail: string;
 	branchName: string;
 	branches: string[];
 	branchReadOnly: boolean;
 	branchColor: string;
 	publicKey?: string;
+	keyGeneratorType?: TupleToUnion<SshKeyTypes>;
 	currentBranch?: string;
 };
 
@@ -1506,6 +1572,13 @@ export declare namespace Cloud {
 		length: number;
 		gracePeriod: number;
 	}
+
+	export type UserAccount = {
+		confirmed: boolean;
+		username: string;
+		email: string;
+		hasEarlyAccess?: boolean;
+	};
 }
 
 export interface CloudPlanState {
@@ -1521,3 +1594,86 @@ export interface InstanceUsage {
 }
 
 export type CloudPlanAndUsageData = Cloud.PlanData & { usage: InstanceUsage };
+
+export interface ExternalSecretsProviderSecret {
+	key: string;
+}
+
+export type ExternalSecretsProviderData = Record<string, IUpdateInformation['value']>;
+
+export interface ExternalSecretsProvider {
+	icon: string;
+	name: string;
+	displayName: string;
+	connected: boolean;
+	connectedAt: string | false;
+	state: 'connected' | 'tested' | 'initializing' | 'error';
+	data?: ExternalSecretsProviderData;
+}
+
+export interface ExternalSecretsProviderWithProperties extends ExternalSecretsProvider {
+	properties: INodeProperties[];
+}
+
+export type CloudUpdateLinkSourceType =
+	| 'canvas-nav'
+	| 'custom-data-filter'
+	| 'workflow_sharing'
+	| 'credential_sharing'
+	| 'settings-n8n-api'
+	| 'audit-logs'
+	| 'ldap'
+	| 'log-streaming'
+	| 'source-control'
+	| 'sso'
+	| 'usage_page'
+	| 'settings-users'
+	| 'variables'
+	| 'community-nodes';
+
+export type UTMCampaign =
+	| 'upgrade-custom-data-filter'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-workflow-sharing'
+	| 'upgrade-credentials-sharing'
+	| 'upgrade-api'
+	| 'upgrade-audit-logs'
+	| 'upgrade-ldap'
+	| 'upgrade-log-streaming'
+	| 'upgrade-source-control'
+	| 'upgrade-sso'
+	| 'open'
+	| 'upgrade-users'
+	| 'upgrade-variables'
+	| 'upgrade-community-nodes';
+
+export type N8nBanners = {
+	[key in BannerName]: {
+		priority: number;
+		component: Component;
+	};
+};
+
+export type AddedNode = {
+	type: string;
+	openDetail?: boolean;
+	isAutoAdd?: boolean;
+	name?: string;
+	position?: XYPosition;
+};
+
+export type AddedNodeConnection = {
+	from: { nodeIndex: number; outputIndex?: number };
+	to: { nodeIndex: number; inputIndex?: number };
+};
+
+export type AddedNodesAndConnections = {
+	nodes: AddedNode[];
+	connections: AddedNodeConnection[];
+};
+
+export type ToggleNodeCreatorOptions = {
+	createNodeActive: boolean;
+	source?: NodeCreatorOpenSource;
+	nodeCreatorView?: string;
+};

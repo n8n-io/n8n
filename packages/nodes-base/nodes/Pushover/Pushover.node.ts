@@ -92,7 +92,7 @@ export class Pushover implements INodeType {
 				default: '',
 				description: 'Your message',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
+
 			{
 				displayName: 'Priority',
 				name: 'priority',
@@ -370,6 +370,6 @@ export class Pushover implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

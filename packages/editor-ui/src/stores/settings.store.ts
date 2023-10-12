@@ -37,7 +37,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
-			enabled: false,
+			quota: -1,
 			showSetupOnFirstLoad: false,
 			smtpSetup: false,
 			authenticationMethod: UserManagementAuthenticationMethod.Email,
@@ -59,6 +59,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			loginLabel: '',
 			loginEnabled: false,
 		},
+		mfa: {
+			enabled: false,
+		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
@@ -70,9 +73,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
-		},
-		isUserManagementEnabled(): boolean {
-			return this.userManagement.enabled;
 		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
@@ -135,6 +135,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isTelemetryEnabled(): boolean {
 			return this.settings.telemetry && this.settings.telemetry.enabled;
 		},
+		isMfaFeatureEnabled(): boolean {
+			return this.settings?.mfa?.enabled;
+		},
 		areTagsEnabled(): boolean {
 			return this.settings.workflowTagsDisabled !== undefined
 				? !this.settings.workflowTagsDisabled
@@ -173,6 +176,18 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isDefaultAuthenticationSaml(): boolean {
 			return this.userManagement.authenticationMethod === UserManagementAuthenticationMethod.Saml;
 		},
+		permanentlyDismissedBanners(): string[] {
+			return this.settings.banners?.dismissed ?? [];
+		},
+		isBelowUserQuota(): boolean {
+			const userStore = useUsersStore();
+			return (
+				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
+			);
+		},
+		isDevRelease(): boolean {
+			return this.settings.releaseChannel === 'dev';
+		},
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
@@ -190,6 +205,17 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			if (settings.sso?.saml) {
 				this.saml.loginEnabled = settings.sso.saml.loginEnabled;
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
+			}
+			if (settings.enterprise?.showNonProdBanner) {
+				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
+			}
+			if (settings.versionCli) {
+				useRootStore().setVersionCli(settings.versionCli);
+			}
+
+			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
+			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
+				useUIStore().pushBannerToStack('V1');
 			}
 		},
 		async getSettings(): Promise<void> {
@@ -216,6 +242,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
+
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
 		stopShowingSetupPage(): void {
@@ -334,3 +361,5 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 	},
 });
+
+export { useUsersStore };

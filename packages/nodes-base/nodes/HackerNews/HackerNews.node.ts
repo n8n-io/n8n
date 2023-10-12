@@ -360,6 +360,6 @@ export class HackerNews implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,9 +1,9 @@
-import { eventEmitter } from './EventEmitter';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
 export * from './ActiveWorkflows';
-export * from './BinaryDataManager';
+export * from './BinaryData/BinaryData.service';
+export * from './BinaryData/types';
 export * from './ClassLoader';
 export * from './Constants';
 export * from './Credentials';
@@ -14,5 +14,8 @@ export * from './LoadNodeParameterOptions';
 export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
-export { eventEmitter, NodeExecuteFunctions, UserSettings };
+export { NodeExecuteFunctions, UserSettings };
 export * from './errors';
+export { ObjectStoreService } from './ObjectStore/ObjectStore.service.ee';
+export { BinaryData } from './BinaryData/types';
+export { isStoredMode as isValidNonDefaultMode } from './BinaryData/utils';

@@ -1,12 +1,12 @@
 import { Service } from 'typedi';
 import type {
 	IWebhookData,
-	WebhookHttpMethod,
+	IHttpRequestMethods,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
+import { WebhookPathAlreadyTakenError } from 'n8n-workflow';
 import * as NodeExecuteFunctions from 'n8n-core';
 
 @Service()
@@ -35,7 +35,6 @@ export class ActiveWebhooks {
 			throw new Error('Webhooks can only be added for saved workflows as an id is needed!');
 		}
 		if (webhookData.path.endsWith('/')) {
-			// eslint-disable-next-line no-param-reassign
 			webhookData.path = webhookData.path.slice(0, -1);
 		}
 
@@ -47,9 +46,7 @@ export class ActiveWebhooks {
 
 		// check that there is not a webhook already registered with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
-			throw new Error(
-				`The URL path that the "${webhookData.node}" node uses is already taken. Please change it to something else.`,
-			);
+			throw new WebhookPathAlreadyTakenError(webhookData.node);
 		}
 
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {
@@ -64,25 +61,13 @@ export class ActiveWebhooks {
 		this.webhookUrls[webhookKey].push(webhookData);
 
 		try {
-			const webhookExists = await workflow.runWebhookMethod(
-				'checkExists',
+			await workflow.createWebhookIfNotExists(
 				webhookData,
 				NodeExecuteFunctions,
 				mode,
 				activation,
 				this.testWebhooks,
 			);
-			if (webhookExists !== true) {
-				// If webhook does not exist yet create it
-				await workflow.runWebhookMethod(
-					'create',
-					webhookData,
-					NodeExecuteFunctions,
-					mode,
-					activation,
-					this.testWebhooks,
-				);
-			}
 		} catch (error) {
 			// If there was a problem unregister the webhook again
 			if (this.webhookUrls[webhookKey].length <= 1) {
@@ -103,7 +88,7 @@ export class ActiveWebhooks {
 	 *
 	 * @param {(string | undefined)} webhookId
 	 */
-	get(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): IWebhookData | undefined {
+	get(httpMethod: IHttpRequestMethods, path: string, webhookId?: string): IWebhookData | undefined {
 		const webhookKey = this.getWebhookKey(httpMethod, path, webhookId);
 		if (this.webhookUrls[webhookKey] === undefined) {
 			return undefined;
@@ -134,17 +119,10 @@ export class ActiveWebhooks {
 	/**
 	 * Gets all request methods associated with a single webhook
 	 */
-	getWebhookMethods(path: string): string[] {
-		const methods: string[] = [];
-
-		Object.keys(this.webhookUrls)
+	getWebhookMethods(path: string): IHttpRequestMethods[] {
+		return Object.keys(this.webhookUrls)
 			.filter((key) => key.includes(path))
-			// eslint-disable-next-line array-callback-return
-			.map((key) => {
-				methods.push(key.split('|')[0]);
-			});
-
-		return methods;
+			.map((key) => key.split('|')[0] as IHttpRequestMethods);
 	}
 
 	/**
@@ -160,11 +138,11 @@ export class ActiveWebhooks {
 	 *
 	 * @param {(string | undefined)} webhookId
 	 */
-	getWebhookKey(httpMethod: WebhookHttpMethod, path: string, webhookId?: string): string {
+	getWebhookKey(httpMethod: IHttpRequestMethods, path: string, webhookId?: string): string {
 		if (webhookId) {
 			if (path.startsWith(webhookId)) {
 				const cutFromIndex = path.indexOf('/') + 1;
-				// eslint-disable-next-line no-param-reassign
+
 				path = path.slice(cutFromIndex);
 			}
 			return `${httpMethod}|${webhookId}|${path.split('/').length}`;
@@ -177,8 +155,7 @@ export class ActiveWebhooks {
 	 *
 	 */
 	async removeWorkflow(workflow: Workflow): Promise<boolean> {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const workflowId = workflow.id!.toString();
+		const workflowId = workflow.id;
 
 		if (this.workflowWebhooks[workflowId] === undefined) {
 			// If it did not exist then there is nothing to remove
@@ -190,11 +167,9 @@ export class ActiveWebhooks {
 		const mode = 'internal';
 
 		// Go through all the registered webhooks of the workflow and remove them
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const webhookData of webhooks) {
-			// eslint-disable-next-line no-await-in-loop
-			await workflow.runWebhookMethod(
-				'delete',
+			await workflow.deleteWebhook(
 				webhookData,
 				NodeExecuteFunctions,
 				mode,
@@ -218,7 +193,7 @@ export class ActiveWebhooks {
 	 */
 	async removeAll(workflows: Workflow[]): Promise<void> {
 		const removePromises = [];
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const workflow of workflows) {
 			removePromises.push(this.removeWorkflow(workflow));
 		}

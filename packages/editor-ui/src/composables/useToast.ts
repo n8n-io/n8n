@@ -1,27 +1,26 @@
-import { Notification } from 'element-ui';
-import type { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types/notification';
-import type { MessageType } from 'element-ui/types/message';
+import { ElNotification as Notification } from 'element-plus';
+import type { NotificationInstance, NotificationOptions, MessageBoxState } from 'element-plus';
 import { sanitizeHtml } from '@/utils';
 import { useTelemetry } from '@/composables/useTelemetry';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useI18n } from './useI18n';
 import { useExternalHooks } from './useExternalHooks';
 
-const messageDefaults: Partial<Omit<ElNotificationOptions, 'message'>> = {
+const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 	dangerouslyUseHTMLString: true,
 	position: 'bottom-right',
 };
 
-const stickyNotificationQueue: ElNotificationComponent[] = [];
+const stickyNotificationQueue: NotificationInstance[] = [];
 
 export function useToast() {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
 	const externalHooks = useExternalHooks();
-	const { i18n } = useI18n();
+	const i18n = useI18n();
 
 	function showMessage(
-		messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
+		messageData: Omit<NotificationOptions, 'message'> & { message?: string },
 		track = true,
 	) {
 		messageData = { ...messageDefaults, ...messageData };
@@ -29,7 +28,8 @@ export function useToast() {
 			? sanitizeHtml(messageData.message)
 			: messageData.message;
 
-		const notification = Notification(messageData as ElNotificationOptions);
+		// @TODO Check if still working
+		const notification = Notification(messageData as NotificationOptions);
 
 		if (messageData.duration === 0) {
 			stickyNotificationQueue.push(notification);
@@ -55,11 +55,11 @@ export function useToast() {
 		duration?: number;
 		customClass?: string;
 		closeOnClick?: boolean;
-		type?: MessageType;
+		type?: MessageBoxState['type'];
 		dangerouslyUseHTMLString?: boolean;
 	}) {
 		// eslint-disable-next-line prefer-const
-		let notification: ElNotificationComponent;
+		let notification: NotificationInstance;
 		if (config.closeOnClick) {
 			const cb = config.onClick;
 			config.onClick = () => {
@@ -138,7 +138,7 @@ export function useToast() {
 		});
 	}
 
-	function showAlert(config: ElNotificationOptions): ElNotificationComponent {
+	function showAlert(config: NotificationOptions): NotificationInstance {
 		return Notification(config);
 	}
 

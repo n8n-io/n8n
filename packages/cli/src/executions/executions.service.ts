@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
 import { LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
@@ -25,7 +22,7 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Container } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
-import { ExecutionRepository } from '@/databases/repositories';
+import { ExecutionRepository } from '@db/repositories';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -320,9 +317,8 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData = await Container.get(ActiveExecutions).getPostExecutePromise(
-			retriedExecutionId,
-		);
+		const executionData =
+			await Container.get(ActiveExecutions).getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
 			throw new Error('The retry did not start for an unknown reason.');
@@ -355,9 +351,13 @@ export class ExecutionsService {
 			}
 		}
 
-		return Container.get(ExecutionRepository).deleteExecutions(requestFilters, sharedWorkflowIds, {
-			deleteBefore,
-			ids,
-		});
+		return Container.get(ExecutionRepository).deleteExecutionsByFilter(
+			requestFilters,
+			sharedWorkflowIds,
+			{
+				deleteBefore,
+				ids,
+			},
+		);
 	}
 }

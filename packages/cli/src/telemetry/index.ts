@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
@@ -10,7 +8,8 @@ import { getLogger } from '@/Logger';
 import { License } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
+import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -39,7 +38,10 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private postHog: PostHogClient, private license: License) {}
+	constructor(
+		private postHog: PostHogClient,
+		private license: License,
+	) {}
 
 	setInstanceId(instanceId: string) {
 		this.instanceId = instanceId;
@@ -69,9 +71,12 @@ export class Telemetry {
 	}
 
 	private startPulse() {
-		this.pulseIntervalReference = setInterval(async () => {
-			void this.pulse();
-		}, 6 * 60 * 60 * 1000); // every 6 hours
+		this.pulseIntervalReference = setInterval(
+			async () => {
+				void this.pulse();
+			},
+			6 * 60 * 60 * 1000,
+		); // every 6 hours
 	}
 
 	private async pulse(): Promise<unknown> {
@@ -90,26 +95,29 @@ export class Telemetry {
 				return sum > 0;
 			})
 			.map(async (workflowId) => {
-				const promise = this.track(
-					'Workflow execution count',
-					{
-						event_version: '2',
-						workflow_id: workflowId,
-						...this.executionCountsBuffer[workflowId],
-					},
-					{ withPostHog: true },
-				);
+				const promise = this.track('Workflow execution count', {
+					event_version: '2',
+					workflow_id: workflowId,
+					...this.executionCountsBuffer[workflowId],
+				});
 
 				return promise;
 			});
 
 		this.executionCountsBuffer = {};
 
+		const sourceControlPreferences = Container.get(
+			SourceControlPreferencesService,
+		).getPreferences();
+
 		// License info
 		const pulsePacket = {
 			plan_name_current: this.license.getPlanName(),
 			quota: this.license.getTriggerLimit(),
 			usage: await LicenseService.getActiveTriggerCount(),
+			source_control_set_up: Container.get(SourceControlPreferencesService).isSourceControlSetup(),
+			branchName: sourceControlPreferences.branchName,
+			read_only_instance: sourceControlPreferences.branchReadOnly,
 		};
 		allPromises.push(this.track('pulse', pulsePacket));
 		return Promise.all(allPromises);
@@ -134,7 +142,6 @@ export class Telemetry {
 					first: execTime,
 				};
 			} else {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 				this.executionCountsBuffer[workflowId][key]!.count++;
 			}
 

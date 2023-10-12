@@ -4,7 +4,7 @@
 module.exports = {
 	plugins: ['vue'],
 
-	extends: ['plugin:vue/essential', '@vue/typescript', './base'],
+	extends: ['plugin:vue/vue3-essential', '@vue/typescript', './base'],
 
 	env: {
 		browser: true,
@@ -36,6 +36,12 @@ module.exports = {
 		'vue/v-slot-style': 'error',
 		'vue/no-unused-components': 'error',
 		'vue/multi-word-component-names': 'off',
+
+		// TODO: fix these
+		'@typescript-eslint/no-unsafe-call': 'off',
+		'@typescript-eslint/no-unsafe-assignment': 'off',
+		'@typescript-eslint/restrict-template-expressions': 'off',
+		'@typescript-eslint/unbound-method': 'off',
 
 		// TODO: remove these
 		'vue/no-mutating-props': 'warn',

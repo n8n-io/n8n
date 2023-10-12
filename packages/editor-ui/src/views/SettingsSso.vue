@@ -10,7 +10,7 @@ const IdentityProviderSettingsType = {
 	XML: 'xml',
 };
 
-const { i18n } = useI18n();
+const i18n = useI18n();
 const ssoStore = useSSOStore();
 const uiStore = useUIStore();
 const message = useMessage();
@@ -119,7 +119,7 @@ const onTest = async () => {
 };
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('sso', 'upgrade-sso');
+	void uiStore.goToUpgrade('sso', 'upgrade-sso');
 };
 
 onMounted(async () => {
@@ -225,7 +225,7 @@ onMounted(async () => {
 			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
 			:buttonText="i18n.baseText('settings.sso.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>

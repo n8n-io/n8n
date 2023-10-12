@@ -1,21 +1,28 @@
 <script setup lang="ts">
 import { camelCase } from 'lodash-es';
-import { getCurrentInstance, computed } from 'vue';
+import { computed } from 'vue';
 import type { INodeCreateElement, NodeFilterType } from '@/Interface';
-import { TRIGGER_NODE_CREATOR_VIEW, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+import {
+	TRIGGER_NODE_CREATOR_VIEW,
+	HTTP_REQUEST_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	REGULAR_NODE_CREATOR_VIEW,
+	AI_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
+} from '@/constants';
 
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 
-import { TriggerView, RegularView } from '../viewsData';
+import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import { transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
+import { useI18n, useTelemetry } from '@/composables';
 
 export interface Props {
 	rootView: 'trigger' | 'action';
@@ -25,10 +32,11 @@ const emit = defineEmits({
 	nodeTypeSelected: (nodeTypes: string[]) => true,
 });
 
-const instance = getCurrentInstance();
+const i18n = useI18n();
+const telemetry = useTelemetry();
+
 const { mergedNodes, actions } = useNodeCreatorStore();
 const { baseUrl } = useRootStore();
-const { getNodeTypesWithManualTrigger } = useActions();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -37,29 +45,34 @@ const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 
 function selectNodeType(nodeTypes: string[]) {
-	emit(
-		'nodeTypeSelected',
-		nodeTypes.length === 1 ? getNodeTypesWithManualTrigger(nodeTypes[0]) : nodeTypes,
-	);
+	emit('nodeTypeSelected', nodeTypes);
 }
 
 function onSelected(item: INodeCreateElement) {
 	if (item.type === 'subcategory') {
-		const title = instance?.proxy.$locale.baseText(
-			`nodeCreator.subcategoryNames.${camelCase(item.properties.title)}` as BaseTextKey,
-		);
+		const subcategoryKey = camelCase(item.properties.title);
+		const title = i18n.baseText(`nodeCreator.subcategoryNames.${subcategoryKey}` as BaseTextKey);
 
 		pushViewStack({
 			subcategory: item.key,
 			title,
 			mode: 'nodes',
+			...(item.properties.icon
+				? {
+						nodeIcon: {
+							icon: item.properties.icon,
+							iconType: 'icon',
+						},
+				  }
+				: {}),
+			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
 		});
 
-		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
+		telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', {
 			subcategory: item.key,
 		});
 	}
@@ -96,14 +109,26 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'view') {
-		const view =
-			item.key === TRIGGER_NODE_CREATOR_VIEW
-				? TriggerView(instance?.proxy?.$locale)
-				: RegularView(instance?.proxy?.$locale);
+		const views = {
+			[TRIGGER_NODE_CREATOR_VIEW]: TriggerView,
+			[REGULAR_NODE_CREATOR_VIEW]: RegularView,
+			[AI_NODE_CREATOR_VIEW]: AIView,
+			[AI_OTHERS_NODE_CREATOR_VIEW]: AINodesView,
+		};
+
+		const itemKey = item.key as keyof typeof views;
+		const matchedView = views[itemKey];
+
+		if (!matchedView) {
+			console.warn(`No view found for ${itemKey}`);
+			return;
+		}
+		const view = matchedView(mergedNodes);
 
 		pushViewStack({
 			title: view.title,
 			subtitle: view?.subtitle ?? '',
+			info: view?.info ?? '',
 			items: view.items as INodeCreateElement[],
 			hasSearch: true,
 			rootView: view.value as NodeFilterType,
@@ -162,7 +187,7 @@ function onKeySelect(activeItemId: string) {
 	const item = mergedItems.find((i) => i.uuid === activeItemId);
 	if (!item) return;
 
-	onSelected(item as INodeCreateElement);
+	onSelected(item);
 }
 
 registerKeyHook('MainViewArrowRight', {

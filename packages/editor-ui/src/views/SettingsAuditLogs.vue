@@ -2,12 +2,12 @@
 import { useI18n } from '@/composables';
 import { useUIStore, useAuditLogsStore } from '@/stores';
 
-const { i18n: locale } = useI18n();
+const locale = useI18n();
 const uiStore = useUIStore();
 const auditLogsStore = useAuditLogsStore();
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('audit-logs', 'upgrade-audit-logs');
+	void uiStore.goToUpgrade('audit-logs', 'upgrade-audit-logs');
 };
 </script>
 
@@ -26,7 +26,7 @@ const goToUpgrade = () => {
 			:class="$style.actionBox"
 			:description="locale.baseText('settings.auditLogs.actionBox.description')"
 			:buttonText="locale.baseText('settings.auditLogs.actionBox.buttonText')"
-			@click="goToUpgrade"
+			@click:button="goToUpgrade"
 		>
 			<template #heading>
 				<span>{{ locale.baseText('settings.auditLogs.actionBox.title') }}</span>

@@ -1,4 +1,5 @@
 import type { NodeCreatorOpenSource } from './Interface';
+import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
 export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
@@ -26,7 +27,7 @@ export const MAX_TAG_NAME_LENGTH = 24;
 
 // modals
 export const ABOUT_MODAL_KEY = 'about';
-export const ASK_AI_MODAL_KEY = 'askAi';
+export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
@@ -36,20 +37,24 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const WORKFLOW_LM_CHAT_MODAL_KEY = 'lmChat';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
-export const EXECUTIONS_MODAL_KEY = 'executions';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-
 export const SOURCE_CONTROL_PUSH_MODAL_KEY = 'sourceControlPush';
 export const SOURCE_CONTROL_PULL_MODAL_KEY = 'sourceControlPull';
+export const DEBUG_PAYWALL_MODAL_KEY = 'debugPaywall';
+export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
+export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
+
+export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -69,12 +74,14 @@ export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/built
 export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
 export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;
 export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
+export const MFA_DOCS_URL = `https://${DOCS_DOMAIN}/user-management/two-factor-auth/`;
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
 export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
 export const NPM_KEYWORD_SEARCH_URL =
 	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
 export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/gui-install/`;
+export const COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/manual-install/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
@@ -83,16 +90,21 @@ export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creati
 export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
+export const NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS = false;
+export const NODE_MIN_INPUT_ITEMS_COUNT = 4;
+
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
+export const AI_CODE_NODE_TYPE = '@n8n/n8n-nodes-langchain.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FILTER_NODE_TYPE = 'n8n-nodes-base.filter';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
 export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
+export const GOOGLE_GMAIL_NODE_TYPE = 'n8n-nodes-base.gmail';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
@@ -109,6 +121,7 @@ export const JIRA_NODE_TYPE = 'n8n-nodes-base.jira';
 export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
+export const MANUAL_CHAT_TRIGGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.manualChatTrigger';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
@@ -125,12 +138,14 @@ export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
 export const SPLIT_IN_BATCHES_NODE_TYPE = 'n8n-nodes-base.splitInBatches';
 export const START_NODE_TYPE = 'n8n-nodes-base.start';
 export const SWITCH_NODE_TYPE = 'n8n-nodes-base.switch';
+export const TELEGRAM_NODE_TYPE = 'n8n-nodes-base.telegram';
 export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
 export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
 export const WAIT_NODE_TYPE = 'n8n-nodes-base.wait';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
 export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
+export const EXECUTE_WORKFLOW_NODE_TYPE = 'n8n-nodes-base.executeWorkflow';
 export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger';
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
@@ -149,7 +164,10 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 ];
+
+export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
@@ -160,6 +178,7 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 > = {
 	NO_TRIGGER_EXECUTION_TOOLTIP: 'no_trigger_execution_tooltip',
 	PLUS_ENDPOINT: 'plus_endpoint',
+	ADD_INPUT_ENDPOINT: 'add_input_endpoint',
 	TRIGGER_PLACEHOLDER_BUTTON: 'trigger_placeholder_button',
 	ADD_NODE_BUTTON: 'add_node_button',
 	TAB: 'tab',
@@ -170,17 +189,38 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const DEFAULT_SUBCATEGORY = '*';
+export const AI_OTHERS_NODE_CREATOR_VIEW = 'AI Other';
+export const AI_NODE_CREATOR_VIEW = 'AI';
 export const REGULAR_NODE_CREATOR_VIEW = 'Regular';
 export const TRIGGER_NODE_CREATOR_VIEW = 'Trigger';
-export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
 export const FILES_SUBCATEGORY = 'Files';
 export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
+export const AI_SUBCATEGORY = 'AI';
 export const HELPERS_SUBCATEGORY = 'Helpers';
+export const AI_CATEGORY_AGENTS = 'Agents';
+export const AI_CATEGORY_CHAINS = 'Chains';
+export const AI_CATEGORY_LANGUAGE_MODELS = 'Language Models';
+export const AI_CATEGORY_MEMORY = 'Memory';
+export const AI_CATEGORY_OUTPUTPARSER = 'Output Parsers';
+export const AI_CATEGORY_TOOLS = 'Tools';
+export const AI_CATEGORY_VECTOR_STORES = 'Vector Stores';
+export const AI_CATEGORY_RETRIEVERS = 'Retrievers';
+export const AI_CATEGORY_EMBEDDING = 'Embeddings';
+export const AI_CATEGORY_DOCUMENT_LOADERS = 'Document Loaders';
+export const AI_CATEGORY_TEXT_SPLITTERS = 'Text Splitters';
+export const AI_UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
-export const ASK_AI_WAITLIST_URL = 'https://n8n-community.typeform.com/to/odKU4oDR';
+
+// Node Connection Types
+export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.AiTool,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	NodeConnectionType.Main,
+];
 
 // General
 export const INSTANCE_ID_HEADER = 'n8n-instance-id';
@@ -348,6 +388,7 @@ export const enum VIEWS {
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
+	EXECUTION_DEBUG = 'ExecutionDebug',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
 	TEMPLATES = 'TemplatesSearchView',
@@ -357,6 +398,7 @@ export const enum VIEWS {
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
+	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
 	SIGNIN = 'SigninView',
 	SIGNUP = 'SignupView',
 	SIGNOUT = 'SignoutView',
@@ -375,9 +417,12 @@ export const enum VIEWS {
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 	SSO_SETTINGS = 'SSoSettings',
+	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
 	AUDIT_LOGS = 'AuditLogs',
+	MFA_VIEW = 'MfaView',
+	WORKFLOW_HISTORY = 'WorkflowHistory',
 }
 
 export const enum FAKE_DOOR_FEATURES {
@@ -446,7 +491,10 @@ export const enum EnterpriseEditionFeature {
 	Variables = 'variables',
 	Saml = 'saml',
 	SourceControl = 'sourceControl',
+	ExternalSecrets = 'externalSecrets',
 	AuditLogs = 'auditLogs',
+	DebugInEditor = 'debugInEditor',
+	WorkflowHistory = 'workflowHistory',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -505,6 +553,7 @@ export const enum STORES {
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
+	CLOUD_PLAN = 'cloudPlan',
 }
 
 export const enum SignInType {
@@ -526,19 +575,22 @@ export const KEEP_AUTH_IN_NDV_FOR_NODES = [
 export const MAIN_AUTH_FIELD_NAME = 'authentication';
 export const NODE_RESOURCE_FIELD_NAME = 'resource';
 
-export const TEMPLATE_EXPERIMENT = {
-	name: '002_remove_templates',
+export const ASK_AI_EXPERIMENT = {
+	name: '011_ask_AI',
 	control: 'control',
-	variant: 'variant',
+	gpt3: 'gpt3',
+	gpt4: 'gpt4',
 };
 
-export const ONBOARDING_EXPERIMENT = {
-	name: '004_checklist',
-	control: 'control',
-	variant: 'variant',
-};
+export const EXPERIMENTS_TO_TRACK = [ASK_AI_EXPERIMENT.name];
 
-export const EXPERIMENTS_TO_TRACK = [TEMPLATE_EXPERIMENT.name, ONBOARDING_EXPERIMENT.name];
+export const MFA_AUTHENTICATION_REQUIRED_ERROR_CODE = 998;
+
+export const MFA_AUTHENTICATION_TOKEN_WINDOW_EXPIRED = 997;
+
+export const MFA_AUTHENTICATION_TOKEN_INPUT_MAX_LENGTH = 6;
+
+export const MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH = 36;
 
 export const NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND = [FILTER_NODE_TYPE];
 
@@ -567,3 +619,15 @@ export const CLOUD_BASE_URL_STAGING = 'https://stage-api.n8n.cloud';
 export const CLOUD_BASE_URL_PRODUCTION = 'https://api.n8n.cloud';
 
 export const CLOUD_TRIAL_CHECK_INTERVAL = 5000;
+
+// A path that does not exist so that nothing is selected by default
+export const nonExistingJsonPath = '_!^&*';
+
+// Ask AI
+export const ASK_AI_MAX_PROMPT_LENGTH = 600;
+export const ASK_AI_MIN_PROMPT_LENGTH = 15;
+export const ASK_AI_LOADING_DURATION_MS = 12000;
+
+export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
+
+export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';

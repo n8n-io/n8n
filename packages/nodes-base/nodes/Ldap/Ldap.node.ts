@@ -1,10 +1,9 @@
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import type { IExecuteFunctions } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
@@ -132,7 +131,7 @@ export class Ldap implements INodeType {
 
 				const baseDN = this.getNodeParameter('baseDN', 0) as string;
 				const results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
@@ -183,7 +182,7 @@ export class Ldap implements INodeType {
 
 				const baseDN = this.getNodeParameter('dn', 0) as string;
 				const results = await client.search(baseDN, { sizeLimit: 1, paged: false });
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
@@ -400,6 +399,6 @@ export class Ldap implements INodeType {
 		if (nodeDebug) {
 			Logger.info(`[${this.getNode().type} | ${this.getNode().name}] - Finished`);
 		}
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

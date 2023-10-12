@@ -14,9 +14,7 @@
 		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<template v-if="storeHasItems()">
@@ -42,32 +40,28 @@
 					</n8n-button>
 				</div>
 			</template>
-			<template v-else>
-				<div data-test-id="action-box-licensed">
-					<n8n-action-box
-						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
-						@click="addDestination"
-					>
-						<template #heading>
-							<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
-						</template>
-					</n8n-action-box>
-				</div>
-			</template>
+			<div v-else data-test-id="action-box-licensed">
+				<n8n-action-box
+					:buttonText="$locale.baseText(`settings.log-streaming.add`)"
+					@click:button="addDestination"
+				>
+					<template #heading>
+						<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
+					</template>
+				</n8n-action-box>
+			</div>
 		</template>
 		<template v-else>
 			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
-					</template>
+					<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 				</n8n-info-tip>
 			</div>
 			<div data-test-id="action-box-unlicensed">
 				<n8n-action-box
 					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
 					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
-					@click="goToUpgrade"
+					@click:button="goToUpgrade"
 				>
 					<template #heading>
 						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
@@ -79,7 +73,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, nextTick } from 'vue';
 import { mapStores } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '../stores/workflows.store';
@@ -92,7 +86,7 @@ import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
-import { createEventBus } from 'n8n-design-system';
+import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
 	name: 'SettingsLogStreamingView',
@@ -136,7 +130,7 @@ export default defineComponent({
 		// listen to modal closing and remove nodes from store
 		this.eventBus.on('closing', this.onBusClosing);
 	},
-	destroyed() {
+	beforeUnmount() {
 		this.eventBus.off('destinationWasSaved', this.onDestinationWasSaved);
 		this.eventBus.off('remove', this.onRemove);
 		this.eventBus.off('closing', this.onBusClosing);
@@ -194,7 +188,7 @@ export default defineComponent({
 			this.$forceUpdate();
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
@@ -203,6 +197,7 @@ export default defineComponent({
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
 			newDestination.id = uuid();
 			this.logStreamingStore.addDestination(newDestination);
+			await nextTick();
 			this.uiStore.openModalWithData({
 				name: LOG_STREAM_MODAL_KEY,
 				data: {

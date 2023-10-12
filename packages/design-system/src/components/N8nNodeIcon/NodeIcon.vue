@@ -1,5 +1,5 @@
 <template>
-	<div class="n8n-node-icon">
+	<div class="n8n-node-icon" v-bind="$attrs">
 		<div
 			:class="{
 				[$style.nodeIconWrapper]: true,
@@ -7,7 +7,6 @@
 				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
-			v-on="$listeners"
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
 			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
@@ -126,11 +125,15 @@ export default defineComponent({
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	pointer-events: none;
 
 	svg {
 		max-width: 100%;
 		max-height: 100%;
+	}
+
+	img,
+	svg {
+		pointer-events: none;
 	}
 }
 .nodeIconPlaceholder {

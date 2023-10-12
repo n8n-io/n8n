@@ -39,6 +39,15 @@
 				@action="onNoticeAction"
 			/>
 
+			<n8n-button
+				v-else-if="parameter.type === 'button'"
+				class="parameter-item"
+				block
+				@click="onButtonAction(parameter)"
+			>
+				{{ $locale.nodeText().inputLabelDisplayName(parameter, path) }}
+			</n8n-button>
+
 			<div
 				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
 				class="multi-parameter"
@@ -62,24 +71,26 @@
 					:underline="true"
 					color="text-dark"
 				/>
-				<collection-parameter
-					v-if="parameter.type === 'collection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
-				<fixed-collection-parameter
-					v-else-if="parameter.type === 'fixedCollection'"
-					:parameter="parameter"
-					:values="getParameterValue(nodeValues, parameter.name, path)"
-					:nodeValues="nodeValues"
-					:path="getPath(parameter.name)"
-					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
-				/>
+				<Suspense>
+					<collection-parameter
+						v-if="parameter.type === 'collection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+					<fixed-collection-parameter
+						v-else-if="parameter.type === 'fixedCollection'"
+						:parameter="parameter"
+						:values="getParameterValue(nodeValues, parameter.name, path)"
+						:nodeValues="nodeValues"
+						:path="getPath(parameter.name)"
+						:isReadOnly="isReadOnly"
+						@valueChanged="valueChanged"
+					/>
+				</Suspense>
 			</div>
 			<resource-mapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -114,7 +125,7 @@
 					:isReadOnly="isReadOnly"
 					:hideLabel="false"
 					:nodeValues="nodeValues"
-					@valueChanged="valueChanged"
+					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
@@ -126,7 +137,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type {
@@ -149,6 +160,12 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { nodeViewEventBus } from '@/event-bus';
+
+const FixedCollectionParameter = defineAsyncComponent(
+	async () => import('./FixedCollectionParameter.vue'),
+);
+const CollectionParameter = defineAsyncComponent(async () => import('./CollectionParameter.vue'));
 
 export default defineComponent({
 	name: 'ParameterInputList',
@@ -156,8 +173,8 @@ export default defineComponent({
 	components: {
 		MultipleParameter,
 		ParameterInputFull,
-		FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue'),
-		CollectionParameter: async () => import('./CollectionParameter.vue'),
+		FixedCollectionParameter,
+		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
 	},
@@ -256,9 +273,9 @@ export default defineComponent({
 			);
 
 			// Get names of all fields that credentials rendering depends on (using displayOptions > show)
-			if (nodeType && nodeType.credentials) {
+			if (nodeType?.credentials) {
 				for (const cred of nodeType.credentials) {
-					if (cred.displayOptions && cred.displayOptions.show) {
+					if (cred.displayOptions?.show) {
 						Object.keys(cred.displayOptions.show).forEach((fieldName) =>
 							dependencies.add(fieldName),
 						);
@@ -302,7 +319,7 @@ export default defineComponent({
 		},
 
 		mustHideDuringCustomApiCall(parameter: INodeProperties, nodeValues: INodeParameters): boolean {
-			if (parameter && parameter.displayOptions && parameter.displayOptions.hide) return true;
+			if (parameter?.displayOptions?.hide) return true;
 
 			const MUST_REMAIN_VISIBLE = [
 				'authentication',
@@ -346,6 +363,9 @@ export default defineComponent({
 				rawValues = get(this.nodeValues, this.path);
 			}
 
+			if (!rawValues) {
+				return false;
+			}
 			// Resolve expressions
 			const resolveKeys = Object.keys(rawValues);
 			let key: string;
@@ -386,7 +406,7 @@ export default defineComponent({
 				}
 			} while (resolveKeys.length !== 0);
 
-			if (parameterGotResolved === true) {
+			if (parameterGotResolved) {
 				if (this.path) {
 					rawValues = deepCopy(this.nodeValues);
 					set(rawValues, this.path, nodeValues);
@@ -404,6 +424,16 @@ export default defineComponent({
 		onNoticeAction(action: string) {
 			if (action === 'activate') {
 				this.$emit('activate');
+			}
+		},
+		onButtonAction(parameter: INodeProperties) {
+			const action: string | undefined = parameter.typeOptions?.action;
+
+			switch (action) {
+				case 'openChat':
+					this.ndvStore.setActiveNodeName(null);
+					nodeViewEventBus.emit('openChat');
+					break;
 			}
 		},
 		isNodeAuthField(name: string): boolean {

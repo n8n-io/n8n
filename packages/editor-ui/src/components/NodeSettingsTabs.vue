@@ -1,5 +1,10 @@
 <template>
-	<n8n-tabs :options="options" :value="value" @input="onTabSelect" @tooltipClick="onTooltipClick" />
+	<n8n-tabs
+		:options="options"
+		:modelValue="modelValue"
+		@update:modelValue="onTabSelect"
+		@tooltipClick="onTooltipClick"
+	/>
 </template>
 
 <script lang="ts">
@@ -15,6 +20,7 @@ import type { INodeUi, ITab } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionType } from 'n8n-workflow';
 
 import { isCommunityPackageName } from '@/utils';
 
@@ -22,8 +28,9 @@ export default defineComponent({
 	name: 'NodeSettingsTabs',
 	mixins: [externalHooks],
 	props: {
-		value: {
+		modelValue: {
 			type: String,
+			default: '',
 		},
 		nodeType: {},
 		sessionId: {
@@ -124,7 +131,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: NodeConnectionType.Main,
 					type: 'docs',
 				});
 			}
@@ -137,7 +144,7 @@ export default defineComponent({
 			}
 
 			if (tab === 'settings' || tab === 'params') {
-				this.$emit('input', tab);
+				this.$emit('update:modelValue', tab);
 			}
 		},
 		onTooltipClick(tab: string, event: MouseEvent) {

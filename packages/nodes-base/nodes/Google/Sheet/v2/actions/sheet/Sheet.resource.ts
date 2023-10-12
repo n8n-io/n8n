@@ -7,6 +7,7 @@ import * as del from './delete.operation';
 import * as read from './read.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../../../../constants';
 
 export { append, appendOrUpdate, clear, create, del as delete, read, remove, update };
 
@@ -23,53 +24,52 @@ export const descriptions: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Append',
-				value: 'append',
-				description: 'Append data to a sheet',
-				action: 'Append data to a sheet',
+				name: 'Append or Update Row',
+				value: 'appendOrUpdate',
+				description: 'Append a new row or update an existing one (upsert)',
+				action: 'Append or update row in sheet',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-option-name-wrong-for-upsert
-				name: 'Append or Update',
-				value: 'appendOrUpdate',
-				description: 'Append a new row or update the current one if it already exists (upsert)',
-				action: 'Append or update a sheet',
+				name: 'Append Row',
+				value: 'append',
+				description: 'Create a new row in a sheet',
+				action: 'Append row in sheet',
 			},
 			{
 				name: 'Clear',
 				value: 'clear',
-				description: 'Clear data from a sheet',
-				action: 'Clear a sheet',
+				description: 'Delete all the contents or a part of a sheet',
+				action: 'Clear sheet',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new sheet',
-				action: 'Create a sheet',
+				action: 'Create sheet',
 			},
 			{
 				name: 'Delete',
-				value: 'delete',
-				description: 'Delete columns and rows from a sheet',
-				action: 'Delete a sheet',
-			},
-			{
-				name: 'Read Rows',
-				value: 'read',
-				description: 'Read all rows in a sheet',
-				action: 'Read all rows',
-			},
-			{
-				name: 'Remove',
 				value: 'remove',
-				description: 'Remove a sheet',
-				action: 'Remove a sheet',
+				description: 'Permanently delete a sheet',
+				action: 'Delete sheet',
 			},
 			{
-				name: 'Update',
+				name: 'Delete Rows or Columns',
+				value: 'delete',
+				description: 'Delete columns or rows from a sheet',
+				action: 'Delete rows or columns from sheet',
+			},
+			{
+				name: 'Get Many Rows',
+				value: 'read',
+				description: 'Retrieves all the rows in a sheet',
+				action: 'Get many rows in sheet',
+			},
+			{
+				name: 'Update Row',
 				value: 'update',
-				description: 'Update rows in a sheet',
-				action: 'Update a sheet',
+				description: 'Update an existing row in a sheet',
+				action: 'Update row in sheet',
 			},
 		],
 		default: 'read',
@@ -96,15 +96,13 @@ export const descriptions: INodeProperties[] = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex:
-						'https:\\/\\/(?:drive|docs)\\.google\\.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+					regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex:
-								'https:\\/\\/(?:drive|docs)\\.google.com(?:\\/.*|)\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+							regex: GOOGLE_DRIVE_FILE_URL_REGEX,
 							errorMessage: 'Not a valid Google Drive File URL',
 						},
 					},

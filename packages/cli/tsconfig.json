@@ -1,9 +1,7 @@
 {
-	"extends": "../../tsconfig.json",
+	"extends": ["../../tsconfig.json", "../../tsconfig.backend.json"],
 	"compilerOptions": {
 		"rootDir": ".",
-		"types": ["node", "jest"],
-		"noEmit": true,
 		"preserveSymlinks": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
