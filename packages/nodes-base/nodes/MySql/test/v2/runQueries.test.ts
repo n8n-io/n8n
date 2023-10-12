@@ -67,7 +67,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 
@@ -108,7 +108,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 
@@ -155,7 +155,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 

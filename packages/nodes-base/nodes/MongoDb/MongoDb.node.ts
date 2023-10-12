@@ -29,6 +29,7 @@ import {
 } from './GenericFunctions';
 
 import type { IMongoParametricCredentials } from './mongoDb.types';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -365,9 +366,11 @@ export class MongoDb implements INodeType {
 
 		stringifyObjectIDs(responseData);
 
+		const itemData = generatePairedItemData(items.length);
+
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnItems.push(...executionData);

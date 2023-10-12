@@ -190,6 +190,15 @@ export function encodeWebhookResponse(
 	return response;
 }
 
+const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
+	for (const key in values) {
+		const value = values[key];
+		if (Array.isArray(value) && value.length === 1) {
+			values[key] = value[0];
+		}
+	}
+};
+
 /**
  * Executes a webhook
  */
@@ -310,11 +319,8 @@ export async function executeWebhook(
 				});
 				req.body = await new Promise((resolve) => {
 					form.parse(req, async (err, data, files) => {
-						for (const key in data) {
-							if (Array.isArray(data[key]) && data[key].length === 1) {
-								data[key] = data[key][0];
-							}
-						}
+						normalizeFormData(data);
+						normalizeFormData(files);
 						resolve({ data, files });
 					});
 				});
