@@ -3,6 +3,11 @@ name: Reusable units test workflow
 on:
   workflow_call:
     inputs:
+      repository:
+        description: 'Repository to test.'
+        required: false
+        type: string
+        default: 'n8n-io/n8n'
       ref:
         description: 'GitHub ref to test.'
         required: false
