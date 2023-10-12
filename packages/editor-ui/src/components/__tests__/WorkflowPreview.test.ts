@@ -212,7 +212,7 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
-	it('should not emit "close" event if iframe sends "error" command', async () => {
+	it('should emit "close" event if iframe sends "error" command', async () => {
 		const { emitted } = renderComponent({
 			pinia,
 			props: {},
