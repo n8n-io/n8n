@@ -71,7 +71,7 @@ describe('WorkflowHistoryContent', () => {
 	it('should pass proper workflow data to WorkflowPreview component', async () => {
 		const workflowVersion = workflowVersionDataFactory();
 		const workflow = { pinData: {} } as IWorkflowDb;
-		const { getByTestId, queryByText } = renderComponent({
+		renderComponent({
 			pinia,
 			props: {
 				workflow,
