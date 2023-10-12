@@ -71,7 +71,7 @@ describe('Resource Locator', () => {
 			.findChildByTestId('rlc-item')
 			.should('have.length', 5);
 
-		ndv.actions.setInvalidExpression('fieldId');
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
