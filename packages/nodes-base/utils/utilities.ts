@@ -312,3 +312,17 @@ export function generatePairedItemData(length: number): IPairedItemData[] {
 		item,
 	}));
 }
+
+/**
+ * Output Paired Item Data Array
+ *
+ * @param {number | IPairedItemData | IPairedItemData[] | undefined} pairedItem
+ */
+export function preparePairedItemDataArray(
+	pairedItem: number | IPairedItemData | IPairedItemData[] | undefined,
+): IPairedItemData[] {
+	if (pairedItem === undefined) return [];
+	if (typeof pairedItem === 'number') return [{ item: pairedItem }];
+	if (Array.isArray(pairedItem)) return pairedItem;
+	return [pairedItem];
+}
