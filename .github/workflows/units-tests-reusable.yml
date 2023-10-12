@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3.5.3
         with:
-          repository: n8n-io/n8n
+          repository: ${{ inputs.repository }}
           ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v2.4.0
