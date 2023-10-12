@@ -773,7 +773,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputName: ConnectionTypes,
 			itemIndex: number,
 			inputIndex?: number,
-			nodeNameOverride?: string,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
