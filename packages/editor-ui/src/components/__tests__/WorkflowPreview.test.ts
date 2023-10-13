@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
+import type { IExecutionsSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
@@ -12,8 +13,8 @@ let pinia: ReturnType<typeof createPinia>;
 let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let postMessageSpy: vi.SpyInstance;
 
-const sendFakeIframeReadyMessage = () => {
-	window.postMessage('{"command":"n8nReady"}', '*');
+const sendPostMessageCommand = (command: string) => {
+	window.postMessage(`{"command":"${command}"}`, '*');
 };
 
 describe('WorkflowPreview', () => {
@@ -37,7 +38,7 @@ describe('WorkflowPreview', () => {
 			props: {},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).not.toHaveBeenCalled();
@@ -53,7 +54,7 @@ describe('WorkflowPreview', () => {
 			},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).not.toHaveBeenCalled();
@@ -69,7 +70,7 @@ describe('WorkflowPreview', () => {
 			},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).not.toHaveBeenCalled();
@@ -86,7 +87,7 @@ describe('WorkflowPreview', () => {
 			},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).toHaveBeenCalledWith(
@@ -108,7 +109,7 @@ describe('WorkflowPreview', () => {
 			},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).not.toHaveBeenCalled();
@@ -125,7 +126,7 @@ describe('WorkflowPreview', () => {
 			},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).toHaveBeenCalledWith(
@@ -139,8 +140,10 @@ describe('WorkflowPreview', () => {
 		});
 	});
 
-	it('should call also iframe postMessage with "setActiveExecution" is active execution is', async () => {
-		vi.spyOn(workflowsStore, 'activeWorkflowExecution', 'get').mockReturnValue({ id: 'abc' });
+	it('should call also iframe postMessage with "setActiveExecution" if active execution is set', async () => {
+		vi.spyOn(workflowsStore, 'activeWorkflowExecution', 'get').mockReturnValue({
+			id: 'abc',
+		} as IExecutionsSummary);
 
 		const executionId = '123';
 		renderComponent({
@@ -151,7 +154,7 @@ describe('WorkflowPreview', () => {
 			},
 		});
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).toHaveBeenCalledWith(
@@ -187,7 +190,7 @@ describe('WorkflowPreview', () => {
 
 		expect(iframe?.classList.toString()).not.toContain('openNDV');
 
-		sendFakeIframeReadyMessage();
+		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
 			expect(postMessageSpy).toHaveBeenCalledWith(
@@ -199,13 +202,13 @@ describe('WorkflowPreview', () => {
 			);
 		});
 
-		window.postMessage('{"command":"openNDV"}', '*');
+		sendPostMessageCommand('openNDV');
 
 		await waitFor(() => {
 			expect(iframe?.classList.toString()).toContain('openNDV');
 		});
 
-		window.postMessage('{"command":"closeNDV"}', '*');
+		sendPostMessageCommand('closeNDV');
 
 		await waitFor(() => {
 			expect(iframe?.classList.toString()).not.toContain('openNDV');
@@ -218,7 +221,7 @@ describe('WorkflowPreview', () => {
 			props: {},
 		});
 
-		window.postMessage('{"command":"error"}', '*');
+		sendPostMessageCommand('error');
 
 		await waitFor(() => {
 			expect(emitted().close).toBeDefined();

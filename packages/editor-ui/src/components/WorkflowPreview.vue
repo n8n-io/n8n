@@ -63,8 +63,8 @@ const scrollY = ref(0);
 const showPreview = computed(() => {
 	return (
 		!props.loading &&
-		((props.mode === 'workflow' && !!props.workflow) ||
-			(props.mode === 'execution' && !!props.executionId)) &&
+		((props.mode === 'workflow' && props.workflow) ||
+			(props.mode === 'execution' && props.executionId)) &&
 		ready.value
 	);
 });
