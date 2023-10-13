@@ -1,3 +1,15 @@
+## [1.11.1](https://github.com/n8n-io/n8n/compare/n8n@1.11.0...n8n@1.11.1) (2023-10-13)
+
+
+### Bug Fixes
+
+* **core:** Do not throw when deleting workflows with executions without binary-data ([#7411](https://github.com/n8n-io/n8n/issues/7411)) ([cde331d](https://github.com/n8n-io/n8n/commit/cde331d2cd6d2a6b31f7a384bd72f285cc6e53f4))
+* **core:** Fix ignoring crashed executions without event msgs ([#7368](https://github.com/n8n-io/n8n/issues/7368)) ([ca0d4d2](https://github.com/n8n-io/n8n/commit/ca0d4d22890a7f28d3485924423ff1065d0cda11))
+* **editor:** Fix remote options fetching on every keystroke ([#7320](https://github.com/n8n-io/n8n/issues/7320)) ([15f891b](https://github.com/n8n-io/n8n/commit/15f891b35f6d7d22ef54aa88acbfb02889bf6da8))
+* Prevent undefined issues when restoring binary data ([#7419](https://github.com/n8n-io/n8n/issues/7419)) ([5da8dcb](https://github.com/n8n-io/n8n/commit/5da8dcb8b4eb09e786b919d8eb1a6f30a0aae6e0))
+
+
+
 # [1.11.0](https://github.com/n8n-io/n8n/compare/n8n@1.10.0...n8n@1.11.0) (2023-10-11)
 
 
