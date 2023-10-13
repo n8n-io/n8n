@@ -1044,9 +1044,9 @@ export class WorkflowDataProxy {
 										});
 									}
 
-									const sourceData: ISourceData = that.executeData.source.main[
-										pairedItem.input || 0
-									] as ISourceData;
+									const sourceData: ISourceData | null =
+										that.executeData.source.main[pairedItem.input || 0] ??
+										that.executeData.source.main[0];
 
 									return getPairedItem(nodeName, sourceData, pairedItem);
 								};
