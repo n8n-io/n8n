@@ -10,9 +10,13 @@ export async function getCurrentUsage(context: IRestApiContext): Promise<Instanc
 }
 
 export async function getCloudUserInfo(context: IRestApiContext): Promise<Cloud.UserAccount> {
-	return get(context.baseUrl, '/cloud/proxy/admin/user/me');
+	return get(context.baseUrl, '/cloud/proxy/user/me');
 }
 
 export async function confirmEmail(context: IRestApiContext): Promise<Cloud.UserAccount> {
-	return post(context.baseUrl, '/cloud/proxy/admin/user/resend-confirmation-email');
+	return post(context.baseUrl, '/cloud/proxy/user/resend-confirmation-email');
+}
+
+export async function getAdminPanelLoginCode(context: IRestApiContext): Promise<{ code: string }> {
+	return get(context.baseUrl, '/cloud/proxy/login/code');
 }

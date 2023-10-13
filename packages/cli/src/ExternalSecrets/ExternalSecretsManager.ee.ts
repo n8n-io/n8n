@@ -20,6 +20,7 @@ import {
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 
 const logger = getLogger();
 
@@ -68,6 +69,21 @@ export class ExternalSecretsManager {
 			void p.disconnect().catch(() => {});
 		});
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
+	}
+
+	async reloadAllProviders(backoff?: number) {
+		logger.debug('Reloading all external secrets providers');
+		const providers = this.getProviderNames();
+		if (!providers) {
+			return;
+		}
+		for (const provider of providers) {
+			await this.reloadProvider(provider, backoff);
+		}
+	}
+
+	async broadcastReloadExternalSecretsProviders() {
+		await Container.get(OrchestrationMainService).broadcastReloadExternalSecretsProviders();
 	}
 
 	private async getEncryptionKey(): Promise<string> {
@@ -274,6 +290,7 @@ export class ExternalSecretsManager {
 		await this.saveAndSetSettings(settings, this.settingsRepo);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
+		await this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);
 	}
@@ -293,6 +310,7 @@ export class ExternalSecretsManager {
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
 		await this.updateSecrets();
+		await this.broadcastReloadExternalSecretsProviders();
 	}
 
 	private async trackProviderSave(vaultType: string, isNew: boolean, userId?: string) {
@@ -373,6 +391,7 @@ export class ExternalSecretsManager {
 		}
 		try {
 			await this.providers[provider].update();
+			await this.broadcastReloadExternalSecretsProviders();
 			return true;
 		} catch {
 			return false;

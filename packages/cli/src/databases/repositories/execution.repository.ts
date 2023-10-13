@@ -1,5 +1,14 @@
 import { Service } from 'typedi';
-import { Brackets, DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+	Brackets,
+	DataSource,
+	Not,
+	In,
+	IsNull,
+	LessThanOrEqual,
+	MoreThanOrEqual,
+	Repository,
+} from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
@@ -25,7 +34,7 @@ import type { ExecutionData } from '../entities/ExecutionData';
 import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
-import { TIME } from '@/constants';
+import { TIME, inTest } from '@/constants';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -93,7 +102,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	) {
 		super(ExecutionEntity, dataSource.manager);
 
-		if (!this.isMainInstance) return;
+		if (!this.isMainInstance || inTest) return;
 
 		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
@@ -110,13 +119,21 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	setSoftDeletionInterval() {
-		this.logger.debug('Setting soft-deletion interval (pruning) for executions');
+		this.logger.debug(
+			`Setting soft-deletion interval (pruning) for executions every ${
+				this.rates.softDeletion / TIME.MINUTE
+			} min`,
+		);
 
-		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.hardDeletion);
+		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.softDeletion);
 	}
 
 	setHardDeletionInterval() {
-		this.logger.debug('Setting hard-deletion interval for executions');
+		this.logger.debug(
+			`Setting hard-deletion interval for executions every ${
+				this.rates.hardDeletion / TIME.MINUTE
+			} min`,
+		);
 
 		this.intervals.hardDeletion = setInterval(
 			async () => this.hardDelete(),
@@ -487,7 +504,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
-			.where(
+			.where({
+				deletedAt: IsNull(),
+				// Only mark executions as deleted if they are in an end state
+				status: Not(In(['new', 'running', 'waiting'])),
+			})
+			.andWhere(
 				new Brackets((qb) =>
 					countBasedWhere
 						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
@@ -505,9 +527,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const date = new Date();
 		date.setHours(date.getHours() - 1);
 
-		const executionIds = (
+		const workflowIdsAndExecutionIds = (
 			await this.find({
-				select: ['id'],
+				select: ['workflowId', 'id'],
 				where: {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
 				},
@@ -519,9 +541,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				 */
 				withDeleted: true,
 			})
-		).map(({ id }) => id);
+		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
 
-		await this.binaryDataService.deleteManyByExecutionIds(executionIds);
+		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
+
+		if (executionIds.length === 0) {
+			this.logger.debug('Found no executions to hard-delete from database');
+			return;
+		}
+
+		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,

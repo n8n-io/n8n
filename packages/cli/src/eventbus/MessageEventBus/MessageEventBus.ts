@@ -1,6 +1,7 @@
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
+import { In } from 'typeorm';
 import type {
 	EventMessageTypes,
 	EventNamesTypes,
@@ -29,16 +30,9 @@ import { recoverExecutionDataFromEventLogMessages } from './recoverEvents';
 import { METRICS_EVENT_NAME } from '../MessageEventBusDestination/Helpers.ee';
 import Container, { Service } from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
-import { RedisService } from '@/services/redis.service';
-import type { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
-import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
-import {
-	COMMAND_REDIS_CHANNEL,
-	EVENT_BUS_REDIS_CHANNEL,
-} from '@/services/redis/RedisServiceHelper';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { messageToRedisServiceCommandObject } from '@/services/orchestration/helpers';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -50,7 +44,6 @@ export interface MessageWithCallback {
 export interface MessageEventBusInitializeOptions {
 	skipRecoveryPass?: boolean;
 	workerId?: string;
-	uniqueInstanceId?: string;
 }
 
 @Service()
@@ -58,12 +51,6 @@ export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
-
-	uniqueInstanceId: string;
-
-	redisPublisher: RedisServicePubSubPublisher;
-
-	redisSubscriber: RedisServicePubSubSubscriber;
 
 	logWriter: MessageEventBusLogWriter;
 
@@ -93,28 +80,9 @@ export class MessageEventBus extends EventEmitter {
 	 *
 	 * Sets `isInitialized` to `true` once finished.
 	 */
-	async initialize(options: MessageEventBusInitializeOptions): Promise<void> {
+	async initialize(options?: MessageEventBusInitializeOptions): Promise<void> {
 		if (this.isInitialized) {
 			return;
-		}
-
-		this.uniqueInstanceId = options?.uniqueInstanceId ?? '';
-
-		if (config.getEnv('executions.mode') === 'queue') {
-			this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
-			this.redisSubscriber = await Container.get(RedisService).getPubSubSubscriber();
-			await this.redisSubscriber.subscribeToEventLog();
-			await this.redisSubscriber.subscribeToCommandChannel();
-			this.redisSubscriber.addMessageHandler(
-				'MessageEventBusMessageReceiver',
-				async (channel: string, messageString: string) => {
-					if (channel === EVENT_BUS_REDIS_CHANNEL) {
-						await this.handleRedisEventBusMessage(messageString);
-					} else if (channel === COMMAND_REDIS_CHANNEL) {
-						await this.handleRedisCommandMessage(messageString);
-					}
-				},
-			);
 		}
 
 		LoggerProxy.debug('Initializing event bus...');
@@ -165,7 +133,23 @@ export class MessageEventBus extends EventEmitter {
 			this.logWriter?.startLogging();
 			await this.send(unsentAndUnfinished.unsentMessages);
 
-			const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+			let unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+
+			// if we are in queue mode, running jobs may still be running on a worker despite the main process
+			// crashing, so we can't just mark them as crashed
+			if (config.get('executions.mode') !== 'queue') {
+				const dbUnfinishedExecutionIds = (
+					await Container.get(ExecutionRepository).find({
+						where: {
+							status: In(['running', 'new', 'unknown']),
+						},
+						select: ['id'],
+					})
+				).map((e) => e.id);
+				unfinishedExecutionIds = Array.from(
+					new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
+				);
+			}
 
 			if (unfinishedExecutionIds.length > 0) {
 				LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
@@ -193,11 +177,18 @@ export class MessageEventBus extends EventEmitter {
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
 						LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
-						await recoverExecutionDataFromEventLogMessages(
-							executionId,
-							unsentAndUnfinished.unfinishedExecutions[executionId],
-							true,
-						);
+						if (!unsentAndUnfinished.unfinishedExecutions[executionId]?.length) {
+							LoggerProxy.debug(
+								`No event messages found, marking execution ${executionId} as 'crashed'`,
+							);
+							await Container.get(ExecutionRepository).markAsCrashed([executionId]);
+						} else {
+							await recoverExecutionDataFromEventLogMessages(
+								executionId,
+								unsentAndUnfinished.unfinishedExecutions[executionId],
+								true,
+							);
+						}
 					}
 				}
 				// remove the recovery process flag file
@@ -223,7 +214,9 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await this.broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(
+				OrchestrationMainService,
+			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return destination;
 	}
@@ -249,7 +242,9 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await this.broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(
+				OrchestrationMainService,
+			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return result;
 	}
@@ -263,38 +258,6 @@ export class MessageEventBus extends EventEmitter {
 			}
 		}
 		return eventData;
-	}
-
-	async handleRedisCommandMessage(messageString: string) {
-		const message = messageToRedisServiceCommandObject(messageString);
-		if (message) {
-			if (
-				message.senderId === this.uniqueInstanceId ||
-				(message.targets && !message.targets.includes(this.uniqueInstanceId))
-			) {
-				LoggerProxy.debug(
-					`Skipping command message ${message.command} because it's not for this instance.`,
-				);
-				return message;
-			}
-			switch (message.command) {
-				case 'restartEventBus':
-					await this.restart();
-				default:
-					break;
-			}
-			return message;
-		}
-		return;
-	}
-
-	async broadcastRestartEventbusAfterDestinationUpdate() {
-		if (config.getEnv('executions.mode') === 'queue') {
-			await this.redisPublisher.publishToCommandChannel({
-				senderId: this.uniqueInstanceId,
-				command: 'restartEventBus',
-			});
-		}
 	}
 
 	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -317,8 +280,6 @@ export class MessageEventBus extends EventEmitter {
 			);
 			await this.destinations[destinationName].close();
 		}
-		await this.redisSubscriber?.unSubscribeFromCommandChannel();
-		await this.redisSubscriber?.unSubscribeFromEventLog();
 		this.isInitialized = false;
 		LoggerProxy.debug('EventBus shut down.');
 	}

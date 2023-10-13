@@ -1,6 +1,7 @@
 import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { META_KEY } from '../constants';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -296,15 +297,15 @@ describe('NDV', () => {
 		ndv.getters.parameterInput('remoteOptions').click();
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 
-		ndv.actions.setInvalidExpression('fieldId');
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 200 });
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
 		ndv.getters.parameterInput('remoteOptions').click();
-		getPopper().should('not.be.visible');
 
 		ndv.getters.parameterInputIssues('remoteOptions').realHover();
-		getVisiblePopper().should('include.text', `node doesn't exist`);
+		// Remote options dropdown should not be visible
+		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
 	});
 
 	it('should retrieve remote options when non-required params throw errors', () => {
@@ -314,7 +315,7 @@ describe('NDV', () => {
 		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
 		ndv.getters.parameterInput('remoteOptions').click();
 
-		ndv.actions.setInvalidExpression('otherField');
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
 
 		ndv.getters.container().click(); // remove focus from input, hide expression preview
 
@@ -345,5 +346,23 @@ describe('NDV', () => {
 
 		ndv.actions.close();
 		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+	});
+
+	it('should not push NDV header out with a lot of code in Code node editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.getters.parameterInput('jsCode').get('.cm-content').type('{selectall}').type('{backspace}');
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.parameterInput('jsCode').get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
+	});
+
+	it('should not retrieve remote options when a parameter value changes', () => {
+		cy.intercept('/rest/node-parameter-options?**', cy.spy().as('fetchParameterOptions'));
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+		// Type something into the field
+		ndv.actions.typeIntoParameterInput('otherField', 'test');
+		// Should call the endpoint only once (on mount), not for every keystroke
+		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
 	});
 });

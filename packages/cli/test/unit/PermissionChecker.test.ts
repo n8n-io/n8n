@@ -1,7 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { ICredentialTypes, INodeTypes } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+import type { ILogger, INodeTypes } from 'n8n-workflow';
+import { LoggerProxy, SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -14,35 +15,26 @@ import { UserService } from '@/services/user.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
+import { OwnershipService } from '@/services/ownership.service';
 
+import { mockInstance } from '../integration/shared/utils/';
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
 } from '../integration/shared/random';
 import * as testDb from '../integration/shared/testDb';
-import { mockNodeTypesData } from './Helpers';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { mockInstance } from '../integration/shared/utils/';
-import { OwnershipService } from '@/services/ownership.service';
+import { mockNodeTypesData } from './Helpers';
 
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
-LoggerProxy.init(getLogger());
+LoggerProxy.init(mock<ILogger>());
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
-const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);
 mockInstance(LoadNodesAndCredentials, {
-	loaded: {
-		nodes: MOCK_NODE_TYPES_DATA,
-		credentials: {},
-	},
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
+	loadedNodes: mockNodeTypesData(['start', 'actionNetwork']),
 });
 
 beforeAll(async () => {

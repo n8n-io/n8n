@@ -37,10 +37,10 @@ import type {
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
-import type { Job, JobData, JobQueue, JobResponse } from '@/Queue';
+import type { Job, JobData, JobResponse } from '@/Queue';
 // eslint-disable-next-line import/no-cycle
 import { Queue } from '@/Queue';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 // eslint-disable-next-line import/no-cycle
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 // eslint-disable-next-line import/no-cycle
@@ -60,7 +60,7 @@ export class WorkflowRunner {
 
 	push: Push;
 
-	jobQueue: JobQueue;
+	jobQueue: Queue;
 
 	constructor() {
 		this.push = Container.get(Push);
@@ -172,8 +172,7 @@ export class WorkflowRunner {
 		await initErrorHandling();
 
 		if (executionsMode === 'queue') {
-			const queue = Container.get(Queue);
-			this.jobQueue = queue.getBullObjectInstance();
+			this.jobQueue = Container.get(Queue);
 		}
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
@@ -327,7 +326,7 @@ export class WorkflowRunner {
 				executionId,
 			});
 
-			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({
+			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				sessionId: data.sessionId,
 			});
 
@@ -344,8 +343,7 @@ export class WorkflowRunner {
 			} else if (
 				data.runData === undefined ||
 				data.startNodes === undefined ||
-				data.startNodes.length === 0 ||
-				data.destinationNode === undefined
+				data.startNodes.length === 0
 			) {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, { executionId });
 				// Execute all nodes
@@ -734,13 +732,13 @@ export class WorkflowRunner {
 				this.activeExecutions.remove(executionId, message.data.runData);
 			} else if (message.type === 'sendResponse') {
 				if (responsePromise) {
-					responsePromise.resolve(WebhookHelpers.decodeWebhookResponse(message.data.response));
+					responsePromise.resolve(decodeWebhookResponse(message.data.response));
 				}
-			} else if (message.type === 'sendMessageToUI') {
+			} else if (message.type === 'sendDataToUI') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				WorkflowExecuteAdditionalData.sendMessageToUI.bind({ sessionId: data.sessionId })(
-					message.data.source,
-					message.data.message,
+				WorkflowExecuteAdditionalData.sendDataToUI.bind({ sessionId: data.sessionId })(
+					message.data.type,
+					message.data.data,
 				);
 			} else if (message.type === 'processError') {
 				clearTimeout(executionTimeout);

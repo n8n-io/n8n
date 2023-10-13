@@ -6,8 +6,12 @@ import type { Server } from 'http';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
+import type { DataSource, Repository } from 'typeorm';
 
-export type CollectionName = keyof IDatabaseCollections;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type CollectionName =
+	| keyof IDatabaseCollections
+	| { new (dataSource: DataSource): Repository<any> };
 
 export type EndpointGroup =
 	| 'me'
@@ -18,7 +22,7 @@ export type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes'
+	| 'community-packages'
 	| 'ldap'
 	| 'saml'
 	| 'sourceControl'
@@ -29,7 +33,9 @@ export type EndpointGroup =
 	| 'externalSecrets'
 	| 'mfa'
 	| 'metrics'
-	| 'executions';
+	| 'executions'
+	| 'workflowHistory'
+	| 'binaryData';
 
 export interface SetupProps {
 	applyAuth?: boolean;

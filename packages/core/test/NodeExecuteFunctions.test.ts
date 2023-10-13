@@ -1,4 +1,5 @@
 import {
+	copyInputItems,
 	getBinaryDataBuffer,
 	parseIncomingMessage,
 	proxyRequestToAxios,
@@ -44,6 +45,7 @@ describe('NodeExecuteFunctions', () => {
 					data: 'This should be overwritten by the actual payload in the response',
 				},
 				inputData,
+				'workflowId',
 				'executionId',
 			);
 
@@ -95,16 +97,17 @@ describe('NodeExecuteFunctions', () => {
 					data: 'This should be overwritten with the name of the configured data manager',
 				},
 				inputData,
+				'workflowId',
 				'executionId',
 			);
 
 			// Expect our return object to contain the name of the configured data manager.
-			expect(setBinaryDataBufferResponse.data).toEqual('filesystem');
+			expect(setBinaryDataBufferResponse.data).toEqual('filesystem-v2');
 
 			// Ensure that the input data was successfully persisted to disk.
 			expect(
 				readFileSync(
-					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem:', '')}`,
+					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem-v2:', '')}`,
 				),
 			).toEqual(inputData);
 
@@ -293,6 +296,54 @@ describe('NodeExecuteFunctions', () => {
 				workflow.id,
 				node,
 			]);
+		});
+	});
+
+	describe('copyInputItems', () => {
+		it('should pick only selected properties', () => {
+			const output = copyInputItems(
+				[
+					{
+						json: {
+							a: 1,
+							b: true,
+							c: {},
+						},
+					},
+				],
+				['a'],
+			);
+			expect(output).toEqual([{ a: 1 }]);
+		});
+
+		it('should convert undefined to null', () => {
+			const output = copyInputItems(
+				[
+					{
+						json: {
+							a: undefined,
+						},
+					},
+				],
+				['a'],
+			);
+			expect(output).toEqual([{ a: null }]);
+		});
+
+		it('should clone objects', () => {
+			const input = {
+				a: { b: 5 },
+			};
+			const output = copyInputItems(
+				[
+					{
+						json: input,
+					},
+				],
+				['a'],
+			);
+			expect(output[0].a).toEqual(input.a);
+			expect(output[0].a === input.a).toEqual(false);
 		});
 	});
 });

@@ -1,6 +1,7 @@
 import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
+import config from '@/config';
 import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
 import { getLogger } from '@/Logger';
@@ -16,11 +17,15 @@ import { NodeTypes } from '@/NodeTypes';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { RedisService } from '@/services/redis.service';
+import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
 
-const config: Config.IConfig = new Config.Config({ root: __dirname });
+const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
 beforeAll(async () => {
 	LoggerProxy.init(getLogger());
+	config.set('executions.mode', 'queue');
+	config.set('binaryDataManager.availableModes', 'filesystem');
 	mockInstance(Telemetry);
 	mockInstance(PostHogClient);
 	mockInstance(InternalHooks);
@@ -37,7 +42,7 @@ beforeAll(async () => {
 });
 
 test('worker initializes all its components', async () => {
-	const worker = new Worker([], config);
+	const worker = new Worker([], oclifConfig);
 
 	jest.spyOn(worker, 'init');
 	jest.spyOn(worker, 'initLicense').mockImplementation(async () => {});
@@ -45,36 +50,29 @@ test('worker initializes all its components', async () => {
 	jest.spyOn(worker, 'initExternalHooks').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initExternalSecrets').mockImplementation(async () => {});
 	jest.spyOn(worker, 'initEventBus').mockImplementation(async () => {});
-	jest.spyOn(worker, 'initRedis');
+	jest.spyOn(worker, 'initOrchestration');
+	jest
+		.spyOn(OrchestrationWorkerService.prototype, 'publishToEventLog')
+		.mockImplementation(async () => {});
+	jest
+		.spyOn(OrchestrationHandlerWorkerService.prototype, 'initSubscriber')
+		.mockImplementation(async () => {});
 	jest.spyOn(RedisServicePubSubPublisher.prototype, 'init').mockImplementation(async () => {});
-	jest
-		.spyOn(RedisServicePubSubPublisher.prototype, 'publishToEventLog')
-		.mockImplementation(async () => {});
-	jest
-		.spyOn(RedisServicePubSubSubscriber.prototype, 'subscribeToCommandChannel')
-		.mockImplementation(async () => {});
-	jest
-		.spyOn(RedisServicePubSubSubscriber.prototype, 'addMessageHandler')
-		.mockImplementation(async () => {});
 	jest.spyOn(worker, 'initQueue').mockImplementation(async () => {});
 
 	await worker.init();
 
-	expect(worker.uniqueInstanceId).toBeDefined();
-	expect(worker.uniqueInstanceId).toContain('worker');
-	expect(worker.uniqueInstanceId.length).toBeGreaterThan(15);
+	expect(worker.queueModeId).toBeDefined();
+	expect(worker.queueModeId).toContain('worker');
+	expect(worker.queueModeId.length).toBeGreaterThan(15);
 	expect(worker.initLicense).toHaveBeenCalled();
 	expect(worker.initBinaryDataService).toHaveBeenCalled();
 	expect(worker.initExternalHooks).toHaveBeenCalled();
 	expect(worker.initExternalSecrets).toHaveBeenCalled();
 	expect(worker.initEventBus).toHaveBeenCalled();
-	expect(worker.initRedis).toHaveBeenCalled();
-	expect(worker.redisPublisher).toBeDefined();
-	expect(worker.redisPublisher.init).toHaveBeenCalled();
-	expect(worker.redisPublisher.publishToEventLog).toHaveBeenCalled();
-	expect(worker.redisSubscriber).toBeDefined();
-	expect(worker.redisSubscriber.subscribeToCommandChannel).toHaveBeenCalled();
-	expect(worker.redisSubscriber.addMessageHandler).toHaveBeenCalled();
+	expect(worker.initOrchestration).toHaveBeenCalled();
+	expect(OrchestrationHandlerWorkerService.prototype.initSubscriber).toHaveBeenCalled();
+	expect(OrchestrationWorkerService.prototype.publishToEventLog).toHaveBeenCalled();
 	expect(worker.initQueue).toHaveBeenCalled();
 
 	jest.restoreAllMocks();

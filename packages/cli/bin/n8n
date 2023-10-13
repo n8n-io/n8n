@@ -39,7 +39,10 @@ inspect.defaultOptions.customInspect = false;
 require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
-require('dns').setDefaultResultOrder('ipv4first');
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	require('dns').setDefaultResultOrder('ipv4first');
+}
 
 require('@oclif/command')
 	.run()
