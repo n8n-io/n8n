@@ -10,6 +10,17 @@ import type { Telemetry } from '@/plugins/telemetry';
 import vueJsonPretty from 'vue-json-pretty';
 import { merge } from 'lodash-es';
 import type { TestingPinia } from '@pinia/testing';
+import type {
+	IConnections,
+	IDataObject,
+	INode,
+	INodeTypeData,
+	IPinData,
+	IWorkflowSettings,
+} from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
+import { MockNodeTypes } from '@/__tests__/mocks';
+import { uuid } from '@jsplumb/util';
 
 export type RenderComponent = Parameters<typeof render>[0];
 export type RenderOptions = Parameters<typeof render>[1] & {
