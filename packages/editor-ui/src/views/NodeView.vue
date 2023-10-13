@@ -294,25 +294,23 @@ import type {
 import { debounceHelper } from '@/mixins/debounce';
 import type { Route, RawLocation } from 'vue-router';
 import { dataPinningEventBus, nodeViewEventBus } from '@/event-bus';
-import {
-	useEnvironmentsStore,
-	useWorkflowsEEStore,
-	useCanvasStore,
-	useNodeCreatorStore,
-	useTagsStore,
-	useCredentialsStore,
-	useNodeTypesStore,
-	useTemplatesStore,
-	useSegment,
-	useNDVStore,
-	useRootStore,
-	useWorkflowsStore,
-	useUsersStore,
-	useSettingsStore,
-	useUIStore,
-	useHistoryStore,
-	useExternalSecretsStore,
-} from '@/stores';
+import { useEnvironmentsStore } from '@/stores/environments.ee.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useCanvasStore } from '@/stores/canvas.store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useSegment } from '@/stores/segment.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useHistoryStore } from '@/stores/history.store';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import {

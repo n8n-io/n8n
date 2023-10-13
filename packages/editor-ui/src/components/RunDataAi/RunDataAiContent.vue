@@ -73,7 +73,8 @@
 
 <script lang="ts" setup>
 import type { IAiData, IAiDataContent } from '@/Interface';
-import { useNodeTypesStore, useWorkflowsStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import type {
 	IDataObject,
 	INodeExecutionData,

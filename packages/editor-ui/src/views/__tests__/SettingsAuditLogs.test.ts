@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { useAuditLogsStore, useSettingsStore } from '@/stores';
+import { useAuditLogsStore } from '@/stores/auditLogs.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import SettingsAuditLogs from '@/views/SettingsAuditLogs.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { EnterpriseEditionFeature } from '@/constants';

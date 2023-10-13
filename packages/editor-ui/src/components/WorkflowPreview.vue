@@ -27,7 +27,7 @@ import { useToast } from '@/composables';
 import type { IWorkflowDb } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 export default defineComponent({
 	name: 'WorkflowPreview',

@@ -2,7 +2,7 @@ import { createPinia } from 'pinia';
 import type { IN8nUISettings } from 'n8n-workflow';
 import { SETTINGS_STORE_DEFAULT_STATE, waitAllPromises } from '@/__tests__/utils';
 import SettingsPersonalView from '@/views/SettingsPersonalView.vue';
-import { useSettingsStore } from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';

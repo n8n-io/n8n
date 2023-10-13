@@ -3,7 +3,7 @@ import { mapStores } from 'pinia';
 import dateformat from 'dateformat';
 import { VIEWS } from '@/constants';
 import { useToast } from '@/composables';
-import { useSourceControlStore } from '@/stores';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 
 export const genericHelpers = defineComponent({
 	setup() {

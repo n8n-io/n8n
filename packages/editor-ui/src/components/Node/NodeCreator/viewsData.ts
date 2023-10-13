@@ -30,7 +30,7 @@ import {
 	AI_UNCATEGORIZED_CATEGORY,
 } from '@/constants';
 import { useI18n } from '@/composables';
-import { useNodeTypesStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionType } from 'n8n-workflow';

@@ -163,16 +163,14 @@ import type { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '
 import { saveAs } from 'file-saver';
 import { useTitleChange, useToast, useMessage } from '@/composables';
 import type { MessageBoxInputData } from 'element-plus';
-import {
-	useUIStore,
-	useSettingsStore,
-	useWorkflowsStore,
-	useRootStore,
-	useTagsStore,
-	useUsersStore,
-	useUsageStore,
-	useSourceControlStore,
-} from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTagsStore } from '@/stores/tags.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useUsageStore } from '@/stores/usage.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';

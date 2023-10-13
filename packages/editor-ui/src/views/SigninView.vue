@@ -28,7 +28,8 @@ import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import { useCloudPlanStore, useUIStore } from '@/stores';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useUIStore } from '@/stores/ui.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { FORM } from './MfaView.vue';
 

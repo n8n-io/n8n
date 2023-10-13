@@ -138,7 +138,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUsersStore } from '@/stores/users.store';
 import { createEventBus } from 'n8n-design-system/utils';
-import { usePostHog } from '@/stores';
+import { usePostHog } from '@/stores/posthog.store';
 
 export default defineComponent({
 	name: 'PersonalizationModal',

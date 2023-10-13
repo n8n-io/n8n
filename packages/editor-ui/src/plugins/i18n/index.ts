@@ -14,7 +14,7 @@ import englishBaseText from './locales/en.json';
 import { useUIStore } from '@/stores/ui.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
-import { useRootStore } from '@/stores';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
 export const i18nInstance = createI18n({
 	locale: 'en',

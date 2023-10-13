@@ -10,7 +10,7 @@ import {
 	isCredentialsModalOpen,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useExternalSecretsStore } from '@/stores';
+import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 
 /**
  * Completions offered at the dollar position: `$|`

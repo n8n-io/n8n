@@ -22,7 +22,7 @@ import { FontAwesomePlugin } from './plugins/icons';
 
 import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { useWebhooksStore } from '@/stores';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 
 const pinia = createPinia();

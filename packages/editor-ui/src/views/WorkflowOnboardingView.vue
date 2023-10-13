@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useLoadingService, useI18n } from '@/composables';
 import { VIEWS } from '@/constants';
-import { useTemplatesStore, useWorkflowsStore } from '@/stores';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 

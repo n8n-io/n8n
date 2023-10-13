@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { useWorkflowsStore } from '@/stores';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 let pinia: ReturnType<typeof createTestingPinia>;
 beforeAll(() => {

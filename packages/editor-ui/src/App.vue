@@ -44,17 +44,15 @@ import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
 import { useGlobalLinkActions, useTitleChange, useToast, useExternalHooks } from '@/composables';
-import {
-	useUIStore,
-	useSettingsStore,
-	useUsersStore,
-	useRootStore,
-	useTemplatesStore,
-	useNodeTypesStore,
-	useCloudPlanStore,
-	useSourceControlStore,
-	useUsageStore,
-} from '@/stores';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useSourceControlStore } from '@/stores/sourceControl.store';
+import { useUsageStore } from '@/stores/usage.store';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
