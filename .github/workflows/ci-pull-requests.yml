@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - uses: pnpm/action-setup@v2.4.0
 
@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - uses: pnpm/action-setup@v2.4.0
 
