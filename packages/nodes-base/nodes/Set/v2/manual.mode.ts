@@ -182,7 +182,12 @@ export async function execute(
 		const newData: IDataObject = {};
 
 		for (const entry of fields) {
-			if (entry.type === 'objectValue' && rawFieldsData[entry.name] !== undefined) {
+			if (
+				entry.type === 'objectValue' &&
+				rawFieldsData[entry.name] !== undefined &&
+				entry.objectValue !== undefined &&
+				entry.objectValue !== null
+			) {
 				entry.objectValue = parseJsonParameter(
 					resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
 					node,

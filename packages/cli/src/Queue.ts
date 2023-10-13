@@ -2,7 +2,8 @@ import type Bull from 'bull';
 import { Service } from 'typedi';
 import type { ExecutionError, IExecuteResponsePromiseData } from 'n8n-workflow';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import * as WebhookHelpers from '@/WebhookHelpers';
+import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
+
 import {
 	getRedisClusterClient,
 	getRedisClusterNodes,
@@ -62,7 +63,7 @@ export class Queue {
 		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				progress.executionId,
-				WebhookHelpers.decodeWebhookResponse(progress.response),
+				decodeWebhookResponse(progress.response),
 			);
 		});
 	}
@@ -79,7 +80,23 @@ export class Queue {
 		return this.jobQueue.getJobs(jobTypes);
 	}
 
+	async process(concurrency: number, fn: Bull.ProcessCallbackFunction<JobData>): Promise<void> {
+		return this.jobQueue.process(concurrency, fn);
+	}
+
+	async ping(): Promise<string> {
+		return this.jobQueue.client.ping();
+	}
+
+	async pause(isLocal?: boolean): Promise<void> {
+		return this.jobQueue.pause(isLocal);
+	}
+
 	getBullObjectInstance(): JobQueue {
+		if (this.jobQueue === undefined) {
+			// if queue is not initialized yet throw an error, since we do not want to hand around an undefined queue
+			throw new Error('Queue is not initialized yet!');
+		}
 		return this.jobQueue;
 	}
 
