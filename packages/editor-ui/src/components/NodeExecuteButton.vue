@@ -39,7 +39,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast, useMessage } from '@/composables';
-import { openPopUpWindow } from '@/utils/executionUtils';
 
 export default defineComponent({
 	inheritAttrs: false,
@@ -247,11 +246,6 @@ export default defineComponent({
 						source: 'RunData.ExecuteNodeButton',
 					});
 					this.$emit('execute');
-				}
-
-				if (this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE) {
-					const testUrl = this.getWebhookUrl(this.nodeType.webhooks[0], this.node, 'test');
-					openPopUpWindow(testUrl);
 				}
 			}
 		},

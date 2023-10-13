@@ -634,3 +634,5 @@ export const ASK_AI_LOADING_DURATION_MS = 12000;
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 
 export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
+
+export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];

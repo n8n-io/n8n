@@ -1,5 +1,4 @@
 import type {
-	IHookFunctions,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
@@ -219,25 +218,6 @@ export class FormTrigger implements INodeType {
 				],
 			},
 		],
-	};
-
-	webhookMethods = {
-		setup: {
-			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node');
-				if (webhookData.webhookId === undefined) {
-					return false;
-				}
-
-				return true;
-			},
-			async create(this: IHookFunctions): Promise<boolean> {
-				return true;
-			},
-			async delete(this: IHookFunctions): Promise<boolean> {
-				return true;
-			},
-		},
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
