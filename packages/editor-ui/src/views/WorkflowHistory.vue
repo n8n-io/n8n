@@ -192,7 +192,7 @@ const onAction = async ({
 				if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
 					break;
 				}
-				await workflowHistoryStore.restoreWorkflow(
+				activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
 					route.params.workflowId,
 					id,
 					modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,

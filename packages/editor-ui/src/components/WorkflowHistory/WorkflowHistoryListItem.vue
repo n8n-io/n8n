@@ -113,7 +113,7 @@ onMounted(() => {
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<n8n-badge v-if="props.index === 0">
+			<n8n-badge v-if="props.index === 0" :class="$style.badge">
 				{{ i18n.baseText('workflowHistory.item.latest') }}
 			</n8n-badge>
 			<n8n-action-toggle
@@ -185,6 +185,10 @@ onMounted(() => {
 	&.actionsVisible {
 		border-left-color: var(--color-foreground-xdark);
 	}
+}
+
+.badge {
+	margin-right: var(--spacing-xs);
 }
 
 .actions {

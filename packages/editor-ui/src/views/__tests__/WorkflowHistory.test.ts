@@ -80,7 +80,16 @@ describe('WorkflowHistory', () => {
 		route = useRoute();
 		router = useRouter();
 
-		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
+		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
+			id: workflowId,
+			versionId: faker.string.nanoid(),
+			updatedAt: faker.date.past().toISOString(),
+			ownedBy: {
+				fullName: 'John Doe',
+			},
+			nodes: [{ id: '1', type: 'n8n-node' }],
+			connections: {},
+		} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);

@@ -143,6 +143,11 @@ const onAction = ({
 			padding: 0;
 			cursor: default;
 
+			span,
+			data {
+				margin-top: 0;
+			}
+
 			&:first-child {
 				padding-top: var(--spacing-3xs);
 				padding-bottom: var(--spacing-3xs);
