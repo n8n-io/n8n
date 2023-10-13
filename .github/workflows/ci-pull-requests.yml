@@ -37,7 +37,7 @@ jobs:
     uses: ./.github/workflows/units-tests-reusable.yml
     needs: install
     with:
-      ref: refs/pull/${{ github.head_ref }}/merge
+      ref: ${{ inputs.branch }}
       cacheKey: ${{ github.sha }}-base:18-test-lint
 
   lint:
