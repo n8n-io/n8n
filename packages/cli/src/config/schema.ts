@@ -322,7 +322,7 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
 		pruneDataInterval: {
-			doc: 'How often (minutes) execution data should be pruned',
+			doc: 'How often (minutes) execution data should be hard-deleted',
 			format: Number,
 			default: 15,
 			env: 'EXECUTIONS_DATA_PRUNE_INTERVAL',
