@@ -636,3 +636,4 @@ export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribu
 export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
 
 export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
