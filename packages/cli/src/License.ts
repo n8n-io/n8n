@@ -191,6 +191,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
 	}
 
+	isBinaryDataS3Licensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+	}
+
 	isVariablesEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
