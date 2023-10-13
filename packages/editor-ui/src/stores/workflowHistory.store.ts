@@ -12,6 +12,7 @@ import * as whApi from '@/api/workflowHistory';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { getNewWorkflow } from '@/api/workflows';
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
@@ -64,10 +65,14 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		]);
 		const { connections, nodes } = workflowVersion;
 		const { name } = workflow;
+		const newWorkflow = await getNewWorkflow(
+			rootStore.getRestApiContext,
+			`${name} (${data.formattedCreatedAt})`,
+		);
 		const newWorkflowData: IWorkflowDataUpdate = {
 			nodes,
 			connections,
-			name: `${name} (${data.formattedCreatedAt})`,
+			name: newWorkflow.name,
 		};
 		return workflowsStore.createNewWorkflow(newWorkflowData);
 	};
