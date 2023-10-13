@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { saveAs } from 'file-saver';
-import type { IWorkflowDataUpdate } from '@/Interface';
+import type { IWorkflowDataUpdate, IWorkflowDb } from '@/Interface';
 import type {
 	WorkflowHistory,
 	WorkflowVersion,
@@ -34,7 +34,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const getWorkflowVersion = async (
 		workflowId: string,
 		versionId: string,
-	): Promise<WorkflowVersion | null> =>
+	): Promise<WorkflowVersion> =>
 		whApi.getWorkflowVersion(rootStore.getRestApiContext, workflowId, versionId);
 
 	const downloadVersion = async (
@@ -80,18 +80,16 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		workflowVersionId: string,
 		shouldDeactivate: boolean,
-	) => {
+	): Promise<IWorkflowDb> => {
 		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
-		if (workflowVersion?.nodes && workflowVersion?.connections) {
-			const { connections, nodes } = workflowVersion;
-			const updateData: IWorkflowDataUpdate = { connections, nodes };
+		const { connections, nodes } = workflowVersion;
+		const updateData: IWorkflowDataUpdate = { connections, nodes };
 
-			if (shouldDeactivate) {
-				updateData.active = false;
-			}
-
-			await workflowsStore.updateWorkflow(workflowId, updateData, true);
+		if (shouldDeactivate) {
+			updateData.active = false;
 		}
+
+		return workflowsStore.updateWorkflow(workflowId, updateData, true);
 	};
 
 	return {
