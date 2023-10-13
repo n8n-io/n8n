@@ -305,7 +305,7 @@ export const schema = {
 		},
 
 		// To not exceed the database's capacity and keep its size moderate
-		// the execution data gets pruned regularly (default: 1 hour interval).
+		// the execution data gets pruned regularly (default: 15 minute interval).
 		// All saved execution data older than the max age will be deleted.
 		// Pruning is currently not activated by default, which will change in
 		// a future version.
@@ -320,6 +320,12 @@ export const schema = {
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
+		},
+		pruneDataInterval: {
+			doc: 'How often (minutes) execution data should be pruned',
+			format: Number,
+			default: 15,
+			env: 'EXECUTIONS_DATA_PRUNE_INTERVAL',
 		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
