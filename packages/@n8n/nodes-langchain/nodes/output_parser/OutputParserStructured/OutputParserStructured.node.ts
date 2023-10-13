@@ -44,38 +44,38 @@ class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutput
 		// Make sure to remove the description from root schema
 		const { description, ...restOfSchema } = schema;
 
-		// We want to wrap the schema in a way that it can be used for both object and array
-		// outputs and allows us to parse and display them correctly
-		const returnSchema = {
-			type: 'object',
-			properties: {
-				[STRUCTURED_OUTPUT_KEY]: {
-					type: 'object',
-					properties: {
-						[STRUCTURED_OUTPUT_OBJECT_KEY]: {
-							type: 'object',
-							description:
-								'Use this wrapper when you have a single data entry that conforms to the itemSchema. Ideal for object-like outputs representing a singular entity. Example: { foo: "bar", foo2: ["bar2", "bar3"] }',
-							...restOfSchema,
-						},
-						[STRUCTURED_OUTPUT_ARRAY_KEY]: {
-							type: 'array',
-							description:
-								'Use this wrapper when you have multiple data entries, each conforming to the itemSchema. Ideal for array-like outputs representing a list of entities. Example: [ { foo: "bar", cities: ["foo1", "foo2"] }, ... ]',
-							items: schema,
-						},
-					},
-				},
-			},
-		};
-
-		const zodSchemaString = parseSchema(returnSchema as JSONSchema7);
+		const zodSchemaString = parseSchema(restOfSchema as JSONSchema7);
 
 		// TODO: This is obviously not great and should be replaced later!!!
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
-		const zodSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
+		const itemSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
 
-		return N8nStructuredOutputParser.fromZodSchema(zodSchema);
+		const returnSchema = z.object({
+			[STRUCTURED_OUTPUT_KEY]: z
+				.object({
+					[STRUCTURED_OUTPUT_OBJECT_KEY]: itemSchema.optional(),
+					[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(itemSchema).optional(),
+				})
+				.describe(
+					`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
+				)
+				.refine(
+					(data) => {
+						// Validate that one and only one of the properties exists
+						return (
+							Boolean(data[STRUCTURED_OUTPUT_OBJECT_KEY]) !==
+							Boolean(data[STRUCTURED_OUTPUT_ARRAY_KEY])
+						);
+					},
+					{
+						message:
+							'One and only one of __structured__output__object and __structured__output__array should be present.',
+						path: [STRUCTURED_OUTPUT_KEY],
+					},
+				),
+		});
+
+		return N8nStructuredOutputParser.fromZodSchema(returnSchema);
 	}
 }
 export class OutputParserStructured implements INodeType {
