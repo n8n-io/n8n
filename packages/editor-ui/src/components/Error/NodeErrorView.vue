@@ -1,9 +1,133 @@
 <template>
-	<div>
+	<div class="node-error-view">
 		<div class="error-header">
-			<div class="error-message">{{ getErrorMessage() }}</div>
-			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
+			<div class="error-header__message">
+				{{ getErrorMessage() }}
+			</div>
+			<div
+				class="error-header__description"
+				v-if="error.description"
+				v-html="getErrorDescription()"
+			></div>
 		</div>
+
+		<details class="error-details" open v-if="error.httpCode">
+			<summary class="error-details__summary">
+				<font-awesome-icon class="error-details__icon" icon="angle-right" />
+				{{ error.node.name }} error details
+			</summary>
+			<div class="error-details__content">
+				<div class="error-details__content-row" v-if="error.httpCode">
+					<p class="error-details__content-label">Error code</p>
+					<p class="error-details__content-value">
+						<code>{{ error.httpCode }}</code>
+					</p>
+				</div>
+				<div class="error-details__content-row" v-if="error.description">
+					<p class="error-details__content-label">Full message</p>
+					<p class="error-details__content-value">
+						<code>{{ error.description }}</code>
+					</p>
+				</div>
+			</div>
+		</details>
+
+		<details class="error-details" open>
+			<summary class="error-details__summary">
+				<font-awesome-icon class="error-details__icon" icon="angle-right" />Info
+			</summary>
+			<div class="error-details__content">
+				<div class="error-details__content-row" v-if="error.timestamp">
+					<p class="error-details__content-label">{{ $locale.baseText('nodeErrorView.time') }}</p>
+					<p class="error-details__content-value">
+						<code>{{ new Date(error.timestamp).toLocaleString() }}</code>
+					</p>
+				</div>
+				<div
+					class="error-details__content-row"
+					v-if="error.context && error.context.itemIndex !== undefined"
+				>
+					<p class="error-details__content-label">
+						{{ $locale.baseText('nodeErrorView.itemIndex') }}
+					</p>
+					<p class="error-details__content-value">
+						<code>{{ error.context.itemIndex }}</code>
+					</p>
+				</div>
+				<div
+					class="error-details__content-row"
+					v-if="error.context && error.context.runIndex !== undefined"
+				>
+					<p class="error-details__content-label">Run</p>
+					<p class="error-details__content-value">
+						<code>{{ error.context.runIndex }}</code>
+					</p>
+				</div>
+				<div
+					class="error-details__content-row"
+					v-if="error.context && error.context.parameter !== undefined"
+				>
+					<p class="error-details__content-label">
+						{{ $locale.baseText('nodeErrorView.inParameter') }}
+					</p>
+					<p class="error-details__content-value">
+						<code>{{ parameterDisplayName(error.context.parameter) }}</code>
+					</p>
+				</div>
+			</div>
+		</details>
+
+		<details class="error-details" v-if="error.stack">
+			<summary class="error-details__summary">
+				<font-awesome-icon class="error-details__icon" icon="angle-right" />n8n stacktrace
+			</summary>
+			<div class="error-details__content">
+				<div class="error-details__content-row">
+					<pre class="error-details__content-value"><code>{{ error.stack }}</code></pre>
+				</div>
+			</div>
+		</details>
+
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<br />
+		<hr />
+		<br />
+		<p>Ignore the stuff below</p>
+		<br />
+		<br />
+
+		<details class="error-details">
+			<summary class="error-details__summary">
+				<font-awesome-icon class="error-details__icon" icon="angle-right" />Only for this feature
+				debugging!
+			</summary>
+			<div class="error-details__content">
+				<div class="error-details__content-row">
+					<pre class="error-details__content-value"><code>{{ error }}</code></pre>
+				</div>
+			</div>
+		</details>
+
 		<details>
 			<summary class="error-details__summary">
 				<font-awesome-icon class="error-details__icon" icon="angle-right" />
@@ -17,53 +141,7 @@
 						</div>
 					</el-card>
 				</div>
-				<div v-if="error.timestamp">
-					<el-card class="box-card" shadow="never">
-						<template #header>
-							<div class="clearfix box-card__title">
-								<span>{{ $locale.baseText('nodeErrorView.time') }}</span>
-							</div>
-						</template>
-						<div>
-							{{ new Date(error.timestamp).toLocaleString() }}
-						</div>
-					</el-card>
-				</div>
-				<div
-					v-if="error.context && error.context.itemIndex !== undefined"
-					class="el-card box-card is-never-shadow el-card__body"
-				>
-					<span class="error-details__summary"
-						>{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span
-					>
-					{{ error.context.itemIndex }}
-					<span v-if="error.context.runIndex">
-						|
-						<span class="error-details__summary"
-							>{{ $locale.baseText('nodeErrorView.itemIndex') }}:</span
-						>
-						{{ error.context.runIndex }}
-					</span>
-					<span v-if="error.context.parameter">
-						|
-						<span class="error-details__summary"
-							>{{ $locale.baseText('nodeErrorView.inParameter') }}:</span
-						>
-						{{ parameterDisplayName(error.context.parameter) }}
-					</span>
-				</div>
-				<div v-if="error.httpCode">
-					<el-card class="box-card" shadow="never">
-						<template #header>
-							<div class="clearfix box-card__title">
-								<span>{{ $locale.baseText('nodeErrorView.httpCode') }}</span>
-							</div>
-						</template>
-						<div>
-							{{ error.httpCode }}
-						</div>
-					</el-card>
-				</div>
+
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
 						<template #header>
@@ -100,18 +178,6 @@
 						</div>
 					</el-card>
 				</div>
-				<div v-if="error.stack">
-					<el-card class="box-card" shadow="never">
-						<template #header>
-							<div class="clearfix box-card__title">
-								<span>{{ $locale.baseText('nodeErrorView.stack') }}</span>
-							</div>
-						</template>
-						<div>
-							<pre><code>{{error.stack}}</code></pre>
-						</div>
-					</el-card>
-				</div>
 			</div>
 		</details>
 	</div>
@@ -125,7 +191,12 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import {
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	jsonParse,
+} from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -180,7 +251,7 @@ export default defineComponent({
 			);
 		},
 		getErrorMessage(): string {
-			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
+			const baseErrorMessage = '';
 
 			if (!this.error.context || !this.error.context.messageTemplate) {
 				return baseErrorMessage + this.error.message;
@@ -266,30 +337,78 @@ export default defineComponent({
 </script>
 
 <style lang="scss">
+.node-error-view {
+	// margin: 0 var(--font-size-2xl);
+}
+
 .error-header {
-	margin-bottom: 10px;
+	padding: var(--spacing-l);
+	margin-bottom: var(--spacing-l);
+	background-color: var(--color-background-xlight);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-large);
+
+	&__message {
+		color: var(--color-primary);
+		font-weight: bold;
+		font-size: var(--font-size-s);
+	}
+	&__description {
+		margin-top: var(--spacing-xs);
+		font-size: var(--font-size-s);
+	}
 }
 
-.error-message {
-	color: #ff0000;
-	font-weight: bold;
-	font-size: 1.1rem;
-}
+.error-details {
+	margin-bottom: var(--spacing-s);
+	border: 1px solid var(--color-foreground-base);
+	border-radius: var(--border-radius-large);
 
-.error-description {
-	margin-top: 10px;
-	font-size: 1rem;
-}
+	&__summary {
+		padding: var(--spacing-xs) var(--spacing-l);
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-bold);
+		// color: var(--color-text-dark);
+		color: var(--color-text);
+		cursor: pointer;
+		outline: none;
+		background: var(--color-background-light);
+		border-radius: var(--border-radius-large);
+	}
 
-.error-details__summary {
-	font-weight: 600;
-	font-size: 16px;
-	cursor: pointer;
-	outline: none;
-}
+	&__icon {
+		margin-right: var(--spacing-xs);
+	}
 
-.error-details__icon {
-	margin-right: 4px;
+	&__content {
+	}
+
+	&__content-row {
+		display: flex;
+		padding: var(--spacing-xs) var(--spacing-l);
+		border-top: 1px solid var(--color-foreground-base);
+	}
+
+	&__content-label {
+		flex-grow: 0;
+		flex-shrink: 0;
+		width: 120px;
+		color: var(--color-text);
+		font-size: var(--font-size-xs);
+	}
+
+	&__content-value {
+		flex: 1;
+		overflow: hidden;
+		margin-right: auto;
+		color: var(--color-text);
+		font-size: var(--font-size-xs);
+
+		code {
+			color: var(--color-json-string);
+			text-wrap: wrap;
+		}
+	}
 }
 
 details > summary {
@@ -301,13 +420,13 @@ details > summary::-webkit-details-marker {
 }
 
 details[open] {
+	.error-details__summary {
+		border-radius: var(--border-radius-large) var(--border-radius-large) 0 0;
+	}
+
 	.error-details__icon {
 		transform: rotate(90deg);
 	}
-}
-
-.error-details__content {
-	margin-top: 15px;
 }
 
 .el-divider__text {
