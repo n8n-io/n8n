@@ -6,6 +6,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import Container from 'typedi';
 import { ExecutionRepository } from '../../databases/repositories';
 import { ExecutionMetadataService } from '../../services/executionMetadata.service';
+import { hasBinaryData } from '../hasBinaryData';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	const workflowHasCrashed = runData.status === 'crashed';
@@ -50,6 +51,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		workflowData: pristineWorkflowData,
 		waitTill: runData.waitTill,
 		status: workflowStatusFinal,
+		hasBinaryData: hasBinaryData(runData),
 	};
 
 	if (retryOf !== undefined) {

@@ -49,6 +49,7 @@ import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-Execut
 import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
 import { MigrateToTimestampTz1694091729095 } from './1694091729095-MigrateToTimestampTz';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
+import { AddExecutionHasBinaryData1697198787123 } from '../common/1697198787123-AddExecutionHasBinaryData';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -101,4 +102,5 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowMetadata1695128658538,
 	MigrateToTimestampTz1694091729095,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
+	AddExecutionHasBinaryData1697198787123,
 ];

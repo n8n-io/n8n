@@ -59,6 +59,9 @@ export class ExecutionEntity {
 	@Column({ type: datetimeColumnType, nullable: true })
 	waitTill: Date | null;
 
+	@Column()
+	hasBinaryData: boolean;
+
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
 

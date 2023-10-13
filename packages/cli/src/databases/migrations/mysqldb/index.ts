@@ -50,6 +50,7 @@ import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-D
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
 import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
+import { AddExecutionHasBinaryData1697198787123 } from '../common/1697198787123-AddExecutionHasBinaryData';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -103,4 +104,5 @@ export const mysqlMigrations: Migration[] = [
 	ExecutionSoftDelete1693491613982,
 	AddWorkflowMetadata1695128658538,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
+	AddExecutionHasBinaryData1697198787123,
 ];

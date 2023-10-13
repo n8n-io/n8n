@@ -527,9 +527,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const date = new Date();
 		date.setHours(date.getHours() - 1);
 
-		const workflowIdsAndExecutionIds = (
+		const executions = (
 			await this.find({
-				select: ['workflowId', 'id'],
+				select: ['workflowId', 'id', 'hasBinaryData'],
 				where: {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
 				},
@@ -541,16 +541,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				 */
 				withDeleted: true,
 			})
-		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
+		).map(({ id: executionId, ...rest }) => ({ ...rest, executionId }));
 
-		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
+		const executionIds = executions.map((e) => e.executionId);
 
 		if (executionIds.length === 0) {
 			this.logger.debug('Found no executions to hard-delete from database');
 			return;
 		}
 
-		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+		const binaryDataExecutions = executions.filter((e) => e.hasBinaryData);
+
+		if (binaryDataExecutions.length > 0) {
+			await this.binaryDataService.deleteMany(binaryDataExecutions);
+		}
 
 		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
 			executionIds,

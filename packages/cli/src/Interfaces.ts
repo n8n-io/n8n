@@ -187,6 +187,7 @@ export interface IExecutionDb extends IExecutionBase {
 	data: IRunExecutionData;
 	waitTill?: Date | null;
 	workflowData?: IWorkflowBase;
+	hasBinaryData?: boolean;
 }
 
 /**
