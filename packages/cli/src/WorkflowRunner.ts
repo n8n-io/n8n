@@ -86,6 +86,24 @@ export class WorkflowRunner {
 	) {
 		ErrorReporter.error(error);
 
+		const isQueueMode = config.getEnv('executions.mode') === 'queue';
+
+		// in queue mode, first do a sanity run for the edge case that the execution was not marked as stalled
+		// by Bull even though it executed successfully, see https://github.com/OptimalBits/bull/issues/1415
+
+		if (isQueueMode && executionMode !== 'manual') {
+			const executionWithoutData = await Container.get(ExecutionRepository).findSingleExecution(
+				executionId,
+				{
+					includeData: false,
+				},
+			);
+			if (executionWithoutData?.finished === true && executionWithoutData?.status === 'success') {
+				// false positive, execution was successful
+				return;
+			}
+		}
+
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
