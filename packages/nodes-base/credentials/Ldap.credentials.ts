@@ -31,7 +31,6 @@ export class Ldap implements ICredentialType {
 			type: 'string',
 			default: '',
 			description: 'Distinguished Name of the user to connect as',
-			required: true,
 		},
 		{
 			displayName: 'Binding Password',
@@ -42,7 +41,6 @@ export class Ldap implements ICredentialType {
 			},
 			default: '',
 			description: 'Password of the user provided in the Binding DN field above',
-			required: true,
 		},
 		{
 			displayName: 'Connection Security',
