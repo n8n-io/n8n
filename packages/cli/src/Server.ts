@@ -219,6 +219,11 @@ export class Server extends AbstractServer {
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = Container.get(License).isBinaryDataS3Licensed();
+
 		const diagnosticInfo: IDiagnosticInfo = {
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(
@@ -257,6 +262,7 @@ export class Server extends AbstractServer {
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
+			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
