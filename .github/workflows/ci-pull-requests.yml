@@ -38,7 +38,7 @@ jobs:
     needs: install
     with:
       repository: ${{ github.event.pull_request.head.repo.full_name }}
-      ref: ${{ github.head_ref }}
+      ref: refs/pull/${{ github.head_ref }}/merge
       cacheKey: ${{ github.sha }}-base:18-test-lint
 
   lint:

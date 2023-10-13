@@ -3,11 +3,6 @@ name: Reusable units test workflow
 on:
   workflow_call:
     inputs:
-      repository:
-        description: 'Repository to test.'
-        required: false
-        type: string
-        default: 'n8n-io/n8n'
       ref:
         description: 'GitHub ref to test.'
         required: false
@@ -31,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3.5.3
         with:
-          repository: ${{ inputs.repository }}
+          repository: n8n-io/n8n
           ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@v2.4.0
