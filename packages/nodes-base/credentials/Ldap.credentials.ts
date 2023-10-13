@@ -88,5 +88,12 @@ export class Ldap implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
+		{
+			displayName: 'Timeout',
+			description: 'Optional connection timeout in seconds',
+			name: 'timeout',
+			type: 'number',
+			default: 300,
+		},
 	];
 }
