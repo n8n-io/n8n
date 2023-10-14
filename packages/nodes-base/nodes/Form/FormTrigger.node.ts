@@ -7,8 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { FORM_TRIGGER_PATH_IDENTIFIER, jsonParse } from 'n8n-workflow';
 
-import { createPage } from './templates';
 import type { FormField } from './interfaces';
+import { prepareFormData } from './utils';
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -232,7 +232,7 @@ export class FormTrigger implements INodeType {
 			const instanceId = await this.getInstanceId();
 			const { formSubmittedText } = this.getNodeParameter('options', {}) as IDataObject;
 
-			const page = createPage(
+			const data = prepareFormData(
 				formTitle,
 				formDescription,
 				formSubmittedText as string,
@@ -242,7 +242,7 @@ export class FormTrigger implements INodeType {
 			);
 
 			const res = this.getResponseObject();
-			res.status(200).send(page).end();
+			res.render('form-trigger', data);
 			return {
 				noWebhookResponse: true,
 			};

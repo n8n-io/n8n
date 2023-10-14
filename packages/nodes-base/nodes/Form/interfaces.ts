@@ -5,3 +5,26 @@ export type FormField = {
 	fieldOptions?: { values: Array<{ option: string }> };
 	multiselect?: boolean;
 };
+
+export type FormTriggerInput = {
+	isSelect?: boolean;
+	isMultiSelect?: boolean;
+	isInput?: boolean;
+	labbel: string;
+	id: string;
+	errorId: string;
+	type?: 'text' | 'number' | 'date';
+	inputRequired: 'form-required' | '';
+	selectOptions?: string[];
+	multiSelectOptions?: Array<{ id: string; label: string }>;
+};
+
+export type FormTriggerData = {
+	testRun: boolean;
+	validForm: boolean;
+	formTitle: string;
+	formDescription?: string;
+	formSubmittedText?: string;
+	n8nWebsiteLink: string;
+	formFields: FormTriggerInput[];
+};
