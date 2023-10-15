@@ -1011,7 +1011,7 @@ export class HttpRequestV3 implements INodeType {
 											default: {
 												parameters: [
 													{
-														type: 'query',
+														type: 'qs',
 														name: '',
 														value: '',
 													},
