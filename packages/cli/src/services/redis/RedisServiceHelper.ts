@@ -46,6 +46,7 @@ export function getRedisStandardClient(
 	const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 	const sharedRedisOptions: RedisOptions = {
+		...redisOptions,
 		host,
 		port,
 		username,
@@ -53,8 +54,8 @@ export function getRedisStandardClient(
 		db,
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
-		...redisOptions,
 	};
+	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
 	LoggerProxy.debug(
 		`Initialising Redis client${redisType ? ` of type ${redisType}` : ''} connection with host: ${
 			host ?? 'localhost'
@@ -94,13 +95,14 @@ export function getRedisClusterClient(
 	const { username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
 	const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 	const sharedRedisOptions: RedisOptions = {
+		...redisOptions,
 		username,
 		password,
 		db,
 		enableReadyCheck: false,
 		maxRetriesPerRequest: null,
-		...redisOptions,
 	};
+	if (config.getEnv('queue.bull.redis.tls')) sharedRedisOptions.tls = {};
 	LoggerProxy.debug(
 		`Initialising Redis cluster${
 			redisType ? ` of type ${redisType}` : ''

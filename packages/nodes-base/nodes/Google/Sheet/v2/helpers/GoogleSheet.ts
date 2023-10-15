@@ -44,7 +44,8 @@ export class GoogleSheet {
 			const [sheet, ranges] = range.split('!');
 			return `${encodeURIComponent(sheet)}!${ranges}`;
 		}
-		return encodeURIComponent(range);
+		// Use '' so that sheet is not interpreted as range
+		return encodeURIComponent(`'${range}'`);
 	}
 
 	/**

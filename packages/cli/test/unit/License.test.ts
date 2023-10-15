@@ -17,6 +17,7 @@ describe('License', () => {
 		config.set('license.serverUrl', MOCK_SERVER_URL);
 		config.set('license.autoRenewEnabled', true);
 		config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
+		config.set('license.tenantId', 1);
 	});
 
 	let license: License;
@@ -30,11 +31,33 @@ describe('License', () => {
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: false,
+			renewOnInit: true,
 			deviceFingerprint: expect.any(Function),
 			productIdentifier: `n8n-${N8N_VERSION}`,
 			logger: expect.anything(),
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
+			server: MOCK_SERVER_URL,
+			tenantId: 1,
+		});
+	});
+
+	test('initializes license manager for worker', async () => {
+		license = new License();
+		await license.init(MOCK_INSTANCE_ID, 'worker');
+		expect(LicenseManager).toHaveBeenCalledWith({
+			autoRenewEnabled: false,
+			autoRenewOffset: MOCK_RENEW_OFFSET,
+			offlineMode: true,
+			renewOnInit: false,
+			deviceFingerprint: expect.any(Function),
+			productIdentifier: `n8n-${N8N_VERSION}`,
+			logger: expect.anything(),
+			loadCertStr: expect.any(Function),
+			saveCertStr: expect.any(Function),
+			onFeatureChange: expect.any(Function),
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});

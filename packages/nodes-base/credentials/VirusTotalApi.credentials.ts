@@ -10,6 +10,8 @@ export class VirusTotalApi implements ICredentialType {
 
 	displayName = 'Virus Total API';
 
+	documentationUrl = 'virustotal';
+
 	icon = 'file:icons/VirusTotal.svg';
 
 	properties: INodeProperties[] = [

@@ -180,7 +180,7 @@ export class ExecuteBatch extends BaseCommand {
 
 	async init() {
 		await super.init();
-		await this.initBinaryManager();
+		await this.initBinaryDataService();
 		await this.initExternalHooks();
 	}
 
@@ -667,10 +667,7 @@ export class ExecuteBatch extends BaseCommand {
 
 					const resultError = data.data.resultData.error;
 					if (resultError) {
-						executionResult.error =
-							resultError.hasOwnProperty('description') && resultError.description !== null
-								? resultError.description
-								: resultError.message;
+						executionResult.error = resultError.description || resultError.message;
 						if (data.data.resultData.lastNodeExecuted !== undefined) {
 							executionResult.error += ` on node ${data.data.resultData.lastNodeExecuted}`;
 						}

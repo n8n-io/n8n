@@ -167,7 +167,7 @@ export const meetingFields: INodeProperties[] = [
 			{
 				displayName: 'Exclude Password',
 				name: 'excludePassword',
-				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
+
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not to exclude password from the meeting email invitation',
@@ -747,7 +747,7 @@ export const meetingFields: INodeProperties[] = [
 			{
 				displayName: 'Exclude Password',
 				name: 'excludePassword',
-				// eslint-disable-next-line n8n-nodes-base/node-param-type-options-password-missing
+
 				type: 'boolean',
 				default: false,
 				description: 'Whether or not to exclude password from the meeting email invitation',

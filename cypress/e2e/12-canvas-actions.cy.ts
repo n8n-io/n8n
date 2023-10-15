@@ -3,7 +3,7 @@ import {
 	MANUAL_TRIGGER_NODE_DISPLAY_NAME,
 	CODE_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
-	SET_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
 	IF_NODE_NAME,
 	HTTP_REQUEST_NODE_NAME,
 } from './../constants';
@@ -25,24 +25,27 @@ describe('Canvas Actions', () => {
 	});
 
 	it('should connect and disconnect a simple node', () => {
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
 		cy.get('.jtk-connector').should('have.length', 1);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 
 		// Change connection from Set to Set1
 		cy.draganddrop(
-			WorkflowPage.getters.getEndpointSelector('input', SET_NODE_NAME),
-			WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`),
+			WorkflowPage.getters.getEndpointSelector('input', EDIT_FIELDS_SET_NODE_NAME),
+			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
 		);
 
 		WorkflowPage.getters
-			.canvasNodeInputEndpointByName(`${SET_NODE_NAME}1`)
+			.canvasNodeInputEndpointByName(`${EDIT_FIELDS_SET_NODE_NAME}1`)
 			.should('have.class', 'jtk-endpoint-connected');
 
 		cy.get('.jtk-connector').should('have.length', 1);
 		// Disconnect Set1
-		cy.drag(WorkflowPage.getters.getEndpointSelector('input', `${SET_NODE_NAME}1`), [-200, 100]);
+		cy.drag(
+			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
+			[-200, 100],
+		);
 		cy.get('.jtk-connector').should('have.length', 0);
 	});
 
@@ -82,14 +85,10 @@ describe('Canvas Actions', () => {
 		cy.get('.plus-endpoint').should('be.visible').click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
-		cy.drag(
-			WorkflowPage.getters.nodeCreatorNodeItems().first(),
-			[100, 100],
-			{
-				realMouse: true,
-				abs: true
-			}
-		);
+		cy.drag(WorkflowPage.getters.nodeCreatorNodeItems().first(), [100, 100], {
+			realMouse: true,
+			abs: true,
+		});
 		cy.get('body').type('{esc}');
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
@@ -100,14 +99,10 @@ describe('Canvas Actions', () => {
 		cy.get('.plus-endpoint').should('be.visible').click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
-		cy.drag(
-			WorkflowPage.getters.nodeCreatorActionItems().first(),
-			[100, 100],
-			{
-				realMouse: true,
-				abs: true
-			}
-		);
+		cy.drag(WorkflowPage.getters.nodeCreatorActionItems().first(), [100, 100], {
+			realMouse: true,
+			abs: true,
+		});
 		WorkflowPage.getters.nodeCreatorCategoryItems().its('length').should('be.gt', 0);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
@@ -125,9 +120,13 @@ describe('Canvas Actions', () => {
 	it('should add node between two connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		WorkflowPage.actions.addNodeBetweenNodes(CODE_NODE_NAME, SET_NODE_NAME, HTTP_REQUEST_NODE_NAME);
+		WorkflowPage.actions.addNodeBetweenNodes(
+			CODE_NODE_NAME,
+			EDIT_FIELDS_SET_NODE_NAME,
+			HTTP_REQUEST_NODE_NAME,
+		);
 		WorkflowPage.getters.canvasNodes().should('have.length', 4);
 		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 		// And last node should be pushed to the right

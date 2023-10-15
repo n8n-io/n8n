@@ -26,6 +26,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service';
+import { TagRepository } from '@/databases/repositories';
 
 @Service()
 export class SourceControlExportService {
@@ -35,7 +36,10 @@ export class SourceControlExportService {
 
 	private credentialExportFolder: string;
 
-	constructor(private readonly variablesService: VariablesService) {
+	constructor(
+		private readonly variablesService: VariablesService,
+		private readonly tagRepository: TagRepository,
+	) {
 		const userFolder = UserSettings.getUserN8nFolderPath();
 		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -167,7 +171,7 @@ export class SourceControlExportService {
 	async exportTagsToWorkFolder(): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.gitFolder]);
-			const tags = await Db.collections.Tag.find();
+			const tags = await this.tagRepository.find();
 			// do not export empty tags
 			if (tags.length === 0) {
 				return {

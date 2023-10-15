@@ -189,6 +189,11 @@ export default defineComponent({
 				this.loadExecution();
 			}
 		},
+		workflow() {
+			if (this.mode === 'workflow' && this.workflow) {
+				this.loadWorkflow();
+			}
+		},
 	},
 	mounted() {
 		window.addEventListener('message', this.receiveMessage);

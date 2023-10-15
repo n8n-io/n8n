@@ -5,6 +5,8 @@ export class ImpervaWafApi implements ICredentialType {
 
 	displayName = 'Imperva WAF API';
 
+	documentationUrl = 'impervawaf';
+
 	icon = 'file:icons/Imperva.svg';
 
 	properties: INodeProperties[] = [

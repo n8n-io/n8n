@@ -246,7 +246,7 @@ const config = (module.exports = {
 				format: ['PascalCase'],
 			},
 			{
-				selector: ['method', 'function'],
+				selector: ['method', 'function', 'parameter'],
 				format: ['camelCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 			},
@@ -324,7 +324,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
 		 */
-		'import/no-cycle': 'error',
+		'import/no-cycle': ['error', { ignoreExternal: false, maxDepth: 3 }],
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
@@ -491,19 +491,3 @@ const config = (module.exports = {
 		},
 	],
 });
-
-if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
-	/**
-	 * Plugin to lint only changes
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.plugins.push('eslint-plugin-diff');
-
-	/**
-	 * Config for eslint-plugin-diff
-	 *
-	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-	 */
-	config.extends.push('plugin:diff/diff');
-}

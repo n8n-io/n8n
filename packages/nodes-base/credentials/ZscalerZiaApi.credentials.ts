@@ -12,7 +12,7 @@ export class ZscalerZiaApi implements ICredentialType {
 
 	displayName = 'Zscaler ZIA API';
 
-	documentationUrl = 'zscaler';
+	documentationUrl = 'zscalerzia';
 
 	icon = 'file:icons/Zscaler.svg';
 

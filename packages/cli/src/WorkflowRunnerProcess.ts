@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-shadow */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
 import 'reflect-metadata';
+import { setDefaultResultOrder } from 'dns';
+
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataService, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -35,8 +35,6 @@ import {
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
@@ -57,6 +55,10 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	setDefaultResultOrder('ipv4first');
+}
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -111,8 +113,6 @@ class WorkflowRunnerProcess {
 		await loadNodesAndCredentials.init();
 
 		const nodeTypes = Container.get(NodeTypes);
-		const credentialTypes = Container.get(CredentialTypes);
-		CredentialsOverwrites(credentialTypes);
 
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
@@ -123,7 +123,7 @@ class WorkflowRunnerProcess {
 		await Container.get(InternalHooks).init(instanceId);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig);
+		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);
 		await license.init(instanceId);
@@ -185,13 +185,13 @@ class WorkflowRunnerProcess {
 			executionId: inputData.executionId,
 		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		additionalData.sendMessageToUI = async (source: string, message: any) => {
+		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
 			}
 
 			try {
-				await sendToParentProcess('sendMessageToUI', { source, message });
+				await sendToParentProcess('sendDataToUI', { type, data });
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.error(
@@ -287,18 +287,11 @@ class WorkflowRunnerProcess {
 		if (
 			this.data.runData === undefined ||
 			this.data.startNodes === undefined ||
-			this.data.startNodes.length === 0 ||
-			this.data.destinationNode === undefined
+			this.data.startNodes.length === 0
 		) {
 			// Execute all nodes
 
-			let startNode;
-			if (
-				this.data.startNodes?.length === 1 &&
-				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
-			) {
-				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
-			}
+			const startNode = WorkflowHelpers.getExecutionStartNode(this.data, this.workflow);
 
 			// Can execute without webhook so go on
 			this.workflowExecute = new WorkflowExecute(additionalData, this.data.executionMode);

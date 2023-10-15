@@ -5,6 +5,8 @@ export class OpenCTIApi implements ICredentialType {
 
 	displayName = 'OpenCTI API';
 
+	documentationUrl = 'opencti';
+
 	icon = 'file:icons/OpenCTI.png';
 
 	properties: INodeProperties[] = [

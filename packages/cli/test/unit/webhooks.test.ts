@@ -56,20 +56,24 @@ describe('WebhookServer', () => {
 				it('should handle regular requests', async () => {
 					const pathPrefix = config.getEnv(`endpoints.${key}`);
 					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
-					manager.executeWebhook.mockResolvedValueOnce(mockResponse({ test: true }));
+					manager.executeWebhook.mockResolvedValueOnce(
+						mockResponse({ test: true }, { key: 'value ' }),
+					);
 
 					const response = await agent.get(`/${pathPrefix}/abcd`).set('origin', corsOrigin);
 					expect(response.statusCode).toEqual(200);
 					expect(response.body).toEqual({ test: true });
 					expect(response.headers['access-control-allow-origin']).toEqual(corsOrigin);
+					expect(response.headers.key).toEqual('value');
 				});
 			});
 		}
 
-		const mockResponse = (data = {}, status = 200) => {
+		const mockResponse = (data = {}, headers = {}, status = 200) => {
 			const response = mock<IResponseCallbackData>();
 			response.responseCode = status;
 			response.data = data;
+			response.headers = headers;
 			return response;
 		};
 	});

@@ -5,7 +5,6 @@ import fs from 'fs/promises';
 import path from 'path';
 
 import validator from 'validator';
-import { middleware as openapiValidatorMiddleware } from 'express-openapi-validator';
 import YAML from 'yamljs';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -55,10 +54,11 @@ async function createApiRouter(
 		res.sendFile(openApiSpecPath);
 	});
 
+	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
-		openapiValidatorMiddleware({
+		openApiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
 			validateRequests: true,

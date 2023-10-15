@@ -29,6 +29,7 @@ import {
 	WorkflowActivationError,
 	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
+	WebhookPathAlreadyTakenError,
 } from 'n8n-workflow';
 
 import type express from 'express';
@@ -45,7 +46,6 @@ import type {
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import config from '@/config';
@@ -193,6 +193,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		let path = request.params.path;
 
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
+
+		// Reset request parameters
+		request.params = {} as WebhookRequest['params'];
 
 		// Remove trailing slash
 		if (path.endsWith('/')) {
@@ -392,25 +395,13 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			try {
 				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
 				await this.webhookService.storeWebhook(webhook);
-				const webhookExists = await workflow.runWebhookMethod(
-					'checkExists',
+				await workflow.createWebhookIfNotExists(
 					webhookData,
 					NodeExecuteFunctions,
 					mode,
 					activation,
 					false,
 				);
-				if (webhookExists !== true) {
-					// If webhook does not exist yet create it
-					await workflow.runWebhookMethod(
-						'create',
-						webhookData,
-						NodeExecuteFunctions,
-						mode,
-						activation,
-						false,
-					);
-				}
 			} catch (error) {
 				if (
 					activation === 'init' &&
@@ -427,7 +418,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				}
 
 				try {
-					await this.removeWorkflowWebhooks(workflow.id as string);
+					await this.removeWorkflowWebhooks(workflow.id);
 				} catch (error1) {
 					ErrorReporter.error(error1);
 					Logger.error(
@@ -438,11 +429,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				// if it's a workflow from the the insert
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
-				if (error.name === 'QueryFailedError') {
-					error = new Error(
-						`The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`,
-						{ cause: error },
-					);
+				if (error instanceof Error && error.name === 'QueryFailedError') {
+					error = new WebhookPathAlreadyTakenError(webhook.node, error);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;
@@ -453,7 +441,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 		await this.webhookService.populateCache();
 		// Save static data!
-		await WorkflowHelpers.saveStaticData(workflow);
+		await WorkflowsService.saveStaticData(workflow);
 	}
 
 	/**
@@ -489,17 +477,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
 		for (const webhookData of webhooks) {
-			await workflow.runWebhookMethod(
-				'delete',
-				webhookData,
-				NodeExecuteFunctions,
-				mode,
-				'update',
-				false,
-			);
+			await workflow.deleteWebhook(webhookData, NodeExecuteFunctions, mode, 'update', false);
 		}
 
-		await WorkflowHelpers.saveStaticData(workflow);
+		await WorkflowsService.saveStaticData(workflow);
 
 		await this.webhookService.deleteWorkflowWebhooks(workflowId);
 	}
@@ -534,6 +515,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			},
 			executionData: {
 				contextData: {},
+				metadata: {},
 				nodeExecutionStack,
 				waitingExecution: {},
 				waitingExecutionSource: {},
@@ -577,7 +559,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
-				void WorkflowHelpers.saveStaticData(workflow);
+				void WorkflowsService.saveStaticData(workflow);
 				const executePromise = this.runWorkflow(
 					workflowData,
 					node,
@@ -633,7 +615,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				donePromise?: IDeferredPromise<IRun | undefined>,
 			): void => {
 				Logger.debug(`Received trigger for workflow "${workflow.name}"`);
-				void WorkflowHelpers.saveStaticData(workflow);
+				void WorkflowsService.saveStaticData(workflow);
 
 				const executePromise = this.runWorkflow(
 					workflowData,
@@ -830,7 +812,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
-		await WorkflowHelpers.saveStaticData(workflowInstance!);
+		await WorkflowsService.saveStaticData(workflowInstance!);
 	}
 
 	/**
@@ -939,8 +921,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		if (this.activeWorkflows.isActive(workflowId)) {
-			await this.activeWorkflows.remove(workflowId);
-			Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
+			const removalSuccess = await this.activeWorkflows.remove(workflowId);
+			if (removalSuccess) {
+				Logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
+			}
 		}
 	}
 }

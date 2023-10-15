@@ -206,9 +206,13 @@ export class RespondToWebhook implements INodeType {
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
 			if (responseBodyParameter) {
-				responseBody = jsonParse(responseBodyParameter, {
-					errorMessage: "Invalid JSON in 'Response Body' field",
-				});
+				if (typeof responseBodyParameter === 'object') {
+					responseBody = responseBodyParameter;
+				} else {
+					responseBody = jsonParse(responseBodyParameter, {
+						errorMessage: "Invalid JSON in 'Response Body' field",
+					});
+				}
 			}
 		} else if (respondWith === 'firstIncomingItem') {
 			responseBody = items[0].json;
@@ -261,6 +265,6 @@ export class RespondToWebhook implements INodeType {
 
 		this.sendResponse(response);
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

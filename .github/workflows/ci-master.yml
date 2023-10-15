@@ -13,15 +13,15 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.5]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
 
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v3.7.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -33,53 +33,22 @@ jobs:
         run: pnpm build
 
       - name: Cache build artifacts
-        uses: actions/cache@v3
+        uses: actions/cache/save@v3.3.1
         with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
+          path: ./packages/**/dist
           key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/units-tests-reusable.yml
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          repository: n8n-io/n8n
-          ref: ${{ inputs.branch }}
-
-      - name: Restore cached build artifacts
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
-
-      - uses: pnpm/action-setup@v2.2.4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: pnpm
-
-      - name: Test
-        run: pnpm test
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: packages/@n8n/client-oauth2/coverage/cobertura-coverage.xml,packages/cli/coverage/cobertura-coverage.xml,packages/core/coverage/cobertura-coverage.xml,packages/design-system/coverage/cobertura-coverage.xml,packages/editor-ui/coverage/cobertura-coverage.xml,packages/nodes-base/coverage/cobertura-coverage.xml,packages/workflow/coverage/cobertura-coverage.xml
+        node-version: [18.x, 20.5]
+    with:
+      ref: ${{ inputs.branch }}
+      nodeVersion: ${{ matrix.node-version }}
+      cacheKey:  ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
   lint:
     name: Lint changes
@@ -87,30 +56,29 @@ jobs:
     needs: install-and-build
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.5]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.5.3
         with:
           repository: n8n-io/n8n
           ref: ${{ inputs.branch }}
 
-      - name: Restore cached build artifacts
-        uses: actions/cache@v3
-        with:
-          path: |
-            /github/home/.cache
-            /github/home/.pnpm-store
-            ./node_modules
-            ./packages
-          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
-
-      - uses: pnpm/action-setup@v2.2.4
+      - uses: pnpm/action-setup@v2.4.0
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v3.7.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore cached build artifacts
+        uses: actions/cache/restore@v3.3.1
+        with:
+          path: ./packages/**/dist
+          key: ${{ github.sha }}-base:${{ matrix.node-version }}-test-lint
 
       - name: Lint
         env:

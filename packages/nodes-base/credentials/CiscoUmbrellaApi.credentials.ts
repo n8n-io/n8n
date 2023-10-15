@@ -12,6 +12,8 @@ export class CiscoUmbrellaApi implements ICredentialType {
 
 	displayName = 'Cisco Umbrella API';
 
+	documentationUrl = 'ciscoumbrella';
+
 	icon = 'file:icons/Cisco.svg';
 
 	properties: INodeProperties[] = [
@@ -19,7 +21,7 @@ export class CiscoUmbrellaApi implements ICredentialType {
 			displayName: 'Session Token',
 			name: 'sessionToken',
 			type: 'hidden',
-			// eslint-disable-next-line n8n-nodes-base/cred-class-field-type-options-password-missing
+
 			typeOptions: {
 				expirable: true,
 			},

@@ -544,7 +544,7 @@ export class Wise implements INodeType {
 		}
 
 		if (binaryOutput && responseData !== undefined) {
-			return this.prepareOutputData(responseData as INodeExecutionData[]);
+			return [responseData as INodeExecutionData[]];
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

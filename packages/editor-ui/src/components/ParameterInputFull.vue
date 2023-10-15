@@ -169,7 +169,7 @@ export default defineComponent({
 					'data-test-id': 'dismiss-mapping-tooltip',
 				},
 				listeners: {
-					click: mappingTooltipDismissHandler,
+					onClick: mappingTooltipDismissHandler,
 				},
 			},
 		];

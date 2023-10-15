@@ -3,6 +3,7 @@ import type {
 	IDisplayOptions,
 	INodeExecutionData,
 	INodeProperties,
+	IPairedItemData,
 } from 'n8n-workflow';
 
 import { jsonParse } from 'n8n-workflow';
@@ -218,6 +219,34 @@ export const keysToLowercase = <T>(headers: T) => {
 };
 
 /**
+ * Formats a private key by removing unnecessary whitespace and adding line breaks.
+ * @param privateKey - The private key to format.
+ * @returns The formatted private key.
+ */
+export function formatPrivateKey(privateKey: string): string {
+	if (!privateKey || /\n/.test(privateKey)) {
+		return privateKey;
+	}
+	let formattedPrivateKey = '';
+	const parts = privateKey.split('-----').filter((item) => item !== '');
+	parts.forEach((part) => {
+		const regex = /(PRIVATE KEY|CERTIFICATE)/;
+		if (regex.test(part)) {
+			formattedPrivateKey += `-----${part}-----`;
+		} else {
+			const passRegex = /Proc-Type|DEK-Info/;
+			if (passRegex.test(part)) {
+				part = part.replace(/:\s+/g, ':');
+				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
+			} else {
+				formattedPrivateKey += part.replace(/\\n/g, '\n').replace(/\s+/g, '\n');
+			}
+		}
+	});
+	return formattedPrivateKey;
+}
+
+/**
  * @TECH_DEBT Explore replacing with handlebars
  */
 export function getResolvables(expression: string) {
@@ -235,4 +264,56 @@ export function getResolvables(expression: string) {
 	}
 
 	return resolvables;
+}
+
+/**
+ * Flattens an object with deep data
+ *
+ * @param {IDataObject} data The object to flatten
+ */
+export function flattenObject(data: IDataObject) {
+	const returnData: IDataObject = {};
+	for (const key1 of Object.keys(data)) {
+		if (data[key1] !== null && typeof data[key1] === 'object') {
+			if (data[key1] instanceof Date) {
+				returnData[key1] = data[key1]?.toString();
+				continue;
+			}
+			const flatObject = flattenObject(data[key1] as IDataObject);
+			for (const key2 in flatObject) {
+				if (flatObject[key2] === undefined) {
+					continue;
+				}
+				returnData[`${key1}.${key2}`] = flatObject[key2];
+			}
+		} else {
+			returnData[key1] = data[key1];
+		}
+	}
+	return returnData;
+}
+
+/**
+ * Generate Paired Item Data by length of input array
+ *
+ * @param {number} length
+ */
+export function generatePairedItemData(length: number): IPairedItemData[] {
+	return Array.from({ length }, (_, item) => ({
+		item,
+	}));
+}
+
+/**
+ * Output Paired Item Data Array
+ *
+ * @param {number | IPairedItemData | IPairedItemData[] | undefined} pairedItem
+ */
+export function preparePairedItemDataArray(
+	pairedItem: number | IPairedItemData | IPairedItemData[] | undefined,
+): IPairedItemData[] {
+	if (pairedItem === undefined) return [];
+	if (typeof pairedItem === 'number') return [{ item: pairedItem }];
+	if (Array.isArray(pairedItem)) return pairedItem;
+	return [pairedItem];
 }

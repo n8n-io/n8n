@@ -59,7 +59,7 @@ TooltipWithButtons.args = {
 				'data-test-id': 'tooltip-button',
 			},
 			listeners: {
-				click: () => alert('Clicked 1'),
+				onClick: () => alert('Clicked 1'),
 			},
 		},
 		{
@@ -68,7 +68,7 @@ TooltipWithButtons.args = {
 				'data-test-id': 'tooltip-button',
 			},
 			listeners: {
-				click: () => alert('Clicked 2'),
+				onClick: () => alert('Clicked 2'),
 			},
 		},
 	],

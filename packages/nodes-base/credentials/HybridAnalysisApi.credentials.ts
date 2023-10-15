@@ -5,6 +5,8 @@ export class HybridAnalysisApi implements ICredentialType {
 
 	displayName = 'Hybrid Analysis API';
 
+	documentationUrl = 'hybridanalysis';
+
 	icon = 'file:icons/Hybrid.png';
 
 	properties: INodeProperties[] = [

@@ -5,6 +5,8 @@ export class F5BigIpApi implements ICredentialType {
 
 	displayName = 'F5 Big-IP API';
 
+	documentationUrl = 'f5bigip';
+
 	icon = 'file:icons/F5.svg';
 
 	properties: INodeProperties[] = [

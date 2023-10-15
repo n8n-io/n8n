@@ -15,11 +15,11 @@ import type {
 
 import {
 	BINARY_ENCODING,
-	jsonParse,
 	NodeApiError,
 	NodeOperationError,
-	sleep,
+	jsonParse,
 	removeCircularRefs,
+	sleep,
 } from 'n8n-workflow';
 
 import { keysToLowercase } from '@utils/utilities';
@@ -32,6 +32,7 @@ import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
 	prepareRequestBody,
+	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
@@ -1258,7 +1259,7 @@ export class HttpRequestV3 implements INodeType {
 
 		// Can not be defined on a per item level
 		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
-			rawValue: true,
+			rawExpressions: true,
 		}) as {
 			paginationMode: 'off' | 'updateAParameterInEachRequest' | 'responseContainsNextURL';
 			nextURL?: string;
@@ -1395,8 +1396,8 @@ export class HttpRequestV3 implements INodeType {
 			if (timeout) {
 				requestOptions.timeout = timeout;
 			} else {
-				// set default timeout to 1 hour
-				requestOptions.timeout = 3600000;
+				// set default timeout to 5 minutes
+				requestOptions.timeout = 300_000;
 			}
 			if (sendQuery && queryParameterArrays) {
 				Object.assign(requestOptions, {
@@ -1404,7 +1405,7 @@ export class HttpRequestV3 implements INodeType {
 				});
 			}
 
-			const parametersToKeyValue = (
+			const parametersToKeyValue = async (
 				accumulator: { [key: string]: any },
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
@@ -1414,7 +1415,7 @@ export class HttpRequestV3 implements INodeType {
 					let uploadData: Buffer | Readable;
 					const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
 					if (itemBinaryData.id) {
-						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
@@ -1435,7 +1436,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.body = prepareRequestBody(
+					requestOptions.body = await prepareRequestBody(
 						bodyParameters,
 						bodyContentType,
 						nodeVersion,
@@ -1486,7 +1487,7 @@ export class HttpRequestV3 implements INodeType {
 					const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
 
 					if (itemBinaryData.id) {
-						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
 						const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
 						contentLength = metadata.fileSize;
 					} else {
@@ -1507,7 +1508,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
+					requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1530,7 +1531,7 @@ export class HttpRequestV3 implements INodeType {
 			if (sendHeaders && headerParameters) {
 				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					additionalHeaders = headerParameters.reduce(parametersToKeyValue, {});
+					additionalHeaders = await reduceAsync(headerParameters, parametersToKeyValue);
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
@@ -1740,6 +1741,10 @@ export class HttpRequestV3 implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			responseData = promisesResponses.shift();
 			if (responseData!.status !== 'fulfilled') {
+				if (responseData.reason.statusCode === 429) {
+					responseData.reason.message =
+						"Try spacing your requests out using the batching settings under 'Options'";
+				}
 				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
 						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
@@ -1766,8 +1771,6 @@ export class HttpRequestV3 implements INodeType {
 			} else {
 				responses = [responseData.value];
 			}
-
-			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			let responseFormat = this.getNodeParameter(
 				'options.response.response.responseFormat',
@@ -1844,8 +1847,7 @@ export class HttpRequestV3 implements INodeType {
 						Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
 					}
 
-					const fileName = url.split('/').pop();
-
+					let binaryData: Buffer | Readable;
 					if (fullResponse) {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
@@ -1856,19 +1858,12 @@ export class HttpRequestV3 implements INodeType {
 						}
 
 						newItem.json = returnItem;
-
-						newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-							response.body as Buffer | Readable,
-							fileName,
-						);
+						binaryData = response?.body;
 					} else {
 						newItem.json = items[itemIndex].json;
-
-						newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-							response as Buffer | Readable,
-							fileName,
-						);
+						binaryData = response;
 					}
+					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
 
 					returnItems.push(newItem);
 				} else if (responseFormat === 'text') {
@@ -1969,6 +1964,6 @@ export class HttpRequestV3 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

@@ -18,7 +18,7 @@ import {
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
-import { inTest } from '../../constants';
+import { inTest } from '@/constants';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
@@ -95,6 +95,22 @@ export class MessageEventBusLogWriter {
 	async pauseLogging() {
 		if (this.worker) {
 			this.worker.postMessage({ command: 'pauseLogging', data: {} });
+		}
+	}
+
+	startRecoveryProcess() {
+		if (this.worker) {
+			this.worker.postMessage({ command: 'startRecoveryProcess', data: {} });
+		}
+	}
+
+	isRecoveryProcessRunning(): boolean {
+		return existsSync(this.getRecoveryInProgressFileName());
+	}
+
+	endRecoveryProcess() {
+		if (this.worker) {
+			this.worker.postMessage({ command: 'endRecoveryProcess', data: {} });
 		}
 	}
 
@@ -238,6 +254,10 @@ export class MessageEventBusLogWriter {
 		} else {
 			return `${MessageEventBusLogWriter.options.logFullBasePath}.log`;
 		}
+	}
+
+	getRecoveryInProgressFileName(): string {
+		return `${MessageEventBusLogWriter.options.logFullBasePath}.recoveryInProgress`;
 	}
 
 	cleanAllLogs() {

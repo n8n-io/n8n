@@ -5,6 +5,8 @@ export class CiscoMerakiApi implements ICredentialType {
 
 	displayName = 'Cisco Meraki API';
 
+	documentationUrl = 'ciscomeraki';
+
 	icon = 'file:icons/Cisco.svg';
 
 	properties: INodeProperties[] = [

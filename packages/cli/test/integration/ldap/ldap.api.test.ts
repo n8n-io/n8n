@@ -11,12 +11,14 @@ import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
 import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
 import type { LdapConfig } from '@/Ldap/types';
-import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
+
+import { LoggerProxy } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -24,6 +26,8 @@ jest.mock('@/UserManagement/email/NodeMailer');
 let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
+
+LoggerProxy.init(getLogger());
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
@@ -569,25 +573,4 @@ describe('Instance owner should able to delete LDAP users', () => {
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
 		await authOwnerAgent.post(`/users/${member.id}?transferId=${owner.id}`);
 	});
-});
-
-test('Sign-type should be returned when listing users', async () => {
-	const ldapConfig = await createLdapConfig();
-	LdapManager.updateConfig(ldapConfig);
-
-	await testDb.createLdapUser(
-		{
-			globalRole: globalMemberRole,
-		},
-		uniqueId(),
-	);
-
-	const allUsers = await testDb.getAllUsers();
-	expect(allUsers.length).toBe(2);
-
-	const ownerUser = allUsers.find((u) => u.email === owner.email)!;
-	expect(sanitizeUser(ownerUser).signInType).toStrictEqual('email');
-
-	const memberUser = allUsers.find((u) => u.email !== owner.email)!;
-	expect(sanitizeUser(memberUser).signInType).toStrictEqual('ldap');
 });

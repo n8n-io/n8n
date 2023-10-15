@@ -23,11 +23,24 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 		if (!this.redisClient) {
 			await this.init();
 		}
-		await this.redisClient?.subscribe(channel, (error, count: number) => {
+		await this.redisClient?.subscribe(channel, (error, _count: number) => {
 			if (error) {
 				Logger.error(`Error subscribing to channel ${channel}`);
 			} else {
-				Logger.debug(`Subscribed ${count.toString()} to eventlog channel`);
+				Logger.debug(`Subscribed Redis PubSub client to channel: ${channel}`);
+			}
+		});
+	}
+
+	async unsubscribe(channel: string): Promise<void> {
+		if (!this.redisClient) {
+			return;
+		}
+		await this.redisClient?.unsubscribe(channel, (error, _count: number) => {
+			if (error) {
+				Logger.error(`Error unsubscribing from channel ${channel}`);
+			} else {
+				Logger.debug(`Unsubscribed Redis PubSub client from channel: ${channel}`);
 			}
 		});
 	}
@@ -42,5 +55,17 @@ export class RedisServicePubSubSubscriber extends RedisServiceBaseReceiver {
 
 	async subscribeToWorkerResponseChannel(): Promise<void> {
 		await this.subscribe(WORKER_RESPONSE_REDIS_CHANNEL);
+	}
+
+	async unSubscribeFromEventLog(): Promise<void> {
+		await this.unsubscribe(EVENT_BUS_REDIS_CHANNEL);
+	}
+
+	async unSubscribeFromCommandChannel(): Promise<void> {
+		await this.unsubscribe(COMMAND_REDIS_CHANNEL);
+	}
+
+	async unSubscribeFromWorkerResponseChannel(): Promise<void> {
+		await this.unsubscribe(WORKER_RESPONSE_REDIS_CHANNEL);
 	}
 }

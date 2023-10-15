@@ -87,3 +87,17 @@ export const webhookNotFoundErrorMessage = (
 		return `The requested webhook "${webhookPath}" is not registered.`;
 	}
 };
+
+export const toError = (maybeError: unknown) =>
+	// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+	maybeError instanceof Error ? maybeError : new Error(`${maybeError}`);
+
+export function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+export const isIntegerString = (value: string) => /^\d+$/.test(value);
+
+export function isObjectLiteral(item: unknown): item is { [key: string]: string } {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}

@@ -13,7 +13,10 @@
 	top: 20px;
 	transform: translateX(-50%);
 	background-color: var.$message-background-color;
-	transition: opacity 0.3s, transform 0.4s, top 0.4s;
+	transition:
+		opacity 0.3s,
+		transform 0.4s,
+		top 0.4s;
 	overflow: hidden;
 	padding: var.$message-padding;
 	display: flex;

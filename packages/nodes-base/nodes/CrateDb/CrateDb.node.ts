@@ -76,6 +76,7 @@ export class CrateDb implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
+					rows: 5,
 					sqlDialect: 'PostgreSQL',
 				},
 				displayOptions: {
@@ -377,16 +378,16 @@ export class CrateDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {
-			pgp.end();
+			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
 
-		// Close the connection
-		pgp.end();
+		// shuts down the connection pool associated with the db object to allow the process to finish
+		await db.$pool.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }
