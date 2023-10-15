@@ -779,7 +779,19 @@ export class Redis implements INodeType {
 								const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
 								const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
 
-								await setValue(client, keySet, value, expire, ttl, keyType, valueIsJSON);
+								if (keyType === 'sets') {
+									const clientSet = util.promisify(client.sadd).bind(client);
+									await clientSet(keySet, value);
+
+									if (expire && ttl > 0) {
+										const clientExpire = util.promisify(client.expire).bind(client);
+										await clientExpire(keySet, ttl);
+									}
+								}
+								else {
+									await setValue(client, keySet, value, expire, ttl, keyType, valueIsJSON);
+								}
+
 								returnItems.push(items[itemIndex]);
 							} else if (operation === 'incr') {
 								const keyIncr = this.getNodeParameter('key', itemIndex) as string;
