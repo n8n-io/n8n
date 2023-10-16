@@ -1,6 +1,7 @@
 name: Docker Image CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master-moleculescience
@@ -43,4 +44,4 @@ jobs:
           tags: ghcr.io/elium/n8n:${{ steps.vars.outputs.tag }}
           no-cache: true
 
-          
+
