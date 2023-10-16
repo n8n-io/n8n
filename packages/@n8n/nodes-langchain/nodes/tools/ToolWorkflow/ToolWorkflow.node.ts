@@ -395,7 +395,7 @@ export class ToolWorkflow implements INodeType {
 					}
 
 					if (isObject(response)) {
-						response = JSON.stringify(response);
+						response = JSON.stringify(response, null, 2);
 					}
 
 					if (typeof response !== 'string') {
