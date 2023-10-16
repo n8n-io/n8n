@@ -12,6 +12,7 @@ import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
 import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
 import type {
+	ExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
@@ -38,7 +39,7 @@ export class ActiveExecutions {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
-			const fullExecutionData: IExecutionDb = {
+			const fullExecutionData: ExecutionPayload = {
 				data: executionData.executionData!,
 				mode: executionData.executionMode,
 				finished: false,
@@ -56,9 +57,8 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
-				fullExecutionData,
-			);
+			const executionResult =
+				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 			executionId = executionResult.id;
 			if (executionId === undefined) {
 				throw new Error('There was an issue assigning an execution id to the execution');
@@ -122,6 +122,10 @@ export class ActiveExecutions {
 		}
 
 		this.activeExecutions[executionId].responsePromise?.resolve(response);
+	}
+
+	getPostExecutePromiseCount(executionId: string): number {
+		return this.activeExecutions[executionId]?.postExecutePromises.length ?? 0;
 	}
 
 	/**

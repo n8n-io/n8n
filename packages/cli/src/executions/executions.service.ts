@@ -317,9 +317,8 @@ export class ExecutionsService {
 		const workflowRunner = new WorkflowRunner();
 		const retriedExecutionId = await workflowRunner.run(data);
 
-		const executionData = await Container.get(ActiveExecutions).getPostExecutePromise(
-			retriedExecutionId,
-		);
+		const executionData =
+			await Container.get(ActiveExecutions).getPostExecutePromise(retriedExecutionId);
 
 		if (!executionData) {
 			throw new Error('The retry did not start for an unknown reason.');
@@ -352,9 +351,13 @@ export class ExecutionsService {
 			}
 		}
 
-		return Container.get(ExecutionRepository).deleteExecutions(requestFilters, sharedWorkflowIds, {
-			deleteBefore,
-			ids,
-		});
+		return Container.get(ExecutionRepository).deleteExecutionsByFilter(
+			requestFilters,
+			sharedWorkflowIds,
+			{
+				deleteBefore,
+				ids,
+			},
+		);
 	}
 }

@@ -9,13 +9,12 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import type { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
-import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
-import type { ListQueryRequest, WorkflowRequest } from '@/requests';
+import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
@@ -26,7 +25,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
-import { TagRepository } from '@/databases/repositories';
+import { TagService } from '@/services/tag.service';
 
 export const workflowsController = express.Router();
 
@@ -65,7 +64,7 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Container.get(TagRepository).find({
+			newWorkflow.tags = await Container.get(TagService).findMany({
 				select: ['id', 'name'],
 				where: {
 					id: In(tagIds),
@@ -101,7 +100,7 @@ workflowsController.post(
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
-			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
+			savedWorkflow.tags = Container.get(TagService).sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
 			});
 		}
@@ -119,9 +118,14 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	listQueryMiddleware,
-	async (req: ListQueryRequest, res: express.Response) => {
+	async (req: ListQuery.Request, res: express.Response) => {
 		try {
-			const [data, count] = await WorkflowsService.getMany(req.user, req.listQueryOptions);
+			const sharedWorkflowIds = await WorkflowHelpers.getSharedWorkflowIds(req.user, ['owner']);
+
+			const { workflows: data, count } = await WorkflowsService.getMany(
+				sharedWorkflowIds,
+				req.listQueryOptions,
+			);
 
 			res.json({ count, data });
 		} catch (maybeError) {

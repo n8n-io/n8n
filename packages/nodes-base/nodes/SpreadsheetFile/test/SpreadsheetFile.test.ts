@@ -6,7 +6,7 @@ import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {
 	beforeEach(async () => {
-		await Helpers.initBinaryDataManager();
+		await Helpers.initBinaryDataService();
 	});
 
 	// replace workflow json 'Read Binary File' node's filePath to local file
@@ -102,7 +102,7 @@ describe('Execute Spreadsheet File Node', () => {
 								binary: {
 									data: {
 										mimeType: 'text/html',
-										fileType: 'text',
+										fileType: 'html',
 										fileExtension: 'html',
 										data: 'PGh0bWw+PGhlYWQ+PG1ldGEgY2hhcnNldD0idXRmLTgiLz48dGl0bGU+U2hlZXRKUyBUYWJsZSBFeHBvcnQ8L3RpdGxlPjwvaGVhZD48Ym9keT48dGFibGU+PHRyPjx0ZCBkYXRhLXQ9InMiIGRhdGEtdj0iQSIgaWQ9InNqcy1BMSI+QTwvdGQ+PHRkIGRhdGEtdD0icyIgZGF0YS12PSJCIiBpZD0ic2pzLUIxIj5CPC90ZD48dGQgZGF0YS10PSJzIiBkYXRhLXY9IkMiIGlkPSJzanMtQzEiPkM8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9Im4iIGRhdGEtdj0iMSIgaWQ9InNqcy1BMiI+MTwvdGQ+PHRkIGRhdGEtdD0ibiIgZGF0YS12PSIyIiBpZD0ic2pzLUIyIj4yPC90ZD48dGQgZGF0YS10PSJuIiBkYXRhLXY9IjMiIGlkPSJzanMtQzIiPjM8L3RkPjwvdHI+PHRyPjx0ZCBkYXRhLXQ9Im4iIGRhdGEtdj0iNCIgaWQ9InNqcy1BMyI+NDwvdGQ+PHRkIGRhdGEtdD0ibiIgZGF0YS12PSI1IiBpZD0ic2pzLUIzIj41PC90ZD48dGQgZGF0YS10PSJuIiBkYXRhLXY9IjYiIGlkPSJzanMtQzMiPjY8L3RkPjwvdHI+PC90YWJsZT48L2JvZHk+PC9odG1sPg==',
 										fileName: 'spreadsheet.html',

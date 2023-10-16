@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { compare } from 'bcryptjs';
+import { License } from '@/License';
 
 import * as Db from '@/Db';
 import config from '@/config';
@@ -25,12 +26,14 @@ config.set('userManagement.jwtSecret', randomString(5, 10));
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let owner: User;
+let member: User;
 
 const externalHooks = utils.mockInstance(ExternalHooks);
 const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
 
 beforeAll(async () => {
+	await utils.initEncryptionKey();
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 });
@@ -38,6 +41,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	member = await testDb.createUser({ globalRole: globalMemberRole });
 	externalHooks.run.mockReset();
 });
 
@@ -234,8 +238,9 @@ describe('POST /change-password', () => {
 				.post('/change-password')
 				.query(invalidPayload);
 			expect(response.statusCode).toBe(400);
-
-			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({});
+			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({
+				id: owner.id,
+			});
 			expect(owner.password).toBe(storedPassword);
 		}
 	});
@@ -252,5 +257,47 @@ describe('POST /change-password', () => {
 		expect(response.statusCode).toBe(404);
 
 		expect(externalHooks.run).not.toHaveBeenCalled();
+	});
+
+	test('owner should be able to reset its password when quota:users = 1', async () => {
+		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+
+		const resetPasswordToken = jwtService.signData({ sub: owner.id });
+		const response = await testServer.authlessAgent.post('/change-password').send({
+			token: resetPasswordToken,
+			userId: owner.id,
+			password: passwordToStore,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const authToken = utils.getAuthToken(response);
+		expect(authToken).toBeDefined();
+
+		const { password: storedPassword } = await Db.collections.User.findOneByOrFail({
+			id: owner.id,
+		});
+
+		const comparisonResult = await compare(passwordToStore, storedPassword);
+		expect(comparisonResult).toBe(true);
+		expect(storedPassword).not.toBe(passwordToStore);
+
+		expect(externalHooks.run).toHaveBeenCalledWith('user.password.update', [
+			owner.email,
+			storedPassword,
+		]);
+	});
+
+	test('member should not be able to reset its password when quota:users = 1', async () => {
+		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
+
+		const resetPasswordToken = jwtService.signData({ sub: member.id });
+		const response = await testServer.authlessAgent.post('/change-password').send({
+			token: resetPasswordToken,
+			userId: member.id,
+			password: passwordToStore,
+		});
+
+		expect(response.statusCode).toBe(403);
 	});
 });

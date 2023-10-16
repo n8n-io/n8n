@@ -54,9 +54,8 @@ export class SourceControlController {
 			await this.sourceControlPreferencesService.validateSourceControlPreferences(
 				sanitizedPreferences,
 			);
-			const updatedPreferences = await this.sourceControlPreferencesService.setPreferences(
-				sanitizedPreferences,
-			);
+			const updatedPreferences =
+				await this.sourceControlPreferencesService.setPreferences(sanitizedPreferences);
 			if (sanitizedPreferences.initRepo === true) {
 				try {
 					await this.sourceControlService.initializeRepository(
@@ -119,7 +118,7 @@ export class SourceControlController {
 			) {
 				await this.sourceControlService.setBranch(sanitizedPreferences.branchName);
 			}
-			if (sanitizedPreferences.branchColor || sanitizedPreferences.branchReadOnly !== undefined) {
+			if (sanitizedPreferences.branchColor ?? sanitizedPreferences.branchReadOnly !== undefined) {
 				await this.sourceControlPreferencesService.setPreferences(
 					{
 						branchColor: sanitizedPreferences.branchColor,
@@ -238,9 +237,12 @@ export class SourceControlController {
 
 	@Authorized(['global', 'owner'])
 	@Post('/generate-key-pair', { middlewares: [sourceControlLicensedMiddleware] })
-	async generateKeyPair(): Promise<SourceControlPreferences> {
+	async generateKeyPair(
+		req: SourceControlRequest.GenerateKeyPair,
+	): Promise<SourceControlPreferences> {
 		try {
-			const result = await this.sourceControlPreferencesService.generateAndSaveKeyPair();
+			const keyPairType = req.body.keyGeneratorType;
+			const result = await this.sourceControlPreferencesService.generateAndSaveKeyPair(keyPairType);
 			return result;
 		} catch (error) {
 			throw new BadRequestError((error as { message: string }).message);

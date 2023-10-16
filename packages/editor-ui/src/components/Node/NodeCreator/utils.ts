@@ -5,7 +5,7 @@ import type {
 	SimplifiedNodeType,
 	INodeCreateElement,
 } from '@/Interface';
-import { CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
+import { AI_SUBCATEGORY, CORE_NODES_CATEGORY, DEFAULT_SUBCATEGORY } from '@/constants';
 import { v4 as uuidv4 } from 'uuid';
 import { sublimeSearch } from '@/utils';
 
@@ -31,12 +31,16 @@ export function transformNodeType(
 }
 
 export function subcategorizeItems(items: SimplifiedNodeType[]) {
+	const WHITE_LISTED_SUBCATEGORIES = [CORE_NODES_CATEGORY, AI_SUBCATEGORY];
 	return items.reduce((acc: SubcategorizedNodeTypes, item) => {
-		// Only Core Nodes subcategories are valid, others are uncategorized
-		const isCoreNodesCategory = item.codex?.categories?.includes(CORE_NODES_CATEGORY);
-		const subcategories = isCoreNodesCategory
-			? item?.codex?.subcategories?.[CORE_NODES_CATEGORY] ?? []
-			: [DEFAULT_SUBCATEGORY];
+		// Only some subcategories are allowed
+		let subcategories: string[] = [DEFAULT_SUBCATEGORY];
+
+		WHITE_LISTED_SUBCATEGORIES.forEach((category) => {
+			if (item.codex?.categories?.includes(category)) {
+				subcategories = item.codex?.subcategories?.[category] ?? [];
+			}
+		});
 
 		subcategories.forEach((subcategory: string) => {
 			if (!acc[subcategory]) {
@@ -64,7 +68,7 @@ export function searchNodes(searchFilter: string, items: INodeCreateElement[]) {
 	const trimmedFilter = searchFilter.toLowerCase().replace('trigger', '').trimEnd();
 	const result = (
 		sublimeSearch<INodeCreateElement>(trimmedFilter, items, [
-			{ key: 'properties.displayName', weight: 2 },
+			{ key: 'properties.displayName', weight: 1.3 },
 			{ key: 'properties.codex.alias', weight: 1 },
 		]) || []
 	).map(({ item }) => item);

@@ -4,6 +4,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { EditorView, keymap } from '@codemirror/view';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
@@ -18,6 +19,7 @@ import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expre
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionManager } from '@/mixins/completionManager';
+import type { IDataObject } from 'n8n-workflow';
 
 const editableConf = new Compartment();
 
@@ -38,6 +40,10 @@ export default defineComponent({
 		},
 		path: {
 			type: String,
+		},
+		additionalData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
 		},
 	},
 	watch: {
@@ -83,6 +89,7 @@ export default defineComponent({
 	},
 	mounted() {
 		const extensions = [
+			n8nLang(),
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(
 				keymap.of([
@@ -100,7 +107,6 @@ export default defineComponent({
 				]),
 			),
 			autocompletion(),
-			n8nLang(),
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,

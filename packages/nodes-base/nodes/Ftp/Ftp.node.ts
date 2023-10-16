@@ -649,7 +649,7 @@ export class Ftp implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -759,7 +759,7 @@ export class Ftp implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -806,7 +806,7 @@ export class Ftp implements INodeType {
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 
 			throw error;

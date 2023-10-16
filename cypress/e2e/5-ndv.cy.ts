@@ -1,5 +1,7 @@
 import { WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
+import { getPopper, getVisiblePopper, getVisibleSelect } from '../utils';
+import { META_KEY } from '../constants';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -287,5 +289,80 @@ describe('NDV', () => {
 			ndv.actions.validateExpressionPreview('value', output || input);
 			ndv.getters.parameterInput('value').clear();
 		});
+	});
+
+	it('should not retrieve remote options when required params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId', delay: 100 });
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.parameterInput('remoteOptions').click();
+
+		ndv.getters.parameterInputIssues('remoteOptions').realHover();
+		// Remote options dropdown should not be visible
+		ndv.getters.parameterInput('remoteOptions').find('.el-select').should('not.exist');
+	});
+
+	it('should retrieve remote options when non-required params throw errors', () => {
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+		ndv.getters.parameterInput('remoteOptions').click();
+
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField', delay: 50 });
+
+		ndv.getters.container().click(); // remove focus from input, hide expression preview
+
+		ndv.getters.parameterInput('remoteOptions').click();
+		getVisibleSelect().find('.el-select-dropdown__item').should('have.length', 3);
+	});
+
+	it('should flag issues as soon as params are set', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Webhook');
+		workflowPage.getters.canvasNodes().first().dblclick();
+
+		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+		ndv.getters.nodeExecuteButton().should('not.be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+
+		ndv.getters.parameterInput('path').clear();
+
+		ndv.getters.nodeExecuteButton().should('be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('not.exist');
+		ndv.actions.close();
+		workflowPage.getters.nodeIssuesByName('Webhook').should('exist');
+
+		workflowPage.getters.canvasNodes().first().dblclick();
+		ndv.getters.parameterInput('path').type('t');
+
+		ndv.getters.nodeExecuteButton().should('not.be.disabled');
+		ndv.getters.triggerPanelExecuteButton().should('exist');
+
+		ndv.actions.close();
+		workflowPage.getters.nodeIssuesByName('Webhook').should('not.exist');
+	});
+
+	it('should not push NDV header out with a lot of code in Code node editor', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Code', { keepNdvOpen: true });
+		ndv.getters.parameterInput('jsCode').get('.cm-content').type('{selectall}').type('{backspace}');
+		cy.fixture('Dummy_javascript.txt').then((code) => {
+			ndv.getters.parameterInput('jsCode').get('.cm-content').paste(code);
+		});
+		ndv.getters.nodeExecuteButton().should('be.visible');
+	});
+
+	it('should not retrieve remote options when a parameter value changes', () => {
+		cy.intercept('/rest/node-parameter-options?**', cy.spy().as('fetchParameterOptions'));
+		workflowPage.actions.addInitialNodeToCanvas('E2e Test', { action: 'Remote Options' });
+		// Type something into the field
+		ndv.actions.typeIntoParameterInput('otherField', 'test');
+		// Should call the endpoint only once (on mount), not for every keystroke
+		cy.get('@fetchParameterOptions').should('have.been.calledOnce');
 	});
 });

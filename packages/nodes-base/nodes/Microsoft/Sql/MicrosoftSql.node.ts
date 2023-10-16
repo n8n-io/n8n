@@ -11,8 +11,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { chunk, flatten, getResolvables } from '@utils/utilities';
-
 import mssql from 'mssql';
 
 import type { ITables } from './TableInterface';
@@ -27,6 +25,7 @@ import {
 	extractValues,
 	formatColumns,
 } from './GenericFunctions';
+import { chunk, flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
@@ -93,6 +92,7 @@ export class MicrosoftSql implements INodeType {
 				noDataExpression: true,
 				typeOptions: {
 					editor: 'sqlEditor',
+					rows: 5,
 					sqlDialect: 'MSSQL',
 				},
 				displayOptions: {
@@ -440,14 +440,16 @@ export class MicrosoftSql implements INodeType {
 			}
 		}
 
-		// Close the connection
+		// shuts down the connection pool associated with the db object to allow the process to finish
 		await pool.close();
+
+		const itemData = generatePairedItemData(items.length);
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnItems.push(...executionData);
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

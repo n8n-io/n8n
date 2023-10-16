@@ -1,7 +1,9 @@
 import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
+import { NodeCreator } from './features/node-creator';
 
+const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 	getters = {
@@ -26,6 +28,12 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains(${nodeName})`),
+		nodeIssuesByName: (nodeName: string) =>
+			this.getters
+				.canvasNodes()
+				.filter(`:contains(${nodeName})`)
+				.should('have.length.greaterThan', 0)
+				.findChildByTestId('node-issues'),
 		getEndpointSelector: (type: 'input' | 'output' | 'plus', nodeName: string, index = 0) => {
 			return `[data-endpoint-name='${nodeName}'][data-endpoint-type='${type}'][data-input-index='${index}']`;
 		},
@@ -126,12 +134,27 @@ export class WorkflowPage extends BasePage {
 				win.preventNodeViewBeforeUnload = preventNodeViewUnload;
 			});
 		},
-		addInitialNodeToCanvas: (nodeDisplayName: string, { keepNdvOpen } = { keepNdvOpen: false }) => {
+		addInitialNodeToCanvas: (
+			nodeDisplayName: string,
+			opts?: { keepNdvOpen?: boolean; action?: string },
+		) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			if (keepNdvOpen) return;
-			cy.get('body').type('{esc}');
+			if (opts?.action) {
+				// Expand actions category if it's collapsed
+				nodeCreator.getters
+					.getCategoryItem('Actions')
+					.parent()
+					.then(($el) => {
+						if ($el.attr('data-category-collapsed') === 'true') {
+							nodeCreator.getters.getCategoryItem('Actions').click();
+						}
+					});
+				nodeCreator.getters.getCreatorItem(opts.action).click();
+			} else if (!opts?.keepNdvOpen) {
+				cy.get('body').type('{esc}');
+			}
 		},
 		addNodeToCanvas: (
 			nodeDisplayName: string,
@@ -229,6 +252,17 @@ export class WorkflowPage extends BasePage {
 		zoomToFit: () => {
 			cy.getByTestId('zoom-to-fit').click();
 		},
+		pinchToZoom: (steps: number, mode: 'zoomIn' | 'zoomOut' = 'zoomIn') => {
+			// Pinch-to-zoom simulates a 'wheel' event with ctrlKey: true (same as zooming by scrolling)
+			this.getters.nodeViewBackground().trigger('wheel', {
+				force: true,
+				bubbles: true,
+				ctrlKey: true,
+				pageX: cy.window().innerWidth / 2,
+				pageY: cy.window().innerHeight / 2,
+				deltaY: mode === 'zoomOut' ? 16 * steps : -16 * steps,
+			});
+		},
 		hitUndo: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
 		},
@@ -289,6 +323,9 @@ export class WorkflowPage extends BasePage {
 		},
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
+		},
+		shouldHaveWorkflowName: (name: string) => {
+			this.getters.workflowNameInputContainer().invoke('attr', 'title').should('include', name);
 		},
 	};
 }

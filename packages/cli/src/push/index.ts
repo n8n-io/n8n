@@ -26,7 +26,7 @@ export class Push extends EventEmitter {
 		} else if (!useWebSockets) {
 			(this.backend as SSEPush).add(req.query.sessionId, { req, res });
 		} else {
-			res.status(1008).send('Unauthorized');
+			res.status(401).send('Unauthorized');
 		}
 		this.emit('editorUiConnected', req.query.sessionId);
 	}
@@ -88,7 +88,7 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 				ws.send(`Unauthorized: ${(error as Error).message}`);
 				ws.close(1008);
 			} else {
-				res.status(1008).send('Unauthorized');
+				res.status(401).send('Unauthorized');
 			}
 			return;
 		}

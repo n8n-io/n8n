@@ -3,7 +3,6 @@ import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { ViteEjsPlugin } from 'vite-plugin-ejs';
 
 import packageJSON from './package.json';
 
@@ -13,7 +12,6 @@ const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
 	'@fontsource/open-sans',
-	'normalize-wheel',
 	'@vueuse/components',
 	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',
@@ -63,7 +61,7 @@ const alias = [
 	},
 ];
 
-const plugins = [vue(), ViteEjsPlugin()];
+const plugins = [vue()];
 
 const { SENTRY_AUTH_TOKEN: authToken, RELEASE: release } = process.env;
 if (release && authToken) {

@@ -44,11 +44,13 @@ describe('Test PostgresV2, runQueries', () => {
 		const thisArg = mock<IExecuteFunctions>();
 		const runQueries = configureQueryRunner.call(thisArg, node, false, pgp, db);
 
-		const result = await runQueries([{ query: 'SELECT * FROM table', values: [] }], [], {});
+		const result = await runQueries([{ query: 'SELECT * FROM table', values: [] }], [], {
+			nodeVersion: 2.2,
+		});
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 		expect(dbMultiSpy).toHaveBeenCalledWith('SELECT * FROM table');
 	});
 });

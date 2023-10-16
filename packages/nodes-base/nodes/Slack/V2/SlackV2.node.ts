@@ -322,6 +322,9 @@ export class SlackV2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 
+		const nodeVersion = this.getNode().typeVersion;
+		const instanceId = await this.getInstanceId();
+
 		for (let i = 0; i < length; i++) {
 			try {
 				responseData = {
@@ -768,7 +771,7 @@ export class SlackV2 implements INodeType {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-						const content = getMessageContent.call(this, i);
+						const content = getMessageContent.call(this, i, nodeVersion, instanceId);
 
 						const body: IDataObject = {
 							channel: target,
@@ -1059,7 +1062,7 @@ export class SlackV2 implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -1321,6 +1324,6 @@ export class SlackV2 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

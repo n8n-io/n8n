@@ -45,6 +45,8 @@ export const RESPONSE_ERROR_MESSAGES = {
 	PACKAGE_LOADING_FAILED: 'The specified package could not be loaded',
 	DISK_IS_FULL: 'There appears to be insufficient disk space',
 	USERS_QUOTA_REACHED: 'Maximum number of users reached',
+	OAUTH2_CREDENTIAL_TEST_SUCCEEDED: 'Connection Successful!',
+	OAUTH2_CREDENTIAL_TEST_FAILED: 'This OAuth2 credential was not connected to an account.',
 };
 
 export const AUTH_COOKIE_NAME = 'n8n-auth';
@@ -75,16 +77,32 @@ export const LICENSE_FEATURES = {
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
 	API_DISABLED: 'feat:apiDisabled',
+	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
+	BINARY_DATA_S3: 'feat:binaryDataS3',
 } as const;
 
 export const LICENSE_QUOTAS = {
 	TRIGGER_LIMIT: 'quota:activeWorkflows',
 	VARIABLES_LIMIT: 'quota:maxVariables',
 	USERS_LIMIT: 'quota:users',
+	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 } as const;
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
+
+export const UM_FIX_INSTRUCTION =
+	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
+
+/**
+ * Units of time in milliseconds
+ */
+export const TIME = {
+	SECOND: 1000,
+	MINUTE: 60 * 1000,
+	HOUR: 60 * 60 * 1000,
+	DAY: 24 * 60 * 60 * 1000,
+};

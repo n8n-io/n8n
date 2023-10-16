@@ -46,6 +46,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
+				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@update:modelValue="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
@@ -98,6 +99,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@update:modelValue="valueChangedDebounced"
 				/>
@@ -117,7 +119,20 @@
 					:modelValue="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					@update:modelValue="valueChangedDebounced"
+				/>
+
+				<code-node-editor
+					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
+					:mode="node.parameters.mode"
+					:modelValue="modelValue"
+					:defaultValue="parameter.default"
+					:language="editorLanguage"
+					:isReadOnly="isReadOnly"
+					:aiButtonEnabled="false"
+					@update:modelValue="valueChangedDebounced"
+					:rows="getArgument('rows')"
 				/>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
@@ -126,6 +141,7 @@
 						:modelValue="modelValue"
 						:language="editorLanguage"
 						:isReadOnly="true"
+						:rows="getArgument('rows')"
 					/>
 				</div>
 
@@ -366,6 +382,7 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
@@ -382,7 +399,14 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+
+import {
+	CUSTOM_API_CALL_KEY,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	HTML_NODE_TYPE,
+	NODES_USING_CODE_NODE_EDITOR,
+} from '@/constants';
+
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -411,6 +435,10 @@ export default defineComponent({
 		TextEdit,
 	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},
@@ -735,7 +763,7 @@ export default defineComponent({
 						issues.parameters[this.parameter.name] = [issue];
 					}
 				}
-			} else if (this.remoteParameterOptionsLoadingIssues !== null) {
+			} else if (this.remoteParameterOptionsLoadingIssues !== null && !this.isValueExpression) {
 				if (issues.parameters === undefined) {
 					issues.parameters = {};
 				}
@@ -882,7 +910,8 @@ export default defineComponent({
 			if (
 				this.node === null ||
 				this.hasRemoteMethod === false ||
-				this.remoteParameterOptionsLoading
+				this.remoteParameterOptionsLoading ||
+				!this.parameter
 			) {
 				return;
 			}
@@ -894,7 +923,8 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveParameter(
+				const resolvedNodeParameters = this.resolveRequiredParameters(
+					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;
 				const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
@@ -1022,10 +1052,13 @@ export default defineComponent({
 			this.$emit('focus');
 		},
 		isCodeNode(node: INodeUi): boolean {
-			return node.type === CODE_NODE_TYPE;
+			return NODES_USING_CODE_NODE_EDITOR.includes(node.type);
 		},
 		isHtmlNode(node: INodeUi): boolean {
 			return node.type === HTML_NODE_TYPE;
+		},
+		isExecuteWorkflowNode(node: INodeUi): boolean {
+			return node.type === EXECUTE_WORKFLOW_NODE_TYPE;
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
@@ -1220,7 +1253,7 @@ export default defineComponent({
 				() => {
 					void this.loadRemoteParameterOptions();
 				},
-				{ deep: true, immediate: true },
+				{ immediate: true },
 			);
 		}
 

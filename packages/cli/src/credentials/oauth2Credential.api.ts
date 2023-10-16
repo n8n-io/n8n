@@ -34,6 +34,8 @@ import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+
 export const oauth2CredentialController = express.Router();
 
 /**
@@ -81,12 +83,15 @@ oauth2CredentialController.get(
 			throw new ResponseHelper.InternalServerError((error as Error).message);
 		}
 
+		const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
+
 		const credentialType = (credential as unknown as ICredentialsEncrypted).type;
 
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
 		const credentialsHelper = new CredentialsHelper(encryptionKey);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+			additionalData,
 			credential as INodeCredentialsDetails,
 			credentialType,
 			mode,
@@ -107,6 +112,7 @@ oauth2CredentialController.get(
 		}
 
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+			additionalData,
 			decryptedDataOriginal,
 			credentialType,
 			mode,
@@ -223,11 +229,13 @@ oauth2CredentialController.get(
 			}
 
 			const encryptionKey = await UserSettings.getEncryptionKey();
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(state.cid);
 
 			const mode: WorkflowExecuteMode = 'internal';
 			const timezone = config.getEnv('generic.timezone');
 			const credentialsHelper = new CredentialsHelper(encryptionKey);
 			const decryptedDataOriginal = await credentialsHelper.getDecrypted(
+				additionalData,
 				credential as INodeCredentialsDetails,
 				(credential as unknown as ICredentialsEncrypted).type,
 				mode,
@@ -235,6 +243,7 @@ oauth2CredentialController.get(
 				true,
 			);
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
+				additionalData,
 				decryptedDataOriginal,
 				(credential as unknown as ICredentialsEncrypted).type,
 				mode,

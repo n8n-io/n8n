@@ -2,56 +2,28 @@ import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
 import { BadRequestError } from '@/ResponseHelper';
-import {
-	hashPassword,
-	sanitizeUser,
-	validatePassword,
-	withFeatureFlags,
-} from '@/UserManagement/UserManagementHelper';
+import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
-import type { Config } from '@/config';
+import { ILogger } from 'n8n-workflow';
+import { Config } from '@/config';
 import { OwnerRequest } from '@/requests';
-import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
-import type { SettingsRepository, UserRepository } from '@db/repositories';
-import type { PostHogClient } from '@/posthog';
+import { IInternalHooksClass } from '@/Interfaces';
+import { SettingsRepository } from '@db/repositories';
+import { PostHogClient } from '@/posthog';
+import { UserService } from '@/services/user.service';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
 export class OwnerController {
-	private readonly config: Config;
-
-	private readonly logger: ILogger;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userRepository: UserRepository;
-
-	private readonly settingsRepository: SettingsRepository;
-
-	private readonly postHog?: PostHogClient;
-
-	constructor({
-		config,
-		logger,
-		internalHooks,
-		repositories,
-		postHog,
-	}: {
-		config: Config;
-		logger: ILogger;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
-		postHog?: PostHogClient;
-	}) {
-		this.config = config;
-		this.logger = logger;
-		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
-		this.settingsRepository = repositories.Settings;
-		this.postHog = postHog;
-	}
+	constructor(
+		private readonly config: Config,
+		private readonly logger: ILogger,
+		private readonly internalHooks: IInternalHooksClass,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly userService: UserService,
+		private readonly postHog?: PostHogClient,
+	) {}
 
 	/**
 	 * Promote a shell into the owner of the n8n instance,
@@ -112,7 +84,7 @@ export class OwnerController {
 
 		await validateEntity(owner);
 
-		owner = await this.userRepository.save(owner);
+		owner = await this.userService.save(owner);
 
 		this.logger.info('Owner was set up successfully', { userId });
 
@@ -129,7 +101,7 @@ export class OwnerController {
 
 		void this.internalHooks.onInstanceOwnerSetup({ user_id: userId });
 
-		return withFeatureFlags(this.postHog, sanitizeUser(owner));
+		return this.userService.toPublic(owner, { posthog: this.postHog });
 	}
 
 	@Post('/dismiss-banner')

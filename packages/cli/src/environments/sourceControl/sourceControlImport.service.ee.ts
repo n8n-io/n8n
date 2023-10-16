@@ -15,7 +15,6 @@ import { Credentials, UserSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { Variables } from '@db/entities/Variables';
-import { UM_FIX_INSTRUCTION } from '@/commands/BaseCommand';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { WorkflowTagMapping } from '@db/entities/WorkflowTagMapping';
 import type { TagEntity } from '@db/entities/TagEntity';
@@ -28,6 +27,7 @@ import type { SourceControlledFile } from './types/sourceControlledFile';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '../variables/variables.service';
 import { TagRepository } from '@/databases/repositories';
+import { UM_FIX_INSTRUCTION } from '@/constants';
 
 @Service()
 export class SourceControlImportService {
@@ -492,15 +492,12 @@ export class SourceControlImportService {
 						`A tag with the name <strong>${tag.name}</strong> already exists locally.<br />Please either rename the local tag, or the remote one with the id <strong>${tag.id}</strong> in the tags.json file.`,
 					);
 				}
-				await this.tagRepository.upsert(
-					{
-						...tag,
-					},
-					{
-						skipUpdateIfNoValuesChanged: true,
-						conflictPaths: { id: true },
-					},
-				);
+
+				const tagCopy = this.tagRepository.create(tag);
+				await this.tagRepository.upsert(tagCopy, {
+					skipUpdateIfNoValuesChanged: true,
+					conflictPaths: { id: true },
+				});
 			}),
 		);
 

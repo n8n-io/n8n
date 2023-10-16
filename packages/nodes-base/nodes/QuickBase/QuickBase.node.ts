@@ -23,6 +23,7 @@ import { fileFields, fileOperations } from './FileDescription';
 import { recordFields, recordOperations } from './RecordDescription';
 
 import { reportFields, reportOperations } from './ReportDescription';
+import { generatePairedItemData } from '../../utils/utilities';
 
 export class QuickBase implements INodeType {
 	description: INodeTypeDescription = {
@@ -116,6 +117,7 @@ export class QuickBase implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
@@ -229,7 +231,7 @@ export class QuickBase implements INodeType {
 					);
 				}
 
-				return this.prepareOutputData(items);
+				return [items];
 			}
 		}
 
@@ -295,7 +297,7 @@ export class QuickBase implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -465,7 +467,7 @@ export class QuickBase implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -548,7 +550,7 @@ export class QuickBase implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -638,6 +640,6 @@ export class QuickBase implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
