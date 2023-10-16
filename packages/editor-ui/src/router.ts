@@ -235,6 +235,7 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
+			keepWorkflowAlive: true,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
