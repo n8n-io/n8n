@@ -2594,6 +2594,10 @@ const getRequestHelperFunctions = (
 			};
 
 			let count = 0;
+			let hashData = {
+				identicalCount: 0,
+				previousHash: '',
+			};
 			do {
 				paginateRequestData = getResolvedValue(
 					paginationOptions.request as unknown as NodeParameterValueType,
@@ -2615,6 +2619,34 @@ const getRequestHelperFunctions = (
 					);
 				} else {
 					tempResponseData = await this.helpers.request(tempRequestOptions);
+				}
+
+				if (paginationOptions.binaryResult !== true) {
+					// If the data is not binary (and so not a stream) we hash the
+					// data to be able to easily see if we keep on receiving identical data
+					// TODO: Change! We should not have to stringify to create hash
+					const hash = crypto
+						.createHash('md5')
+						.update(JSON.stringify(tempResponseData.body))
+						.digest('hex');
+
+					if (hashData.previousHash === hash) {
+						hashData.identicalCount += 1;
+						if (hashData.identicalCount > 4) {
+							throw new NodeOperationError(
+								node,
+								'The returned response was identical 5x, so requests got stopped',
+								{
+									itemIndex,
+									description:
+										'Check if "Pagination Completed When" has been configured correctly.',
+								},
+							);
+						}
+					} else {
+						hashData.identicalCount = 0;
+					}
+					hashData.previousHash = hash;
 				}
 
 				// Give only access to certain keys

@@ -1660,7 +1660,8 @@ export class HttpRequestV3 implements INodeType {
 						statusCodesWhenCompleted,
 					)}.includes($response.statusCode) }}`;
 				} else if (pagination.paginationCompleteWhen === 'responseIsEmpty') {
-					continueExpression = '={{ Array.isArray($response.body) ? $response.body.length : !!$response.body }}';
+					continueExpression =
+						'={{ Array.isArray($response.body) ? $response.body.length : !!$response.body }}';
 				} else {
 					// Other
 					if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {

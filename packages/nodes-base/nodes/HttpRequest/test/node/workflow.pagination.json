@@ -440,6 +440,77 @@
 			"type": "n8n-nodes-base.httpRequest",
 			"typeVersion": 4.1,
 			"position": [900, 1620]
+		},
+		{
+			"parameters": {
+				"content": "### Detect identical responses\nThrow then error",
+				"height": 232.15942469988397,
+				"width": 394.89100909416834
+			},
+			"id": "f349bb03-7ee3-46c1-98e9-a88070e7f53f",
+			"name": "Sticky Note5",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [840, 1840]
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "Error",
+							"stringValue": "={{ $json.error.name }}"
+						}
+					]
+				},
+				"include": "none",
+				"options": {}
+			},
+			"id": "3bf2681e-0c13-4998-bade-516faa1098a8",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [1080, 1920]
+		},
+		{
+			"parameters": {
+				"url": "https://dummyjson.com/users",
+				"sendQuery": true,
+				"queryParameters": {
+					"parameters": [
+						{
+							"name": "limit",
+							"value": "3"
+						}
+					]
+				},
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					},
+					"pagination": {
+						"pagination": {
+							"parameters": {
+								"parameters": [
+									{
+										"type": "qs",
+										"name": "does_not_matter",
+										"value": "0"
+									}
+								]
+							}
+						}
+					}
+				}
+			},
+			"id": "c82cbdd8-92c6-43c8-9e27-da9f6106035e",
+			"name": "Loop",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.1,
+			"position": [900, 1920],
+			"continueOnFail": true
 		}
 	],
 	"pinData": {
@@ -977,6 +1048,13 @@
 					"id": 2
 				}
 			}
+		],
+		"Edit Fields": [
+			{
+				"json": {
+					"Error": "NodeOperationError"
+				}
+			}
 		]
 	},
 	"connections": {
@@ -1032,6 +1110,22 @@
 						"node": "Pagination Not Set",
 						"type": "main",
 						"index": 0
+					},
+					{
+						"node": "Loop",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
 					}
 				]
 			]
@@ -1041,7 +1135,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "9a9970d0-aeba-45e4-a6a7-89189290ce56",
+	"versionId": "62cefe2a-0a41-47ef-aebe-7cc3a650d5b1",
 	"id": "ZKVF9JrrzoxXbUqu",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
