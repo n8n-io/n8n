@@ -669,8 +669,9 @@ $table-font-color: var(--color-text-dark);
 /// color||Color|0
 $table-header-font-color: var(--color-text-light);
 /// color||Color|0
-$table-row-hover-background-color: $background-color-base;
+$table-row-hover-background-color: var(--color-table-row-hover-background);
 $table-current-row-background-color: $color-primary-light-9;
+$table-row-striped-background-color: var(--color-table-row-even-background);
 /// color||Color|0
 $table-header-background-color: $color-white;
 $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);

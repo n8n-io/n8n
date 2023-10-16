@@ -101,20 +101,6 @@
 		color: var(--color-text-dark);
 	}
 }
-.el-table--striped {
-	.el-table__body {
-		tr.el-table__row--striped {
-			background-color: var(--color-background-light);
-			td {
-				background: none;
-			}
-		}
-		tr.el-table__row:hover,
-		tr.el-table__row:hover > td {
-			background-color: var(--color-primary-tint-3);
-		}
-	}
-}
 
 // Tabs
 .type-selector:focus,
