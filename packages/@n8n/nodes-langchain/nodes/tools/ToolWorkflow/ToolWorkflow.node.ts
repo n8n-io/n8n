@@ -15,6 +15,7 @@ import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 
 import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
+import isObject from 'lodash/isObject';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -391,6 +392,10 @@ export class ToolWorkflow implements INodeType {
 
 					if (typeof response === 'number') {
 						response = (response as number).toString();
+					}
+
+					if (isObject(response)) {
+						response = JSON.stringify(response, null, 2);
 					}
 
 					if (typeof response !== 'string') {
