@@ -2,23 +2,23 @@
 
 import type * as express from 'express';
 import type FormData from 'form-data';
+import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { Readable } from 'stream';
-import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
-import type { PathLike } from 'fs';
+import type { Readable } from 'stream';
+import type { URLSearchParams } from 'url';
 
+import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
+import type { ExecutionStatus } from './ExecutionStatus';
+import type { ExpressionError } from './ExpressionError';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { Workflow } from './Workflow';
-import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import type { ExpressionError } from './ExpressionError';
-import type { ExecutionStatus } from './ExecutionStatus';
-import type { AuthenticationMethod } from './Authentication';
+import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -1047,7 +1047,8 @@ export type NodePropertyTypes =
 	| 'credentialsSelect'
 	| 'resourceLocator'
 	| 'curlImport'
-	| 'resourceMapper';
+	| 'resourceMapper'
+	| 'filter';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
@@ -1093,6 +1094,7 @@ export interface INodePropertyTypeOptions {
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
 	resourceMapper?: ResourceMapperTypeOptions;
+	filter?: FilterTypeOptions;
 	[key: string]: any;
 }
 
@@ -1110,6 +1112,17 @@ export interface ResourceMapperTypeOptions {
 		description?: string;
 		hint?: string;
 	};
+}
+
+type NonEmptyArray<T> = [T, ...T[]];
+
+export type FilterTypeCombinator = 'and' | 'or';
+
+export interface FilterTypeOptions {
+	caseSensitive?: boolean; // default = false
+	leftValue?: string; // when set, user can't edit left side of condition
+	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
+	maxConditions?: number; // default = 5
 }
 
 export interface IDisplayOptions {
@@ -2174,6 +2187,19 @@ export type ResourceMapperValue = {
 	matchingColumns: string[];
 	schema: ResourceMapperField[];
 };
+
+export type FilterConditionValue = {
+	leftValue: string;
+	rightValue: string;
+	operator: string;
+};
+
+export type FilterValue = {
+	value: boolean;
+	conditions: FilterConditionValue[];
+	combinator: FilterTypeCombinator;
+};
+
 export interface ExecutionOptions {
 	limit?: number;
 }
