@@ -75,6 +75,8 @@ export class TestWebhooks extends AbstractWebhooks<RegisteredTestWebhook> {
 		webhook: RegisteredTestWebhook,
 		request: WebhookRequest,
 		response: Response,
+		pathOrId: string,
+		method: IHttpRequestMethods,
 	): Promise<WebhookResponseCallbackData> {
 		const { sessionId, workflow, destinationNode, timeout } = webhook;
 
@@ -111,7 +113,7 @@ export class TestWebhooks extends AbstractWebhooks<RegisteredTestWebhook> {
 			// Delete webhook also if an error is thrown
 			if (timeout) clearTimeout(timeout);
 
-			await this.removeWorkflow(workflow);
+			this.unregisterWebhook(pathOrId, method);
 		});
 	}
 
@@ -176,6 +178,8 @@ export class TestWebhooks extends AbstractWebhooks<RegisteredTestWebhook> {
 				webhook.pathLength = webhook.webhookPath.split('/').length;
 			}
 
+			const pathOrId = webhook.isDynamic ? webhook.webhookId! : webhook.webhookPath;
+
 			// TODO: check that there is not a webhook already registered with that path/method
 			try {
 				// Make the webhook available directly because sometimes to create it successfully it gets called
@@ -192,7 +196,6 @@ export class TestWebhooks extends AbstractWebhooks<RegisteredTestWebhook> {
 			}
 
 			// Get the node which has the webhook defined to know where to start from and to get additional data
-			const pathOrId = webhook.isDynamic ? webhook.webhookId! : webhook.webhookPath;
 			this.registerWebhook(pathOrId, webhook.method, {
 				isDynamic: webhook.isDynamic,
 				webhookPath: webhook.webhookPath,

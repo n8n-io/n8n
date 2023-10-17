@@ -107,6 +107,8 @@ export abstract class AbstractWebhooks<T extends RegisteredWebhook> {
 		webhook: T,
 		req: WebhookRequest,
 		res: Response,
+		pathOrId: string,
+		method: IHttpRequestMethods,
 	): Promise<WebhookResponseCallbackData>;
 
 	protected registerWebhook(
@@ -129,8 +131,9 @@ export abstract class AbstractWebhooks<T extends RegisteredWebhook> {
 		// TODO: update these on redis, and publish a message for others to pull the cache
 	}
 
-	protected unregisterWebhook() {
-		// TODO: implement this
+	protected unregisterWebhook(pathOrId: string, method: IHttpRequestMethods) {
+		const webhookGroup = this.registered.get(pathOrId);
+		webhookGroup?.delete(method);
 	}
 
 	/** Returns all the webhooks which should be created for the given workflow */
@@ -181,10 +184,12 @@ export abstract class AbstractWebhooks<T extends RegisteredWebhook> {
 			path = path.slice(0, -1);
 		}
 
+		let pathOrId = path;
 		let webhookGroup = this.registered.get(path);
 		if (!webhookGroup) {
 			const possibleId = path.split('/')[0];
 			if (UUID_REGEXP.test(possibleId)) {
+				pathOrId = possibleId;
 				webhookGroup = this.registered.get(possibleId);
 			}
 		}
@@ -234,7 +239,7 @@ export abstract class AbstractWebhooks<T extends RegisteredWebhook> {
 
 		let response: WebhookResponseCallbackData;
 		try {
-			response = await this.executeWebhook(webhook, req, res);
+			response = await this.executeWebhook(webhook, req, res, pathOrId, method);
 		} catch (error) {
 			if (
 				error.errorCode === 404 &&
