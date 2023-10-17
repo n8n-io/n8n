@@ -317,7 +317,7 @@ export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchIt
 }
 
 export function cellFormatDefault(nodeVersion: number) {
-	if (nodeVersion < 4) {
+	if (nodeVersion < 4.1) {
 		return 'RAW';
 	}
 	return 'USER_ENTERED';
