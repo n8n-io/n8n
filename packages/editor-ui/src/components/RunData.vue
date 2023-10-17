@@ -502,6 +502,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeParameters,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
@@ -900,6 +901,8 @@ export default defineComponent({
 				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
 			}
 			const branches: ITab[] = [];
+			// SwitchV2 allows to create outputs dynamically so we need to check for them
+			const rules = (this.activeNode?.parameters.rules as INodeParameters)?.rules ?? [];
 
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
 				if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
@@ -908,14 +911,17 @@ export default defineComponent({
 				const itemsCount = this.getDataCount(this.runIndex, i);
 				const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
 				let outputName = this.getOutputName(i);
+
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
+					const ruleKey = rules?.[i]?.outputKey ?? '';
+
 					const appendBranchWord = NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND.includes(
 						this.node?.type,
 					)
 						? ''
-						: ` ${this.$locale.baseText('ndv.output.branch')}`;
+						: ` ${ruleKey.length > 0 ? ruleKey : this.$locale.baseText('ndv.output.branch')}`;
 					outputName = capitalize(`${this.getOutputName(i)}${appendBranchWord}`);
 				}
 				branches.push({

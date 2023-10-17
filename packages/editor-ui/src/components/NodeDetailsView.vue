@@ -617,8 +617,8 @@ export default defineComponent({
 			}
 
 			if (
-				typeof this.activeNodeType.outputs === 'string' ||
-				typeof this.activeNodeType.inputs === 'string'
+				typeof this.activeNodeType?.outputs === 'string' ||
+				typeof this.activeNodeType?.inputs === 'string'
 			) {
 				// TODO: We should keep track of if it actually changed and only do if required
 				// Whenever a node with custom inputs and outputs gets closed redraw it in case
