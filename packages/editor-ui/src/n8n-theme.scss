@@ -1,13 +1,6 @@
 :root {
 	--node-type-background-l: 95%;
-	--node-type-main-color-h: var(--color-foreground-xdark-h);
-	--node-type-main-color-s: var(--color-foreground-xdark-s);
-	--node-type-main-color-l: var(--color-foreground-xdark-l);
-	--node-type-main-color: hsl(
-		var(--node-type-main-color-h),
-		var(--node-type-main-color-s),
-		var(--node-type-main-color-l)
-	);
+
 	--node-type-supplemental-label-color-h: 235;
 	--node-type-supplemental-label-color-s: 28%;
 	--node-type-supplemental-label-color-l: 40%;

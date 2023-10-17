@@ -64,6 +64,7 @@
 	--color-canvas-node-background: var(--prim-gray-40);
 	--color-canvas-node-pinned-border: var(--prim-color-secondary-tint-100);
 	--color-canvas-selected: var(--prim-gray-540);
+	--node-type-main-color: var(--prim-gray-420);
 
 	// Sticky
 	--color-sticky-default-background: var(--prim-color-alt-d);
@@ -76,7 +77,7 @@
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c);
 	--color-invalid-resolvable-background: var(--prim-color-alt-c-tint-450);
 	--color-expression-editor-background: var(--prim-gray-0);
-	--color-expression-syntax-example: var(--prim-gray-40);
+	--color-expression-syntax-example: var(--prim-gray-670);
 
 	// Code
 	--color-code-tags-string: var(--prim-color-alt-f);
@@ -123,9 +124,9 @@
 	--color-button-primary-hover-active-border: var(--prim-color-primary-shade-100);
 	--color-button-primary-hover-active-background: var(--prim-color-primary-shade-100);
 	--color-button-primary-focus-outline: var(--prim-color-primary-tint-200);
-	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-075);
-	--color-button-primary-disabled-border: var(--prim-color-primary-tint-200);
-	--color-button-primary-disabled-background: var(--prim-color-primary-tint-200);
+	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-025);
+	--color-button-primary-disabled-border: transparent;
+	--color-button-primary-disabled-background: var(--prim-color-primary-alpha-04);
 
 	// Button secondary
 	--color-button-secondary-font: var(--prim-gray-670);
