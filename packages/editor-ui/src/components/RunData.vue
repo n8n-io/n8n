@@ -1514,7 +1514,7 @@ export default defineComponent({
 
 .ioSearch {
 	max-width: 66%;
-  padding-right: var(--spacing-s);
+	padding-right: var(--spacing-s);
 }
 
 .ioSearchNextToTabs {
