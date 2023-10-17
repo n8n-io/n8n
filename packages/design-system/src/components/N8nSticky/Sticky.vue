@@ -106,6 +106,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		backgroundColor: {
+			type: String,
+			default: '',
+		},
 	},
 	components: {
 		N8nInput,
@@ -131,11 +135,17 @@ export default defineComponent({
 			}
 			return this.width;
 		},
-		styles(): { height: string; width: string } {
-			return {
+		styles(): { height: string; width: string; '--color-sticky'?: string } {
+			const styles: { height: string; width: string; '--color-sticky'?: string } = {
 				height: `${this.resHeight}px`,
 				width: `${this.resWidth}px`,
 			};
+
+			if (this.backgroundColor) {
+				styles['--color-sticky'] = this.backgroundColor;
+			}
+
+			return styles;
 		},
 		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
@@ -189,8 +199,8 @@ export default defineComponent({
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	background-color: var(--color-sticky-default-background);
-	border: 1px solid var(--color-sticky-default-border);
+	background-color: var(--color-sticky, var(--color-sticky-default-background));
+	border: 1px solid var(--color-sticky, var(--color-sticky-default-background));
 	border-radius: var(--border-radius-base);
 }
 
@@ -214,9 +224,9 @@ export default defineComponent({
 		position: absolute;
 		background: linear-gradient(
 			180deg,
-			var(--color-sticky-default-background),
+			var(--color-sticky, var(--color-sticky-default-background)),
 			#fff5d600 0.01%,
-			var(--color-sticky-default-background)
+			var(--color-sticky, var(--color-sticky-default-background))
 		);
 		border-radius: var(--border-radius-base);
 	}
