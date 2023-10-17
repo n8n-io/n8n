@@ -31,6 +31,7 @@ import {
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
 	UserSettings,
+	ActiveWorkflows,
 } from 'n8n-core';
 
 import type {
@@ -437,6 +438,16 @@ export class Server extends AbstractServer {
 				],
 			}),
 		);
+
+		this.app.get('/rest/enableTriggers', async (req, res) => {
+			await this.activeWorkflowRunner.activateAllNonWebhookTriggers();
+			res.status(200).end();
+		});
+
+		this.app.get('/rest/disableTriggers', async (req, res) => {
+			await this.activeWorkflowRunner.removeAllNonWebhookTriggers();
+			res.status(200).end();
+		});
 
 		if (config.getEnv('executions.mode') === 'queue') {
 			await Container.get(Queue).init();

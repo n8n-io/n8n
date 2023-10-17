@@ -248,4 +248,45 @@ export class ActiveWorkflows {
 
 		return true;
 	}
+
+	async removeAllNonWebhookTriggers(): Promise<void> {
+		for (const workflowId of Object.keys(this.workflowData)) {
+			const workflowData = this.workflowData[workflowId];
+			if (workflowData.triggerResponses) {
+				for (const triggerResponse of workflowData.triggerResponses) {
+					if (triggerResponse.closeFunction) {
+						try {
+							await triggerResponse.closeFunction();
+						} catch (error) {
+							Logger.error(
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								`There was a problem deactivating trigger of workflow "${workflowId}": "${error.message}"`,
+								{
+									workflowId,
+								},
+							);
+						}
+					}
+				}
+			}
+
+			if (workflowData.pollResponses) {
+				for (const pollResponse of workflowData.pollResponses) {
+					if (pollResponse.closeFunction) {
+						try {
+							await pollResponse.closeFunction();
+						} catch (error) {
+							Logger.error(
+								// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+								`There was a problem deactivating polling trigger of workflow "${workflowId}": "${error.message}"`,
+								{
+									workflowId,
+								},
+							);
+						}
+					}
+				}
+			}
+		}
+	}
 }

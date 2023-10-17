@@ -101,6 +101,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		})) as IWorkflowDb[];
 
 		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
+			// TODO: Deprecated and remove this flag
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -158,6 +159,59 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
 		await this.webhookService.populateCache();
+	}
+
+	async activateAllNonWebhookTriggers() {
+		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
+			where: { active: true },
+			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+		})) as IWorkflowDb[];
+
+		if (workflowsData.length !== 0) {
+			Logger.info('Activating non webhook triggers due to leadership change');
+
+			for (const workflowData of workflowsData) {
+				Logger.info(`   - ${workflowData.name} (ID: ${workflowData.id})`);
+				// Logger.debug(`Initializing active workflow "${workflowData.name}" (startup)`, {
+				// 	workflowName: workflowData.name,
+				// 	workflowId: workflowData.id,
+				// });
+				try {
+					await this.add(workflowData.id, 'leadershipChange', workflowData);
+					Logger.verbose(`Successfully started workflow "${workflowData.name}"`, {
+						workflowName: workflowData.name,
+						workflowId: workflowData.id,
+					});
+					Logger.info('     => Started');
+				} catch (error) {
+					ErrorReporter.error(error);
+					Logger.info(
+						'     => ERROR: Workflow could not be activated on first try, keep on trying if not an auth issue',
+					);
+
+					Logger.info(`               ${error.message}`);
+					Logger.error(
+						`Issue on activation due to leadership change for workflow "${workflowData.name}"`,
+						{
+							workflowName: workflowData.name,
+							workflowId: workflowData.id,
+						},
+					);
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					this.executeErrorWorkflow(error, workflowData, 'internal');
+
+					if (!error.message.includes('Authorization')) {
+						// Keep on trying to activate the workflow if not an auth issue
+						this.addQueuedWorkflowActivation('init', workflowData);
+					}
+				}
+			}
+			Logger.verbose('Finished initializing active workflows (startup)');
+		}
+	}
+
+	async removeAllNonWebhookTriggers() {
+		return this.activeWorkflows.removeAllNonWebhookTriggers();
 	}
 
 	/**
@@ -755,26 +809,30 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				activation,
 			);
 
-			// Add the workflows which have webhooks defined
-			await this.addWorkflowWebhooks(workflowInstance, additionalData, mode, activation);
+			if (activation !== 'leadershipChange') {
+				// Add the workflows which have webhooks defined
+				await this.addWorkflowWebhooks(workflowInstance, additionalData, mode, activation);
+			}
 
-			if (
-				workflowInstance.getTriggerNodes().length !== 0 ||
-				workflowInstance.getPollNodes().length !== 0
-			) {
-				await this.activeWorkflows.add(
-					workflowId,
-					workflowInstance,
-					additionalData,
-					mode,
-					activation,
-					getTriggerFunctions,
-					getPollFunctions,
-				);
-				Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, {
-					workflowId,
-					workflowName: workflowData.name,
-				});
+			if (config.get('executions.mode') !== 'queue' || activation === 'leadershipChange') {
+				if (
+					workflowInstance.getTriggerNodes().length !== 0 ||
+					workflowInstance.getPollNodes().length !== 0
+				) {
+					await this.activeWorkflows.add(
+						workflowId,
+						workflowInstance,
+						additionalData,
+						mode,
+						activation,
+						getTriggerFunctions,
+						getPollFunctions,
+					);
+					Logger.verbose(`Successfully activated workflow "${workflowData.name}"`, {
+						workflowId,
+						workflowName: workflowData.name,
+					});
+				}
 			}
 
 			// Workflow got now successfully activated so make sure nothing is left in the queue

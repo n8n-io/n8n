@@ -30,7 +30,10 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import {
+	OrchestrationMainService,
+	EVENT_LEADER_STATE_CHANGED,
+} from '@/services/orchestration/main/orchestration.main.service';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -233,8 +236,17 @@ export class Start extends BaseCommand {
 
 	async initOrchestration() {
 		if (config.get('executions.mode') === 'queue') {
-			await Container.get(OrchestrationMainService).init();
+			const orchestrationMainService = Container.get(OrchestrationMainService);
+			await orchestrationMainService.init();
 			await Container.get(OrchestrationHandlerMainService).init();
+
+			orchestrationMainService.on(EVENT_LEADER_STATE_CHANGED, async () => {
+				if (orchestrationMainService.isLeader) {
+					await this.activeWorkflowRunner.activateAllNonWebhookTriggers();
+				} else {
+					await this.activeWorkflowRunner.removeAllNonWebhookTriggers();
+				}
+			});
 		}
 	}
 
