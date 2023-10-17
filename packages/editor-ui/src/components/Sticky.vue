@@ -57,7 +57,7 @@
 				</div>
 				<n8n-popover
 					effect="dark"
-					:popper-style="{ width: '183px' }"
+					:popper-style="{ width: '208px' }"
 					trigger="click"
 					placement="top"
 					@show="onShowPopover"
@@ -72,16 +72,16 @@
 							<font-awesome-icon icon="ellipsis-v" />
 						</div>
 					</template>
-					<div class="content" v-on:click="onColorSelectorOpen">
+					<div class="content">
 						<div
+							class="color"
 							v-for="(color, index) in availableColors"
 							:key="index"
 							v-on:click="changeColor(color)"
 							:style="{
-								width: '20px',
-								height: '20px',
 								'background-color': color,
-								'border-radius': '50%',
+								'border-width': color === node?.parameters.color ? '1px' : '0px',
+								'border-style': 'solid',
 							}"
 						></div>
 					</div>
@@ -197,7 +197,15 @@ export default defineComponent({
 	data() {
 		return {
 			forceActions: false,
-			availableColors: ['#b1bccd', '#efa79a', '#f6c67d', '#8ed09c', '#8cc2f3', '#cbaaf9'],
+			availableColors: [
+				'#fff5d6',
+				'#b1bccd',
+				'#efa79a',
+				'#f6c67d',
+				'#8ed09c',
+				'#8cc2f3',
+				'#cbaaf9',
+			],
 			isResizing: false,
 			isTouchActive: false,
 		};
@@ -227,7 +235,6 @@ export default defineComponent({
 				this.ndvStore.activeNodeName = null;
 			}
 		},
-		onColorSelectorOpen() {},
 		onMarkdownClick(link: HTMLAnchorElement, event: Event) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
@@ -391,5 +398,16 @@ export default defineComponent({
 	flex-direction: row;
 	width: fit-content;
 	gap: var(--spacing-2xs);
+}
+
+.color {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border-color: var(--color-primary-shade-1);
+
+	&:hover {
+		cursor: pointer;
+	}
 }
 </style>
