@@ -335,5 +335,59 @@ export const optionsProperty: INodeProperties = {
 			default: 'data',
 			description: 'Name of the property to return the data of instead of the whole JSON',
 		},
+		{
+			displayName: 'Access Control',
+			name: 'accessControl',
+			placeholder: 'Add Options Header',
+			description: 'Add headers to the preflight response',
+			type: 'fixedCollection',
+			default: {
+				values: {
+					allowOrigin: '*',
+					allowMethods: '*',
+					// allowHeaders: '',
+					maxAge: 60,
+				},
+			},
+			options: [
+				{
+					name: 'values',
+					displayName: 'Values',
+					values: [
+						{
+							displayName: 'Origin',
+							name: 'allowOrigin',
+							type: 'string',
+							default: '',
+							description: 'The origin(s) to allow requests from',
+						},
+						{
+							displayName: 'Methods',
+							name: 'allowMethods',
+							type: 'string',
+							default: '',
+							description: 'The methods to allow',
+						},
+						// {
+						// 	displayName: 'Headers',
+						// 	name: 'allowHeaders',
+						// 	type: 'string',
+						// 	default: '',
+						// 	description: 'The headers to allow',
+						// },
+						{
+							displayName: 'Max Age',
+							name: 'maxAge',
+							type: 'number',
+							typeOptions: {
+								minValue: 0,
+							},
+							default: 0,
+							description: 'The max age to allow',
+						},
+					],
+				},
+			],
+		},
 	],
 };

@@ -8,6 +8,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	IDataObject,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
@@ -175,6 +176,33 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		return webhookMethods;
+	}
+
+	/**
+	 * Gets all request methods associated with a single test webhook
+	 */
+	async getAccessControlOptions(path: string, httpMethod: string): Promise<IDataObject | null> {
+		const webhookWorkflow = Object.keys(this.testWebhookData).find(
+			(key) => key.includes(path) && key.startsWith(httpMethod),
+		);
+
+		const nodes = webhookWorkflow ? this.testWebhookData[webhookWorkflow].workflow.nodes : {};
+
+		if (!Object.keys(nodes).length) {
+			return null;
+		}
+
+		const result = Object.values(nodes).find((node) => {
+			return (
+				node.type === 'n8n-nodes-base.webhook' &&
+				node.parameters?.path === path &&
+				node.parameters?.httpMethod === httpMethod
+			);
+		});
+
+		const { accessControl } = (result?.parameters?.options as IDataObject) || {};
+
+		return accessControl ? ((accessControl as IDataObject).values as IDataObject) : null;
 	}
 
 	/**
