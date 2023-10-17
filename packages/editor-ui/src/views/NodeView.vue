@@ -344,6 +344,7 @@ import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEnd
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { UPDATE_WEBHOOK_ID_NODE_TYPES } from '@/constants';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1650,8 +1651,18 @@ export default defineComponent({
 			try {
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
-					// set all new ids when pasting/importing workflows
 					workflowData.nodes.forEach((node: INode) => {
+						//generate new webhookId if workflow already contains a node with the same webhookId
+						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
+							const isDuplicate = Object.values(this.getCurrentWorkflow().nodes).some(
+								(n) => n.webhookId === node.webhookId,
+							);
+							if (isDuplicate) {
+								node.webhookId = uuid();
+							}
+						}
+
+						// set all new ids when pasting/importing workflows
 						if (node.id) {
 							const newId = uuid();
 							nodeIdMap[newId] = node.id;
