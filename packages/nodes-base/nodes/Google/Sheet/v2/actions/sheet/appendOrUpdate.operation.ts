@@ -7,7 +7,7 @@ import type {
 } from '../../helpers/GoogleSheets.types';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -172,7 +172,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
-				'@version': [4],
+				'@version': [4, 4.1],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -194,7 +194,15 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		options: [...cellFormat, ...locationDefine, ...handlingExtraData],
+		options: [
+			cellFormat,
+			locationDefine,
+			handlingExtraData,
+			{
+				...handlingExtraData,
+				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
+			},
+		],
 	},
 ];
 
@@ -205,8 +213,15 @@ export async function execute(
 	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
+	const nodeVersion = this.getNode().typeVersion;
+
 	const range = `${sheetName}!A:Z`;
+
+	const valueInputMode = this.getNodeParameter(
+		'options.cellFormat',
+		0,
+		cellFormatDefault(nodeVersion),
+	) as ValueInputOption;
 
 	const options = this.getNodeParameter('options', 0, {});
 
@@ -238,7 +253,7 @@ export async function execute(
 	}
 
 	columnNames = sheetData[headerRow];
-	const nodeVersion = this.getNode().typeVersion;
+
 	const newColumns = new Set<string>();
 
 	const columnsToMatchOn: string[] =
@@ -346,7 +361,7 @@ export async function execute(
 			await sheet.updateRows(
 				sheetName,
 				[columnNames.concat([...newColumns])],
-				(options.cellFormat as ValueInputOption) || 'RAW',
+				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
 				headerRow + 1,
 			);
 		}

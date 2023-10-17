@@ -7,7 +7,7 @@ import type {
 } from '../../helpers/GoogleSheets.types';
 import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -172,7 +172,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['update'],
-				'@version': [4],
+				'@version': [4, 4.1],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -194,7 +194,15 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		options: [...cellFormat, ...locationDefine, ...handlingExtraData],
+		options: [
+			cellFormat,
+			locationDefine,
+			handlingExtraData,
+			{
+				...handlingExtraData,
+				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
+			},
+		],
 	},
 ];
 
@@ -204,16 +212,21 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
+	const nodeVersion = this.getNode().typeVersion;
+
 	const range = `${sheetName}!A:Z`;
+
+	const valueInputMode = this.getNodeParameter(
+		'options.cellFormat',
+		0,
+		cellFormatDefault(nodeVersion),
+	) as ValueInputOption;
 
 	const options = this.getNodeParameter('options', 0, {});
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
-
-	const nodeVersion = this.getNode().typeVersion;
 
 	let headerRow = 0;
 	let firstDataRow = 1;
@@ -254,6 +267,7 @@ export async function execute(
 	// TODO: Add support for multiple columns to match on in the next overhaul
 	const keyIndex = columnNames.indexOf(columnsToMatchOn[0]);
 
+	//not used when updating row
 	const columnValues = await sheet.getColumnValues(
 		range,
 		keyIndex,
@@ -276,7 +290,7 @@ export async function execute(
 			if (handlingExtraDataOption === 'ignoreIt') {
 				data.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'error') {
+			if (handlingExtraDataOption === 'error' && columnsToMatchOn[0] !== 'row_number') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (!columnNames.includes(key)) {
 						throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
@@ -287,7 +301,7 @@ export async function execute(
 				});
 				data.push(items[i].json);
 			}
-			if (handlingExtraDataOption === 'insertInNewColumn') {
+			if (handlingExtraDataOption === 'insertInNewColumn' && columnsToMatchOn[0] !== 'row_number') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (!columnNames.includes(key)) {
 						newColumns.add(key);
@@ -350,22 +364,29 @@ export async function execute(
 			await sheet.updateRows(
 				sheetName,
 				[columnNames.concat([...newColumns])],
-				(options.cellFormat as ValueInputOption) || 'RAW',
+				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
 				headerRow + 1,
 			);
 		}
 
-		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
-			data,
-			columnsToMatchOn[0],
-			range,
-			headerRow,
-			firstDataRow,
-			valueRenderMode,
-			false,
-			[columnNames.concat([...newColumns])],
-			columnValues,
-		);
+		let preparedData;
+		if (columnsToMatchOn[0] === 'row_number') {
+			preparedData = sheet.prepareDataForUpdatingByRowNumber(data, range, [
+				columnNames.concat([...newColumns]),
+			]);
+		} else {
+			preparedData = await sheet.prepareDataForUpdateOrUpsert(
+				data,
+				columnsToMatchOn[0],
+				range,
+				headerRow,
+				firstDataRow,
+				valueRenderMode,
+				false,
+				[columnNames.concat([...newColumns])],
+				columnValues,
+			);
+		}
 
 		updateData.push(...preparedData.updateData);
 	}
