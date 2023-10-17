@@ -49,8 +49,7 @@
 				<div
 					v-touch:tap="deleteNode"
 					class="option"
-					data-test-id="change-color"
-					disable="true"
+					data-test-id="delete-sticky"
 					:title="$locale.baseText('node.deleteNode')"
 				>
 					<font-awesome-icon icon="trash" />
@@ -66,7 +65,7 @@
 					<template #reference>
 						<div
 							class="option"
-							data-test-id="change-color"
+							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
 						>
 							<font-awesome-icon icon="ellipsis-v" />
