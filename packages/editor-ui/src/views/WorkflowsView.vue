@@ -221,6 +221,25 @@ const WorkflowsView = defineComponent({
 			filters: { tags: string[]; search: string; status: string | boolean },
 			matches: boolean,
 		): boolean {
+			const queryString = new URLSearchParams();
+
+			if (this.filters.search) {
+				queryString.append('search', this.filters.search);
+			}
+
+			if (this.filters.status) {
+				queryString.append('status', this.filters.status);
+			}
+
+			if (this.filters.tags.length) {
+				queryString.append('tags', this.filters.tags.join(','));
+			}
+
+			void this.$router.push({
+				name: VIEWS.WORKFLOWS,
+				query: { ...Object.fromEntries(queryString) },
+			});
+
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
 					matches &&
@@ -250,6 +269,14 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	mounted() {
+		const { tags } = this.$route.query;
+
+		this.filters = {
+			...this.filters,
+			...this.$route.query,
+			...(tags && { tags: tags.split(',') }),
+		};
+
 		void this.usersStore.showPersonalizationSurvey();
 
 		this.sourceControlStoreUnsubscribe = this.sourceControlStore.$onAction(({ name, after }) => {
