@@ -60,11 +60,14 @@ export class PersonalSettingsPage extends BasePage {
 		enableMfa: () => {
 			cy.visit(this.url);
 			this.getters.enableMfaButton().click();
+			cy.wait('@getMfaQrCode');
+			mfaSetupModal.getters.copySecretToClipboardButton().should('be.visible');
 			mfaSetupModal.getters.copySecretToClipboardButton().realClick();
 			cy.readClipboard().then((secret) => {
 				const token = generateOTPToken(secret);
 
 				mfaSetupModal.getters.tokenInput().type(token);
+				mfaSetupModal.getters.downloadRecoveryCodesButton().should('be.visible');
 				mfaSetupModal.getters.downloadRecoveryCodesButton().click();
 				mfaSetupModal.getters.saveButton().click();
 			});

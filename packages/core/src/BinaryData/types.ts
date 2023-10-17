@@ -1,12 +1,30 @@
 import type { Readable } from 'stream';
-import type { BINARY_DATA_MODES } from './utils';
 
 export namespace BinaryData {
-	export type Mode = (typeof BINARY_DATA_MODES)[number];
+	type LegacyMode = 'filesystem';
+
+	type UpgradedMode = 'filesystem-v2';
+
+	/**
+	 * Binary data mode selectable by user via env var config.
+	 */
+	export type ConfigMode = 'default' | 'filesystem' | 's3';
+
+	/**
+	 * Binary data mode used internally by binary data service. User-selected
+	 * legacy modes are replaced with upgraded modes.
+	 */
+	export type ServiceMode = Exclude<ConfigMode, LegacyMode> | UpgradedMode;
+
+	/**
+	 * Binary data mode in binary data ID in stored execution data. Both legacy
+	 * and upgraded modes may be present, except default in-memory mode.
+	 */
+	export type StoredMode = Exclude<ConfigMode | UpgradedMode, 'default'>;
 
 	export type Config = {
-		mode: 'default' | 'filesystem';
-		availableModes: string[];
+		mode: ConfigMode;
+		availableModes: ConfigMode[];
 		localStoragePath: string;
 	};
 
@@ -37,16 +55,15 @@ export namespace BinaryData {
 		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
+		deleteMany(ids: IdsForDeletion): Promise<void>;
+
 		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
 		copyByFilePath(
 			workflowId: string,
 			executionId: string,
-			filePath: string,
+			sourcePath: string,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
-
-		deleteOne(fileId: string): Promise<void>;
-		deleteMany(ids: IdsForDeletion): Promise<void>;
 
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}

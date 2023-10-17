@@ -1,22 +1,31 @@
 <script setup lang="ts">
-import { saveAs } from 'file-saver';
-import { onBeforeMount, ref, watchEffect } from 'vue';
+import { onBeforeMount, ref, watchEffect, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { VIEWS } from '@/constants';
-import { useI18n } from '@/composables';
+import type { IWorkflowDb, UserAction } from '@/Interface';
+import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
+import { useI18n, useToast } from '@/composables';
 import type {
 	WorkflowHistoryActionTypes,
 	WorkflowVersionId,
 	WorkflowHistoryRequestParams,
+	WorkflowHistory,
+	WorkflowVersion,
 } from '@/types/workflowHistory';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import WorkflowHistoryContent from '@/components/WorkflowHistory/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
+
+const enum WorkflowHistoryVersionRestoreModalActions {
+	restore = 'restore',
+	deactivateAndRestore = 'deactivateAndRestore',
+	cancel = 'cancel',
+}
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
@@ -32,30 +41,62 @@ const WORKFLOW_HISTORY_ACTIONS = workflowHistoryActionTypes.reduce(
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
+const toast = useToast();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
 
+const canRender = ref(true);
+const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
+const lastReceivedItemsLength = ref(0);
+const editorRoute = computed(() => ({
+	name: VIEWS.WORKFLOW,
+	params: {
+		name: route.params.workflowId,
+	},
+}));
+const activeWorkflow = ref<IWorkflowDb | null>(null);
+const workflowHistory = ref<WorkflowHistory[]>([]);
+const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
+const actions = computed<UserAction[]>(() =>
+	workflowHistoryActionTypes.map((value) => ({
+		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
+		disabled: false,
+		value,
+	})),
+);
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
 		queryParams,
 	);
-	workflowHistoryStore.addWorkflowHistory(history);
+	lastReceivedItemsLength.value = history.length;
+	workflowHistory.value = workflowHistory.value.concat(history);
 };
 
 onBeforeMount(async () => {
-	await loadMore({ take: requestNumberOfItems.value });
+	try {
+		const [workflow] = await Promise.all([
+			workflowsStore.fetchWorkflow(route.params.workflowId),
+			loadMore({ take: requestNumberOfItems.value }),
+		]);
+		activeWorkflow.value = workflow;
+		isListLoading.value = false;
 
-	if (!route.params.versionId) {
-		await router.replace({
-			name: VIEWS.WORKFLOW_HISTORY,
-			params: {
-				workflowId: route.params.workflowId,
-				versionId: workflowHistoryStore.workflowHistory[0].versionId,
-			},
-		});
+		if (!route.params.versionId && workflowHistory.value.length) {
+			await router.replace({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId: route.params.workflowId,
+					versionId: workflowHistory.value[0].versionId,
+				},
+			});
+		}
+	} catch (error) {
+		canRender.value = false;
+		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	}
 });
 
@@ -70,34 +111,111 @@ const openInNewTab = (id: WorkflowVersionId) => {
 	window.open(href, '_blank');
 };
 
-const downloadVersion = async (id: WorkflowVersionId) => {
-	const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
-		route.params.workflowId,
-		id,
-	);
-	if (workflowVersion?.workflow) {
-		const { workflow } = workflowVersion;
-		const blob = new Blob([JSON.stringify(workflow, null, 2)], {
-			type: 'application/json;charset=utf-8',
+const openRestorationModal = async (
+	isWorkflowActivated: boolean,
+	formattedCreatedAt: string,
+): Promise<WorkflowHistoryVersionRestoreModalActions> => {
+	return new Promise((resolve, reject) => {
+		const buttons = [
+			{
+				text: i18n.baseText('workflowHistory.action.restore.modal.button.cancel'),
+				type: 'tertiary',
+				action: () => {
+					resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
+				},
+			},
+		];
+
+		if (isWorkflowActivated) {
+			buttons.push({
+				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
+				type: 'tertiary',
+				action: () => {
+					resolve(WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore);
+				},
+			});
+		}
+
+		buttons.push({
+			text: i18n.baseText('workflowHistory.action.restore.modal.button.restore'),
+			type: 'primary',
+			action: () => {
+				resolve(WorkflowHistoryVersionRestoreModalActions.restore);
+			},
 		});
-		saveAs(blob, workflow.name.replace(/[^a-z0-9]/gi, '_') + '.json');
-	}
+
+		try {
+			uiStore.openModalWithData({
+				name: WORKFLOW_HISTORY_VERSION_RESTORE,
+				data: {
+					beforeClose: () => {
+						resolve(WorkflowHistoryVersionRestoreModalActions.cancel);
+					},
+					isWorkflowActivated,
+					formattedCreatedAt,
+					buttons,
+				},
+			});
+		} catch (error) {
+			reject(error);
+		}
+	});
 };
 
 const onAction = async ({
 	action,
 	id,
+	data,
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
+	data: { formattedCreatedAt: string };
 }) => {
-	switch (action) {
-		case WORKFLOW_HISTORY_ACTIONS.OPEN:
-			openInNewTab(id);
-			break;
-		case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
-			await downloadVersion(id);
-			break;
+	try {
+		switch (action) {
+			case WORKFLOW_HISTORY_ACTIONS.OPEN:
+				openInNewTab(id);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.DOWNLOAD:
+				await workflowHistoryStore.downloadVersion(route.params.workflowId, id, data);
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.CLONE:
+				await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.action.clone.success.title'),
+					type: 'success',
+				});
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
+				const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
+				const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
+				if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
+					break;
+				}
+				await workflowHistoryStore.restoreWorkflow(
+					route.params.workflowId,
+					id,
+					modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
+				);
+				const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
+					take: 1,
+				});
+				workflowHistory.value = history.concat(workflowHistory.value);
+				toast.showMessage({
+					title: i18n.baseText('workflowHistory.action.restore.success.title'),
+					type: 'success',
+				});
+				break;
+		}
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('workflowHistory.action.error.title', {
+				interpolate: {
+					action: i18n.baseText(`workflowHistory.item.actions.${action}`).toLowerCase(),
+				},
+			}),
+		);
 	}
 };
 
@@ -116,51 +234,78 @@ const onPreview = async ({ event, id }: { event: MouseEvent; id: WorkflowVersion
 };
 
 const onUpgrade = () => {
-	uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
+	void uiStore.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 };
 
 watchEffect(async () => {
-	if (route.params.versionId) {
-		const workflowVersion = await workflowHistoryStore.getWorkflowVersion(
+	if (!route.params.versionId) {
+		return;
+	}
+	try {
+		activeWorkflowVersion.value = await workflowHistoryStore.getWorkflowVersion(
 			route.params.workflowId,
 			route.params.versionId,
 		);
-		workflowHistoryStore.setActiveWorkflowVersion(workflowVersion);
+	} catch (error) {
+		toast.showError(
+			new Error(`${error.message} "${route.params.versionId}"&nbsp;`),
+			i18n.baseText('workflowHistory.title'),
+		);
+	}
+
+	try {
+		activeWorkflow.value = await workflowsStore.fetchWorkflow(route.params.workflowId);
+	} catch (error) {
+		canRender.value = false;
+		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	}
 });
 </script>
 <template>
 	<div :class="$style.view">
 		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
-			{{ workflowHistoryStore.activeWorkflowVersion?.workflow?.name }}
+			{{ activeWorkflow?.name }}
 		</n8n-heading>
 		<div :class="$style.corner">
 			<n8n-heading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}
 			</n8n-heading>
-			<n8n-button type="tertiary" icon="times" size="small" text square />
+			<router-link :to="editorRoute">
+				<n8n-button type="tertiary" icon="times" size="small" text square />
+			</router-link>
 		</div>
-		<workflow-history-content
-			:class="$style.contentComponent"
-			:workflow-version="workflowHistoryStore.activeWorkflowVersion"
-		/>
-		<workflow-history-list
-			:class="$style.listComponent"
-			:items="workflowHistoryStore.workflowHistory"
-			:active-item="workflowHistoryStore.activeWorkflowVersion"
-			:action-types="workflowHistoryActionTypes"
-			:request-number-of-items="requestNumberOfItems"
-			:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-			:maxRetentionPeriod="workflowHistoryStore.maxRetentionPeriod"
-			@action="onAction"
-			@preview="onPreview"
-			@load-more="loadMore"
-			@upgrade="onUpgrade"
-		/>
+		<div :class="$style.listComponentWrapper">
+			<workflow-history-list
+				v-if="canRender"
+				:items="workflowHistory"
+				:lastReceivedItemsLength="lastReceivedItemsLength"
+				:activeItem="activeWorkflowVersion"
+				:actions="actions"
+				:requestNumberOfItems="requestNumberOfItems"
+				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
+				:evaluatedPruneTime="workflowHistoryStore.evaluatedPruneTime"
+				:isListLoading="isListLoading"
+				@action="onAction"
+				@preview="onPreview"
+				@load-more="loadMore"
+				@upgrade="onUpgrade"
+			/>
+		</div>
+		<div :class="$style.contentComponentWrapper">
+			<workflow-history-content
+				v-if="canRender"
+				:workflow="activeWorkflow"
+				:workflow-version="activeWorkflowVersion"
+				:actions="actions"
+				:isListLoading="isListLoading"
+				@action="onAction"
+			/>
+		</div>
 	</div>
 </template>
 <style module lang="scss">
 .view {
+	position: relative;
 	display: grid;
 	width: 100%;
 	grid-template-areas: 'header corner' 'content list';
@@ -188,12 +333,24 @@ watchEffect(async () => {
 	border-left: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
-.contentComponent {
+.contentComponentWrapper {
 	grid-area: content;
+	position: relative;
 }
 
-.listComponent {
+.listComponentWrapper {
 	grid-area: list;
-	grid-area: list;
+	position: relative;
+
+	&::before {
+		content: '';
+		display: block;
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		width: var(--border-width-base);
+		background-color: var(--color-foreground-base);
+	}
 }
 </style>

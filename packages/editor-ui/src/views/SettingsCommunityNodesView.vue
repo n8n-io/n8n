@@ -214,11 +214,7 @@ export default defineComponent({
 			this.openInstallModal();
 		},
 		goToUpgrade(): void {
-			const linkUrl = `${this.$locale.baseText(
-				'contextual.upgradeLinkUrl.desktop',
-			)}&utm_campaign=upgrade-community-nodes&selfHosted=true`;
-
-			window.open(linkUrl, '_blank');
+			void this.uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
 		},
 		openInstallModal(): void {
 			const telemetryPayload = {

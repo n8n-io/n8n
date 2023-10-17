@@ -182,7 +182,12 @@ export async function execute(
 		const newData: IDataObject = {};
 
 		for (const entry of fields) {
-			if (entry.type === 'objectValue' && rawFieldsData[entry.name] !== undefined) {
+			if (
+				entry.type === 'objectValue' &&
+				rawFieldsData[entry.name] !== undefined &&
+				entry.objectValue !== undefined &&
+				entry.objectValue !== null
+			) {
 				entry.objectValue = parseJsonParameter(
 					resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
 					node,
@@ -191,14 +196,20 @@ export async function execute(
 				);
 			}
 
-			const { name, value } = validateEntry(entry, node, i, options.ignoreConversionErrors);
+			const { name, value } = validateEntry(
+				entry,
+				node,
+				i,
+				options.ignoreConversionErrors,
+				node.typeVersion,
+			);
 			newData[name] = value;
 		}
 
 		return composeReturnItem.call(this, i, item, newData, options);
 	} catch (error) {
 		if (this.continueOnFail()) {
-			return { json: { error: (error as Error).message } };
+			return { json: { error: (error as Error).message, pairedItem: { item: i } } };
 		}
 		throw new NodeOperationError(this.getNode(), error as Error, {
 			itemIndex: i,
