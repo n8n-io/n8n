@@ -266,6 +266,7 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 }
 
 .text {
+	--button-font-color: var(--color-text-button-secondary-font);
 	--button-border-color: transparent;
 	--button-background-color: transparent;
 	--button-hover-border-color: transparent;
