@@ -7,7 +7,7 @@ import { GoogleSheetsV2 } from './v2/GoogleSheetsV2.node';
 export class GoogleSheets extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Google Sheets ',
+			displayName: 'Google Sheets',
 			name: 'googleSheets',
 			icon: 'file:googleSheets.svg',
 			group: ['input', 'output'],

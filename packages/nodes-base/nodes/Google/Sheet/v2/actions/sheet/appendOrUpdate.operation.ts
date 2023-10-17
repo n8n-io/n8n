@@ -402,6 +402,13 @@ export async function execute(
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
 		return items;
 	} else {
-		return this.helpers.returnJsonArray(mappedValues);
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of mappedValues.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItems: { item: index },
+			});
+		}
+		return returnData;
 	}
 }

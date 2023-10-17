@@ -12,7 +12,6 @@ const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
 const ignoreChunks = [
 	'@fontsource/open-sans',
-	'normalize-wheel',
 	'@vueuse/components',
 	// TODO: remove this. It's currently required by xml2js in NodeErrors
 	'stream-browserify',

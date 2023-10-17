@@ -1,6 +1,7 @@
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { DeleteResult } from 'typeorm';
+import { In } from 'typeorm';
 import type {
 	EventMessageTypes,
 	EventNamesTypes,
@@ -31,7 +32,7 @@ import Container, { Service } from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { OrchestrationService } from '../../services/orchestration.service';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -132,7 +133,23 @@ export class MessageEventBus extends EventEmitter {
 			this.logWriter?.startLogging();
 			await this.send(unsentAndUnfinished.unsentMessages);
 
-			const unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+			let unfinishedExecutionIds = Object.keys(unsentAndUnfinished.unfinishedExecutions);
+
+			// if we are in queue mode, running jobs may still be running on a worker despite the main process
+			// crashing, so we can't just mark them as crashed
+			if (config.get('executions.mode') !== 'queue') {
+				const dbUnfinishedExecutionIds = (
+					await Container.get(ExecutionRepository).find({
+						where: {
+							status: In(['running', 'new', 'unknown']),
+						},
+						select: ['id'],
+					})
+				).map((e) => e.id);
+				unfinishedExecutionIds = Array.from(
+					new Set<string>([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]),
+				);
+			}
 
 			if (unfinishedExecutionIds.length > 0) {
 				LoggerProxy.warn(`Found unfinished executions: ${unfinishedExecutionIds.join(', ')}`);
@@ -160,11 +177,18 @@ export class MessageEventBus extends EventEmitter {
 					this.logWriter?.startRecoveryProcess();
 					for (const executionId of unfinishedExecutionIds) {
 						LoggerProxy.warn(`Attempting to recover execution ${executionId}`);
-						await recoverExecutionDataFromEventLogMessages(
-							executionId,
-							unsentAndUnfinished.unfinishedExecutions[executionId],
-							true,
-						);
+						if (!unsentAndUnfinished.unfinishedExecutions[executionId]?.length) {
+							LoggerProxy.debug(
+								`No event messages found, marking execution ${executionId} as 'crashed'`,
+							);
+							await Container.get(ExecutionRepository).markAsCrashed([executionId]);
+						} else {
+							await recoverExecutionDataFromEventLogMessages(
+								executionId,
+								unsentAndUnfinished.unfinishedExecutions[executionId],
+								true,
+							);
+						}
 					}
 				}
 				// remove the recovery process flag file
@@ -190,7 +214,9 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()] = destination;
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
-			await Container.get(OrchestrationService).broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(
+				OrchestrationMainService,
+			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return destination;
 	}
@@ -216,7 +242,9 @@ export class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		if (notifyWorkers) {
-			await Container.get(OrchestrationService).broadcastRestartEventbusAfterDestinationUpdate();
+			await Container.get(
+				OrchestrationMainService,
+			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return result;
 	}

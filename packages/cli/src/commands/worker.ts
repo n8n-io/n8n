@@ -22,7 +22,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
-import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
+import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
@@ -32,12 +32,13 @@ import { OwnershipService } from '@/services/ownership.service';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { rawBodyReader, bodyParser } from '@/middlewares';
-import { eventBus } from '../eventbus';
-import { RedisServicePubSubPublisher } from '../services/redis/RedisServicePubSubPublisher';
-import { RedisServicePubSubSubscriber } from '../services/redis/RedisServicePubSubSubscriber';
-import { EventMessageGeneric } from '../eventbus/EventMessageClasses/EventMessageGeneric';
-import { getWorkerCommandReceivedHandler } from '../worker/workerCommandHandler';
+import { eventBus } from '@/eventbus';
+import type { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
 import { IConfig } from '@oclif/config';
+import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
+import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -56,9 +57,11 @@ export class Worker extends BaseCommand {
 		[key: string]: PCancelable<IRun>;
 	} = {};
 
-	static jobQueue: JobQueue;
+	static runningJobsSummary: {
+		[jobId: string]: WorkerJobStatusSummary;
+	} = {};
 
-	redisPublisher: RedisServicePubSubPublisher;
+	static jobQueue: Queue;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -234,11 +237,22 @@ export class Worker extends BaseCommand {
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
+		Worker.runningJobsSummary[job.id] = {
+			jobId: job.id.toString(),
+			executionId,
+			workflowId: fullExecutionData.workflowId ?? '',
+			workflowName: fullExecutionData.workflowData.name,
+			mode: fullExecutionData.mode,
+			startedAt: fullExecutionData.startedAt,
+			retryOf: fullExecutionData.retryOf ?? '',
+			status: fullExecutionData.status,
+		};
 
 		// Wait till the execution is finished
 		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
+		delete Worker.runningJobsSummary[job.id];
 
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
 		// already!
@@ -272,10 +286,20 @@ export class Worker extends BaseCommand {
 		this.logger.debug('External secrets init complete');
 		await this.initEventBus();
 		this.logger.debug('Event bus init complete');
-		await this.initRedis();
-		this.logger.debug('Redis init complete');
 		await this.initQueue();
 		this.logger.debug('Queue init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initQueue();
+
+		await Container.get(OrchestrationWorkerService).publishToEventLog(
+			new EventMessageGeneric({
+				eventName: 'n8n.worker.started',
+				payload: {
+					workerId: this.queueModeId,
+				},
+			}),
+		);
 	}
 
 	async initEventBus() {
@@ -290,29 +314,15 @@ export class Worker extends BaseCommand {
 	 * A subscription connection to redis is created to subscribe to commands from the main process
 	 * The subscription connection adds a handler to handle the command messages
 	 */
-	async initRedis() {
-		this.redisPublisher = Container.get(RedisServicePubSubPublisher);
-		this.redisSubscriber = Container.get(RedisServicePubSubSubscriber);
-		await this.redisPublisher.init();
-		await this.redisPublisher.publishToEventLog(
-			new EventMessageGeneric({
-				eventName: 'n8n.worker.started',
-				payload: {
-					workerId: this.queueModeId,
-				},
-			}),
-		);
-		await this.redisSubscriber.subscribeToCommandChannel();
-		this.redisSubscriber.addMessageHandler(
-			'WorkerCommandReceivedHandler',
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			getWorkerCommandReceivedHandler({
-				queueModeId: this.queueModeId,
-				instanceId: this.instanceId,
-				redisPublisher: this.redisPublisher,
-				getRunningJobIds: () => Object.keys(Worker.runningJobs),
-			}),
-		);
+	async initOrchestration() {
+		await Container.get(OrchestrationWorkerService).init();
+		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
+			queueModeId: this.queueModeId,
+			instanceId: this.instanceId,
+			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
+			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
+		});
 	}
 
 	async initQueue() {
@@ -325,15 +335,14 @@ export class Worker extends BaseCommand {
 			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
 		);
 
-		const queue = Container.get(Queue);
-		await queue.init();
+		Worker.jobQueue = Container.get(Queue);
+		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
-		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),
 		);
 
-		Worker.jobQueue.on('global:progress', (jobId: JobId, progress) => {
+		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used
 			// to communicate that a job got canceled.
 
@@ -349,7 +358,7 @@ export class Worker extends BaseCommand {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		Worker.jobQueue.on('error', (error: Error) => {
+		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
 			if (error.toString().includes('ECONNREFUSED')) {
 				const now = Date.now();
 				if (now - lastTimer > 30000) {
@@ -413,7 +422,7 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await Worker.jobQueue.client.ping();
+					await Worker.jobQueue.ping();
 				} catch (e) {
 					LoggerProxy.error('No Redis connection!', e as Error);
 					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
@@ -453,7 +462,7 @@ export class Worker extends BaseCommand {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 						presetCredentialsLoaded = true;
 						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 					} else {

@@ -23,7 +23,6 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
-import { CommunityPackageService } from '@/services/communityPackage.service';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
@@ -31,6 +30,8 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
+import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -214,6 +215,8 @@ export class Start extends BaseCommand {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
@@ -225,6 +228,13 @@ export class Start extends BaseCommand {
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
+		}
+	}
+
+	async initOrchestration() {
+		if (config.get('executions.mode') === 'queue') {
+			await Container.get(OrchestrationMainService).init();
+			await Container.get(OrchestrationHandlerMainService).init();
 		}
 	}
 
@@ -246,8 +256,6 @@ export class Start extends BaseCommand {
 			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
 		}
 
-		await this.loadNodesAndCredentials.generateTypesForFrontend();
-
 		await UserSettings.getEncryptionKey();
 
 		// Load settings from database and set them to config.
@@ -259,12 +267,11 @@ export class Start extends BaseCommand {
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			await Container.get(CommunityPackageService).setMissingPackages(
-				this.loadNodesAndCredentials,
-				{
-					reinstallMissingPackages: flags.reinstallMissingPackages,
-				},
-			);
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			await Container.get(CommunityPackagesService).setMissingPackages({
+				reinstallMissingPackages: flags.reinstallMissingPackages,
+			});
 		}
 
 		const dbType = config.getEnv('database.type');

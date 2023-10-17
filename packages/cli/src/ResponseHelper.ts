@@ -6,7 +6,7 @@ import type { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import picocolors from 'picocolors';
 import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
-
+import { Readable } from 'node:stream';
 import type {
 	IExecutionDb,
 	IExecutionFlatted,
@@ -99,6 +99,11 @@ export function sendSuccessResponse(
 
 	if (responseHeader) {
 		res.header(responseHeader);
+	}
+
+	if (data instanceof Readable) {
+		data.pipe(res);
+		return;
 	}
 
 	if (raw === true) {

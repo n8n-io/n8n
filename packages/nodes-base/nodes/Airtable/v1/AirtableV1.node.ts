@@ -13,6 +13,7 @@ import type { IRecord } from './GenericFunctions';
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 import { oldVersionNotice } from '../../../utils/descriptions';
+import { generatePairedItemData } from '../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Airtable',
@@ -727,9 +728,11 @@ export class AirtableV1 implements INodeType {
 				}
 
 				// We can return from here
+				const itemData = generatePairedItemData(items.length);
+
 				return [
 					this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(returnData), {
-						itemData: { item: 0 },
+						itemData,
 					}),
 				];
 			} catch (error) {

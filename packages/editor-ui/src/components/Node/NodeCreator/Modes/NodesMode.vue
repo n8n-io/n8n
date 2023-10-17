@@ -18,7 +18,6 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
 import { TriggerView, RegularView, AIView, AINodesView } from '../viewsData';
 import { transformNodeType } from '../utils';
 import { useViewStacks } from '../composables/useViewStacks';
-import { useActions } from '../composables/useActions';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
@@ -38,7 +37,6 @@ const telemetry = useTelemetry();
 
 const { mergedNodes, actions } = useNodeCreatorStore();
 const { baseUrl } = useRootStore();
-const { getNodeTypesWithManualTrigger } = useActions();
 const { pushViewStack, popViewStack } = useViewStacks();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -47,10 +45,7 @@ const activeViewStack = computed(() => useViewStacks().activeViewStack);
 const globalSearchItemsDiff = computed(() => useViewStacks().globalSearchItemsDiff);
 
 function selectNodeType(nodeTypes: string[]) {
-	emit(
-		'nodeTypeSelected',
-		nodeTypes.length === 1 ? getNodeTypesWithManualTrigger(nodeTypes[0]) : nodeTypes,
-	);
+	emit('nodeTypeSelected', nodeTypes);
 }
 
 function onSelected(item: INodeCreateElement) {

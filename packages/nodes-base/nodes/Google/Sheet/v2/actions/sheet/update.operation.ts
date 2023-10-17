@@ -401,6 +401,14 @@ export async function execute(
 		if (!updateData.length) {
 			return [];
 		}
-		return this.helpers.returnJsonArray(mappedValues);
+
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of mappedValues.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItems: { item: index },
+			});
+		}
+		return returnData;
 	}
 }

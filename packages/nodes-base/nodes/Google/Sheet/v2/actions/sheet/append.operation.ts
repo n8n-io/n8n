@@ -243,6 +243,13 @@ export async function execute(
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
 		return items;
 	} else {
-		return this.helpers.returnJsonArray(setData);
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of setData.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItems: { item: index },
+			});
+		}
+		return returnData;
 	}
 }
