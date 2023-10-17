@@ -22,7 +22,7 @@ export type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes'
+	| 'community-packages'
 	| 'ldap'
 	| 'saml'
 	| 'sourceControl'

@@ -102,12 +102,12 @@ describe('NodeExecuteFunctions', () => {
 			);
 
 			// Expect our return object to contain the name of the configured data manager.
-			expect(setBinaryDataBufferResponse.data).toEqual('filesystem');
+			expect(setBinaryDataBufferResponse.data).toEqual('filesystem-v2');
 
 			// Ensure that the input data was successfully persisted to disk.
 			expect(
 				readFileSync(
-					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem:', '')}`,
+					`${temporaryDir}/${setBinaryDataBufferResponse.id?.replace('filesystem-v2:', '')}`,
 				),
 			).toEqual(inputData);
 

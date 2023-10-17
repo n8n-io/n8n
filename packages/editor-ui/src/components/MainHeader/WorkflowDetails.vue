@@ -349,8 +349,9 @@ export default defineComponent({
 			return actions;
 		},
 		isWorkflowHistoryFeatureEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.WorkflowHistory,
+			return (
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory) &&
+				this.settingsStore.isDevRelease
 			);
 		},
 		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
@@ -721,8 +722,16 @@ $--header-spacing: 20px;
 }
 
 .workflowHistoryButton {
-	margin-left: var(--spacing-l);
+	width: 30px;
+	height: 30px;
+	margin-left: var(--spacing-m);
+	margin-right: var(--spacing-4xs);
 	color: var(--color-text-dark);
+	border-radius: var(--border-radius-base);
+
+	&:hover {
+		background-color: var(--color-background-base);
+	}
 
 	:disabled {
 		background: transparent;

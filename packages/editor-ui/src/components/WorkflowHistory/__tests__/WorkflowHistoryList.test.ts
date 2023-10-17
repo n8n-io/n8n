@@ -2,6 +2,7 @@ import { within } from '@testing-library/dom';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { faker } from '@faker-js/faker';
+import type { UserAction } from 'n8n-design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryList from '@/components/WorkflowHistory/WorkflowHistoryList.vue';
 import type { WorkflowHistoryActionTypes } from '@/types/workflowHistory';
@@ -18,6 +19,11 @@ vi.stubGlobal(
 );
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
+const actions: UserAction[] = actionTypes.map((value) => ({
+	label: value,
+	disabled: false,
+	value,
+}));
 
 const renderComponent = createComponentRenderer(WorkflowHistoryList);
 
@@ -38,7 +44,7 @@ describe('WorkflowHistoryList', () => {
 			pinia,
 			props: {
 				items: [],
-				actionTypes,
+				actions,
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
@@ -55,7 +61,7 @@ describe('WorkflowHistoryList', () => {
 			pinia,
 			props: {
 				items: [],
-				actionTypes,
+				actions,
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
@@ -76,7 +82,7 @@ describe('WorkflowHistoryList', () => {
 			pinia,
 			props: {
 				items,
-				actionTypes,
+				actions,
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
@@ -91,10 +97,10 @@ describe('WorkflowHistoryList', () => {
 		await userEvent.click(within(listItem).getByText(/ID: /));
 		expect(emitted().preview).toEqual([
 			[
-				expect.objectContaining({
+				{
 					id: items[items.length - 1].versionId,
 					event: expect.any(MouseEvent),
-				}),
+				},
 			],
 		]);
 
@@ -108,7 +114,7 @@ describe('WorkflowHistoryList', () => {
 			pinia,
 			props: {
 				items,
-				actionTypes,
+				actions,
 				activeItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
@@ -126,7 +132,7 @@ describe('WorkflowHistoryList', () => {
 			pinia,
 			props: {
 				items,
-				actionTypes,
+				actions,
 				activeItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
@@ -141,7 +147,15 @@ describe('WorkflowHistoryList', () => {
 		expect(actionsDropdown).toBeInTheDocument();
 
 		await userEvent.click(within(actionsDropdown).getByTestId(`action-${action}`));
-		expect(emitted().action).toEqual([[{ action, id: items[index].versionId }]]);
+		expect(emitted().action).toEqual([
+			[
+				{
+					action,
+					id: items[index].versionId,
+					data: { formattedCreatedAt: expect.any(String) },
+				},
+			],
+		]);
 	});
 
 	it('should show upgrade message', async () => {
@@ -151,7 +165,7 @@ describe('WorkflowHistoryList', () => {
 			pinia,
 			props: {
 				items,
-				actionTypes,
+				actions,
 				activeItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,

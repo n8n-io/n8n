@@ -2,15 +2,12 @@ import fs from 'node:fs/promises';
 import { ObjectStoreManager } from '@/BinaryData/ObjectStore.manager';
 import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
 import { isStream } from '@/ObjectStore/utils';
-import { mockInstance, toStream } from './utils';
+import { mockInstance, toFileId, toStream } from './utils';
 
 jest.mock('fs/promises');
 
 const objectStoreService = mockInstance(ObjectStoreService);
 const objectStoreManager = new ObjectStoreManager(objectStoreService);
-
-const toFileId = (workflowId: string, executionId: string, fileUuid: string) =>
-	`workflows/${workflowId}/executions/${executionId}/binary_data/${fileUuid}`;
 
 const workflowId = 'ObogjVbqpNOQpiyV';
 const executionId = '999';
