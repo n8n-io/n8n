@@ -38,6 +38,7 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
+	FORM_TRIGGER_PATH_IDENTIFIER,
 	LoggerProxy as Logger,
 	NodeHelpers,
 } from 'n8n-workflow';
@@ -109,7 +110,16 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error);
+			if (
+				error.errorCode === 404 &&
+				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
+			) {
+				const isTestWebhook = req.originalUrl.includes('webhook-test');
+				res.status(404);
+				return res.render('form-trigger-404', { isTestWebhook });
+			} else {
+				return ResponseHelper.sendErrorResponse(res, error as Error);
+			}
 		}
 
 		// Don't respond, if already responded
