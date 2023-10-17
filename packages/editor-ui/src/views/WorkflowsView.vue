@@ -235,7 +235,7 @@ const WorkflowsView = defineComponent({
 				queryString.append('tags', this.filters.tags.join(','));
 			}
 
-			this.$router.push({
+			void this.$router.push({
 				name: VIEWS.WORKFLOWS,
 				query: { ...Object.fromEntries(queryString) },
 			});
