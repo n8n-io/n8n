@@ -179,7 +179,16 @@
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<n8n-input size="small" :modelValue="search" @update:modelValue="onSearchUpdate" />
+			<n8n-input
+				:class="$style.ioSearchNextToTabs"
+				size="small"
+				:modelValue="search"
+				@update:modelValue="onSearchUpdate"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-input>
 		</div>
 
 		<div
@@ -192,7 +201,16 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
-			<n8n-input size="small" :modelValue="search" @update:modelValue="onSearchUpdate" />
+			<n8n-input
+				:class="$style.ioSearch"
+				size="small"
+				:modelValue="search"
+				@update:modelValue="onSearchUpdate"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-input>
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
@@ -1480,12 +1498,27 @@ export default defineComponent({
 }
 
 .tabs {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	margin-bottom: var(--spacing-s);
 }
 
 .itemsCount {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
+}
+
+.ioSearch {
+	max-width: 66%;
+  padding-right: var(--spacing-s);
+}
+
+.ioSearchNextToTabs {
+	padding-right: var(--spacing-s);
 }
 
 .runSelector {
