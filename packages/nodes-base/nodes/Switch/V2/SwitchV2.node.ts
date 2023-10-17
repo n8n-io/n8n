@@ -501,9 +501,10 @@ export class SwitchV2 implements INodeType {
 					},
 					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 					typeOptions: {
+						loadOptionsDependsOn: ['rules.rules'],
 						loadOptionsMethod: 'getFallbackOutputOptions',
 					},
-					default: 0,
+					default: -1,
 					description:
 						'The output to which to route all items which do not match any of the rules. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				},
@@ -514,11 +515,18 @@ export class SwitchV2 implements INodeType {
 	methods = {
 		loadOptions: {
 			async getFallbackOutputOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const rules = this.getCurrentNodeParameter('rules.rules') as INodeParameters[];
-				return rules.map((rule, index) => ({
+				const rules = (this.getCurrentNodeParameter('rules.rules') as INodeParameters[]) ?? [];
+				const options = rules.map((rule, index) => ({
 					name: `${index} ${rule.outputKey as string}`,
 					value: index,
 				}));
+
+				options.unshift({
+					name: 'None',
+					value: -1,
+				});
+
+				return options;
 			},
 		},
 	};
