@@ -61,7 +61,9 @@
 	// Canvas
 	--color-canvas-dot: var(--prim-gray-670); // var(--prim-gray-120);
 	--color-canvas-background: var(--prim-gray-820); // var(--prim-gray-10);
-	--color-canvas-node-background: var(--prim-gray-10);
+	--color-canvas-node-background: var(--prim-gray-40);
+	--color-canvas-node-pinned-border: var(--prim-color-secondary-tint-100);
+	--color-canvas-selected: var(--prim-gray-540);
 
 	// Sticky
 	--color-sticky-default-background: var(--prim-color-alt-d);

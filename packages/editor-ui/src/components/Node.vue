@@ -412,7 +412,7 @@ export default defineComponent({
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
 				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = getStyleTokenValue('--color-secondary');
+					borderColor = getStyleTokenValue('--color-canvas-node-pinned-border');
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
