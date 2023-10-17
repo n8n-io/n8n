@@ -28,9 +28,39 @@ export class LinkedIn implements INodeType {
 			{
 				name: 'linkedInOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['standard'],
+					},
+				},
+			},
+			{
+				name: 'linkedInCommunityManagementOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['communityManagement'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Standard',
+						value: 'standard',
+					},
+					{
+						name: 'Community Management',
+						value: 'communityManagement',
+					},
+				],
+				default: 'standard',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

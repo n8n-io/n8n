@@ -25,6 +25,12 @@ export async function linkedInApiRequest(
 	binary?: boolean,
 	_headers?: object,
 ): Promise<any> {
+	const authenticationMethod = this.getNodeParameter('authentication', 0);
+	const credentialType =
+		authenticationMethod === 'standard'
+			? 'linkedInOAuth2Api'
+			: 'linkedInCommunityManagementOAuth2Api';
+
 	let options: OptionsWithUrl = {
 		headers: {
 			Accept: 'application/json',
@@ -51,7 +57,7 @@ export async function linkedInApiRequest(
 
 	try {
 		return resolveHeaderData(
-			await this.helpers.requestOAuth2.call(this, 'linkedInOAuth2Api', options, {
+			await this.helpers.requestOAuth2.call(this, credentialType, options, {
 				tokenType: 'Bearer',
 			}),
 		);
