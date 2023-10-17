@@ -53,6 +53,7 @@ import type {
 	Modals,
 	NewCredentialsModal,
 	ThemeOption,
+	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -67,14 +68,14 @@ import type { BannerName } from 'n8n-workflow';
 
 let savedTheme: ThemeOption = 'system';
 try {
-	const value = localStorage.getItem(LOCAL_STORAGE_THEME) as ThemeOption;
+	const value = localStorage.getItem(LOCAL_STORAGE_THEME) as AppliedThemeOption;
 	if (['light', 'dark'].includes(value)) {
 		savedTheme = value;
-		addThemeToBody(savedTheme);
+		addThemeToBody(value);
 	}
 } catch (e) {}
 
-function addThemeToBody(theme: ThemeOption) {
+function addThemeToBody(theme: AppliedThemeOption) {
 	window.document.body.setAttribute('data-theme', theme);
 }
 
@@ -88,7 +89,7 @@ function updateTheme(theme: ThemeOption) {
 	}
 }
 
-function getPreferredTheme(): ThemeOption {
+function getPreferredTheme(): AppliedThemeOption {
 	const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 	return isDarkMode ? 'dark' : 'light';
@@ -231,7 +232,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannerStack: [],
 	}),
 	getters: {
-		appliedTheme(): 'dark' | 'light' {
+		appliedTheme(): AppliedThemeOption {
 			return this.theme === 'system' ? getPreferredTheme() : this.theme;
 		},
 		logo(): string {

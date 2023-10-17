@@ -1679,4 +1679,5 @@ export type ToggleNodeCreatorOptions = {
 	nodeCreatorView?: string;
 };
 
-export type ThemeOption = 'light' | 'dark' | 'system';
+export type AppliedThemeOption = 'light' | 'dark';
+export type ThemeOption = AppliedThemeOption | 'system';
