@@ -1698,7 +1698,8 @@ export default defineComponent({
 
 <style lang="scss" global>
 .highlight {
-	background-color: #ffe0bb;
+	background-color: #f7dc55;
+	color: black;
 	border-radius: var(--border-radius-base);
 }
 </style>
