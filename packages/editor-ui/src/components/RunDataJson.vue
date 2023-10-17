@@ -47,7 +47,7 @@
 					>
 				</template>
 				<template #renderNodeValue="{ node }">
-					<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+					<span v-if="isNaN(node.index)" v-html="getContent(node.content)" />
 					<span
 						v-else
 						data-target="mappable"

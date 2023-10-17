@@ -1591,7 +1591,7 @@ export default defineComponent({
 }
 
 .ioSearch {
-	max-width: 66%;
+	max-width: 33%;
 	padding-right: var(--spacing-s);
 }
 
@@ -1769,5 +1769,12 @@ export default defineComponent({
 	.code-node-editor {
 		height: 100%;
 	}
+}
+</style>
+
+<style lang="scss" global>
+.highlight {
+	background-color: #ffe0bb;
+	border-radius: var(--border-radius-base);
 }
 </style>
