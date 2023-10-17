@@ -20,6 +20,27 @@ export class Discord implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		// interface: {
+		// 	output: {
+		// 		default: {
+		// 			name: 'string',
+		// 			type: 'number',
+		// 			channel_id: 'number|string',
+		// 			token: 'token',
+		// 			avatar: null,
+		// 			guild_id: 'number|string',
+		// 			id: 'number|string',
+		// 			application_id: null,
+		// 			user: {
+		// 				username: '={{$json.id}}',
+		// 				discriminator: 'number',
+		// 				id: 'number|string',
+		// 				avatar: 'b004ec1740a63ca06ae2e14c5cee11f3',
+		// 				public_flags: 131328,
+		// 			},
+		// 		},
+		// 	},
+		// },
 		properties: [
 			{
 				displayName: 'Webhook URL',

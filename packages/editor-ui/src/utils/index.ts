@@ -8,5 +8,6 @@ export * from './pairedItemUtils';
 export * from './typeGuards';
 export * from './typesUtils';
 export * from './userUtils';
+export * from './nodeInterface';
 export * from './sourceControlUtils';
 export * from './expressions';

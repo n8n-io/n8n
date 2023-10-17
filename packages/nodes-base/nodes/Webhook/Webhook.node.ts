@@ -59,6 +59,31 @@ export class Webhook extends Node {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
 		outputs: ['main'],
+		interface: {
+			operationKey: '={{httpMethod}}',
+			output: {
+				default: {
+					get: {
+						headers: {
+							host: 'localhost:5678',
+							'user-agent': 'curl/7.79.1',
+							accept: '*/*',
+						},
+						params: {},
+						query: {},
+					},
+					post: {
+						headers: {
+							host: 'localhost:5678',
+							'user-agent': 'curl/7.79.1',
+							accept: '*/*',
+						},
+						params: {},
+						query: {},
+					},
+				},
+			},
+		},
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		properties: [

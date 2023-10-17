@@ -23,6 +23,7 @@ import {
 import { issueFields, issueOperations } from './IssueDescription';
 
 import { query } from './Queries';
+import { issueCreateOutputInterface } from './interface/output/issue/create';
 interface IGraphqlBody {
 	query: string;
 	variables: IDataObject;
@@ -41,6 +42,13 @@ export class Linear implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		interface: {
+			output: {
+				issue: {
+					create: issueCreateOutputInterface,
+				},
+			},
+		},
 		credentials: [
 			{
 				name: 'linearApi',

@@ -1562,6 +1562,32 @@ export interface INodeOutputConfiguration {
 	type: ConnectionTypes;
 }
 
+export type INodeTypeDataInterfaceType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'datetime'
+	| 'timestamp'
+	| 'string[]'
+	| 'number[]'
+	| string
+	| string[]
+	| number
+	| number[]
+	| boolean
+	| boolean[];
+
+export interface INodeTypeDataInterface {
+	[key: string]: INodeTypeDataInterfaceType | INodeTypeDataInterface;
+}
+
+export interface INodeTypeInterface {
+	resourceKey?: string;
+	operationKey?: string;
+	input?: Record<string, Record<string, INodeTypeDataInterface>>;
+	output?: Record<string, Record<string, INodeTypeDataInterface>>;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1572,6 +1598,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	inputNames?: string[];
 	outputs: Array<ConnectionTypes | INodeInputConfiguration> | string;
 	outputNames?: string[];
+	interface?: INodeTypeInterface;
 	properties: INodeProperties[];
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow

@@ -525,7 +525,6 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
-	TEST_PIN_DATA,
 	HTML_NODE_TYPE,
 } from '@/constants';
 
@@ -538,11 +537,12 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import { resolveNodeOutputInterface } from '@/utils/nodeInterface';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -997,7 +997,12 @@ export default defineComponent({
 				? clearJsonKey(this.pinData)
 				: executionDataToJson(this.rawInputData);
 
-			const data = inputData.length > 0 ? inputData : TEST_PIN_DATA;
+			const pinDataNodeOutputInterface = resolveNodeOutputInterface(
+				this.nodeType,
+				this.node.parameters || {},
+			);
+
+			const data = inputData.length > 0 ? inputData : pinDataNodeOutputInterface;
 
 			this.ndvStore.setOutputPanelEditModeEnabled(true);
 			this.ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
