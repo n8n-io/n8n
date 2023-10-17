@@ -841,17 +841,12 @@ export default defineComponent({
 					this.currentOutputIndex,
 					this.paneType,
 					this.connectionType,
+					this.search,
 				);
 			}
 
 			if (inputData.length === 0 || !Array.isArray(inputData)) {
 				return [];
-			}
-
-			if (this.search) {
-				inputData = inputData.filter((item) => {
-					return JSON.stringify(item.json).includes(this.search);
-				});
 			}
 
 			return inputData;
@@ -1290,6 +1285,7 @@ export default defineComponent({
 				runData[this.node.name][runIndex].data!,
 				outputIndex,
 				connectionType,
+				this.search,
 			);
 
 			return inputData.length;
