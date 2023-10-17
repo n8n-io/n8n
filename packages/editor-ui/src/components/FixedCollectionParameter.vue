@@ -24,7 +24,9 @@
 					:key="property.name + index"
 					class="parameter-item"
 				>
-					<div class="parameter-item-wrapper">
+					<div
+						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
+					>
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon
 								icon="trash"
@@ -375,13 +377,15 @@ export default defineComponent({
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			border-top: 1px dashed #999;
-
 			.delete-option {
 				top: 14px;
 			}
 		}
 	}
+}
+
+.border-top-dashed {
+	border-top: 1px dashed #999;
 }
 
 .no-items-exist {
