@@ -78,6 +78,7 @@ describe('Execute Spreadsheet File Node', () => {
 							},
 						],
 					],
+					'Read CSV with Row Limit': [[{ json: { A: '1', B: '2', C: '3' } }]],
 					'Write To File CSV': [
 						[
 							{
