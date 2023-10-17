@@ -1189,6 +1189,18 @@ export const schema = {
 			format: String,
 			default: '',
 		},
+		leaderSelection: {
+			ttl: {
+				doc: 'Time to live for leader selection keys (in sec)',
+				format: Number,
+				default: 10,
+			},
+			interval: {
+				doc: 'Interval for leader selection check (in sec)',
+				format: Number,
+				default: 3,
+			},
+		},
 	},
 
 	cache: {
