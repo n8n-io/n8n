@@ -17,6 +17,7 @@ import {
 } from './GenericFunctions';
 
 import { DateTime } from 'luxon';
+import { gmailOutputInterface } from './interface/output';
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,6 +31,13 @@ export class GmailTrigger implements INodeType {
 		subtitle: '={{"Gmail Trigger"}}',
 		defaults: {
 			name: 'Gmail Trigger',
+		},
+		interface: {
+			output: {
+				default: {
+					default: gmailOutputInterface,
+				},
+			},
 		},
 		credentials: [
 			{

@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest } from './GenericFunctions';
-import { issueCreateOutputInterface } from './interface/output/issue/create';
+import { issueTriggerOutputInterface } from './interface/output';
 
 export class LinearTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,16 +29,7 @@ export class LinearTrigger implements INodeType {
 			resourceKey: '={{resources[0]}}',
 			output: {
 				issue: {
-					default: {
-						action: 'create',
-						type: '={{resources[0]}}',
-						createdAt: '@datetime',
-						data: issueCreateOutputInterface,
-						url: '@url',
-						updatedFrom: {},
-						webhookTimestamp: '@timestamp',
-						webhookId: '@uuid',
-					},
+					default: issueTriggerOutputInterface,
 				},
 			},
 		},

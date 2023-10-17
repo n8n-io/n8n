@@ -23,7 +23,7 @@ import {
 import { issueFields, issueOperations } from './IssueDescription';
 
 import { query } from './Queries';
-import { issueCreateOutputInterface } from './interface/output/issue/create';
+import { issueDeleteOutputInterface, issueGenericOutputInterface } from './interface/output';
 interface IGraphqlBody {
 	query: string;
 	variables: IDataObject;
@@ -45,7 +45,10 @@ export class Linear implements INodeType {
 		interface: {
 			output: {
 				issue: {
-					create: issueCreateOutputInterface,
+					create: issueGenericOutputInterface,
+					getAll: [issueGenericOutputInterface],
+					update: issueGenericOutputInterface,
+					delete: issueDeleteOutputInterface,
 				},
 			},
 		},

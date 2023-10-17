@@ -29,6 +29,10 @@ import {
 	responseModeProperty,
 } from './description';
 import { WebhookAuthorizationError } from './error';
+import {
+	webhookWithoutBodyOutputInterface,
+	webhookWithBodyOutputInterface,
+} from './interface/output';
 
 export class Webhook extends Node {
 	authPropertyName = 'authentication';
@@ -63,24 +67,12 @@ export class Webhook extends Node {
 			operationKey: '={{httpMethod}}',
 			output: {
 				default: {
-					get: {
-						headers: {
-							host: 'localhost:5678',
-							'user-agent': 'curl/7.79.1',
-							accept: '*/*',
-						},
-						params: {},
-						query: {},
-					},
-					post: {
-						headers: {
-							host: 'localhost:5678',
-							'user-agent': 'curl/7.79.1',
-							accept: '*/*',
-						},
-						params: {},
-						query: {},
-					},
+					GET: webhookWithoutBodyOutputInterface,
+					HEAD: webhookWithoutBodyOutputInterface,
+					POST: webhookWithBodyOutputInterface,
+					DELETE: webhookWithBodyOutputInterface,
+					PATCH: webhookWithBodyOutputInterface,
+					PUT: webhookWithBodyOutputInterface,
 				},
 			},
 		},

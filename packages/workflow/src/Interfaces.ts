@@ -1562,14 +1562,26 @@ export interface INodeOutputConfiguration {
 	type: ConnectionTypes;
 }
 
-export type INodeTypeDataInterfaceType =
+export type INodeTypeDataGeneratedInterfaceType =
 	| 'string'
+	| 'username'
+	| 'name'
+	| 'firstName'
+	| 'lastName'
+	| 'title'
+	| 'word'
+	| 'sentence'
+	| 'paragraph'
 	| 'number'
 	| 'boolean'
+	| 'uuid'
 	| 'datetime'
-	| 'timestamp'
-	| 'string[]'
-	| 'number[]'
+	| 'url'
+	| 'timestamp';
+
+export type INodeTypeDataInterfaceType =
+	| undefined
+	| null
 	| string
 	| string[]
 	| number
@@ -1578,14 +1590,14 @@ export type INodeTypeDataInterfaceType =
 	| boolean[];
 
 export interface INodeTypeDataInterface {
-	[key: string]: INodeTypeDataInterfaceType | INodeTypeDataInterface;
+	[key: string]: INodeTypeDataInterfaceType | INodeTypeDataInterface | INodeTypeDataInterface[];
 }
 
 export interface INodeTypeInterface {
 	resourceKey?: string;
 	operationKey?: string;
-	input?: Record<string, Record<string, INodeTypeDataInterface>>;
-	output?: Record<string, Record<string, INodeTypeDataInterface>>;
+	input?: Record<string, Record<string, INodeTypeDataInterface | INodeTypeDataInterface[]>>;
+	output?: Record<string, Record<string, INodeTypeDataInterface | INodeTypeDataInterface[]>>;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
