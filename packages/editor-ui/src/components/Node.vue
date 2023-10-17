@@ -175,6 +175,7 @@ import {
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	NOT_DUPLICATABE_NODE_TYPES,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -228,6 +229,7 @@ export default defineComponent({
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
+			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
 			return (
 				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
 			);
@@ -499,7 +501,7 @@ export default defineComponent({
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = getStyleTokenValue('--color-secondary');
+					borderColor = getStyleTokenValue('--color-canvas-node-pinned-border');
 				} else if (this.nodeExecutionStatus === 'unknown') {
 					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
@@ -777,7 +779,7 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: $node-background-default;
+			background-color: var(--color-canvas-node-background);
 			&.executing {
 				background-color: $node-background-executing !important;
 
@@ -1041,12 +1043,7 @@ export default defineComponent({
 	--node--selected--box-shadow-radius: 8px;
 
 	display: block;
-	background-color: hsla(
-		var(--color-foreground-base-h),
-		var(--color-foreground-base-s),
-		var(--color-foreground-base-l),
-		60%
-	);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;

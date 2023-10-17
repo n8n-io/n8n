@@ -210,12 +210,6 @@ export default defineComponent({
 			}
 			return;
 		},
-		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
-			if (theme) {
-				window.document.body.classList.add(`theme-${theme}`);
-			}
-		},
 		async postAuthenticate() {
 			if (this.postAuthenticateDone) {
 				return;
@@ -233,7 +227,6 @@ export default defineComponent({
 		},
 	},
 	async created() {
-		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
 		await this.authenticate();

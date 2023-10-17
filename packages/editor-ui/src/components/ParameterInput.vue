@@ -1308,7 +1308,7 @@ export default defineComponent({
 }
 
 .droppable {
-	--input-border-color: var(--color-secondary);
+	--input-border-color: var(--color-ndv-droppable-parameter);
 	--input-border-style: dashed;
 
 	textarea,

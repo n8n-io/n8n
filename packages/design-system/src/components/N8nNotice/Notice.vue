@@ -95,7 +95,7 @@ export default defineComponent({
 .notice {
 	font-size: var(--font-size-2xs);
 	display: flex;
-	color: var(--custom-font-black);
+	color: var(--color-notice-font);
 	margin: var(--notice-margin, var(--spacing-s) 0);
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);

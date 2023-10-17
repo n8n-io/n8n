@@ -566,7 +566,7 @@ export const getBackgroundStyles = (
 	if (executionPreview) {
 		return {
 			'background-image':
-				'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
+				'linear-gradient(135deg, var(--color-canvas-read-only-line) 25%, var(--color-canvas-background) 25%, var(--color-canvas-background) 50%, var(--color-canvas-read-only-line) 50%, var(--color-canvas-read-only-line) 75%, var(--color-canvas-background) 75%, var(--color-canvas-background) 100%)',
 			'background-size': `${squareSize}px ${squareSize}px`,
 			'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 		};
