@@ -6,6 +6,7 @@ import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/c
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useToast } from '@/composables';
+import { filterAndHighlightDeep } from '@/utils/ndvUtils';
 
 export interface IPinDataContext {
 	node: INodeUi;
@@ -24,9 +25,7 @@ export const pinData = defineComponent({
 		pinData(): IPinData[string] | undefined {
 			return this.node
 				? this.search
-					? this.workflowsStore
-							.pinDataByNodeName(this.node.name)
-							?.filter((pinData) => JSON.stringify(pinData).includes(this.search))
+					? filterAndHighlightDeep(this.search, this.workflowsStore.pinDataByNodeName(this.node.name))
 					: this.workflowsStore.pinDataByNodeName(this.node.name)
 				: undefined;
 		},

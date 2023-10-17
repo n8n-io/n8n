@@ -60,8 +60,8 @@
 							[$style.dragged]: draggingPath === node.path,
 						}"
 						class="ph-no-capture"
-						>{{ getContent(node.content) }}</span
-					>
+						v-html="getContent(node.content)"
+					/>
 				</template>
 			</vue-json-pretty>
 		</draggable>
@@ -161,7 +161,7 @@ export default defineComponent({
 			});
 		},
 		onDragStart(el: HTMLElement) {
-			if (el && el.dataset.path) {
+			if (el?.dataset.path) {
 				this.draggingPath = el.dataset.path;
 			}
 
