@@ -87,6 +87,11 @@
 		var(--prim-color-secondary-s),
 		calc(var(--prim-color-secondary-l) + 10%)
 	);
+	--prim-color-secondary-tint-200: hsl(
+		var(--prim-color-secondary-h),
+		var(--prim-color-secondary-s),
+		calc(var(--prim-color-secondary-l) + 20%)
+	);
 	--prim-color-secondary-tint-300: hsl(
 		var(--prim-color-secondary-h),
 		var(--prim-color-secondary-s),

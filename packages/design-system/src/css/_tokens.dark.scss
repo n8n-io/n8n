@@ -87,11 +87,11 @@
 	--color-code-tags-operator: var(--prim-color-primary0);
 	--color-code-tags-variable: var(--prim-color-alt-c-shade-100);
 	--color-code-tags-definition: var(--prim-color-alt-e-shade-150);
-	--color-json-default: var(-prim-color-secondary-shade-100);
-	--color-json-null: var(--prim-color-alt-c);
+	--color-json-default: var(--prim-color-secondary-tint-200);
+	--color-json-null: var(--prim-color-alt-c-tint-150);
 	--color-json-boolean: var(--prim-color-alt-a);
 	--color-json-number: var(--prim-color-alt-a);
-	--color-json-string: var(-prim-color-secondary-shade-100);
+	--color-json-string: var(--prim-color-secondary-tint-200);
 	--color-json-key: var(--prim-gray-670);
 	--color-json-brackets: var(--prim-gray-670);
 	--color-json-brackets-hover: var(--prim-color-alt-e);
