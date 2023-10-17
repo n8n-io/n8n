@@ -27,6 +27,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
+					:backgroundColor="node.parameters.color"
 					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
@@ -41,7 +42,10 @@
 				/>
 			</div>
 
-			<div v-show="showActions" class="sticky-options no-select-on-click">
+			<div
+				v-show="showActions"
+				:class="{ 'sticky-options': true, 'no-select-on-click': true, 'force-show': forceActions }"
+			>
 				<div
 					v-touch:tap="deleteNode"
 					class="option"
@@ -50,6 +54,37 @@
 				>
 					<font-awesome-icon icon="trash" />
 				</div>
+				<n8n-popover
+					effect="dark"
+					:popper-style="{ width: '208px' }"
+					trigger="click"
+					placement="top"
+					@show="onShowPopover"
+					@hide="onHidePopover"
+				>
+					<template #reference>
+						<div
+							class="option"
+							data-test-id="change-sticky-color"
+							:title="$locale.baseText('node.changeColor')"
+						>
+							<font-awesome-icon icon="ellipsis-v" />
+						</div>
+					</template>
+					<div class="content">
+						<div
+							class="color"
+							v-for="(color, index) in availableColors"
+							:key="index"
+							v-on:click="changeColor(color)"
+							:style="{
+								'background-color': color,
+								'border-width': color === node?.parameters.color ? '1px' : '0px',
+								'border-style': 'solid',
+							}"
+						></div>
+					</div>
+				</n8n-popover>
 			</div>
 		</div>
 	</div>
@@ -149,7 +184,10 @@ export default defineComponent({
 			return returnStyles;
 		},
 		showActions(): boolean {
-			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
+			return (
+				!(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing) ||
+				this.forceActions
+			);
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
@@ -157,15 +195,37 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			forceActions: false,
+			availableColors: [
+				'#fff5d6',
+				'#b1bccd',
+				'#efa79a',
+				'#f6c67d',
+				'#8ed09c',
+				'#8cc2f3',
+				'#cbaaf9',
+			],
 			isResizing: false,
 			isTouchActive: false,
 		};
 	},
 	methods: {
+		onShowPopover() {
+			this.forceActions = true;
+		},
+		onHidePopover() {
+			this.forceActions = false;
+		},
 		async deleteNode() {
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
+		},
+		changeColor(color: string) {
+			this.workflowsStore.updateNodeProperties({
+				name: this.name,
+				properties: { parameters: { ...this.node.parameters, color } },
+			});
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
@@ -299,6 +359,10 @@ export default defineComponent({
 			}
 		}
 
+		.force-show {
+			display: flex;
+		}
+
 		&.is-touch-device .sticky-options {
 			left: -25px;
 			width: 150px;
@@ -321,5 +385,23 @@ export default defineComponent({
 	left: -8px;
 	top: -8px;
 	z-index: 0;
+}
+
+.content {
+	display: flex;
+	flex-direction: row;
+	width: fit-content;
+	gap: var(--spacing-2xs);
+}
+
+.color {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border-color: var(--color-primary-shade-1);
+
+	&:hover {
+		cursor: pointer;
+	}
 }
 </style>
