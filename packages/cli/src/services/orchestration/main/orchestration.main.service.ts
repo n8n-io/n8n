@@ -101,4 +101,27 @@ export class OrchestrationMainService extends OrchestrationService {
 			command: 'reloadExternalSecretsProviders',
 		});
 	}
+
+	async broadCastWorkflowWasUpdated(workflowId: string, pushSessionId: string = '') {
+		if (!this.sanityCheck()) return;
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowWasUpdated',
+			payload: {
+				workflowId,
+				pushSessionId,
+			},
+		});
+	}
+
+	async workflowWasActivated(workflowId: string, targets: string[], pushSessionId: string = '') {
+		if (!this.sanityCheck()) return;
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowWasActivated',
+			targets,
+			payload: {
+				workflowId,
+				pushSessionId,
+			},
+		});
+	}
 }

@@ -5,6 +5,9 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import Container from 'typedi';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
+import * as Db from '@/Db';
+import { ActiveWorkflowRunner } from '../../../ActiveWorkflowRunner';
+import { OrchestrationMainService } from './orchestration.main.service';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.get('redis.queueModeId');
@@ -50,6 +53,7 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 				await Container.get(MessageEventBus).restart();
+				break;
 			case 'reloadExternalSecretsProviders':
 				if (!debounceMessageReceiver(message, 200)) {
 					message.payload = {
@@ -58,6 +62,52 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
+				break;
+			case 'workflowWasUpdated':
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = {
+						result: 'debounced',
+					};
+					return message;
+				}
+				// only the current leader should need to re-activate workflows
+				if (!message.payload?.workflowId || message.senderId === queueModeId) {
+					return message;
+				}
+				if (Container.get(OrchestrationMainService).isLeader) {
+					try {
+						const workflow = await Db.collections.Workflow.findOne({
+							where: {
+								id: message.payload.workflowId as string,
+							},
+							select: ['id', 'active'],
+						});
+						// await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
+						if (workflow) {
+							await Container.get(ActiveWorkflowRunner).remove(workflow.id);
+							await Container.get(ActiveWorkflowRunner).add(
+								workflow.id,
+								workflow.active ? 'update' : 'activate',
+							);
+							await Container.get(OrchestrationMainService).workflowWasActivated(
+								workflow.id,
+								[message.senderId],
+								(message.payload.pushSessionId as string) ?? '',
+							);
+						}
+					} catch (error) {
+						LoggerProxy.error(
+							`Error while trying to handle workflow update: ${(error as Error).message}`,
+						);
+					}
+				}
+				break;
+			case 'workflowWasActivated':
+				if (!message.payload?.workflowId || !message.payload?.pushSessionId) {
+					return message;
+				}
+				// TODO: inform frontend of workflow activation result
+				break;
 			default:
 				break;
 		}

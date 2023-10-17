@@ -36,6 +36,7 @@ import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
+import { OrchestrationMainService } from '../services/orchestration/main/orchestration.main.service';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -332,6 +333,9 @@ export class WorkflowsService {
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
+				await Container.get(OrchestrationMainService).broadCastWorkflowWasUpdated(
+					updatedWorkflow.id,
+				);
 				await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
 				await Container.get(ActiveWorkflowRunner).add(
 					workflowId,
