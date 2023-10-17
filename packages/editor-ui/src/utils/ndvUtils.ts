@@ -30,9 +30,5 @@ export function filterAndHighlightDeep<T>(searchTerm: string, data?: T[]): T[] {
 	});
 
 	// Highlight the matches within the filtered objects
-	const highlightedArray: T[] = filteredAndHighlighted?.map((item) => {
-		return searchAndHighlight(item);
-	});
-
-	return highlightedArray;
+	return filteredAndHighlighted?.map(searchAndHighlight);
 }
