@@ -38,15 +38,11 @@
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
-						$locale.baseText('ndv.trigger.webhookBasedNode.listening')
+						listeningTitle
 					}}</n8n-text>
 					<div :class="[$style.shake, 'mb-xs']">
 						<n8n-text tag="div">
-							{{
-								$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
-									interpolate: { service: serviceName },
-								})
-							}}
+							{{ listeningHint }}
 						</n8n-text>
 					</div>
 					<NodeExecuteButton
@@ -108,7 +104,12 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { VIEWS, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import {
+	VIEWS,
+	WEBHOOK_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	FORM_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { getTriggerNodeServiceName } from '@/utils';
@@ -150,7 +151,7 @@ export default defineComponent({
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
-			return this.workflowsStore.getNodeByName(this.nodeName);
+			return this.workflowsStore.getNodeByName(this.nodeName as string);
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
@@ -215,6 +216,18 @@ export default defineComponent({
 		},
 		isWorkflowActive(): boolean {
 			return this.workflowsStore.isWorkflowActive;
+		},
+		listeningTitle(): string {
+			return this.nodeType?.name === FORM_TRIGGER_NODE_TYPE
+				? this.$locale.baseText('ndv.trigger.webhookNode.formTrigger.listening')
+				: this.$locale.baseText('ndv.trigger.webhookNode.listening');
+		},
+		listeningHint(): string {
+			return this.nodeType?.name === FORM_TRIGGER_NODE_TYPE
+				? this.$locale.baseText('ndv.trigger.webhookBasedNode.formTrigger.serviceHint')
+				: this.$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
+						interpolate: { service: this.serviceName },
+				  });
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
