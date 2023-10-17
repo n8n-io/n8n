@@ -701,9 +701,3 @@ export default defineComponent({
 	color: var(--color-warning);
 }
 </style>
-
-<style lang="scss" global>
-.highlight {
-  background: orange;
-}
-</style>
