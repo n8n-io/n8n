@@ -88,6 +88,12 @@ function updateTheme(theme: ThemeOption) {
 	}
 }
 
+function getPreferredTheme(): ThemeOption {
+	const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+	return isDarkMode ? 'dark' : 'light';
+}
+
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
@@ -225,11 +231,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannerStack: [],
 	}),
 	getters: {
-		logo() {
+		appliedTheme(): 'dark' | 'light' {
+			return this.theme === 'system' ? getPreferredTheme() : this.theme;
+		},
+		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
+			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
+
 			return releaseChannel === 'stable'
-				? 'n8n-logo-expanded.svg'
-				: `n8n-${releaseChannel}-logo.svg`;
+				? `n8n-logo-expanded${type}`
+				: `n8n-${releaseChannel}-logo${type}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
