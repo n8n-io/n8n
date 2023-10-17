@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { readFile, stat } from 'fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
-
-import { UnknownBinaryDataManager, InvalidBinaryDataMode } from './errors';
+import { UnknownManagerError, InvalidModeError } from './errors';
+import { areConfigModes, toBuffer } from './utils';
 import { LogCatch } from '../decorators/LogCatch.decorator';
-import { areValidModes, toBuffer } from './utils';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -15,20 +14,31 @@ import type { INodeExecutionData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
-	private mode: BinaryData.Mode = 'default';
+	private mode: BinaryData.ServiceMode = 'default';
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
 	async init(config: BinaryData.Config) {
-		if (!areValidModes(config.availableModes)) throw new InvalidBinaryDataMode();
+		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
-		this.mode = config.mode;
+		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
 		if (config.availableModes.includes('filesystem')) {
 			const { FileSystemManager } = await import('./FileSystem.manager');
+
 			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
+			this.managers['filesystem-v2'] = this.managers.filesystem;
 
 			await this.managers.filesystem.init();
+		}
+
+		if (config.availableModes.includes('s3')) {
+			const { ObjectStoreManager } = await import('./ObjectStore.manager');
+			const { ObjectStoreService } = await import('../ObjectStore/ObjectStore.service.ee');
+
+			this.managers.s3 = new ObjectStoreManager(Container.get(ObjectStoreService));
+
+			await this.managers.s3.init();
 		}
 	}
 
@@ -189,9 +199,6 @@ export class BinaryDataService {
 	//         private methods
 	// ----------------------------------
 
-	/**
-	 * Create an identifier `${mode}:{fileId}` for `IBinaryData['id']`.
-	 */
 	private createBinaryDataId(fileId: string) {
 		return `${this.mode}:${fileId}`;
 	}
@@ -242,6 +249,6 @@ export class BinaryDataService {
 
 		if (manager) return manager;
 
-		throw new UnknownBinaryDataManager(mode);
+		throw new UnknownManagerError(mode);
 	}
 }

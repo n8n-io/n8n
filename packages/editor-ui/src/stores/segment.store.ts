@@ -57,7 +57,11 @@ export const useSegment = defineStore('segment', () => {
 			const nodeRunData = runData.data.resultData.runData[nodeName];
 			const node = workflowsStore.getNodeByName(nodeName);
 			const nodeTypeName = node ? node.type : 'unknown';
-			if (nodeRunData[0].data && nodeRunData[0].data.main.some((out) => out && out?.length > 1)) {
+			if (
+				nodeRunData[0].data &&
+				nodeRunData[0].data.main &&
+				nodeRunData[0].data.main.some((out) => out && out?.length > 1)
+			) {
 				multipleOutputNodes.add(nodeTypeName);
 			}
 			if (node && !node.disabled) {

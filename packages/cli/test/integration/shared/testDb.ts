@@ -118,7 +118,7 @@ export async function terminate() {
 export async function truncate(collections: CollectionName[]) {
 	const [tag, rest] = separate(collections, (c) => c === 'Tag');
 
-	if (tag) {
+	if (tag.length) {
 		await Container.get(TagRepository).delete({});
 		await Container.get(WorkflowTagMappingRepository).delete({});
 	}
@@ -360,11 +360,11 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(
+export async function createExecution(
 	attributes: Partial<ExecutionEntity & ExecutionData>,
 	workflow: WorkflowEntity,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
 
 	const execution = await Db.collections.Execution.save({
 		finished: finished ?? true,
@@ -374,6 +374,7 @@ async function createExecution(
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
 		status,
+		deletedAt,
 	});
 
 	await Db.collections.ExecutionData.save({
@@ -608,6 +609,22 @@ export async function createWorkflowHistoryItem(
 		...(data ?? {}),
 		workflowId,
 	});
+}
+
+export async function createManyWorkflowHistoryItems(
+	workflowId: string,
+	count: number,
+	time?: Date,
+) {
+	const baseTime = (time ?? new Date()).valueOf();
+	return Promise.all(
+		[...Array(count)].map(async (_, i) =>
+			createWorkflowHistoryItem(workflowId, {
+				createdAt: new Date(baseTime + i),
+				updatedAt: new Date(baseTime + i),
+			}),
+		),
+	);
 }
 
 // ----------------------------------

@@ -19,6 +19,9 @@ const node: INode = {
 
 const fakeExecute = (nodeParameters: IDataObject[]) => {
 	const fakeExecuteFunction = {
+		getInputData() {
+			return [{ json: {} }];
+		},
 		getNodeParameter(
 			parameterName: string,
 			itemIndex: number,
@@ -90,6 +93,9 @@ const responseData = {
 describe('Test MicrosoftExcelV2, prepareOutput', () => {
 	const thisArg = mock<IExecuteFunctions>({
 		helpers: mock({ constructExecutionMetaData }),
+		getInputData() {
+			return [{ json: {} }];
+		},
 	});
 
 	it('should return empty array', () => {

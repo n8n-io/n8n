@@ -28,7 +28,7 @@ onMounted(() => {
 });
 
 function goToUpgrade() {
-	uiStore.goToUpgrade('external-secrets', 'upgrade-external-secrets');
+	void uiStore.goToUpgrade('external-secrets', 'upgrade-external-secrets');
 }
 </script>
 

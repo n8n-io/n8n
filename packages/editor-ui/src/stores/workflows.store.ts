@@ -125,7 +125,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		workflowsById: {},
 		subWorkflowExecutionError: null,
 		activeExecutionId: null,
-		executingNode: null,
+		executingNode: [],
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
 		isInDebugMode: false,
@@ -261,6 +261,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		isNodePristine(): (name: string) => boolean {
 			return (nodeName: string) =>
 				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine;
+		},
+		isNodeExecuting(): (nodeName: string) => boolean {
+			return (nodeName: string) => this.executingNode.includes(nodeName);
 		},
 		// Executions getters
 		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
@@ -434,8 +437,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			this.setWorkflowTagIds([]);
 
 			this.activeExecutionId = null;
-			this.executingNode = null;
+			this.executingNode.length = 0;
 			this.executionWaitingForWebhook = false;
+		},
+
+		addExecutingNode(nodeName: string): void {
+			this.executingNode.push(nodeName);
+		},
+
+		removeExecutingNode(nodeName: string): void {
+			this.executingNode = this.executingNode.filter((name) => name !== nodeName);
 		},
 
 		setWorkflowId(id: string): void {
@@ -1374,16 +1385,17 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		// Binary data
 		getBinaryUrl(
-			dataPath: string,
-			mode: 'view' | 'download',
+			binaryDataId: string,
+			action: 'view' | 'download',
 			fileName: string,
 			mimeType: string,
 		): string {
 			const rootStore = useRootStore();
 			let restUrl = rootStore.getRestUrl;
 			if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
-			const url = new URL(`${restUrl}/data/${dataPath}`);
-			url.searchParams.append('mode', mode);
+			const url = new URL(`${restUrl}/binary-data`);
+			url.searchParams.append('id', binaryDataId);
+			url.searchParams.append('action', action);
 			if (fileName) url.searchParams.append('fileName', fileName);
 			if (mimeType) url.searchParams.append('mimeType', mimeType);
 			return url.toString();

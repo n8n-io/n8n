@@ -15,7 +15,10 @@ describe('Node Creator', () => {
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
-		nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+		nodeCreatorFeature.getters
+			.nodeCreator()
+			.contains('What triggers this workflow?')
+			.should('be.visible');
 	});
 
 	it('should navigate subcategory', () => {
@@ -73,7 +76,10 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
 
 		nodeCreatorFeature.getters.getCreatorItem('Add another trigger').click();
-		nodeCreatorFeature.getters.nodeCreator().contains('Select a trigger').should('be.visible');
+		nodeCreatorFeature.getters
+			.nodeCreator()
+			.contains('What triggers this workflow?')
+			.should('be.visible');
 		nodeCreatorFeature.getters.activeSubcategory().find('button').should('exist');
 		nodeCreatorFeature.getters.activeSubcategory().find('button').click();
 		nodeCreatorFeature.getters.nodeCreator().contains('What happens next?').should('be.visible');
@@ -315,13 +321,42 @@ describe('Node Creator', () => {
 		});
 	});
 
+	it('should correctly append a No Op node when Loop Over Items node is added (from add button)', () => {
+		nodeCreatorFeature.actions.openNodeCreator();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
+	it('should correctly append a No Op node when Loop Over Items node is added (from connection)', () => {
+		WorkflowPage.actions.addNodeToCanvas('Manual');
+		cy.get('.plus-endpoint').should('be.visible').click();
+
+		nodeCreatorFeature.getters.searchBar().find('input').type('Loop Over Items');
+		nodeCreatorFeature.getters.getCreatorItem('Loop Over Items').click();
+		NDVModal.actions.close();
+
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
+
+		WorkflowPage.getters.getConnectionBetweenNodes('Loop Over Items', 'Replace Me').should('exist');
+		WorkflowPage.getters.getConnectionBetweenNodes('Replace Me', 'Loop Over Items').should('exist');
+	});
+
 	it('should have most relevenat nodes on top when searching', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('email');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Email Trigger (IMAP)');
 
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Set');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
@@ -329,7 +364,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().eq(1).should('have.text', 'Switch');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('sw');
-		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit Fields (Set)');
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('Edit F');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'Edit Fields (Set)');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('i');
@@ -422,10 +457,16 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'S3');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('no op');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'No Operation, do nothing');
+		nodeCreatorFeature.getters
+			.nodeItemName()
+			.first()
+			.should('have.text', 'No Operation, do nothing');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('do no');
-		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'No Operation, do nothing');
+		nodeCreatorFeature.getters
+			.nodeItemName()
+			.first()
+			.should('have.text', 'No Operation, do nothing');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('htt');
 		nodeCreatorFeature.getters.nodeItemName().first().should('have.text', 'HTTP Request');

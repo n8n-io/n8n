@@ -15,6 +15,7 @@ import Container, { Service } from 'typedi';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
+import { ObjectStoreService } from 'n8n-core';
 
 type FeatureReturnType = Partial<
 	{
@@ -103,6 +104,18 @@ export class License {
 				command: 'reloadLicense',
 			});
 		}
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = _features['feat:binaryDataS3'];
+
+		if (isS3Selected && isS3Available && !isS3Licensed) {
+			this.logger.debug(
+				'License changed with no support for external storage - blocking writes on object store. To restore writes, please upgrade to a license that supports this feature.',
+			);
+
+			Container.get(ObjectStoreService).setReadonly(true);
+		}
 	}
 
 	async saveCertStr(value: TLicenseBlock): Promise<void> {
@@ -178,6 +191,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.DEBUG_IN_EDITOR);
 	}
 
+	isBinaryDataS3Licensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+	}
+
 	isVariablesEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.VARIABLES);
 	}
@@ -242,6 +259,12 @@ export class License {
 
 	getVariablesLimit() {
 		return this.getFeatureValue(LICENSE_QUOTAS.VARIABLES_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+	}
+
+	getWorkflowHistoryPruneLimit() {
+		return (
+			this.getFeatureValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA
+		);
 	}
 
 	getPlanName(): string {

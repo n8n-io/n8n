@@ -12,6 +12,7 @@
 					:label="buttonLabel"
 					:type="type"
 					:size="size"
+					:icon="isFormTriggerNode && 'flask'"
 					:transparentBackground="transparent"
 					@click="onClick"
 				/>
@@ -23,7 +24,12 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, MODAL_CONFIRM } from '@/constants';
+import {
+	WEBHOOK_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	MODAL_CONFIRM,
+	FORM_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { workflowRun } from '@/mixins/workflowRun';
@@ -83,10 +89,9 @@ export default defineComponent({
 		},
 		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode;
 			return (
 				this.workflowRunning &&
-				(executingNode === this.node.name || triggeredNode === this.node.name)
+				(this.workflowsStore.isNodeExecuting(this.node.name) || triggeredNode === this.node.name)
 			);
 		},
 		workflowRunning(): boolean {
@@ -97,6 +102,9 @@ export default defineComponent({
 		},
 		isManualTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
+		},
+		isFormTriggerNode(): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === FORM_TRIGGER_NODE_TYPE);
 		},
 		isPollingTypeNode(): boolean {
 			return !!this.nodeType?.polling;
@@ -169,11 +177,20 @@ export default defineComponent({
 				return this.$locale.baseText('ndv.execute.listenForTestEvent');
 			}
 
+			if (this.isFormTriggerNode) {
+				return this.$locale.baseText('ndv.execute.testStep');
+			}
+
 			if (this.isPollingTypeNode || this.nodeType?.mockManualExecution) {
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode) {
+			if (
+				this.isTriggerNode &&
+				!this.isScheduleTrigger &&
+				!this.isManualTriggerNode &&
+				!this.isFormTriggerNode
+			) {
 				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
@@ -224,7 +241,10 @@ export default defineComponent({
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);
 					await this.$externalHooks().run('nodeExecuteButton.onClick', telemetryPayload);
 
-					await this.runWorkflow(this.nodeName, 'RunData.ExecuteNodeButton');
+					await this.runWorkflow({
+						destinationNode: this.nodeName,
+						source: 'RunData.ExecuteNodeButton',
+					});
 					this.$emit('execute');
 				}
 			}

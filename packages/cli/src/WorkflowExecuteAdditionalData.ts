@@ -32,6 +32,7 @@ import type {
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
+	NodeOperationError,
 	Workflow,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -46,6 +47,7 @@ import type {
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
+	IPushDataType,
 	ExecutionPayload,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -68,6 +70,41 @@ import {
 import { restoreBinaryDataId } from './executionLifecycleHooks/restoreBinaryDataId';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
+
+export function objectToError(errorObject: unknown, workflow: Workflow): Error {
+	// TODO: Expand with other error types
+	if (errorObject instanceof Error) {
+		// If it's already an Error instance, return it as is.
+		return errorObject;
+	} else if (errorObject && typeof errorObject === 'object' && 'message' in errorObject) {
+		// If it's an object with a 'message' property, create a new Error instance.
+		let error: Error | undefined;
+		if ('node' in errorObject) {
+			const node = workflow.getNode((errorObject.node as { name: string }).name);
+			if (node) {
+				error = new NodeOperationError(
+					node,
+					errorObject as unknown as Error,
+					errorObject as object,
+				);
+			}
+		}
+
+		if (error === undefined) {
+			error = new Error(errorObject.message as string);
+		}
+
+		if ('stack' in errorObject) {
+			// If there's a 'stack' property, set it on the new Error instance.
+			error.stack = errorObject.stack as string;
+		}
+
+		return error;
+	} else {
+		// If it's neither an Error nor an object with a 'message' property, create a generic Error.
+		return new Error('An error occurred');
+	}
+}
 
 /**
  * Checks if there was an error and if errorWorkflow or a trigger is defined. If so it collects
@@ -369,6 +406,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 							},
 							executionData: {
 								contextData: {},
+								metadata: {},
 								nodeExecutionStack: [],
 								waitingExecution: {},
 								waitingExecutionSource: {},
@@ -447,7 +485,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					workflowId: this.workflowData.id,
 				});
 
-				if (this.mode === 'webhook' && config.getEnv('binaryDataManager.mode') === 'filesystem') {
+				if (this.mode === 'webhook' && config.getEnv('binaryDataManager.mode') !== 'default') {
 					await restoreBinaryDataId(fullRunData, this.executionId);
 				}
 
@@ -709,6 +747,7 @@ export async function getRunData(
 		},
 		executionData: {
 			contextData: {},
+			metadata: {},
 			nodeExecutionStack,
 			waitingExecution: {},
 			waitingExecutionSource: {},
@@ -743,7 +782,7 @@ export async function getWorkflowData(
 
 		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
-		if (workflowData === undefined) {
+		if (workflowData === undefined || workflowData === null) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
 	} else {
@@ -910,11 +949,14 @@ async function executeWorkflow(
 			executionId,
 			fullExecutionData,
 		);
-		throw {
-			...error,
-			stack: error.stack,
-			message: error.message,
-		};
+		throw objectToError(
+			{
+				...error,
+				stack: error.stack,
+				message: error.message,
+			},
+			workflow,
+		);
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
@@ -932,10 +974,13 @@ async function executeWorkflow(
 	// Workflow did fail
 	const { error } = data.data.resultData;
 	// eslint-disable-next-line @typescript-eslint/no-throw-literal
-	throw {
-		...error,
-		stack: error!.stack,
-	};
+	throw objectToError(
+		{
+			...error,
+			stack: error!.stack,
+		},
+		workflow,
+	);
 }
 
 export function setExecutionStatus(status: ExecutionStatus) {
@@ -951,8 +996,7 @@ export function setExecutionStatus(status: ExecutionStatus) {
 		});
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, messages: any[]) {
+export function sendDataToUI(type: string, data: IDataObject | IDataObject[]) {
 	const { sessionId } = this;
 	if (sessionId === undefined) {
 		return;
@@ -961,14 +1005,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 	// Push data to session which started workflow
 	try {
 		const pushInstance = Container.get(Push);
-		pushInstance.send(
-			'sendConsoleMessage',
-			{
-				source: `[Node: "${source}"]`,
-				messages,
-			},
-			sessionId,
-		);
+		pushInstance.send(type as IPushDataType, data, sessionId);
 	} catch (error) {
 		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 	}
