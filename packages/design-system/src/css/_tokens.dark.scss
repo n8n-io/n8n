@@ -246,8 +246,12 @@
 	--spacing-5xl: 16rem;
 }
 
+body[data-theme='dark'] {
+	@include theme;
+}
+
 @media (prefers-color-scheme: dark) {
-	body.theme-dark-beta {
+	body:not([data-theme]) {
 		@include theme;
 	}
 }

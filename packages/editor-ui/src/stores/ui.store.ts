@@ -37,6 +37,7 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
+	LOCAL_STORAGE_THEME,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -51,6 +52,7 @@ import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
+	ThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -63,10 +65,34 @@ import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
 
+let savedTheme: ThemeOption = 'system';
+try {
+	const value = localStorage.getItem(LOCAL_STORAGE_THEME) as ThemeOption;
+	if (['light', 'dark'].includes(value)) {
+		savedTheme = value;
+		addThemeToBody(savedTheme);
+	}
+} catch (e) {}
+
+function addThemeToBody(theme: ThemeOption) {
+	window.document.body.setAttribute('data-theme', theme);
+}
+
+function updateTheme(theme: ThemeOption) {
+	if (theme === 'system') {
+		window.document.body.removeAttribute('data-theme');
+		localStorage.removeItem(LOCAL_STORAGE_THEME);
+	} else {
+		addThemeToBody(theme);
+		localStorage.setItem(LOCAL_STORAGE_THEME, theme);
+	}
+}
+
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
+		theme: savedTheme,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
 				open: false,
@@ -377,6 +403,10 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
+		setTheme(theme: ThemeOption): void {
+			this.theme = theme;
+			updateTheme(theme);
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
