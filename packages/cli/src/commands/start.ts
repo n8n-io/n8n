@@ -237,8 +237,6 @@ export class Start extends BaseCommand {
 	async initOrchestration() {
 		if (config.get('executions.mode') === 'queue') {
 			const orchestrationMainService = Container.get(OrchestrationMainService);
-			await orchestrationMainService.init();
-			await Container.get(OrchestrationHandlerMainService).init();
 
 			orchestrationMainService.on(EVENT_LEADER_STATE_CHANGED, async () => {
 				if (orchestrationMainService.isLeader) {
@@ -247,6 +245,9 @@ export class Start extends BaseCommand {
 					await this.activeWorkflowRunner.removeAllNonWebhookTriggers();
 				}
 			});
+
+			await orchestrationMainService.init();
+			await Container.get(OrchestrationHandlerMainService).init();
 		}
 	}
 

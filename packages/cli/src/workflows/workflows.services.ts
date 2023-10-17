@@ -252,7 +252,12 @@ export class WorkflowsService {
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
 			// changed and so the changes would not take effect
-			await Container.get(ActiveWorkflowRunner).remove(workflowId);
+			if (
+				config.get('executions.mode') !== 'queue' ||
+				Container.get(OrchestrationMainService).isLeader
+			) {
+				await Container.get(ActiveWorkflowRunner).remove(workflowId);
+			}
 		}
 
 		const workflowSettings = workflow.settings ?? {};
@@ -333,14 +338,21 @@ export class WorkflowsService {
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await Container.get(OrchestrationMainService).broadCastWorkflowWasUpdated(
-					updatedWorkflow.id,
-				);
+				if (!Container.get(OrchestrationMainService).isLeader) {
+					await Container.get(OrchestrationMainService).broadCastWorkflowWasUpdated(
+						updatedWorkflow.id,
+					);
+				}
 				await Container.get(ExternalHooks).run('workflow.activate', [updatedWorkflow]);
-				await Container.get(ActiveWorkflowRunner).add(
-					workflowId,
-					shared.workflow.active ? 'update' : 'activate',
-				);
+				if (
+					config.get('executions.mode') !== 'queue' ||
+					Container.get(OrchestrationMainService).isLeader
+				) {
+					await Container.get(ActiveWorkflowRunner).add(
+						workflowId,
+						shared.workflow.active ? 'update' : 'activate',
+					);
+				}
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				// and revert the versionId change so UI remains consistent

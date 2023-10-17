@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -66,6 +66,7 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { webhookNotFoundErrorMessage } from './utils';
 import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
+import { WorkflowRepository } from './databases/repositories';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -95,10 +96,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		// NOTE
 		// Here I guess we can have a flag on the workflow table like hasTrigger
 		// so instead of pulling all the active webhooks just pull the actives that have a trigger
-		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
-			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
-		})) as IWorkflowDb[];
+		const workflowsData = await Container.get(WorkflowRepository).getAllActiveWorkflows();
 
 		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
 			// TODO: Deprecated and remove this flag
