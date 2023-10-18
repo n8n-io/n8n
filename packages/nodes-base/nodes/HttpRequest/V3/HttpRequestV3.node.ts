@@ -1040,7 +1040,7 @@ export class HttpRequestV3 implements INodeType {
 																	value: 'qs',
 																},
 															],
-															default: 'query',
+															default: 'qs',
 															description: 'Where the parameter should be set',
 														},
 														{
@@ -1361,14 +1361,8 @@ export class HttpRequestV3 implements INodeType {
 				gzip: true,
 				rejectUnauthorized: !allowUnauthorizedCerts || false,
 				followRedirect: false,
+				resolveWithFullResponse: true,
 			};
-
-			// When response format is set to auto-detect,
-			// we need to access to response header content-type
-			// and the only way is using "resolveWithFullResponse"
-			if (autoDetectResponseFormat || fullResponse) {
-				requestOptions.resolveWithFullResponse = true;
-			}
 
 			if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
 				requestOptions = { ...requestOptions, followAllRedirects: false };
@@ -1565,7 +1559,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.json = true;
 			}
 
-			// // Add Content Type if any are set
+			// Add Content Type if any are set
 			if (bodyContentType === 'raw') {
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
@@ -1785,7 +1779,20 @@ export class HttpRequestV3 implements INodeType {
 				false,
 			) as boolean;
 
-			for (let response of responses) {
+			// eslint-disable-next-line prefer-const
+			for (let [index, response] of Object.entries(responses)) {
+				if (this.getMode() === 'manual' && index === '0') {
+					// For manual executions save the first response in the context
+					// so that we can use it in the frontend and so make it easier for
+					// the users to create the required pagination expressions
+					const nodeContext = this.getContext('node');
+					if (pagination && pagination.paginationMode !== 'off') {
+						nodeContext.response = responseData.value[0];
+					} else {
+						nodeContext.response = responseData.value;
+					}
+				}
+
 				if (autoDetectResponseFormat) {
 					const responseContentType = response.headers['content-type'] ?? '';
 					if (responseContentType.includes('application/json')) {
@@ -1819,11 +1826,9 @@ export class HttpRequestV3 implements INodeType {
 					delete response.headers;
 					delete response.statusCode;
 					delete response.statusMessage;
+				}
+				if (!fullResponse) {
 					response = response.body;
-					requestOptions.resolveWithFullResponse = false;
-				} else if (pagination && pagination.paginationMode !== 'off' && !fullResponse) {
-					response = response.body;
-					requestOptions.resolveWithFullResponse = false;
 				}
 
 				if (responseFormat === 'file') {
@@ -1901,7 +1906,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				} else {
 					// responseFormat: 'json'
-					if (requestOptions.resolveWithFullResponse === true) {
+					if (fullResponse === true) {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
 							returnItem[property] = response[property];

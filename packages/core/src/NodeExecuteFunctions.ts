@@ -2593,8 +2593,7 @@ const getRequestHelperFunctions = (
 				source: null,
 			};
 
-			let count = 0;
-			let hashData = {
+			const hashData = {
 				identicalCount: 0,
 				previousHash: '',
 			};
@@ -2673,19 +2672,9 @@ const getRequestHelperFunctions = (
 					tempResponseData.body = newResponse.body;
 				}
 
-				additionalKeys.$response = newResponse;
-
-				if (this.getMode() === 'manual' && count++ === 0 && node.type === HTTP_REQUEST_NODE_TYPE) {
-					// For manual executions of the HTTP Request node save the first
-					// response in the context so that we can use it in the frontend
-					// and so make it easier for the users to create the required
-					// pagination expressions
-					const nodeContext = this.getContext('node');
-					nodeContext.response = newResponse;
-				}
-
 				responseData.push(tempResponseData);
 
+				additionalKeys.$response = newResponse;
 				additionalKeys.$count = additionalKeys.$count + 1;
 				if (
 					paginationOptions.maxRequests &&
