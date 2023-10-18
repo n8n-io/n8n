@@ -46,46 +46,44 @@ export class RssFeedReadTrigger implements INodeType {
 
 		const endDate = now;
 
-		try {
-			if (!feedUrl) {
-				throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
-			}
-
-			const parser = new Parser();
-
-			let feed: Parser.Output<IDataObject>;
-			try {
-				feed = await parser.parseURL(feedUrl);
-			} catch (error) {
-				if (error.code === 'ECONNREFUSED') {
-					throw new NodeOperationError(
-						this.getNode(),
-						`It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`,
-					);
-				}
-
-				throw new NodeOperationError(this.getNode(), error as Error);
-			}
-
-			const returnData: IDataObject[] = [];
-
-			if (feed.items) {
-				if (this.getMode() === 'manual') {
-					return [this.helpers.returnJsonArray(feed.items[0])];
-				}
-				feed.items.forEach((item) => {
-					if (Date.parse(item.isoDate as string) >= Date.parse(startDate)) {
-						returnData.push(item);
-					}
-				});
-			}
-			pollData.lastTimeChecked = endDate;
-			if (Array.isArray(returnData) && returnData.length !== 0) {
-				return [this.helpers.returnJsonArray(returnData)];
-			}
-			return null;
-		} catch (error) {
-			return null;
+		if (!feedUrl) {
+			throw new NodeOperationError(this.getNode(), 'The parameter "URL" has to be set!');
 		}
+
+		const parser = new Parser();
+
+		let feed: Parser.Output<IDataObject>;
+		try {
+			feed = await parser.parseURL(feedUrl);
+		} catch (error) {
+			if (error.code === 'ECONNREFUSED') {
+				throw new NodeOperationError(
+					this.getNode(),
+					`It was not possible to connect to the URL. Please make sure the URL "${feedUrl}" it is valid!`,
+				);
+			}
+
+			throw new NodeOperationError(this.getNode(), error as Error);
+		}
+
+		const returnData: IDataObject[] = [];
+
+		if (feed.items) {
+			if (this.getMode() === 'manual') {
+				return [this.helpers.returnJsonArray(feed.items[0])];
+			}
+			feed.items.forEach((item) => {
+				if (Date.parse(item.isoDate as string) >= Date.parse(startDate)) {
+					returnData.push(item);
+				}
+			});
+		}
+		pollData.lastTimeChecked = endDate;
+
+		if (Array.isArray(returnData) && returnData.length !== 0) {
+			return [this.helpers.returnJsonArray(returnData)];
+		}
+
+		return null;
 	}
 }
