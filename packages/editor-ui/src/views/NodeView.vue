@@ -1969,29 +1969,43 @@ export default defineComponent({
 					this.canvasStore.newNodeInsertPosition = null;
 				} else {
 					let yOffset = 0;
+					const workflow = this.getCurrentWorkflow();
 
 					if (lastSelectedConnection) {
 						const sourceNodeType = this.nodeTypesStore.getNodeType(
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
-						const offsets = [
-							[-100, 100],
-							[-140, 0, 140],
-							[-240, -100, 100, 240],
-						];
-						if (sourceNodeType && sourceNodeType.outputs.length > 1) {
-							const offset = offsets[sourceNodeType.outputs.length - 2];
-							const sourceOutputIndex = lastSelectedConnection.__meta
-								? lastSelectedConnection.__meta.sourceOutputIndex
-								: 0;
-							yOffset = offset[sourceOutputIndex];
+
+						if (sourceNodeType) {
+							const offsets = [
+								[-100, 100],
+								[-140, 0, 140],
+								[-240, -100, 100, 240],
+							];
+
+							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
+								workflow,
+								lastSelectedNode!,
+								sourceNodeType,
+							);
+							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+
+							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
+								(output) => output === NodeConnectionType.Main,
+							);
+
+							if (sourceNodeOutputMainOutputs.length > 1) {
+								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const sourceOutputIndex = lastSelectedConnection.__meta
+									? lastSelectedConnection.__meta.sourceOutputIndex
+									: 0;
+								yOffset = offset[sourceOutputIndex];
+							}
 						}
 					}
 
-					const workflow = this.getCurrentWorkflow();
-					const workflowNode = workflow.getNode(newNodeData.name);
-					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
+					const outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeData);
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
 						lastSelectedNode.type,
