@@ -26,11 +26,11 @@
 		},
 		{
 			"parameters": {
-				"filePath": "spreadsheet.csv"
+				"fileSelector": "spreadsheet.csv"
 			},
 			"id": "d7620053-eb3d-43dd-b2cd-d60d9a08a9cc",
 			"name": "Read Binary File",
-			"type": "n8n-nodes-base.readBinaryFile",
+			"type": "n8n-nodes-base.readBinaryFiles",
 			"typeVersion": 1,
 			"position": [
 				840,
