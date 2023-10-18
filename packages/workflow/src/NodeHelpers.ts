@@ -1073,6 +1073,7 @@ export function getNodeOutputs(
 		return [
 			...outputs,
 			{
+				category: 'error',
 				type: 'main',
 				displayName: 'Error',
 			},

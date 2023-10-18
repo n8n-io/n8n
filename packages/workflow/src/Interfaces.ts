@@ -1558,6 +1558,7 @@ export interface INodeInputConfiguration {
 }
 
 export interface INodeOutputConfiguration {
+	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;

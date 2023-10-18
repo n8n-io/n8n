@@ -27,6 +27,7 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
+import { getStyleTokenValue } from '@/utils';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -415,7 +416,7 @@ export const nodeBase = defineComponent({
 					hoverClass: 'dot-output-endpoint-hover',
 					connectionsDirected: true,
 					dragAllowedWhenFull: false,
-					...this.__getOutputConnectionStyle(outputName, nodeTypeData),
+					...this.__getOutputConnectionStyle(outputName, outputConfiguration, nodeTypeData),
 				};
 
 				const endpoint = this.instance.addEndpoint(
@@ -532,6 +533,7 @@ export const nodeBase = defineComponent({
 		},
 		__getOutputConnectionStyle(
 			connectionType: ConnectionTypes,
+			outputConfiguration: INodeOutputConfiguration,
 			nodeTypeData: INodeTypeDescription,
 		): EndpointOptions {
 			const type = 'output';
@@ -551,6 +553,18 @@ export const nodeBase = defineComponent({
 			});
 
 			if (connectionType === NodeConnectionType.Main) {
+				if (outputConfiguration.category === 'error') {
+					return {
+						paintStyle: {
+							...NodeViewUtils.getOutputEndpointStyle(
+								nodeTypeData,
+								this.__getEndpointColor(NodeConnectionType.Main),
+							),
+							fill: getStyleTokenValue('--color-danger', true),
+						},
+						cssClass: `dot-${type}-endpoint`,
+					};
+				}
 				return {
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
