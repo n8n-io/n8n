@@ -1,5 +1,3 @@
-import validator from 'validator';
-import { In } from 'typeorm';
 import { Service } from 'typedi';
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import {
@@ -22,7 +20,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { InternalHooks } from '../InternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { UserService } from '@/services/user.service';
 import { MfaService } from '@/Mfa/mfa.service';
@@ -160,65 +158,28 @@ export class AuthController {
 	 */
 	@Get('/resolve-signup-token')
 	async resolveSignupToken(req: UserRequest.ResolveSignUp) {
-		const { inviterId, inviteeId } = req.query;
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
-
 		if (!isWithinUsersLimit) {
-			this.logger.debug('Request to resolve signup token failed because of users quota reached', {
-				inviterId,
-				inviteeId,
-			});
+			this.logger.debug('Request to resolve signup token failed because of users quota reached');
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!inviterId || !inviteeId) {
+		const { token } = req.query;
+		if (!token) {
 			this.logger.debug(
-				'Request to resolve signup token failed because of missing user IDs in query string',
-				{ inviterId, inviteeId },
+				'Request to resolve signup token failed because of missing token in query string',
 			);
-			throw new BadRequestError('Invalid payload');
+			throw new BadRequestError('Invalid request');
 		}
 
-		// Postgres validates UUID format
-		for (const userId of [inviterId, inviteeId]) {
-			if (!validator.isUUID(userId)) {
-				this.logger.debug('Request to resolve signup token failed because of invalid user ID', {
-					userId,
-				});
-				throw new BadRequestError('Invalid userId');
-			}
-		}
+		const { invitee, inviter } = await this.userService.validateInvitationToken(token);
 
-		const users = await this.userService.findMany({
-			where: { id: In([inviterId, inviteeId]) },
-			relations: ['globalRole'],
-		});
-		if (users.length !== 2) {
-			this.logger.debug(
-				'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
-				{ inviterId, inviteeId },
-			);
-			throw new BadRequestError('Invalid invite URL');
-		}
-
-		const invitee = users.find((user) => user.id === inviteeId);
-		if (!invitee || invitee.password) {
-			this.logger.error('Invalid invite URL - invitee already setup', {
-				inviterId,
-				inviteeId,
-			});
-			throw new BadRequestError('The invitation was likely either deleted or already claimed');
-		}
-
-		const inviter = users.find((user) => user.id === inviterId);
 		if (!inviter?.email || !inviter?.firstName) {
 			this.logger.error(
 				'Request to resolve signup token failed because inviter does not exist or is not set up',
-				{
-					inviterId: inviter?.id,
-				},
+				{ inviterId: inviter?.id },
 			);
-			throw new BadRequestError('Invalid request');
+			throw new BadRequestError('Invalid invitation token');
 		}
 
 		void this.internalHooks.onUserInviteEmailClick({ inviter, invitee });

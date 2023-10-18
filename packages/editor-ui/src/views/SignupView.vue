@@ -78,27 +78,17 @@ export default defineComponent({
 			FORM_CONFIG,
 			loading: false,
 			inviter: null as null | { firstName: string; lastName: string },
-			inviterId: null as string | null,
-			inviteeId: null as string | null,
+			token: '' as string,
 		};
 	},
 	async mounted() {
-		const inviterId =
-			!this.$route.query.inviterId || typeof this.$route.query.inviterId !== 'string'
-				? null
-				: this.$route.query.inviterId;
-		const inviteeId =
-			!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string'
-				? null
-				: this.$route.query.inviteeId;
+		const token = this.$route.query.token;
 		try {
-			if (!inviterId || !inviteeId) {
+			if (!token) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
 			}
-			this.inviterId = inviterId;
-			this.inviteeId = inviteeId;
-
-			const invite = await this.usersStore.validateSignupToken({ inviteeId, inviterId });
+			this.token = token;
+			const invite = await this.usersStore.validateSignupToken({ token });
 			this.inviter = invite.inviter as { firstName: string; lastName: string };
 		} catch (e) {
 			this.showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
@@ -119,7 +109,7 @@ export default defineComponent({
 	},
 	methods: {
 		async onSubmit(values: { [key: string]: string | boolean }) {
-			if (!this.inviterId || !this.inviteeId) {
+			if (!this.token) {
 				this.showError(
 					new Error(this.$locale.baseText('auth.signup.tokenValidationError')),
 					this.$locale.baseText('auth.signup.setupYourAccountError'),
@@ -131,11 +121,9 @@ export default defineComponent({
 				this.loading = true;
 				await this.usersStore.signup({
 					...values,
-					inviterId: this.inviterId,
-					inviteeId: this.inviteeId,
+					token: this.token,
 				} as {
-					inviteeId: string;
-					inviterId: string;
+					token: string;
 					firstName: string;
 					lastName: string;
 					password: string;

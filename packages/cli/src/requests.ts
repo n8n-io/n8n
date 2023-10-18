@@ -295,17 +295,7 @@ export declare namespace PasswordResetRequest {
 export declare namespace UserRequest {
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
+	export type ResolveSignUp = AuthlessRequest<{}, {}, {}, { token: string }>;
 
 	export type Delete = AuthenticatedRequest<
 		{ id: string; email: string; identifier: string },
@@ -331,11 +321,11 @@ export declare namespace UserRequest {
 
 	export type Reinvite = AuthenticatedRequest<{ id: string }>;
 
-	export type Update = AuthlessRequest<
+	export type FinishSignUp = AuthlessRequest<
 		{ id: string },
 		{},
 		{
-			inviterId: string;
+			token: string;
 			firstName: string;
 			lastName: string;
 			password: string;

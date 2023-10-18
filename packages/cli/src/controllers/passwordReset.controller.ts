@@ -12,11 +12,7 @@ import {
 	UnauthorizedError,
 	UnprocessableRequestError,
 } from '@/ResponseHelper';
-import {
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
+import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
 import { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '@/auth/jwt';
@@ -124,14 +120,13 @@ export class PasswordResetController {
 
 		const url = this.userService.generatePasswordResetUrl(user);
 
-		const { id, firstName, lastName } = user;
+		const { firstName, lastName } = user;
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
 				passwordResetUrl: url,
-				domain: getInstanceBaseUrl(),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({
@@ -146,7 +141,7 @@ export class PasswordResetController {
 
 		this.logger.info('Sent password reset email successfully', { userId: user.id, email });
 		void this.internalHooks.onUserTransactionalEmail({
-			user_id: id,
+			user_id: user.id,
 			message_type: 'Reset password',
 			public_api: false,
 		});

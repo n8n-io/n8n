@@ -36,10 +36,6 @@ export function getInstanceBaseUrl(): string {
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 }
 
-export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
-	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
-}
-
 // TODO: Enforce at model level
 export function validatePassword(password?: string): string {
 	if (!password) {

@@ -6,6 +6,7 @@ import { Container, Service } from 'typedi';
 import config from '@/config';
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
+import { getInstanceBaseUrl } from '../UserManagementHelper';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName = 'invite' | 'passwordReset';
@@ -60,7 +61,10 @@ export class UserManagementMailer {
 		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
-			body: template(inviteEmailData),
+			body: template({
+				...inviteEmailData,
+				domain: getInstanceBaseUrl(),
+			}),
 		});
 
 		// If mailer does not exist it means mail has been disabled.
@@ -73,7 +77,10 @@ export class UserManagementMailer {
 		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
-			body: template(passwordResetData),
+			body: template({
+				...passwordResetData,
+				domain: getInstanceBaseUrl(),
+			}),
 		});
 
 		// If mailer does not exist it means mail has been disabled.

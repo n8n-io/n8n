@@ -87,49 +87,6 @@ export declare namespace WorkflowRequest {
 	type Activate = Get;
 }
 
-export declare namespace UserRequest {
-	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
-
-	export type ResolveSignUp = AuthlessRequest<
-		{},
-		{},
-		{},
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type SignUp = AuthenticatedRequest<
-		{ id: string },
-		{ inviterId?: string; inviteeId?: string }
-	>;
-
-	export type Delete = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ transferId?: string; includeRole: boolean }
-	>;
-
-	export type Get = AuthenticatedRequest<
-		{ id: string; email: string },
-		{},
-		{},
-		{ limit?: number; offset?: number; cursor?: string; includeRole?: boolean }
-	>;
-
-	export type Reinvite = AuthenticatedRequest<{ id: string }>;
-
-	export type Update = AuthlessRequest<
-		{ id: string },
-		{},
-		{
-			inviterId: string;
-			firstName: string;
-			lastName: string;
-			password: string;
-		}
-	>;
-}
-
 export declare namespace CredentialRequest {
 	type Create = AuthenticatedRequest<{}, {}, { type: string; name: string; data: IDataObject }, {}>;
 }
