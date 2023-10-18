@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { pipeline } from 'stream/promises';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -85,7 +84,12 @@ export class SpreadsheetFileV2 implements INodeType {
 					}
 
 					if (fileFormat === 'csv') {
+						const maxRowCount = options.maxRowCount as number;
 						const parser = createCSVParser({
+							delimiter: options.delimiter as string,
+							fromLine: options.fromLine as number,
+							bom: options.enableBOM as boolean,
+							to: maxRowCount > -1 ? maxRowCount : undefined,
 							columns: options.headerRow !== false,
 							onRecord: (record) => {
 								rows.push(record);
@@ -93,9 +97,18 @@ export class SpreadsheetFileV2 implements INodeType {
 						});
 						if (binaryData.id) {
 							const stream = await this.helpers.getBinaryStream(binaryData.id);
-							await pipeline(stream, parser);
+							await new Promise<void>(async (resolve, reject) => {
+								parser.on('error', reject);
+								parser.on('readable', () => {
+									stream.unpipe(parser);
+									stream.destroy();
+									resolve();
+								});
+								stream.pipe(parser);
+							});
 						} else {
 							parser.write(binaryData.data, BINARY_ENCODING);
+							parser.end();
 						}
 					} else {
 						let workbook: WorkBook;
