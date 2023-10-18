@@ -489,6 +489,9 @@ export default defineComponent({
 							type: 'error',
 						});
 						return;
+					} finally {
+						reader.onload = undefined;
+						inputRef.value = null;
 					}
 
 					nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
