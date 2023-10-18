@@ -202,6 +202,59 @@ export const optionsProperties: INodeProperties[] = [
 				description: 'Whether the first row of the file contains the header names',
 			},
 			{
+				displayName: 'Delimiter',
+				name: 'delimiter',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/operation': ['fromFile'],
+						'/fileFormat': ['csv'],
+					},
+				},
+				default: ',',
+				description: 'Set the field delimiter',
+			},
+			{
+				displayName: 'Starting Line',
+				name: 'fromLine',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'/operation': ['fromFile'],
+						'/fileFormat': ['csv'],
+					},
+				},
+				default: 0,
+				description: 'Start handling records from the requested line number',
+			},
+			{
+				displayName: 'Max Number of Rows to Load',
+				name: 'maxRowCount',
+				type: 'number',
+				displayOptions: {
+					show: {
+						'/operation': ['fromFile'],
+						'/fileFormat': ['csv'],
+					},
+				},
+				default: -1,
+				description: 'Stop handling records after the requested number of rows are read',
+			},
+			{
+				displayName: 'Exclude Byte Order Mark (BOM)',
+				name: 'enableBOM',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/operation': ['fromFile'],
+						'/fileFormat': ['csv'],
+					},
+				},
+				default: false,
+				description:
+					'Whether to detect and exclude the byte-order-mark from the CSV Input if present',
+			},
+			{
 				displayName: 'Include Empty Cells',
 				name: 'includeEmptyCells',
 				type: 'boolean',
