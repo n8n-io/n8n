@@ -1250,6 +1250,7 @@ export class WorkflowDataProxy {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			Duration,
 			...that.additionalKeys,
+			$getPairedItem: getPairedItem,
 
 			// deprecated
 			$jmespath: jmespathWrapper,

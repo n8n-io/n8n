@@ -943,6 +943,7 @@ export interface INode {
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	executeOnce?: boolean;
+	errorOutput?: boolean;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
@@ -1663,6 +1664,11 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
+	$getPairedItem: (
+		destinationNodeName: string,
+		incomingSourceData: ISourceData | null,
+		pairedItem: IPairedItemData,
+	) => INodeExecutionData | null;
 	constructor: any;
 }
 

@@ -941,6 +941,8 @@
 	"nodeSettings.alwaysOutputData.description": "If active, will output a single, empty item when the output would have been empty. Use to prevent the workflow finishing on this node.",
 	"nodeSettings.alwaysOutputData.displayName": "Always Output Data",
 	"nodeSettings.clickOnTheQuestionMarkIcon": "Click the '?' icon to open this node on n8n.io",
+	"nodeSettings.errorOutput.description": "If active, the node will output all errors via a separate \"Error\" output instead of the regular one",
+	"nodeSettings.errorOutput.displayName": "Error Output",
 	"nodeSettings.continueOnFail.description": "If active, the workflow continues even if this node's execution fails. When this occurs, the node passes along input data from previous nodes - so your workflow should account for unexpected output data.",
 	"nodeSettings.continueOnFail.displayName": "Continue On Fail",
 	"nodeSettings.docs": "Docs",

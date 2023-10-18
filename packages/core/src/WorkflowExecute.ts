@@ -36,6 +36,8 @@ import {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	NodeHelpers,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
@@ -1042,6 +1044,7 @@ export class WorkflowExecute {
 									node: executionNode.name,
 									workflowId: workflow.id,
 								});
+
 								const runNodeData = await workflow.runNode(
 									executionData,
 									this.runExecutionData,
@@ -1051,6 +1054,110 @@ export class WorkflowExecute {
 									this.mode,
 								);
 								nodeSuccessData = runNodeData.data;
+
+								if (
+									nodeSuccessData &&
+									executionData.node.continueOnFail &&
+									executionData.node.errorOutput
+								) {
+									// If errorOutput is activated check all the output items for error data.
+									// If any is found, route them to the last output as that will be the
+									// error output.
+
+									const nodeType = workflow.nodeTypes.getByNameAndVersion(
+										executionData.node.type,
+										executionData.node.typeVersion,
+									);
+									const outputs = NodeHelpers.getNodeOutputs(
+										workflow,
+										executionData.node,
+										nodeType.description,
+									);
+									const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+									const mainOutputTypes = outputTypes.filter(
+										(output) => output === NodeConnectionType.Main,
+									);
+
+									const errorItems: INodeExecutionData[] = [];
+									const successItems: INodeExecutionData[] = [];
+
+									// Create a WorkflowDataProxy instance that we can get the data of the
+									// item which did error
+									const executeFunctions = NodeExecuteFunctions.getExecuteFunctions(
+										workflow,
+										this.runExecutionData,
+										runIndex,
+										[],
+										executionData.data,
+										executionData.node,
+										this.additionalData,
+										executionData,
+										this.mode,
+									);
+									const dataProxy = executeFunctions.getWorkflowDataProxy(0);
+
+									// Loop over all outputs except the error output as it would not contain data by default
+									for (
+										let outputIndex = 0;
+										outputIndex < mainOutputTypes.length - 1;
+										outputIndex++
+									) {
+										successItems.length = 0;
+										const items = nodeSuccessData.length ? nodeSuccessData[0] : [];
+
+										while (items.length) {
+											const item = items.pop();
+											if (item === undefined) {
+												continue;
+											}
+
+											const errorData = item.error || item.json.error;
+
+											if (errorData) {
+												const pairedItemData =
+													item.pairedItem && typeof item.pairedItem === 'object'
+														? Array.isArray(item.pairedItem)
+															? item.pairedItem[0]
+															: item.pairedItem
+														: undefined;
+
+												if (executionData!.source === null || pairedItemData === undefined) {
+													// Source data is missing for some reason so we can not figure out the item
+													errorItems.push(item);
+												} else {
+													const pairedItemInputIndex = pairedItemData.input || 0;
+
+													const sourceData =
+														executionData!.source[NodeConnectionType.Main][pairedItemInputIndex];
+
+													const constPairedItem = dataProxy.$getPairedItem(
+														sourceData!.previousNode,
+														sourceData,
+														pairedItemData,
+													);
+
+													if (constPairedItem === null) {
+														errorItems.push(item);
+													} else {
+														errorItems.push({
+															...item,
+															json: {
+																...constPairedItem.json,
+																...item.json,
+															},
+														});
+													}
+												}
+											} else {
+												successItems.push(item);
+											}
+										}
+
+										nodeSuccessData[outputIndex] = successItems;
+									}
+
+									nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
+								}
 
 								if (runNodeData.closeFunction) {
 									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode

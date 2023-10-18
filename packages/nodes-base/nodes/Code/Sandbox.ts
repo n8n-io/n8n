@@ -17,7 +17,7 @@ export interface SandboxContext extends IWorkflowDataProxyData {
 	helpers: IExecuteFunctions['helpers'];
 }
 
-export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);
+export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error']);
 
 export function getSandboxContext(this: IExecuteFunctions, index: number): SandboxContext {
 	return {

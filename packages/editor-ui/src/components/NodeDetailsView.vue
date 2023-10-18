@@ -106,6 +106,7 @@
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"
+						@redrawRequired="redrawRequired = true"
 						@activate="onWorkflowActivate"
 					/>
 					<a
@@ -199,6 +200,7 @@ export default defineComponent({
 	data() {
 		return {
 			settingsEventBus: createEventBus(),
+			redrawRequired: false,
 			runInputIndex: -1,
 			runOutputIndex: -1,
 			isLinkingEnabled: true,
@@ -618,7 +620,8 @@ export default defineComponent({
 
 			if (
 				typeof this.activeNodeType.outputs === 'string' ||
-				typeof this.activeNodeType.inputs === 'string'
+				typeof this.activeNodeType.inputs === 'string' ||
+				this.redrawRequired
 			) {
 				// TODO: We should keep track of if it actually changed and only do if required
 				// Whenever a node with custom inputs and outputs gets closed redraw it in case

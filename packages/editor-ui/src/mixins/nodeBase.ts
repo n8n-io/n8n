@@ -338,13 +338,12 @@ export const nodeBase = defineComponent({
 			} = {};
 
 			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData) || [];
-			this.outputs = outputs;
+			this.outputs = NodeHelpers.getNodeOutputs(workflow, this.data, nodeTypeData) || [];
 
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
 
-			outputs.forEach((value, i) => {
+			this.outputs.forEach((value, i) => {
 				let outputConfiguration: INodeOutputConfiguration;
 				if (typeof value === 'string') {
 					outputConfiguration = {
@@ -375,7 +374,7 @@ export const nodeBase = defineComponent({
 				const rootTypeIndex = rootTypeIndexData[rootCategoryOutputName];
 				const typeIndex = typeIndexData[outputName];
 
-				const outputsOfSameRootType = outputs.filter((outputData) => {
+				const outputsOfSameRootType = this.outputs.filter((outputData) => {
 					const thisOutputName: string =
 						typeof outputData === 'string' ? outputData : outputData.type;
 					return outputName === NodeConnectionType.Main
@@ -452,8 +451,8 @@ export const nodeBase = defineComponent({
 							options: {
 								dimensions: 24,
 								connectedEndpoint: endpoint,
-								showOutputLabel: outputs.length === 1,
-								size: outputs.length >= 3 ? 'small' : 'medium',
+								showOutputLabel: this.outputs.length === 1,
+								size: this.outputs.length >= 3 ? 'small' : 'medium',
 								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},

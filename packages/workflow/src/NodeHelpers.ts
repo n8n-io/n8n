@@ -1050,22 +1050,36 @@ export function getNodeOutputs(
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<ConnectionTypes | INodeOutputConfiguration> {
+	let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+
 	if (Array.isArray(nodeTypeData.outputs)) {
-		return nodeTypeData.outputs;
+		outputs = nodeTypeData.outputs;
+	} else {
+		// Calculate the outputs dynamically
+		try {
+			outputs = (workflow.expression.getSimpleParameterValue(
+				node,
+				nodeTypeData.outputs,
+				'internal',
+				'',
+				{},
+			) || []) as ConnectionTypes[];
+		} catch (e) {
+			throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+		}
 	}
 
-	// Calculate the outputs dynamically
-	try {
-		return (workflow.expression.getSimpleParameterValue(
-			node,
-			nodeTypeData.outputs,
-			'internal',
-			'',
-			{},
-		) || []) as ConnectionTypes[];
-	} catch (e) {
-		throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+	if (node.errorOutput) {
+		return [
+			...outputs,
+			{
+				type: 'main',
+				displayName: 'Error',
+			},
+		];
 	}
+
+	return outputs;
 }
 
 /**

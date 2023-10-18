@@ -367,6 +367,7 @@ export default defineComponent({
 				alwaysOutputData: false,
 				executeOnce: false,
 				notesInFlow: false,
+				errorOutput: false,
 				continueOnFail: false,
 				retryOnFail: false,
 				maxTries: 3,
@@ -442,6 +443,19 @@ export default defineComponent({
 					default: false,
 					noDataExpression: true,
 					description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
+				},
+				{
+					displayName: this.$locale.baseText('nodeSettings.errorOutput.displayName'),
+					name: 'errorOutput',
+					type: 'boolean',
+					default: false,
+					displayOptions: {
+						show: {
+							continueOnFail: [true],
+						},
+					},
+					noDataExpression: true,
+					description: this.$locale.baseText('nodeSettings.errorOutput.description'),
 				},
 				{
 					displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
@@ -627,6 +641,21 @@ export default defineComponent({
 
 			if (node === null) {
 				return;
+			}
+
+			if (['continueOnFail', 'errorOutput'].includes(parameterData.name)) {
+				// If those parameters change we have to redraw the connections
+				this.$emit('redrawRequired');
+
+				if (parameterData.name === 'continueOnFail' && parameterData.value === false) {
+					// As "errorOutput" depends on "continueOnFail" we have to make sure that
+					// it gets also updated accordingly
+					this.valueChanged({
+						node: this.node.name,
+						name: 'errorOutput',
+						value: false,
+					});
+				}
 			}
 
 			if (parameterData.name === 'name') {
@@ -880,6 +909,14 @@ export default defineComponent({
 					this.nodeValues = {
 						...this.nodeValues,
 						continueOnFail: this.node.continueOnFail,
+					};
+				}
+
+				if (this.node.errorOutput) {
+					foundNodeSettings.push('errorOutput');
+					this.nodeValues = {
+						...this.nodeValues,
+						errorOutput: this.node.errorOutput,
 					};
 				}
 
