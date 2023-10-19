@@ -1884,6 +1884,7 @@
 	"workflowHistory.action.restore.modal.button.cancel": "Cancel",
 	"workflowHistory.action.restore.success.title": "Successfully restored workflow version",
 	"workflowHistory.action.clone.success.title": "Successfully cloned workflow version",
+	"workflowHistory.action.clone.success.message": "Open cloned workflow in a new tab",
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add Workflow",
 	"workflows.menu.my": "My workflows",
