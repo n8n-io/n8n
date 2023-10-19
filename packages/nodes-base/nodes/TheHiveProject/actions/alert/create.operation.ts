@@ -152,8 +152,9 @@ export async function execute(
 
 					const binaryPropertyName = value.binaryProperty as string;
 					const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-					formData.append(attachmentIndex, binaryData.data, {
+					formData.append(attachmentIndex, dataBuffer, {
 						filename: binaryData.fileName,
 						contentType: binaryData.mimeType,
 					});

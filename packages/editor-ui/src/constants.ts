@@ -111,6 +111,7 @@ export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const FORM_TRIGGER_NODE_TYPE = 'n8n-nodes-base.formTrigger';
 export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
@@ -170,6 +171,8 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 export const NODES_USING_CODE_NODE_EDITOR = [CODE_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
+
+export const OPEN_URL_PANEL_TRIGGER_NODE_TYPES = [WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE];
 
 // Node creator
 export const NODE_CREATOR_OPEN_SOURCES: Record<
@@ -631,3 +634,6 @@ export const ASK_AI_LOADING_DURATION_MS = 12000;
 export const APPEND_ATTRIBUTION_DEFAULT_PATH = 'parameters.options.appendAttribution';
 
 export const DRAG_EVENT_DATA_KEY = 'nodesAndConnections';
+
+export const NOT_DUPLICATABE_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
+export const UPDATE_WEBHOOK_ID_NODE_TYPES = [FORM_TRIGGER_NODE_TYPE];
