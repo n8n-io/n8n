@@ -10,7 +10,6 @@ import {
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
-	isEmailSetUp,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
@@ -620,7 +619,7 @@ export class UsersController {
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!isEmailSetUp()) {
+		if (!this.mailer.isEmailSetUp) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');
 			throw new InternalServerError('Email sending must be set up in order to invite other users');
 		}

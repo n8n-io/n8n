@@ -10,7 +10,6 @@ import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
-import { NodeMailer } from '@/UserManagement/email/NodeMailer';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -23,13 +22,13 @@ import {
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 
-jest.mock('@/UserManagement/email/NodeMailer');
-
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
+
+const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
@@ -57,7 +56,8 @@ beforeEach(async () => {
 	jest.mock('@/config');
 
 	config.set('userManagement.emails.mode', 'smtp');
-	config.set('userManagement.emails.smtp.host', '');
+	config.set('userManagement.emails.smtp.host', 'host');
+	mailer.invite.mockResolvedValue({ emailSent: true });
 });
 
 describe('DELETE /users/:id', () => {
@@ -313,11 +313,8 @@ describe('POST /users/:id', () => {
 });
 
 describe('POST /users', () => {
-	beforeEach(() => {
-		config.set('userManagement.emails.mode', 'smtp');
-	});
-
 	test('should succeed if emailing is not set up', async () => {
+		mailer.invite.mockResolvedValueOnce({ emailSent: false });
 		const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
 
 		expect(response.statusCode).toBe(200);
@@ -342,11 +339,12 @@ describe('POST /users', () => {
 		expect(response.statusCode).toBe(200);
 
 		for (const {
-			user: { id, email: receivedEmail },
+			user: { id, email: receivedEmail, inviteAcceptUrl },
 			error,
 		} of response.body.data) {
 			expect(validator.isUUID(id)).toBe(true);
 			expect(id).not.toBe(member.id);
+			expect(inviteAcceptUrl).toBeUndefined();
 
 			const lowerCasedEmail = receivedEmail.toLowerCase();
 			expect(receivedEmail).toBe(lowerCasedEmail);
@@ -401,14 +399,6 @@ describe('POST /users', () => {
 });
 
 describe('POST /users/:id/reinvite', () => {
-	beforeEach(() => {
-		config.set('userManagement.emails.mode', 'smtp');
-		// those configs are needed to make sure the reinvite email is sent,because of this check isEmailSetUp()
-		config.set('userManagement.emails.smtp.host', 'host');
-		config.set('userManagement.emails.smtp.auth.user', 'user');
-		config.set('userManagement.emails.smtp.auth.pass', 'pass');
-	});
-
 	test('should send reinvite, but fail if user already accepted invite', async () => {
 		const email = randomEmail();
 		const payload = [{ email }];
@@ -426,40 +416,5 @@ describe('POST /users/:id/reinvite', () => {
 		const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
 
 		expect(reinviteMemberResponse.statusCode).toBe(400);
-	});
-});
-
-describe('UserManagementMailer expect NodeMailer.verifyConnection', () => {
-	let mockInit: jest.SpyInstance<Promise<void>, []>;
-	let mockVerifyConnection: jest.SpyInstance<Promise<void>, []>;
-
-	beforeAll(() => {
-		mockVerifyConnection = jest
-			.spyOn(NodeMailer.prototype, 'verifyConnection')
-			.mockImplementation(async () => {});
-		mockInit = jest.spyOn(NodeMailer.prototype, 'init').mockImplementation(async () => {});
-	});
-
-	afterAll(() => {
-		mockVerifyConnection.mockRestore();
-		mockInit.mockRestore();
-	});
-
-	test('not be called when SMTP not set up', async () => {
-		const userManagementMailer = new UserManagementMailer();
-		// NodeMailer.verifyConnection gets called only explicitly
-		await expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
-
-		expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
-	});
-
-	test('to be called when SMTP set up', async () => {
-		// host needs to be set, otherwise smtp is skipped
-		config.set('userManagement.emails.smtp.host', 'host');
-		config.set('userManagement.emails.mode', 'smtp');
-
-		const userManagementMailer = new UserManagementMailer();
-		// NodeMailer.verifyConnection gets called only explicitly
-		expect(async () => userManagementMailer.verifyConnection()).not.toThrow();
 	});
 });
