@@ -12,13 +12,6 @@ import { License } from '@/License';
 import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { RoleService } from '@/services/role.service';
 
-export function isEmailSetUp(): boolean {
-	const smtp = config.getEnv('userManagement.emails.mode') === 'smtp';
-	const host = !!config.getEnv('userManagement.emails.smtp.host');
-
-	return smtp && host;
-}
-
 export function isSharingEnabled(): boolean {
 	return Container.get(License).isSharingEnabled();
 }
