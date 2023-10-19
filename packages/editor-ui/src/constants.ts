@@ -426,6 +426,7 @@ export const enum VIEWS {
 	AUDIT_LOGS = 'AuditLogs',
 	MFA_VIEW = 'MfaView',
 	WORKFLOW_HISTORY = 'WorkflowHistory',
+	WORKER_VIEW = 'WorkerView',
 }
 
 export const enum FAKE_DOOR_FEATURES {

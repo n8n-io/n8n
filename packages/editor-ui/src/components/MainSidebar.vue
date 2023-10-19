@@ -264,6 +264,13 @@ export default defineComponent({
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
 				},
 				{
+					id: 'workersview',
+					icon: 'tasks',
+					label: this.$locale.baseText('mainSidebar.workersView'),
+					position: 'top',
+					activateOnRouteNames: [VIEWS.WORKER_VIEW],
+				},
+				{
 					id: 'settings',
 					icon: 'cog',
 					label: this.$locale.baseText('settings'),
@@ -428,6 +435,12 @@ export default defineComponent({
 				case 'executions': {
 					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
 						this.goToRoute({ name: VIEWS.EXECUTIONS });
+					}
+					break;
+				}
+				case 'workersview': {
+					if (this.$router.currentRoute.name !== VIEWS.WORKER_VIEW) {
+						this.goToRoute({ name: VIEWS.WORKER_VIEW });
 					}
 					break;
 				}
