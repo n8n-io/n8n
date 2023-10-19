@@ -34,6 +34,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
 import { useSegment } from '@/stores/segment.store';
 import { defineComponent } from 'vue';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 
 export const pushConnection = defineComponent({
 	setup() {
@@ -61,6 +62,7 @@ export const pushConnection = defineComponent({
 			useWorkflowsStore,
 			useSettingsStore,
 			useSegment,
+			useOrchestrationStore,
 		),
 		sessionId(): string {
 			return this.rootStore.sessionId;
@@ -194,6 +196,13 @@ export const pushConnection = defineComponent({
 				receivedData = JSON.parse(event.data);
 			} catch (error) {
 				return false;
+			}
+
+			if (receivedData.type === 'sendWorkerStatusMessage') {
+				const pushData = receivedData.data;
+				console.log(pushData.workerId, pushData.status);
+				this.orchestrationManagerStore.updateWorkerStatus(pushData.status);
+				return true;
 			}
 
 			if (receivedData.type === 'sendConsoleMessage') {

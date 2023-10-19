@@ -63,6 +63,7 @@ import type {
 } from '@db/repositories';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
+import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
 
 export interface IActivationError {
 	time: number;
@@ -518,7 +519,8 @@ export type IPushData =
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
-	| PushDataExecutionRecovered;
+	| PushDataExecutionRecovered
+	| PushDataWorkerStatusMessage;
 
 type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
@@ -548,6 +550,11 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataWorkerStatusMessage = {
+	data: IPushDataWorkerStatusMessage;
+	type: 'sendWorkerStatusMessage';
 };
 
 type PushDataReloadNodeType = {
@@ -618,6 +625,24 @@ export interface IPushDataTestWebhook {
 export interface IPushDataConsoleMessage {
 	source: string;
 	message: string;
+}
+
+export interface IPushDataWorkerStatusMessage {
+	workerId: string;
+	status: {
+		workerId: string;
+		runningJobs: string[];
+		runningJobsSummary: WorkerJobStatusSummary[];
+		freeMem: number;
+		totalMem: number;
+		uptime: number;
+		loadAvg: number[];
+		cpus: string;
+		arch: string;
+		platform: NodeJS.Platform;
+		hostname: string;
+		net: string[];
+	};
 }
 
 export interface IResponseCallbackData {
