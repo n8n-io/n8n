@@ -23,14 +23,12 @@ export const pinData = defineComponent({
 	computed: {
 		...mapStores(useWorkflowsStore),
 		pinData(): IPinData[string] | undefined {
-			return this.node
-				? this.search
-					? filterAndHighlightDeep(
-							this.search,
-							this.workflowsStore.pinDataByNodeName(this.node.name),
-					  )
-					: this.workflowsStore.pinDataByNodeName(this.node.name)
-				: undefined;
+			if (!this.node) {
+				return;
+			}
+
+			const data = this.workflowsStore.pinDataByNodeName(this.node.name);
+			return this.search ? filterAndHighlightDeep(this.search, data) : data;
 		},
 		hasPinData(): boolean {
 			return !!this.node && typeof this.pinData !== 'undefined';
