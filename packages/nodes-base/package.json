@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.10.0",
+  "version": "1.12.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -492,6 +492,7 @@
       "dist/nodes/Filter/Filter.node.js",
       "dist/nodes/Flow/Flow.node.js",
       "dist/nodes/Flow/FlowTrigger.node.js",
+      "dist/nodes/Form/FormTrigger.node.js",
       "dist/nodes/FormIo/FormIoTrigger.node.js",
       "dist/nodes/Formstack/FormstackTrigger.node.js",
       "dist/nodes/Freshdesk/Freshdesk.node.js",
@@ -685,6 +686,7 @@
       "dist/nodes/RespondToWebhook/RespondToWebhook.node.js",
       "dist/nodes/Rocketchat/Rocketchat.node.js",
       "dist/nodes/RssFeedRead/RssFeedRead.node.js",
+      "dist/nodes/RssFeedRead/RssFeedReadTrigger.node.js",
       "dist/nodes/Rundeck/Rundeck.node.js",
       "dist/nodes/S3/S3.node.js",
       "dist/nodes/Salesforce/Salesforce.node.js",

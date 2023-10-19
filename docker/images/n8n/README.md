@@ -82,6 +82,7 @@ docker run -it --rm \
 The workflow data gets by default saved in an SQLite database in the user
 folder (`/home/node/.n8n`). That folder also additionally contains the
 settings like webhook URL and encryption key.
+Note that the folder needs to be writable by user with UID/GID 1000.
 
 ```bash
 docker run -it --rm \
