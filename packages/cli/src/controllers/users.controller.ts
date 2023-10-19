@@ -184,7 +184,7 @@ export class UsersController {
 				}
 				const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
 				const resp: {
-					user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
+					user: { id: string | null; email: string; inviteAcceptUrl?: string; emailSent: boolean };
 					error?: string;
 				} = {
 					user: {
@@ -202,6 +202,7 @@ export class UsersController {
 					});
 					if (result.emailSent) {
 						resp.user.emailSent = true;
+						delete resp.user.inviteAcceptUrl;
 						void this.internalHooks.onUserTransactionalEmail({
 							user_id: id,
 							message_type: 'New user invite',
