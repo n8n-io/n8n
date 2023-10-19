@@ -1630,7 +1630,7 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
-	hasLifecycleMethods?: string; // set automatically by generate-ui-types
+	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 }
 
 export interface ProxyInput {
