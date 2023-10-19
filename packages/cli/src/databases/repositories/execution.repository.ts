@@ -87,8 +87,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	};
 
 	private rates: Record<string, number> = {
-		softDeletion: 1 * TIME.HOUR,
-		hardDeletion: config.getEnv('executions.pruneDataInterval') * TIME.MINUTE,
+		softDeletion: config.getEnv('executions.pruneDataIntervals.softDelete') * TIME.MINUTE,
+		hardDeletion: config.getEnv('executions.pruneDataIntervals.hardDelete') * TIME.MINUTE,
 	};
 
 	private isMainInstance = config.get('generic.instanceType') === 'main';
@@ -525,7 +525,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	private async hardDelete() {
 		// Find ids of all executions that were deleted over an hour ago
 		const date = new Date();
-		date.setHours(date.getHours() - 1);
+		date.setHours(date.getHours() - config.getEnv('executions.pruneDataMaxAgeBuffer'));
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({

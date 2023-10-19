@@ -316,16 +316,30 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the finished execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get soft-deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
-		pruneDataInterval: {
-			doc: 'How often (minutes) execution data should be hard-deleted',
+		pruneDataMaxAgeBuffer: {
+			doc: 'How long (hours) to wait before finished executions can be hard-deleted. This buffer excludes recent executions as the user may still need them temporarily while building a workflow.',
 			format: Number,
-			default: 15,
-			env: 'EXECUTIONS_DATA_PRUNE_INTERVAL',
+			default: 1,
+			env: 'EXECUTIONS_DATA_MAX_AGE_BUFFER',
+		},
+		pruneDataIntervals: {
+			hardDelete: {
+				doc: 'How often (minutes) execution data should be hard-deleted',
+				format: Number,
+				default: 15,
+				env: 'EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL',
+			},
+			softDelete: {
+				doc: 'How often (minutes) execution data should be soft-deleted',
+				format: Number,
+				default: 60,
+				env: 'EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL',
+			},
 		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
