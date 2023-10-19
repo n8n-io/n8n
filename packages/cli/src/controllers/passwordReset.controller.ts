@@ -17,7 +17,6 @@ import { UserManagementMailer } from '@/UserManagement/email';
 
 import { Response } from 'express';
 import { ILogger } from 'n8n-workflow';
-import { Config } from '@/config';
 import { PasswordResetRequest } from '@/requests';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
@@ -35,7 +34,6 @@ import { MfaService } from '@/Mfa/mfa.service';
 @RestController()
 export class PasswordResetController {
 	constructor(
-		private readonly config: Config,
 		private readonly logger: ILogger,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly internalHooks: IInternalHooksClass,
@@ -50,7 +48,7 @@ export class PasswordResetController {
 	 */
 	@Post('/forgot-password')
 	async forgotPassword(req: PasswordResetRequest.Email) {
-		if (this.config.getEnv('userManagement.emails.mode') === '') {
+		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
 				'Request to send password reset email failed because emailing was not set up',
 			);

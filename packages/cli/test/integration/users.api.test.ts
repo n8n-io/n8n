@@ -2,7 +2,6 @@ import validator from 'validator';
 import { Not } from 'typeorm';
 import type { SuperAgentTest } from 'supertest';
 
-import config from '@/config';
 import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { Role } from '@db/entities/Role';
@@ -53,10 +52,6 @@ beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
 	await Db.collections.User.delete({ id: Not(owner.id) });
 
-	jest.mock('@/config');
-
-	config.set('userManagement.emails.mode', 'smtp');
-	config.set('userManagement.emails.smtp.host', 'host');
 	mailer.invite.mockResolvedValue({ emailSent: true });
 });
 
