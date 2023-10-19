@@ -81,18 +81,16 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		workflowId: string,
 		workflowVersionId: string,
 		shouldDeactivate: boolean,
-	) => {
+	): Promise<IWorkflowDb> => {
 		const workflowVersion = await getWorkflowVersion(workflowId, workflowVersionId);
-		if (workflowVersion?.nodes && workflowVersion?.connections) {
-			const { connections, nodes } = workflowVersion;
-			const updateData: IWorkflowDataUpdate = { connections, nodes };
+		const { connections, nodes } = workflowVersion;
+		const updateData: IWorkflowDataUpdate = { connections, nodes };
 
-			if (shouldDeactivate) {
-				updateData.active = false;
-			}
-
-			await workflowsStore.updateWorkflow(workflowId, updateData, true);
+		if (shouldDeactivate) {
+			updateData.active = false;
 		}
+
+		return workflowsStore.updateWorkflow(workflowId, updateData, true);
 	};
 
 	return {
