@@ -204,10 +204,8 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.find('[data-test-id="disable-node-button"]').as('disableNodeButton');
-		cy.get('@disableNodeButton').trigger('mousedown', { force: true });
-		cy.get('@disableNodeButton').trigger('mousemove', 200, 200, { force: true });
-		cy.get('@disableNodeButton').trigger('mouseup', { force: true });
+			.findChildByTestId('disable-node-button').as('disableNodeButton');
+		cy.drag('@disableNodeButton', [200, 200]);
 		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
 	});
 
@@ -217,7 +215,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last().as('lastNode');
-		cy.get('@lastNode').find('[data-test-id="disable-node-button"]').as('disableNodeButton');
+		cy.get('@lastNode').findChildByTestId('disable-node-button').as('disableNodeButton');
 		for (let i = 0; i < 20; i++) {
 			cy.get('@lastNode').realHover();
 			cy.get('@disableNodeButton').should('be.visible');
