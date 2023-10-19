@@ -136,7 +136,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 
 		this.intervals.hardDeletion = setInterval(
-			async () => this.hardDelete(),
+			async () => this.hardDeleteOnPruning(),
 			this.rates.hardDeletion,
 		);
 	}
@@ -292,6 +292,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				stoppedAt: new Date(),
 			},
 		);
+	}
+
+	async hardDelete(ids: { workflowId: string; executionId: string }) {
+		return Promise.all([
+			this.binaryDataService.deleteMany([ids]),
+			this.delete({ id: ids.executionId }),
+		]);
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
@@ -467,7 +474,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
 			const batch = executionIds.splice(0, this.deletionBatchSize);
-			await this.softDelete(batch);
+			await this.delete(batch);
 		} while (executionIds.length > 0);
 	}
 
@@ -520,9 +527,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Permanently delete all soft-deleted executions and their binary data, in batches.
+	 * Permanently delete all soft-deleted executions and their binary data, in batches, in a pruning cycle.
 	 */
-	private async hardDelete() {
+	private async hardDeleteOnPruning() {
 		// Find ids of all executions that were deleted over an hour ago
 		const date = new Date();
 		date.setHours(date.getHours() - 1);
@@ -570,7 +577,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (executionIds.length === this.deletionBatchSize) {
 			clearInterval(this.intervals.hardDeletion);
 
-			setTimeout(async () => this.hardDelete(), 1 * TIME.SECOND);
+			setTimeout(async () => this.hardDeleteOnPruning(), 1 * TIME.SECOND);
 		} else {
 			if (this.intervals.hardDeletion) return;
 
