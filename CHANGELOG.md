@@ -1,3 +1,33 @@
+# [1.12.0](https://github.com/n8n-io/n8n/compare/n8n@1.11.0...n8n@1.12.0) (2023-10-18)
+
+
+### Bug Fixes
+
+* **core:** Add check that queue is defined and remove cyclic dependency ([#7404](https://github.com/n8n-io/n8n/issues/7404)) ([45f2ef3](https://github.com/n8n-io/n8n/commit/45f2ef373ee76abb0d4b9ad805beb02d8969ebd6))
+* **core:** Do not throw when deleting workflows with executions without binary-data ([#7411](https://github.com/n8n-io/n8n/issues/7411)) ([2b6a15e](https://github.com/n8n-io/n8n/commit/2b6a15e478fd1a6041be4eac19dcf1c5e5583886))
+* **core:** Fix expression with paired item with multi-input node ([#7424](https://github.com/n8n-io/n8n/issues/7424)) ([ec14141](https://github.com/n8n-io/n8n/commit/ec141416e29540a2bf6ce99be1b13d76517eca13))
+* **core:** Fix ignoring crashed executions without event msgs ([#7368](https://github.com/n8n-io/n8n/issues/7368)) ([2f4d91b](https://github.com/n8n-io/n8n/commit/2f4d91b2cd2b87ae4aceb06a4170cd86802c9bbf))
+* **core:** Pg-promise de-initialization fix ([#7417](https://github.com/n8n-io/n8n/issues/7417)) ([7703904](https://github.com/n8n-io/n8n/commit/77039044ebd74b907a44a08ae5421517fc74b46e))
+* **core:** Prevent false stalled jobs in queue mode from displaying as errored ([#7435](https://github.com/n8n-io/n8n/issues/7435)) ([e01b9e5](https://github.com/n8n-io/n8n/commit/e01b9e5ae1bf6ccdec422c2767fdf870b2e159b0))
+* **core:** Prevent undefined issues when restoring binary data ([#7419](https://github.com/n8n-io/n8n/issues/7419)) ([46977a2](https://github.com/n8n-io/n8n/commit/46977a2aff342bc7568f5a378b78689a5c3d8e95))
+* **editor:** Fix remote options fetching on every keystroke ([#7320](https://github.com/n8n-io/n8n/issues/7320)) ([367255a](https://github.com/n8n-io/n8n/commit/367255ab2c13b4a33a746d3d4b9f3164309a11c8))
+* **editor:** Open only one tab with plans page ([#7377](https://github.com/n8n-io/n8n/issues/7377)) ([c599006](https://github.com/n8n-io/n8n/commit/c599006b917e681fca918b789a80d79883bd69a9))
+* **Google Sheets Node:** Update by row_number, restored 'Handling Extra Data Option', updated Cell Format default ([#7357](https://github.com/n8n-io/n8n/issues/7357)) ([d8531a5](https://github.com/n8n-io/n8n/commit/d8531a53b9a256095157129b64adde7749aa84c9))
+* **Ldap Node:** Fix issue with connections not closing correctly ([#7432](https://github.com/n8n-io/n8n/issues/7432)) ([c3f0be8](https://github.com/n8n-io/n8n/commit/c3f0be809f3ea09573fec26648ef030c7d8ddc16))
+* **Set Node:** Null should not throw an error ([#7416](https://github.com/n8n-io/n8n/issues/7416)) ([e9b6ab0](https://github.com/n8n-io/n8n/commit/e9b6ab04cd4b292c291b77e66aa717605e72f852))
+* **TheHive 5 Node:** Observable encoding in alert > create fix ([#7450](https://github.com/n8n-io/n8n/issues/7450)) ([a2d2e3d](https://github.com/n8n-io/n8n/commit/a2d2e3dda798d166cfc2a49b0c4f0eb164a666dc))
+
+
+### Features
+
+* **core:** Make executions pruning interval configurable ([#7439](https://github.com/n8n-io/n8n/issues/7439)) ([40707fa](https://github.com/n8n-io/n8n/commit/40707fa6926776aa806221df8edee05ee7e9f3ed))
+* **Google Calendar Trigger Node:** Add support for cancelled events ([#7436](https://github.com/n8n-io/n8n/issues/7436)) ([9d241a0](https://github.com/n8n-io/n8n/commit/9d241a0d6dbfd990920708c718ff3de83c9b5883))
+* **HubSpot Trigger Node:** Add support for ticket related events ([#7156](https://github.com/n8n-io/n8n/issues/7156)) ([57c6093](https://github.com/n8n-io/n8n/commit/57c609384af7c583c213c639add7170e0bbb24fd))
+* **n8n Form Trigger Node:** New node ([#7130](https://github.com/n8n-io/n8n/issues/7130)) ([3ddc176](https://github.com/n8n-io/n8n/commit/3ddc176dfa2d3d99a328a29a3a8613e35ff456a0))
+* **Spreadsheet File Node:** Improve CSV parsing ([#7448](https://github.com/n8n-io/n8n/issues/7448)) ([79f23fb](https://github.com/n8n-io/n8n/commit/79f23fb93979aa1ef3a9bbf7049b93d1e6a0e95a))
+
+
+
 # [1.11.0](https://github.com/n8n-io/n8n/compare/n8n@1.10.0...n8n@1.11.0) (2023-10-11)
 
 
