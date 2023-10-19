@@ -198,4 +198,32 @@ describe('Canvas Actions', () => {
 		cy.get('body').type('{shift}', { release: false }).type('{leftArrow}');
 		WorkflowPage.getters.selectedNodes().should('have.length', 2);
 	});
+
+	it('should not break lasso selection when dragging node action buttons', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.find('[data-test-id="disable-node-button"]').as('disableNodeButton');
+		cy.get('@disableNodeButton').trigger('mousedown', { force: true });
+		cy.get('@disableNodeButton').trigger('mousemove', 200, 200, { force: true });
+		cy.get('@disableNodeButton').trigger('mouseup', { force: true });
+		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
+	});
+
+	it('should not break lasso selection with multiple clicks on node action buttons', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
+		WorkflowPage.getters
+			.canvasNodes()
+			.last().as('lastNode');
+		cy.get('@lastNode').find('[data-test-id="disable-node-button"]').as('disableNodeButton');
+		for (let i = 0; i < 20; i++) {
+			cy.get('@lastNode').realHover();
+			cy.get('@disableNodeButton').should('be.visible');
+			cy.get('@disableNodeButton').realTouch();
+			cy.getByTestId('execute-workflow-button').realHover();
+			WorkflowPage.actions.testLassoSelection([100, 100], [200, 200]);
+		}
+	});
 });
