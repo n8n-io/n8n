@@ -25,7 +25,10 @@ export const pinData = defineComponent({
 		pinData(): IPinData[string] | undefined {
 			return this.node
 				? this.search
-					? filterAndHighlightDeep(this.search, this.workflowsStore.pinDataByNodeName(this.node.name))
+					? filterAndHighlightDeep(
+							this.search,
+							this.workflowsStore.pinDataByNodeName(this.node.name),
+					  )
 					: this.workflowsStore.pinDataByNodeName(this.node.name)
 				: undefined;
 		},
