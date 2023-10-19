@@ -280,6 +280,21 @@ export async function execute(
 
 	const mappedValues: IDataObject[] = [];
 
+	const errorOnUnexpectedColumn = (key: string, i: number) => {
+		if (!columnNames.includes(key)) {
+			throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
+				itemIndex: i,
+				description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
+			});
+		}
+	};
+
+	const addNewColumn = (key: string) => {
+		if (!columnNames.includes(key)) {
+			newColumns.add(key);
+		}
+	};
+
 	for (let i = 0; i < items.length; i++) {
 		if (dataMode === 'nothing') continue;
 
@@ -291,22 +306,11 @@ export async function execute(
 				data.push(items[i].json);
 			}
 			if (handlingExtraDataOption === 'error' && columnsToMatchOn[0] !== 'row_number') {
-				Object.keys(items[i].json).forEach((key) => {
-					if (!columnNames.includes(key)) {
-						throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
-							itemIndex: i,
-							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
-						});
-					}
-				});
+				Object.keys(items[i].json).forEach((key) => errorOnUnexpectedColumn(key, i));
 				data.push(items[i].json);
 			}
 			if (handlingExtraDataOption === 'insertInNewColumn' && columnsToMatchOn[0] !== 'row_number') {
-				Object.keys(items[i].json).forEach((key) => {
-					if (!columnNames.includes(key)) {
-						newColumns.add(key);
-					}
-				});
+				Object.keys(items[i].json).forEach(addNewColumn);
 				data.push(items[i].json);
 			}
 		} else {
@@ -323,6 +327,7 @@ export async function execute(
 						"At least one value has to be added under 'Values to Send'",
 					);
 				}
+				// eslint-disable-next-line @typescript-eslint/no-loop-func
 				const fields = valuesToSend.reduce((acc, entry) => {
 					if (entry.column === 'newColumn') {
 						const columnName = entry.columnName as string;
@@ -361,12 +366,15 @@ export async function execute(
 		}
 
 		if (newColumns.size) {
+			const newColumnNames = columnNames.concat([...newColumns]);
 			await sheet.updateRows(
 				sheetName,
-				[columnNames.concat([...newColumns])],
+				[newColumnNames],
 				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
 				headerRow + 1,
 			);
+			columnNames = newColumnNames;
+			newColumns.clear();
 		}
 
 		let preparedData;
