@@ -1,7 +1,9 @@
 import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
-import { jsonParse } from 'n8n-workflow';
+import { type ILogger, jsonParse, LoggerProxy } from 'n8n-workflow';
+import { mock } from 'jest-mock-extended';
+
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
@@ -17,17 +19,13 @@ import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
 
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
 jest.mock('@/telemetry');
-jest.mock('@/UserManagement/email/NodeMailer');
 
 let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
-LoggerProxy.init(getLogger());
+LoggerProxy.init(mock<ILogger>());
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
@@ -80,7 +78,6 @@ beforeEach(async () => {
 	jest.mock('@/telemetry');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
 });
 
 const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
