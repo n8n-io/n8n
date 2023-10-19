@@ -523,9 +523,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently delete all soft-deleted executions and their binary data, in batches.
 	 */
 	private async hardDelete() {
-		// Find ids of all executions that were deleted over an hour ago
 		const date = new Date();
-		date.setHours(date.getHours() - config.getEnv('executions.pruneDataMaxAgeBuffer'));
+		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({

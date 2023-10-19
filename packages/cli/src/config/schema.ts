@@ -321,11 +321,11 @@ export const schema = {
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
-		pruneDataMaxAgeBuffer: {
-			doc: 'How long (hours) to wait before finished executions can be hard-deleted. This buffer excludes recent executions as the user may still need them temporarily while building a workflow.',
+		pruneDataHardDeleteBuffer: {
+			doc: 'How old (hours) the finished execution data has to be to get hard-deleted. By default, this buffer excludes recent executions as the user may need them while building a workflow.',
 			format: Number,
 			default: 1,
-			env: 'EXECUTIONS_DATA_MAX_AGE_BUFFER',
+			env: 'EXECUTIONS_DATA_HARD_DELETE_BUFFER',
 		},
 		pruneDataIntervals: {
 			hardDelete: {
