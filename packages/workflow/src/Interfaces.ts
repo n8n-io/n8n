@@ -108,17 +108,13 @@ export abstract class ICredentials {
 		this.data = data;
 	}
 
-	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
-
-	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+	abstract getData(nodeType?: string): ICredentialDataDecryptedObject;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
 	abstract hasNodeAccess(nodeType: string): boolean;
 
-	abstract setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void;
-
-	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
+	abstract setData(data: ICredentialDataDecryptedObject): void;
 }
 
 export interface IUser {
@@ -192,8 +188,6 @@ export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
 export abstract class ICredentialsHelper {
-	constructor(readonly encryptionKey: string) {}
-
 	abstract getParentTypes(name: string): string[];
 
 	abstract authenticate(
@@ -1847,7 +1841,6 @@ export interface IWorkflowExecuteHooks {
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
-	encryptionKey: string;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -1860,7 +1853,6 @@ export interface IWorkflowExecuteAdditionalData {
 			parentWorkflowSettings?: IWorkflowSettings;
 		},
 	) => Promise<any>;
-	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;

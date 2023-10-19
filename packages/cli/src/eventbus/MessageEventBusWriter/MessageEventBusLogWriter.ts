@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
@@ -19,6 +19,7 @@ import {
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
 import { inTest } from '@/constants';
+import Container from 'typedi';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
@@ -66,7 +67,7 @@ export class MessageEventBusLogWriter {
 			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
 			MessageEventBusLogWriter.options = {
 				logFullBasePath: path.join(
-					options?.logBasePath ?? UserSettings.getUserN8nFolderPath(),
+					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
 					options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
 				),
 				keepNumberOfFiles:

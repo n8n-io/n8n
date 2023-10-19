@@ -15,7 +15,7 @@ import Container, { Service } from 'typedi';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
-import { ObjectStoreService } from 'n8n-core';
+import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 
 type FeatureReturnType = Partial<
 	{
@@ -29,20 +29,17 @@ export class License {
 
 	private manager: LicenseManager | undefined;
 
-	instanceId: string | undefined;
-
 	private redisPublisher: RedisServicePubSubPublisher;
 
-	constructor() {
+	constructor(private instanceSettings: InstanceSettings) {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
+	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
 			return;
 		}
 
-		this.instanceId = instanceId;
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
 		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
@@ -67,7 +64,7 @@ export class License {
 				logger: this.logger,
 				loadCertStr: async () => this.loadCertStr(),
 				saveCertStr,
-				deviceFingerprint: () => instanceId,
+				deviceFingerprint: () => this.instanceSettings.instanceId,
 				onFeatureChange,
 			});
 

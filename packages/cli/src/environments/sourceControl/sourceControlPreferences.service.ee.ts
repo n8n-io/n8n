@@ -9,7 +9,7 @@ import {
 	isSourceControlLicensed,
 	sourceControlFoldersExistCheck,
 } from './sourceControlHelper.ee';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import * as Db from '@/Db';
 import {
@@ -26,16 +26,15 @@ import config from '@/config';
 export class SourceControlPreferencesService {
 	private _sourceControlPreferences: SourceControlPreferences = new SourceControlPreferences();
 
-	private sshKeyName: string;
+	readonly sshKeyName: string;
 
-	private sshFolder: string;
+	readonly sshFolder: string;
 
-	private gitFolder: string;
+	readonly gitFolder: string;
 
-	constructor() {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
+	constructor(instanceSettings: InstanceSettings) {
+		this.sshFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
+		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.sshKeyName = path.join(this.sshFolder, SOURCE_CONTROL_SSH_KEY_NAME);
 	}
 

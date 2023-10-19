@@ -9,12 +9,8 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import unset from 'lodash/unset';
-import { Credentials, UserSettings } from 'n8n-core';
-import type {
-	WorkflowExecuteMode,
-	INodeCredentialsDetails,
-	ICredentialsEncrypted,
-} from 'n8n-workflow';
+import { Credentials } from 'n8n-core';
+import type { WorkflowExecuteMode, INodeCredentialsDetails } from 'n8n-workflow';
 import { LoggerProxy, jsonStringify } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
@@ -76,20 +72,13 @@ oauth2CredentialController.get(
 			throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.InternalServerError((error as Error).message);
-		}
-
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
-		const credentialType = (credential as unknown as ICredentialsEncrypted).type;
+		const credentialType = credential.type;
 
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
-		const credentialsHelper = new CredentialsHelper(encryptionKey);
+		const credentialsHelper = Container.get(CredentialsHelper);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 			additionalData,
 			credential as INodeCredentialsDetails,
@@ -152,7 +141,7 @@ oauth2CredentialController.get(
 		const credentials = new Credentials(
 			credential as INodeCredentialsDetails,
 			credentialType,
-			(credential as unknown as ICredentialsEncrypted).nodesAccess,
+			credential.nodesAccess,
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 
@@ -166,7 +155,7 @@ oauth2CredentialController.get(
 			decryptedDataOriginal.codeVerifier = code_verifier;
 		}
 
-		credentials.setData(decryptedDataOriginal, encryptionKey);
+		credentials.setData(decryptedDataOriginal);
 		const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 		// Add special database related data
@@ -228,16 +217,15 @@ oauth2CredentialController.get(
 				return renderCallbackError(res, errorMessage);
 			}
 
-			const encryptionKey = await UserSettings.getEncryptionKey();
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(state.cid);
 
 			const mode: WorkflowExecuteMode = 'internal';
 			const timezone = config.getEnv('generic.timezone');
-			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const credentialsHelper = Container.get(CredentialsHelper);
 			const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 				additionalData,
 				credential as INodeCredentialsDetails,
-				(credential as unknown as ICredentialsEncrypted).type,
+				credential.type,
 				mode,
 				timezone,
 				true,
@@ -245,7 +233,7 @@ oauth2CredentialController.get(
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 				additionalData,
 				decryptedDataOriginal,
-				(credential as unknown as ICredentialsEncrypted).type,
+				credential.type,
 				mode,
 				timezone,
 			);
@@ -330,10 +318,10 @@ oauth2CredentialController.get(
 
 			const credentials = new Credentials(
 				credential as INodeCredentialsDetails,
-				(credential as unknown as ICredentialsEncrypted).type,
-				(credential as unknown as ICredentialsEncrypted).nodesAccess,
+				credential.type,
+				credential.nodesAccess,
 			);
-			credentials.setData(decryptedDataOriginal, encryptionKey);
+			credentials.setData(decryptedDataOriginal);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 			// Add special database related data
 			newCredentialsData.updatedAt = new Date();

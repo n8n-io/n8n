@@ -1,15 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-
 /* eslint-disable id-denylist */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { UserSettings, WorkflowExecute } from 'n8n-core';
+import { WorkflowExecute } from 'n8n-core';
 
 import type {
 	IDataObject,
@@ -1033,14 +1029,10 @@ export async function getBase(
 	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
 
-	const [encryptionKey, variables] = await Promise.all([
-		UserSettings.getEncryptionKey(),
-		WorkflowHelpers.getVariables(),
-	]);
+	const variables = await WorkflowHelpers.getVariables();
 
 	return {
-		credentialsHelper: new CredentialsHelper(encryptionKey),
-		encryptionKey,
+		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
 		timezone,

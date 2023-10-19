@@ -6,7 +6,7 @@ import fsPromises from 'fs/promises';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
-	UserSettings,
+	InstanceSettings,
 	CustomDirectoryLoader,
 	PackageDirectoryLoader,
 	LazyPackageDirectoryLoader,
@@ -51,6 +51,10 @@ export class LoadNodesAndCredentials {
 
 	private postProcessors: Array<() => Promise<void>> = [];
 
+	constructor(private readonly instanceSettings: InstanceSettings) {
+		this.downloadFolder = instanceSettings.nodesDownloadDir;
+	}
+
 	async init() {
 		if (inTest) throw new Error('Not available in tests');
 
@@ -66,8 +70,6 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
 		}
-
-		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 		// Load nodes from `n8n-nodes-base`
 		const basePathsToScan = [
@@ -155,7 +157,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	getCustomDirectories(): string[] {
-		const customDirectories = [UserSettings.getUserN8nFolderCustomExtensionPath()];
+		const customDirectories = [this.instanceSettings.customExtensionDir];
 
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
