@@ -1,22 +1,32 @@
 <template>
 	<span :class="$style.container" data-test-id="save-button">
 		<span :class="$style.saved" v-if="saved">{{ $locale.baseText('saveButton.saved') }}</span>
-		<n8n-button
+		<keyboard-shortcut-tooltip
+			:label="$locale.baseText('saveButton.hint')"
+			:shortcut="{ keys: ['s'], metaKey: true }"
+			placement="bottom"
 			v-else
-			:label="saveButtonLabel"
-			:loading="isSaving"
-			:disabled="disabled"
-			:class="$style.button"
-			:type="type"
-		/>
+		>
+			<n8n-button
+				:label="saveButtonLabel"
+				:loading="isSaving"
+				:disabled="disabled"
+				:class="$style.button"
+				:type="type"
+			/>
+		</keyboard-shortcut-tooltip>
 	</span>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 
 export default defineComponent({
 	name: 'SaveButton',
+	components: {
+		KeyboardShortcutTooltip,
+	},
 	props: {
 		saved: {
 			type: Boolean,

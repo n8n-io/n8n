@@ -1,7 +1,6 @@
 export { default as useCanvasMouseSelect } from './useCanvasMouseSelect';
 export * from './useCopyToClipboard';
 export * from './useDebounce';
-export { default as useDeviceSupport } from './useDeviceSupport';
 export * from './useExternalHooks';
 export * from './useExternalSecretsProvider';
 export { default as useGlobalLinkActions } from './useGlobalLinkActions';

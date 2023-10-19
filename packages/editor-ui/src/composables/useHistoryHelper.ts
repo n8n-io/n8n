@@ -8,7 +8,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { ref, onMounted, onUnmounted, nextTick, getCurrentInstance } from 'vue';
 import { Command } from '@/models/history';
 import { useDebounceHelper } from './useDebounce';
-import useDeviceSupportHelpers from './useDeviceSupport';
+import { useDeviceSupport } from 'n8n-design-system';
 import { getNodeViewTab } from '@/utils';
 import type { Route } from 'vue-router';
 
@@ -23,7 +23,7 @@ export function useHistoryHelper(activeRoute: Route) {
 	const uiStore = useUIStore();
 
 	const { callDebounced } = useDebounceHelper();
-	const { isCtrlKeyPressed } = useDeviceSupportHelpers();
+	const { isCtrlKeyPressed } = useDeviceSupport();
 
 	const isNDVOpen = ref<boolean>(ndvStore.activeNodeName !== null);
 

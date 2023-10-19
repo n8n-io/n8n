@@ -804,13 +804,13 @@ $popover-title-font-color: var(--color-text-dark);
 /* Tooltip
 -------------------------- */
 /// color|1|Color|0
-$tooltip-fill: var(--color-text-dark);
+$tooltip-fill: var(--color-background-dark);
 /// color|1|Color|0
 $tooltip-color: $color-white;
 /// fontSize||Font|1
 $tooltip-font-size: 12px;
 /// color||Color|0
-$tooltip-border-color: var(--color-text-dark);
+$tooltip-border-color: var(--color-background-dark);
 $tooltip-arrow-size: 6px;
 /// padding||Spacing|3
 $tooltip-padding: 10px;
@@ -845,7 +845,7 @@ $tree-expand-icon-color: var(--color-text-lighter);
 -------------------------- */
 $dropdown-menu-box-shadow: $box-shadow-light;
 $dropdown-menuItem-hover-fill: $color-primary-light-9;
-$dropdown-menuItem-hover-color: $link-color;
+$dropdown-menuItem-hover-color: var(--color-text-dark);
 
 /* Badge
 -------------------------- */

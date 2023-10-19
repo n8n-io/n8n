@@ -4,11 +4,17 @@
 			:placement="placement"
 			:trigger="trigger"
 			@command="onSelect"
+			@visible-change="onVisibleChange"
 			ref="elementDropdown"
 		>
-			<div :class="$style.activator" @click.stop.prevent @blur="onButtonBlur">
-				<n8n-icon :icon="activatorIcon" />
-			</div>
+			<n8n-icon-button
+				@click.stop.prevent
+				@blur="onButtonBlur"
+				type="tertiary"
+				text
+				:icon="activatorIcon"
+			/>
+
 			<template #dropdown>
 				<el-dropdown-menu :class="$style.userActionsMenu">
 					<el-dropdown-item
@@ -17,6 +23,7 @@
 						:command="item.id"
 						:disabled="item.disabled"
 						:divided="item.divided"
+						:class="$style.elementItem"
 					>
 						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
@@ -25,6 +32,12 @@
 							<span :class="$style.label">
 								{{ item.label }}
 							</span>
+							<n8n-keyboard-shortcut
+								v-if="item.shortcut"
+								v-bind="item.shortcut"
+								:class="$style.shortcut"
+							>
+							</n8n-keyboard-shortcut>
 						</div>
 					</el-dropdown-item>
 				</el-dropdown-menu>
@@ -38,6 +51,8 @@ import type { PropType } from 'vue';
 import { defineComponent } from 'vue';
 import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import type { KeyboardShortcut } from '../../types';
 
 export interface IActionDropdownItem {
 	id: string;
@@ -45,6 +60,7 @@ export interface IActionDropdownItem {
 	icon?: string;
 	divided?: boolean;
 	disabled?: boolean;
+	shortcut?: KeyboardShortcut;
 	customClass?: string;
 }
 
@@ -61,6 +77,7 @@ export default defineComponent({
 		ElDropdownMenu,
 		ElDropdownItem,
 		N8nIcon,
+		N8nKeyboardShortcut,
 	},
 	data() {
 		const testIdPrefix = this.$attrs['data-test-id'];
@@ -103,13 +120,20 @@ export default defineComponent({
 		onSelect(action: string): void {
 			this.$emit('select', action);
 		},
+		onVisibleChange(open: boolean): void {
+			this.$emit('visibleChange', open);
+		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as InstanceType<ElDropdown>;
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
 
 			// Hide dropdown when clicking outside of current document
 			if (elementDropdown?.handleClose && event.relatedTarget === null) {
 				elementDropdown.handleClose();
 			}
+		},
+		open() {
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
+			elementDropdown.handleOpen();
 		},
 	},
 });
@@ -118,6 +142,15 @@ export default defineComponent({
 <style lang="scss" module>
 .userActionsMenu {
 	min-width: 160px;
+	padding: var(--spacing-4xs) 0;
+}
+
+.elementItem {
+	padding: 0;
+
+	&:hover {
+		color: inherit;
+	}
 }
 
 .activator {
@@ -143,6 +176,17 @@ export default defineComponent({
 
 .itemContainer {
 	display: flex;
+	align-items: center;
+	gap: var(--spacing-2xs);
+	justify-content: space-between;
+	color: var(--color-text-base);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-xloose);
+	padding: var(--spacing-4xs) var(--spacing-2xs);
+
+	&:hover {
+		background-color: var(--color-background-base);
+	}
 }
 
 .icon {
@@ -154,7 +198,13 @@ export default defineComponent({
 	}
 }
 
+.shortcut {
+	display: flex;
+}
+
 :global(li.is-disabled) {
+	color: var(--color-text-lighter);
+
 	.hasCustomStyling {
 		color: inherit !important;
 	}

@@ -6,6 +6,7 @@
 		data-test-id="canvas-node"
 		:ref="data.name"
 		:data-name="data.name"
+		@contextmenu="onContextMenuRightClick"
 	>
 		<div class="select-background" v-show="isSelected"></div>
 		<div
@@ -13,6 +14,7 @@
 				'node-default': true,
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
+				'menu-open': isContextMenuOpen,
 			}"
 		>
 			<div
@@ -102,48 +104,23 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div
-					v-touch:tap="deleteNode"
-					class="option"
-					:title="$locale.baseText('node.deleteNode')"
-					data-test-id="delete-node-button"
-				>
-					<font-awesome-icon icon="trash" />
-				</div>
-				<div
-					v-touch:tap="disableNode"
-					class="option"
-					:title="$locale.baseText('node.activateDeactivateNode')"
-					data-test-id="disable-node-button"
-				>
-					<font-awesome-icon :icon="nodeDisabledIcon" />
-				</div>
-				<div
-					v-touch:tap="duplicateNode"
-					class="option"
-					:title="$locale.baseText('node.duplicateNode')"
-					v-if="isDuplicatable"
-					data-test-id="duplicate-node-button"
-				>
-					<font-awesome-icon icon="clone" />
-				</div>
-				<div
-					v-touch:tap="setNodeActive"
-					class="option touch"
-					:title="$locale.baseText('node.editNode')"
-					data-test-id="activate-node-button"
-				>
-					<font-awesome-icon class="execute-icon" icon="cog" />
-				</div>
-				<div
-					v-touch:tap="executeNode"
-					class="option"
-					:title="$locale.baseText('node.executeNode')"
+				<n8n-action-dropdown
+					ref="contextMenu"
+					:items="nodeActions"
+					placement="top"
+					data-test-id="context-menu"
+					@visible-change="onContextMenuVisibleChange"
+					@select="onContextMenuAction"
+				/>
+
+				<n8n-icon-button
 					v-if="!workflowRunning && !isConfigNode"
 					data-test-id="execute-node-button"
-				>
-					<font-awesome-icon class="execute-icon" icon="play-circle" />
-				</div>
+					type="tertiary"
+					text
+					icon="play"
+					@click="executeNode"
+				/>
 			</div>
 			<div
 				:class="{
@@ -164,6 +141,20 @@
 				{{ nodeSubtitle }}
 			</div>
 		</div>
+		<!-- <div
+			v-if="contextMenuSource === 'right-click' && isContextMenuOpen"
+			class="context-menu"
+			:style="{ left: contextMenuPosition[0], top: contextMenuPosition[1] }"
+		>
+			<n8n-action-list
+				v-on-click-outside="onClickOutsideContextMenu"
+				:items="nodeActions"
+				placement="top"
+				data-test-id="context-menu"
+				@select="onContextMenuAction"
+			>
+			</n8n-action-list>
+		</div> -->
 	</div>
 </template>
 
@@ -199,6 +190,8 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
+import { getMousePosition } from '@/utils/nodeViewUtils';
 
 export default defineComponent({
 	name: 'Node',
@@ -515,6 +508,50 @@ export default defineComponent({
 				!this.dragging
 			);
 		},
+		nodeActions(): IActionDropdownItem[] {
+			return [
+				{
+					id: 'open',
+					label: this.$locale.baseText('node.open'),
+					shortcut: { keys: ['↵'] },
+				},
+				{
+					id: 'deactivate',
+					label: this.data?.disabled
+						? this.$locale.baseText('node.activate')
+						: this.$locale.baseText('node.deactivate'),
+					shortcut: { keys: ['D'] },
+				},
+				{
+					id: 'duplicate',
+					label: this.$locale.baseText('node.duplicate'),
+					disabled: !this.isDuplicatable,
+					shortcut: { metaKey: true, keys: ['D'] },
+				},
+				{
+					id: 'execute',
+					label: this.$locale.baseText('node.execute'),
+				},
+				{
+					id: 'rename',
+					label: this.$locale.baseText('node.rename'),
+					shortcut: { keys: ['F2'] },
+				},
+				{
+					id: 'pin',
+					label: this.showPinnedDataInfo
+						? this.$locale.baseText('node.unpin')
+						: this.$locale.baseText('node.pin'),
+					shortcut: { keys: ['p'] },
+				},
+				{
+					id: 'delete',
+					divided: true,
+					label: this.$locale.baseText('node.delete'),
+					shortcut: { keys: ['Del'] },
+				},
+			];
+		},
 	},
 	watch: {
 		isActive(newValue, oldValue) {
@@ -585,6 +622,9 @@ export default defineComponent({
 			showTriggerNodeTooltip: false,
 			pinDataDiscoveryTooltipVisible: false,
 			dragging: false,
+			isContextMenuOpen: false,
+			contextMenuPosition: [0, 0],
+			contextMenuSource: 'none',
 			unwatchWorkflowDataItems: () => {},
 		};
 	},
@@ -689,11 +729,62 @@ export default defineComponent({
 				}, 2000);
 			}
 		},
+
+		onContextMenuAction(action: string): void {
+			switch (action) {
+				case 'open':
+					this.setNodeActive();
+					break;
+				case 'deactivate':
+					this.disableNode();
+					break;
+				case 'duplicate':
+					void this.duplicateNode();
+					break;
+				case 'execute':
+					this.executeNode();
+					break;
+				case 'rename':
+					this.$emit('renameNode', this.name);
+					break;
+				case 'pin':
+					this.$emit('pinNode', this.name);
+					break;
+				case 'delete':
+					void this.deleteNode();
+					break;
+			}
+		},
+		onContextMenuRightClick(e: MouseEvent): boolean {
+			e.preventDefault();
+			this.isContextMenuOpen = true;
+			this.contextMenuSource = 'right-click';
+			this.contextMenuPosition = getMousePosition(e);
+
+			this.$refs.contextMenu.open();
+
+			return false;
+		},
+		// onClickOutsideContextMenu(e: MouseEvent): void {
+		// 	this.isContextMenuOpen = false;
+		// },
+		onContextMenuVisibleChange(open: boolean): void {
+			this.isContextMenuOpen = open;
+			this.contextMenuSource = 'node-option';
+
+			if (open) {
+				this.$emit('nodeSelected', this.name);
+			}
+		},
 	},
 });
 </script>
 
 <style lang="scss" scoped>
+.context-menu {
+	position: absolute;
+}
+
 .node-wrapper {
 	--node-width: 100px;
 	--node-height: 100px;
@@ -761,13 +852,17 @@ export default defineComponent({
 		}
 
 		&.touch-active,
-		&:hover {
+		&:hover,
+		&.menu-open {
 			.node-execute {
 				display: initial;
 			}
 
 			.node-options {
-				display: initial;
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--spacing-2xs);
 			}
 		}
 
@@ -829,19 +924,19 @@ export default defineComponent({
 		}
 
 		.node-options {
+			--node-options-height: 26px;
 			display: none;
 			position: absolute;
-			top: -25px;
-			left: -10px;
-			width: calc(var(--node-width) + 20px);
-			height: 26px;
-			font-size: 0.9em;
+			top: calc(-1 * (var(--node-options-height) + var(--spacing-4xs)));
+			left: 0;
+			width: var(--node-width);
+			height: var(--node-options-height);
+			font-size: var(--font-size-s);
 			z-index: 10;
-			color: #aaa;
+			color: var(--color-text-light);
 			text-align: center;
 
 			.option {
-				width: 28px;
 				display: inline-block;
 
 				&.touch {
@@ -854,8 +949,7 @@ export default defineComponent({
 
 				.execute-icon {
 					position: relative;
-					top: 2px;
-					font-size: 1.2em;
+					font-size: var(----font-size-xl);
 				}
 			}
 

@@ -48,6 +48,8 @@
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
 						@removeNode="(name) => removeNode(name, true)"
+						@pinNode="pinNode"
+						@renameNode="renameNodePrompt"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
@@ -109,17 +111,21 @@
 					@mouseleave="showTriggerMissingToltip(false)"
 					@click="onRunContainerClick"
 				>
-					<n8n-button
-						@click.stop="onRunWorkflow"
-						:loading="workflowRunning"
+					<keyboard-shortcut-tooltip
 						:label="runButtonText"
-						:title="$locale.baseText('nodeView.executesTheWorkflowFromATriggerNode')"
-						size="large"
-						icon="play-circle"
-						type="primary"
-						:disabled="isExecutionDisabled"
-						data-test-id="execute-workflow-button"
-					/>
+						:shortcut="{ metaKey: true, keys: ['↵'] }"
+					>
+						<n8n-button
+							@click.stop="onRunWorkflow"
+							:loading="workflowRunning"
+							:label="runButtonText"
+							size="large"
+							icon="play-circle"
+							type="primary"
+							:disabled="isExecutionDisabled"
+							data-test-id="execute-workflow-button"
+						/>
+					</keyboard-shortcut-tooltip>
 				</span>
 
 				<n8n-button
@@ -227,6 +233,7 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 import {
 	useGlobalLinkActions,
 	useCanvasMouseSelect,
@@ -244,6 +251,7 @@ import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
+import KeyboardShortcutTooltip from '@/components/KeyboardShortcutTooltip.vue';
 import { v4 as uuid } from 'uuid';
 import type {
 	IConnection,
@@ -364,12 +372,14 @@ export default defineComponent({
 		workflowHelpers,
 		workflowRun,
 		debounceHelper,
+		nodeHelpers,
 	],
 	components: {
 		NodeDetailsView,
 		Node,
 		Sticky,
 		CanvasAddButton,
+		KeyboardShortcutTooltip,
 		NodeCreation,
 		CanvasControls,
 	},
@@ -1109,8 +1119,26 @@ export default defineComponent({
 				return;
 			}
 
-			if (e.key === 'd') {
+			if (e.key === 'd' && !this.isCtrlKeyPressed(e)) {
 				void this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
+			} else if (e.key === 'd' && this.isCtrlKeyPressed(e)) {
+				const selectedNodes = this.uiStore.getSelectedNodes;
+
+				if (selectedNodes.length > 0) {
+					e.preventDefault();
+					selectedNodes.forEach((node) => {
+						void this.duplicateNode(node.name);
+					});
+				}
+			} else if (e.key === 'p' && !this.isCtrlKeyPressed(e)) {
+				const selectedNodes = this.uiStore.getSelectedNodes;
+
+				if (selectedNodes.length > 0) {
+					e.preventDefault();
+					selectedNodes.forEach((node) => {
+						void this.pinNode(node.name);
+					});
+				}
 			} else if (e.key === 'Delete' || e.key === 'Backspace') {
 				e.stopPropagation();
 				e.preventDefault();
@@ -1121,6 +1149,16 @@ export default defineComponent({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
 					createNodeActive: !this.createNodeActive && !this.isReadOnlyRoute && !this.readOnlyEnv,
 				});
+			} else if (
+				e.key === 'Enter' &&
+				this.isCtrlKeyPressed(e) &&
+				!this.isReadOnlyRoute &&
+				!this.readOnlyEnv
+			) {
+				void this.onRunWorkflow();
+			} else if (e.key === 's' && e.shiftKey && !this.isReadOnlyRoute && !this.readOnlyEnv) {
+				console.log('heelo');
+				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
 			} else if (e.key === ' ') {
@@ -1319,7 +1357,26 @@ export default defineComponent({
 			if (!this.editAllowedCheck()) {
 				return;
 			}
-			this.disableNodes(this.uiStore.getSelectedNodes, true);
+			this.disableNodes(
+				this.uiStore.getSelectedNodes
+					.map((node) => node && this.workflowsStore.getNodeByName(node.name))
+					.filter((node) => !!node) as INode[],
+				true,
+			);
+		},
+
+		pinNode(name: string) {
+			const node = this.workflowsStore.getNodeByName(name);
+			const pinData = this.workflowsStore.pinDataByNodeName(name);
+
+			if (node) {
+				const data = this.getNodeInputData(node);
+				if (pinData) {
+					this.workflowsStore.unpinData({ node });
+				} else if (data) {
+					this.workflowsStore.pinData({ node, data });
+				}
+			}
 		},
 
 		deleteSelectedNodes() {

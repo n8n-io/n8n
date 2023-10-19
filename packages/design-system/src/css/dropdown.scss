@@ -124,7 +124,7 @@
 
 		@include mixins.when(disabled) {
 			cursor: default;
-			color: var.$font-color-disabled-base;
+			color: var(--color-text-lighter);
 			pointer-events: none;
 		}
 	}
