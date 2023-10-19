@@ -1630,6 +1630,8 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
+	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
+	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
 
 export interface ProxyInput {
@@ -2300,6 +2302,7 @@ export interface IN8nUISettings {
 		externalSecrets: boolean;
 		showNonProdBanner: boolean;
 		debugInEditor: boolean;
+		binaryDataS3: boolean;
 		workflowHistory: boolean;
 	};
 	hideUsagePage: boolean;
