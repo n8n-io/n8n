@@ -256,7 +256,6 @@ export const setupTestServer = ({
 							app,
 							config,
 							new PasswordResetController(
-								config,
 								logger,
 								externalHooks,
 								internalHooks,
