@@ -310,7 +310,6 @@ export class Server extends AbstractServer {
 			new MeController(logger, externalHooks, internalHooks, userService),
 			new NodeTypesController(config, nodeTypes),
 			new PasswordResetController(
-				config,
 				logger,
 				externalHooks,
 				internalHooks,
