@@ -530,7 +530,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently delete all soft-deleted executions and their binary data, in batches, in a pruning cycle.
 	 */
 	private async hardDeleteOnPruning() {
-		// Find ids of all executions that were deleted over an hour ago
 		const date = new Date();
 		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
 
