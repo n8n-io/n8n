@@ -19,9 +19,6 @@ import {
 	copyInputItem,
 	createTableStruct,
 	executeQueryQueue,
-	extractDeleteValues,
-	extractUpdateCondition,
-	extractUpdateSet,
 	extractValues,
 	formatColumns,
 } from './GenericFunctions';
@@ -327,10 +324,25 @@ export class MicrosoftSql implements INodeType {
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
 						return chunk(items, 1000).map(async (insertValues) => {
-							const values = insertValues.map((item: IDataObject) => extractValues(item)).join(',');
-							return pool
-								.request()
-								.query(`INSERT INTO ${table}(${formatColumns(columnString)}) VALUES ${values};`);
+							const request = pool.request();
+
+							const values = insertValues.map((item: IDataObject) => extractValues(item));
+							const valuesPlaceholder = [];
+
+							for (const [rIndex, row] of values.entries()) {
+								valuesPlaceholder.push(
+									`(${row.map((_, vIndex) => `@r${rIndex}v${vIndex}`).join(', ')})`,
+								);
+								for (const [vIndex, value] of row.entries()) {
+									request.input(`r${rIndex}v${vIndex}`, value);
+								}
+							}
+
+							const query = `INSERT INTO [${table}] (${formatColumns(
+								columnString,
+							)}) VALUES ${valuesPlaceholder.join(', ')};`;
+
+							return request.query(query);
 						});
 					},
 				);
@@ -363,12 +375,21 @@ export class MicrosoftSql implements INodeType {
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
 						return items.map(async (item) => {
+							const request = pool.request();
 							const columns = columnString.split(',').map((column) => column.trim());
 
-							const setValues = extractUpdateSet(item, columns);
-							const condition = extractUpdateCondition(item, item.updateKey as string);
+							const setValues: string[] = [];
+							const condition = `${item.updateKey} = @condition`;
+							request.input('condition', item[item.updateKey as string]);
 
-							return pool.request().query(`UPDATE ${table} SET ${setValues} WHERE ${condition};`);
+							for (const [index, col] of columns.entries()) {
+								setValues.push(`[${col}] = @v${index}`);
+								request.input(`v${index}`, item[col]);
+							}
+
+							const query = `UPDATE [${table}] SET ${setValues.join(', ')} WHERE ${condition};`;
+
+							return request.query(query);
 						});
 					},
 				);
@@ -402,14 +423,19 @@ export class MicrosoftSql implements INodeType {
 								1000,
 							);
 							const queryQueue = deleteItemsList.map(async (deleteValues) => {
-								return pool
-									.request()
-									.query(
-										`DELETE FROM ${table} WHERE "${deleteKey}" IN ${extractDeleteValues(
-											deleteValues,
-											deleteKey,
-										)};`,
-									);
+								const request = pool.request();
+								const valuesPlaceholder: string[] = [];
+
+								for (const [index, entry] of deleteValues.entries()) {
+									valuesPlaceholder.push(`@v${index}`);
+									request.input(`v${index}`, entry[deleteKey]);
+								}
+
+								const query = `DELETE FROM [${table}] WHERE [${deleteKey}] IN (${valuesPlaceholder.join(
+									', ',
+								)});`;
+
+								return request.query(query);
 							});
 							return Promise.all(queryQueue);
 						});

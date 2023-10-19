@@ -61,7 +61,6 @@ export function createTableStruct(
  * @param {ITables} tables The ITables to be processed.
  * @param {function} buildQueryQueue function that builds the queue of promises
  */
-
 export async function executeQueryQueue(
 	tables: ITables,
 	buildQueryQueue: Function,
@@ -82,68 +81,22 @@ export async function executeQueryQueue(
 	);
 }
 
-/**
- * Extracts the values from the item for INSERT
- *
- * @param {IDataObject} item The item to extract
- */
-export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item)
-		.map((val) => {
-			//the column cannot be found in the input
-			//so, set it to null in the sql query
-			if (val === null) {
-				return 'NULL';
-			} else if (typeof val === 'string') {
-				return `'${val.replace(/'/g, "''")}'`;
-			} else if (typeof val === 'boolean') {
-				return +!!val;
-			}
-			return val;
-		}) // maybe other types such as dates have to be handled as well
-		.join(',')})`;
-}
-
-/**
- * Extracts the SET from the item for UPDATE
- *
- * @param {IDataObject} item The item to extract from
- * @param {string[]} columns The columns to update
- */
-export function extractUpdateSet(item: IDataObject, columns: string[]): string {
-	return columns
-		.map(
-			(column) =>
-				`"${column}" = ${typeof item[column] === 'string' ? `'${item[column]}'` : item[column]}`,
-		)
-		.join(',');
-}
-
-/**
- * Extracts the WHERE condition from the item for UPDATE
- *
- * @param {IDataObject} item The item to extract from
- * @param {string} key The column name to build the condition with
- */
-export function extractUpdateCondition(item: IDataObject, key: string): string {
-	return `${key} = ${typeof item[key] === 'string' ? `'${item[key]}'` : item[key]}`;
-}
-
-/**
- * Extracts the WHERE condition from the items for DELETE
- *
- * @param {IDataObject[]} items The items to extract the values from
- * @param {string} key The column name to extract the value from for the delete condition
- */
-export function extractDeleteValues(items: IDataObject[], key: string): string {
-	return `(${items
-		.map((item) => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
-		.join(',')})`;
+export function extractValues(item: IDataObject) {
+	return Object.values(item).map((val) => {
+		//the column cannot be found in the input
+		//so, set it to null in the sql query
+		if (val === null) {
+			return 'NULL';
+		} else if (typeof val === 'boolean') {
+			return +!!val;
+		}
+		return val;
+	});
 }
 
 export function formatColumns(columns: string) {
 	return columns
 		.split(',')
-		.map((column) => `"${column.trim()}"`)
-		.join(',');
+		.map((column) => `[${column.trim()}]`)
+		.join(', ');
 }
