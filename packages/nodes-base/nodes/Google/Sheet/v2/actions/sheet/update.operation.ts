@@ -369,7 +369,7 @@ export async function execute(
 			const newColumnNames = columnNames.concat([...newColumns]);
 			await sheet.updateRows(
 				sheetName,
-				[columnNames.concat([...newColumns])],
+				[newColumnNames],
 				(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
 				headerRow + 1,
 			);
