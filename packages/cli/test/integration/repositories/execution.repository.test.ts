@@ -222,10 +222,11 @@ describe('softDeleteOnPruningCycle()', () => {
 describe('hardDeleteOnPruningCycle()', () => {
 	describe('when executions to hard delete exceed batch size', () => {
 		test('should speed up and slow down executions removal', async () => {
+			executionRepository.setHardDeletionInterval();
+
 			jest.replaceProperty(executionRepository, 'deletionBatchSize', 5);
 			const numberOfExecutions = executionRepository.deletionBatchSize + 1;
 			const deleteSpy = jest.spyOn(executionRepository, 'delete');
-			executionRepository.setHardDeletionInterval();
 
 			await Promise.all(
 				Array.from({ length: numberOfExecutions }).map(async () => {
@@ -242,7 +243,8 @@ describe('hardDeleteOnPruningCycle()', () => {
 
 			expect(deleteSpy).toHaveBeenCalledTimes(2);
 			expect(await findAllExecutions()).toHaveLength(0);
-			clearInterval(executionRepository.intervals.hardDeletion);
+
+			clearInterval(executionRepository.intervals.hardDeletion); // prevent open handles
 		});
 	});
 });
