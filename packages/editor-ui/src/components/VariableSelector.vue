@@ -594,7 +594,6 @@ export default defineComponent({
 
 			const executionData = this.workflowsStore.getWorkflowExecution;
 			let parentNode = this.workflow.getParentNodes(this.activeNode.name, inputName, 1);
-			console.log('parentNode', parentNode);
 			let runData = this.workflowsStore.getWorkflowRunData;
 
 			if (runData === null) {

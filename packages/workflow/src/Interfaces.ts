@@ -2,23 +2,23 @@
 
 import type * as express from 'express';
 import type FormData from 'form-data';
+import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { Readable } from 'stream';
-import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
-import type { PathLike } from 'fs';
+import type { Readable } from 'stream';
+import type { URLSearchParams } from 'url';
 
+import type { AuthenticationMethod } from './Authentication';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
+import type { ExecutionStatus } from './ExecutionStatus';
+import type { ExpressionError } from './ExpressionError';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { Workflow } from './Workflow';
-import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import type { ExpressionError } from './ExpressionError';
-import type { ExecutionStatus } from './ExecutionStatus';
-import type { AuthenticationMethod } from './Authentication';
+import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -773,7 +773,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputName: ConnectionTypes,
 			itemIndex: number,
 			inputIndex?: number,
-			nodeNameOverride?: string,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
@@ -1290,7 +1289,7 @@ export interface SupplyData {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IExecuteFunctions): Promise<SupplyData>;
+	supplyData?(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
@@ -1534,8 +1533,6 @@ export const enum NodeConnectionType {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiTool = 'ai_tool',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiVectorRetriever = 'ai_vectorRetriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiVectorStore = 'ai_vectorStore',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	Main = 'main',
@@ -1630,6 +1627,7 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
+	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
