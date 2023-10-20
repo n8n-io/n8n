@@ -9,12 +9,75 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 
-import { StructuredOutputParser } from 'langchain/output_parsers';
 import { parseSchema } from 'json-schema-to-zod';
 import { z } from 'zod';
 import type { JSONSchema7 } from 'json-schema';
+import { StructuredOutputParser } from 'langchain/output_parsers';
+import { OutputParserException } from 'langchain/schema/output_parser';
+import get from 'lodash/get';
 import { logWrapper } from '../../../utils/logWrapper';
 
+const STRUCTURED_OUTPUT_KEY = '__structured__output';
+const STRUCTURED_OUTPUT_OBJECT_KEY = '__structured__output__object';
+const STRUCTURED_OUTPUT_ARRAY_KEY = '__structured__output__array';
+
+class N8nStructuredOutputParser<T extends z.ZodTypeAny> extends StructuredOutputParser<T> {
+	async parse(text: string): Promise<z.infer<T>> {
+		try {
+			const parsed = (await super.parse(text)) as object;
+
+			return (
+				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_OBJECT_KEY}`) ??
+				get(parsed, `${STRUCTURED_OUTPUT_KEY}.${STRUCTURED_OUTPUT_ARRAY_KEY}`) ??
+				get(parsed, STRUCTURED_OUTPUT_KEY) ??
+				parsed
+			);
+		} catch (e) {
+			// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
+			throw new OutputParserException(`Failed to parse. Text: "${text}". Error: ${e}`, text);
+		}
+	}
+
+	static fromZedJsonSchema(
+		schema: JSONSchema7,
+	): StructuredOutputParser<z.ZodType<object, z.ZodTypeDef, object>> {
+		// Make sure to remove the description from root schema
+		const { description, ...restOfSchema } = schema;
+
+		const zodSchemaString = parseSchema(restOfSchema as JSONSchema7);
+
+		// TODO: This is obviously not great and should be replaced later!!!
+		// eslint-disable-next-line @typescript-eslint/no-implied-eval
+		const itemSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
+
+		const returnSchema = z.object({
+			[STRUCTURED_OUTPUT_KEY]: z
+				.object({
+					[STRUCTURED_OUTPUT_OBJECT_KEY]: itemSchema.optional(),
+					[STRUCTURED_OUTPUT_ARRAY_KEY]: z.array(itemSchema).optional(),
+				})
+				.describe(
+					`Wrapper around the output data. It can only contain ${STRUCTURED_OUTPUT_OBJECT_KEY} or ${STRUCTURED_OUTPUT_ARRAY_KEY} but never both.`,
+				)
+				.refine(
+					(data) => {
+						// Validate that one and only one of the properties exists
+						return (
+							Boolean(data[STRUCTURED_OUTPUT_OBJECT_KEY]) !==
+							Boolean(data[STRUCTURED_OUTPUT_ARRAY_KEY])
+						);
+					},
+					{
+						message:
+							'One and only one of __structured__output__object and __structured__output__array should be present.',
+						path: [STRUCTURED_OUTPUT_KEY],
+					},
+				),
+		});
+
+		return N8nStructuredOutputParser.fromZodSchema(returnSchema);
+	}
+}
 export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
@@ -86,28 +149,14 @@ export class OutputParserStructured implements INodeType {
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		const schema = this.getNodeParameter('jsonSchema', itemIndex) as string;
 
-		let itemSchema: object;
+		let itemSchema: JSONSchema7;
 		try {
-			itemSchema = jsonParse(schema);
+			itemSchema = jsonParse<JSONSchema7>(schema);
 		} catch (error) {
 			throw new NodeOperationError(this.getNode(), 'Error during parsing of JSON Schema.');
 		}
 
-		// As we always want to return an array wrap it accordingly
-		const returnSchema: JSONSchema7 = {
-			type: 'array',
-			items: itemSchema,
-		};
-
-		const zodSchemaString = parseSchema(returnSchema);
-
-		// TODO: This is obviously not great and should be replaced later!!!
-		// const createZodSchema = new Function('z', `return (${zodSchemaString})`);
-		// const zodSchema = createZodSchema(z);
-		// eslint-disable-next-line @typescript-eslint/no-implied-eval
-		const zodSchema = new Function('z', `return (${zodSchemaString})`)(z) as z.ZodSchema<object>;
-
-		const parser = StructuredOutputParser.fromZodSchema(zodSchema);
+		const parser = N8nStructuredOutputParser.fromZedJsonSchema(itemSchema);
 
 		return {
 			response: logWrapper(parser, this),
