@@ -98,6 +98,9 @@ export default defineComponent({
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isTriggerNode(): boolean {
+			if (!this.node) {
+				return false;
+			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		isManualTriggerNode(): boolean {
