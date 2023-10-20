@@ -81,19 +81,6 @@ export async function executeQueryQueue(
 	);
 }
 
-export function extractValues(item: IDataObject) {
-	return Object.values(item).map((val) => {
-		//the column cannot be found in the input
-		//so, set it to null in the sql query
-		if (val === null) {
-			return 'NULL';
-		} else if (typeof val === 'boolean') {
-			return +!!val;
-		}
-		return val;
-	});
-}
-
 export function formatColumns(columns: string) {
 	return columns
 		.split(',')

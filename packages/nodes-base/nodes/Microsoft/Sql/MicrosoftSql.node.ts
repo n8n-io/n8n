@@ -19,7 +19,6 @@ import {
 	copyInputItem,
 	createTableStruct,
 	executeQueryQueue,
-	extractValues,
 	formatColumns,
 } from './GenericFunctions';
 import { chunk, flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
@@ -124,13 +123,13 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['insert'],
 					},
 				},
 				default: '',
-
 				placeholder: 'id,name,description',
 				description:
 					'Comma-separated list of the properties which should used as columns for the new rows',
@@ -156,6 +155,7 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Update Key',
 				name: 'updateKey',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['update'],
@@ -171,6 +171,7 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Columns',
 				name: 'columns',
 				type: 'string',
+				requiresDataPath: 'multiple',
 				displayOptions: {
 					show: {
 						operation: ['update'],
@@ -202,6 +203,7 @@ export class MicrosoftSql implements INodeType {
 				displayName: 'Delete Key',
 				name: 'deleteKey',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['delete'],
@@ -326,10 +328,10 @@ export class MicrosoftSql implements INodeType {
 						return chunk(items, 1000).map(async (insertValues) => {
 							const request = pool.request();
 
-							const values = insertValues.map((item: IDataObject) => extractValues(item));
 							const valuesPlaceholder = [];
 
-							for (const [rIndex, row] of values.entries()) {
+							for (const [rIndex, entry] of insertValues.entries()) {
+								const row = Object.values(entry);
 								valuesPlaceholder.push(
 									`(${row.map((_, vIndex) => `@r${rIndex}v${vIndex}`).join(', ')})`,
 								);
