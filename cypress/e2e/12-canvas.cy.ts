@@ -8,8 +8,10 @@ import {
 	MERGE_NODE_NAME,
 } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { WorkflowExecutionsTab } from '../pages';
 
 const WorkflowPage = new WorkflowPageClass();
+const ExecutionsTab = new WorkflowExecutionsTab();
 
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
@@ -306,4 +308,34 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
+
+	// ADO-1240: Connections would get deleted after activating and deactivating NodeView
+	it('should preserve connections after rename & node-view switch', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.executeWorkflow();
+
+		ExecutionsTab.actions.switchToExecutionsTab();
+		ExecutionsTab.getters.successfulExecutionListItems().should('have.length', 1);
+
+		ExecutionsTab.actions.switchToEditorTab();
+
+		ExecutionsTab.actions.switchToExecutionsTab();
+		ExecutionsTab.getters.successfulExecutionListItems().should('have.length', 1);
+
+		ExecutionsTab.actions.switchToEditorTab();
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+
+		WorkflowPage.getters.canvasNodes().last().click();
+		cy.get('body').trigger('keydown', { key: 'F2' });
+		cy.get('body').type(RENAME_NODE_NAME);
+		cy.get('body').type('{enter}');
+		WorkflowPage.getters.canvasNodeByName(RENAME_NODE_NAME).should('exist');
+		// Make sure all connections are there after save & reload
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		cy.reload();
+		cy.waitForLoad();
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 1);
+	})
 });
