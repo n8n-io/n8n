@@ -16,6 +16,17 @@ async function findAllExecutions() {
 	});
 }
 
+async function createPrunableExecutions(numberOfExecutions: number) {
+	await Promise.all(
+		Array.from({ length: numberOfExecutions }).map(async () => {
+			return testDb.createExecution(
+				{ finished: true, status: 'success', deletedAt: yesterday },
+				workflow,
+			);
+		}),
+	);
+}
+
 const mockLogger = mock<ILogger>();
 
 const now = new Date();
@@ -225,16 +236,8 @@ describe('hardDeleteOnPruningCycle()', () => {
 
 			jest.replaceProperty(executionRepository, 'deletionBatchSize', 5);
 			const numberOfExecutions = executionRepository.deletionBatchSize + 1;
+			await createPrunableExecutions(numberOfExecutions);
 			const deleteSpy = jest.spyOn(executionRepository, 'delete');
-
-			await Promise.all(
-				Array.from({ length: numberOfExecutions }).map(async () => {
-					return testDb.createExecution(
-						{ finished: true, status: 'success', deletedAt: yesterday },
-						workflow,
-					);
-				}),
-			);
 
 			await executionRepository.hardDeleteOnPruningCycle();
 
