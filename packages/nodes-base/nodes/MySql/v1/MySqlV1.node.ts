@@ -308,7 +308,7 @@ export class MySqlV1 implements INodeType {
 
 			try {
 				const queryQueue = items.map(async (_, index) => {
-					let rawQuery = this.getNodeParameter('query', index) as string;
+					let rawQuery = (this.getNodeParameter('query', index) as string).trim();
 
 					for (const resolvable of getResolvables(rawQuery)) {
 						rawQuery = rawQuery.replace(
