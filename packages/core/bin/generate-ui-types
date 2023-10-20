@@ -4,10 +4,7 @@ const { LoggerProxy, NodeHelpers } = require('n8n-workflow');
 const { PackageDirectoryLoader } = require('../dist/DirectoryLoader');
 const { packageDir, writeJSON } = require('./common');
 
-LoggerProxy.init({
-	log: console.log.bind(console),
-	warn: console.warn.bind(console),
-});
+LoggerProxy.init(console);
 
 function findReferencedMethods(obj, refs = {}, latestName = '') {
 	for (const key in obj) {
