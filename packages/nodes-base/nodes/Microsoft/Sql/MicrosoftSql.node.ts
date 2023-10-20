@@ -11,17 +11,17 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import mssql from 'mssql';
-
-import type { ITables } from './TableInterface';
+import type { ITables } from './interfaces';
 
 import {
-	copyInputItem,
+	configurePool,
 	createTableStruct,
-	executeQueryQueue,
-	formatColumns,
+	deleteOperation,
+	insertOperation,
+	updateOperation,
 } from './GenericFunctions';
-import { chunk, flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
+
+import { flatten, generatePairedItemData, getResolvables } from '@utils/utilities';
 
 export class MicrosoftSql implements INodeType {
 	description: INodeTypeDescription = {
@@ -226,23 +226,7 @@ export class MicrosoftSql implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const config = {
-						server: credentials.server as string,
-						port: credentials.port as number,
-						database: credentials.database as string,
-						user: credentials.user as string,
-						password: credentials.password as string,
-						domain: credentials.domain ? (credentials.domain as string) : undefined,
-						connectionTimeout: credentials.connectTimeout as number,
-						requestTimeout: credentials.requestTimeout as number,
-						options: {
-							encrypt: credentials.tls as boolean,
-							enableArithAbort: false,
-							tdsVersion: credentials.tdsVersion as string,
-							trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
-						},
-					};
-					const pool = new mssql.ConnectionPool(config);
+					const pool = configurePool(credentials);
 					await pool.connect();
 				} catch (error) {
 					return {
@@ -261,24 +245,7 @@ export class MicrosoftSql implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('microsoftSql');
 
-		const config = {
-			server: credentials.server as string,
-			port: credentials.port as number,
-			database: credentials.database as string,
-			user: credentials.user as string,
-			password: credentials.password as string,
-			domain: credentials.domain ? (credentials.domain as string) : undefined,
-			connectionTimeout: credentials.connectTimeout as number,
-			requestTimeout: credentials.requestTimeout as number,
-			options: {
-				encrypt: credentials.tls as boolean,
-				enableArithAbort: false,
-				tdsVersion: credentials.tdsVersion as string,
-				trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
-			},
-		};
-
-		const pool = new mssql.ConnectionPool(config);
+		const pool = configurePool(credentials);
 		await pool.connect();
 
 		const returnItems: INodeExecutionData[] = [];
@@ -289,10 +256,6 @@ export class MicrosoftSql implements INodeType {
 
 		try {
 			if (operation === 'executeQuery') {
-				// ----------------------------------
-				//         executeQuery
-				// ----------------------------------
-
 				let rawQuery = this.getNodeParameter('query', 0) as string;
 
 				for (const resolvable of getResolvables(rawQuery)) {
@@ -308,100 +271,27 @@ export class MicrosoftSql implements INodeType {
 
 				responseData = result;
 			} else if (operation === 'insert') {
-				// ----------------------------------
-				//         insert
-				// ----------------------------------
-
 				const tables = createTableStruct(this.getNodeParameter, items);
-				await executeQueryQueue(
-					tables,
-					({
-						table,
-						columnString,
-						// eslint-disable-next-line @typescript-eslint/no-shadow
-						items,
-					}: {
-						table: string;
-						columnString: string;
-						items: IDataObject[];
-					}): Array<Promise<object>> => {
-						return chunk(items, 1000).map(async (insertValues) => {
-							const request = pool.request();
 
-							const valuesPlaceholder = [];
-
-							for (const [rIndex, entry] of insertValues.entries()) {
-								const row = Object.values(entry);
-								valuesPlaceholder.push(
-									`(${row.map((_, vIndex) => `@r${rIndex}v${vIndex}`).join(', ')})`,
-								);
-								for (const [vIndex, value] of row.entries()) {
-									request.input(`r${rIndex}v${vIndex}`, value);
-								}
-							}
-
-							const query = `INSERT INTO [${table}] (${formatColumns(
-								columnString,
-							)}) VALUES ${valuesPlaceholder.join(', ')};`;
-
-							return request.query(query);
-						});
-					},
-				);
+				await insertOperation(tables, pool);
 
 				responseData = items;
 			} else if (operation === 'update') {
-				// ----------------------------------
-				//         update
-				// ----------------------------------
-
 				const updateKeys = items.map(
 					(item, index) => this.getNodeParameter('updateKey', index) as string,
 				);
+
 				const tables = createTableStruct(
 					this.getNodeParameter,
 					items,
 					['updateKey'].concat(updateKeys),
 					'updateKey',
 				);
-				await executeQueryQueue(
-					tables,
-					({
-						table,
-						columnString,
-						// eslint-disable-next-line @typescript-eslint/no-shadow
-						items,
-					}: {
-						table: string;
-						columnString: string;
-						items: IDataObject[];
-					}): Array<Promise<object>> => {
-						return items.map(async (item) => {
-							const request = pool.request();
-							const columns = columnString.split(',').map((column) => column.trim());
 
-							const setValues: string[] = [];
-							const condition = `${item.updateKey} = @condition`;
-							request.input('condition', item[item.updateKey as string]);
-
-							for (const [index, col] of columns.entries()) {
-								setValues.push(`[${col}] = @v${index}`);
-								request.input(`v${index}`, item[col]);
-							}
-
-							const query = `UPDATE [${table}] SET ${setValues.join(', ')} WHERE ${condition};`;
-
-							return request.query(query);
-						});
-					},
-				);
+				await updateOperation(tables, pool);
 
 				responseData = items;
 			} else if (operation === 'delete') {
-				// ----------------------------------
-				//         delete
-				// ----------------------------------
-
 				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
@@ -415,43 +305,7 @@ export class MicrosoftSql implements INodeType {
 					return acc;
 				}, {} as ITables);
 
-				const queriesResults = await Promise.all(
-					Object.keys(tables).map(async (table) => {
-						const deleteKeyResults = Object.keys(tables[table]).map(async (deleteKey) => {
-							const deleteItemsList = chunk(
-								tables[table][deleteKey].map((item) =>
-									copyInputItem(item as INodeExecutionData, [deleteKey]),
-								),
-								1000,
-							);
-							const queryQueue = deleteItemsList.map(async (deleteValues) => {
-								const request = pool.request();
-								const valuesPlaceholder: string[] = [];
-
-								for (const [index, entry] of deleteValues.entries()) {
-									valuesPlaceholder.push(`@v${index}`);
-									request.input(`v${index}`, entry[deleteKey]);
-								}
-
-								const query = `DELETE FROM [${table}] WHERE [${deleteKey}] IN (${valuesPlaceholder.join(
-									', ',
-								)});`;
-
-								return request.query(query);
-							});
-							return Promise.all(queryQueue);
-						});
-						return Promise.all(deleteKeyResults);
-					}),
-				);
-
-				const rowsDeleted = flatten(queriesResults).reduce(
-					(acc: number, resp: mssql.IResult<object>): number =>
-						(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
-					0,
-				);
-
-				responseData = rowsDeleted;
+				responseData = await deleteOperation(tables, pool);
 			} else {
 				await pool.close();
 				throw new NodeOperationError(
@@ -472,6 +326,7 @@ export class MicrosoftSql implements INodeType {
 		await pool.close();
 
 		const itemData = generatePairedItemData(items.length);
+
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
 			{ itemData },
