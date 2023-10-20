@@ -4,7 +4,6 @@ import * as Db from '@/Db';
 import * as testDb from '../shared/testDb';
 import type { ExecutionStatus, ILogger } from 'n8n-workflow';
 import { LoggerProxy, sleep } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 import type { ExecutionRepository } from '../../../src/databases/repositories';
 import type { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TIME } from '../../../src/constants';
