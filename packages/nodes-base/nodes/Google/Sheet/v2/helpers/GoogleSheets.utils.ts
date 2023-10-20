@@ -315,3 +315,10 @@ export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchIt
 
 	return returnData;
 }
+
+export function cellFormatDefault(nodeVersion: number) {
+	if (nodeVersion < 4.1) {
+		return 'RAW';
+	}
+	return 'USER_ENTERED';
+}
