@@ -111,6 +111,14 @@ export class FormTrigger implements INodeType {
 										value: 'text',
 									},
 									{
+										name: 'Textarea',
+										value: 'textarea',
+									},
+									{
+										name: 'Password',
+										value: 'password',
+									},
+									{
 										name: 'Number',
 										value: 'number',
 									},
