@@ -773,7 +773,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputName: ConnectionTypes,
 			itemIndex: number,
 			inputIndex?: number,
-			nodeNameOverride?: string,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
@@ -1290,7 +1289,7 @@ export interface SupplyData {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IExecuteFunctions): Promise<SupplyData>;
+	supplyData?(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
@@ -1533,8 +1532,6 @@ export const enum NodeConnectionType {
 	AiTextSplitter = 'ai_textSplitter',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiTool = 'ai_tool',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiVectorRetriever = 'ai_vectorRetriever',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiVectorStore = 'ai_vectorStore',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
