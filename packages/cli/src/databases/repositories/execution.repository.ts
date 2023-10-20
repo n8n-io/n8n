@@ -298,7 +298,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Permanently remove a single execution and its associated binary data.
+	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
 		return Promise.all([
