@@ -298,7 +298,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Permanently delete a single execution and its associated binary data.
+	 * Permanently remove a single execution and its associated binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
 		return Promise.all([
@@ -484,6 +484,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		} while (executionIds.length > 0);
 	}
 
+	/**
+	 * Mark executions as deleted based on age and count, in a pruning cycle.
+	 */
 	async softDeleteOnPruningCycle() {
 		Logger.verbose('Soft-deleting execution data from database (pruning cycle)');
 
@@ -533,7 +536,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Permanently delete all soft-deleted executions and their binary data, in batches, in a pruning cycle.
+	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
 	 */
 	private async hardDeleteOnPruningCycle() {
 		const date = new Date();
