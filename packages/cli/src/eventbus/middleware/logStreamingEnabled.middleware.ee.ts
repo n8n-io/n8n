@@ -1,5 +1,5 @@
 import type { RequestHandler } from 'express';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { License } from '../../License';
 
 export function islogStreamingLicensed(): boolean {

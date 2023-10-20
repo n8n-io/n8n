@@ -2,7 +2,7 @@ import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import type { SuperAgentTest } from 'supertest';
 import { TagRepository } from '@/databases/repositories';
-import Container from 'typedi';
+import { Container } from 'typedi';
 
 let authOwnerAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({ endpointGroups: ['tags'] });

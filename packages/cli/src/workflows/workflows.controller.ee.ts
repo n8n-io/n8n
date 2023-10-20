@@ -11,7 +11,6 @@ import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelp
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
-import { LoggerProxy } from 'n8n-workflow';
 import { CredentialsService } from '../credentials/credentials.service';
 import type { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
@@ -22,6 +21,7 @@ import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
+import { Logger } from '@/Logger';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -180,7 +180,7 @@ EEWorkflowController.post(
 		});
 
 		if (!savedWorkflow) {
-			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
+			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
 			throw new ResponseHelper.InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
 			);

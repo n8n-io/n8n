@@ -1,4 +1,5 @@
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
+import { Container } from 'typedi';
 import { In, Not } from 'typeorm';
 import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -7,7 +8,6 @@ import type { User } from '@db/entities/User';
 import { UserService } from '@/services/user.service';
 import { CredentialsService } from './credentials.service';
 import { RoleService } from '@/services/role.service';
-import Container from 'typedi';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(

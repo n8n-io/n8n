@@ -18,7 +18,6 @@ import type {
 	IGetNodeParameterOptions,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
-	ILogger,
 	INode,
 	INodeCredentials,
 	INodeCredentialsDetails,
@@ -33,7 +32,7 @@ import type {
 	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
@@ -265,15 +264,6 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		nodeTypes.addNode(nodeName, node);
 	}
 
-	const fakeLogger = {
-		log: () => {},
-		debug: () => {},
-		verbose: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-	} as ILogger;
-	LoggerProxy.init(fakeLogger);
 	return nodeTypes;
 }
 

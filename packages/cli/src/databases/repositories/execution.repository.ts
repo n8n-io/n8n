@@ -17,7 +17,6 @@ import type {
 	SelectQueryBuilder,
 } from 'typeorm';
 import { parse, stringify } from 'flatted';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
 import type {
@@ -35,6 +34,7 @@ import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
 import { ExecutionDataRepository } from './executionData.repository';
 import { TIME, inTest } from '@/constants';
+import { Logger } from '@/Logger';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -77,8 +77,6 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
-	private logger = Logger;
-
 	deletionBatchSize = 100;
 
 	private intervals: Record<string, NodeJS.Timer | undefined> = {
@@ -97,6 +95,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	constructor(
 		dataSource: DataSource,
+		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
@@ -365,7 +364,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		} catch (error) {
 			if (error instanceof Error) {
-				Logger.warn(`Failed to get executions count from Postgres: ${error.message}`, {
+				this.logger.warn(`Failed to get executions count from Postgres: ${error.message}`, {
 					error,
 				});
 			}
@@ -466,7 +465,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (!executions.length) {
 			if (deleteConditions.ids) {
-				Logger.error('Failed to delete an execution due to insufficient permissions', {
+				this.logger.error('Failed to delete an execution due to insufficient permissions', {
 					executionIds: deleteConditions.ids,
 				});
 			}
@@ -485,7 +484,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Mark executions as deleted based on age and count, in a pruning cycle.
 	 */
 	async softDeleteOnPruningCycle() {
-		Logger.verbose('Soft-deleting execution data from database (pruning cycle)');
+		this.logger.verbose('Soft-deleting execution data from database (pruning cycle)');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');

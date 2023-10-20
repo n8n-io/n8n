@@ -4,7 +4,7 @@ import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils/';
 import type { User } from '@db/entities/User';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import Container from 'typedi';
+import { Container } from 'typedi';
 import config from '@/config';
 import { License } from '@/License';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';

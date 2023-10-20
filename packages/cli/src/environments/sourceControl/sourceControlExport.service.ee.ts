@@ -8,7 +8,6 @@ import {
 } from './constants';
 import * as Db from '@/Db';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
@@ -27,6 +26,7 @@ import { In } from 'typeorm';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { VariablesService } from '../variables/variables.service';
 import { TagRepository } from '@/databases/repositories';
+import { Logger } from '@/Logger';
 
 @Service()
 export class SourceControlExportService {
@@ -37,6 +37,7 @@ export class SourceControlExportService {
 	private credentialExportFolder: string;
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
 		instanceSettings: InstanceSettings,
@@ -61,7 +62,7 @@ export class SourceControlExportService {
 		try {
 			await fsRm(this.gitFolder, { recursive: true });
 		} catch (error) {
-			LoggerProxy.error(`Failed to delete work folder: ${(error as Error).message}`);
+			this.logger.error(`Failed to delete work folder: ${(error as Error).message}`);
 		}
 	}
 
@@ -69,7 +70,7 @@ export class SourceControlExportService {
 		try {
 			filesToBeDeleted.forEach((e) => rmSync(e));
 		} catch (error) {
-			LoggerProxy.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
+			this.logger.error(`Failed to delete workflows from work folder: ${(error as Error).message}`);
 		}
 		return filesToBeDeleted;
 	}
@@ -91,7 +92,7 @@ export class SourceControlExportService {
 					versionId: e.versionId,
 					owner: owners[e.id],
 				};
-				LoggerProxy.debug(`Writing workflow ${e.id} to ${fileName}`);
+				this.logger.debug(`Writing workflow ${e.id} to ${fileName}`);
 				return fsWriteFile(fileName, JSON.stringify(sanitizedWorkflow, null, 2));
 			}),
 		);
@@ -224,7 +225,7 @@ export class SourceControlExportService {
 					continue;
 				}
 			} catch (error) {
-				LoggerProxy.error(`Failed to sanitize credential data: ${(error as Error).message}`);
+				this.logger.error(`Failed to sanitize credential data: ${(error as Error).message}`);
 				throw error;
 			}
 		}
@@ -262,7 +263,7 @@ export class SourceControlExportService {
 						data: sanitizedData,
 						nodesAccess: sharedCredential.credentials.nodesAccess,
 					};
-					LoggerProxy.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
+					this.logger.debug(`Writing credential ${sharedCredential.credentials.id} to ${fileName}`);
 					return fsWriteFile(fileName, JSON.stringify(sanitizedCredential, null, 2));
 				}),
 			);

@@ -1,41 +1,22 @@
-import Container from 'typedi';
+import { Container } from 'typedi';
+import { Logger } from '@/Logger';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 import { RedisService } from '@/services/redis.service';
+import { mockInstance } from '../../integration/shared/utils';
 
+mockInstance(Logger);
 const redisService = Container.get(RedisService);
 
 function setDefaultConfig() {
 	config.set('executions.mode', 'queue');
 }
 
-interface TestObject {
-	test: string;
-	test2: number;
-	test3?: TestObject & { test4: TestObject };
-}
-
-const testObject: TestObject = {
-	test: 'test',
-	test2: 123,
-	test3: {
-		test: 'test3',
-		test2: 123,
-		test4: {
-			test: 'test4',
-			test2: 123,
-		},
-	},
-};
-
 const PUBSUB_CHANNEL = 'testchannel';
 const LIST_CHANNEL = 'testlist';
 const STREAM_CHANNEL = 'teststream';
 
-describe('cacheService', () => {
+describe('RedisService', () => {
 	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
 		jest.mock('ioredis', () => {
 			const Redis = require('ioredis-mock');
 			if (typeof Redis === 'object') {

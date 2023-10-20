@@ -1,18 +1,18 @@
-/* eslint-disable @typescript-eslint/no-shadow */
-
-import { inspect } from 'util';
+import { Service } from 'typedi';
 import winston from 'winston';
-
-import type { IDataObject, ILogger, LogTypes } from 'n8n-workflow';
-
 import callsites from 'callsites';
+import { inspect } from 'util';
 import { basename } from 'path';
+
+import { LoggerProxy, type IDataObject } from 'n8n-workflow';
+
 import config from '@/config';
 
 const noOp = () => {};
-const levelNames = ['debug', 'verbose', 'info', 'warn', 'error'] as const;
+const levelNames = ['info', 'warn', 'error'] as const;
 
-export class Logger implements ILogger {
+@Service()
+export class Logger {
 	private logger: winston.Logger;
 
 	constructor() {
@@ -33,7 +33,7 @@ export class Logger implements ILogger {
 		const output = config
 			.getEnv('logs.output')
 			.split(',')
-			.map((output) => output.trim());
+			.map((line) => line.trim());
 
 		if (output.includes('console')) {
 			let format: winston.Logform.Format;
@@ -43,8 +43,8 @@ export class Logger implements ILogger {
 					winston.format.timestamp(),
 					winston.format.colorize({ all: true }),
 
-					winston.format.printf(({ level, message, timestamp, metadata }) => {
-						return `${timestamp} | ${level.padEnd(18)} | ${message}${
+					winston.format.printf(({ level: logLevel, message, timestamp, metadata }) => {
+						return `${timestamp} | ${logLevel.padEnd(18)} | ${message}${
 							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							Object.keys(metadata).length ? ` ${JSON.stringify(inspect(metadata))}` : ''
 						}`;
@@ -76,13 +76,15 @@ export class Logger implements ILogger {
 				}),
 			);
 		}
+
+		LoggerProxy.init(this);
 	}
 
-	log(type: LogTypes, message: string, meta: object = {}): void {
+	private log(level: (typeof levelNames)[number], message: string, meta: object = {}): void {
 		const callsite = callsites();
 		// We are using the third array element as the structure is as follows:
 		// [0]: this file
-		// [1]: Should be LoggerProxy
+		// [1]: Should be Logger
 		// [2]: Should point to the caller.
 		// Note: getting line number is useless because at this point
 		// We are in runtime, so it means we are looking at compiled js files
@@ -95,15 +97,10 @@ export class Logger implements ILogger {
 				logDetails.function = functionName;
 			}
 		}
-		this.logger.log(type, message, { ...meta, ...logDetails });
+		this.logger.log(level, message, { ...meta, ...logDetails });
 	}
 
 	// Convenience methods below
-
-	debug(message: string, meta: object = {}): void {
-		this.log('debug', message, meta);
-	}
-
 	info(message: string, meta: object = {}): void {
 		this.log('info', message, meta);
 	}
@@ -112,21 +109,17 @@ export class Logger implements ILogger {
 		this.log('error', message, meta);
 	}
 
-	verbose(message: string, meta: object = {}): void {
-		this.log('verbose', message, meta);
-	}
-
 	warn(message: string, meta: object = {}): void {
 		this.log('warn', message, meta);
 	}
-}
 
-let activeLoggerInstance: Logger | undefined;
-
-export function getLogger() {
-	if (activeLoggerInstance === undefined) {
-		activeLoggerInstance = new Logger();
+	/** @deprecated: use `debug` directly from `n8n-workflow */
+	debug(message: string, meta: object = {}): void {
+		LoggerProxy.debug(message, meta);
 	}
 
-	return activeLoggerInstance;
+	/** @deprecated: use `debug` directly from `n8n-workflow */
+	verbose(message: string, meta: object = {}): void {
+		LoggerProxy.debug(message, meta);
+	}
 }

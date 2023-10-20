@@ -1,4 +1,4 @@
-import Container from 'typedi';
+import { Container } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import type { BinaryData } from 'n8n-core';

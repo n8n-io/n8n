@@ -1,15 +1,16 @@
 import { EventEmitter } from 'events';
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { WorkflowStatisticsRepository } from '@db/repositories';
 import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
 import { OwnershipService } from './ownership.service';
 
 @Service()
 export class EventsService extends EventEmitter {
 	constructor(
+		private logger: Logger,
 		private repository: WorkflowStatisticsRepository,
 		private ownershipService: OwnershipService,
 	) {
@@ -43,7 +44,7 @@ export class EventsService extends EventEmitter {
 		try {
 			const upsertResult = await this.repository.upsertWorkflowStatistics(name, workflowId);
 
-			if (name === 'production_success' && upsertResult === 'insert') {
+			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const owner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 				const metrics = {
 					user_id: owner.id,
@@ -61,7 +62,7 @@ export class EventsService extends EventEmitter {
 				this.emit('telemetry.onFirstProductionWorkflowSuccess', metrics);
 			}
 		} catch (error) {
-			LoggerProxy.verbose('Unable to fire first workflow success telemetry event');
+			this.logger.verbose('Unable to fire first workflow success telemetry event');
 		}
 	}
 

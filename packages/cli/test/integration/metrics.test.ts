@@ -1,9 +1,9 @@
 import { setupTestServer } from './shared/utils';
 import config from '@/config';
 import request from 'supertest';
-import Container from 'typedi';
-import { MetricsService } from '../../src/services/metrics.service';
-import { N8N_VERSION } from '../../src/constants';
+import { Container } from 'typedi';
+import { MetricsService } from '@/services/metrics.service';
+import { N8N_VERSION } from '@/constants';
 import { parse as semverParse } from 'semver';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');

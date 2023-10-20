@@ -19,7 +19,6 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { getLdapLoginLabel } from '@/Ldap/helpers';
@@ -31,6 +30,7 @@ import {
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
 import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
+import { Logger } from '@/Logger';
 
 @Service()
 export class FrontendService {
@@ -39,6 +39,7 @@ export class FrontendService {
 	private communityPackagesService?: CommunityPackagesService;
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
@@ -69,7 +70,7 @@ export class FrontendService {
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
-				LoggerProxy.warn('Diagnostics frontend config is invalid');
+				this.logger.warn('Diagnostics frontend config is invalid');
 				telemetrySettings.enabled = false;
 			}
 

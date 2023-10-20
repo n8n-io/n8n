@@ -1,6 +1,5 @@
 import express from 'express';
 import { v4 as uuid } from 'uuid';
-import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
 import * as Db from '@/Db';
@@ -13,7 +12,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
-import { getLogger } from '@/Logger';
 import type { ListQuery, WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
@@ -28,21 +26,9 @@ import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
 import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
+import { Logger } from '@/Logger';
 
 export const workflowsController = express.Router();
-
-/**
- * Initialize Logger if needed
- */
-workflowsController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-	next();
-});
-
 workflowsController.use('/', EEWorkflowController);
 
 /**
@@ -97,7 +83,7 @@ workflowsController.post(
 		});
 
 		if (!savedWorkflow) {
-			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
+			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
 			throw new ResponseHelper.InternalServerError('Failed to save workflow');
 		}
 
@@ -233,7 +219,7 @@ workflowsController.get(
 		});
 
 		if (!shared) {
-			LoggerProxy.verbose('User attempted to access a workflow without permissions', {
+			Container.get(Logger).verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -283,7 +269,7 @@ workflowsController.delete(
 
 		const workflow = await WorkflowsService.delete(req.user, workflowId);
 		if (!workflow) {
-			LoggerProxy.verbose('User attempted to delete a workflow without permissions', {
+			Container.get(Logger).verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});

@@ -1,8 +1,4 @@
-import {
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, WorkflowOperationError } from 'n8n-workflow';
 import { Container, Service } from 'typedi';
 import type { FindManyOptions, ObjectLiteral } from 'typeorm';
 import { Not, LessThanOrEqual } from 'typeorm';
@@ -20,6 +16,7 @@ import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEven
 import { ExecutionRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { OwnershipService } from './services/ownership.service';
+import { Logger } from '@/Logger';
 
 @Service()
 export class WaitTracker {
@@ -33,6 +30,7 @@ export class WaitTracker {
 	mainTimer: NodeJS.Timeout;
 
 	constructor(
+		private logger: Logger,
 		private executionRepository: ExecutionRepository,
 		private ownershipService: OwnershipService,
 	) {
@@ -45,7 +43,7 @@ export class WaitTracker {
 	}
 
 	async getWaitingExecutions() {
-		Logger.debug('Wait tracker querying database for waiting executions');
+		this.logger.debug('Wait tracker querying database for waiting executions');
 		// Find all the executions which should be triggered in the next 70 seconds
 		const findQuery: FindManyOptions<ExecutionEntity> = {
 			select: ['id', 'waitTill'],
@@ -74,7 +72,7 @@ export class WaitTracker {
 		}
 
 		const executionIds = executions.map((execution) => execution.id).join(', ');
-		Logger.debug(
+		this.logger.debug(
 			`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
 		);
 
@@ -163,7 +161,7 @@ export class WaitTracker {
 	}
 
 	startExecution(executionId: string) {
-		Logger.debug(`Wait tracker resuming execution ${executionId}`, { executionId });
+		this.logger.debug(`Wait tracker resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
 		(async () => {
@@ -198,7 +196,7 @@ export class WaitTracker {
 			await workflowRunner.run(data, false, false, executionId);
 		})().catch((error: Error) => {
 			ErrorReporter.error(error);
-			Logger.error(
+			this.logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },
 			);

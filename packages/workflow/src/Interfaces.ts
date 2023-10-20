@@ -1933,10 +1933,7 @@ export interface WorkflowTestData {
 	};
 }
 
-export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
-
 export interface ILogger {
-	log: (type: LogTypes, message: string, meta?: object) => void;
 	debug: (message: string, meta?: object) => void;
 	verbose: (message: string, meta?: object) => void;
 	info: (message: string, meta?: object) => void;

@@ -3,7 +3,7 @@ import type { SecretsProvider } from '@/Interfaces';
 import type { ExternalSecretsRequest } from '@/requests';
 import type { IDataObject } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { ExternalSecretsManager } from './ExternalSecretsManager.ee';
 
 export class ProviderNotFoundError extends Error {

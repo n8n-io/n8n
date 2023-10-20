@@ -1,6 +1,6 @@
 import type { Variables } from '@db/entities/Variables';
 import { CacheService } from '@/services/cache.service';
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { VariablesRepository } from '@/databases/repositories';
 import type { DeepPartial } from 'typeorm';
 

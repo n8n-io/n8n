@@ -6,9 +6,9 @@ import type {
 } from '@/Interfaces';
 
 import { Cipher } from 'n8n-core';
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 
 import { jsonParse, type IDataObject } from 'n8n-workflow';
 import {
@@ -20,8 +20,6 @@ import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
 import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
-
-const logger = getLogger();
 
 @Service()
 export class ExternalSecretsManager {
@@ -38,6 +36,7 @@ export class ExternalSecretsManager {
 	initRetryTimeouts: Record<string, NodeJS.Timer> = {};
 
 	constructor(
+		private logger: Logger,
 		private settingsRepo: SettingsRepository,
 		private license: License,
 		private secretsProviders: ExternalSecretsProviders,
@@ -72,7 +71,7 @@ export class ExternalSecretsManager {
 	}
 
 	async reloadAllProviders(backoff?: number) {
-		logger.debug('Reloading all external secrets providers');
+		this.logger.debug('Reloading all external secrets providers');
 		const providers = this.getProviderNames();
 		if (!providers) {
 			return;
@@ -140,7 +139,7 @@ export class ExternalSecretsManager {
 		try {
 			await provider.init(providerSettings);
 		} catch (e) {
-			logger.error(
+			this.logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
 			this.retryInitWithBackoff(name, currentBackoff);
@@ -155,7 +154,7 @@ export class ExternalSecretsManager {
 			try {
 				await provider.disconnect();
 			} catch {}
-			logger.error(
+			this.logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
 			this.retryInitWithBackoff(name, currentBackoff);
@@ -190,7 +189,7 @@ export class ExternalSecretsManager {
 						await p.update();
 					}
 				} catch {
-					logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`);
+					this.logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`);
 				}
 			}),
 		);
