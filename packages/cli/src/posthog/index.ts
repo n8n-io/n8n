@@ -9,7 +9,7 @@ import type { PublicUser } from '@/Interfaces';
 export class PostHogClient {
 	private postHog?: PostHog;
 
-	constructor(private instanceSettings: InstanceSettings) {}
+	constructor(private readonly instanceSettings: InstanceSettings) {}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');

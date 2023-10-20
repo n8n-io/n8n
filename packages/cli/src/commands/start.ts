@@ -282,10 +282,10 @@ export class Start extends BaseCommand {
 		if (flags.tunnel) {
 			this.log('\nWaiting for tunnel ...');
 
-			let tunnelSubdomain = process.env.N8N_TUNNEL_SUBDOMAIN ?? '';
-			tunnelSubdomain = tunnelSubdomain || this.instanceSettings.tunnelSubdomain || '';
+			let tunnelSubdomain =
+				process.env.N8N_TUNNEL_SUBDOMAIN ?? this.instanceSettings.tunnelSubdomain ?? '';
 
-			if (!tunnelSubdomain) {
+			if (tunnelSubdomain === '') {
 				// When no tunnel subdomain did exist yet create a new random one
 				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
 				tunnelSubdomain = Array.from({ length: 24 })

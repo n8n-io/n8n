@@ -46,15 +46,11 @@ const INVALID_OR_SUSPICIOUS_PACKAGE_NAME = /[^0-9a-z@\-./]/;
 export class CommunityPackagesService {
 	missingPackages: string[] = [];
 
-	private downloadFolder: string;
-
 	constructor(
-		instanceSettings: InstanceSettings,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-	) {
-		this.downloadFolder = instanceSettings.nodesDownloadDir;
-	}
+	) {}
 
 	get hasMissingPackages() {
 		return this.missingPackages.length > 0;
@@ -119,7 +115,7 @@ export class CommunityPackagesService {
 	}
 
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const { downloadFolder } = this;
+		const downloadFolder = this.instanceSettings.nodesDownloadDir;
 
 		const execOptions = {
 			cwd: downloadFolder,

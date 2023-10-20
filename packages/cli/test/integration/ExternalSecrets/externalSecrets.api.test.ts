@@ -16,7 +16,7 @@ import {
 import config from '@/config';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import type { IDataObject } from 'n8n-workflow';
+import { jsonParse, type IDataObject } from 'n8n-workflow';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -35,7 +35,7 @@ const connectedDate = '2023-08-01T12:32:29.000Z';
 
 async function setExternalSecretsSettings(settings: ExternalSecretsSettings) {
 	return Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
-		Container.get(Cipher).encrypt(JSON.stringify(settings)),
+		Container.get(Cipher).encrypt(settings),
 	);
 }
 
@@ -44,7 +44,7 @@ async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | n
 	if (encSettings === null) {
 		return null;
 	}
-	return JSON.parse(Container.get(Cipher).decrypt(encSettings));
+	return jsonParse(Container.get(Cipher).decrypt(encSettings));
 }
 
 const resetManager = async () => {

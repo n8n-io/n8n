@@ -23,7 +23,7 @@ export class Credentials extends ICredentials {
 	 * Sets new credential object
 	 */
 	setData(data: ICredentialDataDecryptedObject): void {
-		this.data = this.cipher.encrypt(JSON.stringify(data));
+		this.data = this.cipher.encrypt(data);
 	}
 
 	/**

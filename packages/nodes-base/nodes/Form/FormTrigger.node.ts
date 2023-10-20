@@ -229,7 +229,7 @@ export class FormTrigger implements INodeType {
 		if (webhookName === 'setup') {
 			const formTitle = this.getNodeParameter('formTitle', '') as string;
 			const formDescription = this.getNodeParameter('formDescription', '') as string;
-			const instanceId = await this.getInstanceId();
+			const instanceId = this.getInstanceId();
 			const { formSubmittedText } = this.getNodeParameter('options', {}) as IDataObject;
 
 			const data = prepareFormData(

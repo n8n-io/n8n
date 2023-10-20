@@ -43,11 +43,11 @@ export interface INodeTypesObject {
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess(): boolean {
+	hasNodeAccess() {
 		return true;
 	}
 
-	setData(data: ICredentialDataDecryptedObject): void {
+	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
 

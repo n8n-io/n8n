@@ -28,7 +28,7 @@ describe('External Secrets Manager', () => {
 	let manager: ExternalSecretsManager;
 
 	const createMockSettings = (settings: ExternalSecretsSettings): string => {
-		return cipher.encrypt(JSON.stringify(settings));
+		return cipher.encrypt(settings);
 	};
 
 	const decryptSettings = (settings: string) => {

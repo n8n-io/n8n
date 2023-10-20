@@ -40,7 +40,7 @@ export class Telemetry {
 	constructor(
 		private postHog: PostHogClient,
 		private license: License,
-		private instanceSettings: InstanceSettings,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {

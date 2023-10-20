@@ -18,7 +18,7 @@ export class Build extends Command {
 		help: flags.help({ char: 'h' }),
 		destination: flags.string({
 			char: 'd',
-			description: `The path to copy the compiles files to [default: ${
+			description: `The path to copy the compiled files to [default: ${
 				Container.get(InstanceSettings).customExtensionDir
 			}]`,
 		}),

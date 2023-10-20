@@ -47,13 +47,9 @@ export class LoadNodesAndCredentials {
 
 	includeNodes = config.getEnv('nodes.include');
 
-	private downloadFolder: string;
-
 	private postProcessors: Array<() => Promise<void>> = [];
 
-	constructor(private readonly instanceSettings: InstanceSettings) {
-		this.downloadFolder = instanceSettings.nodesDownloadDir;
-	}
+	constructor(private readonly instanceSettings: InstanceSettings) {}
 
 	async init() {
 		if (inTest) throw new Error('Not available in tests');
@@ -86,7 +82,9 @@ export class LoadNodesAndCredentials {
 
 		// Load nodes from any other `n8n-nodes-*` packages in the download directory
 		// This includes the community nodes
-		await this.loadNodesFromNodeModules(path.join(this.downloadFolder, 'node_modules'));
+		await this.loadNodesFromNodeModules(
+			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
+		);
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -174,7 +172,11 @@ export class LoadNodesAndCredentials {
 	}
 
 	async loadPackage(packageName: string) {
-		const finalNodeUnpackedPath = path.join(this.downloadFolder, 'node_modules', packageName);
+		const finalNodeUnpackedPath = path.join(
+			this.instanceSettings.nodesDownloadDir,
+			'node_modules',
+			packageName,
+		);
 		return this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 	}
 

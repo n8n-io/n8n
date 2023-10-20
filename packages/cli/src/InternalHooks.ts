@@ -57,7 +57,7 @@ export class InternalHooks implements IInternalHooksClass {
 		private roleService: RoleService,
 		private executionRepository: ExecutionRepository,
 		eventsService: EventsService,
-		private instanceSettings: InstanceSettings,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		eventsService.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
 			this.onFirstProductionWorkflowSuccess(metrics),
@@ -65,10 +65,6 @@ export class InternalHooks implements IInternalHooksClass {
 		eventsService.on('telemetry.onFirstWorkflowDataLoad', async (metrics) =>
 			this.onFirstWorkflowDataLoad(metrics),
 		);
-	}
-
-	async init() {
-		await this.telemetry.init();
 	}
 
 	async onServerStarted(

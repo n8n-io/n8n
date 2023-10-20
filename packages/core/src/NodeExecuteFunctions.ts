@@ -3,14 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
-
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-shadow */
-
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -2510,7 +2507,7 @@ const getCommonWorkflowFunctions = (
 
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
-	getInstanceId: async () => Container.get(InstanceSettings).instanceId,
+	getInstanceId: () => Container.get(InstanceSettings).instanceId,
 	getTimezone: () => getTimezone(workflow, additionalData),
 
 	prepareOutputData: async (outputData) => [outputData],
@@ -2616,7 +2613,7 @@ function isFilePathBlocked(filePath: string): boolean {
 	//restrict access to .n8n folder and other .env config related paths
 	if (blockFileAccessToN8nFiles) {
 		const { n8nFolder } = Container.get(InstanceSettings);
-		const restrictedPaths: string[] = [n8nFolder];
+		const restrictedPaths = [n8nFolder];
 
 		if (process.env[CONFIG_FILES]) {
 			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));

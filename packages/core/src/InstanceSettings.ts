@@ -61,13 +61,9 @@ export class InstanceSettings {
 		const { settingsFile } = this;
 		if (existsSync(settingsFile)) {
 			const content = readFileSync(settingsFile, 'utf8');
-			try {
-				return jsonParse(content);
-			} catch (error) {
-				throw new Error(
-					`Error parsing n8n-config file "${settingsFile}". It does not seem to be valid JSON.`,
-				);
-			}
+			return jsonParse(content, {
+				errorMessage: `Error parsing n8n-config file "${settingsFile}". It does not seem to be valid JSON.`,
+			});
 		}
 
 		// If file doesn't exist, create new settings

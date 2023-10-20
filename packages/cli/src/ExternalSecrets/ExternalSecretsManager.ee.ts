@@ -322,7 +322,7 @@ export class ExternalSecretsManager {
 	}
 
 	private encryptSecretsSettings(settings: ExternalSecretsSettings): string {
-		return this.cipher.encrypt(JSON.stringify(settings));
+		return this.cipher.encrypt(settings);
 	}
 
 	async saveAndSetSettings(settings: ExternalSecretsSettings, settingsRepo: SettingsRepository) {

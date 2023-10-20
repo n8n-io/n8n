@@ -4,10 +4,13 @@ import { InstanceSettings } from './InstanceSettings';
 
 @Service()
 export class Cipher {
-	constructor(private instanceSettings: InstanceSettings) {}
+	constructor(private readonly instanceSettings: InstanceSettings) {}
 
-	encrypt(data: string) {
-		return AES.encrypt(data, this.instanceSettings.encryptionKey).toString();
+	encrypt(data: string | object) {
+		return AES.encrypt(
+			typeof data === 'string' ? data : JSON.stringify(data),
+			this.instanceSettings.encryptionKey,
+		).toString();
 	}
 
 	decrypt(data: string) {

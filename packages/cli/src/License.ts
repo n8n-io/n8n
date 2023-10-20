@@ -31,7 +31,7 @@ export class License {
 
 	private redisPublisher: RedisServicePubSubPublisher;
 
-	constructor(private instanceSettings: InstanceSettings) {
+	constructor(private readonly instanceSettings: InstanceSettings) {
 		this.logger = getLogger();
 	}
 

@@ -734,7 +734,7 @@ export interface FunctionsBase {
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
-	getInstanceId(): Promise<string>;
+	getInstanceId(): string;
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
