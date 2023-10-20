@@ -33,7 +33,7 @@ function getChainPromptTemplate(
 	formatInstructions?: string,
 ) {
 	const queryTemplate = new PromptTemplate({
-		template: query + (formatInstructions ? '\n{formatInstructions}' : ''),
+		template: `${query}${formatInstructions ? '\n{formatInstructions}' : ''}`,
 		inputVariables: [],
 		partialVariables: formatInstructions ? { formatInstructions } : undefined,
 	});
@@ -206,7 +206,7 @@ export class ChainLlm implements INodeType {
 										value: HumanMessagePromptTemplate.lc_name(),
 									},
 								],
-								default: 'system',
+								default: SystemMessagePromptTemplate.lc_name(),
 							},
 							{
 								displayName: 'Message',
