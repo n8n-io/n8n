@@ -328,6 +328,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 		WorkflowPage.getters.canvasNodes().last().click();
 		cy.get('body').trigger('keydown', { key: 'F2' });
+		cy.get('.rename-prompt').should('be.visible');
 		cy.get('body').type(RENAME_NODE_NAME);
 		cy.get('body').type('{enter}');
 		WorkflowPage.getters.canvasNodeByName(RENAME_NODE_NAME).should('exist');
