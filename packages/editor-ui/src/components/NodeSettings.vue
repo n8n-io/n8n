@@ -233,13 +233,17 @@ export default defineComponent({
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
-			if (
-				this.nodeType &&
-				!this.isTriggerNode &&
-				!this.nodeType.inputs.includes(NodeConnectionType.Main)
-			) {
-				return false;
+			if (this.nodeType && this.node) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
+					return false;
+				}
 			}
+
 			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
