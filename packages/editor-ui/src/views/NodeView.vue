@@ -10,6 +10,7 @@
 			<div
 				class="node-view-wrapper"
 				:class="workflowClasses"
+				data-test-id="node-view-wrapper"
 				@touchstart="mouseDown"
 				@touchend="mouseUp"
 				@touchmove="mouseMoveNodeWorkflow"
