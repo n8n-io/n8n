@@ -565,7 +565,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+		const isFileSytemMode = config.getEnv('binaryDataManager.mode') === 'filesystem';
+
+		const isS3PruningEnabled =
+			config.getEnv('binaryDataManager.mode') === 's3' &&
+			!config.getEnv('externalStorage.s3.skipPruningRequests');
+
+		if (isFileSytemMode || isS3PruningEnabled) {
+			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+		}
 
 		this.logger.debug(
 			`Hard-deleting ${executionIds.length} executions from database (pruning cycle)`,

@@ -989,6 +989,12 @@ export const schema = {
 					doc: 'Access secret in S3-compatible external storage',
 				},
 			},
+			skipPruningRequests: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_EXTERNAL_STORAGE_S3_SKIP_PRUNING_REQUESTS',
+				doc: 'Skip requests sent by n8n to S3 to remove binary data files during pruning. Enable this setting if you have set a bucket-level TTL, to minimize requests to S3.',
+			},
 		},
 	},
 
