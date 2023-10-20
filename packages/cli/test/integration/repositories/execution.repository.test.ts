@@ -2,48 +2,50 @@ import config from '@/config';
 import * as Db from '@/Db';
 
 import * as testDb from '../shared/testDb';
-import type { ExecutionStatus } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import type { ExecutionStatus, ILogger } from 'n8n-workflow';
+import { LoggerProxy, sleep } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import type { ExecutionRepository } from '../../../src/databases/repositories';
 import type { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TIME } from '../../../src/constants';
+import { mock } from 'jest-mock-extended';
 
-describe('ExecutionRepository.prune()', () => {
-	const now = new Date();
-	const yesterday = new Date(Date.now() - TIME.DAY);
-	let executionRepository: ExecutionRepository;
-	let workflow: Awaited<ReturnType<typeof testDb.createWorkflow>>;
-
-	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
-		await testDb.init();
-
-		const { Execution } = Db.collections;
-
-		executionRepository = Execution;
-		workflow = await testDb.createWorkflow();
+async function findAllExecutions() {
+	return Db.collections.Execution.find({
+		order: { id: 'asc' },
+		withDeleted: true,
 	});
+}
 
-	beforeEach(async () => {
-		await testDb.truncate(['Execution']);
-	});
+const mockLogger = mock<ILogger>();
 
-	afterAll(async () => {
-		await testDb.terminate();
-	});
+const now = new Date();
+const yesterday = new Date(Date.now() - TIME.DAY);
+let executionRepository: ExecutionRepository;
+let workflow: Awaited<ReturnType<typeof testDb.createWorkflow>>;
 
-	afterEach(() => {
-		config.load(config.default);
-	});
+beforeAll(async () => {
+	LoggerProxy.init(mockLogger);
+	await testDb.init();
 
-	async function findAllExecutions() {
-		return Db.collections.Execution.find({
-			order: { id: 'asc' },
-			withDeleted: true,
-		});
-	}
+	executionRepository = Db.collections.Execution;
+	workflow = await testDb.createWorkflow();
+});
 
+afterAll(async () => {
+	await testDb.terminate();
+});
+
+beforeEach(async () => {
+	await testDb.truncate(['Execution']);
+});
+
+afterEach(() => {
+	jest.restoreAllMocks();
+	config.load(config.default);
+});
+
+describe('softDeleteOnPruningCycle()', () => {
 	describe('when EXECUTIONS_DATA_PRUNE_MAX_COUNT is set', () => {
 		beforeEach(() => {
 			config.set('executions.pruneDataMaxCount', 1);
@@ -213,6 +215,34 @@ describe('ExecutionRepository.prune()', () => {
 				expect.objectContaining({ id: executions[0].id, deletedAt: null }),
 				expect.objectContaining({ id: executions[1].id, deletedAt: null }),
 			]);
+		});
+	});
+});
+
+describe('hardDeleteOnPruningCycle()', () => {
+	describe('when executions to hard delete exceed batch size', () => {
+		test('should speed up and slow down executions removal', async () => {
+			jest.replaceProperty(executionRepository, 'deletionBatchSize', 5);
+			const numberOfExecutions = executionRepository.deletionBatchSize + 1;
+			const deleteSpy = jest.spyOn(executionRepository, 'delete');
+			executionRepository.setHardDeletionInterval();
+
+			await Promise.all(
+				Array.from({ length: numberOfExecutions }).map(async () => {
+					return testDb.createExecution(
+						{ finished: true, status: 'success', deletedAt: yesterday },
+						workflow,
+					);
+				}),
+			);
+
+			await executionRepository.hardDeleteOnPruningCycle();
+
+			await sleep(2 * TIME.SECOND);
+
+			expect(deleteSpy).toHaveBeenCalledTimes(2);
+			expect(await findAllExecutions()).toHaveLength(0);
+			clearInterval(executionRepository.intervals.hardDeletion);
 		});
 	});
 });

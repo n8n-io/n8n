@@ -81,7 +81,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	deletionBatchSize = 100;
 
-	private intervals: Record<string, NodeJS.Timer | undefined> = {
+	intervals: Record<string, NodeJS.Timer | undefined> = {
 		softDeletion: undefined,
 		hardDeletion: undefined,
 	};
@@ -538,7 +538,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	/**
 	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
 	 */
-	private async hardDeleteOnPruningCycle() {
+	async hardDeleteOnPruningCycle() {
 		const date = new Date();
 		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
 
@@ -561,7 +561,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
 
 		if (executionIds.length === 0) {
-			this.logger.debug('Found no executions to hard-delete from database');
+			this.logger.debug('Found no executions to hard-delete from database (pruning cycle)');
 			return;
 		}
 
@@ -587,6 +587,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		 */
 		if (executionIds.length === this.deletionBatchSize) {
 			clearInterval(this.intervals.hardDeletion);
+			this.intervals.hardDeletion = undefined;
 
 			setTimeout(async () => this.hardDeleteOnPruningCycle(), 1 * TIME.SECOND);
 		} else {
