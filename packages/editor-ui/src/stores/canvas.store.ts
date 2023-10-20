@@ -271,6 +271,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 						if (moveNodes.length > 1) {
 							historyStore.stopRecordingUndo();
 						}
+						if (uiStore.isActionActive('dragActive')) {
+							uiStore.removeActiveAction('dragActive');
+						}
 					}
 				},
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
