@@ -144,6 +144,39 @@ export class DocumentBinaryInputLoader implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Metadata',
+				name: 'metadata',
+				type: 'fixedCollection',
+				description:
+					'Metadata to add to each document. Used for filtering during retrieval later on.',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Add field',
+				options: [
+					{
+						name: 'metadataValues',
+						displayName: 'Fields to Set',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								required: true,
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 

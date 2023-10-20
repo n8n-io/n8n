@@ -31,6 +31,11 @@ export class N8nBinaryLoader {
 			'loader',
 			0,
 		) as keyof typeof SUPPORTED_MIME_TYPES;
+
+		const metadata = this.context.getNodeParameter('metadata.metadataValues', 0, []) as Array<{
+			name: string;
+			value: string;
+		}>;
 		const binaryDataKey = this.context.getNodeParameter('binaryDataKey', 0) as string;
 		const docs: Document[] = [];
 
@@ -122,6 +127,18 @@ export class N8nBinaryLoader {
 				: await loader.load();
 
 			docs.push(...loadedDoc);
+		}
+
+		if (metadata?.length > 0) {
+			const metadataObj = metadata.reduce((acc, curr) => {
+				return { ...acc, [curr.name]: curr.value };
+			}, {});
+			docs.forEach((document) => {
+				document.metadata = {
+					...document.metadata,
+					...metadataObj,
+				};
+			});
 		}
 		return docs;
 	}

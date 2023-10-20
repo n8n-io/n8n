@@ -5,9 +5,12 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
+import type { IZepConfig } from 'langchain/vectorstores/zep';
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
+import { metadataFilterField } from '../shared/fields';
+import { getMetadataFiltersValues } from '../shared/helpers';
 
 export class VectorStoreZepLoad implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,6 +75,7 @@ export class VectorStoreZepLoad implements INodeType {
 						default: 1536,
 						description: 'Whether to allow using characters from the Unicode surrogate blocks',
 					},
+					metadataFilterField,
 				],
 			},
 		],
@@ -96,11 +100,12 @@ export class VectorStoreZepLoad implements INodeType {
 			0,
 		)) as Embeddings;
 
-		const zepConfig = {
+		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,
 			apiKey: credentials.apiKey,
 			collectionName,
 			embeddingDimensions: options.embeddingDimensions ?? 1536,
+			metadata: getMetadataFiltersValues(this, itemIndex),
 		};
 
 		const vectorStore = new ZepVectorStore(embeddings, zepConfig);
