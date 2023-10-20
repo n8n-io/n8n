@@ -3,6 +3,7 @@ import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } f
 import type { CharacterTextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
+import { getMetadataFiltersValues } from './helpers';
 
 export class N8nJsonLoader {
 	private context: IExecuteFunctions;
@@ -19,10 +20,7 @@ export class N8nJsonLoader {
 			NodeConnectionType.AiTextSplitter,
 			0,
 		)) as CharacterTextSplitter | undefined;
-		const metadata = this.context.getNodeParameter('metadata.metadataValues', 0, []) as Array<{
-			name: string;
-			value: string;
-		}>;
+		const metadata = getMetadataFiltersValues(this.context, 0) ?? [];
 		const docs: Document[] = [];
 
 		if (!items) return docs;
@@ -40,14 +38,11 @@ export class N8nJsonLoader {
 			docs.push(...loadedDoc);
 		}
 
-		if (metadata?.length > 0) {
-			const metadataObj = metadata.reduce((acc, curr) => {
-				return { ...acc, [curr.name]: curr.value };
-			}, {});
+		if (metadata) {
 			docs.forEach((document) => {
 				document.metadata = {
 					...document.metadata,
-					...metadataObj,
+					...metadata,
 				};
 			});
 		}

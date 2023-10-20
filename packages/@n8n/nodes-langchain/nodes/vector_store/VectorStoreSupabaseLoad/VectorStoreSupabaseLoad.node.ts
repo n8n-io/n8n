@@ -10,8 +10,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { SupabaseLibArgs } from 'langchain/vectorstores/supabase';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../shared/fields';
-import { getMetadataFiltersValues } from '../shared/helpers';
+import { metadataFilterField } from '../../../utils/sharedFields';
+import { getMetadataFiltersValues } from '../../../utils/helpers';
 
 export class VectorStoreSupabaseLoad implements INodeType {
 	description: INodeTypeDescription = {

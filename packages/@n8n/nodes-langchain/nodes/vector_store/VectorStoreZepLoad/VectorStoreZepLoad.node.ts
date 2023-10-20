@@ -8,9 +8,9 @@ import {
 import type { IZepConfig } from 'langchain/vectorstores/zep';
 import { ZepVectorStore } from 'langchain/vectorstores/zep';
 import type { Embeddings } from 'langchain/embeddings/base';
+import { metadataFilterField } from '../../../utils/sharedFields';
+import { getMetadataFiltersValues } from '../../../utils/helpers';
 import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../shared/fields';
-import { getMetadataFiltersValues } from '../shared/helpers';
 
 export class VectorStoreZepLoad implements INodeType {
 	description: INodeTypeDescription = {

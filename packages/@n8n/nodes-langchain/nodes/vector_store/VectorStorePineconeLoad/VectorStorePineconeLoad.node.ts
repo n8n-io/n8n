@@ -10,8 +10,8 @@ import { PineconeStore } from 'langchain/vectorstores/pinecone';
 import { PineconeClient } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
-import { metadataFilterField } from '../shared/fields';
-import { getMetadataFiltersValues } from '../shared/helpers';
+import { metadataFilterField } from '../../../utils/sharedFields';
+import { getMetadataFiltersValues } from '../../../utils/helpers';
 
 export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {

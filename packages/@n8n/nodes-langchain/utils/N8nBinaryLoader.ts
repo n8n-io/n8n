@@ -9,6 +9,7 @@ import { JSONLoader } from 'langchain/document_loaders/fs/json';
 import { PDFLoader } from 'langchain/document_loaders/fs/pdf';
 import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { N8nEPubLoader } from './EpubLoader';
+import { getMetadataFiltersValues } from './helpers';
 
 const SUPPORTED_MIME_TYPES = {
 	pdfLoader: ['application/pdf'],
@@ -32,12 +33,9 @@ export class N8nBinaryLoader {
 			0,
 		) as keyof typeof SUPPORTED_MIME_TYPES;
 
-		const metadata = this.context.getNodeParameter('metadata.metadataValues', 0, []) as Array<{
-			name: string;
-			value: string;
-		}>;
 		const binaryDataKey = this.context.getNodeParameter('binaryDataKey', 0) as string;
 		const docs: Document[] = [];
+		const metadata = getMetadataFiltersValues(this.context, 0);
 
 		if (!items) return docs;
 
@@ -129,14 +127,11 @@ export class N8nBinaryLoader {
 			docs.push(...loadedDoc);
 		}
 
-		if (metadata?.length > 0) {
-			const metadataObj = metadata.reduce((acc, curr) => {
-				return { ...acc, [curr.name]: curr.value };
-			}, {});
+		if (metadata) {
 			docs.forEach((document) => {
 				document.metadata = {
 					...document.metadata,
-					...metadataObj,
+					...metadata,
 				};
 			});
 		}
