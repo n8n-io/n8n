@@ -22,21 +22,21 @@ export function log(type: LogTypes, message: string, meta: object = {}) {
 // Convenience methods below
 
 export function debug(message: string, meta: object = {}) {
-	getInstance().log('debug', message, meta);
+	getInstance().debug(message, meta);
 }
 
 export function info(message: string, meta: object = {}) {
-	getInstance().log('info', message, meta);
+	getInstance().info(message, meta);
 }
 
 export function error(message: string, meta: object = {}) {
-	getInstance().log('error', message, meta);
+	getInstance().error(message, meta);
 }
 
 export function verbose(message: string, meta: object = {}) {
-	getInstance().log('verbose', message, meta);
+	getInstance().verbose(message, meta);
 }
 
 export function warn(message: string, meta: object = {}) {
-	getInstance().log('warn', message, meta);
+	getInstance().warn(message, meta);
 }

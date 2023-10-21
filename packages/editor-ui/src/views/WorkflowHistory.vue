@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeMount, ref, watchEffect, computed } from 'vue';
+import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/constants';
@@ -162,6 +162,58 @@ const openRestorationModal = async (
 	});
 };
 
+const cloneWorkflowVersion = async (
+	id: WorkflowVersionId,
+	data: { formattedCreatedAt: string },
+) => {
+	const clonedWorkflow = await workflowHistoryStore.cloneIntoNewWorkflow(
+		route.params.workflowId,
+		id,
+		data,
+	);
+	const { href } = router.resolve({
+		name: VIEWS.WORKFLOW,
+		params: {
+			name: clonedWorkflow.id,
+		},
+	});
+
+	toast.showMessage({
+		title: i18n.baseText('workflowHistory.action.clone.success.title'),
+		message: h(
+			'a',
+			{ href, target: '_blank' },
+			i18n.baseText('workflowHistory.action.clone.success.message'),
+		),
+		type: 'success',
+		duration: 10000,
+	});
+};
+
+const restoreWorkflowVersion = async (
+	id: WorkflowVersionId,
+	data: { formattedCreatedAt: string },
+) => {
+	const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
+	const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
+	if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
+		return;
+	}
+	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
+		route.params.workflowId,
+		id,
+		modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
+	);
+	const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
+		take: 1,
+	});
+	workflowHistory.value = history.concat(workflowHistory.value);
+	toast.showMessage({
+		title: i18n.baseText('workflowHistory.action.restore.success.title'),
+		type: 'success',
+	});
+};
+
 const onAction = async ({
 	action,
 	id,
@@ -180,31 +232,10 @@ const onAction = async ({
 				await workflowHistoryStore.downloadVersion(route.params.workflowId, id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.CLONE:
-				await workflowHistoryStore.cloneIntoNewWorkflow(route.params.workflowId, id, data);
-				toast.showMessage({
-					title: i18n.baseText('workflowHistory.action.clone.success.title'),
-					type: 'success',
-				});
+				await cloneWorkflowVersion(id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
-				const workflow = await workflowsStore.fetchWorkflow(route.params.workflowId);
-				const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
-				if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
-					break;
-				}
-				await workflowHistoryStore.restoreWorkflow(
-					route.params.workflowId,
-					id,
-					modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
-				);
-				const history = await workflowHistoryStore.getWorkflowHistory(route.params.workflowId, {
-					take: 1,
-				});
-				workflowHistory.value = history.concat(workflowHistory.value);
-				toast.showMessage({
-					title: i18n.baseText('workflowHistory.action.restore.success.title'),
-					type: 'success',
-				});
+				await restoreWorkflowVersion(id, data);
 				break;
 		}
 	} catch (error) {
