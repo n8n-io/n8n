@@ -221,24 +221,7 @@ const WorkflowsView = defineComponent({
 			filters: { tags: string[]; search: string; status: string | boolean },
 			matches: boolean,
 		): boolean {
-			const queryString = new URLSearchParams();
-
-			if (this.filters.search) {
-				queryString.append('search', this.filters.search);
-			}
-
-			if (this.filters.status) {
-				queryString.append('status', this.filters.status);
-			}
-
-			if (this.filters.tags.length) {
-				queryString.append('tags', this.filters.tags.join(','));
-			}
-
-			void this.$router.push({
-				name: VIEWS.WORKFLOWS,
-				query: { ...Object.fromEntries(queryString) },
-			});
+			this.saveFiltersOnQueryString();
 
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches =
@@ -262,6 +245,36 @@ const WorkflowsView = defineComponent({
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
+		saveFiltersOnQueryString() {
+			const queryString = new URLSearchParams();
+
+			if (this.filters.search) {
+				queryString.append('search', this.filters.search);
+			}
+
+			if (this.filters.status !== undefined && this.filters.status !== '') {
+				queryString.append('status', this.filters.status);
+			}
+
+			if (this.filters.tags.length) {
+				queryString.append('tags', this.filters.tags.join(','));
+			}
+
+			void this.$router.push({
+				name: VIEWS.WORKFLOWS,
+				query: { ...Object.fromEntries(queryString) },
+			});
+		},
+		setFiltersFromQueryString() {
+			const { tags, status, search } = this.$route.query;
+
+			this.filters = {
+				...this.filters,
+				...(search && { search }),
+				...(status && { status: !!status }),
+				...(tags && { tags: tags.split(',') }),
+			};
+		},
 	},
 	watch: {
 		'filters.tags'() {
@@ -269,13 +282,7 @@ const WorkflowsView = defineComponent({
 		},
 	},
 	mounted() {
-		const { tags } = this.$route.query;
-
-		this.filters = {
-			...this.filters,
-			...this.$route.query,
-			...(tags && { tags: tags.split(',') }),
-		};
+		this.setFiltersFromQueryString();
 
 		void this.usersStore.showPersonalizationSurvey();
 
