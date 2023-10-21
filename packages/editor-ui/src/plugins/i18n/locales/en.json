@@ -609,6 +609,7 @@
 	"executionsList.debug.paywall.link.text": "Read more in the docs",
 	"executionsList.debug.paywall.link.url": "https://docs.n8n.io/workflows/executions/debug/",
 	"workerList.pageTitle": "Workers",
+	"workerList.empty": "No workers",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",

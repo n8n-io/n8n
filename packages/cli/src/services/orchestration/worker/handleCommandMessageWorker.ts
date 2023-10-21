@@ -31,7 +31,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				}
 				switch (message.command) {
 					case 'getStatus':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 300)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,
