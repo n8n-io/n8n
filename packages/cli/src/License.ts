@@ -52,6 +52,9 @@ export class License {
 		const onFeatureChange = isMainInstance
 			? async (features: TFeatures) => this.onFeatureChange(features)
 			: async () => {};
+		const collectUsageMetrics = isMainInstance
+			? async () => this.collectUsageMetrics()
+			: async () => [];
 
 		try {
 			this.manager = new LicenseManager({
@@ -66,7 +69,7 @@ export class License {
 				loadCertStr: async () => this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
-				collectUsageMetrics: async () => this.collectUsageMetrics(),
+				collectUsageMetrics,
 				onFeatureChange,
 			});
 
