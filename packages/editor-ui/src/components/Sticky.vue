@@ -74,12 +74,16 @@
 					<div class="content">
 						<div
 							class="color"
+							data-test-id="color"
 							v-for="(color, index) in availableColors"
 							:key="index"
 							v-on:click="changeColor(color)"
 							:style="{
 								'background-color': color,
-								'border-width': color === node?.parameters.color ? '1px' : '0px',
+								'border-width':
+									(index === 0 && node?.parameters.color === '') || color === node?.parameters.color
+										? '1px'
+										: '0px',
 								'border-style': 'solid',
 							}"
 						></div>

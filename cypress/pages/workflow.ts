@@ -124,6 +124,7 @@ export class WorkflowPage extends BasePage {
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),
 		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
+		colors: () => cy.getByTestId('color'),
 	};
 	actions = {
 		visit: (preventNodeViewUnload = true) => {
@@ -320,6 +321,17 @@ export class WorkflowPage extends BasePage {
 		},
 		deleteSticky: () => {
 			this.getters.stickies().eq(0).realHover().find('[data-test-id="delete-sticky"]').click();
+		},
+		toggleColorPalette: () => {
+			this.getters
+				.stickies()
+				.eq(0)
+				.realHover()
+				.find('[data-test-id="change-sticky-color"]')
+				.click({ force: true });
+		},
+		pickNonDefaultColor: () => {
+			this.getters.colors().eq(1).click();
 		},
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
