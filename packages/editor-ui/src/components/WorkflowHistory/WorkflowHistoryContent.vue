@@ -34,8 +34,9 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
 		return;
 	}
+	const { pinData, ...workflow } = props.workflow;
 	return {
-		...props.workflow,
+		...workflow,
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
 	};

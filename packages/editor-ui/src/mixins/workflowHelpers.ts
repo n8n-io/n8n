@@ -114,22 +114,22 @@ export function resolveParameter(
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const inputName = NodeConnectionType.Main;
-	let activeNode = useNDVStore().activeNode;
+	const activeNode = useNDVStore().activeNode;
+	let contextNode = activeNode;
 
 	const workflow = getCurrentWorkflow();
 
-	// Should actually just do that for incoming data and not things like parameters
 	if (activeNode) {
-		activeNode = getParentMainInputNode(workflow, activeNode);
+		contextNode = getParentMainInputNode(workflow, activeNode);
 	}
 
 	const workflowRunData = useWorkflowsStore().getWorkflowRunData;
-	let parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
+	let parentNode = workflow.getParentNodes(contextNode!.name, inputName, 1);
 	const executionData = useWorkflowsStore().getWorkflowExecution;
 
 	let runIndexParent = opts?.inputRunIndex ?? 0;
-	const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
-	if (opts.targetItem && opts?.targetItem?.nodeName === activeNode!.name && executionData) {
+	const nodeConnection = workflow.getNodeConnectionIndexes(contextNode!.name, parentNode[0]);
+	if (opts.targetItem && opts?.targetItem?.nodeName === contextNode!.name && executionData) {
 		const sourceItems = getSourceItems(executionData, opts.targetItem);
 		if (!sourceItems.length) {
 			return null;
@@ -158,7 +158,7 @@ export function resolveParameter(
 
 	let _connectionInputData = connectionInputData(
 		parentNode,
-		activeNode!.name,
+		contextNode!.name,
 		inputName,
 		runIndexParent,
 		nodeConnection,
@@ -198,11 +198,11 @@ export function resolveParameter(
 	if (
 		opts?.targetItem === undefined &&
 		workflowRunData !== null &&
-		workflowRunData[activeNode!.name]
+		workflowRunData[contextNode!.name]
 	) {
-		runIndexCurrent = workflowRunData[activeNode!.name].length - 1;
+		runIndexCurrent = workflowRunData[contextNode!.name].length - 1;
 	}
-	const _executeData = executeData(parentNode, activeNode!.name, inputName, runIndexCurrent);
+	const _executeData = executeData(parentNode, contextNode!.name, inputName, runIndexCurrent);
 
 	ExpressionEvaluatorProxy.setEvaluator(
 		useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
@@ -220,6 +220,8 @@ export function resolveParameter(
 		additionalKeys,
 		_executeData,
 		false,
+		{},
+		contextNode!.name,
 	) as IDataObject;
 }
 
