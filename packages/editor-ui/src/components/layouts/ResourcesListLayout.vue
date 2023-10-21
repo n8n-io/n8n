@@ -1,6 +1,6 @@
 <template>
 	<page-view-layout>
-		<template #aside v-if="showAside">
+		<template #aside>
 			<div :class="[$style['heading-wrapper'], 'mb-xs']">
 				<n8n-heading size="2xlarge">
 					{{ i18n.baseText(`${resourceKey}.heading`) }}
@@ -20,6 +20,14 @@
 					</n8n-button>
 				</slot>
 			</div>
+
+			<folder-select
+				v-if="resourceKey === 'workflows' && allFolders.length > 0"
+				v-model="isInFolder"
+				:resources="allFolders"
+				:my-resources-label="i18n.baseText(`${resourceKey}.menu.my`)"
+				:all-resources-label="i18n.baseText(`${resourceKey}.menu.all`)"
+			/>
 
 			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
 				<resource-ownership-select
@@ -118,6 +126,18 @@
 
 				<slot name="preamble" />
 
+				<div class="mb-xs">
+					<n8n-icon-button
+						v-if="activeFolder.name"
+						@click="onClickBack"
+						type="secondary"
+						size="large"
+						title="back"
+						icon="arrow-left"
+					/>
+					{{ this.activeFolder.name }}
+				</div>
+
 				<div
 					v-if="filteredAndSortedSubviewResources.length > 0"
 					:class="$style.listWrapper"
@@ -184,15 +204,17 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 
-import type { IUser } from '@/Interface';
+import type { IUser, IFolder } from '@/Interface';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
+import FolderSelect from '@/components/forms/FolderSelect.vue';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
+import { useFoldersStore } from '@/stores/folders.store';
 import type { N8nInput } from 'n8n-design-system';
 import type { DatatableColumn } from 'n8n-design-system';
 import { useI18n } from '@/composables';
@@ -223,6 +245,7 @@ export default defineComponent({
 	components: {
 		PageViewLayout,
 		PageViewLayoutList,
+		FolderSelect,
 		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 	},
@@ -238,6 +261,10 @@ export default defineComponent({
 		resources: {
 			type: Array,
 			default: (): IResource[] => [],
+		},
+		activeFolder: {
+			type: Object,
+			default: {} as IFolder,
 		},
 		disabled: {
 			type: Boolean,
@@ -296,6 +323,7 @@ export default defineComponent({
 		return {
 			loading: true,
 			isOwnerSubview: false,
+			isInFolder: '',
 			sortBy: this.sortOptions[0],
 			hasFilters: false,
 			filtersModel: { ...this.filters },
@@ -306,7 +334,7 @@ export default defineComponent({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUsersStore),
+		...mapStores(useSettingsStore, useUsersStore, useFoldersStore),
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
@@ -388,11 +416,14 @@ export default defineComponent({
 		shouldSwitchToAllSubview(): boolean {
 			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
 		},
+		allFolders(): IFolder[] {
+			return this.foldersStore.allFolders;
+		},
 	},
 	methods: {
 		async onMounted() {
 			await this.initialize();
-
+			await this.foldersStore.fetchAll();
 			this.loading = false;
 			await this.$nextTick();
 			this.focusSearchInput();
@@ -472,11 +503,20 @@ export default defineComponent({
 			this.filtersModel.search = search;
 			this.$emit('update:filters', this.filtersModel);
 		},
+		onClickBack() {
+			this.$emit('click:back');
+		},
 	},
 	mounted() {
 		void this.onMounted();
 	},
 	watch: {
+		activeFolder(value) {
+			this.$emit('update:activeFolder', value);
+		},
+		isInFolder(value) {
+			this.$emit('update:isInFolder', value);
+		},
 		isOwnerSubview() {
 			this.sendSubviewTelemetry();
 		},

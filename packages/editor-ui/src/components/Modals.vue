@@ -23,6 +23,22 @@
 			<CredentialsSelectModal />
 		</ModalRoot>
 
+		<ModalRoot :name="FOLDER_CREATE_MODAL_KEY">
+			<FolderCreateModal />
+		</ModalRoot>
+
+		<ModalRoot :name="FOLDER_RENAME_MODAL_KEY">
+			<template #default="{ data }">
+				<FolderRenameModal :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="MOVE_TO_FOLDER_MODAL_KEY">
+			<template #default="{ modalName, active, data }">
+				<MoveToFolderModal :data="data" :isActive="active" :modalName="modalName" />
+			</template>
+		</ModalRoot>
+
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog :data="data" :isActive="active" :modalName="modalName" />
@@ -165,6 +181,9 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
+	FOLDER_CREATE_MODAL_KEY,
+	FOLDER_RENAME_MODAL_KEY,
+	MOVE_TO_FOLDER_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
@@ -194,6 +213,9 @@ import ContactPromptModal from './ContactPromptModal.vue';
 import CredentialEdit from './CredentialEdit/CredentialEdit.vue';
 import InviteUsersModal from './InviteUsersModal.vue';
 import CredentialsSelectModal from './CredentialsSelectModal.vue';
+import FolderCreateModal from './FolderCreateModal.vue';
+import FolderRenameModal from './FolderRenameModal.vue';
+import MoveToFolderModal from './MoveToFolderModal.vue';
 import DuplicateWorkflowDialog from './DuplicateWorkflowDialog.vue';
 import ModalRoot from './ModalRoot.vue';
 import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
@@ -229,6 +251,9 @@ export default defineComponent({
 		CredentialsSelectModal,
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
+		FolderCreateModal,
+		FolderRenameModal,
+		MoveToFolderModal,
 		InviteUsersModal,
 		ModalRoot,
 		OnboardingCallSignupModal,
@@ -255,6 +280,9 @@ export default defineComponent({
 		CONTACT_PROMPT_MODAL_KEY,
 		CREDENTIAL_EDIT_MODAL_KEY,
 		CREDENTIAL_SELECT_MODAL_KEY,
+		FOLDER_CREATE_MODAL_KEY,
+		FOLDER_RENAME_MODAL_KEY,
+		MOVE_TO_FOLDER_MODAL_KEY,
 		ABOUT_MODAL_KEY,
 		CHANGE_PASSWORD_MODAL_KEY,
 		DELETE_USER_MODAL_KEY,

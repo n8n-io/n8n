@@ -87,6 +87,7 @@ import {
 	OwnerController,
 	PasswordResetController,
 	TagsController,
+	FoldersController,
 	TranslationController,
 	UsersController,
 	WorkflowStatisticsController,
@@ -315,6 +316,7 @@ export class Server extends AbstractServer {
 				mfaService,
 			),
 			Container.get(TagsController),
+			Container.get(FoldersController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController(
 				config,

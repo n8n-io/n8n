@@ -47,6 +47,7 @@ import { DisallowOrphanExecutions1693554410387 } from '../common/1693554410387-D
 import { ExecutionSoftDelete1693491613982 } from './1693491613982-ExecutionSoftDelete';
 import { AddWorkflowMetadata1695128658538 } from '../common/1695128658538-AddWorkflowMetadata';
 import { ModifyWorkflowHistoryNodesAndConnections1695829275184 } from '../common/1695829275184-ModifyWorkflowHistoryNodesAndConnections';
+import { CreateFolders1697813620896 } from '../common/1697813620896-CreateFolders';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -97,6 +98,7 @@ const sqliteMigrations: Migration[] = [
 	ExecutionSoftDelete1693491613982,
 	AddWorkflowMetadata1695128658538,
 	ModifyWorkflowHistoryNodesAndConnections1695829275184,
+	CreateFolders1697813620896,
 ];
 
 export { sqliteMigrations };

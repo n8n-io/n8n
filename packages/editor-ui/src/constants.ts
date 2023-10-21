@@ -31,6 +31,9 @@ export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
 export const CREDENTIAL_EDIT_MODAL_KEY = 'editCredential';
 export const CREDENTIAL_SELECT_MODAL_KEY = 'selectCredential';
+export const FOLDER_CREATE_MODAL_KEY = 'createFolder';
+export const FOLDER_RENAME_MODAL_KEY = 'renameFolder';
+export const MOVE_TO_FOLDER_MODAL_KEY = 'moveToFolder';
 export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
@@ -552,6 +555,7 @@ export const enum STORES {
 	NODE_TYPES = 'nodeTypes',
 	CREDENTIALS = 'credentials',
 	TAGS = 'tags',
+	FOLDERS = 'folders',
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',

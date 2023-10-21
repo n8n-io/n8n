@@ -145,6 +145,8 @@ export class WorkflowsService {
 
 		if (isOwnedByIncluded) relations.push('shared');
 
+		relations.push('folder');
+
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);
 		}
@@ -291,6 +293,7 @@ export class WorkflowsService {
 				'staticData',
 				'pinData',
 				'versionId',
+				'folder',
 			]),
 		);
 

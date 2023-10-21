@@ -9,6 +9,11 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	name?: string;
 
+	@IsString()
+	@IsOptional()
+	@Expose()
+	folder?: string;
+
 	@IsBoolean()
 	@IsOptional()
 	@Expose()

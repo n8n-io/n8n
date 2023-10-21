@@ -40,6 +40,7 @@ import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import type { Role } from '@db/entities/Role';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { TagEntity } from '@db/entities/TagEntity';
+import type { FolderEntity } from './databases/entities/FolderEntity';
 import type { User } from '@db/entities/User';
 import type {
 	AuthIdentityRepository,
@@ -129,6 +130,15 @@ export type UsageCount = {
 };
 
 export type ITagWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'> &
+	UsageCount;
+
+// ----------------------------------
+//               folders
+// ----------------------------------
+
+export type IFolderDb = Pick<FolderEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'>;
+
+export type IFolderWithCountDb = Pick<TagEntity, 'id' | 'name' | 'createdAt' | 'updatedAt'> &
 	UsageCount;
 
 // ----------------------------------

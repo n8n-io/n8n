@@ -462,6 +462,17 @@ export declare namespace TagsRequest {
 }
 
 // ----------------------------------
+//             /Folders
+// ----------------------------------
+
+export declare namespace FoldersRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { withUsageCount: string }>;
+	type Create = AuthenticatedRequest<{}, {}, { name: string }>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, { name: string }>;
+	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
 //             /nodes
 // ----------------------------------
 

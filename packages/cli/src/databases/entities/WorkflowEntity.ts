@@ -3,13 +3,23 @@ import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import type { IBinaryKeyData, INode, IPairedItemData } from 'n8n-workflow';
 
-import { Column, Entity, Index, JoinColumn, JoinTable, ManyToMany, OneToMany } from 'typeorm';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	JoinTable,
+	ManyToMany,
+	OneToMany,
+	ManyToOne,
+} from 'typeorm';
 
 import config from '@/config';
 import type { TagEntity } from './TagEntity';
 import type { SharedWorkflow } from './SharedWorkflow';
 import type { WorkflowStatistics } from './WorkflowStatistics';
 import type { WorkflowTagMapping } from './WorkflowTagMapping';
+import { FolderEntity } from './FolderEntity';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { WithTimestampsAndStringId, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
@@ -89,6 +99,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 
 	@Column({ default: 0 })
 	triggerCount: number;
+
+	@ManyToOne('FolderEntity')
+	folder: FolderEntity;
 }
 
 /**

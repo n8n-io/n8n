@@ -13,6 +13,9 @@ import {
 	CONTACT_PROMPT_MODAL_KEY,
 	CREDENTIAL_EDIT_MODAL_KEY,
 	CREDENTIAL_SELECT_MODAL_KEY,
+	FOLDER_CREATE_MODAL_KEY,
+	FOLDER_RENAME_MODAL_KEY,
+	MOVE_TO_FOLDER_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
@@ -35,8 +38,6 @@ import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
-	N8N_PRICING_PAGE_URL,
-	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -81,6 +82,15 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
+				open: false,
+			},
+			[FOLDER_CREATE_MODAL_KEY]: {
+				open: false,
+			},
+			[FOLDER_RENAME_MODAL_KEY]: {
+				open: false,
+			},
+			[MOVE_TO_FOLDER_MODAL_KEY]: {
 				open: false,
 			},
 			[DELETE_USER_MODAL_KEY]: {

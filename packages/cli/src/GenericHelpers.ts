@@ -19,6 +19,7 @@ import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { UserUpdatePayload } from '@/requests';
 import { ExecutionRepository } from '@db/repositories';
+import type { FolderEntity } from './databases/entities/FolderEntity';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -95,7 +96,7 @@ export async function generateUniqueName(
 }
 
 export async function validateEntity(
-	entity: WorkflowEntity | CredentialsEntity | TagEntity | User | UserUpdatePayload,
+	entity: WorkflowEntity | CredentialsEntity | TagEntity | User | UserUpdatePayload | FolderEntity,
 ): Promise<void> {
 	const errors = await validate(entity);
 

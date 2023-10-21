@@ -862,6 +862,14 @@ export interface ITag {
 	updatedAt?: string;
 }
 
+export interface IFolder {
+	id: string;
+	name: string;
+	usageCount?: number;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
 export interface ITagRow {
 	tag?: ITag;
 	usage?: string;
@@ -1021,6 +1029,13 @@ export interface ICredentialsState {
 
 export interface ITagsState {
 	tags: { [id: string]: ITag };
+	loading: boolean;
+	fetchedAll: boolean;
+	fetchedUsageCount: boolean;
+}
+
+export interface IFoldersState {
+	folders: { [id: string]: ITag };
 	loading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;

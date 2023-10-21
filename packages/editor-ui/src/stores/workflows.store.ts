@@ -645,6 +645,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			};
 		},
 
+		removeWorkflowFolderId(folderId: string): void {
+			this.workflow = {
+				...this.workflow,
+				folder: null,
+			};
+		},
+
 		setWorkflow(workflow: IWorkflowDb): void {
 			this.workflow = workflow;
 			this.workflow = {
@@ -1284,7 +1291,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Creates a new workflow
 		async createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> {
 			// make sure that the new ones are not active
+			const urlParams = new URLSearchParams(window.location.search);
 			sendData.active = false;
+			sendData.folder = urlParams.get('folder');
 
 			const rootStore = useRootStore();
 			return makeRestApiRequest(

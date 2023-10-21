@@ -8,6 +8,7 @@ export { ExecutionRepository } from './execution.repository';
 export { InstalledNodesRepository } from './installedNodes.repository';
 export { InstalledPackagesRepository } from './installedPackages.repository';
 export { RoleRepository } from './role.repository';
+export { FolderRepository } from './folder.repository';
 export { SettingsRepository } from './settings.repository';
 export { SharedCredentialsRepository } from './sharedCredentials.repository';
 export { SharedWorkflowRepository } from './sharedWorkflow.repository';

@@ -9,3 +9,4 @@ export { TagsController } from './tags.controller';
 export { TranslationController } from './translation.controller';
 export { UsersController } from './users.controller';
 export { WorkflowStatisticsController } from './workflowStatistics.controller';
+export { FoldersController } from './folders.controller';

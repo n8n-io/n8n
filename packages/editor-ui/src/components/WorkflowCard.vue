@@ -64,6 +64,7 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
+	MOVE_TO_FOLDER_MODAL_KEY,
 } from '@/constants';
 import { useToast, useMessage } from '@/composables';
 import type { IPermissions } from '@/permissions';
@@ -82,6 +83,7 @@ export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	SHARE: 'share',
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
+	MOVE_TO_FOLDER: 'move to',
 };
 
 export default defineComponent({
@@ -115,6 +117,7 @@ export default defineComponent({
 				sharedWith: [],
 				ownedBy: {} as IUser,
 				versionId: '',
+				folder: '',
 			}),
 		},
 		readOnly: {
@@ -155,6 +158,11 @@ export default defineComponent({
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
 				});
 			}
+
+			actions.push({
+				label: this.$locale.baseText('workflows.item.moveToFolder'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
+			});
 
 			return actions;
 		},
@@ -221,6 +229,14 @@ export default defineComponent({
 					workflow_id: this.data.id,
 					user_id_sharer: this.currentUser.id,
 					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+				});
+			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER) {
+				this.uiStore.openModalWithData({
+					name: MOVE_TO_FOLDER_MODAL_KEY,
+					data: {
+						id: this.data.id,
+						currentFolderId: this.data.folder ? this.data.folder.id : null,
+					},
 				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirm(

@@ -1,0 +1,120 @@
+<template>
+	<Modal
+		:name="FOLDER_CREATE_MODAL_KEY"
+		:eventBus="modalBus"
+		width="50%"
+		:center="true"
+		:loading="loading"
+		maxWidth="460px"
+		minHeight="250px"
+	>
+		<template #header>
+			<h2 :class="$style.title">
+				{{ $locale.baseText('folderCreateModal.addNewFolder') }}
+			</h2>
+		</template>
+		<template #content>
+			<div>
+				<div :class="$style.subtitle">
+					{{ $locale.baseText('folderCreateModal.typeFolderName') }}
+				</div>
+				<n8n-input
+					:name="name"
+					:type="type"
+					:placeholder="placeholder"
+					:modelValue="folderName"
+					:maxlength="maxlength"
+					:autocomplete="autocomplete"
+					:disabled="disabled"
+					@update:modelValue="onUpdateTextInput"
+					@blur="onBlur"
+					@focus="onFocus"
+					ref="inputRef"
+				/>
+			</div>
+		</template>
+		<template #footer>
+			<div :class="$style.footer">
+				<n8n-button
+					:label="$locale.baseText('credentialSelectModal.continue')"
+					float="right"
+					size="large"
+					:disabled="!folderName"
+					@click="createFolder"
+					data-test-id="new-credential-type-button"
+				/>
+			</div>
+		</template>
+	</Modal>
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue';
+import Modal from './Modal.vue';
+import { FOLDER_CREATE_MODAL_KEY } from '../constants';
+import { externalHooks } from '@/mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useFoldersStore } from '@/stores/folders.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { createEventBus } from 'n8n-design-system/utils';
+
+export default defineComponent({
+	name: 'FolderCreateModal',
+	mixins: [externalHooks],
+	components: {
+		Modal,
+	},
+	async mounted() {
+		try {
+			await this.credentialsStore.fetchCredentialTypes(false);
+		} catch (e) {}
+		this.loading = false;
+
+		setTimeout(() => {
+			const elementRef = this.$refs.select as HTMLSelectElement | undefined;
+			if (elementRef) {
+				elementRef.focus();
+			}
+		}, 0);
+	},
+	data() {
+		return {
+			modalBus: createEventBus(),
+			folderName: '',
+			selected: '',
+			loading: true,
+			FOLDER_CREATE_MODAL_KEY,
+		};
+	},
+	computed: {
+		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore, useFoldersStore),
+	},
+	methods: {
+		onUpdateTextInput(value: string) {
+			this.folderName = value;
+		},
+		onSelect(type: string) {
+			this.selected = type;
+		},
+		async createFolder() {
+			await this.foldersStore.create(this.folderName);
+			this.modalBus.emit('close');
+		},
+	},
+});
+</script>
+
+<style module lang="scss">
+.title {
+	font-size: var(--font-size-xl);
+	line-height: var(--font-line-height-regular);
+}
+
+.subtitle {
+	margin-bottom: var(--spacing-s);
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-xloose);
+}
+</style>

@@ -1,8 +1,10 @@
 <template>
 	<resources-list-layout
 		ref="layout"
-		resource-key="workflows"
-		:resources="allWorkflows"
+		:resource-key="resource"
+		:resources="
+			activeFolder.id || showAllWorkflows || allFolders.length === 0 ? allWorkflows : allFolders
+		"
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 80 }"
@@ -10,7 +12,11 @@
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv"
+		:active-folder="activeFolder"
 		@click:add="addWorkflow"
+		@click:back="resetFolder"
+		@update:activeFolder="onUpdateFolder"
+		@update:isInFolder="onUpdateIsInFolder"
 		@update:filters="filters = $event"
 	>
 		<template #add-button="{ disabled }">
@@ -22,6 +28,7 @@
 						:disabled="disabled"
 						@click="addWorkflow"
 						data-test-id="resources-list-add"
+						class="mb-3xs"
 					>
 						{{ $locale.baseText(`workflows.add`) }}
 					</n8n-button>
@@ -30,9 +37,37 @@
 					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
 				</template>
 			</n8n-tooltip>
+			<n8n-tooltip :disabled="!readOnlyEnv">
+				<div>
+					<n8n-button
+						size="large"
+						block
+						type="secondary"
+						:disabled="activeFolder.id || (allFolders.length > 0 && showAllWorkflows)"
+						@click="addFolder"
+						data-test-id="resources-list-add"
+					>
+						{{ $locale.baseText(`folders.add`) }}
+					</n8n-button>
+				</div>
+				<template #content>
+					{{ $locale.baseText('mainSidebar.workflows.readOnlyEnv.tooltip') }}
+				</template>
+			</n8n-tooltip>
 		</template>
 		<template #default="{ data, updateItemSize }">
+			<folder-card
+				v-if="!activeFolder.id && !showAllWorkflows && allFolders.length > 0"
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				@expand:tags="updateItemSize(data)"
+				@click:tag="onClickTag"
+				@click:folder="onUpdateFolder"
+				:readOnly="readOnlyEnv"
+			/>
 			<workflow-card
+				v-else
 				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data"
@@ -119,8 +154,9 @@
 import { defineComponent } from 'vue';
 import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import type { ITag, IUser, IWorkflowDb } from '@/Interface';
+import FolderCard from '@/components/FolderCard.vue';
+import { EnterpriseEditionFeature, VIEWS, FOLDER_CREATE_MODAL_KEY } from '@/constants';
+import type { ITag, IUser, IWorkflowDb, IFolder } from '@/Interface';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui.store';
@@ -128,6 +164,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
+import { useFoldersStore } from '@/stores/folders.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
@@ -145,14 +182,20 @@ const WorkflowsView = defineComponent({
 	components: {
 		ResourcesListLayout,
 		WorkflowCard,
+		FolderCard,
 		TagsDropdown,
 	},
 	data() {
 		return {
+			resource: 'workflows',
+			showAllWorkflows: true,
+			activeFolder: {} as IFolder,
+			activeFolderName: '',
 			filters: {
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
+				folder: '',
 				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
@@ -165,6 +208,7 @@ const WorkflowsView = defineComponent({
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
+			useFoldersStore,
 			useCredentialsStore,
 			useSourceControlStore,
 		),
@@ -173,6 +217,9 @@ const WorkflowsView = defineComponent({
 		},
 		allWorkflows(): IWorkflowDb[] {
 			return this.workflowsStore.allWorkflows;
+		},
+		allFolders(): IFolderDb[] {
+			return this.foldersStore.allFolders;
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -197,11 +244,17 @@ const WorkflowsView = defineComponent({
 	methods: {
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { folder: this.activeFolder.id },
+			});
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
+		},
+		addFolder() {
+			this.uiStore.openModal(FOLDER_CREATE_MODAL_KEY);
 		},
 		async initialize() {
 			await Promise.all([
@@ -209,6 +262,7 @@ const WorkflowsView = defineComponent({
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 				this.credentialsStore.fetchAllCredentials(),
+				this.foldersStore.fetchAll(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
@@ -238,10 +292,39 @@ const WorkflowsView = defineComponent({
 				matches = matches && resource.active === filters.status;
 			}
 
+			if (this.activeFolder.id) {
+				matches = matches && resource.folder?.id === this.activeFolder.id;
+			}
+
 			return matches;
 		},
 		sendFiltersTelemetry(source: string) {
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
+		},
+		async onUpdateIsInFolder(folder: string) {
+			if (folder === 'no-folder') {
+				this.showAllWorkflows = true;
+				this.activeFolder = {};
+				this.resource = 'workflows';
+			} else {
+				this.showAllWorkflows = false;
+				this.activeFolder = {};
+			}
+		},
+		async onUpdateFolder(folder: IFolder) {
+			if (folder.id) {
+				this.resource = 'workflows';
+				this.activeFolder = folder;
+				if (folder.id === '0') {
+					this.activeFolder = {};
+				}
+			}
+		},
+		async resetFolder(folder: string) {
+			this.activeFolderName = '';
+			this.showAllWorkflows = false;
+			this.activeFolder = {};
+			await this.workflowsStore.fetchAllWorkflows(undefined);
 		},
 	},
 	watch: {
@@ -299,5 +382,9 @@ export default WorkflowsView;
 		color: var(--color-foreground-dark);
 		transition: color 0.3s ease;
 	}
+}
+
+.buttons {
+	padding-bottom: 10px;
 }
 </style>
