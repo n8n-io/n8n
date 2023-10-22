@@ -1070,6 +1070,15 @@ export function getNodeOutputs(
 	}
 
 	if (node.onError === 'continueErrorOutput') {
+		if (outputs.length === 1) {
+			// Set the displayName to "Success"
+			if (typeof outputs[0] === 'string') {
+				outputs[0] = {
+					type: outputs[0],
+				};
+			}
+			outputs[0].displayName = 'Success';
+		}
 		return [
 			...outputs,
 			{

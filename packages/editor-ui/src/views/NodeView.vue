@@ -2506,7 +2506,7 @@ export default defineComponent({
 					};
 				}
 
-				NodeViewUtils.resetConnection(info.connection);
+				NodeViewUtils.resetConnection(info.connection, info.sourceEndpoint.parameters.category);
 				NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
 
 				const connectionData: [IConnection, IConnection] = [
@@ -2562,7 +2562,9 @@ export default defineComponent({
 					);
 					if (sourceInfo.type !== NodeConnectionType.Main) {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
+						info.connection.setPaintStyle(
+							getConnectorPaintStyleData(info.connection, info.sourceEndpoint.parameters.category),
+						);
 						endpointArrow?.setVisible(false);
 					}
 				}

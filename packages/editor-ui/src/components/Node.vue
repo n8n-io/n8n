@@ -1267,6 +1267,15 @@ export default defineComponent({
 		stroke: var(--color-foreground-xdark);
 	}
 
+	&.error {
+		path {
+			fill: var(--node-error-output-color);
+		}
+		rect {
+			stroke: var(--node-error-output-color);
+		}
+	}
+
 	&.small {
 		margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size-small) / 2));
 		g {
@@ -1395,6 +1404,10 @@ export default defineComponent({
 			color: var(--node-type-supplemental-label-color);
 		}
 	}
+}
+
+.node-output-endpoint-label.node-connection-category-error {
+	color: var(--node-error-output-color);
 }
 
 .node-output-endpoint-label {

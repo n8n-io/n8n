@@ -429,6 +429,7 @@ export const nodeBase = defineComponent({
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
 						outputConfiguration.displayName || nodeTypeData.outputNames[i],
 						outputName,
+						outputConfiguration?.category,
 					);
 					endpoint.addOverlay(overlaySpec);
 				}
@@ -471,10 +472,16 @@ export const nodeBase = defineComponent({
 							nodeId: this.nodeId,
 							type: outputName,
 							index: typeIndex,
+							category: outputConfiguration?.category,
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
 					};
+
+					if (outputConfiguration?.category) {
+						plusEndpointData.cssClass = `${plusEndpointData.cssClass} ${outputConfiguration?.category}`;
+					}
+
 					const plusEndpoint = this.instance.addEndpoint(
 						this.$refs[this.data.name] as Element,
 						plusEndpointData,
@@ -560,7 +567,7 @@ export const nodeBase = defineComponent({
 								nodeTypeData,
 								this.__getEndpointColor(NodeConnectionType.Main),
 							),
-							fill: getStyleTokenValue('--color-danger', true),
+							fill: getStyleTokenValue('--node-error-output-color', true),
 						},
 						cssClass: `dot-${type}-endpoint`,
 					};

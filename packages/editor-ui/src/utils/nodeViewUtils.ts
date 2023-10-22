@@ -112,7 +112,11 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	stroke: getStyleTokenValue('--color-foreground-dark', true),
 };
 
-export const getConnectorColor = (type: ConnectionTypes): string => {
+export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
+	if (category === 'error') {
+		return '--node-error-output-color';
+	}
+
 	if (type === NodeConnectionType.Main) {
 		return '--node-type-main-color';
 	}
@@ -120,8 +124,11 @@ export const getConnectorColor = (type: ConnectionTypes): string => {
 	return '--node-type-supplemental-connector-color';
 };
 
-export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+export const getConnectorPaintStylePull = (
+	connection: Connection,
+	category?: string,
+): PaintStyle => {
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	const additionalStyles: PaintStyle = {};
 	if (connection.parameters.type !== NodeConnectionType.Main) {
 		additionalStyles.dashstyle = '5 3';
@@ -133,16 +140,22 @@ export const getConnectorPaintStylePull = (connection: Connection): PaintStyle =
 	};
 };
 
-export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+export const getConnectorPaintStyleDefault = (
+	connection: Connection,
+	category?: string,
+): PaintStyle => {
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
 	};
 };
 
-export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+export const getConnectorPaintStyleData = (
+	connection: Connection,
+	category?: string,
+): PaintStyle => {
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
@@ -317,7 +330,11 @@ export const getOutputEndpointStyle = (
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (labelText: string, outputName: string): OverlaySpec => ({
+export const getOutputNameOverlay = (
+	labelText: string,
+	outputName: string,
+	category?: string,
+): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
@@ -329,6 +346,9 @@ export const getOutputNameOverlay = (labelText: string, outputName: string): Ove
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
 				label.classList.add(`node-connection-type-${getScope(outputName)}`);
+			}
+			if (category) {
+				label.classList.add(`node-connection-category-${category}`);
 			}
 			return label;
 		},
@@ -720,11 +740,11 @@ export const getOutputSummary = (
 	return outputMap;
 };
 
-export const resetConnection = (connection: Connection) => {
+export const resetConnection = (connection: Connection, category?: string) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
-	connection.setPaintStyle(getConnectorPaintStyleDefault(connection));
+	connection.setPaintStyle(getConnectorPaintStyleDefault(connection, category));
 };
 
 export const recoveredConnection = (connection: Connection) => {
@@ -847,7 +867,9 @@ export const showPullConnectionState = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(getConnectorPaintStylePull(connection));
+		connection.setPaintStyle(
+			getConnectorPaintStylePull(connection, connection.parameters.category),
+		);
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 	}
 };
