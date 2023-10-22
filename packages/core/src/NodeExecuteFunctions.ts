@@ -2298,7 +2298,13 @@ export function getNodeParameter(
  *
  */
 export function continueOnFail(node: INode): boolean {
-	return get(node, 'continueOnFail', false);
+	const onError = get(node, 'onError', undefined);
+
+	if (onError === undefined) {
+		return get(node, 'continueOnFail', false);
+	}
+
+	return ['continueRegularOutput', 'continueErrorOutput'].includes(onError);
 }
 
 /**

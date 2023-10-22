@@ -1069,7 +1069,7 @@ export function getNodeOutputs(
 		}
 	}
 
-	if (node.errorOutput) {
+	if (node.onError === 'continueErrorOutput') {
 		return [
 			...outputs,
 			{

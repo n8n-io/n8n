@@ -11,19 +11,6 @@
 		},
 		{
 			"parameters": {
-				"mode": "runOnceForEachItem",
-				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
-			},
-			"id": "40d4dba3-3db7-4eb5-aa27-e76f955a5e09",
-			"name": "Throw Error",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [-140, 680],
-			"errorOutput": true,
-			"continueOnFail": true
-		},
-		{
-			"parameters": {
 				"fields": {
 					"values": [
 						{
@@ -38,7 +25,7 @@
 			"name": "Success",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.2,
-			"position": [200, 580]
+			"position": [200, 860]
 		},
 		{
 			"parameters": {
@@ -56,7 +43,7 @@
 			"name": "Error",
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.2,
-			"position": [200, 760]
+			"position": [200, 1040]
 		},
 		{
 			"parameters": {
@@ -70,7 +57,7 @@
 		},
 		{
 			"parameters": {
-				"content": "## Continue On Fail & Error Output",
+				"content": "## On Error: Continue (using error output)",
 				"height": 414,
 				"width": 564
 			},
@@ -78,11 +65,11 @@
 			"name": "Sticky Note",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [-160, 500]
+			"position": [-160, 780]
 		},
 		{
 			"parameters": {
-				"content": "## Continue On Fail",
+				"content": "## Continue On Fail (deprecated)",
 				"height": 279,
 				"width": 564
 			},
@@ -91,19 +78,6 @@
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
 			"position": [-160, 140]
-		},
-		{
-			"parameters": {
-				"mode": "runOnceForEachItem",
-				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
-			},
-			"id": "ae2786bc-9c4e-4d3a-b40d-723dd9195204",
-			"name": "Throw Error1",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [-120, 240],
-			"errorOutput": false,
-			"continueOnFail": true
 		},
 		{
 			"parameters": {
@@ -122,6 +96,73 @@
 			"type": "n8n-nodes-base.set",
 			"typeVersion": 3.2,
 			"position": [180, 240]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "40d4dba3-3db7-4eb5-aa27-e76f955a5e09",
+			"name": "Throw Error",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-140, 960],
+			"errorOutput": true,
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"content": "## On Error: Continue",
+				"height": 279,
+				"width": 564
+			},
+			"id": "8eb3dd54-c1dd-4167-abfa-c06d044c63f3",
+			"name": "Sticky Note2",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-160, 460]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "19a3d6ac-e610-4296-9b7a-9ed19d242bdb",
+			"name": "Throw Error2",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-120, 560],
+			"onError": "continueRegularOutput"
+		},
+		{
+			"parameters": {
+				"fields": {
+					"values": [
+						{
+							"name": "originalName",
+							"stringValue": "={{ $('Mock Data').item.json.name }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "5f803fdc-7d88-4c12-8886-6092cfbc03c6",
+			"name": "Combined1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.2,
+			"position": [180, 560]
+		},
+		{
+			"parameters": {
+				"mode": "runOnceForEachItem",
+				"jsCode": "// Add a new field called 'myNewField' to the JSON of the item\n$input.item.json.myNewField = 1;\n\nif ($input.item.json.country === 'US') {\n  throw new Error('This is an error');\n}\n\nreturn $input.item;"
+			},
+			"id": "c2696c1f-1abd-4549-9ad9-e62017dc14b8",
+			"name": "Throw Error1",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [-120, 240],
+			"continueOnFail": true
 		}
 	],
 	"pinData": {
@@ -268,6 +309,71 @@
 					"item": 4
 				}
 			}
+		],
+		"Combined1": [
+			{
+				"json": {
+					"error": "This is an error [line 5, for item 0]",
+					"originalName": "Jay Gatsby"
+				},
+				"pairedItem": {
+					"item": 0
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"myNewField": 1,
+					"originalName": "José Arcadio Buendía"
+				},
+				"pairedItem": {
+					"item": 1
+				}
+			},
+			{
+				"json": {
+					"error": "This is an error [line 5, for item 2]",
+					"originalName": "Max Sendak"
+				},
+				"pairedItem": {
+					"item": 2
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"myNewField": 1,
+					"originalName": "Zaphod Beeblebrox"
+				},
+				"pairedItem": {
+					"item": 3
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"myNewField": 1,
+					"originalName": "Edmund Pevensie"
+				},
+				"pairedItem": {
+					"item": 4
+				}
+			}
 		]
 	},
 	"connections": {
@@ -276,6 +382,27 @@
 				[
 					{
 						"node": "Mock Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock Data": {
+			"main": [
+				[
+					{
+						"node": "Throw Error",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Throw Error2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Throw Error1",
 						"type": "main",
 						"index": 0
 					}
@@ -300,16 +427,11 @@
 				]
 			]
 		},
-		"Mock Data": {
+		"Throw Error2": {
 			"main": [
 				[
 					{
-						"node": "Throw Error",
-						"type": "main",
-						"index": 0
-					},
-					{
-						"node": "Throw Error1",
+						"node": "Combined1",
 						"type": "main",
 						"index": 0
 					}
@@ -332,7 +454,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "25e624a4-a2b4-4bcc-bc61-aa0451c1c7c2",
+	"versionId": "e73e1eda-293c-4ee2-87b9-923873241774",
 	"id": "UgoluWRMeg7fPLCB",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"

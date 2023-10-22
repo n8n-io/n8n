@@ -1055,11 +1055,7 @@ export class WorkflowExecute {
 								);
 								nodeSuccessData = runNodeData.data;
 
-								if (
-									nodeSuccessData &&
-									executionData.node.continueOnFail &&
-									executionData.node.errorOutput
-								) {
+								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
 									// If errorOutput is activated check all the output items for error data.
 									// If any is found, route them to the last output as that will be the
 									// error output.
@@ -1288,7 +1284,10 @@ export class WorkflowExecute {
 						taskData.error = executionError;
 						taskData.executionStatus = 'error';
 
-						if (executionData.node.continueOnFail === true) {
+						if (
+							executionData.node.continueOnFail === true ||
+							['continueRegularOutput', 'continueErrorOutput'].includes(executionData.node.onError)
+						) {
 							// Workflow should continue running even if node errors
 							if (executionData.data.hasOwnProperty('main') && executionData.data.main.length > 0) {
 								// Simply get the input data of the node if it has any and pass it through

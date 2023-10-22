@@ -650,6 +650,7 @@ export const workflowHelpers = defineComponent({
 				'credentials',
 				'disabled',
 				'issues',
+				'onError',
 				'notes',
 				'parameters',
 				'status',
@@ -726,14 +727,16 @@ export const workflowHelpers = defineComponent({
 				}
 			}
 
-			// Save the disabled property and continueOnFail only when is set
+			// Save the disabled property, continueOnFail and onError only when is set
 			if (node.disabled === true) {
 				nodeData.disabled = true;
 			}
 			if (node.continueOnFail === true) {
 				nodeData.continueOnFail = true;
 			}
-
+			if (node.onError !== 'stopWorkflow') {
+				nodeData.onError = node.onError;
+			}
 			// Save the notes only if when they contain data
 			if (![undefined, ''].includes(node.notes)) {
 				nodeData.notes = node.notes;

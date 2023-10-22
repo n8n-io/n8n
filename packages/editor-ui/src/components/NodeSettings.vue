@@ -371,8 +371,7 @@ export default defineComponent({
 				alwaysOutputData: false,
 				executeOnce: false,
 				notesInFlow: false,
-				errorOutput: false,
-				continueOnFail: false,
+				onError: 'stopWorkflow',
 				retryOnFail: false,
 				maxTries: 3,
 				waitBetweenTries: 1000,
@@ -441,25 +440,29 @@ export default defineComponent({
 					description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
 				},
 				{
-					displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
-					name: 'continueOnFail',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
-				},
-				{
-					displayName: this.$locale.baseText('nodeSettings.errorOutput.displayName'),
-					name: 'errorOutput',
-					type: 'boolean',
-					default: false,
-					displayOptions: {
-						show: {
-							continueOnFail: [true],
+					displayName: this.$locale.baseText('nodeSettings.onError.displayName'),
+					name: 'onError',
+					type: 'options',
+					options: [
+						{
+							name: 'Stop Workflow',
+							value: 'stopWorkflow',
+							description: 'Halt execution and fail workflow',
 						},
-					},
+						{
+							name: 'Continue',
+							value: 'continueRegularOutput',
+							description: 'Pass error message as item in regular output',
+						},
+						{
+							name: 'Continue (using error output)',
+							value: 'continueErrorOutput',
+							description: 'Pass item to an extra `error` output',
+						},
+					],
+					default: 'stopWorkflow',
 					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.errorOutput.description'),
+					description: this.$locale.baseText('nodeSettings.onError.description'),
 				},
 				{
 					displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
@@ -647,19 +650,10 @@ export default defineComponent({
 				return;
 			}
 
-			if (['continueOnFail', 'errorOutput'].includes(parameterData.name)) {
-				// If those parameters change we have to redraw the connections
+			if (parameterData.name === 'onError') {
+				// If that parameter changed we have to redraw the connections as maybe
+				// the error output as to get added or removed
 				this.$emit('redrawRequired');
-
-				if (parameterData.name === 'continueOnFail' && parameterData.value === false) {
-					// As "errorOutput" depends on "continueOnFail" we have to make sure that
-					// it gets also updated accordingly
-					this.valueChanged({
-						node: this.node.name,
-						name: 'errorOutput',
-						value: false,
-					});
-				}
 			}
 
 			if (parameterData.name === 'name') {
@@ -909,18 +903,18 @@ export default defineComponent({
 				}
 
 				if (this.node.continueOnFail) {
-					foundNodeSettings.push('continueOnFail');
+					foundNodeSettings.push('onError');
 					this.nodeValues = {
 						...this.nodeValues,
-						continueOnFail: this.node.continueOnFail,
+						onError: 'continueRegularOutput',
 					};
 				}
 
-				if (this.node.errorOutput) {
-					foundNodeSettings.push('errorOutput');
+				if (this.node.onError) {
+					foundNodeSettings.push('onError');
 					this.nodeValues = {
 						...this.nodeValues,
-						errorOutput: this.node.errorOutput,
+						onError: this.node.onError,
 					};
 				}
 

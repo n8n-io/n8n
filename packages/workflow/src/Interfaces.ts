@@ -928,6 +928,7 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
+export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
 	id: string;
 	name: string;
@@ -942,7 +943,7 @@ export interface INode {
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	executeOnce?: boolean;
-	errorOutput?: boolean;
+	onError?: OnError;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
