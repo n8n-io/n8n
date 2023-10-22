@@ -739,7 +739,7 @@ export const postFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info.</a>.',
+				description: 'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info</a>.',
 			},
 			{
 				displayName: 'Content (JSON)',
@@ -751,7 +751,7 @@ export const postFields: INodeProperties[] = [
 					},
 				},
 				default: '',
-				description: 'Lexical is the JSON format returned by the Ghost Default editor.',
+				description: 'Lexical is the JSON format returned by the Ghost Default editor',
 			},
 			{
 				displayName: 'Featured',
