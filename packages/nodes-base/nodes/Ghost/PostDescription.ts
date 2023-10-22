@@ -114,6 +114,10 @@ export const postFields: INodeProperties[] = [
 				name: 'Mobile Doc',
 				value: 'mobileDoc',
 			},
+			{
+				name: 'Lexical',
+				value: 'lexical',
+			},
 		],
 		default: 'html',
 		description: 'The format of the post',
@@ -149,6 +153,22 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		description:
 			'Mobiledoc is the raw JSON format that Ghost uses to store post contents. <a href="https://ghost.org/docs/concepts/posts/#document-storage">Info</a>.',
+	},
+	{
+		displayName: 'Content (JSON)',
+		name: 'content',
+		type: 'json',
+		displayOptions: {
+			show: {
+				source: ['adminApi'],
+				resource: ['post'],
+				operation: ['create'],
+				contentFormat: ['lexical'],
+			},
+		},
+
+		default: '',
+		description: 'Lexical is the JSON format returned by the Ghost Default editor',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -395,8 +415,12 @@ export const postFields: INodeProperties[] = [
 						name: 'Mobile Doc',
 						value: 'mobiledoc',
 					},
+					{
+						name: 'Lexical',
+						value: 'lexical',
+					},
 				],
-				default: ['mobiledoc'],
+				default: ['lexical'],
 			},
 		],
 	},
@@ -532,6 +556,10 @@ export const postFields: INodeProperties[] = [
 						name: 'Plaintext',
 						value: 'plaintext',
 					},
+					{
+						name: 'Lexical',
+						value: 'lexical',
+					},
 				],
 				default: ['html'],
 				description:
@@ -593,8 +621,12 @@ export const postFields: INodeProperties[] = [
 						name: 'Mobile Doc',
 						value: 'mobiledoc',
 					},
+					{
+						name: 'Lexical',
+						value: 'lexical',
+					},
 				],
-				default: ['mobiledoc'],
+				default: ['lexical'],
 			},
 		],
 	},
@@ -635,6 +667,10 @@ export const postFields: INodeProperties[] = [
 			{
 				name: 'Mobile Doc',
 				value: 'mobileDoc',
+			},
+			{
+				name: 'Lexical',
+				value: 'lexical',
 			},
 		],
 		default: 'html',
