@@ -17,8 +17,6 @@ const DEFAULTS = {
  * for error executions, success executions, and manual executions.
  */
 export function toSaveSettings(workflowSettings: IWorkflowSettings = {}) {
-	console.log('defaults', DEFAULTS);
-
 	return {
 		error: workflowSettings.saveDataErrorExecution !== 'none' ?? DEFAULTS.ERROR !== 'none',
 		success: workflowSettings.saveDataSuccessExecution !== 'none' ?? DEFAULTS.SUCCESS !== 'none',
