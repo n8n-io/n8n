@@ -12,7 +12,7 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import Container, { Service } from 'typedi';
-import { WorkflowRepository } from './databases/repositories';
+import { WorkflowRepository } from '@/databases/repositories';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
