@@ -99,7 +99,7 @@
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
-    "@n8n_io/license-sdk": "~2.6.1",
+    "@n8n_io/license-sdk": "~2.7.1",
     "@oclif/command": "^1.8.16",
     "@oclif/config": "^1.18.17",
     "@oclif/core": "^1.16.4",
