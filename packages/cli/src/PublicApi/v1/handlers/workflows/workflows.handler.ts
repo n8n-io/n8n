@@ -2,6 +2,7 @@ import type express from 'express';
 import { Container } from 'typedi';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import config from '@/config';
@@ -36,6 +37,7 @@ export = {
 			const workflow = req.body;
 
 			workflow.active = false;
+			workflow.versionId = uuid();
 
 			await replaceInvalidCredentials(workflow);
 
@@ -44,6 +46,14 @@ export = {
 			const role = await Container.get(RoleService).findWorkflowOwnerRole();
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
+
+			if (isWorkflowHistoryLicensed()) {
+				await Container.get(WorkflowHistoryService).saveVersion(
+					req.user,
+					createdWorkflow,
+					createdWorkflow.id,
+				);
+			}
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
 			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
@@ -151,6 +161,7 @@ export = {
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
 			updateData.id = id;
+			updateData.versionId = uuid();
 
 			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
@@ -179,10 +190,6 @@ export = {
 				}
 			}
 
-			if (isWorkflowHistoryLicensed()) {
-				await Container.get(WorkflowHistoryService).saveVersion(req.user, sharedWorkflow.workflow);
-			}
-
 			if (sharedWorkflow.workflow.active) {
 				try {
 					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
@@ -194,6 +201,14 @@ export = {
 			}
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
+
+			if (isWorkflowHistoryLicensed() && updatedWorkflow) {
+				await Container.get(WorkflowHistoryService).saveVersion(
+					req.user,
+					updatedWorkflow,
+					sharedWorkflow.workflowId,
+				);
+			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			void Container.get(InternalHooks).onWorkflowSaved(req.user, updateData, true);

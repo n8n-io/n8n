@@ -2,8 +2,7 @@ import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
-import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, ObjectStoreService, UserSettings } from 'n8n-core';
+import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
 import { getLogger } from '@/Logger';
 import config from '@/config';
@@ -30,11 +29,9 @@ export abstract class BaseCommand extends Command {
 
 	protected nodeTypes: NodeTypes;
 
-	protected userSettings: IUserSettings;
+	protected instanceSettings: InstanceSettings;
 
-	protected instanceId: string;
-
-	instanceType: N8nInstanceType = 'main';
+	private instanceType: N8nInstanceType = 'main';
 
 	queueModeId: string;
 
@@ -48,7 +45,7 @@ export abstract class BaseCommand extends Command {
 		process.once('SIGINT', async () => this.stopProcess());
 
 		// Make sure the settings exist
-		this.userSettings = await UserSettings.prepareUserSettings();
+		this.instanceSettings = Container.get(InstanceSettings);
 
 		await Container.get(LoadNodesAndCredentials).init();
 		this.nodeTypes = Container.get(NodeTypes);
@@ -76,9 +73,8 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		this.instanceId = this.userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(this.instanceId);
-		await Container.get(InternalHooks).init(this.instanceId);
+		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {
@@ -241,7 +237,7 @@ export abstract class BaseCommand extends Command {
 
 	async initLicense(): Promise<void> {
 		const license = Container.get(License);
-		await license.init(this.instanceId, this.instanceType ?? 'main');
+		await license.init(this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 

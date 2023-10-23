@@ -12,14 +12,10 @@ import type { SourceControlPreferences } from './types/sourceControlPreferences'
 import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
-	SOURCE_CONTROL_GIT_FOLDER,
 	SOURCE_CONTROL_README,
-	SOURCE_CONTROL_SSH_FOLDER,
-	SOURCE_CONTROL_SSH_KEY_NAME,
 } from './constants';
 import { LoggerProxy } from 'n8n-workflow';
 import { SourceControlGitService } from './sourceControlGit.service.ee';
-import { UserSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
 import { BadRequestError } from '@/ResponseHelper';
@@ -55,10 +51,10 @@ export class SourceControlService {
 		private sourceControlImportService: SourceControlImportService,
 		private tagRepository: TagRepository,
 	) {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
-		this.sshKeyName = path.join(this.sshFolder, SOURCE_CONTROL_SSH_KEY_NAME);
+		const { gitFolder, sshFolder, sshKeyName } = sourceControlPreferencesService;
+		this.gitFolder = gitFolder;
+		this.sshFolder = sshFolder;
+		this.sshKeyName = sshKeyName;
 	}
 
 	async init(): Promise<void> {

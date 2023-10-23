@@ -10,13 +10,14 @@ import type {
 	INodeTypeBaseDescription,
 	ITelemetrySettings,
 } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 
 import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl, isEmailSetUp } from '@/UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
@@ -28,6 +29,7 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 @Service()
 export class FrontendService {
@@ -38,6 +40,8 @@ export class FrontendService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly license: License,
+		private readonly mailer: UserManagementMailer,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.initSettings();
 	}
@@ -85,7 +89,7 @@ export class FrontendService {
 				endpoint: config.getEnv('versionNotifications.endpoint'),
 				infoUrl: config.getEnv('versionNotifications.infoUrl'),
 			},
-			instanceId: '',
+			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: config.getEnv('diagnostics.enabled'),
@@ -103,7 +107,7 @@ export class FrontendService {
 			userManagement: {
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
-				smtpSetup: isEmailSetUp(),
+				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
 			sso: {

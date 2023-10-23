@@ -1,7 +1,9 @@
 import { LicenseManager } from '@n8n_io/license-sdk';
+import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { License } from '@/License';
 import { N8N_VERSION } from '@/constants';
+import { mockInstance } from '../integration/shared/utils';
 
 jest.mock('@n8n_io/license-sdk');
 
@@ -21,10 +23,11 @@ describe('License', () => {
 	});
 
 	let license: License;
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
 
 	beforeEach(async () => {
-		license = new License();
-		await license.init(MOCK_INSTANCE_ID);
+		license = new License(instanceSettings);
+		await license.init();
 	});
 
 	test('initializes license manager', async () => {
@@ -45,8 +48,8 @@ describe('License', () => {
 	});
 
 	test('initializes license manager for worker', async () => {
-		license = new License();
-		await license.init(MOCK_INSTANCE_ID, 'worker');
+		license = new License(instanceSettings);
+		await license.init('worker');
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: false,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
