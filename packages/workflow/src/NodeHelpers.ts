@@ -1070,6 +1070,9 @@ export function getNodeOutputs(
 	}
 
 	if (node.onError === 'continueErrorOutput') {
+		// Copy the data to make sure that we do not change the data of the
+		// node type and so change the displayNames for all nodes in the flow
+		outputs = deepCopy(outputs);
 		if (outputs.length === 1) {
 			// Set the displayName to "Success"
 			if (typeof outputs[0] === 'string') {
