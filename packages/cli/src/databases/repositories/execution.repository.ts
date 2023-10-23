@@ -95,8 +95,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private isPruningEnabled = config.getEnv('executions.pruneData');
 
-	private shouldPruneBinaryData = true;
-
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
