@@ -95,6 +95,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private isPruningEnabled = config.getEnv('executions.pruneData');
 
+	// pruning in S3 mode is delegated to bucket lifecycle configuration
 	private shouldPruneBinaryData = config.getEnv('binaryDataManager.mode') === 'filesystem';
 
 	constructor(
