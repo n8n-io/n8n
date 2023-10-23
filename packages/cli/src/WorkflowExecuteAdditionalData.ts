@@ -509,13 +509,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
-					const defaults = {
-						saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
-						saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
-						saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
-					};
-
-					const saveSettings = toSaveSettings(defaults, this.workflowData.settings);
+					const saveSettings = toSaveSettings(this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 						await Container.get(ExecutionRepository).hardDelete({
