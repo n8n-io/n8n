@@ -30,10 +30,13 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
 import { UserManagementMailer } from '@/UserManagement/email';
+import type { CommunityPackagesService } from '@/services/communityPackages.service';
 
 @Service()
 export class FrontendService {
 	settings: IN8nUISettings;
+
+	private communityPackagesService?: CommunityPackagesService;
 
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
@@ -44,6 +47,13 @@ export class FrontendService {
 		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.initSettings();
+
+		if (config.getEnv('nodes.communityPackages.enabled')) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+				this.communityPackagesService = Container.get(CommunityPackagesService);
+			});
+		}
 	}
 
 	private initSettings() {
@@ -275,11 +285,8 @@ export class FrontendService {
 			});
 		}
 
-		if (config.getEnv('nodes.communityPackages.enabled')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
-				this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
-			});
+		if (this.communityPackagesService) {
+			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
