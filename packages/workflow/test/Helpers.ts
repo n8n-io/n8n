@@ -1,6 +1,5 @@
 import get from 'lodash/get';
 import type {
-	CredentialInformation,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IContextObject,
@@ -44,46 +43,19 @@ export interface INodeTypesObject {
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess(nodeType: string): boolean {
+	hasNodeAccess() {
 		return true;
 	}
 
-	setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void {
+	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
 
-	setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void {
-		let fullData;
-		try {
-			fullData = this.getData(encryptionKey);
-		} catch (e) {
-			fullData = {};
-		}
-
-		fullData[key] = data;
-
-		return this.setData(fullData, encryptionKey);
-	}
-
-	getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject {
+	getData(): ICredentialDataDecryptedObject {
 		if (this.data === undefined) {
 			throw new Error('No data is set so nothing can be returned.');
 		}
 		return JSON.parse(this.data);
-	}
-
-	getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation {
-		const fullData = this.getData(encryptionKey, nodeType);
-
-		if (fullData === null) {
-			throw new Error('No data was set.');
-		}
-
-		if (!fullData.hasOwnProperty(key)) {
-			throw new Error(`No data for key "${key}" exists.`);
-		}
-
-		return fullData[key];
 	}
 
 	getDataToSave(): ICredentialsEncrypted {
@@ -702,12 +674,11 @@ export function WorkflowExecuteAdditionalData(): IWorkflowExecuteAdditionalData 
 	};
 
 	return {
-		credentialsHelper: new CredentialsHelper(''),
+		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks({}, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
 		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
