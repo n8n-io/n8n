@@ -270,6 +270,7 @@
       "dist/credentials/PostHogApi.credentials.js",
       "dist/credentials/PostmarkApi.credentials.js",
       "dist/credentials/ProfitWellApi.credentials.js",
+      "dist/credentials/PromptifyApi.credentials.js",
       "dist/credentials/PushbulletOAuth2Api.credentials.js",
       "dist/credentials/PushcutApi.credentials.js",
       "dist/credentials/PushoverApi.credentials.js",
@@ -665,6 +666,7 @@
       "dist/nodes/PostHog/PostHog.node.js",
       "dist/nodes/Postmark/PostmarkTrigger.node.js",
       "dist/nodes/ProfitWell/ProfitWell.node.js",
+      "dist/nodes/Promptify/Promptify.node.js",
       "dist/nodes/Pushbullet/Pushbullet.node.js",
       "dist/nodes/Pushcut/Pushcut.node.js",
       "dist/nodes/Pushcut/PushcutTrigger.node.js",
@@ -819,6 +821,7 @@
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
+    "@fortaine/fetch-event-source": "^3.0.6",
     "@n8n/vm2": "^3.9.20",
     "amqplib": "^0.10.3",
     "aws4": "^1.8.0",
