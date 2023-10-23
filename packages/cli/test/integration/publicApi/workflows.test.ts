@@ -695,7 +695,7 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
 	});
 
-	test('should create workflow history version', async () => {
+	test('should create workflow history version when licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
 		const payload = {
 			name: 'testing',
@@ -741,7 +741,7 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should not create workflow history version', async () => {
+	test('should not create workflow history version when not licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 		const payload = {
 			name: 'testing',
@@ -935,7 +935,7 @@ describe('PUT /workflows/:id', () => {
 		);
 	});
 
-	test('should create workflow history version', async () => {
+	test('should create workflow history version when licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
 		const workflow = await testDb.createWorkflow({}, member);
 		const payload = {
@@ -990,7 +990,7 @@ describe('PUT /workflows/:id', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should create workflow history when not licensed', async () => {
+	test('should not create workflow history when not licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 		const workflow = await testDb.createWorkflow({}, member);
 		const payload = {
