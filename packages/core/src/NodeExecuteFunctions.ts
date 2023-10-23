@@ -2665,6 +2665,8 @@ const getRequestHelperFunctions = (
 							hashData.identicalCount = 0;
 						}
 						hashData.previousHash = hash;
+					} else {
+						hashData.identicalCount = 0;
 					}
 					hashData.previousLength = contentLength;
 				}
