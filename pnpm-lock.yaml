@@ -50,8 +50,8 @@ importers:
         specifier: ^8.8.0
         version: 8.9.0
       api:
-        specifier: ^6.1.1
-        version: 6.1.1(openapi-types@10.0.0)
+        specifier: 5.0.7
+        version: 5.0.7(openapi-types@10.0.0)
       moment:
         specifier: ~2.29.2
         version: 2.29.4
@@ -9599,9 +9599,9 @@ packages:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  /api@6.1.1(openapi-types@10.0.0):
-    resolution: {integrity: sha512-we3fnLinpYWlKOHdX4S/Ky9gZvColCnht/qhtv04K2jQbrC/z4SxvZVAT8W8PCC5NLLU4H35r3u4Lt77ZaiY9w==}
-    engines: {node: '>=16'}
+  /api@5.0.7(openapi-types@10.0.0):
+    resolution: {integrity: sha512-KTDQ1GPY55E4vGSCx17ZjwYw3jAoiyiloXrxRiDT3e4EQFQN7zHa14co75GBa+YDte6GrH7M2jNNdpC6Mul+QQ==}
+    engines: {node: '>=14'}
     hasBin: true
     dependencies:
       '@readme/oas-to-har': 20.1.1
@@ -9627,9 +9627,10 @@ packages:
       lodash.setwith: 4.3.2
       lodash.startcase: 4.4.0
       make-dir: 3.1.0
-      node-abort-controller: 3.1.1
+      node-abort-controller: 3.0.1
       oas: 20.10.3
       ora: 5.4.1
+      prettier: 3.0.3
       prompts: 2.4.2
       remove-undefined-objects: 2.0.2
       semver: 7.5.4
@@ -17871,10 +17872,6 @@ packages:
 
   /node-abort-controller@3.0.1:
     resolution: {integrity: sha512-/ujIVxthRs+7q6hsdjHMaj8hRG9NuWmwrz+JdRwZ14jdFoKSkm+vDsCbF9PLpnSqjaWQJuTmVtcWHNLr+vrOFw==}
-    dev: false
-
-  /node-abort-controller@3.1.1:
-    resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
     dev: false
 
   /node-addon-api@4.3.0:
