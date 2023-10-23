@@ -67,6 +67,10 @@ export class InternalHooks implements IInternalHooksClass {
 		);
 	}
 
+	async init() {
+		await this.telemetry.init();
+	}
+
 	async onServerStarted(
 		diagnosticInfo: IDiagnosticInfo,
 		earliestWorkflowCreatedAt?: Date,

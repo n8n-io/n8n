@@ -14,13 +14,13 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { IExternalHooksClass, N8nInstanceType } from '@/Interfaces';
+import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
-import { Telemetry } from '@/telemetry';
 
 export abstract class BaseCommand extends Command {
 	protected logger = LoggerProxy.init(getLogger());
@@ -73,8 +73,8 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		await Container.get(Telemetry).init();
 		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {

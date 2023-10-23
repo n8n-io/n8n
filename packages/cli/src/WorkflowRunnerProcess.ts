@@ -55,7 +55,6 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
-import { Telemetry } from './telemetry';
 
 if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 	setDefaultResultOrder('ipv4first');
@@ -117,8 +116,8 @@ class WorkflowRunnerProcess {
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
-		await Container.get(Telemetry).init();
 		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
