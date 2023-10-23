@@ -30,6 +30,7 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
 import { UserManagementMailer } from '@/UserManagement/email';
+import { CommunityPackagesService } from '@/services/communityPackages.service';
 
 @Service()
 export class FrontendService {
@@ -198,7 +199,7 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	async getSettings(): Promise<IN8nUISettings> {
+	getSettings(): IN8nUISettings {
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
@@ -277,7 +278,6 @@ export class FrontendService {
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
 		}
 
