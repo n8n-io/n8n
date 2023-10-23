@@ -1,3 +1,21 @@
+## [1.11.2](https://github.com/n8n-io/n8n/compare/n8n@1.11.1...n8n@1.11.2) (2023-10-23)
+
+
+### Bug Fixes
+
+* **core:** Handle gzip and deflate compressed request payloads ([#7461](https://github.com/n8n-io/n8n/issues/7461)) ([f43ff71](https://github.com/n8n-io/n8n/commit/f43ff710877e23ad5b07128d37e1628aff3908ea))
+* **core:** Prevent false stalled jobs in queue mode from displaying as errored ([#7435](https://github.com/n8n-io/n8n/issues/7435)) ([465a952](https://github.com/n8n-io/n8n/commit/465a95275d478b089763f5cb7ed140bff5dbcc96))
+* **core:** Reduce logging overhead for levels that do not output ([#7479](https://github.com/n8n-io/n8n/issues/7479)) ([010aa57](https://github.com/n8n-io/n8n/commit/010aa578c0e50ec13ed4f23801cf4ceb191cc4eb))
+* **editor:** Allow importing the same workflow multiple times ([#7458](https://github.com/n8n-io/n8n/issues/7458)) ([33e3df8](https://github.com/n8n-io/n8n/commit/33e3df852da11fa2f23a056edc7156664f2c464e)), closes [#7457](https://github.com/n8n-io/n8n/issues/7457)
+* **editor:** Fix canvas selection breaking after interacting with node actions ([#7466](https://github.com/n8n-io/n8n/issues/7466)) ([90ce8de](https://github.com/n8n-io/n8n/commit/90ce8de30341c6ad1373f77d9fadf048a2ee83ad))
+* **editor:** Fix connections disappearing after reactivating canvas and renaming a node ([#7483](https://github.com/n8n-io/n8n/issues/7483)) ([b0bd0d8](https://github.com/n8n-io/n8n/commit/b0bd0d8db3a3ab7703f0d33fc0b477e4711c297d))
+* **editor:** Open only one tab with plans page ([#7377](https://github.com/n8n-io/n8n/issues/7377)) ([d14e9cb](https://github.com/n8n-io/n8n/commit/d14e9cb10189b91536b9a630f5e95b9e3afd0334)), closes [#6317](https://github.com/n8n-io/n8n/issues/6317) [/github.com/n8n-io/n8n/pull/6317/files#diff-0bf26afac8a06e03b3d39d0668f22408859355b585a9ab420800c125e33f0691R109](https://github.com//github.com/n8n-io/n8n/pull/6317/files/issues/diff-0bf26afac8a06e03b3d39d0668f22408859355b585a9ab420800c125e33f0691R109) [#7316](https://github.com/n8n-io/n8n/issues/7316) [/github.com/n8n-io/n8n/blob/3e7a4d3b2cc12fcb1b011fccd0773bb807986884/packages/editor-ui/src/composables/useExecutionDebugging.ts#L128](https://github.com//github.com/n8n-io/n8n/blob/3e7a4d3b2cc12fcb1b011fccd0773bb807986884/packages/editor-ui/src/composables/useExecutionDebugging.ts/issues/L128)
+* **Ldap Node:** Fix issue with connections not closing correctly ([#7432](https://github.com/n8n-io/n8n/issues/7432)) ([60ca02e](https://github.com/n8n-io/n8n/commit/60ca02eaeb4d13f52ad5be2a85be7502d070a671))
+* **MySQL Node:** Resolve expressions in v1 ([#7464](https://github.com/n8n-io/n8n/issues/7464)) ([2b18909](https://github.com/n8n-io/n8n/commit/2b189094a2ff44486b73d8182f2c4a73f2b28244))
+* **TheHive 5 Node:** Observable encoding in alert > create fix ([#7450](https://github.com/n8n-io/n8n/issues/7450)) ([b9547ad](https://github.com/n8n-io/n8n/commit/b9547ad7ad0361347df731f95c77d4e21f27d947))
+
+
+
 ## [1.11.1](https://github.com/n8n-io/n8n/compare/n8n@1.11.0...n8n@1.11.1) (2023-10-13)
 
 
