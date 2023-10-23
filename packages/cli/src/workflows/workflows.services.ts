@@ -304,8 +304,8 @@ export class WorkflowsService {
 			);
 		}
 
-		if (isWorkflowHistoryLicensed()) {
-			await Container.get(WorkflowHistoryService).saveVersion(user, shared.workflow);
+		if (isWorkflowHistoryLicensed() && workflow.versionId !== shared.workflow.versionId) {
+			await Container.get(WorkflowHistoryService).saveVersion(user, workflow, workflowId);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
