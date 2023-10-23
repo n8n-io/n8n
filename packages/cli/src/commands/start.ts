@@ -6,7 +6,6 @@ import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
-import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
@@ -245,7 +244,7 @@ export class Start extends BaseCommand {
 		if (!config.getEnv('userManagement.jwtSecret')) {
 			// If we don't have a JWT secret set, generate
 			// one based and save to config.
-			const encryptionKey = await UserSettings.getEncryptionKey();
+			const { encryptionKey } = this.instanceSettings;
 
 			// For a key off every other letter from encryption key
 			// CAREFUL: do not change this or it breaks all existing tokens.
@@ -255,8 +254,6 @@ export class Start extends BaseCommand {
 			}
 			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
 		}
-
-		await UserSettings.getEncryptionKey();
 
 		// Load settings from database and set them to config.
 		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
@@ -285,28 +282,19 @@ export class Start extends BaseCommand {
 		if (flags.tunnel) {
 			this.log('\nWaiting for tunnel ...');
 
-			let tunnelSubdomain;
-			if (
-				process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
-				process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
-			) {
-				tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
-			} else if (this.userSettings.tunnelSubdomain !== undefined) {
-				tunnelSubdomain = this.userSettings.tunnelSubdomain;
-			}
+			let tunnelSubdomain =
+				process.env.N8N_TUNNEL_SUBDOMAIN ?? this.instanceSettings.tunnelSubdomain ?? '';
 
-			if (tunnelSubdomain === undefined) {
+			if (tunnelSubdomain === '') {
 				// When no tunnel subdomain did exist yet create a new random one
 				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-				this.userSettings.tunnelSubdomain = Array.from({ length: 24 })
-					.map(() => {
-						return availableCharacters.charAt(
-							Math.floor(Math.random() * availableCharacters.length),
-						);
-					})
+				tunnelSubdomain = Array.from({ length: 24 })
+					.map(() =>
+						availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length)),
+					)
 					.join('');
 
-				await UserSettings.writeUserSettings(this.userSettings);
+				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
 			const tunnelSettings: localtunnel.TunnelConfig = {

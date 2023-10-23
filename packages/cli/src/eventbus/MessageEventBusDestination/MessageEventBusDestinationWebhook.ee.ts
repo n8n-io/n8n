@@ -18,7 +18,6 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
-import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
 import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
@@ -26,6 +25,7 @@ import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/
 import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
+import Container from 'typedi';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -135,13 +135,7 @@ export class MessageEventBusDestinationWebhook
 		} as AxiosRequestConfig;
 
 		if (this.credentialsHelper === undefined) {
-			let encryptionKey: string | undefined;
-			try {
-				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch {}
-			if (encryptionKey) {
-				this.credentialsHelper = new CredentialsHelper(encryptionKey);
-			}
+			this.credentialsHelper = Container.get(CredentialsHelper);
 		}
 
 		const sendQuery = this.sendQuery;
