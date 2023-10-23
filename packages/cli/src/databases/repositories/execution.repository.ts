@@ -87,8 +87,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	};
 
 	private rates: Record<string, number> = {
-		softDeletion: 1 * TIME.HOUR,
-		hardDeletion: config.getEnv('executions.pruneDataInterval') * TIME.MINUTE,
+		softDeletion: config.getEnv('executions.pruneDataIntervals.softDelete') * TIME.MINUTE,
+		hardDeletion: config.getEnv('executions.pruneDataIntervals.hardDelete') * TIME.MINUTE,
 	};
 
 	private isMainInstance = config.get('generic.instanceType') === 'main';
@@ -125,7 +125,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			} min`,
 		);
 
-		this.intervals.softDeletion = setInterval(async () => this.prune(), this.rates.softDeletion);
+		this.intervals.softDeletion = setInterval(
+			async () => this.softDeleteOnPruningCycle(),
+			this.rates.softDeletion,
+		);
 	}
 
 	setHardDeletionInterval() {
@@ -136,7 +139,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 
 		this.intervals.hardDeletion = setInterval(
-			async () => this.hardDelete(),
+			async () => this.hardDeleteOnPruningCycle(),
 			this.rates.hardDeletion,
 		);
 	}
@@ -292,6 +295,16 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				stoppedAt: new Date(),
 			},
 		);
+	}
+
+	/**
+	 * Permanently remove a single execution and its binary data.
+	 */
+	async hardDelete(ids: { workflowId: string; executionId: string }) {
+		return Promise.all([
+			this.binaryDataService.deleteMany([ids]),
+			this.delete({ id: ids.executionId }),
+		]);
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
@@ -467,12 +480,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
 			const batch = executionIds.splice(0, this.deletionBatchSize);
-			await this.softDelete(batch);
+			await this.delete(batch);
 		} while (executionIds.length > 0);
 	}
 
-	async prune() {
-		Logger.verbose('Soft-deleting (pruning) execution data from database');
+	/**
+	 * Mark executions as deleted based on age and count, in a pruning cycle.
+	 */
+	async softDeleteOnPruningCycle() {
+		Logger.verbose('Soft-deleting execution data from database (pruning cycle)');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
@@ -520,12 +536,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	}
 
 	/**
-	 * Permanently delete all soft-deleted executions and their binary data, in batches.
+	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
 	 */
-	private async hardDelete() {
-		// Find ids of all executions that were deleted over an hour ago
+	private async hardDeleteOnPruningCycle() {
 		const date = new Date();
-		date.setHours(date.getHours() - 1);
+		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
 
 		const workflowIdsAndExecutionIds = (
 			await this.find({
@@ -552,9 +567,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 
-		this.logger.debug(`Hard-deleting ${executionIds.length} executions from database`, {
-			executionIds,
-		});
+		this.logger.debug(
+			`Hard-deleting ${executionIds.length} executions from database (pruning cycle)`,
+			{
+				executionIds,
+			},
+		);
 
 		// Actually delete these executions
 		await this.delete({ id: In(executionIds) });
@@ -570,7 +588,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (executionIds.length === this.deletionBatchSize) {
 			clearInterval(this.intervals.hardDeletion);
 
-			setTimeout(async () => this.hardDelete(), 1 * TIME.SECOND);
+			setTimeout(async () => this.hardDeleteOnPruningCycle(), 1 * TIME.SECOND);
 		} else {
 			if (this.intervals.hardDeletion) return;
 
