@@ -7,7 +7,6 @@ import request from 'supertest';
 import { URL } from 'url';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -50,8 +49,6 @@ import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { MfaService } from '@/Mfa/mfa.service';
-import { TOTPService } from '@/Mfa/totp.service';
-import { UserSettings } from 'n8n-core';
 import { MetricsService } from '@/services/metrics.service';
 import {
 	SettingsRepository,
@@ -200,12 +197,10 @@ export const setupTestServer = ({
 		}
 
 		if (functionEndpoints.length) {
-			const encryptionKey = await UserSettings.getEncryptionKey();
-			const repositories = Db.collections;
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
-			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+			const mfaService = Container.get(MfaService);
 			const userService = Container.get(UserService);
 
 			for (const group of functionEndpoints) {

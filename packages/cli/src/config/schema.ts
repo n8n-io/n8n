@@ -1,6 +1,7 @@
 import path from 'path';
 import convict from 'convict';
-import { UserSettings } from 'n8n-core';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
 
@@ -881,7 +882,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(Container.get(InstanceSettings).n8nFolder, 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -947,7 +948,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},

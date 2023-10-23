@@ -35,7 +35,6 @@ beforeAll(async () => {
 		apiKey: randomApiKey(),
 	});
 
-	await utils.initEncryptionKey();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });

@@ -10,7 +10,7 @@ import { setDefaultResultOrder } from 'dns';
 
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataService, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataService, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
@@ -107,8 +107,6 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const userSettings = await UserSettings.prepareUserSettings();
-
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		await loadNodesAndCredentials.init();
 
@@ -118,15 +116,14 @@ class WorkflowRunnerProcess {
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
-		const instanceId = userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(instanceId);
-		await Container.get(InternalHooks).init(instanceId);
+		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);
-		await license.init(instanceId);
+		await license.init();
 
 		const workflowSettings = this.data.workflowData.settings ?? {};
 

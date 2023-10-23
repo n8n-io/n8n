@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { UserSettings } from 'n8n-core';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { toFlaggedNode } from '@/audit/utils';
 import { separate } from '@/utils';
@@ -81,7 +82,7 @@ function getUnprotectedWebhookNodes(workflows: WorkflowEntity[]) {
 
 async function getNextVersions(currentVersionName: string) {
 	const BASE_URL = config.getEnv('versionNotifications.endpoint');
-	const instanceId = await UserSettings.getInstanceId();
+	const { instanceId } = Container.get(InstanceSettings);
 
 	const response = await axios.get<n8n.Version[]>(BASE_URL + currentVersionName, {
 		// eslint-disable-next-line @typescript-eslint/naming-convention

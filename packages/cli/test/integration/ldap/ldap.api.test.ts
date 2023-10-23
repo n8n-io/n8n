@@ -11,13 +11,15 @@ import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
-import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
+import { saveLdapSynchronization } from '@/Ldap/helpers';
 import type { LdapConfig } from '@/Ldap/types';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
+import Container from 'typedi';
+import { Cipher } from 'n8n-core';
 
 jest.mock('@/telemetry');
 
@@ -54,11 +56,9 @@ beforeAll(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
+	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
 		defaultLdapConfig.bindingAdminPassword,
 	);
-
-	await utils.initEncryptionKey();
 
 	await setCurrentAuthenticationMethod('email');
 });

@@ -30,7 +30,6 @@ import {
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
-	UserSettings,
 } from 'n8n-core';
 
 import type {
@@ -146,7 +145,6 @@ import { SourceControlService } from '@/environments/sourceControl/sourceControl
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 import { ExecutionRepository, SettingsRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -159,25 +157,25 @@ import { WorkflowHistoryController } from './workflows/workflowHistory/workflowH
 const exec = promisify(callbackExec);
 
 export class Server extends AbstractServer {
-	endpointPresetCredentials: string;
+	private endpointPresetCredentials: string;
 
-	waitTracker: WaitTracker;
+	private waitTracker: WaitTracker;
 
-	activeExecutionsInstance: ActiveExecutions;
+	private activeExecutionsInstance: ActiveExecutions;
 
-	presetCredentialsLoaded: boolean;
+	private presetCredentialsLoaded: boolean;
 
-	loadNodesAndCredentials: LoadNodesAndCredentials;
+	private loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	nodeTypes: NodeTypes;
+	private nodeTypes: NodeTypes;
 
-	credentialTypes: ICredentialTypes;
+	private credentialTypes: ICredentialTypes;
 
-	frontendService: FrontendService;
+	private frontendService: FrontendService;
 
-	postHog: PostHogClient;
+	private postHog: PostHogClient;
 
-	push: Push;
+	private push: Push;
 
 	constructor() {
 		super('main');
@@ -285,15 +283,13 @@ export class Server extends AbstractServer {
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
 		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
 		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
-		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+		const mfaService = Container.get(MfaService);
 
 		const controllers: object[] = [
 			new EventBusController(),
@@ -376,19 +372,16 @@ export class Server extends AbstractServer {
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
 
-		this.instanceId = await UserSettings.getInstanceId();
-
 		this.frontendService.addToSettings({
 			isNpmAvailable: await exec('npm --version')
 				.then(() => true)
 				.catch(() => false),
 			versionCli: N8N_VERSION,
-			instanceId: this.instanceId,
 		});
 
 		await this.externalHooks.run('frontend.settings', [this.frontendService.getSettings()]);
 
-		await this.postHog.init(this.instanceId);
+		await this.postHog.init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
@@ -739,18 +732,11 @@ export class Server extends AbstractServer {
 					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 				}
 
-				let encryptionKey: string;
-				try {
-					encryptionKey = await UserSettings.getEncryptionKey();
-				} catch (error) {
-					throw new ResponseHelper.InternalServerError(error.message);
-				}
-
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
 				const mode: WorkflowExecuteMode = 'internal';
 				const timezone = config.getEnv('generic.timezone');
-				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const credentialsHelper = Container.get(CredentialsHelper);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					additionalData,
 					credential as INodeCredentialsDetails,
@@ -835,7 +821,7 @@ export class Server extends AbstractServer {
 					credential.nodesAccess,
 				);
 
-				credentials.setData(decryptedDataOriginal, encryptionKey);
+				credentials.setData(decryptedDataOriginal);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 				// Add special database related data
@@ -889,18 +875,11 @@ export class Server extends AbstractServer {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey: string;
-					try {
-						encryptionKey = await UserSettings.getEncryptionKey();
-					} catch (error) {
-						throw new ResponseHelper.InternalServerError(error.message);
-					}
-
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const timezone = config.getEnv('generic.timezone');
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
+					const credentialsHelper = Container.get(CredentialsHelper);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						additionalData,
 						credential as INodeCredentialsDetails,
@@ -952,7 +931,7 @@ export class Server extends AbstractServer {
 						credential.type,
 						credential.nodesAccess,
 					);
-					credentials.setData(decryptedDataOriginal, encryptionKey);
+					credentials.setData(decryptedDataOriginal);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
 					newCredentialsData.updatedAt = new Date();
