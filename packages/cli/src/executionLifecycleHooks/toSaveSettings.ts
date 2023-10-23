@@ -1,11 +1,6 @@
 import config from '@/config';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
-export type DefaultSaveSettings = Pick<
-	IWorkflowSettings,
-	NonNullable<'saveDataErrorExecution' | 'saveManualExecutions' | 'saveDataSuccessExecution'>
->;
-
 const DEFAULTS = {
 	ERROR: config.getEnv('executions.saveDataOnError'),
 	SUCCESS: config.getEnv('executions.saveDataOnSuccess'),
