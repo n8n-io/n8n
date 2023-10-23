@@ -32,7 +32,7 @@ describe('External Secrets Manager', () => {
 	};
 
 	const decryptSettings = (settings: string) => {
-		return JSON.parse(cipher.decrypt(settings ?? ''));
+		return JSON.parse(cipher.decrypt(settings));
 	};
 
 	beforeAll(() => {
