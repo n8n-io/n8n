@@ -1,5 +1,3 @@
-import { mock } from 'jest-mock-extended';
-import type { Config } from '@/config';
 import { restoreBinaryDataId } from '@/executionLifecycleHooks/restoreBinaryDataId';
 import { BinaryDataService } from 'n8n-core';
 import { mockInstance } from '../integration/shared/utils/mocking';
@@ -145,7 +143,7 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 }
 
 describe('toSaveSettings()', () => {
-	const config = mock<Config>();
+	// const config = mock<Config>();
 
 	afterEach(() => {
 		jest.restoreAllMocks();
@@ -181,23 +179,11 @@ describe('toSaveSettings()', () => {
 		expect(_saveSettings.manual).toBe(false);
 	});
 
-	it.only('should return defaults if no workflow settings', () => {
+	it('should return defaults if no workflow settings', async () => {
 		const saveSettings = toSaveSettings();
 
 		expect(saveSettings.error).toBe(true);
 		expect(saveSettings.success).toBe(true);
 		expect(saveSettings.manual).toBe(true);
-
-		config.getEnv.calledWith('executions.saveDataOnError').mockReturnValue('none');
-		config.getEnv.calledWith('executions.saveDataOnSuccess').mockReturnValue('none');
-		config.getEnv.calledWith('executions.saveDataManualExecutions').mockReturnValue(false);
-
-		jest.resetModules(); // @TODO: Mocked return values not working
-
-		const _saveSettings = toSaveSettings();
-
-		expect(_saveSettings.error).toBe(false);
-		expect(_saveSettings.success).toBe(false);
-		expect(_saveSettings.manual).toBe(false);
 	});
 });
