@@ -665,6 +665,10 @@ export class Redis implements INodeType {
 				for (let index = 0; index < (value as string[]).length; index++) {
 					await clientLset(keyName, index, (value as IDataObject)[index]!.toString());
 				}
+			} else if (type === 'sets') {
+				const clientSadd = util.promisify(client.sadd).bind(client);
+				//@ts-ignore
+				await clientSadd(keyName, value);
 			}
 
 			if (expire) {
