@@ -34,14 +34,17 @@ async function getTemplate(
 
 @Service()
 export class UserManagementMailer {
+	readonly isEmailSetUp: boolean;
+
 	private mailer: NodeMailer | undefined;
 
 	constructor() {
-		// Other implementations can be used in the future.
-		if (
+		this.isEmailSetUp =
 			config.getEnv('userManagement.emails.mode') === 'smtp' &&
-			config.getEnv('userManagement.emails.smtp.host') !== ''
-		) {
+			config.getEnv('userManagement.emails.smtp.host') !== '';
+
+		// Other implementations can be used in the future.
+		if (this.isEmailSetUp) {
 			this.mailer = new NodeMailer();
 		}
 	}
