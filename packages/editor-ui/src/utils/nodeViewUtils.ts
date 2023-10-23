@@ -124,11 +124,11 @@ export const getConnectorColor = (type: ConnectionTypes, category?: string): str
 	return '--node-type-supplemental-connector-color';
 };
 
-export const getConnectorPaintStylePull = (
-	connection: Connection,
-	category?: string,
-): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
+export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	const additionalStyles: PaintStyle = {};
 	if (connection.parameters.type !== NodeConnectionType.Main) {
 		additionalStyles.dashstyle = '5 3';
@@ -140,11 +140,11 @@ export const getConnectorPaintStylePull = (
 	};
 };
 
-export const getConnectorPaintStyleDefault = (
-	connection: Connection,
-	category?: string,
-): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
+export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
@@ -740,11 +740,11 @@ export const getOutputSummary = (
 	return outputMap;
 };
 
-export const resetConnection = (connection: Connection, category?: string) => {
+export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.removeClass('success');
 	showOrHideMidpointArrow(connection);
-	connection.setPaintStyle(getConnectorPaintStyleDefault(connection, category));
+	connection.setPaintStyle(getConnectorPaintStyleDefault(connection));
 };
 
 export const recoveredConnection = (connection: Connection) => {
@@ -867,9 +867,7 @@ export const showPullConnectionState = (connection: Connection) => {
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		connector.resetTargetEndpoint();
-		connection.setPaintStyle(
-			getConnectorPaintStylePull(connection, connection.parameters.category),
-		);
+		connection.setPaintStyle(getConnectorPaintStylePull(connection));
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 	}
 };

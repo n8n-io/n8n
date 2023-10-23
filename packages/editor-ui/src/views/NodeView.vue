@@ -2506,7 +2506,7 @@ export default defineComponent({
 					};
 				}
 
-				NodeViewUtils.resetConnection(info.connection, info.sourceEndpoint.parameters.category);
+				NodeViewUtils.resetConnection(info.connection);
 				NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
 
 				const connectionData: [IConnection, IConnection] = [
