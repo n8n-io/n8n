@@ -143,8 +143,6 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 }
 
 describe('toSaveSettings()', () => {
-	// const config = mock<Config>();
-
 	afterEach(() => {
 		jest.restoreAllMocks();
 	});
