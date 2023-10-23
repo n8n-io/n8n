@@ -4,7 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { microsoftApiRequest } from '../transport';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
 import { filterSortSearchListItems } from '../helpers/utils';
 
 export async function getChats(
@@ -59,15 +59,39 @@ export async function getTeams(
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
 	const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/me/joinedTeams');
+
 	for (const team of value) {
 		const teamName = team.displayName;
 		const teamId = team.id;
+		let channelId: string = '';
+
+		try {
+			const channels = await microsoftApiRequestAllItems.call(
+				this,
+				'value',
+				'GET',
+				`/v1.0/teams/${teamId}/channels`,
+				{},
+			);
+
+			if (channels.length > 0) {
+				channelId = channels.find((channel: IDataObject) => channel.displayName === 'General').id;
+				if (!channelId) {
+					channelId = channels[0].id;
+				}
+			}
+		} catch (error) {}
+
 		returnData.push({
 			name: teamName,
 			value: teamId,
+			url: channelId
+				? `https://teams.microsoft.com/l/team/${channelId}/conversations?groupId=${teamId}&tenantId=${team.tenantId}`
+				: undefined,
 		});
 	}
 	const results = filterSortSearchListItems(returnData, filter);
+
 	return { results };
 }
 

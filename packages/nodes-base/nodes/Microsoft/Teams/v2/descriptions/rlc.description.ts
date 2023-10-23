@@ -6,22 +6,43 @@ export const teamRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	description:
+		'Select the Team from the list or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 	modes: [
 		{
-			displayName: 'Team',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
-			placeholder: 'Select a Team...',
+			placeholder: 'e.g. My Team',
 			typeOptions: {
 				searchListMethod: 'getTeams',
 				searchable: true,
 			},
 		},
 		{
-			displayName: 'ID',
+			displayName: 'From URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://teams.microsoft.com/l/team/19%3AP8l9gXd6oqlgq…',
+			extractValue: {
+				type: 'regex',
+				regex: 'groupId=([a-f0-9-]+)\\&',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: 'https:\\/\\/teams.microsoft.com\\/.*groupId=[a-f0-9-]+\\&.*',
+						errorMessage: 'Not a valid Microsoft Teams URL',
+					},
+				},
+			],
+		},
+		{
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'b16cb45e-df51-4ff6-a044-dd90bf2bfdb2',
+			placeholder: 'e.g. 61165b04-e4cc-4026-b43f-926b4e2a7182',
 			validation: [
 				{
 					type: 'regex',

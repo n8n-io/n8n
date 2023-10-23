@@ -6,26 +6,30 @@ import { teamRLC } from '../../descriptions';
 const properties: INodeProperties[] = [
 	teamRLC,
 	{
-		displayName: 'Name',
+		displayName: 'New Channel Name',
 		name: 'name',
 		required: true,
 		type: 'string',
 		default: '',
-		description: 'Channel name as it will appear to the user in Microsoft Teams',
+		placeholder: 'e.g. My New Channel',
+		description: 'The name of the new channel you want to create',
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		options: [
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: "Channel's description",
+				description: 'The description of the channel',
+				typeOptions: {
+					rows: 2,
+				},
 			},
 			{
 				displayName: 'Type',
@@ -42,7 +46,8 @@ const properties: INodeProperties[] = [
 					},
 				],
 				default: 'standard',
-				description: 'The type of the channel',
+				description:
+					'Standard: Accessible to everyone on the team. Private: Accessible only to a specific group of people within the team.',
 			},
 		],
 	},
