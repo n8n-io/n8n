@@ -1,3 +1,20 @@
+## [1.12.1](https://github.com/n8n-io/n8n/compare/n8n@1.12.0...n8n@1.12.1) (2023-10-23)
+
+
+### Bug Fixes
+
+* **core:** Do not return `inviteAcceptUrl` in response if email was sent ([#7465](https://github.com/n8n-io/n8n/issues/7465)) ([4a1f4da](https://github.com/n8n-io/n8n/commit/4a1f4da1dcd04ba1500bd5b7ff0099a05aaa039d))
+* **core:** Handle gzip and deflate compressed request payloads ([#7461](https://github.com/n8n-io/n8n/issues/7461)) ([75981fb](https://github.com/n8n-io/n8n/commit/75981fb0fa84f4898cfe34e2eaa30fe8e3f45eac))
+* **core:** Reduce logging overhead for levels that do not output ([#7479](https://github.com/n8n-io/n8n/issues/7479)) ([4a1641d](https://github.com/n8n-io/n8n/commit/4a1641d08795539e48c48f1741b54944ac51e889))
+* **Customer.io Node:** Fix api endpoint when using EU region ([#7485](https://github.com/n8n-io/n8n/issues/7485)) ([ea1b503](https://github.com/n8n-io/n8n/commit/ea1b503ce01fac557778f2680f23b9063e93c100)), closes [#7484](https://github.com/n8n-io/n8n/issues/7484)
+* **editor:** Allow importing the same workflow multiple times ([#7458](https://github.com/n8n-io/n8n/issues/7458)) ([15e1737](https://github.com/n8n-io/n8n/commit/15e1737604dfee59c247881e1ec92a5394b9fafa)), closes [#7457](https://github.com/n8n-io/n8n/issues/7457)
+* **editor:** Fix canvas selection breaking after interacting with node actions ([#7466](https://github.com/n8n-io/n8n/issues/7466)) ([d84c367](https://github.com/n8n-io/n8n/commit/d84c3678ec55a76a9c5210ef87559d1c1392beb2))
+* **editor:** Fix connections disappearing after reactivating canvas and renaming a node ([#7483](https://github.com/n8n-io/n8n/issues/7483)) ([368e3ee](https://github.com/n8n-io/n8n/commit/368e3eea82d36275ba2109ce528180764d894e33))
+* **Google Sheets Node:** Append or update runs forever when without column headers ([#7463](https://github.com/n8n-io/n8n/issues/7463)) ([0d52490](https://github.com/n8n-io/n8n/commit/0d524904cfe1f628db1778ac22592d9f4083791d))
+* **MySQL Node:** Resolve expressions in v1 ([#7464](https://github.com/n8n-io/n8n/issues/7464)) ([70a10a9](https://github.com/n8n-io/n8n/commit/70a10a9fc7e89a71b0f99895f96e8dea34337822))
+
+
+
 # [1.12.0](https://github.com/n8n-io/n8n/compare/n8n@1.11.0...n8n@1.12.0) (2023-10-18)
 
 
