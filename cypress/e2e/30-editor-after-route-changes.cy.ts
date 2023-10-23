@@ -5,10 +5,11 @@ import {
     INSTANCE_OWNER,
     SCHEDULE_TRIGGER_NODE_NAME
 } from "../constants";
-import {WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass} from "../pages";
+import { WorkflowExecutionsTab, WorkflowPage as WorkflowPageClass, WorkflowHistoryPage } from "../pages";
 
 const workflowPage = new WorkflowPageClass();
 const executionsTab = new WorkflowExecutionsTab();
+const workflowHistoryPage = new WorkflowHistoryPage();
 
 const createNewWorkflowAndActivate = () => {
     workflowPage.actions.visit();
@@ -22,6 +23,7 @@ const editWorkflowAndDeactivate = () => {
     workflowPage.getters.nodeCreatorSearchBar().should('be.visible');
     workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
     cy.get('.jtk-connector').should('have.length', 1);
+    workflowPage.actions.saveWorkflowOnButtonClick();
     workflowPage.getters.activatorSwitch().click();
     workflowPage.actions.zoomToFit();
 }
@@ -40,6 +42,7 @@ const editWorkflowMoreAndActivate = () => {
     workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
     cy.get('.jtk-connector').should('have.length', 2);
     workflowPage.actions.zoomToFit();
+    workflowPage.actions.saveWorkflowOnButtonClick();
 
     workflowPage.actions.addNodeToCanvas(IF_NODE_NAME);
     workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
@@ -61,7 +64,9 @@ const editWorkflowMoreAndActivate = () => {
 }
 
 describe('Editor actions should work', () => {
-    beforeEach(() => {
+	beforeEach(() => {
+			  cy.enableFeature('debugInEditor');
+			  cy.enableFeature('workflowHistory');
         cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
         createNewWorkflowAndActivate();
     });
@@ -100,5 +105,23 @@ describe('Editor actions should work', () => {
         cy.wait(['@getExecution']);
 
         executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
+			  editWorkflowMoreAndActivate();
     });
+
+    it('after switching between Editor and Workflow history', () => {
+        cy.intercept('GET', '/rest/workflow-history/workflow/*/version/*').as('getVersion');
+        cy.intercept('GET', '/rest/workflow-history/workflow/*').as('getHistory');
+
+        editWorkflowAndDeactivate();
+        workflowPage.getters.workflowHistoryButton().click();
+        cy.wait(['@getHistory']);
+        cy.wait(['@getVersion']);
+
+        cy.intercept('GET', '/rest/workflows/*').as('workflowGet');
+        workflowHistoryPage.getters.workflowHistoryCloseButton().click();
+        cy.wait(['@workflowGet']);
+				cy.wait(1000);
+
+        editWorkflowMoreAndActivate();
+		});
 });

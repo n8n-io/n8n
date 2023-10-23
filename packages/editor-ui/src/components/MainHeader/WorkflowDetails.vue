@@ -108,6 +108,7 @@
 			>
 				<n8n-icon-button
 					:disabled="isWorkflowHistoryButtonDisabled"
+					data-test-id="workflow-history-button"
 					type="tertiary"
 					icon="history"
 					size="medium"
