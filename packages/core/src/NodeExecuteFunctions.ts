@@ -2625,9 +2625,9 @@ const getRequestHelperFunctions = (
 					tempResponseData = await this.helpers.request(tempRequestOptions);
 				}
 
-				if (paginationOptions.binaryResult !== true) {
-					// If the data is not binary (and so not a stream) we hash the
-					// data to be able to easily see if we keep on receiving identical data
+				if (paginationOptions.binaryResult !== true || tempResponseData.headers.etag) {
+					// If the data is not binary (and so not a stream), or an etag is present,
+					// we check via etag or hash if identical data is received
 
 					let contentLength = 0;
 					if ('content-length' in tempResponseData.headers) {
