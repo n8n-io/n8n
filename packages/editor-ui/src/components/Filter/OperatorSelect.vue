@@ -1,40 +1,66 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables';
-import type { FilterTypeCombinator } from 'n8n-workflow';
-import { FilterOperator, OPERATORS } from './constants';
+import { OPERATOR_GROUPS } from './constants';
+import { reactive, computed } from 'vue';
 
 interface Props {
 	selected: string;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
+const state = reactive({ selected: props.selected });
 const emit = defineEmits<{
 	(event: 'operatorChanged', value: string): void;
 }>();
 
 const i18n = useI18n();
 
-// TODO: Make select nested
-const operators = OPERATORS.map((group) => group.children as FilterOperator[]).flat();
+const groups = OPERATOR_GROUPS;
 
 const onOperatorChange = (operator: string): void => {
+	state.selected = operator;
 	emit('operatorChanged', operator);
 };
+
+const selectedGroupIcon = computed(
+	() => groups.find((group) => group.id === state.selected.split(':')[0])?.icon,
+);
 </script>
 
 <template>
 	<div data-test-id="operator-select">
-		<n8n-select :modelValue="selected" @update:modelValue="onOperatorChange">
-			<n8n-option
-				v-for="operator in operators"
-				:key="operator.id"
-				:value="operator.id"
-				:label="i18n.baseText(operator.name)"
-			>
-			</n8n-option>
+		<n8n-select size="small" :modelValue="state.selected" @update:modelValue="onOperatorChange">
+			<template v-if="selectedGroupIcon" #prefix>
+				<n8n-icon :icon="selectedGroupIcon" />
+			</template>
+			<div :class="$style.group" :key="group.name" v-for="group of groups">
+				<div :class="$style.groupTitle">
+					<n8n-icon :icon="group.icon" />
+					<span>{{ i18n.baseText(group.name) }}</span>
+				</div>
+				<n8n-option
+					v-for="operator in group.children"
+					:key="operator.id"
+					:value="operator.id"
+					:label="i18n.baseText(operator.name)"
+				/>
+			</div>
 		</n8n-select>
 	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.group {
+}
+
+.groupTitle {
+	display: flex;
+	gap: var(--spacing-4xs);
+	align-items: center;
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-bold);
+	margin-top: var(--spacing-2xs);
+	padding: var(--spacing-2xs) var(--spacing-2xs);
+}
+</style>

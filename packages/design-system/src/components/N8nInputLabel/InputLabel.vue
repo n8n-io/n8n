@@ -190,21 +190,20 @@ export default defineComponent({
 	opacity: 1;
 }
 
-.heading {
-	display: flex;
-}
-
 .overflow {
 	overflow-x: hidden;
 	overflow-y: clip;
 }
 
-.small {
-	margin-bottom: var(--spacing-5xs);
-}
+.heading {
+	display: flex;
 
-.medium {
-	margin-bottom: var(--spacing-2xs);
+	&.small {
+		margin-bottom: var(--spacing-5xs);
+	}
+	&.medium {
+		margin-bottom: var(--spacing-2xs);
+	}
 }
 
 .underline {

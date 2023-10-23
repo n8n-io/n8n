@@ -530,6 +530,10 @@ $input-border-color: var(--input-border-color, var(--border-color-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
 $input-border-width: var(--border-width-base);
 $input-border: $input-border-color $input-border-style $input-border-width;
+$input-border-right-color: var(
+	--input-border-right-color,
+	var(--input-border-color, var(--border-color-base))
+);
 
 $input-font-size: var(--input-font-size, var(--font-size-s));
 /// color||Color|0
@@ -539,6 +543,23 @@ $input-width: 140px;
 /// height||Other|4
 $input-height: 40px;
 /// borderRadius||Border|2
+$input-border-radius: var(--input-border-radius, var(--border-radius-base));
+$input-border-top-left-radius: var(
+	--input-border-top-left-radius,
+	var(--input-border-radius, var(--border-radius-base))
+);
+$input-border-top-right-radius: var(
+	--input-border-top-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-left-radius: var(
+	--input-border-bottom-left-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
+$input-border-bottom-right-radius: var(
+	--input-border-bottom-right-radius,
+	var(--input-border-radius, var(--border-radius-base)),
+);
 $input-border-radius: var(--input-border-radius, var(--border-radius-base));
 $input-border-color-hover: $border-color-hover;
 /// color||Color|0

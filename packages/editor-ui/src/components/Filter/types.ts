@@ -16,6 +16,8 @@ export interface FilterOperator {
 }
 
 export interface FilterOperatorGroup {
+	id: string;
 	name: BaseTextKey;
-	children: Array<FilterOperator | FilterOperatorGroup>;
+	icon?: string;
+	children: FilterOperator[];
 }

@@ -8,7 +8,7 @@
 		:size="label.size"
 		color="text-dark"
 	>
-		<template #options>
+		<template v-if="optionsPosition === 'top'" #options>
 			<parameter-options
 				v-if="displayOptions"
 				:parameter="parameter"
@@ -131,6 +131,10 @@ export default defineComponent({
 		displayOptions: {
 			type: Boolean,
 			default: false,
+		},
+		optionsPosition: {
+			type: String as PropType<'bottom' | 'top'>,
+			default: 'top',
 		},
 		isReadOnly: {
 			type: Boolean,

@@ -1,5 +1,8 @@
 <template>
-	<div data-test-id="parameter-input">
+	<div
+		:class="{ [$style.parameterInput]: true, [$style.hintTop]: hintPosition === 'top' }"
+		data-test-id="parameter-input"
+	>
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
@@ -26,20 +29,20 @@
 			@textInput="onTextInput"
 			@update="onValueChanged"
 		/>
-		<input-hint
-			v-if="expressionOutput"
-			:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
-			data-test-id="parameter-expression-preview"
-			:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
-			:hint="expressionOutput"
-			:singleLine="true"
-		/>
-		<input-hint
-			v-else-if="parameterHint"
-			:class="$style.hint"
-			:renderHTML="true"
-			:hint="parameterHint"
-		/>
+		<div v-if="expressionOutput || parameterHint" :class="$style.hint">
+			<div>
+				<input-hint
+					v-if="expressionOutput"
+					:class="{ [$style.hint]: true, 'ph-no-capture': isForCredential }"
+					data-test-id="parameter-expression-preview"
+					:highlight="!!(expressionOutput && targetItem) && isInputParentOfActiveNode"
+					:hint="expressionOutput"
+					:singleLine="true"
+				/>
+				<input-hint v-else-if="parameterHint" :renderHTML="true" :hint="parameterHint" />
+			</div>
+			<slot v-if="$slots.options" name="options" />
+		</div>
 	</div>
 </template>
 
@@ -104,6 +107,11 @@ export default defineComponent({
 		hint: {
 			type: String,
 			required: false,
+		},
+		hintPosition: {
+			type: String as PropType<'top' | 'bottom'>,
+			required: false,
+			default: 'bottom',
 		},
 		inputSize: {
 			type: String,
@@ -251,8 +259,19 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
+.parameterInput {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-4xs);
+
+	&.hintTop {
+		flex-direction: column-reverse;
+	}
+}
+
 .hint {
-	margin-top: var(--spacing-4xs);
+	display: flex;
+	justify-content: space-between;
 }
 
 .hovering {

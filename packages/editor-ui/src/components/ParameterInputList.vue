@@ -102,6 +102,13 @@
 				labelSize="small"
 				@valueChanged="valueChanged"
 			/>
+			<Filter
+				v-else-if="parameter.type === 'filter'"
+				:parameter="parameter"
+				:value="getParameterValue(nodeValues, parameter.name, path)"
+				:path="getPath(parameter.name)"
+				@valueChanged="valueChanged"
+			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
 				<div
 					class="delete-option clickable"
@@ -155,6 +162,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
+import Filter from '@/components/Filter/Filter.vue';
 import { get, set } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -177,6 +185,7 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
+		Filter,
 	},
 	props: {
 		nodeValues: {

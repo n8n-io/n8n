@@ -52,31 +52,44 @@ export const DEFAULT_OPERATOR: FilterOperatorId = 'any:exists';
 
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{
+		id: 'any',
 		name: 'filter.operatorGroup.basic',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('any')),
 	},
 	{
+		id: 'string',
 		name: 'filter.operatorGroup.string',
+		icon: 'font',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('string')),
 	},
 	{
+		id: 'number',
 		name: 'filter.operatorGroup.number',
+		icon: 'hashtag',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('number')),
 	},
 	{
+		id: 'date',
 		name: 'filter.operatorGroup.date',
+		icon: 'calendar',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('date')),
 	},
 	{
+		id: 'boolean',
 		name: 'filter.operatorGroup.boolean',
+		icon: 'check-square',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('boolean')),
 	},
 	{
+		id: 'array',
 		name: 'filter.operatorGroup.array',
+		icon: 'list',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('array')),
 	},
 	{
+		id: 'object',
 		name: 'filter.operatorGroup.object',
+		icon: 'cube',
 		children: OPERATORS.filter((operator) => operator.id.startsWith('object')),
 	},
 ];
