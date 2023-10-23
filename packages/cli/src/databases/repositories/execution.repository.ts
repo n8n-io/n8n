@@ -95,9 +95,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private isPruningEnabled = config.getEnv('executions.pruneData');
 
-	// pruning in S3 mode is delegated to bucket lifecycle configuration
-	private shouldPruneBinaryData = config.getEnv('binaryDataManager.mode') === 'filesystem';
-
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
@@ -565,9 +562,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		if (this.shouldPruneBinaryData) {
-			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
-		}
+		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds); // only in FS mode
 
 		this.logger.debug(
 			`Hard-deleting ${executionIds.length} executions from database (pruning cycle)`,
