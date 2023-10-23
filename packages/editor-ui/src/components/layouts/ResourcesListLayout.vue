@@ -423,7 +423,7 @@ export default defineComponent({
 	methods: {
 		async onMounted() {
 			await this.initialize();
-			await this.foldersStore.fetchAll();
+			await this.foldersStore.fetchAll({ force: true });
 			this.loading = false;
 			await this.$nextTick();
 			this.focusSearchInput();

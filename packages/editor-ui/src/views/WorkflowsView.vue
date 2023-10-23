@@ -262,7 +262,7 @@ const WorkflowsView = defineComponent({
 				this.workflowsStore.fetchAllWorkflows(),
 				this.workflowsStore.fetchActiveWorkflows(),
 				this.credentialsStore.fetchAllCredentials(),
-				this.foldersStore.fetchAll(),
+				this.foldersStore.fetchAll({ force: true }),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {

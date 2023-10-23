@@ -76,6 +76,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useFoldersStore } from '@/stores/folders.store';
 import TimeAgo from '@/components/TimeAgo.vue';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -126,7 +127,7 @@ export default defineComponent({
 		},
 	},
 	computed: {
-		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useFoldersStore),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -159,10 +160,12 @@ export default defineComponent({
 				});
 			}
 
-			actions.push({
-				label: this.$locale.baseText('workflows.item.moveToFolder'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
-			});
+			if (this.canMoveToFolder) {
+				actions.push({
+					label: this.$locale.baseText('workflows.item.moveToFolder'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.MOVE_TO_FOLDER,
+				});
+			}
 
 			return actions;
 		},
@@ -172,6 +175,12 @@ export default defineComponent({
 			return dateformat(
 				this.data.createdAt,
 				`d mmmm${this.data.createdAt.startsWith(currentYear) ? '' : ', yyyy'}`,
+			);
+		},
+		canMoveToFolder(): boolean {
+			return (
+				this.foldersStore.allFolders.length > 1 ||
+				(this.foldersStore.allFolders.length === 1 && !this.data.folder)
 			);
 		},
 	},

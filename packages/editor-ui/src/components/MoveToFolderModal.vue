@@ -112,7 +112,7 @@ export default defineComponent({
 		async onMoveToFolder() {
 			await this.workflowsStore.updateWorkflow(this.workflowId, { folder: this.selected });
 			await this.workflowsStore.fetchAllWorkflows();
-			await this.foldersStore.fetchAll();
+			await this.foldersStore.fetchAll({ force: true });
 			this.modalBus.emit('close');
 		},
 		onSelectionChange(value) {
