@@ -2,23 +2,13 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 import { prepareMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { chatRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
+	chatRLC,
 	{
-		displayName: 'Chat Name or ID',
-		name: 'chatId',
-		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChats',
-		},
-		default: '',
-	},
-	{
-		displayName: 'Message Type',
-		name: 'messageType',
+		displayName: 'Content Type',
+		name: 'contentType',
 		required: true,
 		type: 'options',
 		options: [
@@ -32,7 +22,7 @@ const properties: INodeProperties[] = [
 			},
 		],
 		default: 'text',
-		description: 'The type of the content',
+		description: 'Whether the message is plain text or HTML',
 	},
 	{
 		displayName: 'Message',
@@ -40,7 +30,10 @@ const properties: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		default: '',
-		description: 'The content of the item',
+		description: 'The content of the message to be sent',
+		typeOptions: {
+			rows: 2,
+		},
 	},
 	{
 		displayName: 'Options',
@@ -79,17 +72,17 @@ export async function execute(
 ) {
 	// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
 
-	const chatId = this.getNodeParameter('chatId', i) as string;
-	const messageType = this.getNodeParameter('messageType', i) as string;
+	const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
+	const contentType = this.getNodeParameter('contentType', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
 	const options = this.getNodeParameter('options', i, {});
 
-	const includeLinkToWorkflow = options.includeLinkToWorkflow !== false && nodeVersion >= 1.1;
+	const includeLinkToWorkflow = options.includeLinkToWorkflow !== false;
 
 	const body: IDataObject = prepareMessage.call(
 		this,
 		message,
-		messageType,
+		contentType,
 		includeLinkToWorkflow,
 		instanceId,
 	);

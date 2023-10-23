@@ -1,8 +1,10 @@
-import type {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeListSearchItems,
-	INodeListSearchResult,
+import {
+	NodeOperationError,
+	type IDataObject,
+	type ILoadOptionsFunctions,
+	type INodeListSearchItems,
+	type INodeListSearchResult,
+	sleep,
 } from 'n8n-workflow';
 import { microsoftApiRequest } from '../transport';
 import { filterSortSearchListItems } from '../helpers/utils';
@@ -15,20 +17,37 @@ export async function getChats(
 	const qs: IDataObject = {
 		$expand: 'members',
 	};
-	const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs);
+
+	let value: IDataObject[] = [];
+	let attempts = 5;
+	do {
+		try {
+			value = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs)) as IDataObject)
+				.value as IDataObject[];
+			break;
+		} catch (error) {
+			if (attempts > 0) {
+				await sleep(1000);
+				attempts--;
+			} else {
+				throw new NodeOperationError(this.getNode(), error);
+			}
+		}
+	} while (attempts > 0);
+
 	for (const chat of value) {
 		if (!chat.topic) {
-			chat.topic = chat.members
+			chat.topic = (chat.members as IDataObject[])
 				.filter((member: IDataObject) => member.displayName)
 				.map((member: IDataObject) => member.displayName)
 				.join(', ');
 		}
 		const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
 		const chatId = chat.id;
-		const url = chat.webUrl;
+		const url = chat.webUrl as string;
 		returnData.push({
 			name: chatName,
-			value: chatId,
+			value: chatId as string,
 			url,
 		});
 	}

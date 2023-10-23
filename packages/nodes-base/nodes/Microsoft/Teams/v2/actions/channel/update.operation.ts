@@ -12,7 +12,7 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. My New Channel name',
-		description: 'The name of the new channel you want to update',
+		description: 'The name of the channel',
 	},
 	{
 		displayName: 'Options',

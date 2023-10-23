@@ -2,35 +2,14 @@ import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workfl
 import { updateDisplayOptions } from '@utils/utilities';
 import { prepareMessage } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
+import { channelRLC, teamRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
+	teamRLC,
+	channelRLC,
 	{
-		displayName: 'Team Name or ID',
-		name: 'teamId',
-		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
-		default: '',
-	},
-	{
-		displayName: 'Channel Name or ID',
-		name: 'channelId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: ['teamId'],
-		},
-		default: '',
-	},
-	{
-		displayName: 'Message Type',
-		name: 'messageType',
+		displayName: 'Content Type',
+		name: 'contentType',
 		required: true,
 		type: 'options',
 		options: [
@@ -44,7 +23,7 @@ const properties: INodeProperties[] = [
 			},
 		],
 		default: 'text',
-		description: 'The type of the content',
+		description: 'Whether the message is plain text or HTML',
 	},
 	{
 		displayName: 'Message',
@@ -52,13 +31,16 @@ const properties: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		default: '',
-		description: 'The content of the item',
+		description: 'The content of the message to be sent',
+		typeOptions: {
+			rows: 2,
+		},
 	},
 	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
@@ -70,11 +52,13 @@ const properties: INodeProperties[] = [
 					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
 			},
 			{
-				displayName: 'Make Reply',
+				displayName: 'Reply to ID',
 				name: 'makeReply',
 				type: 'string',
 				default: '',
-				description: 'An optional ID of the message you want to reply to',
+				placeholder: 'e.g. 1673348720590',
+				description:
+					'An optional ID of the message you want to reply to. The message ID is the number before "?tenantId" in the message URL.',
 			},
 		],
 	},
@@ -98,9 +82,9 @@ export async function execute(
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
 
-	const teamId = this.getNodeParameter('teamId', i) as string;
-	const channelId = this.getNodeParameter('channelId', i) as string;
-	const messageType = this.getNodeParameter('messageType', i) as string;
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	const contentType = this.getNodeParameter('contentType', i) as string;
 	const message = this.getNodeParameter('message', i) as string;
 	const options = this.getNodeParameter('options', i);
 
@@ -112,7 +96,7 @@ export async function execute(
 	const body: IDataObject = prepareMessage.call(
 		this,
 		message,
-		messageType,
+		contentType,
 		includeLinkToWorkflow as boolean,
 		instanceId,
 	);
