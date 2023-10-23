@@ -518,7 +518,10 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const saveSettings = toSaveSettings(defaults, this.workflowData.settings);
 
 					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
-						await Container.get(ExecutionRepository).softDelete(this.executionId);
+						await Container.get(ExecutionRepository).hardDelete({
+							workflowId: this.workflowData.id as string,
+							executionId: this.executionId,
+						});
 
 						return;
 					}
@@ -537,7 +540,10 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								this.executionId,
 								this.retryOf,
 							);
-							await Container.get(ExecutionRepository).softDelete(this.executionId);
+							await Container.get(ExecutionRepository).hardDelete({
+								workflowId: this.workflowData.id as string,
+								executionId: this.executionId,
+							});
 
 							return;
 						}

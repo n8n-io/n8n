@@ -347,7 +347,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputData="inputData" />
+				<run-data-html :inputHtml="inputData[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -702,14 +702,9 @@ export default defineComponent({
 			const workflow = this.workflowsStore.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(this.node.name);
 			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+			const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-			const nonMainInputs = !!inputs.find((input) => {
-				if (typeof input === 'string') {
-					return input !== NodeConnectionType.Main;
-				}
-
-				return input.type !== NodeConnectionType.Main;
-			});
+			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
 
 			return (
 				!nonMainInputs &&
@@ -1320,7 +1315,9 @@ export default defineComponent({
 		},
 		isViewable(index: number, key: string): boolean {
 			const { fileType } = this.binaryData[index][key];
-			return !!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf'].includes(fileType);
+			return (
+				!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
+			);
 		},
 		isDownloadable(index: number, key: string): boolean {
 			const { mimeType, fileName } = this.binaryData[index][key];

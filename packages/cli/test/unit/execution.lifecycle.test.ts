@@ -104,6 +104,32 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 				expect(binaryDataService.rename).not.toHaveBeenCalled();
 				expect(getDataId(run, 'json')).toBe(dataId);
 			});
+
+			it('should do nothing on itemless case', async () => {
+				const executionId = '999';
+
+				const promise = restoreBinaryDataId(toIRun(), executionId);
+
+				await expect(promise).resolves.not.toThrow();
+
+				expect(binaryDataService.rename).not.toHaveBeenCalled();
+			});
+
+			it('should do nothing if data is undefined', async () => {
+				const executionId = '999';
+
+				const run = toIRun({
+					json: {
+						data: undefined,
+					},
+				});
+
+				const promise = restoreBinaryDataId(run, executionId);
+
+				await expect(promise).resolves.not.toThrow();
+
+				expect(binaryDataService.rename).not.toHaveBeenCalled();
+			});
 		});
 	});
 
