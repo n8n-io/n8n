@@ -4,7 +4,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
+import { microsoftApiRequest } from '../transport';
 import { filterSortSearchListItems } from '../helpers/utils';
 
 export async function getChats(
@@ -63,31 +63,31 @@ export async function getTeams(
 	for (const team of value) {
 		const teamName = team.displayName;
 		const teamId = team.id;
-		let channelId: string = '';
+		// let channelId: string = '';
 
-		try {
-			const channels = await microsoftApiRequestAllItems.call(
-				this,
-				'value',
-				'GET',
-				`/v1.0/teams/${teamId}/channels`,
-				{},
-			);
+		// try {
+		// 	const channels = await microsoftApiRequestAllItems.call(
+		// 		this,
+		// 		'value',
+		// 		'GET',
+		// 		`/v1.0/teams/${teamId}/channels`,
+		// 		{},
+		// 	);
 
-			if (channels.length > 0) {
-				channelId = channels.find((channel: IDataObject) => channel.displayName === 'General').id;
-				if (!channelId) {
-					channelId = channels[0].id;
-				}
-			}
-		} catch (error) {}
+		// 	if (channels.length > 0) {
+		// 		channelId = channels.find((channel: IDataObject) => channel.displayName === 'General').id;
+		// 		if (!channelId) {
+		// 			channelId = channels[0].id;
+		// 		}
+		// 	}
+		// } catch (error) {}
 
 		returnData.push({
 			name: teamName,
 			value: teamId,
-			url: channelId
-				? `https://teams.microsoft.com/l/team/${channelId}/conversations?groupId=${teamId}&tenantId=${team.tenantId}`
-				: undefined,
+			// url: channelId
+			// 	? `https://teams.microsoft.com/l/team/${channelId}/conversations?groupId=${teamId}&tenantId=${team.tenantId}`
+			// 	: undefined,
 		});
 	}
 	const results = filterSortSearchListItems(returnData, filter);
@@ -101,8 +101,19 @@ export async function getChannels(
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
 	const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
+	const operation = this.getNodeParameter('operation', 0) as string;
+	const resource = this.getNodeParameter('resource', 0) as string;
+
+	const excludeGeneralChannel = ['deleteChannel'];
+
+	if (resource === 'channel') excludeGeneralChannel.push('update');
+
 	const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/teams/${teamId}/channels`);
+
 	for (const channel of value) {
+		if (channel.displayName === 'General' && excludeGeneralChannel.includes(operation)) {
+			continue;
+		}
 		const channelName = channel.displayName;
 		const channelId = channel.id;
 		const url = channel.webUrl;
@@ -112,6 +123,7 @@ export async function getChannels(
 			url,
 		});
 	}
+
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }

@@ -66,9 +66,9 @@ export const channelRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
-	// typeOptions: {
-	// 	loadOptionsDependsOn: ['teamId.value'],
-	// },
+	typeOptions: {
+		loadOptionsDependsOn: ['teamId.value'],
+	},
 	modes: [
 		{
 			displayName: 'Channel',
@@ -79,6 +79,25 @@ export const channelRLC: INodeProperties = {
 				searchListMethod: 'getChannels',
 				searchable: true,
 			},
+		},
+		{
+			displayName: 'From URL',
+			name: 'url',
+			type: 'string',
+			placeholder: 'e.g. https://teams.microsoft.com/l/team/19%3AP8l9gXd6oqlgq…',
+			extractValue: {
+				type: 'regex',
+				regex: 'threadId=([a-f0-9-]+)\\&',
+			},
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: 'https:\\/\\/teams.microsoft.com\\/.*groupId=[a-f0-9-]+\\&.*',
+						errorMessage: 'Not a valid Microsoft Channel URL',
+					},
+				},
+			],
 		},
 		{
 			displayName: 'ID',

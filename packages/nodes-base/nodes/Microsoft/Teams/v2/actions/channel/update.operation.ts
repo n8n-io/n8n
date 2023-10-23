@@ -1,52 +1,35 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 import { microsoftApiRequest } from '../../transport';
+import { channelRLC, teamRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
+	teamRLC,
+	channelRLC,
 	{
-		displayName: 'Team Name or ID',
-		name: 'teamId',
-		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
 		default: '',
+		placeholder: 'e.g. My New Channel name',
+		description: 'The name of the new channel you want to update',
 	},
 	{
-		displayName: 'Channel Name or ID',
-		name: 'channelId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: ['teamId'],
-		},
-		default: '',
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		options: [
-			{
-				displayName: 'Name',
-				name: 'name',
-				type: 'string',
-				default: '',
-				description: 'Channel name as it will appear to the user in Microsoft Teams',
-			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: "Channel's description",
+				description: 'The description of the channel',
+				typeOptions: {
+					rows: 2,
+				},
 			},
 		],
 	},
@@ -64,15 +47,17 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/channel-patch?view=graph-rest-beta&tabs=http
 
-	const teamId = this.getNodeParameter('teamId', i) as string;
-	const channelId = this.getNodeParameter('channelId', i) as string;
-	const updateFields = this.getNodeParameter('updateFields', i);
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
+	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+	const newName = this.getNodeParameter('name', i) as string;
+	const newDescription = this.getNodeParameter('options.description', i, '') as string;
+
 	const body: IDataObject = {};
-	if (updateFields.name) {
-		body.displayName = updateFields.name as string;
+	if (newName) {
+		body.displayName = newName;
 	}
-	if (updateFields.description) {
-		body.description = updateFields.description as string;
+	if (newDescription) {
+		body.description = newDescription;
 	}
 	await microsoftApiRequest.call(
 		this,
