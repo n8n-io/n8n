@@ -1,20 +1,10 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 import { microsoftApiRequest } from '../../transport';
+import { teamRLC } from '../../descriptions';
 
 const properties: INodeProperties[] = [
-	{
-		displayName: 'Team Name or ID',
-		name: 'teamId',
-		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
-		default: '',
-	},
+	teamRLC,
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -69,7 +59,7 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/channel-post?view=graph-rest-beta&tabs=http
-	const teamId = this.getNodeParameter('teamId', i) as string;
+	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const name = this.getNodeParameter('name', i) as string;
 	const options = this.getNodeParameter('options', i);
 	const body: IDataObject = {

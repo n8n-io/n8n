@@ -1,6 +1,6 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
-import { groupSourceOptions } from '../descriptions';
+import { groupSourceOptions } from '../../descriptions';
 import { returnAllOrLimit } from '@utils/descriptions';
 import { microsoftApiRequestAllItems } from '../../transport';
 

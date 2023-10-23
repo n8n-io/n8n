@@ -1,4 +1,4 @@
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ILoadOptionsFunctions, INodeListSearchItems } from 'n8n-workflow';
 
 export function prepareMessage(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -22,4 +22,23 @@ export function prepareMessage(
 			content: message,
 		},
 	};
+}
+
+export function filterSortSearchListItems(items: INodeListSearchItems[], filter?: string) {
+	return items
+		.filter(
+			(item) =>
+				!filter ||
+				item.name.toLowerCase().includes(filter.toLowerCase()) ||
+				item.value.toString().toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+				return -1;
+			}
+			if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+				return 1;
+			}
+			return 0;
+		});
 }

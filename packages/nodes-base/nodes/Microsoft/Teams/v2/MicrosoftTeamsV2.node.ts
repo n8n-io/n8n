@@ -6,7 +6,7 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { loadOptions } from './methods';
+import { loadOptions, listSearch } from './methods';
 import { router } from './actions/router';
 import { versionDescription } from './actions/versionDescription';
 
@@ -20,7 +20,7 @@ export class MicrosoftTeamsV2 implements INodeType {
 		};
 	}
 
-	methods = { loadOptions };
+	methods = { loadOptions, listSearch };
 
 	async execute(this: IExecuteFunctions) {
 		return router.call(this);
