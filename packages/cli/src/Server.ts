@@ -379,7 +379,7 @@ export class Server extends AbstractServer {
 			versionCli: N8N_VERSION,
 		});
 
-		await this.externalHooks.run('frontend.settings', [await this.frontendService.getSettings()]);
+		await this.externalHooks.run('frontend.settings', [this.frontendService.getSettings()]);
 
 		await this.postHog.init();
 

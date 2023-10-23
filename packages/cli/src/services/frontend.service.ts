@@ -198,7 +198,7 @@ export class FrontendService {
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	async getSettings(): Promise<IN8nUISettings> {
+	getSettings(): IN8nUISettings {
 		const restEndpoint = config.getEnv('endpoints.rest');
 
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
@@ -277,8 +277,9 @@ export class FrontendService {
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
-			this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
+			void import('@/services/communityPackages.service').then(({ CommunityPackagesService }) => {
+				this.settings.missingPackages = Container.get(CommunityPackagesService).hasMissingPackages;
+			});
 		}
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
