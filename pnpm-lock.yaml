@@ -260,9 +260,6 @@ importers:
       cookie-parser:
         specifier: ^1.4.6
         version: 1.4.6
-      crypto-js:
-        specifier: ~4.1.1
-        version: 4.1.1
       csrf:
         specifier: ^3.1.0
         version: 3.1.0
@@ -586,7 +583,7 @@ importers:
         specifier: ~1.7.2
         version: 1.7.2
       crypto-js:
-        specifier: ~4.1.1
+        specifier: ^4.1.1
         version: 4.1.1
       fast-glob:
         specifier: ^3.2.5
@@ -644,8 +641,8 @@ importers:
         specifier: ~1.7.1
         version: 1.7.3
       '@types/crypto-js':
-        specifier: ^4.0.1
-        version: 4.1.1
+        specifier: ^4.1.3
+        version: 4.1.3
       '@types/express':
         specifier: ^4.17.6
         version: 4.17.14
@@ -1008,6 +1005,9 @@ importers:
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
+      typedi:
+        specifier: ^0.10.0
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
     devDependencies:
       '@oclif/dev-cli':
         specifier: ^1.22.2
@@ -1348,8 +1348,8 @@ importers:
         version: 0.5.0
     devDependencies:
       '@types/crypto-js':
-        specifier: ^4.1.1
-        version: 4.1.1
+        specifier: ^4.1.3
+        version: 4.1.3
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -6819,7 +6819,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.15
+      vue-component-type-helpers: 1.8.19
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -7054,8 +7054,8 @@ packages:
       '@types/node': 18.16.16
     dev: true
 
-  /@types/crypto-js@4.1.1:
-    resolution: {integrity: sha512-BG7fQKZ689HIoc5h+6D2Dgq1fABRa0RbBWKBd9SP/MVRVXROflpm5fhwyATX5duFmbStzyzyycPB8qUYKDH3NA==}
+  /@types/crypto-js@4.1.3:
+    resolution: {integrity: sha512-YP1sYYayLe7Eg5oXyLLvOLfxBfZ5Fgpz6sVWkpB18wDMywCLPWmqzRz+9gyuOoLF0fzDTTFwlyNbx7koONUwqA==}
     dev: true
 
   /@types/dateformat@3.0.1:
@@ -21794,8 +21794,8 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.15:
-    resolution: {integrity: sha512-RKiPRKW4BdwgmQ9vaNkHYKAThdTbgU4TOphVyyzqxRwsOJOoRIrb+vB49XLvs5CKPNrvxMXZMwPe5FyJCqFWyg==}
+  /vue-component-type-helpers@1.8.19:
+    resolution: {integrity: sha512-1OANGSZK4pzHF4uc86usWi+o5Y0zgoDtqWkPg6Am6ot+jHSAmpOah59V/4N82So5xRgivgCxGgK09lBy1XNUfQ==}
     dev: true
 
   /vue-component-type-helpers@1.8.4:
@@ -22555,7 +22555,7 @@ packages:
     dev: true
 
   '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz':
-    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz}
+    resolution: {registry: https://registry.npmjs.org/, tarball: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz}
     name: xlsx
     version: 0.19.3
     engines: {node: '>=0.8'}

@@ -9,12 +9,11 @@ import {
 } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { License } from '@/License';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import path from 'path';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
-	SOURCE_CONTROL_SSH_KEY_NAME,
 } from '@/environments/sourceControl/constants';
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
@@ -184,10 +183,9 @@ describe('Source Control', () => {
 	});
 
 	it('should check for git and ssh folders and create them if required', async () => {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		const sshFolder = path.join(userFolder, SOURCE_CONTROL_SSH_FOLDER);
-		const gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
-		const sshKeyName = path.join(sshFolder, SOURCE_CONTROL_SSH_KEY_NAME);
+		const { n8nFolder } = Container.get(InstanceSettings);
+		const sshFolder = path.join(n8nFolder, SOURCE_CONTROL_SSH_FOLDER);
+		const gitFolder = path.join(n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		let hasThrown = false;
 		try {
 			accessSync(sshFolder, fsConstants.F_OK);
