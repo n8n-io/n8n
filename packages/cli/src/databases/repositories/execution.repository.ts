@@ -95,6 +95,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private isPruningEnabled = config.getEnv('executions.pruneData');
 
+	private shouldPruneBinaryData = true;
+
 	constructor(
 		dataSource: DataSource,
 		private readonly executionDataRepository: ExecutionDataRepository,
@@ -103,6 +105,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		super(ExecutionEntity, dataSource.manager);
 
 		if (!this.isMainInstance || inTest) return;
+
+		const isFileSytemMode = config.getEnv('binaryDataManager.mode') === 'filesystem';
+
+		const isS3PruningEnabled =
+			config.getEnv('binaryDataManager.mode') === 's3' &&
+			!config.getEnv('externalStorage.s3.skipPruningRequests');
+
+		this.shouldPruneBinaryData = isFileSytemMode || isS3PruningEnabled;
 
 		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
@@ -565,13 +575,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		const isFileSytemMode = config.getEnv('binaryDataManager.mode') === 'filesystem';
-
-		const isS3PruningEnabled =
-			config.getEnv('binaryDataManager.mode') === 's3' &&
-			!config.getEnv('externalStorage.s3.skipPruningRequests');
-
-		if (isFileSytemMode || isS3PruningEnabled) {
+		if (this.shouldPruneBinaryData) {
 			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 		}
 
