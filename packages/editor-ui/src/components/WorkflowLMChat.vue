@@ -87,6 +87,7 @@
 					type="textarea"
 					ref="inputField"
 					:placeholder="$locale.baseText('chat.window.chat.placeholder')"
+					data-test-id="workflow-chat-input"
 					@keydown.stop="updated"
 				/>
 				<n8n-button
@@ -97,7 +98,7 @@
 					size="large"
 					icon="comment"
 					type="primary"
-					data-test-id="workflow-chat-button"
+					data-test-id="workflow-chat-send-button"
 				/>
 
 				<n8n-info-tip class="mt-s">
@@ -453,6 +454,8 @@ export default defineComponent({
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
 						`[${lastNodeExecuted}]`,
 					) as ITaskData[];
+
+					console.log({ nodeResponseDataArray }, this.workflowsStore.getWorkflowExecution);
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 

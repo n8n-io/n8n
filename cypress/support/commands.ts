@@ -1,6 +1,9 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
-import { BACKEND_BASE_URL, N8N_AUTH_COOKIE } from '../constants';
+import { BACKEND_BASE_URL, INSTANCE_MEMBERS, INSTANCE_OWNER, N8N_AUTH_COOKIE } from '../constants';
+import { addStreamCommands } from '@lensesio/cypress-websocket-testing';
+
+addStreamCommands();
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
@@ -160,4 +163,11 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).realMouseUp();
 			}
 		});
+});
+
+Cypress.Commands.add('push', (type, data) => {
+	cy.request('POST', `${BACKEND_BASE_URL}/rest/e2e/push`, {
+		type,
+		data,
+	});
 });

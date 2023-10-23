@@ -34,6 +34,10 @@ export class Push extends EventEmitter {
 	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
 		this.backend.send(type, data, sessionId);
 	}
+
+	getBackend() {
+		return this.backend;
+	}
 }
 
 export const setupPushServer = (restEndpoint: string, server: Server, app: Application) => {

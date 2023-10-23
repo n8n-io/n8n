@@ -281,6 +281,9 @@ export const pushConnection = defineComponent({
 			}
 
 			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
+				console.log('IT HAS ARRIVED');
+				console.log(receivedData, this.workflowsStore.activeExecutionId);
+
 				// The workflow finished executing
 				let pushData: IPushDataExecutionFinished;
 				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {

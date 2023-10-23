@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
@@ -15,6 +15,8 @@ import type { BooleanLicenseFeature } from '@/Interfaces';
 import { UserSettings } from 'n8n-core';
 import { MfaService } from '@/Mfa/mfa.service';
 import { TOTPService } from '@/Mfa/totp.service';
+import { Push } from '@/push';
+import { IPushDataType } from '@/Interfaces';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -48,6 +50,16 @@ type ResetRequest = Request<
 	{
 		owner: UserSetupPayload;
 		members: UserSetupPayload[];
+	}
+>;
+
+type PushRequest = Request<
+	{},
+	{},
+	{
+		type: IPushDataType;
+		sessionId: string;
+		data: object;
 	}
 >;
 
@@ -89,6 +101,17 @@ export class E2EController {
 		await this.removeActiveWorkflows();
 		await this.truncateAll();
 		await this.setupUserManagement(req.body.owner, req.body.members);
+	}
+
+	@Post('/push')
+	async push(req: PushRequest) {
+		const pushInstance = Container.get(Push);
+
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+		// @ts-ignore
+		const sessionId = Object.keys(pushInstance.getBackend().connections as object)[0];
+
+		pushInstance.send(req.body.type, req.body.data, sessionId);
 	}
 
 	@Patch('/feature')
