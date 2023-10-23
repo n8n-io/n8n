@@ -9,6 +9,7 @@ import {
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
+import { metadataFilterField } from '../../../utils/sharedFields';
 
 export class DocumentJsonInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -55,35 +56,18 @@ export class DocumentJsonInputLoader implements INodeType {
 				description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
 			},
 			{
-				displayName: 'Metadata',
-				name: 'metadata',
-				type: 'fixedCollection',
-				description:
-					'Metadata to add to each document. Used for filtering during retrieval later on.',
-				typeOptions: {
-					multipleValues: true,
-				},
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
 				default: {},
-				placeholder: 'Add field',
 				options: [
 					{
-						name: 'metadataValues',
-						displayName: 'Fields to Set',
-						values: [
-							{
-								displayName: 'Name',
-								name: 'name',
-								type: 'string',
-								default: '',
-								required: true,
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-							},
-						],
+						...metadataFilterField,
+						displayName: 'Metadata',
+						description:
+							'Metadata to add to each document. Could be used for filtering during retrieval',
+						placeholder: 'Add property',
 					},
 				],
 			},

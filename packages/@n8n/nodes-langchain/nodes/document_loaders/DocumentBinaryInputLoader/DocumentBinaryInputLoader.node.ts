@@ -145,7 +145,22 @@ export class DocumentBinaryInputLoader implements INodeType {
 					},
 				},
 			},
-			metadataFilterField,
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						...metadataFilterField,
+						displayName: 'Metadata',
+						description:
+							'Metadata to add to each document. Could be used for filtering during retrieval',
+						placeholder: 'Add property',
+					},
+				],
+			},
 		],
 	};
 
