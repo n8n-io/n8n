@@ -145,12 +145,6 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 }
 
 describe('toSaveSettings()', () => {
-	// const defaults: DefaultSaveSettings = {
-	// 	saveDataErrorExecution: 'all',
-	// 	saveDataSuccessExecution: 'all',
-	// 	saveManualExecutions: true,
-	// };
-
 	const config = mock<Config>();
 
 	afterEach(() => {
