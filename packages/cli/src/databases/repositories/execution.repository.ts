@@ -106,14 +106,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (!this.isMainInstance || inTest) return;
 
-		const isFileSytemMode = config.getEnv('binaryDataManager.mode') === 'filesystem';
-
-		const isS3PruningEnabled =
-			config.getEnv('binaryDataManager.mode') === 's3' &&
-			!config.getEnv('externalStorage.s3.skipPruningRequests');
-
-		this.shouldPruneBinaryData = isFileSytemMode || isS3PruningEnabled;
-
 		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
 		this.setHardDeletionInterval();
@@ -575,7 +567,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		if (this.shouldPruneBinaryData) {
+		if (config.getEnv('binaryDataManager.mode') === 'filesystem') {
+			// pruning in S3 mode is delegated to bucket TTL
 			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
 		}
 
