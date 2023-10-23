@@ -223,6 +223,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -2875,6 +2876,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+			this.eventsAttached = false;
 		},
 		unbindEndpointEventListeners(bind = true) {
 			if (this.instance) {
