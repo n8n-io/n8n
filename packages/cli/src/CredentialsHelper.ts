@@ -3,7 +3,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 import get from 'lodash/get';
 
@@ -53,7 +52,7 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { Container } from 'typedi';
+import { Service } from 'typedi';
 import { isObjectLiteral } from './utils';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
@@ -87,12 +86,15 @@ const mockNodeTypes: INodeTypes = {
 	},
 };
 
+@Service()
 export class CredentialsHelper extends ICredentialsHelper {
-	private credentialTypes = Container.get(CredentialTypes);
-
-	private nodeTypes = Container.get(NodeTypes);
-
-	private credentialsOverwrites = Container.get(CredentialsOverwrites);
+	constructor(
+		private readonly credentialTypes: CredentialTypes,
+		private readonly nodeTypes: NodeTypes,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
+	) {
+		super();
+	}
 
 	/**
 	 * Add the required authentication information to the request
@@ -349,7 +351,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
-		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
+		const decryptedDataOriginal = credentials.getData();
 
 		if (raw === true) {
 			return decryptedDataOriginal;
@@ -469,7 +471,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		credentials.setData(data, this.encryptionKey);
+		credentials.setData(data);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 		// Add special database related data

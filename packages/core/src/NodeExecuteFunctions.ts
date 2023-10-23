@@ -3,14 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
-
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-shadow */
-
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -143,9 +140,9 @@ import {
 	setWorkflowExecutionMetadata,
 } from './WorkflowExecutionMetadata';
 import { getSecretsProxy } from './Secrets';
-import { getUserN8nFolderPath, getInstanceId } from './UserSettings';
 import Container from 'typedi';
 import type { BinaryData } from './BinaryData/types';
+import { InstanceSettings } from './InstanceSettings';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2469,6 +2466,10 @@ const addExecutionDataFunctions = async (
 			});
 		}
 
+		if (get(runExecutionData, 'executionData.metadata', undefined) === undefined) {
+			runExecutionData.executionData!.metadata = {};
+		}
+
 		let sourceTaskData = get(runExecutionData, `executionData.metadata[${sourceNodeName}]`);
 
 		if (!sourceTaskData) {
@@ -2506,7 +2507,7 @@ const getCommonWorkflowFunctions = (
 
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
-	getInstanceId: async () => getInstanceId(),
+	getInstanceId: () => Container.get(InstanceSettings).instanceId,
 	getTimezone: () => getTimezone(workflow, additionalData),
 
 	prepareOutputData: async (outputData) => [outputData],
@@ -2596,7 +2597,6 @@ const getAllowedPaths = () => {
 function isFilePathBlocked(filePath: string): boolean {
 	const allowedPaths = getAllowedPaths();
 	const resolvedFilePath = path.resolve(filePath);
-	const userFolder = getUserN8nFolderPath();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
 	//if allowed paths are defined, allow access only to those paths
@@ -2612,7 +2612,8 @@ function isFilePathBlocked(filePath: string): boolean {
 
 	//restrict access to .n8n folder and other .env config related paths
 	if (blockFileAccessToN8nFiles) {
-		const restrictedPaths: string[] = [userFolder];
+		const { n8nFolder } = Container.get(InstanceSettings);
+		const restrictedPaths = [n8nFolder];
 
 		if (process.env[CONFIG_FILES]) {
 			restrictedPaths.push(...process.env[CONFIG_FILES].split(','));
@@ -2670,7 +2671,7 @@ const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions =>
 	},
 
 	getStoragePath() {
-		return path.join(getUserN8nFolderPath(), `storage/${node.type}`);
+		return path.join(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
 	},
 
 	async writeContentToFile(filePath, content, flag) {
@@ -3033,7 +3034,7 @@ export function getExecuteFunctions(
 						};
 
 						try {
-							return await nodeType.supplyData.call(context);
+							return await nodeType.supplyData.call(context, itemIndex);
 						} catch (error) {
 							if (!(error instanceof ExecutionBaseError)) {
 								error = new NodeOperationError(connectedNode, error, {

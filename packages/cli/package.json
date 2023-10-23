@@ -121,7 +121,6 @@
     "connect-history-api-fallback": "^1.6.0",
     "convict": "^6.2.4",
     "cookie-parser": "^1.4.6",
-    "crypto-js": "~4.1.1",
     "csrf": "^3.1.0",
     "curlconverter": "3.21.0",
     "dotenv": "^8.0.0",

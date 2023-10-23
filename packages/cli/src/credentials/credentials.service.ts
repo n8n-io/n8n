@@ -1,4 +1,4 @@
-import { Credentials, UserSettings } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -12,10 +12,9 @@ import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In, Like } from 'typeorm';
 
 import * as Db from '@/Db';
-import * as ResponseHelper from '@/ResponseHelper';
 import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
-import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
@@ -205,18 +204,14 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	static createEncryptedData(
-		encryptionKey: string,
-		credentialId: string | null,
-		data: CredentialsEntity,
-	): ICredentialsDb {
+	static createEncryptedData(credentialId: string | null, data: CredentialsEntity): ICredentialsDb {
 		const credentials = new Credentials(
 			{ id: credentialId, name: data.name },
 			data.type,
 			data.nodesAccess,
 		);
 
-		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject, encryptionKey);
+		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -226,22 +221,9 @@ export class CredentialsService {
 		return newCredentialData;
 	}
 
-	static async getEncryptionKey(): Promise<string> {
-		try {
-			return await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.InternalServerError(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
-		}
-	}
-
-	static async decrypt(
-		encryptionKey: string,
-		credential: CredentialsEntity,
-	): Promise<ICredentialDataDecryptedObject> {
+	static decrypt(credential: CredentialsEntity): ICredentialDataDecryptedObject {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		const data = coreCredential.getData(encryptionKey);
-
-		return data;
+		return coreCredential.getData();
 	}
 
 	static async update(
@@ -303,11 +285,9 @@ export class CredentialsService {
 
 	static async test(
 		user: User,
-		encryptionKey: string,
 		credentials: ICredentialsDecrypted,
 	): Promise<INodeCredentialTestResult> {
-		const helper = new CredentialsHelper(encryptionKey);
-
+		const helper = Container.get(CredentialsHelper);
 		return helper.testCredentials(user, credentials.type, credentials);
 	}
 

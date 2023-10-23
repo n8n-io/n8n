@@ -30,7 +30,7 @@ export const validCredentialsProperties = (
 ): express.Response | void => {
 	const { type, data } = req.body;
 
-	const properties = new CredentialsHelper('')
+	const properties = Container.get(CredentialsHelper)
 		.getCredentialsProperties(type)
 		.filter((property) => property.type !== 'hidden');
 

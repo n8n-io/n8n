@@ -12,9 +12,7 @@ import { LICENSE_FEATURES, inE2ETests } from '@/constants';
 import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature } from '@/Interfaces';
-import { UserSettings } from 'n8n-core';
 import { MfaService } from '@/Mfa/mfa.service';
-import { TOTPService } from '@/Mfa/totp.service';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -77,6 +75,7 @@ export class E2EController {
 		private settingsRepo: SettingsRepository,
 		private userRepo: UserRepository,
 		private workflowRunner: ActiveWorkflowRunner,
+		private mfaService: MfaService,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -141,10 +140,6 @@ export class E2EController {
 			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
 		);
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const mfaService = new MfaService(this.userRepo, new TOTPService(), encryptionKey);
-
 		const instanceOwner = {
 			id: uuid(),
 			...owner,
@@ -153,10 +148,8 @@ export class E2EController {
 		};
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
-			const { encryptedRecoveryCodes, encryptedSecret } = mfaService.encryptSecretAndRecoveryCodes(
-				owner.mfaSecret,
-				owner.mfaRecoveryCodes,
-			);
+			const { encryptedRecoveryCodes, encryptedSecret } =
+				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
 			instanceOwner.mfaSecret = encryptedSecret;
 			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
 		}

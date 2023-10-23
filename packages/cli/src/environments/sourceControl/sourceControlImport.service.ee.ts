@@ -11,7 +11,7 @@ import * as Db from '@/Db';
 import glob from 'fast-glob';
 import { LoggerProxy, jsonParse } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'fs/promises';
-import { Credentials, UserSettings } from 'n8n-core';
+import { Credentials, InstanceSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { Variables } from '@db/entities/Variables';
@@ -41,9 +41,9 @@ export class SourceControlImportService {
 		private readonly variablesService: VariablesService,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly tagRepository: TagRepository,
+		instanceSettings: InstanceSettings,
 	) {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
+		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
 		this.credentialExportFolder = path.join(
 			this.gitFolder,
@@ -79,69 +79,6 @@ export class SourceControlImportService {
 		}
 
 		return workflowOwnerRole;
-	}
-
-	private async importCredentialsFromFiles(
-		userId: string,
-	): Promise<Array<{ id: string; name: string; type: string }>> {
-		const credentialFiles = await glob('*.json', {
-			cwd: this.credentialExportFolder,
-			absolute: true,
-		});
-		const existingCredentials = await Db.collections.Credentials.find();
-		const ownerCredentialRole = await this.getCredentialOwnerRole();
-		const ownerGlobalRole = await this.getOwnerGlobalRole();
-		const encryptionKey = await UserSettings.getEncryptionKey();
-		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
-		importCredentialsResult = await Promise.all(
-			credentialFiles.map(async (file) => {
-				LoggerProxy.debug(`Importing credentials file ${file}`);
-				const credential = jsonParse<ExportableCredential>(
-					await fsReadFile(file, { encoding: 'utf8' }),
-				);
-				const existingCredential = existingCredentials.find(
-					(e) => e.id === credential.id && e.type === credential.type,
-				);
-				const sharedOwner = await Db.collections.SharedCredentials.findOne({
-					select: ['userId'],
-					where: {
-						credentialsId: credential.id,
-						roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
-					},
-				});
-
-				const { name, type, data, id, nodesAccess } = credential;
-				const newCredentialObject = new Credentials({ id, name }, type, []);
-				if (existingCredential?.data) {
-					newCredentialObject.data = existingCredential.data;
-				} else {
-					newCredentialObject.setData(data, encryptionKey);
-				}
-				newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
-
-				LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await Db.collections.Credentials.upsert(newCredentialObject, ['id']);
-
-				if (!sharedOwner) {
-					const newSharedCredential = new SharedCredentials();
-					newSharedCredential.credentialsId = newCredentialObject.id as string;
-					newSharedCredential.userId = userId;
-					newSharedCredential.roleId = ownerGlobalRole.id;
-
-					await Db.collections.SharedCredentials.upsert({ ...newSharedCredential }, [
-						'credentialsId',
-						'userId',
-					]);
-				}
-
-				return {
-					id: newCredentialObject.id as string,
-					name: newCredentialObject.name,
-					type: newCredentialObject.type,
-				};
-			}),
-		);
-		return importCredentialsResult.filter((e) => e !== undefined);
 	}
 
 	public async getRemoteVersionIdsFromFiles(): Promise<SourceControlWorkflowVersionId[]> {
@@ -407,7 +344,6 @@ export class SourceControlImportService {
 				roleId: In([ownerCredentialRole.id, ownerGlobalRole.id]),
 			},
 		});
-		const encryptionKey = await UserSettings.getEncryptionKey();
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		importCredentialsResult = await Promise.all(
 			candidates.map(async (candidate) => {
@@ -427,7 +363,7 @@ export class SourceControlImportService {
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
 				} else {
-					newCredentialObject.setData(data, encryptionKey);
+					newCredentialObject.setData(data);
 				}
 				newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
 
