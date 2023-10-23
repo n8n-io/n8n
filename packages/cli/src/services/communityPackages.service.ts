@@ -6,7 +6,7 @@ import axios from 'axios';
 
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { PackageDirectoryLoader } from 'n8n-core';
 
 import { toError } from '@/utils';
@@ -47,6 +47,7 @@ export class CommunityPackagesService {
 	missingPackages: string[] = [];
 
 	constructor(
+		private readonly instanceSettings: InstanceSettings,
 		private readonly installedPackageRepository: InstalledPackagesRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 	) {}
@@ -114,7 +115,7 @@ export class CommunityPackagesService {
 	}
 
 	async executeNpmCommand(command: string, options?: { doNotHandleError?: boolean }) {
-		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
+		const downloadFolder = this.instanceSettings.nodesDownloadDir;
 
 		const execOptions = {
 			cwd: downloadFolder,

@@ -10,6 +10,7 @@ import type {
 	INodeTypeBaseDescription,
 	ITelemetrySettings,
 } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
 
 import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -40,6 +41,7 @@ export class FrontendService {
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.initSettings();
 	}
@@ -87,7 +89,7 @@ export class FrontendService {
 				endpoint: config.getEnv('versionNotifications.endpoint'),
 				infoUrl: config.getEnv('versionNotifications.infoUrl'),
 			},
-			instanceId: '',
+			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
 				enabled: config.getEnv('diagnostics.enabled'),

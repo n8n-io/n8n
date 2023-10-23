@@ -35,7 +35,6 @@ const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
 
 beforeAll(async () => {
-	await utils.initEncryptionKey();
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 });

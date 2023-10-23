@@ -206,7 +206,7 @@ export class GmailV2 implements INodeType {
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
 		const nodeVersion = this.getNode().typeVersion;
-		const instanceId = await this.getInstanceId();
+		const instanceId = this.getInstanceId();
 
 		let responseData;
 

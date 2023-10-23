@@ -72,8 +72,6 @@ export class ImportCredentialsCommand extends BaseCommand {
 		await this.initOwnerCredentialRole();
 		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
 
-		const encryptionKey = this.userSettings.encryptionKey;
-
 		if (flags.separate) {
 			let { input: inputPath } = flags;
 
@@ -97,7 +95,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 					if (typeof credential.data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
-						Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
+						Credentials.prototype.setData.call(credential, credential.data);
 					}
 
 					await this.storeCredential(credential, user);
@@ -125,7 +123,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			for (const credential of credentials) {
 				if (typeof credential.data === 'object') {
 					// plain data / decrypted input. Should be encrypted first.
-					Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
+					Credentials.prototype.setData.call(credential, credential.data);
 				}
 				await this.storeCredential(credential, user);
 			}
