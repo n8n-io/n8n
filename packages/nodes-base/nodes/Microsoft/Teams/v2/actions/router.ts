@@ -21,7 +21,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const operation = this.getNodeParameter('operation', 0);
 
 	const nodeVersion = this.getNode().typeVersion;
-	const instanceId = await this.getInstanceId();
+	const instanceId = this.getInstanceId();
 
 	const microsoftTeamsTypeData = {
 		resource,
