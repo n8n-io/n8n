@@ -12,6 +12,7 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import Container, { Service } from 'typedi';
+import { WorkflowRepository } from '@/databases/repositories';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
@@ -51,6 +52,9 @@ export class License {
 		const onFeatureChange = isMainInstance
 			? async (features: TFeatures) => this.onFeatureChange(features)
 			: async () => {};
+		const collectUsageMetrics = isMainInstance
+			? async () => this.collectUsageMetrics()
+			: async () => [];
 
 		try {
 			this.manager = new LicenseManager({
@@ -65,6 +69,7 @@ export class License {
 				loadCertStr: async () => this.loadCertStr(),
 				saveCertStr,
 				deviceFingerprint: () => this.instanceSettings.instanceId,
+				collectUsageMetrics,
 				onFeatureChange,
 			});
 
@@ -74,6 +79,15 @@ export class License {
 				this.logger.error('Could not initialize license manager sdk', e);
 			}
 		}
+	}
+
+	async collectUsageMetrics() {
+		return [
+			{
+				name: 'activeWorkflows',
+				value: await Container.get(WorkflowRepository).count({ where: { active: true } }),
+			},
+		];
 	}
 
 	async loadCertStr(): Promise<TLicenseBlock> {
