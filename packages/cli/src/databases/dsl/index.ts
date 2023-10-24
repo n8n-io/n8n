@@ -1,6 +1,14 @@
-import type { QueryRunner } from 'typeorm';
+import type { QueryRunner, TableForeignKey } from 'typeorm';
 import { Column } from './Column';
-import { AddColumns, AddNotNull, CreateTable, DropColumns, DropNotNull, DropTable } from './Table';
+import {
+	AddColumns,
+	AddNotNull,
+	CreateTable,
+	DropColumns,
+	DropNotNull,
+	DropTable,
+	CreateForeignKey,
+} from './Table';
 import { CreateIndex, DropIndex } from './Indices';
 
 export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunner) => ({
@@ -15,6 +23,12 @@ export const createSchemaBuilder = (tablePrefix: string, queryRunner: QueryRunne
 		new AddColumns(tableName, columns, tablePrefix, queryRunner),
 	dropColumns: (tableName: string, columnNames: string[]) =>
 		new DropColumns(tableName, columnNames, tablePrefix, queryRunner),
+
+	createForeignKey: (tableName: string, tableForeignKey: TableForeignKey) =>
+		new CreateForeignKey(tableName, tableForeignKey, tablePrefix, queryRunner),
+
+	dropForeignKey: (tableName: string, tableForeignKey: TableForeignKey) =>
+		new CreateForeignKey(tableName, tableForeignKey, tablePrefix, queryRunner),
 
 	createIndex: (
 		tableName: string,

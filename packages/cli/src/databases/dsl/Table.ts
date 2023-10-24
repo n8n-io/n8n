@@ -1,5 +1,5 @@
 import type { TableForeignKeyOptions, TableIndexOptions } from 'typeorm';
-import { Table, QueryRunner, TableColumn } from 'typeorm';
+import { Table, TableColumn, QueryRunner, TableForeignKey } from 'typeorm';
 import LazyPromise from 'p-lazy';
 import { Column } from './Column';
 
@@ -98,6 +98,38 @@ export class AddColumns extends TableOperation {
 			`${prefix}${tableName}`,
 			columns.map((c) => new TableColumn(c.toOptions(driver))),
 		);
+	}
+}
+
+export class CreateForeignKey extends TableOperation {
+	constructor(
+		tableName: string,
+		protected tableForeignKey: TableForeignKey,
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, tableForeignKey } = this;
+		return queryRunner.createForeignKey(tableName, tableForeignKey);
+	}
+}
+
+export class DropForeignKey extends TableOperation {
+	constructor(
+		tableName: string,
+		protected tableForeignKey: TableForeignKey,
+		prefix: string,
+		queryRunner: QueryRunner,
+	) {
+		super(tableName, prefix, queryRunner);
+	}
+
+	async execute(queryRunner: QueryRunner) {
+		const { tableName, tableForeignKey } = this;
+		return queryRunner.dropForeignKey(tableName, tableForeignKey);
 	}
 }
 

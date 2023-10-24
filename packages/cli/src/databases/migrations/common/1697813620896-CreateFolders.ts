@@ -7,13 +7,12 @@ const foreignKey = new TableForeignKey({
 	columnNames: ['folderId'],
 	referencedColumnNames: ['id'],
 	referencedTableName: tableName,
-	onDelete: 'CASCADE',
+	onDelete: 'SET NULL',
 });
 
 export class CreateFolders1697813620896 implements ReversibleMigration {
 	async up({
-		schemaBuilder: { createTable, addColumns, column },
-		queryRunner: { createForeignKey },
+		schemaBuilder: { createTable, addColumns, column, createForeignKey },
 	}: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(column('id').varchar(36).primary.notNull, column('name').varchar(24).notNull)
@@ -21,15 +20,12 @@ export class CreateFolders1697813620896 implements ReversibleMigration {
 
 		await addColumns('workflow_entity', [column('folderId').varchar(36)]);
 
-		// await createForeignKey('workflow_entity', foreignKey);
+		await createForeignKey('workflow_entity', foreignKey);
 	}
 
-	async down({
-		schemaBuilder: { dropTable, dropColumns },
-		queryRunner: { dropForeignKey },
-	}: MigrationContext) {
+	async down({ schemaBuilder: { dropTable, dropColumns, dropForeignKey } }: MigrationContext) {
 		await dropTable(tableName);
 		await dropColumns('workflow_entity', ['folderId']);
-		// await dropForeignKey('workflow_entity', foreignKey);
+		await dropForeignKey('workflow_entity', foreignKey);
 	}
 }
