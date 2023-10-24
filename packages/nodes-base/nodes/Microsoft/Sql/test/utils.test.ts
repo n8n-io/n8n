@@ -1,4 +1,4 @@
-import mssql from 'mssql';
+import { Request } from 'mssql';
 import type { IDataObject } from 'n8n-workflow';
 import {
 	configurePool,
@@ -7,33 +7,47 @@ import {
 	updateOperation,
 } from '../GenericFunctions';
 
-let parameters: IDataObject;
-
-jest.mock('mssql', () => {
-	const originalModule = jest.requireActual('mssql');
-	const { Request } = originalModule;
-	Request.prototype.query = async function (q: string) {
-		parameters = this.parameters;
-		return [
-			[
-				[
-					{
-						recordsets: [],
-						recordset: undefined,
-						output: {},
-						rowsAffected: [0],
-					},
-				],
-			],
-		];
-	};
-	return {
-		...originalModule,
-		Request,
-	};
-});
-
 describe('MSSQL tests', () => {
+	let querySpy: jest.SpyInstance<void, Parameters<Request['query']>>;
+	let request: Request;
+
+	const assertParameters = (parameters: unknown[][] | IDataObject) => {
+		if (Array.isArray(parameters)) {
+			parameters.forEach((values, rowIndex) => {
+				values.forEach((value, index) => {
+					const received = (request.parameters[`r${rowIndex}v${index}`] as IDataObject).value;
+					expect(received).toEqual(value);
+				});
+			});
+		} else {
+			for (const key in parameters) {
+				expect((request.parameters[key] as IDataObject).value).toEqual(parameters[key]);
+			}
+		}
+	};
+
+	beforeEach(() => {
+		jest.resetAllMocks();
+		querySpy = jest.spyOn(Request.prototype, 'query').mockImplementation(async function (
+			this: Request,
+		) {
+			// eslint-disable-next-line @typescript-eslint/no-this-alias
+			request = this;
+			return [
+				[
+					[
+						{
+							recordsets: [],
+							recordset: undefined,
+							output: {},
+							rowsAffected: [0],
+						},
+					],
+				],
+			];
+		});
+	});
+
 	it('should perform insert operation', async () => {
 		const pool = configurePool({});
 		const tables = {
@@ -61,26 +75,17 @@ describe('MSSQL tests', () => {
 			},
 		};
 
-		const requestMock = jest.spyOn(mssql.Request.prototype, 'query');
-
 		await insertOperation(tables, pool);
 
-		expect(requestMock).toHaveBeenCalledTimes(1);
-		expect(requestMock).toHaveBeenCalledWith(
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
 			'INSERT INTO [users] ([id], [name], [age], [active]) VALUES (@r0v0, @r0v1, @r0v2, @r0v3), (@r1v0, @r1v1, @r1v2, @r1v3), (@r2v0, @r2v1, @r2v2, @r2v3);',
 		);
-		expect((parameters.r0v0 as IDataObject).value).toEqual(1);
-		expect((parameters.r0v1 as IDataObject).value).toEqual('Sam');
-		expect((parameters.r0v2 as IDataObject).value).toEqual(31);
-		expect((parameters.r0v3 as IDataObject).value).toEqual(false);
-		expect((parameters.r1v0 as IDataObject).value).toEqual(3);
-		expect((parameters.r1v1 as IDataObject).value).toEqual('Jon');
-		expect((parameters.r1v2 as IDataObject).value).toEqual(null);
-		expect((parameters.r1v3 as IDataObject).value).toEqual(true);
-		expect((parameters.r2v0 as IDataObject).value).toEqual(4);
-		expect((parameters.r2v1 as IDataObject).value).toEqual(null);
-		expect((parameters.r2v2 as IDataObject).value).toEqual(25);
-		expect((parameters.r2v3 as IDataObject).value).toEqual(false);
+		assertParameters([
+			[1, 'Sam', 31, false],
+			[3, 'Jon', null, true],
+			[4, null, 25, false],
+		]);
 	});
 
 	it('should perform update operation', async () => {
@@ -99,18 +104,18 @@ describe('MSSQL tests', () => {
 			},
 		};
 
-		const requestMock = jest.spyOn(mssql.Request.prototype, 'query');
-
 		await updateOperation(tables, pool);
 
-		expect(requestMock).toHaveBeenCalledTimes(2);
-		expect(requestMock).toHaveBeenCalledWith(
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith(
 			'UPDATE [users] SET [name] = @v0, [age] = @v1, [active] = @v2 WHERE id = @condition;',
 		);
-		expect((parameters.v0 as IDataObject).value).toEqual('Greg');
-		expect((parameters.v1 as IDataObject).value).toEqual(43);
-		expect((parameters.v2 as IDataObject).value).toEqual(0);
-		expect((parameters.condition as IDataObject).value).toEqual(2);
+		assertParameters({
+			v0: 'Greg',
+			v1: 43,
+			v2: 0,
+			condition: 2,
+		});
 	});
 
 	it('should perform delete operation', async () => {
@@ -131,12 +136,10 @@ describe('MSSQL tests', () => {
 			},
 		};
 
-		const requestMock = jest.spyOn(mssql.Request.prototype, 'query');
-
 		await deleteOperation(tables, pool);
 
-		expect(requestMock).toHaveBeenCalledTimes(3);
-		expect(requestMock).toHaveBeenCalledWith('DELETE FROM [users] WHERE [id] IN (@v0);');
-		expect((parameters.v0 as IDataObject).value).toEqual(2);
+		expect(querySpy).toHaveBeenCalledTimes(1);
+		expect(querySpy).toHaveBeenCalledWith('DELETE FROM [users] WHERE [id] IN (@v0);');
+		assertParameters({ v0: 2 });
 	});
 });
