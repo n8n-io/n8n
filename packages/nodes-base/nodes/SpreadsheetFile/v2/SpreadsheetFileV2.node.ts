@@ -94,9 +94,7 @@ export class SpreadsheetFileV2 implements INodeType {
 							onRecord: (record) => {
 								if (!options.includeEmptyCells) {
 									record = Object.fromEntries(
-										Object.entries(record).filter(
-											([_key, value]) => value !== undefined && value !== null && value !== '',
-										),
+										Object.entries(record).filter(([_key, value]) => value !== ''),
 									);
 								}
 								rows.push(record);
