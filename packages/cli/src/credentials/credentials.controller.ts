@@ -86,9 +86,8 @@ credentialsController.get(
 			return { ...rest };
 		}
 
-		const key = await CredentialsService.getEncryptionKey();
 		const decryptedData = CredentialsService.redact(
-			await CredentialsService.decrypt(key, credential),
+			CredentialsService.decrypt(credential),
 			credential,
 		);
 
@@ -106,16 +105,15 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const encryptionKey = await CredentialsService.getEncryptionKey();
 		const sharing = await CredentialsService.getSharing(req.user, credentials.id);
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
-			const decryptedData = await CredentialsService.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = CredentialsService.decrypt(sharing.credentials);
 			mergedCredentials.data = CredentialsService.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return CredentialsService.test(req.user, encryptionKey, mergedCredentials);
+		return CredentialsService.test(req.user, mergedCredentials);
 	}),
 );
 
@@ -127,8 +125,7 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
 		const newCredential = await CredentialsService.prepareCreateData(req.body);
 
-		const key = await CredentialsService.getEncryptionKey();
-		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
+		const encryptedData = CredentialsService.createEncryptedData(null, newCredential);
 		const credential = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		void Container.get(InternalHooks).onUserCreatedCredentials({
@@ -165,14 +162,12 @@ credentialsController.patch(
 
 		const { credentials: credential } = sharing;
 
-		const key = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decrypt(key, credential);
+		const decryptedData = CredentialsService.decrypt(credential);
 		const preparedCredentialData = await CredentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
 		);
 		const newCredentialData = CredentialsService.createEncryptedData(
-			key,
 			credentialId,
 			preparedCredentialData,
 		);

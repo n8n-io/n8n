@@ -1,9 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
-import { UserSettings } from 'n8n-core';
 
 import * as Db from '@/Db';
 import config from '@/config';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Credentials } from '@/requests';
 import type { Role } from '@db/entities/Role';
@@ -128,17 +126,6 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 		}
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
 	});
 
 	test('should ignore ID in payload', async () => {
@@ -385,17 +372,6 @@ describe('PATCH /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(404);
 	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
-	});
 });
 
 describe('GET /credentials/new', () => {
@@ -502,21 +478,6 @@ describe('GET /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(404);
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent
-			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
 	});
 
 	test('should return 404 if cred not found', async () => {

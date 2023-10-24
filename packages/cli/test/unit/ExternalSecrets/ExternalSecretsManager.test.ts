@@ -1,11 +1,11 @@
-import type { SettingsRepository } from '@/databases/repositories';
+import { Container } from 'typedi';
+import { Cipher } from 'n8n-core';
+import { SettingsRepository } from '@/databases/repositories';
 import type { ExternalSecretsSettings } from '@/Interfaces';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
-import { mock } from 'jest-mock-extended';
-import { UserSettings } from 'n8n-core';
-import Container from 'typedi';
+import { InternalHooks } from '@/InternalHooks';
 import { mockInstance } from '../../integration/shared/utils';
 import {
 	DummyProvider,
@@ -13,56 +13,42 @@ import {
 	FailedProvider,
 	MockProviders,
 } from '../../shared/ExternalSecrets/utils';
-import { AES, enc } from 'crypto-js';
-import { InternalHooks } from '@/InternalHooks';
-
-const connectedDate = '2023-08-01T12:32:29.000Z';
-const encryptionKey = 'testkey';
-let settings: string | null = null;
-const mockProvidersInstance = new MockProviders();
-const settingsRepo = mock<SettingsRepository>({
-	async getEncryptedSecretsProviderSettings() {
-		return settings;
-	},
-	async saveEncryptedSecretsProviderSettings(data) {
-		settings = data;
-	},
-});
-let licenseMock: License;
-let providersMock: ExternalSecretsProviders;
-let manager: ExternalSecretsManager | undefined;
-
-const createMockSettings = (settings: ExternalSecretsSettings): string => {
-	return AES.encrypt(JSON.stringify(settings), encryptionKey).toString();
-};
-
-const decryptSettings = (settings: string) => {
-	return JSON.parse(AES.decrypt(settings ?? '', encryptionKey).toString(enc.Utf8));
-};
 
 describe('External Secrets Manager', () => {
+	const connectedDate = '2023-08-01T12:32:29.000Z';
+	let settings: string | null = null;
+
+	const mockProvidersInstance = new MockProviders();
+	const license = mockInstance(License);
+	const settingsRepo = mockInstance(SettingsRepository);
+	mockInstance(InternalHooks);
+	const cipher = Container.get(Cipher);
+
+	let providersMock: ExternalSecretsProviders;
+	let manager: ExternalSecretsManager;
+
+	const createMockSettings = (settings: ExternalSecretsSettings): string => {
+		return cipher.encrypt(settings);
+	};
+
+	const decryptSettings = (settings: string) => {
+		return JSON.parse(cipher.decrypt(settings));
+	};
+
 	beforeAll(() => {
-		jest
-			.spyOn(UserSettings, 'getEncryptionKey')
-			.mockReturnValue(new Promise((resolve) => resolve(encryptionKey)));
 		providersMock = mockInstance(ExternalSecretsProviders, mockProvidersInstance);
-		licenseMock = mockInstance(License, {
-			isExternalSecretsEnabled() {
-				return true;
-			},
+		settings = createMockSettings({
+			dummy: { connected: true, connectedAt: new Date(connectedDate), settings: {} },
 		});
-		mockInstance(InternalHooks);
 	});
 
 	beforeEach(() => {
 		mockProvidersInstance.setProviders({
 			dummy: DummyProvider,
 		});
-		settings = createMockSettings({
-			dummy: { connected: true, connectedAt: new Date(connectedDate), settings: {} },
-		});
-
-		Container.remove(ExternalSecretsManager);
+		license.isExternalSecretsEnabled.mockReturnValue(true);
+		settingsRepo.getEncryptedSecretsProviderSettings.mockResolvedValue(settings);
+		manager = new ExternalSecretsManager(settingsRepo, license, providersMock, cipher);
 	});
 
 	afterEach(() => {
@@ -71,8 +57,6 @@ describe('External Secrets Manager', () => {
 	});
 
 	test('should get secret', async () => {
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
-
 		await manager.init();
 
 		expect(manager.getSecret('dummy', 'test1')).toBe('value1');
@@ -82,8 +66,6 @@ describe('External Secrets Manager', () => {
 		mockProvidersInstance.setProviders({
 			dummy: ErrorProvider,
 		});
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
-
 		expect(async () => manager!.init()).not.toThrow();
 	});
 
@@ -91,16 +73,12 @@ describe('External Secrets Manager', () => {
 		mockProvidersInstance.setProviders({
 			dummy: ErrorProvider,
 		});
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
 
 		await manager.init();
 		expect(() => manager!.shutdown()).not.toThrow();
-		manager = undefined;
 	});
 
 	test('should save provider settings', async () => {
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
-
 		const settingsSpy = jest.spyOn(settingsRepo, 'saveEncryptedSecretsProviderSettings');
 
 		await manager.init();
@@ -122,8 +100,6 @@ describe('External Secrets Manager', () => {
 
 	test('should call provider update functions on a timer', async () => {
 		jest.useFakeTimers();
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
-
 		await manager.init();
 
 		const updateSpy = jest.spyOn(manager.getProvider('dummy')!, 'update');
@@ -138,15 +114,7 @@ describe('External Secrets Manager', () => {
 	test('should not call provider update functions if the not licensed', async () => {
 		jest.useFakeTimers();
 
-		manager = new ExternalSecretsManager(
-			settingsRepo,
-			mock<License>({
-				isExternalSecretsEnabled() {
-					return false;
-				},
-			}),
-			providersMock,
-		);
+		license.isExternalSecretsEnabled.mockReturnValue(false);
 
 		await manager.init();
 
@@ -165,7 +133,6 @@ describe('External Secrets Manager', () => {
 		mockProvidersInstance.setProviders({
 			dummy: FailedProvider,
 		});
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
 
 		await manager.init();
 
@@ -179,8 +146,6 @@ describe('External Secrets Manager', () => {
 	});
 
 	test('should reinitialize a provider when save provider settings', async () => {
-		manager = new ExternalSecretsManager(settingsRepo, licenseMock, providersMock);
-
 		await manager.init();
 
 		const dummyInitSpy = jest.spyOn(DummyProvider.prototype, 'init');
