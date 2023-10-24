@@ -664,18 +664,6 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						}
 					}
 
-					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
-					let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
-					if (this.workflowData.settings !== undefined) {
-						saveDataErrorExecution =
-							(this.workflowData.settings.saveDataErrorExecution as string) ||
-							saveDataErrorExecution;
-						saveDataSuccessExecution =
-							(this.workflowData.settings.saveDataSuccessExecution as string) ||
-							saveDataSuccessExecution;
-					}
-
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
 
 					if (workflowStatusFinal !== 'success') {
