@@ -1,3 +1,14 @@
+## [1.12.2](https://github.com/n8n-io/n8n/compare/n8n@1.12.1...n8n@1.12.2) (2023-10-24)
+
+
+### Bug Fixes
+
+* **core:** Fix `frontend.settings` external hook execution ([#7496](https://github.com/n8n-io/n8n/issues/7496)) ([e8294b1](https://github.com/n8n-io/n8n/commit/e8294b136a871391f2329187c89c768255301b56))
+* **MQTT Trigger Node:** Fix node causing a start up hang when active ([#7498](https://github.com/n8n-io/n8n/issues/7498)) ([ede3047](https://github.com/n8n-io/n8n/commit/ede3047b2776af036b5963e5e1813c3f8b8443f5))
+* **Redis Node:** Fix adding sets data types ([#7444](https://github.com/n8n-io/n8n/issues/7444)) ([27b5543](https://github.com/n8n-io/n8n/commit/27b5543506b8ef755254e8a461962156918e9be4)), closes [#6339](https://github.com/n8n-io/n8n/issues/6339)
+
+
+
 ## [1.12.1](https://github.com/n8n-io/n8n/compare/n8n@1.12.0...n8n@1.12.1) (2023-10-23)
 
 
