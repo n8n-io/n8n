@@ -9,21 +9,31 @@ import callsites from 'callsites';
 import { basename } from 'path';
 import config from '@/config';
 
+const noOp = () => {};
+const levelNames = ['debug', 'verbose', 'info', 'warn', 'error'] as const;
+
 export class Logger implements ILogger {
 	private logger: winston.Logger;
 
 	constructor() {
 		const level = config.getEnv('logs.level');
 
-		const output = config
-			.getEnv('logs.output')
-			.split(',')
-			.map((output) => output.trim());
-
 		this.logger = winston.createLogger({
 			level,
 			silent: level === 'silent',
 		});
+
+		// Change all methods with higher log-level to no-op
+		for (const levelName of levelNames) {
+			if (this.logger.levels[levelName] > this.logger.levels[level]) {
+				Object.defineProperty(this, levelName, { value: noOp });
+			}
+		}
+
+		const output = config
+			.getEnv('logs.output')
+			.split(',')
+			.map((output) => output.trim());
 
 		if (output.includes('console')) {
 			let format: winston.Logform.Format;

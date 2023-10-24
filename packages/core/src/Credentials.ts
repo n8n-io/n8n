@@ -1,13 +1,11 @@
-import type {
-	CredentialInformation,
-	ICredentialDataDecryptedObject,
-	ICredentialsEncrypted,
-} from 'n8n-workflow';
-import { ICredentials } from 'n8n-workflow';
-
-import { AES, enc } from 'crypto-js';
+import { Container } from 'typedi';
+import type { ICredentialDataDecryptedObject, ICredentialsEncrypted } from 'n8n-workflow';
+import { ICredentials, jsonParse } from 'n8n-workflow';
+import { Cipher } from './Cipher';
 
 export class Credentials extends ICredentials {
+	private readonly cipher = Container.get(Cipher);
+
 	/**
 	 * Returns if the given nodeType has access to data
 	 */
@@ -24,30 +22,14 @@ export class Credentials extends ICredentials {
 	/**
 	 * Sets new credential object
 	 */
-	setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void {
-		this.data = AES.encrypt(JSON.stringify(data), encryptionKey).toString();
-	}
-
-	/**
-	 * Sets new credentials for given key
-	 */
-	setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void {
-		let fullData;
-		try {
-			fullData = this.getData(encryptionKey);
-		} catch (e) {
-			fullData = {};
-		}
-
-		fullData[key] = data;
-
-		return this.setData(fullData, encryptionKey);
+	setData(data: ICredentialDataDecryptedObject): void {
+		this.data = this.cipher.encrypt(data);
 	}
 
 	/**
 	 * Returns the decrypted credential object
 	 */
-	getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject {
+	getData(nodeType?: string): ICredentialDataDecryptedObject {
 		if (nodeType && !this.hasNodeAccess(nodeType)) {
 			throw new Error(
 				`The node of type "${nodeType}" does not have access to credentials "${this.name}" of type "${this.type}".`,
@@ -58,33 +40,15 @@ export class Credentials extends ICredentials {
 			throw new Error('No data is set so nothing can be returned.');
 		}
 
-		const decryptedData = AES.decrypt(this.data, encryptionKey);
+		const decryptedData = this.cipher.decrypt(this.data);
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return JSON.parse(decryptedData.toString(enc.Utf8));
+			return jsonParse(decryptedData);
 		} catch (e) {
 			throw new Error(
 				'Credentials could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
 			);
 		}
-	}
-
-	/**
-	 * Returns the decrypted credentials for given key
-	 */
-	getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation {
-		const fullData = this.getData(encryptionKey, nodeType);
-
-		if (fullData === null) {
-			throw new Error('No data was set.');
-		}
-
-		if (!fullData.hasOwnProperty(key)) {
-			throw new Error(`No data for key "${key}" exists.`);
-		}
-
-		return fullData[key];
 	}
 
 	/**

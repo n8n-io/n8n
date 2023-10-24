@@ -10,6 +10,7 @@
 			<div
 				class="node-view-wrapper"
 				:class="workflowClasses"
+				data-test-id="node-view-wrapper"
 				@touchstart="mouseDown"
 				@touchend="mouseUp"
 				@touchmove="mouseMoveNodeWorkflow"
@@ -222,6 +223,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -344,7 +346,6 @@ import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEnd
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { UPDATE_WEBHOOK_ID_NODE_TYPES } from '@/constants';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2210,6 +2211,7 @@ export default defineComponent({
 			if (lastSelectedNodeEndpointUuid && !isAutoAdd) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
+					lastSelectedEndpoint &&
 					this.checkNodeConnectionAllowed(
 						lastSelectedNode!,
 						newNodeData,
@@ -2381,7 +2383,14 @@ export default defineComponent({
 			);
 
 			if (targetNodeType?.inputs?.length) {
-				for (const input of targetNodeType?.inputs || []) {
+				const workflow = this.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(targetNode.name);
+				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				if (targetNodeType) {
+					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, targetNodeType);
+				}
+
+				for (const input of inputs || []) {
 					if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
 						// No filters defined or wrong connection type
 						continue;
@@ -2885,6 +2894,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+			this.eventsAttached = false;
 		},
 		unbindEndpointEventListeners(bind = true) {
 			if (this.instance) {
@@ -3355,7 +3365,6 @@ export default defineComponent({
 				nodeConnections || [],
 				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
 			);
-
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 					Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(

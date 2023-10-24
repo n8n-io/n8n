@@ -4,6 +4,8 @@ import config from '@/config';
 import { flushPromises } from './Helpers';
 import { PostHogClient } from '@/posthog';
 import { mock } from 'jest-mock-extended';
+import { mockInstance } from '../integration/shared/utils';
+import { InstanceSettings } from 'n8n-core';
 
 jest.unmock('@/telemetry');
 jest.mock('@/license/License.service', () => {
@@ -28,6 +30,7 @@ describe('Telemetry', () => {
 	let telemetry: Telemetry;
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
+	const instanceSettings = mockInstance(InstanceSettings, { instanceId });
 
 	beforeAll(() => {
 		startPulseSpy = jest
@@ -49,11 +52,10 @@ describe('Telemetry', () => {
 	beforeEach(async () => {
 		spyTrack.mockClear();
 
-		const postHog = new PostHogClient();
-		await postHog.init(instanceId);
+		const postHog = new PostHogClient(instanceSettings);
+		await postHog.init();
 
-		telemetry = new Telemetry(postHog, mock());
-		telemetry.setInstanceId(instanceId);
+		telemetry = new Telemetry(postHog, mock(), instanceSettings);
 		(telemetry as any).rudderStack = mockRudderStack;
 	});
 
