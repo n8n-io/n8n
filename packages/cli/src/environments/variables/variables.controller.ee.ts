@@ -14,9 +14,6 @@ import { Logger } from '@/Logger';
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEVariablesController = express.Router();
 
-/**
- * Initialize Logger if needed
- */
 EEVariablesController.use((req, res, next) => {
 	if (!isVariablesEnabled()) {
 		next('router');

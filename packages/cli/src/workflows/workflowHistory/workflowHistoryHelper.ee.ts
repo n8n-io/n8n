@@ -1,6 +1,6 @@
 import { License } from '@/License';
 import config from '@/config';
-import { Container } from 'typedi';
+import Container from 'typedi';
 
 export function isWorkflowHistoryLicensed() {
 	const license = Container.get(License);

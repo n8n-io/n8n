@@ -9,7 +9,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
 import { TagService } from '@/services/tag.service';
-import { Container } from 'typedi';
+import Container from 'typedi';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];

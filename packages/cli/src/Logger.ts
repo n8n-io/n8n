@@ -4,12 +4,11 @@ import callsites from 'callsites';
 import { inspect } from 'util';
 import { basename } from 'path';
 
-import { LoggerProxy, type IDataObject } from 'n8n-workflow';
+import { LoggerProxy, type IDataObject, LOG_LEVELS } from 'n8n-workflow';
 
 import config from '@/config';
 
 const noOp = () => {};
-const levelNames = ['info', 'warn', 'error'] as const;
 
 @Service()
 export class Logger {
@@ -24,7 +23,7 @@ export class Logger {
 		});
 
 		// Change all methods with higher log-level to no-op
-		for (const levelName of levelNames) {
+		for (const levelName of LOG_LEVELS) {
 			if (this.logger.levels[levelName] > this.logger.levels[level]) {
 				Object.defineProperty(this, levelName, { value: noOp });
 			}
@@ -80,7 +79,7 @@ export class Logger {
 		LoggerProxy.init(this);
 	}
 
-	private log(level: (typeof levelNames)[number], message: string, meta: object = {}): void {
+	private log(level: (typeof LOG_LEVELS)[number], message: string, meta: object = {}): void {
 		const callsite = callsites();
 		// We are using the third array element as the structure is as follows:
 		// [0]: this file
@@ -101,9 +100,6 @@ export class Logger {
 	}
 
 	// Convenience methods below
-	info(message: string, meta: object = {}): void {
-		this.log('info', message, meta);
-	}
 
 	error(message: string, meta: object = {}): void {
 		this.log('error', message, meta);
@@ -113,13 +109,15 @@ export class Logger {
 		this.log('warn', message, meta);
 	}
 
-	/** @deprecated: use `debug` directly from `n8n-workflow */
-	debug(message: string, meta: object = {}): void {
-		LoggerProxy.debug(message, meta);
+	info(message: string, meta: object = {}): void {
+		this.log('info', message, meta);
 	}
 
-	/** @deprecated: use `debug` directly from `n8n-workflow */
+	debug(message: string, meta: object = {}): void {
+		this.log('debug', message, meta);
+	}
+
 	verbose(message: string, meta: object = {}): void {
-		LoggerProxy.debug(message, meta);
+		this.log('verbose', message, meta);
 	}
 }

@@ -15,8 +15,7 @@ export function messageToRedisServiceCommandObject(messageString: string) {
 	try {
 		message = jsonParse<RedisServiceCommandObject>(messageString);
 	} catch {
-		const logger = Container.get(Logger);
-		logger.debug(
+		Container.get(Logger).debug(
 			`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
 		);
 		return;

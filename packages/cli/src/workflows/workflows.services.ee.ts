@@ -15,7 +15,7 @@ import type {
 import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeOperationError } from 'n8n-workflow';
 import { RoleService } from '@/services/role.service';
-import { Container } from 'typedi';
+import Container from 'typedi';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 export class EEWorkflowsService extends WorkflowsService {

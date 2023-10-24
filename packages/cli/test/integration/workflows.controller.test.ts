@@ -9,7 +9,7 @@ import type { User } from '@/databases/entities/User';
 import { randomCredentialPayload } from './shared/random';
 import { v4 as uuid } from 'uuid';
 import { RoleService } from '@/services/role.service';
-import { Container } from 'typedi';
+import Container from 'typedi';
 import type { ListQuery } from '@/requests';
 import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';

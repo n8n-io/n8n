@@ -7,7 +7,7 @@ import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
 import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
 import { TOTPService } from '@/Mfa/totp.service';
-import { Container } from 'typedi';
+import Container from 'typedi';
 import { JwtService } from '@/services/jwt.service';
 
 jest.mock('@/telemetry');

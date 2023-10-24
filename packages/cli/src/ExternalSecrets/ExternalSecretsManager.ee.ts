@@ -6,7 +6,7 @@ import type {
 } from '@/Interfaces';
 
 import { Cipher } from 'n8n-core';
-import { Container, Service } from 'typedi';
+import Container, { Service } from 'typedi';
 
 import { Logger } from '@/Logger';
 

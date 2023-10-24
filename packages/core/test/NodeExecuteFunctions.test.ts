@@ -20,7 +20,7 @@ import { BinaryDataService } from '@/BinaryData/BinaryData.service';
 import nock from 'nock';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { Container } from 'typedi';
+import Container from 'typedi';
 
 const temporaryDir = mkdtempSync(join(tmpdir(), 'n8n'));
 

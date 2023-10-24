@@ -1,5 +1,5 @@
 import { jsonParse } from 'n8n-workflow';
-import { Container } from 'typedi';
+import Container from 'typedi';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
 import * as os from 'os';

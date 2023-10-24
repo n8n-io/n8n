@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import Container from 'typedi';
 import { Logger } from '@/Logger';
 import config from '@/config';
 import { RedisService } from '@/services/redis.service';

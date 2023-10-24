@@ -506,8 +506,7 @@ export class WorkflowsService {
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
-					const logger = Container.get(Logger);
-					logger.error(
+					Container.get(Logger).error(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 						{ workflowId: workflow.id },

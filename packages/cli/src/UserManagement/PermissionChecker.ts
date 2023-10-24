@@ -13,7 +13,7 @@ import { isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { Container } from 'typedi';
+import Container from 'typedi';
 import { RoleService } from '@/services/role.service';
 
 export class PermissionChecker {

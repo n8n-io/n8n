@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import Container from 'typedi';
 import config from '@/config';
 import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';

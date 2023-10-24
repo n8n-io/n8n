@@ -1,5 +1,5 @@
 import { License } from '@/License';
-import { Container } from 'typedi';
+import Container from 'typedi';
 
 export function isExternalSecretsEnabled() {
 	const license = Container.get(License);

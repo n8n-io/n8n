@@ -1,4 +1,4 @@
-import { Container } from 'typedi';
+import Container from 'typedi';
 import { CacheService } from '@/services/cache.service';
 import type { MemoryCache } from 'cache-manager';
 import type { RedisCache } from 'cache-manager-ioredis-yet';

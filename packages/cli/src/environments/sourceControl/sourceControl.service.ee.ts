@@ -1,4 +1,4 @@
-import { Container, Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import path from 'path';
 import {
 	getTagsPath,
