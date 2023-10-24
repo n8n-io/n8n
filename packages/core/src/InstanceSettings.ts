@@ -63,10 +63,11 @@ export class InstanceSettings {
 				errorMessage: `Error parsing n8n-config file "${settingsFile}". It does not seem to be valid JSON.`,
 			});
 		} else {
+			// Ensure that the `.n8n` folder exists
+			mkdirSync(this.n8nFolder, { recursive: true });
 			// If file doesn't exist, create new settings
 			const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
 			settings = { encryptionKey };
-			mkdirSync(path.dirname(settingsFile));
 			this.save(settings);
 			// console.info(`UserSettings were generated and saved to: ${settingsFile}`);
 		}
