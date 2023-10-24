@@ -11,7 +11,7 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 import { writeFile as fsWriteFile, rm as fsRm } from 'fs/promises';
 import { rmSync } from 'fs';
-import { Credentials, UserSettings } from 'n8n-core';
+import { Credentials, InstanceSettings } from 'n8n-core';
 import type { ExportableWorkflow } from './types/exportableWorkflow';
 import type { ExportableCredential } from './types/exportableCredential';
 import type { ExportResult } from './types/exportResult';
@@ -39,9 +39,9 @@ export class SourceControlExportService {
 	constructor(
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
+		instanceSettings: InstanceSettings,
 	) {
-		const userFolder = UserSettings.getUserN8nFolderPath();
-		this.gitFolder = path.join(userFolder, SOURCE_CONTROL_GIT_FOLDER);
+		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
 		this.credentialExportFolder = path.join(
 			this.gitFolder,
@@ -248,12 +248,11 @@ export class SourceControlExportService {
 					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
 				);
 			}
-			const encryptionKey = await UserSettings.getEncryptionKey();
 			await Promise.all(
 				credentialsToBeExported.map(async (sharedCredential) => {
 					const { name, type, nodesAccess, data, id } = sharedCredential.credentials;
 					const credentialObject = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credentialObject.getData(encryptionKey);
+					const plainData = credentialObject.getData();
 					const sanitizedData = this.replaceCredentialData(plainData);
 					const fileName = this.getCredentialsPath(sharedCredential.credentials.id);
 					const sanitizedCredential: ExportableCredential = {

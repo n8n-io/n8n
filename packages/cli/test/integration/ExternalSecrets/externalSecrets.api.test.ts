@@ -3,10 +3,9 @@ import { License } from '@/License';
 import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils/';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
-import { UserSettings } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import { SettingsRepository } from '@/databases/repositories/settings.repository';
 import Container from 'typedi';
-import { AES, enc } from 'crypto-js';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
 import {
 	DummyProvider,
@@ -17,7 +16,7 @@ import {
 import config from '@/config';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import type { IDataObject } from 'n8n-workflow';
+import { jsonParse, type IDataObject } from 'n8n-workflow';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -28,29 +27,24 @@ const licenseLike = utils.mockInstance(License, {
 });
 
 const mockProvidersInstance = new MockProviders();
-let providersMock: ExternalSecretsProviders = utils.mockInstance(
-	ExternalSecretsProviders,
-	mockProvidersInstance,
-);
+utils.mockInstance(ExternalSecretsProviders, mockProvidersInstance);
 
 const testServer = utils.setupTestServer({ endpointGroups: ['externalSecrets'] });
 
 const connectedDate = '2023-08-01T12:32:29.000Z';
 
 async function setExternalSecretsSettings(settings: ExternalSecretsSettings) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
 	return Container.get(SettingsRepository).saveEncryptedSecretsProviderSettings(
-		AES.encrypt(JSON.stringify(settings), encryptionKey).toString(),
+		Container.get(Cipher).encrypt(settings),
 	);
 }
 
 async function getExternalSecretsSettings(): Promise<ExternalSecretsSettings | null> {
-	const encryptionKey = await UserSettings.getEncryptionKey();
 	const encSettings = await Container.get(SettingsRepository).getEncryptedSecretsProviderSettings();
 	if (encSettings === null) {
 		return null;
 	}
-	return JSON.parse(AES.decrypt(encSettings, encryptionKey).toString(enc.Utf8));
+	return jsonParse(Container.get(Cipher).decrypt(encSettings));
 }
 
 const resetManager = async () => {
@@ -61,6 +55,7 @@ const resetManager = async () => {
 			Container.get(SettingsRepository),
 			licenseLike,
 			mockProvidersInstance,
+			Container.get(Cipher),
 		),
 	);
 
@@ -100,8 +95,6 @@ const getDummyProviderData = ({
 };
 
 beforeAll(async () => {
-	await utils.initEncryptionKey();
-
 	const owner = await testDb.createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await testDb.createUser();

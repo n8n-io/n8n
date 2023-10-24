@@ -10,6 +10,7 @@ import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
 import Container, { Service } from 'typedi';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
+import { InstanceSettings } from 'n8n-core';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -30,8 +31,6 @@ interface IExecutionsBuffer {
 
 @Service()
 export class Telemetry {
-	private instanceId: string;
-
 	private rudderStack?: RudderStack;
 
 	private pulseIntervalReference: NodeJS.Timeout;
@@ -41,11 +40,8 @@ export class Telemetry {
 	constructor(
 		private postHog: PostHogClient,
 		private license: License,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
-
-	setInstanceId(instanceId: string) {
-		this.instanceId = instanceId;
-	}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
@@ -172,15 +168,13 @@ export class Telemetry {
 	async identify(traits?: {
 		[key: string]: string | number | boolean | object | undefined | null;
 	}): Promise<void> {
+		const { instanceId } = this.instanceSettings;
 		return new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				this.rudderStack.identify(
 					{
-						userId: this.instanceId,
-						traits: {
-							...traits,
-							instanceId: this.instanceId,
-						},
+						userId: instanceId,
+						traits: { ...traits, instanceId },
 					},
 					resolve,
 				);
@@ -195,17 +189,18 @@ export class Telemetry {
 		properties: ITelemetryTrackProperties = {},
 		{ withPostHog } = { withPostHog: false }, // whether to additionally track with PostHog
 	): Promise<void> {
+		const { instanceId } = this.instanceSettings;
 		return new Promise<void>((resolve) => {
 			if (this.rudderStack) {
 				const { user_id } = properties;
 				const updatedProperties: ITelemetryTrackProperties = {
 					...properties,
-					instance_id: this.instanceId,
+					instance_id: instanceId,
 					version_cli: N8N_VERSION,
 				};
 
 				const payload = {
-					userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
+					userId: `${instanceId}${user_id ? `#${user_id}` : ''}`,
 					event: eventName,
 					properties: updatedProperties,
 				};

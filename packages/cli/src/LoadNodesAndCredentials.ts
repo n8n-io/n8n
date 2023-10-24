@@ -6,7 +6,7 @@ import fsPromises from 'fs/promises';
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
-	UserSettings,
+	InstanceSettings,
 	CustomDirectoryLoader,
 	PackageDirectoryLoader,
 	LazyPackageDirectoryLoader,
@@ -47,9 +47,9 @@ export class LoadNodesAndCredentials {
 
 	includeNodes = config.getEnv('nodes.include');
 
-	private downloadFolder: string;
-
 	private postProcessors: Array<() => Promise<void>> = [];
+
+	constructor(private readonly instanceSettings: InstanceSettings) {}
 
 	async init() {
 		if (inTest) throw new Error('Not available in tests');
@@ -67,8 +67,6 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
 		}
 
-		this.downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
-
 		// Load nodes from `n8n-nodes-base`
 		const basePathsToScan = [
 			// In case "n8n" package is in same node_modules folder.
@@ -84,7 +82,9 @@ export class LoadNodesAndCredentials {
 
 		// Load nodes from any other `n8n-nodes-*` packages in the download directory
 		// This includes the community nodes
-		await this.loadNodesFromNodeModules(path.join(this.downloadFolder, 'node_modules'));
+		await this.loadNodesFromNodeModules(
+			path.join(this.instanceSettings.nodesDownloadDir, 'node_modules'),
+		);
 
 		await this.loadNodesFromCustomDirectories();
 		await this.postProcessLoaders();
@@ -155,7 +155,7 @@ export class LoadNodesAndCredentials {
 	}
 
 	getCustomDirectories(): string[] {
-		const customDirectories = [UserSettings.getUserN8nFolderCustomExtensionPath()];
+		const customDirectories = [this.instanceSettings.customExtensionDir];
 
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
@@ -172,7 +172,11 @@ export class LoadNodesAndCredentials {
 	}
 
 	async loadPackage(packageName: string) {
-		const finalNodeUnpackedPath = path.join(this.downloadFolder, 'node_modules', packageName);
+		const finalNodeUnpackedPath = path.join(
+			this.instanceSettings.nodesDownloadDir,
+			'node_modules',
+			packageName,
+		);
 		return this.runDirectoryLoader(PackageDirectoryLoader, finalNodeUnpackedPath);
 	}
 

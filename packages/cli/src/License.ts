@@ -12,10 +12,11 @@ import {
 	UNLIMITED_LICENSE_QUOTA,
 } from './constants';
 import Container, { Service } from 'typedi';
+import { WorkflowRepository } from '@/databases/repositories';
 import type { BooleanLicenseFeature, N8nInstanceType, NumericLicenseFeature } from './Interfaces';
 import type { RedisServicePubSubPublisher } from './services/redis/RedisServicePubSubPublisher';
 import { RedisService } from './services/redis.service';
-import { ObjectStoreService } from 'n8n-core';
+import { InstanceSettings, ObjectStoreService } from 'n8n-core';
 
 type FeatureReturnType = Partial<
 	{
@@ -29,20 +30,17 @@ export class License {
 
 	private manager: LicenseManager | undefined;
 
-	instanceId: string | undefined;
-
 	private redisPublisher: RedisServicePubSubPublisher;
 
-	constructor() {
+	constructor(private readonly instanceSettings: InstanceSettings) {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string, instanceType: N8nInstanceType = 'main') {
+	async init(instanceType: N8nInstanceType = 'main') {
 		if (this.manager) {
 			return;
 		}
 
-		this.instanceId = instanceId;
 		const isMainInstance = instanceType === 'main';
 		const server = config.getEnv('license.serverUrl');
 		const autoRenewEnabled = isMainInstance && config.getEnv('license.autoRenewEnabled');
@@ -54,6 +52,9 @@ export class License {
 		const onFeatureChange = isMainInstance
 			? async (features: TFeatures) => this.onFeatureChange(features)
 			: async () => {};
+		const collectUsageMetrics = isMainInstance
+			? async () => this.collectUsageMetrics()
+			: async () => [];
 
 		try {
 			this.manager = new LicenseManager({
@@ -67,7 +68,8 @@ export class License {
 				logger: this.logger,
 				loadCertStr: async () => this.loadCertStr(),
 				saveCertStr,
-				deviceFingerprint: () => instanceId,
+				deviceFingerprint: () => this.instanceSettings.instanceId,
+				collectUsageMetrics,
 				onFeatureChange,
 			});
 
@@ -77,6 +79,15 @@ export class License {
 				this.logger.error('Could not initialize license manager sdk', e);
 			}
 		}
+	}
+
+	async collectUsageMetrics() {
+		return [
+			{
+				name: 'activeWorkflows',
+				value: await Container.get(WorkflowRepository).count({ where: { active: true } }),
+			},
+		];
 	}
 
 	async loadCertStr(): Promise<TLicenseBlock> {

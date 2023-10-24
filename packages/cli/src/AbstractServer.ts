@@ -45,8 +45,6 @@ export abstract class AbstractServer {
 
 	protected endpointWebhookWaiting: string;
 
-	protected instanceId = '';
-
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
