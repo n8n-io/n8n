@@ -30,7 +30,7 @@
     },
     {
       "parameters": {
-        "fileSelector": "/Users/jon/Code/javascript/n8n-io/n8n/packages/nodes-base/nodes/SpreadsheetFile/test/includeempty.csv"
+        "fileSelector": "includeempty.csv"
       },
       "id": "5056b8c4-fb6e-4ca1-9bc1-33f5db4027ad",
       "name": "Read Binary File",
