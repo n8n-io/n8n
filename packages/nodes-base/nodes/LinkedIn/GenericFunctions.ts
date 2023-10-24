@@ -31,6 +31,8 @@ export async function linkedInApiRequest(
 			? 'linkedInOAuth2Api'
 			: 'linkedInCommunityManagementOAuth2Api';
 
+	const baseUrl = 'https://api.linkedin.com';
+
 	let options: OptionsWithUrl = {
 		headers: {
 			Accept: 'application/json',
@@ -39,9 +41,10 @@ export async function linkedInApiRequest(
 		},
 		method,
 		body,
-		url: binary ? endpoint : `https://api.linkedin.com/rest${endpoint}`,
+		url: binary ? endpoint : `${baseUrl}${endpoint.includes('v2') ? '' : '/rest'}${endpoint}`,
 		json: true,
 	};
+
 	options = Object.assign({}, options, {
 		resolveWithFullResponse: true,
 	});
