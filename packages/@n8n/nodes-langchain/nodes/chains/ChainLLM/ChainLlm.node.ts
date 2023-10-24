@@ -194,12 +194,12 @@ export class ChainLlm implements INodeType {
 								type: 'options',
 								options: [
 									{
-										name: 'System',
-										value: SystemMessagePromptTemplate.lc_name(),
-									},
-									{
 										name: 'AI',
 										value: AIMessagePromptTemplate.lc_name(),
+									},
+									{
+										name: 'System',
+										value: SystemMessagePromptTemplate.lc_name(),
 									},
 									{
 										name: 'User',
