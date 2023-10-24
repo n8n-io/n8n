@@ -1,10 +1,11 @@
 import {
+	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type IDataObject,
 	type SupplyData,
-	NodeConnectionType,
+	type INodeExecutionData,
 } from 'n8n-workflow';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { createClient } from '@supabase/supabase-js';
@@ -41,17 +42,43 @@ export class VectorStoreSupabaseLoad implements INodeType {
 				required: true,
 			},
 		],
-		inputs: [
-			{
-				displayName: 'Embedding',
-				maxConnections: 1,
-				type: NodeConnectionType.AiEmbedding,
-				required: true,
-			},
-		],
-		outputs: [NodeConnectionType.AiVectorStore],
-		outputNames: ['Vector Store'],
+		inputs: `={{
+			((parameters) => {
+				const mode = parameters.mode;
+				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
+
+				if (mode === 'executable') {
+					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
+				}
+				return inputs
+			})($parameter)
+		}}`,
+		outputs: `={{
+			((parameters) => {
+				const mode = parameters.mode;
+				if (mode === 'config') {
+					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
+				}
+				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
+			})($parameter)
+		}}`,
 		properties: [
+			{
+				displayName: 'Mode',
+				name: 'mode',
+				type: 'options',
+				default: 'config',
+				options: [
+					{
+						name: 'Config Node',
+						value: 'config',
+					},
+					{
+						name: 'Executable Node',
+						value: 'executable',
+					},
+				],
+			},
 			{
 				displayName: 'Table Name',
 				name: 'tableName',
@@ -67,6 +94,31 @@ export class VectorStoreSupabaseLoad implements INodeType {
 				default: 'match_documents',
 				required: true,
 				description: 'Name of the query to use for matching documents',
+			},
+			{
+				displayName: 'Query',
+				name: 'query',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'Query to search for documents',
+				displayOptions: {
+					show: {
+						mode: ['executable'],
+					},
+				},
+			},
+			{
+				displayName: 'Top K',
+				name: 'topK',
+				type: 'number',
+				default: 4,
+				description: 'Number of top results to fetch from vector store',
+				displayOptions: {
+					show: {
+						mode: ['executable'],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -89,6 +141,55 @@ export class VectorStoreSupabaseLoad implements INodeType {
 			},
 		],
 	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		this.logger.verbose('Executing data for Supabase Insert Vector Store');
+
+		const items = this.getInputData(0);
+		const tableName = this.getNodeParameter('tableName', 0) as string;
+		const queryName = this.getNodeParameter('queryName', 0) as string;
+		const options = this.getNodeParameter('options', 0, {}) as {
+			filter?: IDataObject;
+		};
+		const credentials = await this.getCredentials('supabaseApi');
+
+		const embeddings = (await this.getInputConnectionData(
+			NodeConnectionType.AiEmbedding,
+			0,
+		)) as Embeddings;
+		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, {
+			client,
+			tableName,
+			queryName,
+			filter: options.filter,
+		});
+
+		const resultData = [];
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			// const item = items[itemIndex];
+			const query = this.getNodeParameter('query', itemIndex) as string;
+			const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
+			const embeddedQuery = await embeddings.embedQuery(query);
+			const docs = await vectorStore.similaritySearchVectorWithScore(
+				embeddedQuery,
+				topK,
+				options.filter,
+			);
+
+			const serializedDocs = docs.map(([doc, score]) => {
+				const document = {
+					metadata: doc.metadata,
+					pageContent: doc.pageContent,
+				};
+
+				return { json: { document, score } };
+			});
+			resultData.push(...serializedDocs);
+		}
+
+		return this.prepareOutputData(resultData);
+	}
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
 		this.logger.verbose('Supply Supabase Load Vector Store');
