@@ -6,7 +6,6 @@ import { jsonParse } from 'n8n-workflow';
 
 interface ReadOnlySettings {
 	encryptionKey: string;
-	instanceId: string;
 }
 
 interface WritableSettings {
@@ -32,12 +31,10 @@ export class InstanceSettings {
 
 	private settings = this.loadOrCreate();
 
+	readonly instanceId = this.generateInstanceId();
+
 	get encryptionKey() {
 		return this.settings.encryptionKey;
-	}
-
-	get instanceId() {
-		return this.settings.instanceId;
 	}
 
 	get tunnelSubdomain() {
@@ -58,25 +55,31 @@ export class InstanceSettings {
 	}
 
 	private loadOrCreate(): Settings {
+		let settings: Settings;
 		const { settingsFile } = this;
 		if (existsSync(settingsFile)) {
 			const content = readFileSync(settingsFile, 'utf8');
-			return jsonParse(content, {
+			settings = jsonParse(content, {
 				errorMessage: `Error parsing n8n-config file "${settingsFile}". It does not seem to be valid JSON.`,
 			});
+		} else {
+			// If file doesn't exist, create new settings
+			const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
+			settings = { encryptionKey };
+			mkdirSync(path.dirname(settingsFile));
+			this.save(settings);
+			// console.info(`UserSettings were generated and saved to: ${settingsFile}`);
 		}
 
-		// If file doesn't exist, create new settings
-		const encryptionKey = process.env.N8N_ENCRYPTION_KEY ?? randomBytes(24).toString('base64');
-		const instanceId = createHash('sha256')
+		const { encryptionKey, tunnelSubdomain } = settings;
+		return { encryptionKey, tunnelSubdomain };
+	}
+
+	private generateInstanceId() {
+		const { encryptionKey } = this;
+		return createHash('sha256')
 			.update(encryptionKey.slice(Math.round(encryptionKey.length / 2)))
 			.digest('hex');
-
-		const settings = { encryptionKey, instanceId };
-		mkdirSync(path.dirname(settingsFile));
-		this.save(settings);
-		console.log(`UserSettings were generated and saved to: ${settingsFile}`);
-		return settings;
 	}
 
 	private save(settings: Settings) {
