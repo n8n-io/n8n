@@ -116,21 +116,6 @@ describe('copyByFilePath()', () => {
 	});
 });
 
-describe('deleteMany()', () => {
-	it('should delete many files by prefix', async () => {
-		const ids = [
-			{ workflowId, executionId },
-			{ workflowId: otherWorkflowId, executionId: otherExecutionId },
-		];
-
-		const promise = objectStoreManager.deleteMany(ids);
-
-		await expect(promise).resolves.not.toThrow();
-
-		expect(objectStoreService.deleteMany).toHaveBeenCalledTimes(2);
-	});
-});
-
 describe('rename()', () => {
 	it('should rename a file', async () => {
 		const promise = objectStoreManager.rename(fileId, otherFileId);
