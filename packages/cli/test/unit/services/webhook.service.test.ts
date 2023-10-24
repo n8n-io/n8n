@@ -1,9 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import { WebhookRepository } from '@db/repositories/webhook.repository';
-import { CacheService } from '@/services/cache.service';
 import { WebhookService } from '@/services/webhook.service';
 import { WebhookEntity } from '@db/entities/WebhookEntity';
+import { NodeTypes } from '@/NodeTypes';
 import { mockInstance } from '../../shared/mocking';
 
 const createWebhook = (method: string, path: string, webhookId?: string, pathSegments?: number) =>
@@ -15,9 +15,9 @@ const createWebhook = (method: string, path: string, webhookId?: string, pathSeg
 	}) as WebhookEntity;
 
 describe('WebhookService', () => {
+	const nodeTypes = mockInstance(NodeTypes);
 	const webhookRepository = mockInstance(WebhookRepository);
-	const cacheService = mockInstance(CacheService);
-	const webhookService = new WebhookService(webhookRepository, cacheService);
+	const webhookService = new WebhookService(webhookRepository, nodeTypes);
 
 	beforeEach(() => {
 		config.load(config.default);
@@ -35,7 +35,7 @@ describe('WebhookService', () => {
 
 				webhookRepository.findOneBy.mockResolvedValue(mockWebhook);
 
-				const returnedWebhook = await webhookService.findWebhook(method, path);
+				const returnedWebhook = webhookService.findWebhook(method, path);
 
 				expect(returnedWebhook).toBe(mockWebhook);
 			});
@@ -44,7 +44,7 @@ describe('WebhookService', () => {
 				webhookRepository.findOneBy.mockResolvedValue(null); // static
 				webhookRepository.findBy.mockResolvedValue([]);
 
-				const returnValue = await webhookService.findWebhook('GET', 'user/profile');
+				const returnValue = webhookService.findWebhook('GET', 'user/profile');
 
 				expect(returnValue).toBeNull();
 			});
@@ -60,7 +60,7 @@ describe('WebhookService', () => {
 				webhookRepository.findOneBy.mockResolvedValue(null); // static
 				webhookRepository.findBy.mockResolvedValue([mockWebhook]); // dynamic
 
-				const returnedWebhook = await webhookService.findWebhook(
+				const returnedWebhook = webhookService.findWebhook(
 					method,
 					[webhookId, 'user/123/posts'].join('/'),
 				);
@@ -83,10 +83,10 @@ describe('WebhookService', () => {
 				webhookRepository.findBy.mockResolvedValue([mockWebhook1, mockWebhook2]); // dynamic
 
 				const fullPath1 = [webhookId1, 'user/123/posts'].join('/');
-				const returnedWebhook1 = await webhookService.findWebhook(method1, fullPath1);
+				const returnedWebhook1 = webhookService.findWebhook(method1, fullPath1);
 
 				const fullPath2 = [webhookId1, 'user/123/posts/456/comments'].join('/');
-				const returnedWebhook2 = await webhookService.findWebhook(method2, fullPath2);
+				const returnedWebhook2 = webhookService.findWebhook(method2, fullPath2);
 
 				expect(returnedWebhook1).toBe(mockWebhook1);
 				expect(returnedWebhook2).toBe(mockWebhook2);
@@ -107,7 +107,7 @@ describe('WebhookService', () => {
 				webhookRepository.findBy.mockResolvedValue([mockWebhook1, mockWebhook2]); // dynamic
 
 				const fullPath = [webhookId1, 'user/123/posts/456'].join('/');
-				const returnedWebhook = await webhookService.findWebhook(method1, fullPath);
+				const returnedWebhook = webhookService.findWebhook(method1, fullPath);
 
 				expect(returnedWebhook).toBe(mockWebhook1);
 			});
@@ -118,7 +118,7 @@ describe('WebhookService', () => {
 				webhookRepository.findOneBy.mockResolvedValue(null); // static
 				webhookRepository.findBy.mockResolvedValue([]); // dynamic
 
-				const returnValue = await webhookService.findWebhook('GET', fullPath);
+				const returnValue = webhookService.findWebhook('GET', fullPath);
 
 				expect(returnValue).toBeNull();
 			});
@@ -136,7 +136,7 @@ describe('WebhookService', () => {
 				createWebhook('PATCH', path),
 			]);
 
-			const returnedMethods = await webhookService.getWebhookMethods(path);
+			const returnedMethods = webhookService.getWebhookMethods(path);
 
 			expect(returnedMethods).toEqual(['GET', 'POST', 'PUT', 'PATCH']);
 		});
@@ -144,7 +144,7 @@ describe('WebhookService', () => {
 		test('should return empty array if no webhooks found', async () => {
 			webhookRepository.find.mockResolvedValue([]);
 
-			const returnedMethods = await webhookService.getWebhookMethods('user/profile');
+			const returnedMethods = webhookService.getWebhookMethods('user/profile');
 
 			expect(returnedMethods).toEqual([]);
 		});

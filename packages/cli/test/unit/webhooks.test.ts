@@ -44,7 +44,7 @@ describe('WebhookServer', () => {
 			describe(`for ${key}`, () => {
 				it('should handle preflight requests', async () => {
 					const pathPrefix = config.getEnv(`endpoints.${key}`);
-					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
+					manager.getWebhookMethods.mockReturnValueOnce(['GET']);
 
 					const response = await agent
 						.options(`/${pathPrefix}/abcd`)
@@ -58,7 +58,7 @@ describe('WebhookServer', () => {
 
 				it('should handle regular requests', async () => {
 					const pathPrefix = config.getEnv(`endpoints.${key}`);
-					manager.getWebhookMethods.mockResolvedValueOnce(['GET']);
+					manager.getWebhookMethods.mockReturnValueOnce(['GET']);
 					manager.executeWebhook.mockResolvedValueOnce(
 						mockResponse({ test: true }, { key: 'value ' }),
 					);

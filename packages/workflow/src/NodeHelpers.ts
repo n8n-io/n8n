@@ -41,6 +41,8 @@ import type {
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
+	WebhookResponseData,
+	WebhookResponseMode,
 } from './Interfaces';
 import {
 	isFilterValue,
@@ -935,19 +937,21 @@ export function getNodeWebhooks(
 		const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.isFullPath,
-			'internal',
+			mode,
 			{},
 			undefined,
 			false,
 		) as boolean;
+
 		const restartWebhook: boolean = workflow.expression.getSimpleParameterValue(
 			node,
 			webhookDescription.restartWebhook,
-			'internal',
+			mode,
 			{},
 			undefined,
 			false,
 		) as boolean;
+
 		const path = getNodeWebhookPath(workflowId, node, nodeWebhookPath, isFullPath, restartWebhook);
 
 		const httpMethod = workflow.expression.getSimpleParameterValue(
@@ -967,6 +971,53 @@ export function getNodeWebhooks(
 			continue;
 		}
 
+		const responseMode = workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription.responseMode,
+			mode,
+			{},
+			undefined,
+			'onReceived',
+		) as WebhookResponseMode;
+
+		if (!['onReceived', 'lastNode', 'responseNode'].includes(responseMode)) {
+			// If the mode is not known we error. Is probably best like that instead of using
+			// the default that people know as early as possible (probably already testing phase)
+			// that something does not resolve properly.
+			// TODO: Use a proper logger
+			console.error(
+				`The response mode '${responseMode}' for webhook in in workflow '${workflowId}' is not valid!`,
+			);
+			continue;
+		}
+
+		const responseCode = workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription.responseCode,
+			mode,
+			{},
+			undefined,
+			200,
+		) as number;
+
+		const responseData = workflow.expression.getSimpleParameterValue(
+			node,
+			webhookDescription.responseData,
+			mode,
+			{},
+			undefined,
+			'firstEntryJson',
+		) as WebhookResponseData;
+
+		const binaryData = workflow.expression.getSimpleParameterValue(
+			node,
+			'={{$parameter["options"]["binaryData"]}}',
+			mode,
+			{},
+			undefined,
+			false,
+		) as boolean;
+
 		let webhookId: string | undefined;
 		if ((path.startsWith(':') || path.includes('/:')) && node.webhookId) {
 			webhookId = node.webhookId;
@@ -980,6 +1031,10 @@ export function getNodeWebhooks(
 			workflowId,
 			workflowExecuteAdditionalData: additionalData,
 			webhookId,
+			responseMode,
+			responseCode,
+			responseData,
+			binaryData,
 		});
 	}
 

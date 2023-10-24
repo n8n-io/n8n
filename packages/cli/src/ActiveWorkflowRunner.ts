@@ -21,11 +21,9 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	INodeType,
-	IWebhookData,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import {
-	NodeHelpers,
 	Workflow,
 	WorkflowActivationError,
 	ErrorReporterProxy as ErrorReporter,
@@ -105,7 +103,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
-		await this.webhookService.populateCache();
 	}
 
 	async getAllWorkflowActivationErrors() {
@@ -149,7 +146,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		// Reset request parameters
 		request.params = {} as WebhookRequest['params'];
 
-		const webhook = await this.findWebhook(path, httpMethod);
+		const webhook = this.findWebhook(path, httpMethod);
 
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
@@ -166,50 +163,21 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 
 		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
+			where: { id: webhook.workflow.id },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 
 		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
-		}
-
-		const workflow = new Workflow({
-			id: webhook.workflowId,
-			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
-			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
-		});
-
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			workflowData.shared[0].user.id,
-		);
-
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflow.getNode(webhook.node) as INode,
-			additionalData,
-		).find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
-
-		// Get the node which has the webhook defined to know where to start from and to
-		// get additional data
-		const workflowStartNode = workflow.getNode(webhookData.node);
-
-		if (workflowStartNode === null) {
-			throw new NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError(`Could not find workflow with id "${webhook.workflow.id}"`);
 		}
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
 			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
+				webhook.workflow,
+				webhook.webhookData,
 				workflowData,
-				workflowStartNode,
+				webhook.node,
 				executionMode,
 				undefined,
 				undefined,
@@ -226,15 +194,15 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 	}
 
-	async getWebhookMethods(path: string) {
+	getWebhookMethods(path: string) {
 		return this.webhookService.getWebhookMethods(path);
 	}
 
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
-		const webhook = await this.findWebhook(path, httpMethod);
+		const webhook = this.findWebhook(path, httpMethod);
 
 		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
+			where: { id: webhook.workflow.id },
 			select: ['nodes'],
 		});
 
@@ -248,14 +216,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		return webhookNode?.parameters?.options as WebhookAccessControlOptions;
 	}
 
-	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {
+	private findWebhook(path: string, httpMethod: IHttpRequestMethods) {
 		// Remove trailing slash
 		if (path.endsWith('/')) {
 			path = path.slice(0, -1);
 		}
 
-		const webhook = await this.webhookService.findWebhook(httpMethod, path);
-		if (webhook === null) {
+		const webhook = this.webhookService.findWebhook(httpMethod, path);
+		if (!webhook) {
 			throw new NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod),
 				WEBHOOK_PROD_UNREGISTERED_HINT,
@@ -279,16 +247,15 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const isFullAccess = !options?.user || (await options.user.hasGlobalScope(options.scope));
 
 		const activationErrors = await this.activationErrorsService.getAll();
-
-		if (isFullAccess) {
-			const activeWorkflows = await this.workflowRepository.find({
+		const activeWorkflowIds = await this.workflowRepository
+			.find({
 				select: ['id'],
 				where: { active: true },
-			});
+			})
+			.then((activeWorkflows) => activeWorkflows.map((workflow) => workflow.id));
 
-			return activeWorkflows
-				.map((workflow) => workflow.id)
-				.filter((workflowId) => !activationErrors[workflowId]);
+		if (isFullAccess) {
+			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
 		const where = await whereClause({
@@ -297,14 +264,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			entityType: 'workflow',
 		});
 
-		const activeWorkflows = await this.workflowRepository.find({
-			select: ['id'],
-			where: { active: true },
-		});
-
-		const activeIds = activeWorkflows.map((workflow) => workflow.id);
-
-		Object.assign(where, { workflowId: In(activeIds) });
+		Object.assign(where, { workflowId: In(activeWorkflowIds) });
 
 		const sharings = await this.sharedWorkflowRepository.find({
 			select: ['workflowId'],
@@ -376,8 +336,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			}
 
 			try {
-				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
-				await this.webhookService.storeWebhook(webhook);
 				await workflow.createWebhookIfNotExists(
 					webhookData,
 					NodeExecuteFunctions,
@@ -385,6 +343,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 					activation,
 					false,
 				);
+				// TODO: this should happen in a transaction, that way we don't need to manually remove this in `catch`
+				await this.webhookService.storeWebhook(webhook, { node, workflow, webhookData });
 			} catch (error) {
 				if (activation === 'init' && error.name === 'QueryFailedError') {
 					// n8n does not remove the registered webhooks on exit.
@@ -417,7 +377,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				throw error;
 			}
 		}
-		await this.webhookService.populateCache();
 		// Save static data!
 		await WorkflowsService.saveStaticData(workflow);
 	}
@@ -680,7 +639,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 			try {
 				await this.add(dbWorkflow.id, activationMode, dbWorkflow);
-
 				this.logger.verbose(`Successfully started workflow ${dbWorkflow.display()}`, {
 					workflowName: dbWorkflow.name,
 					workflowId: dbWorkflow.id,

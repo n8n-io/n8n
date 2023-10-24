@@ -273,7 +273,7 @@ export interface WebhookAccessControlOptions {
 
 export interface IWebhookManager {
 	/** Gets all request methods associated with a webhook path*/
-	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
+	getWebhookMethods?: (path: string) => IHttpRequestMethods[];
 
 	/** Find the CORS options matching a path and method */
 	findAccessControlOptions?: (
