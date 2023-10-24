@@ -502,7 +502,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
-	INodeParameters,
+	INodeOutputConfiguration,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
@@ -544,6 +544,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -892,12 +893,9 @@ export default defineComponent({
 			return this.outputIndex;
 		},
 		branches(): ITab[] {
-			function capitalize(name: string) {
-				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
-			}
+			const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
+
 			const branches: ITab[] = [];
-			// SwitchV2 allows to create outputs dynamically so we need to check for them
-			const rules = (this.activeNode?.parameters.rules as INodeParameters)?.rules ?? [];
 
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
 				if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
@@ -910,13 +908,11 @@ export default defineComponent({
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
-					const ruleKey = rules?.[i]?.outputKey ?? '';
-
 					const appendBranchWord = NODE_TYPES_EXCLUDED_FROM_OUTPUT_NAME_APPEND.includes(
 						this.node?.type,
 					)
 						? ''
-						: ` ${ruleKey.length > 0 ? ruleKey : this.$locale.baseText('ndv.output.branch')}`;
+						: ` ${this.$locale.baseText('ndv.output.branch')}`;
 					outputName = capitalize(`${this.getOutputName(i)}${appendBranchWord}`);
 				}
 				branches.push({
@@ -942,6 +938,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getResolvedNodeOutputs() {
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+
+				if (workflowNode) {
+					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+					return outputs;
+				}
+			}
+			return [];
+		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -1293,9 +1301,7 @@ export default defineComponent({
 			this.closeBinaryDataDisplay();
 			let outputTypes: ConnectionTypes[] = [];
 			if (this.nodeType !== null && this.node !== null) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
-				const workflowNode = workflow.getNode(this.node.name);
-				const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+				const outputs = this.getResolvedNodeOutputs();
 				outputTypes = NodeHelpers.getConnectionTypes(outputs);
 			}
 			this.connectionType = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
@@ -1373,6 +1379,12 @@ export default defineComponent({
 			}
 
 			const nodeType = this.nodeType;
+			const outputs = this.getResolvedNodeOutputs();
+			const outputConfiguration = outputs?.[outputIndex] as INodeOutputConfiguration;
+
+			if (outputConfiguration && isObject(outputConfiguration)) {
+				return outputConfiguration?.displayName;
+			}
 			if (!nodeType?.outputNames || nodeType.outputNames.length <= outputIndex) {
 				return outputIndex + 1;
 			}

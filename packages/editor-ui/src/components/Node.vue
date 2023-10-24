@@ -1434,6 +1434,8 @@ export default defineComponent({
 		margin-left: 0;
 	}
 
+	// Switch node allows for dynamic connection labels
+	// so we need to make sure the label does not overflow
 	&[data-endpoint-node-type='n8n-nodes-base.switch'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
