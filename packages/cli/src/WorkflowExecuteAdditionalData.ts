@@ -678,25 +678,14 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 
 					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
 
-					if (
-						(workflowStatusFinal === 'success' && saveDataSuccessExecution === 'none') ||
-						(workflowStatusFinal !== 'success' && saveDataErrorExecution === 'none')
-					) {
-						if (!fullRunData.waitTill) {
-							executeErrorWorkflow(
-								this.workflowData,
-								fullRunData,
-								this.mode,
-								this.executionId,
-								this.retryOf,
-							);
-							await Container.get(ExecutionRepository).hardDelete({
-								workflowId: this.workflowData.id as string,
-								executionId: this.executionId,
-							});
-
-							return;
-						}
+					if (workflowStatusFinal !== 'success') {
+						executeErrorWorkflow(
+							this.workflowData,
+							fullRunData,
+							this.mode,
+							this.executionId,
+							this.retryOf,
+						);
 					}
 
 					// Although it is treated as IWorkflowBase here, it's being instantiated elsewhere with properties that may be sensitive
@@ -1153,6 +1142,36 @@ export function getWorkflowHooksWorkerMain(
 	// So to avoid confusion, we are removing other hooks.
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
+	hookFunctions.workflowExecuteAfter = [
+		async function (
+			this: WorkflowHooks,
+			fullRunData: IRun,
+			newStaticData: IDataObject,
+		): Promise<void> {
+			// Check config to know if execution should be saved or not
+			let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
+			let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
+			if (this.workflowData.settings !== undefined) {
+				saveDataErrorExecution =
+					(this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
+				saveDataSuccessExecution =
+					(this.workflowData.settings.saveDataSuccessExecution as string) ||
+					saveDataSuccessExecution;
+			}
+
+			const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+
+			if (
+				(workflowStatusFinal === 'success' && saveDataSuccessExecution === 'none') ||
+				(workflowStatusFinal !== 'success' && saveDataErrorExecution === 'none')
+			) {
+				await Container.get(ExecutionRepository).hardDelete({
+					workflowId: this.workflowData.id as string,
+					executionId: this.executionId,
+				});
+			}
+		},
+	];
 
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
