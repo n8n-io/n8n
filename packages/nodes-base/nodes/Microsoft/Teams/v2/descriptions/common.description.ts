@@ -6,6 +6,7 @@ export const groupSourceOptions: INodeProperties = {
 	required: true,
 	type: 'options',
 	default: 'all',
+	description: '“From where to select groups and teams',
 	options: [
 		{
 			name: 'All Groups',

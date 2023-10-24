@@ -1,6 +1,6 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
-import { groupSourceOptions } from '../../descriptions';
+import { bucketRLC, groupRLC, groupSourceOptions, memberRLC, planRLC } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
@@ -11,7 +11,8 @@ const properties: INodeProperties[] = [
 		required: true,
 		type: 'string',
 		default: '',
-		description: 'The ID of the Task',
+		placeholder: 'e.g. h3ufgLvXPkSRzYm-zO5cY5gANtBQ',
+		description: 'The ID of the task to update',
 	},
 	{
 		displayName: 'Update Fields',
@@ -21,28 +22,21 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				...memberRLC,
+				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'options',
+				description: 'Who the task should be assigned to',
+				required: false,
 				typeOptions: {
-					loadOptionsMethod: 'getMembers',
-					loadOptionsDependsOn: ['groupId'],
+					loadOptionsDependsOn: ['updateFields.groupId.balue'],
 				},
-				default: '',
-				description:
-					'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Bucket Name or ID',
-				name: 'bucketId',
-				type: 'options',
+				...bucketRLC,
+				required: false,
 				typeOptions: {
-					loadOptionsMethod: 'getBuckets',
-					loadOptionsDependsOn: ['updateFields.planId'],
+					loadOptionsDependsOn: ['updateFields.planId.balue'],
 				},
-				default: '',
-				description:
-					'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -53,16 +47,11 @@ const properties: INodeProperties[] = [
 					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Group Name or ID',
-				name: 'groupId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				...groupRLC,
+				required: false,
 				typeOptions: {
-					loadOptionsMethod: 'getGroups',
-					loadOptionsDependsOn: ['groupSource'],
+					loadOptionsDependsOn: ['/groupSource'],
 				},
-				default: '',
 			},
 			{
 				displayName: 'Label Names or IDs',
@@ -89,16 +78,11 @@ const properties: INodeProperties[] = [
 					'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
-				displayName: 'Plan Name or ID',
-				name: 'planId',
-				type: 'options',
+				...planRLC,
+				required: false,
 				typeOptions: {
-					loadOptionsMethod: 'getPlans',
-					loadOptionsDependsOn: ['groupId'],
+					loadOptionsDependsOn: ['updateFields.groupId.balue'],
 				},
-				default: '',
-				description:
-					'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',
@@ -123,25 +107,40 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/plannertask-update?view=graph-rest-1.0&tabs=http
 
-	const taskId = this.getNodeParameter('taskId', i) as string;
+	const taskId = this.getNodeParameter('taskId', i, '', { extractValue: true }) as string;
 	const updateFields = this.getNodeParameter('updateFields', i);
+
+	for (const key of Object.keys(updateFields)) {
+		if (updateFields.groupId) {
+			// tasks are assigned to a plan and bucket, group is used for filtering
+			delete updateFields.groupId;
+			continue;
+		}
+
+		if (key === 'assignedTo') {
+			const assignedTo = this.getNodeParameter('updateFields.assignedTo', i, '', {
+				extractValue: true,
+			}) as string;
+
+			updateFields.assignments = {
+				[assignedTo]: {
+					'@odata.type': 'microsoft.graph.plannerAssignment',
+					orderHint: ' !',
+				},
+			};
+			delete updateFields.assignedTo;
+			continue;
+		}
+
+		if (['bucketId', 'planId'].includes(key)) {
+			updateFields[key] = this.getNodeParameter(`updateFields.${key}`, i, '', {
+				extractValue: true,
+			}) as string;
+		}
+	}
+
 	const body: IDataObject = {};
 	Object.assign(body, updateFields);
-
-	if (body.assignedTo) {
-		body.assignments = {
-			[body.assignedTo as string]: {
-				'@odata.type': 'microsoft.graph.plannerAssignment',
-				orderHint: ' !',
-			},
-		};
-		delete body.assignedTo;
-	}
-
-	if (body.groupId) {
-		// tasks are assigned to a plan and bucket, group is used for filtering
-		delete body.groupId;
-	}
 
 	if (Array.isArray(body.labels)) {
 		body.appliedCategories = (body.labels as string[]).map((label) => ({

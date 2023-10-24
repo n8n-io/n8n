@@ -154,17 +154,26 @@ export async function getGroups(
 	const returnData: INodeListSearchItems[] = [];
 	const groupSource = this.getCurrentNodeParameter('groupSource') as string;
 	let requestUrl = '/v1.0/groups' as string;
+
 	if (groupSource === 'mine') {
 		requestUrl = '/v1.0/me/transitiveMemberOf';
 	}
+
 	const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
+
 	for (const group of value) {
+		if (group.displayName === 'All Company') continue;
+
+		const name = group.displayName || group.mail;
+
+		if (name === undefined) continue;
+
 		returnData.push({
-			name: group.displayName || group.mail || group.id,
+			name,
 			value: group.id,
-			description: group.mail,
 		});
 	}
+
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }
@@ -174,14 +183,21 @@ export async function getPlans(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	let groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
+
+	let groupId = '';
+
+	try {
+		groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
+	} catch (error) {}
+
 	const operation = this.getNodeParameter('operation', 0) as string;
-	if (operation === 'update' && (groupId === undefined || groupId === null)) {
-		// groupId not found at base, check updateFields for the groupId
+
+	if (operation === 'update' && !groupId) {
 		groupId = this.getCurrentNodeParameter('updateFields.groupId', {
 			extractValue: true,
 		}) as string;
 	}
+
 	const { value } = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -202,14 +218,20 @@ export async function getBuckets(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	let planId = this.getCurrentNodeParameter('planId', { extractValue: true }) as string;
+	let planId = '';
+
+	try {
+		planId = this.getCurrentNodeParameter('planId', { extractValue: true }) as string;
+	} catch (error) {}
+
 	const operation = this.getNodeParameter('operation', 0) as string;
-	if (operation === 'update' && (planId === undefined || planId === null)) {
-		// planId not found at base, check updateFields for the planId
+
+	if (operation === 'update' && !planId) {
 		planId = this.getCurrentNodeParameter('updateFields.planId', {
 			extractValue: true,
 		}) as string;
 	}
+
 	const { value } = await microsoftApiRequest.call(
 		this,
 		'GET',
@@ -230,21 +252,28 @@ export async function getMembers(
 	filter?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
-	let groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
+	let groupId = '';
+
+	try {
+		groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
+	} catch (error) {}
+
 	const operation = this.getNodeParameter('operation', 0) as string;
-	if (operation === 'update' && (groupId === undefined || groupId === null)) {
-		// groupId not found at base, check updateFields for the groupId
+
+	if (operation === 'update' && !groupId) {
 		groupId = this.getCurrentNodeParameter('updateFields.groupId', {
 			extractValue: true,
 		}) as string;
 	}
 	const { value } = await microsoftApiRequest.call(this, 'GET', `/v1.0/groups/${groupId}/members`);
+
 	for (const member of value) {
 		returnData.push({
 			name: member.displayName,
 			value: member.id,
 		});
 	}
+
 	const results = filterSortSearchListItems(returnData, filter);
 	return { results };
 }

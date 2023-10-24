@@ -1,8 +1,8 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
-import { groupSourceOptions } from '../../descriptions';
+import { groupRLC, groupSourceOptions, planRLC } from '../../descriptions';
 import { returnAllOrLimit } from '@utils/descriptions';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 const properties: INodeProperties[] = [
 	groupSourceOptions,
@@ -12,6 +12,7 @@ const properties: INodeProperties[] = [
 		default: 'member',
 		required: true,
 		type: 'options',
+		description: 'Whether to retrieve the tasks for a user or for a plan',
 		options: [
 			{
 				name: 'Group Member',
@@ -25,52 +26,14 @@ const properties: INodeProperties[] = [
 			},
 		],
 	},
+	groupRLC,
 	{
-		displayName: 'Group Name or ID',
-		name: 'groupId',
-		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getGroups',
-			loadOptionsDependsOn: ['groupSource'],
-		},
-		default: '',
-	},
-	{
-		displayName: 'Member Name or ID',
-		name: 'memberId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getMembers',
-			loadOptionsDependsOn: ['groupId'],
-		},
-		displayOptions: {
-			show: {
-				tasksFor: ['member'],
-			},
-		},
-		default: '',
-	},
-	{
-		displayName: 'Plan Name or ID',
-		name: 'planId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getPlans',
-			loadOptionsDependsOn: ['groupId'],
-		},
+		...planRLC,
 		displayOptions: {
 			show: {
 				tasksFor: ['plan'],
 			},
 		},
-		default: '',
 	},
 	...returnAllOrLimit,
 ];
@@ -87,9 +50,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	const tasksFor = this.getNodeParameter('tasksFor', i) as string;
 	const returnAll = this.getNodeParameter('returnAll', i);
+
 	if (tasksFor === 'member') {
 		//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
-		const memberId = this.getNodeParameter('memberId', i) as string;
+		const memberId = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/me')) as { id: string })
+			.id;
 		if (returnAll) {
 			await microsoftApiRequestAllItems.call(
 				this,
@@ -110,7 +75,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		}
 	} else {
 		//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
-		const planId = this.getNodeParameter('planId', i) as string;
+		const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 		if (returnAll) {
 			await microsoftApiRequestAllItems.call(
 				this,

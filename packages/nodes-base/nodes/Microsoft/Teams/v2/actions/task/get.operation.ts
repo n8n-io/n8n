@@ -8,6 +8,8 @@ const properties: INodeProperties[] = [
 		name: 'taskId',
 		required: true,
 		type: 'string',
+		description: 'The ID of the task to retrieve',
+		placeholder: 'e.g. h3ufgLvXPkSRzYm-zO5cY5gANtBQ',
 		default: '',
 	},
 ];

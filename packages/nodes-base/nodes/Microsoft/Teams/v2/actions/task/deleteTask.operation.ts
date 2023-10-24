@@ -8,6 +8,8 @@ const properties: INodeProperties[] = [
 		name: 'taskId',
 		required: true,
 		type: 'string',
+		placeholder: 'e.g. h3ufgLvXPkSRzYm-zO5cY5gANtBQ',
+		description: 'ID of the task to delete',
 		default: '',
 	},
 ];

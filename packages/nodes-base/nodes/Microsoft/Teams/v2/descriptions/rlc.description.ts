@@ -71,7 +71,7 @@ export const channelRLC: INodeProperties = {
 	},
 	modes: [
 		{
-			displayName: 'Channel',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a Channel...',
@@ -100,7 +100,7 @@ export const channelRLC: INodeProperties = {
 			],
 		},
 		{
-			displayName: 'ID',
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
 			placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
@@ -117,7 +117,7 @@ export const chatRLC: INodeProperties = {
 	required: true,
 	modes: [
 		{
-			displayName: 'Chat',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a Chat...',
@@ -147,7 +147,7 @@ export const chatRLC: INodeProperties = {
 			},
 		},
 		{
-			displayName: 'ID',
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
 			placeholder:
@@ -164,20 +164,22 @@ export const groupRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['groupSource'],
+	},
 	modes: [
 		{
-			displayName: 'Group',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a Group...',
 			typeOptions: {
 				searchListMethod: 'getGroups',
-				// missing searchListDependsOn: ['groupSource'],
 				searchable: true,
 			},
 		},
 		{
-			displayName: 'ID',
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
 			placeholder: '12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6',
@@ -204,55 +206,53 @@ export const planRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['groupId.value'],
+	},
 	modes: [
 		{
-			displayName: 'Plan',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a Plan...',
 			typeOptions: {
 				searchListMethod: 'getPlans',
-				// missing searchListDependsOn: ['groupId'],
 				searchable: true,
 			},
 		},
 		{
-			displayName: 'ID',
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
 			placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
 			// validation missing because no documentation found how these unique ids look like.
 		},
 	],
-	displayOptions: {
-		show: {
-			operation: ['create'],
-			resource: ['task'],
-		},
-	},
 	description: 'The plan for the task to belong to',
 };
 
 export const bucketRLC: INodeProperties = {
-	displayName: 'Bucket Name',
+	displayName: 'Bucket',
 	name: 'bucketId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['planId.value'],
+	},
 	modes: [
 		{
-			displayName: 'Bucket',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a Bucket...',
 			typeOptions: {
 				searchListMethod: 'getBuckets',
-				// missing searchListDependsOn: ['planId'],
 				searchable: true,
 			},
 		},
 		{
-			displayName: 'ID',
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
 			placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
@@ -267,21 +267,22 @@ export const memberRLC: INodeProperties = {
 	name: 'memberId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
-	required: true,
+	typeOptions: {
+		loadOptionsDependsOn: ['groupId.value'],
+	},
 	modes: [
 		{
-			displayName: 'Member',
+			displayName: 'From List',
 			name: 'list',
 			type: 'list',
 			placeholder: 'Select a Member...',
 			typeOptions: {
 				searchListMethod: 'getMembers',
-				// missing searchListDependsOn: ['groupId'],
 				searchable: true,
 			},
 		},
 		{
-			displayName: 'ID',
+			displayName: 'By ID',
 			name: 'id',
 			type: 'string',
 			placeholder: '7e2f1174-e8ee-4859-b8b1-a8d1cc63d276',

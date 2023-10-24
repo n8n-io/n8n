@@ -1,75 +1,37 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
-import { groupSourceOptions } from '../../descriptions';
+import { bucketRLC, groupRLC, groupSourceOptions, memberRLC, planRLC } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	groupSourceOptions,
-	{
-		displayName: 'Group Name or ID',
-		name: 'groupId',
-		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getGroups',
-			loadOptionsDependsOn: ['groupSource'],
-		},
-		default: '',
-	},
-	{
-		displayName: 'Plan Name or ID',
-		name: 'planId',
-		required: true,
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getPlans',
-			loadOptionsDependsOn: ['groupId'],
-		},
-		default: '',
-		description:
-			'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		displayName: 'Bucket Name or ID',
-		name: 'bucketId',
-		required: true,
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBuckets',
-			loadOptionsDependsOn: ['planId'],
-		},
-		default: '',
-		description:
-			'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
+	groupRLC,
+	planRLC,
+	bucketRLC,
 	{
 		displayName: 'Title',
 		name: 'title',
 		required: true,
 		type: 'string',
 		default: '',
+		placeholder: '“e.g. new task',
 		description: 'Title of the task',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		default: {},
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				...memberRLC,
+				displayName: 'Assigned To',
 				name: 'assignedTo',
-				type: 'options',
+				description: 'Who the task should be assigned to',
 				typeOptions: {
-					loadOptionsMethod: 'getMembers',
-					loadOptionsDependsOn: ['groupId'],
+					loadOptionsDependsOn: ['groupId.balue'],
 				},
-				default: '',
-				description:
-					'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -77,19 +39,20 @@ const properties: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
+					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.”.',
 			},
 			{
-				displayName: 'Label Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Labels',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getLabels',
-					loadOptionsDependsOn: ['planId'],
+					loadOptionsDependsOn: ['planId.value'],
 				},
 				default: [],
-				description:
-					'Labels to assign to the task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description: 'Labels to assign to the task',
 			},
 			{
 				displayName: 'Percent Complete',
@@ -100,6 +63,7 @@ const properties: INodeProperties[] = [
 					maxValue: 100,
 				},
 				default: 0,
+				placeholder: 'e.g. 75',
 				description:
 					'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
@@ -119,16 +83,25 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(this: IExecuteFunctions, i: number) {
 	//https://docs.microsoft.com/en-us/graph/api/planner-post-tasks?view=graph-rest-1.0&tabs=http
 
-	const planId = this.getNodeParameter('planId', i) as string;
-	const bucketId = this.getNodeParameter('bucketId', i) as string;
+	const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
+	const bucketId = this.getNodeParameter('bucketId', i, '', { extractValue: true }) as string;
+
 	const title = this.getNodeParameter('title', i) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', i);
+	const options = this.getNodeParameter('options', i);
+
 	const body: IDataObject = {
 		planId,
 		bucketId,
 		title,
 	};
-	Object.assign(body, additionalFields);
+
+	if (options.assignedTo) {
+		options.assignedTo = this.getNodeParameter('options.assignedTo', i, '', {
+			extractValue: true,
+		}) as string;
+	}
+
+	Object.assign(body, options);
 
 	if (body.assignedTo) {
 		body.assignments = {
