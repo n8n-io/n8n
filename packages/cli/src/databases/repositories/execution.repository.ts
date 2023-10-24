@@ -301,10 +301,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Permanently remove a single execution and its binary data.
 	 */
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return Promise.all([
-			this.binaryDataService.deleteMany([ids]),
-			this.delete({ id: ids.executionId }),
-		]);
+		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
@@ -565,7 +562,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return;
 		}
 
-		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds); // only in FS mode
 
 		this.logger.debug(
 			`Hard-deleting ${executionIds.length} executions from database (pruning cycle)`,
