@@ -92,6 +92,13 @@ export class SpreadsheetFileV2 implements INodeType {
 							to: maxRowCount > -1 ? maxRowCount : undefined,
 							columns: options.headerRow !== false,
 							onRecord: (record) => {
+								if (!options.includeEmptyCells) {
+									record = Object.fromEntries(
+										Object.entries(record).filter(
+											([_key, value]) => value !== undefined && value !== null && value !== '',
+										),
+									);
+								}
 								rows.push(record);
 							},
 						});
