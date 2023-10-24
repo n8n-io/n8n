@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { readFileSync, rmSync } from 'fs';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { ObjectLiteral } from 'typeorm';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import { jsonParse } from 'n8n-workflow';
@@ -16,9 +16,10 @@ const logger = getLogger();
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
 function loadSurveyFromDisk(): string | null {
-	const userSettingsPath = UserSettings.getUserN8nFolderPath();
 	try {
-		const filename = `${userSettingsPath}/${PERSONALIZATION_SURVEY_FILENAME}`;
+		const filename = `${
+			Container.get(InstanceSettings).n8nFolder
+		}/${PERSONALIZATION_SURVEY_FILENAME}`;
 		const surveyFile = readFileSync(filename, 'utf-8');
 		rmSync(filename);
 		const personalizationSurvey = JSON.parse(surveyFile) as object;

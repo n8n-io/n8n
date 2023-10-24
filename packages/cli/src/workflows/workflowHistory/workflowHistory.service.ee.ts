@@ -64,14 +64,14 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
-	async saveVersion(user: User, workflow: WorkflowEntity) {
+	async saveVersion(user: User, workflow: WorkflowEntity, workflowId: string) {
 		if (isWorkflowHistoryEnabled()) {
 			await this.workflowHistoryRepository.insert({
 				authors: user.firstName + ' ' + user.lastName,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
 				versionId: workflow.versionId,
-				workflowId: workflow.id,
+				workflowId,
 			});
 		}
 	}

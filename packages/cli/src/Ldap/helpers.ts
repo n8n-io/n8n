@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { AES, enc } from 'crypto-js';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { Container } from 'typedi';
-import { UserSettings } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
@@ -111,22 +110,6 @@ export const validateLdapConfigurationSchema = (
 };
 
 /**
- * Encrypt password using the instance's encryption key
- */
-export const encryptPassword = async (password: string): Promise<string> => {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return AES.encrypt(password, encryptionKey).toString();
-};
-
-/**
- * Decrypt password using the instance's encryption key
- */
-export const decryptPassword = async (password: string): Promise<string> => {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return AES.decrypt(password, encryptionKey).toString(enc.Utf8);
-};
-
-/**
  * Retrieve the LDAP configuration (decrypted) form the database
  */
 export const getLdapConfig = async (): Promise<LdapConfig> => {
@@ -134,7 +117,7 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 		key: LDAP_FEATURE_NAME,
 	});
 	const configurationData = jsonParse<LdapConfig>(configuration.value);
-	configurationData.bindingAdminPassword = await decryptPassword(
+	configurationData.bindingAdminPassword = Container.get(Cipher).decrypt(
 		configurationData.bindingAdminPassword,
 	);
 	return configurationData;
@@ -173,7 +156,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 
 	LdapManager.updateConfig({ ...ldapConfig });
 
-	ldapConfig.bindingAdminPassword = await encryptPassword(ldapConfig.bindingAdminPassword);
+	ldapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(ldapConfig.bindingAdminPassword);
 
 	if (!ldapConfig.loginEnabled) {
 		ldapConfig.synchronizationEnabled = false;

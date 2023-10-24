@@ -83,19 +83,6 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return { fileId: targetFileId, fileSize: sourceFile.length };
 	}
 
-	async deleteMany(ids: BinaryData.IdsForDeletion) {
-		const prefixes = ids.map(
-			({ workflowId, executionId }) =>
-				`workflows/${workflowId}/executions/${executionId}/binary_data/`,
-		);
-
-		await Promise.all(
-			prefixes.map(async (prefix) => {
-				await this.objectStoreService.deleteMany(prefix);
-			}),
-		);
-	}
-
 	async rename(oldFileId: string, newFileId: string) {
 		const oldFile = await this.objectStoreService.get(oldFileId, { mode: 'buffer' });
 		const oldFileMetadata = await this.objectStoreService.getMetadata(oldFileId);
