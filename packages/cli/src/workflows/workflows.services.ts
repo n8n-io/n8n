@@ -222,13 +222,19 @@ export class WorkflowsService {
 			);
 		}
 
+		let onlyActiveUpdate = false;
+
 		if (
-			Object.keys(workflow).length === 3 &&
-			workflow.id !== undefined &&
-			workflow.versionId !== undefined &&
-			workflow.active !== undefined
+			(Object.keys(workflow).length === 3 &&
+				workflow.id !== undefined &&
+				workflow.versionId !== undefined &&
+				workflow.active !== undefined) ||
+			(Object.keys(workflow).length === 2 &&
+				workflow.versionId !== undefined &&
+				workflow.active !== undefined)
 		) {
 			// we're just updating the active status of the workflow, don't update the versionId
+			onlyActiveUpdate = true;
 		} else {
 			// Update the workflow's version
 			workflow.versionId = uuid();
@@ -301,7 +307,11 @@ export class WorkflowsService {
 			);
 		}
 
-		if (isWorkflowHistoryLicensed() && workflow.versionId !== shared.workflow.versionId) {
+		if (
+			isWorkflowHistoryLicensed() &&
+			!onlyActiveUpdate &&
+			workflow.versionId !== shared.workflow.versionId
+		) {
 			await Container.get(WorkflowHistoryService).saveVersion(user, workflow, workflowId);
 		}
 

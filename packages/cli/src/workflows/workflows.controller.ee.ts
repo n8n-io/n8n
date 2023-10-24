@@ -22,6 +22,8 @@ import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
+import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
+import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -183,6 +185,14 @@ EEWorkflowController.post(
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
 			throw new ResponseHelper.InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
+			);
+		}
+
+		if (isWorkflowHistoryLicensed()) {
+			await Container.get(WorkflowHistoryService).saveVersion(
+				req.user,
+				savedWorkflow,
+				savedWorkflow.id,
 			);
 		}
 
