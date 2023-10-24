@@ -61,12 +61,12 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
 import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 
+import { useToast } from '@/composables';
 import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
-import { useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 export default defineComponent({
@@ -94,7 +94,7 @@ export default defineComponent({
 			}
 
 			return (this.nodeType as INodeTypeDescription).webhooks!.filter(
-				(webhookData) => webhookData.restartWebhook !== true,
+				(webhookData) => webhookData.restartWebhook !== true && !webhookData.hasLifecycleMethods,
 			);
 		},
 		baseText() {
