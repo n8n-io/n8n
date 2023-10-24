@@ -105,6 +105,7 @@ export class FormTrigger implements INodeType {
 								type: 'options',
 								default: 'text',
 								description: 'The type of field to add to the form',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Text',
