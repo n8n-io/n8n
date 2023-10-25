@@ -68,7 +68,7 @@
 							data-test-id="change-sticky-color"
 							:title="$locale.baseText('node.changeColor')"
 						>
-							<font-awesome-icon icon="ellipsis-v" />
+							<font-awesome-icon icon="palette" />
 						</div>
 					</template>
 					<div class="content">
@@ -80,11 +80,13 @@
 							v-on:click="changeColor(color)"
 							:style="{
 								'background-color': color,
-								'border-width':
-									(index === 0 && node?.parameters.color === '') || color === node?.parameters.color
-										? '1px'
-										: '0px',
+								'border-width': '1px',
 								'border-style': 'solid',
+								'border-color': 'var(--color-text-dark)',
+								'box-shadow':
+									(index === 0 && node?.parameters.color === '') || color === node?.parameters.color
+										? `0 0 0 1px ${color}`
+										: 'none',
 							}"
 						></div>
 					</div>
@@ -202,12 +204,12 @@ export default defineComponent({
 			forceActions: false,
 			availableColors: [
 				'#fff5d6',
-				'#b1bccd',
-				'#efa79a',
-				'#f6c67d',
-				'#8ed09c',
-				'#8cc2f3',
-				'#cbaaf9',
+				'#FDE9D8',
+				'#FBDADD',
+				'#DCF9EB',
+				'#D6EBFF',
+				'#E7D6FF',
+				'#F0F3F9',
 			],
 			isResizing: false,
 			isTouchActive: false,
