@@ -2,6 +2,7 @@ import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
 import config from '@/config';
 import { License } from '@/License';
+import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
 import { mockInstance } from '../integration/shared/utils';
 
@@ -23,10 +24,11 @@ describe('License', () => {
 	});
 
 	let license: License;
+	const logger = mockInstance(Logger);
 	const instanceSettings = mockInstance(InstanceSettings, { instanceId: MOCK_INSTANCE_ID });
 
 	beforeEach(async () => {
-		license = new License(instanceSettings);
+		license = new License(logger, instanceSettings);
 		await license.init();
 	});
 
@@ -38,7 +40,7 @@ describe('License', () => {
 			renewOnInit: true,
 			deviceFingerprint: expect.any(Function),
 			productIdentifier: `n8n-${N8N_VERSION}`,
-			logger: expect.anything(),
+			logger,
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
 			onFeatureChange: expect.any(Function),
@@ -49,7 +51,7 @@ describe('License', () => {
 	});
 
 	test('initializes license manager for worker', async () => {
-		license = new License(instanceSettings);
+		license = new License(logger, instanceSettings);
 		await license.init('worker');
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: false,
@@ -58,7 +60,7 @@ describe('License', () => {
 			renewOnInit: false,
 			deviceFingerprint: expect.any(Function),
 			productIdentifier: `n8n-${N8N_VERSION}`,
-			logger: expect.anything(),
+			logger,
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),
 			onFeatureChange: expect.any(Function),

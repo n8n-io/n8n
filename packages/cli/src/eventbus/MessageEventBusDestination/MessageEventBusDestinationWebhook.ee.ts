@@ -7,7 +7,6 @@ import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import {
 	jsonParse,
-	LoggerProxy,
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
@@ -102,7 +101,7 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
-		LoggerProxy.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -359,7 +358,7 @@ export class MessageEventBusDestinationWebhook
 				}
 			}
 		} catch (error) {
-			LoggerProxy.warn(
+			this.logger.warn(
 				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${
 					(error as Error).message
 				}`,

@@ -2,7 +2,7 @@ import path from 'path';
 import convict from 'convict';
 import { Container } from 'typedi';
 import { InstanceSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
 
 convict.addFormat({
@@ -856,7 +856,7 @@ export const schema = {
 	logs: {
 		level: {
 			doc: 'Log output level',
-			format: ['error', 'warn', 'info', 'verbose', 'debug', 'silent'] as const,
+			format: LOG_LEVELS,
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},

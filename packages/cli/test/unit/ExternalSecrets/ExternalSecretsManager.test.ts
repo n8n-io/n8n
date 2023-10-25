@@ -13,6 +13,7 @@ import {
 	FailedProvider,
 	MockProviders,
 } from '../../shared/ExternalSecrets/utils';
+import { mock } from 'jest-mock-extended';
 
 describe('External Secrets Manager', () => {
 	const connectedDate = '2023-08-01T12:32:29.000Z';
@@ -48,7 +49,7 @@ describe('External Secrets Manager', () => {
 		});
 		license.isExternalSecretsEnabled.mockReturnValue(true);
 		settingsRepo.getEncryptedSecretsProviderSettings.mockResolvedValue(settings);
-		manager = new ExternalSecretsManager(settingsRepo, license, providersMock, cipher);
+		manager = new ExternalSecretsManager(mock(), settingsRepo, license, providersMock, cipher);
 	});
 
 	afterEach(() => {
