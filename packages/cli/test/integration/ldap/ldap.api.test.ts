@@ -1,8 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
-import { type ILogger, jsonParse, LoggerProxy } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { jsonParse } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -26,8 +25,6 @@ jest.mock('@/telemetry');
 let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-
-LoggerProxy.init(mock<ILogger>());
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
