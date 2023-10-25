@@ -17,3 +17,5 @@ export const NODES_WITH_RENAMABLE_CONTENT = new Set([
 // Arbitrary value to represent an empty credential value
 export const CREDENTIAL_EMPTY_VALUE =
 	'__n8n_EMPTY_VALUE_7b1af746-3729-4c60-9b9b-e08eb29e58da' as const;
+
+export const FORM_TRIGGER_PATH_IDENTIFIER = 'n8n-form';

@@ -195,7 +195,7 @@ const openPricingPage = () => {
 						locale.baseText('settings.usageAndPlan.button.manage')
 					}}</a>
 				</n8n-button>
-				<n8n-button v-else @click="onViewPlans" size="large">
+				<n8n-button v-else @click.prevent="onViewPlans" size="large">
 					<a :href="viewPlansUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.plans')
 					}}</a>
