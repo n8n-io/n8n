@@ -123,7 +123,7 @@ import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { licenseController } from './license/license.controller';
-import { Push, setupPushServer, setupPushHandler } from '@/push';
+import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
@@ -171,11 +171,9 @@ export class Server extends AbstractServer {
 
 	private credentialTypes: ICredentialTypes;
 
-	private frontendService: FrontendService;
+	private frontendService?: FrontendService;
 
 	private postHog: PostHogClient;
-
-	private push: Push;
 
 	constructor() {
 		super('main');
@@ -194,13 +192,8 @@ export class Server extends AbstractServer {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { FrontendService } = await import('@/services/frontend.service');
-			this.frontendService = Container.get(FrontendService);
-			this.loadNodesAndCredentials.addPostProcessor(async () =>
-				this.frontendService.generateTypes(),
-			);
-			await this.frontendService.generateTypes();
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
 		}
 
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -209,8 +202,6 @@ export class Server extends AbstractServer {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
-
-		this.push = Container.get(Push);
 
 		await super.start();
 		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
@@ -372,14 +363,17 @@ export class Server extends AbstractServer {
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
 
-		this.frontendService.addToSettings({
-			isNpmAvailable: await exec('npm --version')
-				.then(() => true)
-				.catch(() => false),
-			versionCli: N8N_VERSION,
-		});
+		const { frontendService } = this;
+		if (frontendService) {
+			frontendService.addToSettings({
+				isNpmAvailable: await exec('npm --version')
+					.then(() => true)
+					.catch(() => false),
+				versionCli: N8N_VERSION,
+			});
 
-		await this.externalHooks.run('frontend.settings', [this.frontendService.getSettings()]);
+			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+		}
 
 		await this.postHog.init();
 
@@ -408,7 +402,9 @@ export class Server extends AbstractServer {
 		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
-			this.frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			if (frontendService) {
+				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			}
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -1187,17 +1183,21 @@ export class Server extends AbstractServer {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the current settings for the UI
-		this.app.get(
-			`/${this.restEndpoint}/settings`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				ResponseHelper.send(
+					async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+						void Container.get(InternalHooks).onFrontendSettingsAPI(
+							req.headers.sessionid as string,
+						);
 
-					return this.frontendService.getSettings();
-				},
-			),
-		);
+						return frontendService.getSettings();
+					},
+				),
+			);
+		}
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -1227,7 +1227,7 @@ export class Server extends AbstractServer {
 
 						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.frontendService?.generateTypes();
+						await frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1239,7 +1239,7 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (frontendService) {
 			const staticOptions: ServeStaticOptions = {
 				cacheControl: false,
 				setHeaders: (res: express.Response, path: string) => {
