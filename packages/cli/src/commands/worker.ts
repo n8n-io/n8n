@@ -10,7 +10,6 @@ import type {
 	ExecutionError,
 	ExecutionStatus,
 	IExecuteResponsePromiseData,
-	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
 import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
@@ -53,15 +52,11 @@ export class Worker extends BaseCommand {
 		}),
 	};
 
-	static runningJobs: {
-		[key: string]: PCancelable<IRun>;
-	} = {};
+	static runningJobs: Record<string, PCancelable<IRun>> = {};
 
-	static runningJobsSummary: {
-		[jobId: string]: WorkerJobStatusSummary;
-	} = {};
+	static runningJobsSummary: Record<string, WorkerJobStatusSummary> = {};
 
-	static jobQueue: Queue;
+	private queue: Queue;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -74,7 +69,7 @@ export class Worker extends BaseCommand {
 		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
-		await Worker.jobQueue.pause(true);
+		await this.queue.pause();
 
 		try {
 			await this.externalHooks.run('n8n.stop', []);
@@ -110,7 +105,7 @@ export class Worker extends BaseCommand {
 		await this.exitSuccessFully();
 	}
 
-	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
+	async runJob(job: Job): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
 		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
 			executionId,
@@ -170,7 +165,7 @@ export class Worker extends BaseCommand {
 			nodes: fullExecutionData.workflowData.nodes,
 			connections: fullExecutionData.workflowData.connections,
 			active: fullExecutionData.workflowData.active,
-			nodeTypes,
+			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: fullExecutionData.workflowData.settings,
 		});
@@ -334,30 +329,25 @@ export class Worker extends BaseCommand {
 			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
 		);
 
-		Worker.jobQueue = Container.get(Queue);
-		await Worker.jobQueue.init();
+		const queue = (this.queue = Container.get(Queue));
+		await queue.init();
 		this.logger.debug('Queue singleton ready');
-		void Worker.jobQueue.process(flags.concurrency, async (job) =>
-			this.runJob(job, this.nodeTypes),
-		);
 
-		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
-			// Progress of a job got updated which does get used
-			// to communicate that a job got canceled.
-
-			if (progress === -1) {
-				// Job has to get canceled
-				if (Worker.runningJobs[jobId] !== undefined) {
-					// Job is processed by current worker so cancel
-					Worker.runningJobs[jobId].cancel();
-					delete Worker.runningJobs[jobId];
-				}
+		queue.on('on:job:start', async (job) => this.runJob(job));
+		queue.on('on:job:cancelled', (jobId) => {
+			// Job has to get canceled
+			if (Worker.runningJobs[jobId] !== undefined) {
+				// Job is processed by current worker so cancel
+				Worker.runningJobs[jobId].cancel();
+				delete Worker.runningJobs[jobId];
 			}
 		});
 
+		queue.process(flags.concurrency);
+
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
+		queue.on('on:error', (error) => {
 			if (error.toString().includes('ECONNREFUSED')) {
 				const now = Date.now();
 				if (now - lastTimer > 30000) {
@@ -421,7 +411,7 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await Worker.jobQueue.ping();
+					await this.queue.ping();
 				} catch (e) {
 					LoggerProxy.error('No Redis connection!', e as Error);
 					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');

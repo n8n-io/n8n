@@ -60,11 +60,14 @@ export class WorkflowRunner {
 
 	push: Push;
 
-	jobQueue: Queue;
+	queue: Queue;
 
 	constructor() {
 		this.push = Container.get(Push);
 		this.activeExecutions = Container.get(ActiveExecutions);
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.queue = Container.get(Queue);
+		}
 	}
 
 	/**
@@ -188,10 +191,6 @@ export class WorkflowRunner {
 		const executionsProcess = config.getEnv('executions.process');
 
 		await initErrorHandling();
-
-		if (executionsMode === 'queue') {
-			this.jobQueue = Container.get(Queue);
-		}
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
@@ -466,7 +465,7 @@ export class WorkflowRunner {
 		let job: Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.jobQueue.add(jobData, jobOptions);
+			job = await this.queue.add(jobData, jobOptions);
 
 			console.log(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
 
@@ -539,7 +538,7 @@ export class WorkflowRunner {
 
 					const watchDog: Promise<JobResponse> = new Promise((res) => {
 						watchDogInterval = setInterval(async () => {
-							const currentJob = await this.jobQueue.getJob(job.id);
+							const currentJob = await this.queue.getJob(job.id);
 							// When null means job is finished (not found in queue)
 							if (currentJob === null) {
 								// Mimic worker's success message

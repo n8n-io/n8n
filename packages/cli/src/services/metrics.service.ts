@@ -1,13 +1,14 @@
-import config from '@/config';
-import { N8N_VERSION } from '@/constants';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import promClient, { type Counter } from 'prom-client';
+import type { Gauge, Counter } from 'prom-client';
+import promClient from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
-import EventEmitter from 'events';
 import { LoggerProxy } from 'n8n-workflow';
 
+import config from '@/config';
+import { N8N_VERSION } from '@/constants';
+import { Queue } from '@/Queue';
 import { CacheService } from '@/services/cache.service';
 import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
 import {
@@ -16,19 +17,27 @@ import {
 } from '@/eventbus/MessageEventBusDestination/Helpers.ee';
 import { eventBus } from '@/eventbus';
 
-@Service()
-export class MetricsService extends EventEmitter {
-	constructor(private readonly cacheService: CacheService) {
-		super();
-	}
+const queueStatuses = ['active', 'completed', 'failed', 'waiting'] as const;
 
-	counters: Record<string, Counter<string> | null> = {};
+@Service()
+export class MetricsService {
+	private prefix = config.getEnv('endpoints.metrics.prefix');
+
+	private counters: Record<string, Counter<string> | null> = {};
+
+	private gauges: Record<string, Gauge<string>> = {};
+
+	constructor(
+		private readonly cacheService: CacheService,
+		private readonly queue: Queue,
+	) {}
 
 	async configureMetrics(app: express.Application) {
 		promClient.register.clear(); // clear all metrics in case we call this a second time
 		this.setupDefaultMetrics();
 		this.setupN8nVersionMetric();
 		this.setupCacheMetrics();
+		this.setupQueueMetrics();
 		this.setupMessageEventBusMetrics();
 		this.setupApiMetrics(app);
 		this.mountMetricsEndpoint(app);
@@ -76,8 +85,8 @@ export class MetricsService extends EventEmitter {
 		}
 	}
 
-	mountMetricsEndpoint(app: express.Application) {
-		app.get('/metrics', async (req: express.Request, res: express.Response) => {
+	private mountMetricsEndpoint(app: express.Application) {
+		app.get('/metrics', async (req, res) => {
 			const metrics = await promClient.register.metrics();
 			res.setHeader('Content-Type', promClient.register.contentType);
 			res.send(metrics).end();
@@ -89,7 +98,7 @@ export class MetricsService extends EventEmitter {
 			return;
 		}
 		this.counters.cacheHitsTotal = new promClient.Counter({
-			name: config.getEnv('endpoints.metrics.prefix') + 'cache_hits_total',
+			name: this.prefix + 'cache_hits_total',
 			help: 'Total number of cache hits.',
 			labelNames: ['cache'],
 		});
@@ -99,7 +108,7 @@ export class MetricsService extends EventEmitter {
 		});
 
 		this.counters.cacheMissesTotal = new promClient.Counter({
-			name: config.getEnv('endpoints.metrics.prefix') + 'cache_misses_total',
+			name: this.prefix + 'cache_misses_total',
 			help: 'Total number of cache misses.',
 			labelNames: ['cache'],
 		});
@@ -109,7 +118,7 @@ export class MetricsService extends EventEmitter {
 		});
 
 		this.counters.cacheUpdatesTotal = new promClient.Counter({
-			name: config.getEnv('endpoints.metrics.prefix') + 'cache_updates_total',
+			name: this.prefix + 'cache_updates_total',
 			help: 'Total number of cache updates.',
 			labelNames: ['cache'],
 		});
@@ -122,12 +131,32 @@ export class MetricsService extends EventEmitter {
 		);
 	}
 
+	private setupQueueMetrics() {
+		if (
+			!config.getEnv('endpoints.metrics.includeQueueMetrics') ||
+			config.getEnv('executions.mode') !== 'queue'
+		) {
+			return;
+		}
+		for (const status of queueStatuses) {
+			const key = `queue_${status}_jobs`;
+			this.gauges[key] = new promClient.Gauge({
+				name: this.prefix + key,
+				help: `Total number of ${status} jobs in the queue.`,
+				labelNames: ['queue'],
+			});
+		}
+		this.queue.on('update:jobCount', (jobCounts) => {
+			for (const status of queueStatuses) {
+				this.gauges[`queue_${status}_jobs`].set(jobCounts[status]);
+			}
+		});
+	}
+
 	private getCounterForEvent(event: EventMessageTypes): Counter<string> | null {
-		if (!promClient) return null;
 		if (!this.counters[event.eventName]) {
-			const prefix = config.getEnv('endpoints.metrics.prefix');
 			const metricName =
-				prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
+				this.prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
 
 			if (!promClient.validateMetricName(metricName)) {
 				LoggerProxy.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
