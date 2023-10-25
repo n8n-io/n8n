@@ -26,6 +26,20 @@ export class NodeMailer {
 			};
 		}
 
+		if (
+			config.getEnv('userManagement.emails.smtp.auth.serviceClient') &&
+			config.getEnv('userManagement.emails.smtp.auth.privateKey')
+		) {
+			transportConfig.auth = {
+				type: 'OAuth2',
+				user: config.getEnv('userManagement.emails.smtp.auth.user'),
+				serviceClient: config.getEnv('userManagement.emails.smtp.auth.serviceClient'),
+				privateKey: config
+					.getEnv('userManagement.emails.smtp.auth.privateKey')
+					.replace(/\\n/g, '\n'),
+			};
+		}
+
 		this.transport = createTransport(transportConfig);
 	}
 

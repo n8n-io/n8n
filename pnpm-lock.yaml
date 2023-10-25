@@ -318,6 +318,9 @@ importers:
       mssql:
         specifier: ^8.1.2
         version: 8.1.4
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../../nodes-base
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -367,9 +370,6 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../../core
-      n8n-nodes-base:
-        specifier: workspace:*
-        version: link:../../nodes-base
 
   packages/@n8n_io/eslint-config:
     devDependencies:
