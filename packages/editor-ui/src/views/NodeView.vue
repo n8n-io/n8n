@@ -3008,6 +3008,9 @@ export default defineComponent({
 								{
 									workflow_id: workflow.id,
 								},
+								{
+									withPostHog: true
+								},
 							);
 						}
 					}
