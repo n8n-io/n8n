@@ -18,7 +18,6 @@ const defaultSettings: IN8nUISettings = {
 		variables: true,
 		sourceControl: false,
 		auditLogs: false,
-		versionControl: false,
 		showNonProdBanner: false,
 	},
 	executionMode: 'regular',
@@ -33,6 +32,7 @@ const defaultSettings: IN8nUISettings = {
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
 	onboardingCallPromptEnabled: false,
 	personalizationSurveyEnabled: false,
+	releaseChannel: 'stable',
 	posthog: {
 		apiHost: '',
 		apiKey: '',

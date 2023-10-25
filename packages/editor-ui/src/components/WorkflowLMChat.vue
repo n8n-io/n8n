@@ -138,6 +138,7 @@ import { createEventBus } from 'n8n-design-system/utils';
 import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import { useNodeTypesStore } from '@/stores';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
 
@@ -454,8 +455,6 @@ export default defineComponent({
 						this.workflowsStore.getWorkflowExecution?.data?.resultData.runData,
 						`[${lastNodeExecuted}]`,
 					) as ITaskData[];
-
-					console.log({ nodeResponseDataArray }, this.workflowsStore.getWorkflowExecution);
 
 					const nodeResponseData = nodeResponseDataArray[nodeResponseDataArray.length - 1];
 

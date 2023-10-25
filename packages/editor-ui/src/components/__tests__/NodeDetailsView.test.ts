@@ -4,7 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { uuid } from '@jsplumb/util';
 import type { INode } from 'n8n-workflow';
-import { createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import {
 	useNDVStore,
 	useNodeTypesStore,
@@ -15,18 +15,6 @@ import {
 import { createPinia, setActivePinia } from 'pinia';
 import { defaultMockNodeTypesArray } from '@/__tests__/defaults';
 import { setupServer } from '@/__tests__/server';
-
-function createTestActiveNode(
-	node: Partial<INode> & { name: INode['name']; type: INode['type'] },
-): INode {
-	return {
-		id: uuid(),
-		typeVersion: 1,
-		position: [0, 0] as [number, number],
-		parameters: {},
-		...node,
-	};
-}
 
 async function createPiniaWithActiveNode(node: INode) {
 	const workflowId = uuid();
@@ -87,7 +75,7 @@ describe('NodeDetailsView', () => {
 	it('should render correctly', async () => {
 		const wrapper = renderComponent({
 			pinia: await createPiniaWithActiveNode(
-				createTestActiveNode({
+				createTestNode({
 					name: 'Manual Trigger',
 					type: 'manualTrigger',
 				}),

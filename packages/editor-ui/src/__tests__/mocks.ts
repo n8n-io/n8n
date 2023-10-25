@@ -10,20 +10,36 @@ import {
 } from 'n8n-workflow';
 import { uuid } from '@jsplumb/util';
 import { defaultMockNodeTypes } from '@/__tests__/defaults';
-import { INodeUi, ITag, IUsedCredential, IUser, IWorkflowDb, WorkflowMetadata } from '@/Interface';
+import type {
+	INodeUi,
+	ITag,
+	IUsedCredential,
+	IUser,
+	IWorkflowDb,
+	WorkflowMetadata,
+} from '@/Interface';
 
 export function createTestNodeTypes(data: INodeTypeData = {}): INodeTypes {
+	const getResolvedKey = (key: string) => {
+		const resolvedKeyParts = key.split(/[\/.]/);
+		return resolvedKeyParts[resolvedKeyParts.length - 1];
+	};
+
 	const nodeTypes = {
 		...defaultMockNodeTypes,
-		...data,
+		...Object.keys(data).reduce<INodeTypeData>((acc, key) => {
+			acc[getResolvedKey(key)] = data[key];
+
+			return acc;
+		}, {}),
 	};
 
 	function getByName(nodeType: string): INodeType | IVersionedNodeType {
-		return nodeTypes[nodeType].type;
+		return nodeTypes[getResolvedKey(nodeType)].type;
 	}
 
 	function getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		return NodeHelpers.getVersionedNodeType(nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(getByName(nodeType), version);
 	}
 
 	return {
@@ -78,4 +94,16 @@ export function createTestWorkflow(options: {
 		active: options.active ?? false,
 		connections: options.connections ?? {},
 	} as IWorkflowDb;
+}
+
+export function createTestNode(
+	node: Partial<INode> & { name: INode['name']; type: INode['type'] },
+): INode {
+	return {
+		id: uuid(),
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters: {},
+		...node,
+	};
 }
