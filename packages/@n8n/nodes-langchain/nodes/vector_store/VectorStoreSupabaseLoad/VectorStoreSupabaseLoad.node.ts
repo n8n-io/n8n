@@ -64,18 +64,25 @@ export class VectorStoreSupabaseLoad implements INodeType {
 		}}`,
 		properties: [
 			{
-				displayName: 'Mode',
+				displayName: 'Operation',
 				name: 'mode',
 				type: 'options',
 				default: 'config',
 				options: [
 					{
-						name: 'Config Node',
-						value: 'config',
+						name: 'Load Documents',
+						value: 'load',
+						description: 'Load documents from vector store',
 					},
 					{
-						name: 'Executable Node',
-						value: 'executable',
+						name: 'Insert Documents',
+						value: 'insert',
+						description: 'Insert documents into vector store',
+					},
+					{
+						name: 'Retrieve Documents',
+						value: 'retrieve',
+						description: 'Retrieve documents from vector store to be used with AI nodes',
 					},
 				],
 			},
@@ -95,31 +102,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 				required: true,
 				description: 'Name of the query to use for matching documents',
 			},
-			{
-				displayName: 'Query',
-				name: 'query',
-				type: 'string',
-				default: '',
-				required: true,
-				description: 'Query to search for documents',
-				displayOptions: {
-					show: {
-						mode: ['executable'],
-					},
-				},
-			},
-			{
-				displayName: 'Top K',
-				name: 'topK',
-				type: 'number',
-				default: 4,
-				description: 'Number of top results to fetch from vector store',
-				displayOptions: {
-					show: {
-						mode: ['executable'],
-					},
-				},
-			},
+			// Options
 			{
 				displayName: 'Options',
 				name: 'options',
