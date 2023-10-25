@@ -1976,75 +1976,94 @@ export default defineComponent({
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
-						const offsets = [
-							[-100, 100],
-							[-140, 0, 140],
-							[-240, -100, 100, 240],
-						];
-						if (sourceNodeType && sourceNodeType.outputs.length > 1) {
-							const offset = offsets[sourceNodeType.outputs.length - 2];
-							const sourceOutputIndex = lastSelectedConnection.__meta
-								? lastSelectedConnection.__meta.sourceOutputIndex
-								: 0;
-							yOffset = offset[sourceOutputIndex];
+						if (sourceNodeType) {
+							const offsets = [
+								[-100, 100],
+								[-140, 0, 140],
+								[-240, -100, 100, 240],
+							];
+
+							const workflow = this.getCurrentWorkflow();
+							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
+								workflow,
+								lastSelectedNode!,
+								sourceNodeType,
+							);
+							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
+								(output) => output === NodeConnectionType.Main,
+							);
+							if (sourceNodeOutputMainOutputs.length > 1) {
+								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const sourceOutputIndex = lastSelectedConnection.__meta
+									? lastSelectedConnection.__meta.sourceOutputIndex
+									: 0;
+								yOffset = offset[sourceOutputIndex];
+							}
 						}
 					}
 
-					const workflow = this.getCurrentWorkflow();
-					const workflowNode = workflow.getNode(newNodeData.name);
-					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
-					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
-						lastSelectedNode.type,
-						lastSelectedNode.typeVersion,
-					);
-
-					// If node has only scoped outputs, position it below the last selected node
-					if (outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)) {
-						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
-						const lastSelectedInputs = NodeHelpers.getNodeInputs(
-							workflow,
-							lastSelectedNodeWorkflow!,
-							lastSelectedNodeType!,
+					setTimeout(() => {
+						const workflow = this.getCurrentWorkflow();
+						const workflowNode = workflow.getNode(newNodeData.name);
+						const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, nodeTypeData);
+						const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+						const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
+							lastSelectedNode.type,
+							lastSelectedNode.typeVersion,
 						);
-						const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
-						const scopedConnectionIndex = (lastSelectedInputTypes || [])
-							.filter((input) => input !== NodeConnectionType.Main)
-							.findIndex((inputType) => outputs[0] === inputType);
+						// If node has only scoped outputs, position it below the last selected node
+						if (
+							outputTypes.length > 0 &&
+							outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+						) {
+							const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
+							const lastSelectedInputs = NodeHelpers.getNodeInputs(
+								workflow,
+								lastSelectedNodeWorkflow!,
+								lastSelectedNodeType!,
+							);
+							const lastSelectedInputTypes = NodeHelpers.getConnectionTypes(lastSelectedInputs);
 
-						newNodeData.position = NodeViewUtils.getNewNodePosition(
-							this.nodes,
-							[
-								lastSelectedNode.position[0] +
-									(NodeViewUtils.NODE_SIZE /
-										(Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
-										scopedConnectionIndex,
-								lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
-							],
-							[100, 0],
-						);
-					} else {
-						const inputs = NodeHelpers.getNodeInputs(
-							workflow,
-							lastSelectedNode,
-							lastSelectedNodeType!,
-						);
-						const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
+							const scopedConnectionIndex = (lastSelectedInputTypes || [])
+								.filter((input) => input !== NodeConnectionType.Main)
+								.findIndex((inputType) => outputs[0] === inputType);
 
-						let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
-						if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
-							// If the node has scoped inputs, push it down a bit more
-							pushOffset += 150;
+							newNodeData.position = NodeViewUtils.getNewNodePosition(
+								this.nodes,
+								[
+									lastSelectedNode.position[0] +
+										(NodeViewUtils.NODE_SIZE /
+											(Math.max(lastSelectedNodeType?.inputs?.length ?? 1), 1)) *
+											scopedConnectionIndex,
+									lastSelectedNode.position[1] + NodeViewUtils.PUSH_NODES_OFFSET,
+								],
+								[100, 0],
+							);
+						} else {
+							// Has only main outputs or no outputs at all
+							const inputs = NodeHelpers.getNodeInputs(
+								workflow,
+								lastSelectedNode,
+								lastSelectedNodeType!,
+							);
+							const inputsTypes = NodeHelpers.getConnectionTypes(inputs);
+
+							let pushOffset = NodeViewUtils.PUSH_NODES_OFFSET;
+							if (!!inputsTypes.find((input) => input !== NodeConnectionType.Main)) {
+								// If the node has scoped inputs, push it down a bit more
+								pushOffset += 150;
+							}
+
+							// If a node is active then add the new node directly after the current one
+							newNodeData.position = NodeViewUtils.getNewNodePosition(
+								this.nodes,
+								[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
+								[100, 0],
+							);
 						}
-
-						// If a node is active then add the new node directly after the current one
-						newNodeData.position = NodeViewUtils.getNewNodePosition(
-							this.nodes,
-							[lastSelectedNode.position[0] + pushOffset, lastSelectedNode.position[1] + yOffset],
-							[100, 0],
-						);
-					}
+					});
 				}
 			} else {
 				// If added node is a trigger and it's the first one added to the canvas
