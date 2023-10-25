@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
