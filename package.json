@@ -37,7 +37,6 @@
     "n8n": "workspace:*"
   },
   "devDependencies": {
-    "@lensesio/cypress-websocket-testing": "^1.0.1",
     "@n8n_io/eslint-config": "workspace:*",
     "@ngneat/falso": "^6.4.0",
     "@types/jest": "^29.5.3",
