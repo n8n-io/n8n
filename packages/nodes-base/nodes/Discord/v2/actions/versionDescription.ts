@@ -30,6 +30,15 @@ export const versionDescription: INodeTypeDescription = {
 			},
 		},
 		{
+			name: 'discordOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
+		{
 			name: 'discordWebhookApi',
 			displayOptions: {
 				show: {
@@ -47,6 +56,11 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Bot Token',
 					value: 'botToken',
+					description: 'Manage messages, channels, and members on a server',
+				},
+				{
+					name: 'OAuth2',
+					value: 'oAuth2',
 					description: 'Manage messages, channels, and members on a server',
 				},
 				{

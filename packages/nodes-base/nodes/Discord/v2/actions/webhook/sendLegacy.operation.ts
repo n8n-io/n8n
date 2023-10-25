@@ -96,7 +96,7 @@ const displayOptions = {
 		operation: ['sendLegacy'],
 	},
 	hide: {
-		authentication: ['botToken'],
+		authentication: ['botToken', 'oAuth2'],
 	},
 };
 

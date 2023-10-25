@@ -12,6 +12,44 @@ import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
 
 import type FormData from 'form-data';
 
+const getCredentialsType = (authentication: string) => {
+	let credentialType = '';
+	switch (authentication) {
+		case 'botToken':
+			credentialType = 'discordBotApi';
+			break;
+		case 'oAuth2':
+			credentialType = 'discordOAuth2Api';
+			break;
+		case 'webhook':
+			credentialType = 'discordWebhookApi';
+			break;
+		default:
+			credentialType = 'discordBotApi';
+	}
+	return credentialType;
+};
+
+async function requestApi(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	options: OptionsWithUrl,
+	credentialType: string,
+	endpoint: string,
+) {
+	let response;
+	if (credentialType === 'discordOAuth2Api' && endpoint !== '/users/@me/guilds') {
+		const credentials = await this.getCredentials('discordOAuth2Api');
+		(options.headers as IDataObject)!.Authorization = `Bot ${credentials.botToken}`;
+		response = await this.helpers.request({ ...options, resolveWithFullResponse: true });
+	} else {
+		response = await this.helpers.requestWithAuthentication.call(this, credentialType, {
+			...options,
+			resolveWithFullResponse: true,
+		});
+	}
+	return response;
+}
+
 export async function discordApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -20,9 +58,12 @@ export async function discordApiRequest(
 	qs?: IDataObject,
 ) {
 	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
-	const credentialType = authentication === 'botToken' ? 'discordBotApi' : 'discordWebhookApi';
+	const headers: IDataObject = {};
+
+	const credentialType = getCredentialsType(authentication);
 
 	const options: OptionsWithUrl = {
+		headers,
 		method,
 		qs,
 		body,
@@ -36,10 +77,7 @@ export async function discordApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(this, credentialType, {
-			...options,
-			resolveWithFullResponse: true,
-		});
+		const response = await requestApi.call(this, options, credentialType, endpoint);
 
 		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
 		const remaining = Number(response.headers['x-ratelimit-remaining']);
@@ -67,7 +105,7 @@ export async function discordApiMultiPartRequest(
 	};
 	const authentication = this.getNodeParameter('authentication', 0, 'webhook') as string;
 
-	const credentialType = authentication === 'botToken' ? 'discordBotApi' : 'discordWebhookApi';
+	const credentialType = getCredentialsType(authentication);
 
 	const options: OptionsWithUrl = {
 		headers,
@@ -82,10 +120,7 @@ export async function discordApiMultiPartRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestWithAuthentication.call(this, credentialType, {
-			...options,
-			resolveWithFullResponse: true,
-		});
+		const response = await requestApi.call(this, options, credentialType, endpoint);
 
 		const resetAfter = Number(response.headers['x-ratelimit-reset-after']);
 		const remaining = Number(response.headers['x-ratelimit-remaining']);

@@ -16,7 +16,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['member'],
-				authentication: ['botToken'],
+				authentication: ['botToken', 'oAuth2'],
 			},
 		},
 		options: [
@@ -46,7 +46,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['member'],
-				authentication: ['botToken'],
+				authentication: ['botToken', 'oAuth2'],
 			},
 		},
 	},
