@@ -9,7 +9,7 @@ import type { ExecutionRepository } from '../../../src/databases/repositories';
 import type { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TIME } from '../../../src/constants';
 
-describe('ExecutionRepository.prune()', () => {
+describe('softDeleteOnPruningCycle()', () => {
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
 	let executionRepository: ExecutionRepository;
