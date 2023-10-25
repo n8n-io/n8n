@@ -1,6 +1,11 @@
-import type { IDataObject, ILoadOptionsFunctions, ResourceMapperFields } from 'n8n-workflow';
+import type {
+	IDataObject,
+	ILoadOptionsFunctions,
+	ResourceMapperField,
+	ResourceMapperFields,
+} from 'n8n-workflow';
 import { GoogleSheet } from '../helpers/GoogleSheet';
-import type { ResourceLocator } from '../helpers/GoogleSheets.types';
+import { ROW_NUMBER, type ResourceLocator } from '../helpers/GoogleSheets.types';
 import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 
 export async function getMappingColumns(
@@ -22,17 +27,32 @@ export async function getMappingColumns(
 	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
 	const columns = sheet.testFilter(sheetData || [], 0, 0).filter((col) => col !== '');
-	const columnData: ResourceMapperFields = {
-		fields: columns.map((col) => ({
-			id: col,
-			displayName: col,
+
+	const fields: ResourceMapperField[] = columns.map((col) => ({
+		id: col,
+		displayName: col,
+		required: false,
+		defaultMatch: col === 'id',
+		display: true,
+		type: 'string',
+		canBeUsedToMatch: true,
+	}));
+
+	const operation = this.getNodeParameter('operation', 0) as string;
+
+	if (operation === 'update') {
+		fields.push({
+			id: ROW_NUMBER,
+			displayName: ROW_NUMBER,
 			required: false,
-			defaultMatch: col === 'id',
+			defaultMatch: false,
 			display: true,
 			type: 'string',
 			canBeUsedToMatch: true,
-		})),
-	};
+			readOnly: true,
+			removed: true,
+		});
+	}
 
-	return columnData;
+	return { fields };
 }

@@ -10,6 +10,7 @@
 			<div
 				class="node-view-wrapper"
 				:class="workflowClasses"
+				data-test-id="node-view-wrapper"
 				@touchstart="mouseDown"
 				@touchend="mouseUp"
 				@touchmove="mouseMoveNodeWorkflow"
@@ -222,6 +223,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -1650,8 +1652,18 @@ export default defineComponent({
 			try {
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
-					// set all new ids when pasting/importing workflows
 					workflowData.nodes.forEach((node: INode) => {
+						//generate new webhookId if workflow already contains a node with the same webhookId
+						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
+							const isDuplicate = Object.values(this.getCurrentWorkflow().nodes).some(
+								(n) => n.webhookId === node.webhookId,
+							);
+							if (isDuplicate) {
+								node.webhookId = uuid();
+							}
+						}
+
+						// set all new ids when pasting/importing workflows
 						if (node.id) {
 							const newId = uuid();
 							nodeIdMap[newId] = node.id;
@@ -2199,6 +2211,7 @@ export default defineComponent({
 			if (lastSelectedNodeEndpointUuid && !isAutoAdd) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
+					lastSelectedEndpoint &&
 					this.checkNodeConnectionAllowed(
 						lastSelectedNode!,
 						newNodeData,
@@ -2370,7 +2383,14 @@ export default defineComponent({
 			);
 
 			if (targetNodeType?.inputs?.length) {
-				for (const input of targetNodeType?.inputs || []) {
+				const workflow = this.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(targetNode.name);
+				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				if (targetNodeType) {
+					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, targetNodeType);
+				}
+
+				for (const input of inputs || []) {
 					if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
 						// No filters defined or wrong connection type
 						continue;
@@ -2874,6 +2894,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+			this.eventsAttached = false;
 		},
 		unbindEndpointEventListeners(bind = true) {
 			if (this.instance) {
@@ -3344,7 +3365,6 @@ export default defineComponent({
 				nodeConnections || [],
 				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
 			);
-
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 					Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(

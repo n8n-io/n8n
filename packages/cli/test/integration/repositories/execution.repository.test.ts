@@ -9,7 +9,7 @@ import type { ExecutionRepository } from '../../../src/databases/repositories';
 import type { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
 import { TIME } from '../../../src/constants';
 
-describe('ExecutionRepository.prune()', () => {
+describe('softDeleteOnPruningCycle()', () => {
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
 	let executionRepository: ExecutionRepository;
@@ -57,7 +57,7 @@ describe('ExecutionRepository.prune()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -76,7 +76,7 @@ describe('ExecutionRepository.prune()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -98,7 +98,7 @@ describe('ExecutionRepository.prune()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -117,7 +117,7 @@ describe('ExecutionRepository.prune()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -145,7 +145,7 @@ describe('ExecutionRepository.prune()', () => {
 				),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -169,7 +169,7 @@ describe('ExecutionRepository.prune()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -188,7 +188,7 @@ describe('ExecutionRepository.prune()', () => {
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await testDb.createExecution({ status, ...attributes }, workflow);
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -206,7 +206,7 @@ describe('ExecutionRepository.prune()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.prune();
+			await executionRepository.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([

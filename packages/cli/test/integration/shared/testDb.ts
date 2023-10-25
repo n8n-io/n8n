@@ -1,4 +1,3 @@
-import { UserSettings } from 'n8n-core';
 import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
@@ -213,8 +212,6 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 export async function createUserWithMfaEnabled(
 	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
 ) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	const email = randomEmail();
 	const password = randomPassword();
 
@@ -222,7 +219,7 @@ export async function createUserWithMfaEnabled(
 
 	const secret = toptService.generateSecret();
 
-	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
+	const mfaService = Container.get(MfaService);
 
 	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
 
@@ -687,12 +684,10 @@ const getDBOptions = (type: TestDBType, name: string) => ({
 // ----------------------------------
 
 async function encryptCredentialData(credential: CredentialsEntity) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data, encryptionKey);
+	coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }

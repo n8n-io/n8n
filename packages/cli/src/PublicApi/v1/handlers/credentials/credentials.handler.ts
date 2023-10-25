@@ -93,7 +93,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const schema = new CredentialsHelper('')
+			const schema = Container.get(CredentialsHelper)
 				.getCredentialsProperties(credentialTypeName)
 				.filter((property) => property.type !== 'hidden');
 
