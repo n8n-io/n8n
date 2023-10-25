@@ -16,7 +16,7 @@ const createNewWorkflowAndActivate = () => {
     workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
     workflowPage.actions.saveWorkflowOnButtonClick();
     workflowPage.actions.activateWorkflow();
-		cy.get('.el-notification .el-notification--error').should('not.exist');
+    cy.get('.el-notification .el-notification--error').should('not.exist');
 }
 
 const editWorkflowAndDeactivate = () => {
@@ -79,6 +79,10 @@ const editWorkflowMoreAndActivate = () => {
         workflowPage.getters.getEndpointSelector('input', IF_NODE_NAME),
     );
     cy.get('.jtk-connector').should('have.length', 3);
+
+    workflowPage.actions.saveWorkflowOnButtonClick();
+    workflowPage.getters.activatorSwitch().click();
+    cy.get('.el-notification .el-notification--error').should('not.exist');
 
 }
 
