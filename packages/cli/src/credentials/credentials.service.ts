@@ -6,7 +6,7 @@ import type {
 	INodeCredentialTestResult,
 	INodeProperties,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { Container } from 'typedi';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { In, Like } from 'typeorm';
@@ -24,6 +24,7 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialTypes } from '@/CredentialTypes';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { Logger } from '@/Logger';
 
 export class CredentialsService {
 	static async get(
@@ -270,7 +271,7 @@ export class CredentialsService {
 
 			return savedCredential;
 		});
-		LoggerProxy.verbose('New credential created', {
+		Container.get(Logger).verbose('New credential created', {
 			credentialId: newCredential.id,
 			ownerId: user.id,
 		});

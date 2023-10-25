@@ -1,11 +1,10 @@
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
-import { deepCopy, LoggerProxy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
-import { getLogger } from '@/Logger';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
@@ -14,21 +13,9 @@ import type { CredentialRequest, ListQuery } from '@/requests';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { listQueryMiddleware } from '@/middlewares';
+import { Logger } from '@/Logger';
 
 export const credentialsController = express.Router();
-
-/**
- * Initialize Logger if needed
- */
-credentialsController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-	next();
-});
-
 credentialsController.use('/', EECredentialsController);
 
 /**
@@ -151,10 +138,13 @@ credentialsController.patch(
 		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
 		if (!sharing) {
-			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
-				credentialId,
-				userId: req.user.id,
-			});
+			Container.get(Logger).info(
+				'Attempt to update credential blocked due to lack of permissions',
+				{
+					credentialId,
+					userId: req.user.id,
+				},
+			);
 			throw new ResponseHelper.NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
 			);
@@ -183,7 +173,7 @@ credentialsController.patch(
 		// Remove the encrypted data as it is not needed in the frontend
 		const { data: _, ...rest } = responseData;
 
-		LoggerProxy.verbose('Credential updated', { credentialId });
+		Container.get(Logger).verbose('Credential updated', { credentialId });
 
 		return { ...rest };
 	}),
@@ -200,10 +190,13 @@ credentialsController.delete(
 		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
 		if (!sharing) {
-			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
-				credentialId,
-				userId: req.user.id,
-			});
+			Container.get(Logger).info(
+				'Attempt to delete credential blocked due to lack of permissions',
+				{
+					credentialId,
+					userId: req.user.id,
+				},
+			);
 			throw new ResponseHelper.NotFoundError(
 				'Credential to be deleted not found. You can only removed credentials owned by you',
 			);

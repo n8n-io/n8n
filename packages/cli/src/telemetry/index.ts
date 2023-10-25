@@ -1,14 +1,13 @@
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import { PostHogClient } from '@/posthog';
+import { Container, Service } from 'typedi';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import type { IExecutionTrackProperties } from '@/Interfaces';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 import { License } from '@/License';
 import { LicenseService } from '@/license/License.service';
 import { N8N_VERSION } from '@/constants';
-import Container, { Service } from 'typedi';
 import { SourceControlPreferencesService } from '../environments/sourceControl/sourceControlPreferences.service.ee';
 import { InstanceSettings } from 'n8n-core';
 
@@ -38,6 +37,7 @@ export class Telemetry {
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
 	constructor(
+		private readonly logger: Logger,
 		private postHog: PostHogClient,
 		private license: License,
 		private readonly instanceSettings: InstanceSettings,
@@ -50,9 +50,7 @@ export class Telemetry {
 			const [key, url] = conf.split(';');
 
 			if (!key || !url) {
-				const logger = getLogger();
-				LoggerProxy.init(logger);
-				logger.warn('Diagnostics backend config is invalid');
+				this.logger.warn('Diagnostics backend config is invalid');
 				return;
 			}
 
