@@ -4,6 +4,7 @@ import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
 import { Container, Service } from 'typedi';
 import config from '@/config';
+import { UrlService } from '@/services/url.service';
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
@@ -38,7 +39,7 @@ export class UserManagementMailer {
 
 	private mailer: NodeMailer | undefined;
 
-	constructor() {
+	constructor(private readonly urlService: UrlService) {
 		this.isEmailSetUp =
 			config.getEnv('userManagement.emails.mode') === 'smtp' &&
 			config.getEnv('userManagement.emails.smtp.host') !== '';
@@ -60,7 +61,10 @@ export class UserManagementMailer {
 		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
-			body: template(inviteEmailData),
+			body: template({
+				...inviteEmailData,
+				domain: this.urlService.frontendUrl,
+			}),
 		});
 
 		// If mailer does not exist it means mail has been disabled.
@@ -73,7 +77,10 @@ export class UserManagementMailer {
 		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
-			body: template(passwordResetData),
+			body: template({
+				...passwordResetData,
+				domain: this.urlService.frontendUrl,
+			}),
 		});
 
 		// If mailer does not exist it means mail has been disabled.

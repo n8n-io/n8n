@@ -13,6 +13,7 @@ import { Credentials } from 'n8n-core';
 import type { WorkflowExecuteMode, INodeCredentialsDetails } from 'n8n-workflow';
 import { jsonStringify } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
+import { Container } from 'typedi';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -26,15 +27,12 @@ import {
 import type { OAuthRequest } from '@/requests';
 import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
+import { UrlService } from '@/services/url.service';
 
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { Logger } from '@/Logger';
 
 export const oauth2CredentialController = express.Router();
-
-const restEndpoint = config.getEnv('endpoints.rest');
 
 /**
  * GET /oauth2-credential/auth
@@ -105,13 +103,14 @@ oauth2CredentialController.get(
 		};
 		const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
+		const { oauth2CallbackUrl } = Container.get(UrlService);
 		const scopes = get(oauthCredentials, 'scope', 'openid') as string;
 		const oAuthOptions: ClientOAuth2Options = {
 			clientId: get(oauthCredentials, 'clientId') as string,
 			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 			authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
-			redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
+			redirectUri: oauth2CallbackUrl,
 			scopes: split(scopes, ','),
 			scopesSeparator: scopes.includes(',') ? ',' : ' ',
 			state: stateEncodedStr,
@@ -241,13 +240,14 @@ oauth2CredentialController.get(
 
 			let options: Partial<ClientOAuth2Options> = {};
 
+			const { oauth2CallbackUrl } = Container.get(UrlService);
 			const scopes = get(oauthCredentials, 'scope', 'openid') as string;
 			const oAuth2Parameters: ClientOAuth2Options = {
 				clientId: get(oauthCredentials, 'clientId') as string,
 				clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 				accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
+				redirectUri: oauth2CallbackUrl,
 				scopes: split(scopes, ','),
 				scopesSeparator: scopes.includes(',') ? ',' : ' ',
 				ignoreSSLIssues: get(oauthCredentials, 'ignoreSSLIssues') as boolean,

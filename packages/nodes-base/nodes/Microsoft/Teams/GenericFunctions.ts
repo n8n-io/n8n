@@ -99,7 +99,7 @@ export function prepareMessage(
 ) {
 	if (includeLinkToWorkflow) {
 		const { id } = this.getWorkflow();
-		const link = `${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		const link = `${this.getFrontendUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
 			'n8n-nodes-base.microsoftTeams',
 		)}${instanceId ? '_' + instanceId : ''}`;
 		messageType = 'html';

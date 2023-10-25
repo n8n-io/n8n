@@ -39,6 +39,7 @@ services:
       - postgres
     volumes:
       - n8n_storage:/home/node/.n8n
+    command: start --tunnel
     depends_on:
       postgres:
         condition: service_healthy

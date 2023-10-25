@@ -19,13 +19,13 @@ import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
-import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
 import { TestWebhooks } from '@/TestWebhooks';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
+import { UrlService } from '@/services/url.service';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
@@ -66,6 +66,8 @@ export class Start extends BaseCommand {
 
 	protected server = new Server();
 
+	private urlService = Container.get(UrlService);
+
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
@@ -76,10 +78,9 @@ export class Start extends BaseCommand {
 	 * Opens the UI in browser
 	 */
 	private openBrowser() {
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = this.urlService.frontendUrl;
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		open(editorUrl, { wait: true }).catch((error: Error) => {
+		open(editorUrl, { wait: true }).catch(() => {
 			console.log(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
@@ -297,18 +298,13 @@ export class Start extends BaseCommand {
 				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
-			const tunnelSettings: localtunnel.TunnelConfig = {
+			const tunnel = await localtunnel(this.server.port, {
 				host: 'https://hooks.n8n.cloud',
 				subdomain: tunnelSubdomain,
-			};
+			});
+			this.urlService.updateBackendUrl(tunnel.url);
 
-			const port = config.getEnv('port');
-
-			// @ts-ignore
-			const webhookTunnel = await localtunnel(port, tunnelSettings);
-
-			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
-			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
+			this.log(`Tunnel URL: ${this.urlService.webhookBaseUrl}\n`);
 			this.log(
 				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
 			);
@@ -319,7 +315,7 @@ export class Start extends BaseCommand {
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
 
-		const editorUrl = GenericHelpers.getBaseUrl();
+		const editorUrl = this.urlService.frontendUrl;
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
 		// Allow to open n8n editor by pressing "o"

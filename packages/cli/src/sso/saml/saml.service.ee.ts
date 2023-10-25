@@ -26,7 +26,7 @@ import axios from 'axios';
 import https from 'https';
 import type { SamlLoginBinding } from './types';
 import { validateMetadata, validateResponse } from './samlValidator';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { UrlService } from '@/services/url.service';
 import { Logger } from '@/Logger';
 
 @Service()
@@ -53,7 +53,6 @@ export class SamlService {
 		loginLabel: 'SAML',
 		wantAssertionsSigned: true,
 		wantMessageSigned: true,
-		relayState: getInstanceBaseUrl(),
 		signatureConfig: {
 			prefix: 'ds',
 			location: {
@@ -63,6 +62,13 @@ export class SamlService {
 		},
 	};
 
+	constructor(
+		private readonly logger: Logger,
+		private readonly urlService: UrlService,
+	) {
+		this._samlPreferences.relayState = urlService.frontendUrl;
+	}
+
 	public get samlPreferences(): SamlPreferences {
 		return {
 			...this._samlPreferences,
@@ -70,8 +76,6 @@ export class SamlService {
 			loginLabel: getSamlLoginLabel(),
 		};
 	}
-
-	constructor(private readonly logger: Logger) {}
 
 	async init(): Promise<void> {
 		// load preferences first but do not apply so as to not load samlify unnecessarily
@@ -141,14 +145,14 @@ export class SamlService {
 
 	private getRedirectLoginRequestUrl(relayState?: string): BindingContext {
 		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		sp.entitySetting.relayState = relayState ?? this.urlService.frontendUrl;
 		const loginRequest = sp.createLoginRequest(this.getIdentityProviderInstance(), 'redirect');
 		return loginRequest;
 	}
 
 	private getPostLoginRequestUrl(relayState?: string): PostBindingContext {
 		const sp = this.getServiceProviderInstance();
-		sp.entitySetting.relayState = relayState ?? getInstanceBaseUrl();
+		sp.entitySetting.relayState = relayState ?? this.urlService.frontendUrl;
 		const loginRequest = sp.createLoginRequest(
 			this.getIdentityProviderInstance(),
 			'post',

@@ -4,7 +4,6 @@ import { In } from 'typeorm';
 import { User } from '@db/entities/User';
 import type { IUserSettings } from 'n8n-workflow';
 import { UserRepository } from '@/databases/repositories';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { PublicUser } from '@/Interfaces';
 import type { PostHogClient } from '@/posthog';
 
@@ -54,16 +53,7 @@ export class UserService {
 		return this.userRepository.update(userId, { settings: { ...settings, ...newSettings } });
 	}
 
-	generatePasswordResetUrl(instanceBaseUrl: string, token: string, mfaEnabled: boolean) {
-		const url = new URL(`${instanceBaseUrl}/change-password`);
-
-		url.searchParams.append('token', token);
-		url.searchParams.append('mfaEnabled', mfaEnabled.toString());
-
-		return url.toString();
-	}
-
-	async toPublic(user: User, options?: { withInviteUrl?: boolean; posthog?: PostHogClient }) {
+	async toPublic(user: User, options?: { posthog?: PostHogClient }) {
 		const { password, updatedAt, apiKey, authIdentities, ...rest } = user;
 
 		const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
@@ -74,26 +64,11 @@ export class UserService {
 			hasRecoveryCodesLeft: !!user.mfaRecoveryCodes?.length,
 		};
 
-		if (options?.withInviteUrl && publicUser.isPending) {
-			publicUser = this.addInviteUrl(publicUser, user.id);
-		}
-
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
 
 		return publicUser;
-	}
-
-	private addInviteUrl(user: PublicUser, inviterId: string) {
-		const url = new URL(getInstanceBaseUrl());
-		url.pathname = '/signup';
-		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', user.id);
-
-		user.inviteAcceptUrl = url.toString();
-
-		return user;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {

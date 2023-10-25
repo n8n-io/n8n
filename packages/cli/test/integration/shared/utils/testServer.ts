@@ -40,6 +40,7 @@ import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { License } from '@/License';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
+import { UrlService } from '@/services/url.service';
 
 import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -247,6 +248,7 @@ export const setupTestServer = ({
 								userService,
 								Container.get(JwtService),
 								mfaService,
+								Container.get(UrlService),
 							),
 						);
 						break;
@@ -279,6 +281,7 @@ export const setupTestServer = ({
 								Container.get(JwtService),
 								Container.get(RoleService),
 								userService,
+								Container.get(UrlService),
 							),
 						);
 						break;

@@ -1,15 +1,15 @@
-export class SamlUrls {
-	static readonly samlRESTRoot = '/rest/sso/saml';
+const samlRESTRoot = '/sso/saml';
 
+export class SamlUrls {
 	static readonly initSSO = '/initsso';
 
 	static readonly acs = '/acs';
 
-	static readonly restAcs = this.samlRESTRoot + this.acs;
+	static readonly restAcs = samlRESTRoot + this.acs;
 
 	static readonly metadata = '/metadata';
 
-	static readonly restMetadata = this.samlRESTRoot + this.metadata;
+	static readonly restMetadata = samlRESTRoot + this.metadata;
 
 	static readonly config = '/config';
 

@@ -47,7 +47,6 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
-import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { findSubworkflowStart, isWorkflowIdValid } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
@@ -55,8 +54,9 @@ import { WorkflowsService } from './workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
 import { ExecutionRepository } from '@db/repositories';
 import { EventsService } from '@/services/events.service';
+import { OwnershipService } from '@/services/ownership.service';
+import { UrlService } from '@/services/url.service';
 import { SecretsHelper } from './SecretsHelpers';
-import { OwnershipService } from './services/ownership.service';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
@@ -123,9 +123,8 @@ export function executeErrorWorkflow(
 	// Check if there was an error and if so if an errorWorkflow or a trigger is set
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}workflow/${
-			workflowData.id
-		}/executions/${executionId}`;
+		const { frontendUrl } = Container.get(UrlService);
+		pastExecutionUrl = `${frontendUrl}workflow/${workflowData.id}/executions/${executionId}`;
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
@@ -1029,24 +1028,18 @@ export async function getBase(
 	currentNodeParameters?: INodeParameters,
 	executionTimeoutTimestamp?: number,
 ): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-
-	const timezone = config.getEnv('generic.timezone');
-	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
-	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
-
 	const variables = await WorkflowHelpers.getVariables();
 
+	const { restBaseUrl, frontendUrl, webhookBaseUrl } = Container.get(UrlService);
 	return {
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
-		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
-		timezone,
-		instanceBaseUrl: urlBaseWebhook,
-		webhookBaseUrl,
-		webhookWaitingBaseUrl,
-		webhookTestBaseUrl,
+		restApiUrl: restBaseUrl,
+		timezone: config.getEnv('generic.timezone'),
+		frontendUrl,
+		webhookBaseUrl: webhookBaseUrl + config.getEnv('endpoints.webhook'),
+		webhookWaitingBaseUrl: webhookBaseUrl + config.getEnv('endpoints.webhookWaiting'),
+		webhookTestBaseUrl: webhookBaseUrl + config.getEnv('endpoints.webhookTest'),
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,

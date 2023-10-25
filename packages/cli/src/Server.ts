@@ -4,7 +4,6 @@
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import assert from 'assert';
@@ -117,7 +116,6 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WaitTracker } from '@/WaitTracker';
-import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
@@ -149,6 +147,7 @@ import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
 import { JwtService } from './services/jwt.service';
+import { UrlService } from '@/services/url.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
@@ -174,6 +173,8 @@ export class Server extends AbstractServer {
 	private frontendService?: FrontendService;
 
 	private postHog: PostHogClient;
+
+	urlService = Container.get(UrlService);
 
 	constructor() {
 		super('main');
@@ -303,6 +304,7 @@ export class Server extends AbstractServer {
 				userService,
 				jwtService,
 				mfaService,
+				this.urlService,
 			),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
@@ -318,6 +320,7 @@ export class Server extends AbstractServer {
 				jwtService,
 				Container.get(RoleService),
 				userService,
+				this.urlService,
 				postHog,
 			),
 			Container.get(SamlController),
@@ -533,10 +536,7 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/nodes-list-search`,
 			ResponseHelper.send(
-				async (
-					req: NodeListSearchRequest,
-					res: express.Response,
-				): Promise<INodeListSearchResult | undefined> => {
+				async (req: NodeListSearchRequest): Promise<INodeListSearchResult | undefined> => {
 					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
@@ -589,10 +589,7 @@ export class Server extends AbstractServer {
 		this.app.get(
 			`/${this.restEndpoint}/get-mapping-fields`,
 			ResponseHelper.send(
-				async (
-					req: ResourceMapperRequest,
-					res: express.Response,
-				): Promise<ResourceMapperFields | undefined> => {
+				async (req: ResourceMapperRequest): Promise<ResourceMapperFields | undefined> => {
 					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
@@ -685,21 +682,16 @@ export class Server extends AbstractServer {
 		// ----------------------------------------
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
-			ResponseHelper.send(
-				async (
-					req: CurlHelper.ToJson,
-					res: express.Response,
-				): Promise<{ [key: string]: string }> => {
-					const curlCommand = req.body.curlCommand ?? '';
+			ResponseHelper.send(async (req: CurlHelper.ToJson): Promise<{ [key: string]: string }> => {
+				const curlCommand = req.body.curlCommand ?? '';
 
-					try {
-						const parameters = toHttpNodeParameters(curlCommand);
-						return ResponseHelper.flattenObject(parameters, 'parameters');
-					} catch (e) {
-						throw new ResponseHelper.BadRequestError('Invalid cURL command');
-					}
-				},
-			),
+				try {
+					const parameters = toHttpNodeParameters(curlCommand);
+					return ResponseHelper.flattenObject(parameters, 'parameters');
+				} catch (e) {
+					throw new ResponseHelper.BadRequestError('Invalid cURL command');
+				}
+			}),
 		);
 
 		// ----------------------------------------
@@ -777,9 +769,7 @@ export class Server extends AbstractServer {
 				};
 
 				const oauthRequestData = {
-					oauth_callback: `${WebhookHelpers.getWebhookBaseUrl()}${
-						this.restEndpoint
-					}/oauth1-credential/callback?cid=${credentialId}`,
+					oauth_callback: `${this.urlService.oauth1CallbackUrl}?cid=${credentialId}`,
 				};
 
 				await this.externalHooks.run('oauth1.authenticate', [oAuthOptions, oauthRequestData]);
@@ -1173,9 +1163,7 @@ export class Server extends AbstractServer {
 		// Returns all the available timezones
 		this.app.get(
 			`/${this.restEndpoint}/options/timezones`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<object> => {
-				return timezones;
-			}),
+			ResponseHelper.send(async (): Promise<object> => timezones),
 		);
 
 		// ----------------------------------------
@@ -1186,15 +1174,11 @@ export class Server extends AbstractServer {
 			// Returns the current settings for the UI
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(
-					async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-						void Container.get(InternalHooks).onFrontendSettingsAPI(
-							req.headers.sessionid as string,
-						);
+				ResponseHelper.send(async (req: express.Request): Promise<IN8nUISettings> => {
+					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
 
-						return frontendService.getSettings();
-					},
-				),
+					return frontendService.getSettings();
+				}),
 			);
 		}
 
@@ -1251,6 +1235,7 @@ export class Server extends AbstractServer {
 			};
 
 			const serveIcons: express.RequestHandler = async (req, res) => {
+				// eslint-disable-next-line prefer-const
 				let { scope, packageName } = req.params;
 				if (scope) packageName = `@${scope}/${packageName}`;
 				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);

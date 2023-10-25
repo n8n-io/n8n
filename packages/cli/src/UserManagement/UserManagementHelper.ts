@@ -7,9 +7,7 @@ import * as ResponseHelper from '@/ResponseHelper';
 import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
-import config from '@/config';
 import { License } from '@/License';
-import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { RoleService } from '@/services/role.service';
 
 export function isSharingEnabled(): boolean {
@@ -25,19 +23,6 @@ export async function getInstanceOwner() {
 			globalRoleId: globalOwnerRole.id,
 		},
 	});
-}
-
-/**
- * Return the n8n instance base URL without trailing slash.
- */
-export function getInstanceBaseUrl(): string {
-	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
-
-	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
-}
-
-export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
-	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
 }
 
 // TODO: Enforce at model level

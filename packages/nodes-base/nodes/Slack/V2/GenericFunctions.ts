@@ -142,7 +142,7 @@ export function getMessageContent(
 	) as IDataObject;
 
 	const { id } = this.getWorkflow();
-	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+	const automatedMessage = `_Automated with this <${this.getFrontendUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
 		'n8n-nodes-base.slack',
 	)}${instanceId ? '_' + instanceId : ''}|n8n workflow>_`;
 	const messageType = this.getNodeParameter('messageType', i) as string;

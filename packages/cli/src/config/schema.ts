@@ -513,11 +513,23 @@ export const schema = {
 		env: 'N8N_SSL_CERT',
 		doc: 'SSL Cert for HTTPS Protocol',
 	},
-	editorBaseUrl: {
+	backendUrl: {
+		format: String,
+		default: '',
+		env: 'N8N_BASE_URL',
+		doc: 'Public URL where the n8n instance is available',
+	},
+	frontendUrl: {
 		format: String,
 		default: '',
 		env: 'N8N_EDITOR_BASE_URL',
-		doc: 'Public URL where the editor is accessible. Also used for emails sent from n8n.',
+		doc: 'This overrides the public URL for the editor. Also used as the base for links in emails sent from n8n.',
+	},
+	webhookBaseUrl: {
+		format: String,
+		default: '',
+		env: 'WEBHOOK_URL',
+		doc: 'Used to manually provide the Webhook URL when running n8n behind a reverse proxy.',
 	},
 
 	security: {

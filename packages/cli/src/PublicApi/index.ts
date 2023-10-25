@@ -3,7 +3,7 @@ import type { Router } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
-
+import { Container } from 'typedi';
 import validator from 'validator';
 import YAML from 'yamljs';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
@@ -12,10 +12,9 @@ import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
+import { UrlService } from '@/services/url.service';
 
 async function createApiRouter(
 	version: string,
@@ -27,9 +26,10 @@ async function createApiRouter(
 	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
+	const { backendUrl } = Container.get(UrlService);
 	swaggerDocument.server = [
 		{
-			url: `${getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+			url: `${backendUrl}/${publicApiEndpoint}/${version}}`,
 		},
 	];
 	const apiController = express.Router();

@@ -3,7 +3,6 @@ export type InviteEmailData = {
 	firstName?: string;
 	lastName?: string;
 	inviteAcceptUrl: string;
-	domain: string;
 };
 
 export type PasswordResetData = {
@@ -11,7 +10,6 @@ export type PasswordResetData = {
 	firstName?: string;
 	lastName?: string;
 	passwordResetUrl: string;
-	domain: string;
 };
 
 export type SendEmailResult = {

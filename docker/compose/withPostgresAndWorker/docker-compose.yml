@@ -61,6 +61,7 @@ services:
 
   n8n:
     <<: *shared
+    command: start --tunnel
     ports:
       - 5678:5678
 

@@ -17,8 +17,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
-import * as WebhookHelpers from '@/WebhookHelpers';
 import config from '@/config';
 import { getCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { getLdapLoginLabel } from '@/Ldap/helpers';
@@ -31,6 +29,7 @@ import {
 import { UserManagementMailer } from '@/UserManagement/email';
 import type { CommunityPackagesService } from '@/services/communityPackages.service';
 import { Logger } from '@/Logger';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 export class FrontendService {
@@ -46,6 +45,7 @@ export class FrontendService {
 		private readonly license: License,
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly urlService: UrlService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
 		void this.generateTypes();
@@ -61,8 +61,7 @@ export class FrontendService {
 	}
 
 	private initSettings() {
-		const instanceBaseUrl = getInstanceBaseUrl();
-		const restEndpoint = config.getEnv('endpoints.rest');
+		const { frontendUrl, webhookBaseUrl, oauth1CallbackUrl, oauth2CallbackUrl } = this.urlService;
 
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.getEnv('diagnostics.enabled'),
@@ -90,13 +89,13 @@ export class FrontendService {
 			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: config.getEnv('generic.timezone'),
-			urlBaseWebhook: WebhookHelpers.getWebhookBaseUrl(),
-			urlBaseEditor: instanceBaseUrl,
+			webhookBaseUrl,
+			frontendUrl,
 			versionCli: '',
 			releaseChannel: config.getEnv('generic.releaseChannel'),
 			oauthCallbackUrls: {
-				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
-				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
+				oauth1: oauth1CallbackUrl,
+				oauth2: oauth2CallbackUrl,
 			},
 			versionNotifications: {
 				enabled: config.getEnv('versionNotifications.enabled'),
@@ -213,15 +212,13 @@ export class FrontendService {
 	}
 
 	getSettings(): IN8nUISettings {
-		const restEndpoint = config.getEnv('endpoints.rest');
-
 		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
-		const instanceBaseUrl = getInstanceBaseUrl();
-		this.settings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-		this.settings.urlBaseEditor = instanceBaseUrl;
+		const { frontendUrl, webhookBaseUrl, oauth1CallbackUrl, oauth2CallbackUrl } = this.urlService;
+		this.settings.frontendUrl = frontendUrl;
+		this.settings.webhookBaseUrl = webhookBaseUrl;
 		this.settings.oauthCallbackUrls = {
-			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
-			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
+			oauth1: oauth1CallbackUrl,
+			oauth2: oauth2CallbackUrl,
 		};
 
 		// refresh user management status

@@ -505,8 +505,8 @@ importers:
         specifier: ^9.0.1
         version: 9.0.1
       '@types/localtunnel':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^2.0.0
+        version: 2.0.0
       '@types/lodash':
         specifier: ^4.14.195
         version: 4.14.195
@@ -7272,8 +7272,10 @@ packages:
     resolution: {integrity: sha512-HZQYqbiFVWufzCwexrvh694SOim8z2d+xJl5UNamcvQFejLY/2YUtzXHYi3cHdI7PMlS8ejH2slRAOJQ32aNbA==}
     dev: true
 
-  /@types/localtunnel@1.9.0:
-    resolution: {integrity: sha512-3YxO7RHRrmtYNX6Rhkr97bnXHrF1Ckfo4axENWLcBXWi+8B1WsNbqPqe5Eg6TA5survjAWWvLTu1KQesuLHVgQ==}
+  /@types/localtunnel@2.0.0:
+    resolution: {integrity: sha512-fnmdUYCZi9oO3aH6NesicdutttyiYAntcNRv5HalFPyTWvk16oZRqzZ2dajuj3hqWB8fXsM1+3TJp9LMCCQ0eA==}
+    dependencies:
+      '@types/node': 18.16.16
     dev: true
 
   /@types/lodash-es@4.17.6:

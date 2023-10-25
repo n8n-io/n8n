@@ -1,6 +1,9 @@
 import express from 'express';
 import { Container, Service } from 'typedi';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import url from 'url';
+import querystring from 'querystring';
+import { validate } from 'class-validator';
+import type { PostBindingContext } from 'samlify/types/src/entity';
 import { Authorized, Get, NoAuthRequired, Post, RestController } from '@/decorators';
 import { SamlUrls } from '../constants';
 import {
@@ -12,8 +15,6 @@ import { SamlConfiguration } from '../types/requests';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getInitSSOFormView } from '../views/initSsoPost';
 import { issueCookie } from '@/auth/jwt';
-import { validate } from 'class-validator';
-import type { PostBindingContext } from 'samlify/types/src/entity';
 import { isConnectionTestRequest, isSamlLicensedAndEnabled } from '../samlHelpers';
 import type { SamlLoginBinding } from '../types';
 import { AuthenticatedRequest } from '@/requests';
@@ -25,13 +26,12 @@ import {
 import { getSamlConnectionTestSuccessView } from '../views/samlConnectionTestSuccess';
 import { getSamlConnectionTestFailedView } from '../views/samlConnectionTestFailed';
 import { InternalHooks } from '@/InternalHooks';
-import url from 'url';
-import querystring from 'querystring';
+import { UrlService } from '@/services/url.service';
 
 @Service()
 @RestController('/sso/saml')
 export class SamlController {
-	constructor(private samlService: SamlService) {}
+	constructor(private readonly samlService: SamlService, private readonly urlService: UrlService) {}
 
 	@NoAuthRequired()
 	@Get(SamlUrls.metadata)
@@ -138,10 +138,10 @@ export class SamlController {
 				if (isSamlLicensedAndEnabled()) {
 					await issueCookie(res, loginResult.authenticatedUser);
 					if (loginResult.onboardingRequired) {
-						return res.redirect(getInstanceBaseUrl() + SamlUrls.samlOnboarding);
+						return res.redirect(this.urlService.frontendUrl + SamlUrls.samlOnboarding);
 					} else {
 						const redirectUrl = req.body?.RelayState ?? SamlUrls.defaultRedirect;
-						return res.redirect(getInstanceBaseUrl() + redirectUrl);
+						return res.redirect(this.urlService.frontendUrl + redirectUrl);
 					}
 				} else {
 					return res.status(202).send(loginResult.attributes);

@@ -21,21 +21,6 @@ import type { UserUpdatePayload } from '@/requests';
 import { ExecutionRepository } from '@db/repositories';
 
 /**
- * Returns the base URL n8n is reachable from
- */
-export function getBaseUrl(): string {
-	const protocol = config.getEnv('protocol');
-	const host = config.getEnv('host');
-	const port = config.getEnv('port');
-	const path = config.getEnv('path');
-
-	if ((protocol === 'http' && port === 80) || (protocol === 'https' && port === 443)) {
-		return `${protocol}://${host}${path}`;
-	}
-	return `${protocol}://${host}:${port}${path}`;
-}
-
-/**
  * Returns the session id if one is set
  */
 export function getSessionId(req: express.Request): string | undefined {

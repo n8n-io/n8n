@@ -1,5 +1,8 @@
 import { IsNull, Not } from 'typeorm';
 import validator from 'validator';
+import { Response } from 'express';
+import { Container } from 'typedi';
+import { TokenExpiredError } from 'jsonwebtoken';
 import { Get, Post, RestController } from '@/decorators';
 import {
 	BadRequestError,
@@ -8,27 +11,20 @@ import {
 	UnauthorizedError,
 	UnprocessableRequestError,
 } from '@/ResponseHelper';
-import {
-	getInstanceBaseUrl,
-	hashPassword,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
+import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
 
-import { Response } from 'express';
 import { PasswordResetRequest } from '@/requests';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
 import { isLdapEnabled } from '@/Ldap/helpers';
 import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { UserService } from '@/services/user.service';
+import { JwtService, type JwtPayload } from '@/services/jwt.service';
 import { License } from '@/License';
-import { Container } from 'typedi';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { TokenExpiredError } from 'jsonwebtoken';
-import type { JwtPayload } from '@/services/jwt.service';
-import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
+import { UrlService } from '@/services/url.service';
 import { Logger } from '@/Logger';
 
 @RestController()
@@ -41,6 +37,7 @@ export class PasswordResetController {
 		private readonly userService: UserService,
 		private readonly jwtService: JwtService,
 		private readonly mfaService: MfaService,
+		private readonly urlService: UrlService,
 	) {}
 
 	/**
@@ -114,29 +111,19 @@ export class PasswordResetController {
 			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
-		const baseUrl = getInstanceBaseUrl();
 		const { id, firstName, lastName } = user;
 
-		const resetPasswordToken = this.jwtService.signData(
-			{ sub: id },
-			{
-				expiresIn: '1d',
-			},
-		);
-
-		const url = this.userService.generatePasswordResetUrl(
-			baseUrl,
-			resetPasswordToken,
-			user.mfaEnabled,
-		);
+		const resetPasswordToken = this.jwtService.signData({ sub: id }, { expiresIn: '1d' });
 
 		try {
 			await this.mailer.passwordReset({
 				email,
 				firstName,
 				lastName,
-				passwordResetUrl: url,
-				domain: baseUrl,
+				passwordResetUrl: this.urlService.generatePasswordResetUrl(
+					resetPasswordToken,
+					user.mfaEnabled,
+				),
 			});
 		} catch (error) {
 			void this.internalHooks.onEmailFailed({
