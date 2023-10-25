@@ -5,8 +5,6 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 
 let owner: User;
 let user1: User;
@@ -15,8 +13,6 @@ let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
-
-LoggerProxy.init(getLogger());
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 

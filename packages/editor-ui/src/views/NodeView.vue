@@ -223,6 +223,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -345,7 +346,6 @@ import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEnd
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { UPDATE_WEBHOOK_ID_NODE_TYPES } from '@/constants';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2910,6 +2910,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+			this.eventsAttached = false;
 		},
 		unbindEndpointEventListeners(bind = true) {
 			if (this.instance) {
@@ -3022,6 +3023,9 @@ export default defineComponent({
 								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
 								{
 									workflow_id: workflow.id,
+								},
+								{
+									withPostHog: true,
 								},
 							);
 						}

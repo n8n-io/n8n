@@ -12,6 +12,7 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';
+import Container from 'typedi';
 
 describe('CredentialsHelper', () => {
 	const TEST_ENCRYPTION_KEY = 'test';
@@ -277,7 +278,7 @@ describe('CredentialsHelper', () => {
 					},
 				};
 
-				const credentialsHelper = new CredentialsHelper(TEST_ENCRYPTION_KEY);
+				const credentialsHelper = Container.get(CredentialsHelper);
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,

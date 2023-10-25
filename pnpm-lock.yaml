@@ -195,8 +195,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.6.1
-        version: 2.6.1
+        specifier: ~2.7.1
+        version: 2.7.1
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
@@ -260,9 +260,6 @@ importers:
       cookie-parser:
         specifier: ^1.4.6
         version: 1.4.6
-      crypto-js:
-        specifier: ~4.1.1
-        version: 4.1.1
       csrf:
         specifier: ^3.1.0
         version: 3.1.0
@@ -586,7 +583,7 @@ importers:
         specifier: ~1.7.2
         version: 1.7.2
       crypto-js:
-        specifier: ~4.1.1
+        specifier: ^4.1.1
         version: 4.1.1
       fast-glob:
         specifier: ^3.2.5
@@ -644,8 +641,8 @@ importers:
         specifier: ~1.7.1
         version: 1.7.3
       '@types/crypto-js':
-        specifier: ^4.0.1
-        version: 4.1.1
+        specifier: ^4.1.3
+        version: 4.1.3
       '@types/express':
         specifier: ^4.17.6
         version: 4.17.14
@@ -1008,6 +1005,9 @@ importers:
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
+      typedi:
+        specifier: ^0.10.0
+        version: 0.10.0(patch_hash=62r6bc2crgimafeyruodhqlgo4)
     devDependencies:
       '@oclif/dev-cli':
         specifier: ^1.22.2
@@ -1348,8 +1348,8 @@ importers:
         version: 0.5.0
     devDependencies:
       '@types/crypto-js':
-        specifier: ^4.1.1
-        version: 4.1.1
+        specifier: ^4.1.3
+        version: 4.1.3
       '@types/deep-equal':
         specifier: ^1.0.1
         version: 1.0.1
@@ -3956,6 +3956,11 @@ packages:
     resolution: {integrity: sha512-cEee/Z+I12mZcFJshKcCqC8tuX5hG3s+d+9nZ3LabqKF1vKdF41B92pJVCBggjAGORAeOzyyDDKrZwIkLffeOQ==}
     dev: true
 
+  /@fastify/busboy@2.0.0:
+    resolution: {integrity: sha512-JUFJad5lv7jxj926GPgymrWQxxjPYuJNiNjNMzqT+HiuP6Vl3dk5xzG+8sTX96np0ZAluvaMzPsjhHZ5rNuNQQ==}
+    engines: {node: '>=14'}
+    dev: false
+
   /@floating-ui/core@1.3.1:
     resolution: {integrity: sha512-Bu+AMaXNjrpjh41znzHqaz3r2Nr8hHuHZT6V2LBKMhyMl0FgKA62PNYbqnfgmzOhoWZj70Zecisbo4H1rotP5g==}
     dev: false
@@ -4681,14 +4686,14 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.6.1:
-    resolution: {integrity: sha512-N4yBzgNIRrQlhy+BWyEC9cbf86asPxryWbJpmrfeaqkFpBR6Z5yIqmWRGnLs7XKVC9se8cdWlF7EWKtaH6oDPA==}
-    engines: {node: '>=14.0.0', npm: '>=7.10.0'}
+  /@n8n_io/license-sdk@2.7.1:
+    resolution: {integrity: sha512-SiPKI/wN2coLPB8Tyb28UlLgAszU2SkSR8PWNioTWAd8PnUhTYg8KN9jfUOZipVF+YMOAHc/hQUq6kJA1PF0xg==}
+    engines: {node: '>=18.12.1', npm: '>=8.19.2'}
     dependencies:
       crypto-js: 4.1.1
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 5.21.0
+      undici: 5.26.4
     dev: false
 
   /@n8n_io/riot-tmpl@4.0.0:
@@ -6819,7 +6824,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.15
+      vue-component-type-helpers: 1.8.19
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -7054,8 +7059,8 @@ packages:
       '@types/node': 18.16.16
     dev: true
 
-  /@types/crypto-js@4.1.1:
-    resolution: {integrity: sha512-BG7fQKZ689HIoc5h+6D2Dgq1fABRa0RbBWKBd9SP/MVRVXROflpm5fhwyATX5duFmbStzyzyycPB8qUYKDH3NA==}
+  /@types/crypto-js@4.1.3:
+    resolution: {integrity: sha512-YP1sYYayLe7Eg5oXyLLvOLfxBfZ5Fgpz6sVWkpB18wDMywCLPWmqzRz+9gyuOoLF0fzDTTFwlyNbx7koONUwqA==}
     dev: true
 
   /@types/dateformat@3.0.1:
@@ -21213,11 +21218,11 @@ packages:
       undertaker-registry: 1.0.1
     dev: true
 
-  /undici@5.21.0:
-    resolution: {integrity: sha512-HOjK8l6a57b2ZGXOcUsI5NLfoTrfmbOl90ixJDl0AEFG4wgHNDQxtZy15/ZQp7HhjkpaGlp/eneMgtsu1dIlUA==}
-    engines: {node: '>=12.18'}
+  /undici@5.26.4:
+    resolution: {integrity: sha512-OG+QOf0fTLtazL9P9X7yqWxQ+Z0395Wk6DSkyTxtaq3wQEjIroVe7Y4asCX/vcCxYpNGMnwz8F0qbRYUoaQVMw==}
+    engines: {node: '>=14.0'}
     dependencies:
-      busboy: 1.6.0
+      '@fastify/busboy': 2.0.0
     dev: false
 
   /unescape@1.0.1:
@@ -21794,8 +21799,8 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.15:
-    resolution: {integrity: sha512-RKiPRKW4BdwgmQ9vaNkHYKAThdTbgU4TOphVyyzqxRwsOJOoRIrb+vB49XLvs5CKPNrvxMXZMwPe5FyJCqFWyg==}
+  /vue-component-type-helpers@1.8.19:
+    resolution: {integrity: sha512-1OANGSZK4pzHF4uc86usWi+o5Y0zgoDtqWkPg6Am6ot+jHSAmpOah59V/4N82So5xRgivgCxGgK09lBy1XNUfQ==}
     dev: true
 
   /vue-component-type-helpers@1.8.4:
@@ -22555,7 +22560,7 @@ packages:
     dev: true
 
   '@cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz':
-    resolution: {tarball: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz}
+    resolution: {registry: https://registry.npmjs.org/, tarball: https://cdn.sheetjs.com/xlsx-0.19.3/xlsx-0.19.3.tgz}
     name: xlsx
     version: 0.19.3
     engines: {node: '>=0.8'}

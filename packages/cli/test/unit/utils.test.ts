@@ -1,4 +1,4 @@
-import { webhookNotFoundErrorMessage } from '../../src/utils';
+import { webhookNotFoundErrorMessage } from '@/utils';
 
 describe('utils test webhookNotFoundErrorMessage ', () => {
 	it('should return a message with path and method', () => {

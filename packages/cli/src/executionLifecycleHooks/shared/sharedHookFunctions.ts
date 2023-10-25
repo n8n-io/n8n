@@ -1,11 +1,11 @@
+import { Container } from 'typedi';
 import type { ExecutionStatus, IRun, IWorkflowBase } from 'n8n-workflow';
 import type { ExecutionPayload, IExecutionDb } from '@/Interfaces';
 import pick from 'lodash/pick';
 import { isWorkflowIdValid } from '@/utils';
-import { LoggerProxy } from 'n8n-workflow';
-import Container from 'typedi';
-import { ExecutionRepository } from '../../databases/repositories';
-import { ExecutionMetadataService } from '../../services/executionMetadata.service';
+import { ExecutionRepository } from '@db/repositories';
+import { ExecutionMetadataService } from '@/services/executionMetadata.service';
+import { Logger } from '@/Logger';
 
 export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	const workflowHasCrashed = runData.status === 'crashed';
@@ -69,9 +69,10 @@ export async function updateExistingExecution(parameters: {
 	workflowId: string;
 	executionData: Partial<IExecutionDb>;
 }) {
+	const logger = Container.get(Logger);
 	const { executionId, workflowId, executionData } = parameters;
 	// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
-	LoggerProxy.debug(`Save execution data to database for execution ID ${executionId}`, {
+	logger.debug(`Save execution data to database for execution ID ${executionId}`, {
 		executionId,
 		workflowId,
 		finished: executionData.finished,
@@ -88,7 +89,7 @@ export async function updateExistingExecution(parameters: {
 			);
 		}
 	} catch (e) {
-		LoggerProxy.error(`Failed to save metadata for execution ID ${executionId}`, e as Error);
+		logger.error(`Failed to save metadata for execution ID ${executionId}`, e as Error);
 	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {

@@ -1,7 +1,7 @@
 import validator from 'validator';
 import type { FindManyOptions } from 'typeorm';
 import { In, Not } from 'typeorm';
-import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -38,13 +38,14 @@ import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
+import { Logger } from '@/Logger';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
 	constructor(
 		private readonly config: Config,
-		private readonly logger: ILogger,
+		private readonly logger: Logger,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
