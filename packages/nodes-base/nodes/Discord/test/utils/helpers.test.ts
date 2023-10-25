@@ -52,6 +52,7 @@ describe('Test prepareEmbeds', () => {
 			{
 				test1: 'test',
 				test2: 'test',
+				description: 'test',
 			},
 		];
 
