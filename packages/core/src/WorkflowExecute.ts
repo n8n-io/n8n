@@ -1286,7 +1286,9 @@ export class WorkflowExecute {
 
 						if (
 							executionData.node.continueOnFail === true ||
-							['continueRegularOutput', 'continueErrorOutput'].includes(executionData.node.onError)
+							['continueRegularOutput', 'continueErrorOutput'].includes(
+								executionData.node.onError || '',
+							)
 						) {
 							// Workflow should continue running even if node errors
 							if (executionData.data.hasOwnProperty('main') && executionData.data.main.length > 0) {
