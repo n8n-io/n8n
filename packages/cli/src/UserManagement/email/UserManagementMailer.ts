@@ -2,7 +2,7 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-import { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import config from '@/config';
 import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
@@ -45,7 +45,7 @@ export class UserManagementMailer {
 
 		// Other implementations can be used in the future.
 		if (this.isEmailSetUp) {
-			this.mailer = new NodeMailer();
+			this.mailer = Container.get(NodeMailer);
 		}
 	}
 

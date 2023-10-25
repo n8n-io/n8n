@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Container, Service } from 'typedi';
 import path from 'path';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -9,7 +9,7 @@ import {
 } from './constants';
 import * as Db from '@/Db';
 import glob from 'fast-glob';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'fs/promises';
 import { Credentials, InstanceSettings } from 'n8n-core';
 import type { IWorkflowToImport } from '@/Interfaces';
@@ -28,6 +28,7 @@ import { RoleService } from '@/services/role.service';
 import { VariablesService } from '../variables/variables.service';
 import { TagRepository } from '@/databases/repositories';
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { Logger } from '@/Logger';
 
 @Service()
 export class SourceControlImportService {
@@ -38,6 +39,7 @@ export class SourceControlImportService {
 	private credentialExportFolder: string;
 
 	constructor(
+		private readonly logger: Logger,
 		private readonly variablesService: VariablesService,
 		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
 		private readonly tagRepository: TagRepository,
@@ -88,7 +90,7 @@ export class SourceControlImportService {
 		});
 		const remoteWorkflowFilesParsed = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => {
-				LoggerProxy.debug(`Parsing workflow file ${file}`);
+				this.logger.debug(`Parsing workflow file ${file}`);
 				const remote = jsonParse<IWorkflowToImport>(await fsReadFile(file, { encoding: 'utf8' }));
 				if (!remote?.id) {
 					return undefined;
@@ -130,7 +132,7 @@ export class SourceControlImportService {
 		});
 		const remoteCredentialFilesParsed = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
-				LoggerProxy.debug(`Parsing credential file ${file}`);
+				this.logger.debug(`Parsing credential file ${file}`);
 				const remote = jsonParse<ExportableCredential>(
 					await fsReadFile(file, { encoding: 'utf8' }),
 				);
@@ -169,7 +171,7 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 		if (variablesFile.length > 0) {
-			LoggerProxy.debug(`Importing variables from file ${variablesFile[0]}`);
+			this.logger.debug(`Importing variables from file ${variablesFile[0]}`);
 			return jsonParse<Variables[]>(await fsReadFile(variablesFile[0], { encoding: 'utf8' }), {
 				fallbackValue: [],
 			});
@@ -190,7 +192,7 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 		if (tagsFile.length > 0) {
-			LoggerProxy.debug(`Importing tags from file ${tagsFile[0]}`);
+			this.logger.debug(`Importing tags from file ${tagsFile[0]}`);
 			const mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
 				await fsReadFile(tagsFile[0], { encoding: 'utf8' }),
 				{ fallbackValue: { tags: [], mappings: [] } },
@@ -232,7 +234,7 @@ export class SourceControlImportService {
 		const cachedOwnerIds = new Map<string, string>();
 		const importWorkflowsResult = await Promise.all(
 			candidates.map(async (candidate) => {
-				LoggerProxy.debug(`Parsing workflow file ${candidate.file}`);
+				this.logger.debug(`Parsing workflow file ${candidate.file}`);
 				const importedWorkflow = jsonParse<IWorkflowToImport & { owner: string }>(
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
@@ -241,7 +243,7 @@ export class SourceControlImportService {
 				}
 				const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
 				importedWorkflow.active = existingWorkflow?.active ?? false;
-				LoggerProxy.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
+				this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
 				const upsertResult = await Db.collections.Workflow.upsert({ ...importedWorkflow }, ['id']);
 				if (upsertResult?.identifiers?.length !== 1) {
 					throw new Error(`Failed to upsert workflow ${importedWorkflow.id ?? 'new'}`);
@@ -299,14 +301,14 @@ export class SourceControlImportService {
 				if (existingWorkflow?.active) {
 					try {
 						// remove active pre-import workflow
-						LoggerProxy.debug(`Deactivating workflow id ${existingWorkflow.id}`);
+						this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 						await workflowRunner.remove(existingWorkflow.id);
 						// try activating the imported workflow
-						LoggerProxy.debug(`Reactivating workflow id ${existingWorkflow.id}`);
+						this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 						await workflowRunner.add(existingWorkflow.id, 'activate');
 						// update the versionId of the workflow to match the imported workflow
 					} catch (error) {
-						LoggerProxy.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
+						this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, error as Error);
 					} finally {
 						await Db.collections.Workflow.update(
 							{ id: existingWorkflow.id },
@@ -347,7 +349,7 @@ export class SourceControlImportService {
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
 		importCredentialsResult = await Promise.all(
 			candidates.map(async (candidate) => {
-				LoggerProxy.debug(`Importing credentials file ${candidate.file}`);
+				this.logger.debug(`Importing credentials file ${candidate.file}`);
 				const credential = jsonParse<ExportableCredential>(
 					await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				);
@@ -367,7 +369,7 @@ export class SourceControlImportService {
 				}
 				newCredentialObject.nodesAccess = nodesAccess || existingCredential?.nodesAccess || [];
 
-				LoggerProxy.debug(`Updating credential id ${newCredentialObject.id as string}`);
+				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await Db.collections.Credentials.upsert(newCredentialObject, ['id']);
 
 				if (!sharedOwner) {
@@ -395,13 +397,13 @@ export class SourceControlImportService {
 	public async importTagsFromWorkFolder(candidate: SourceControlledFile) {
 		let mappedTags;
 		try {
-			LoggerProxy.debug(`Importing tags from file ${candidate.file}`);
+			this.logger.debug(`Importing tags from file ${candidate.file}`);
 			mappedTags = jsonParse<{ tags: TagEntity[]; mappings: WorkflowTagMapping[] }>(
 				await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				{ fallbackValue: { tags: [], mappings: [] } },
 			);
 		} catch (error) {
-			LoggerProxy.error(`Failed to import tags from file ${candidate.file}`, error as Error);
+			this.logger.error(`Failed to import tags from file ${candidate.file}`, error as Error);
 			return;
 		}
 
@@ -462,13 +464,13 @@ export class SourceControlImportService {
 		const result: { imported: string[] } = { imported: [] };
 		let importedVariables;
 		try {
-			LoggerProxy.debug(`Importing variables from file ${candidate.file}`);
+			this.logger.debug(`Importing variables from file ${candidate.file}`);
 			importedVariables = jsonParse<Array<Partial<Variables>>>(
 				await fsReadFile(candidate.file, { encoding: 'utf8' }),
 				{ fallbackValue: [] },
 			);
 		} catch (error) {
-			LoggerProxy.error(`Failed to import tags from file ${candidate.file}`, error as Error);
+			this.logger.error(`Failed to import tags from file ${candidate.file}`, error as Error);
 			return;
 		}
 		const overriddenKeys = Object.keys(valueOverrides ?? {});
@@ -490,12 +492,12 @@ export class SourceControlImportService {
 				await Db.collections.Variables.upsert({ ...variable }, ['id']);
 			} catch (errorUpsert) {
 				if (isUniqueConstraintError(errorUpsert as Error)) {
-					LoggerProxy.debug(`Variable ${variable.key} already exists, updating instead`);
+					this.logger.debug(`Variable ${variable.key} already exists, updating instead`);
 					try {
 						await Db.collections.Variables.update({ key: variable.key }, { ...variable });
 					} catch (errorUpdate) {
-						LoggerProxy.debug(`Failed to update variable ${variable.key}, skipping`);
-						LoggerProxy.debug((errorUpdate as Error).message);
+						this.logger.debug(`Failed to update variable ${variable.key}, skipping`);
+						this.logger.debug((errorUpdate as Error).message);
 					}
 				}
 			} finally {

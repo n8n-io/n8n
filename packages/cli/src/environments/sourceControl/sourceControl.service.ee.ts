@@ -14,7 +14,6 @@ import {
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 } from './constants';
-import { LoggerProxy } from 'n8n-workflow';
 import { SourceControlGitService } from './sourceControlGit.service.ee';
 import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
@@ -35,6 +34,7 @@ import type { SourceControlWorkflowVersionId } from './types/sourceControlWorkfl
 import type { ExportableCredential } from './types/exportableCredential';
 import { InternalHooks } from '@/InternalHooks';
 import { TagRepository } from '@/databases/repositories';
+import { Logger } from '@/Logger';
 
 @Service()
 export class SourceControlService {
@@ -45,6 +45,7 @@ export class SourceControlService {
 	private gitFolder: string;
 
 	constructor(
+		private readonly logger: Logger,
 		private gitService: SourceControlGitService,
 		private sourceControlPreferencesService: SourceControlPreferencesService,
 		private sourceControlExportService: SourceControlExportService,
@@ -123,14 +124,14 @@ export class SourceControlService {
 		if (!this.gitService.git) {
 			await this.initGitService();
 		}
-		LoggerProxy.debug('Initializing repository...');
+		this.logger.debug('Initializing repository...');
 		await this.gitService.initRepository(preferences, user);
 		let getBranchesResult;
 		try {
 			getBranchesResult = await this.getBranches();
 		} catch (error) {
 			if ((error as Error).message.includes('Warning: Permanently added')) {
-				LoggerProxy.debug('Added repository host to the list of known hosts. Retrying...');
+				this.logger.debug('Added repository host to the list of known hosts. Retrying...');
 				getBranchesResult = await this.getBranches();
 			} else {
 				throw error;
@@ -152,7 +153,7 @@ export class SourceControlService {
 					getBranchesResult = await this.getBranches();
 					await this.gitService.setBranch(preferences.branchName);
 				} catch (fileError) {
-					LoggerProxy.error(`Failed to create initial commit: ${(fileError as Error).message}`);
+					this.logger.error(`Failed to create initial commit: ${(fileError as Error).message}`);
 				}
 			}
 		}
@@ -193,7 +194,7 @@ export class SourceControlService {
 			await this.gitService.resetBranch();
 			await this.gitService.pull();
 		} catch (error) {
-			LoggerProxy.error(`Failed to reset workfolder: ${(error as Error).message}`);
+			this.logger.error(`Failed to reset workfolder: ${(error as Error).message}`);
 			throw new Error(
 				'Unable to fetch updates from git - your folder might be out of sync. Try reconnecting from the Source Control settings page.',
 			);
