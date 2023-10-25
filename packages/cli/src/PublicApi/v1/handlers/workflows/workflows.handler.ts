@@ -27,7 +27,6 @@ import {
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { InternalHooks } from '@/InternalHooks';
 import { RoleService } from '@/services/role.service';
-import { isWorkflowHistoryLicensed } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from '@/workflows/workflowHistory/workflowHistory.service.ee';
 
 export = {
@@ -47,13 +46,11 @@ export = {
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
-			if (isWorkflowHistoryLicensed()) {
-				await Container.get(WorkflowHistoryService).saveVersion(
-					req.user,
-					createdWorkflow,
-					createdWorkflow.id,
-				);
-			}
+			await Container.get(WorkflowHistoryService).saveVersion(
+				req.user,
+				createdWorkflow,
+				createdWorkflow.id,
+			);
 
 			await Container.get(ExternalHooks).run('workflow.afterCreate', [createdWorkflow]);
 			void Container.get(InternalHooks).onWorkflowCreated(req.user, createdWorkflow, true);
@@ -202,7 +199,7 @@ export = {
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
 
-			if (isWorkflowHistoryLicensed() && updatedWorkflow) {
+			if (updatedWorkflow) {
 				await Container.get(WorkflowHistoryService).saveVersion(
 					req.user,
 					updatedWorkflow,
