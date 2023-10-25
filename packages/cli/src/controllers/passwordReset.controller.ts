@@ -16,7 +16,6 @@ import {
 import { UserManagementMailer } from '@/UserManagement/email';
 
 import { Response } from 'express';
-import { ILogger } from 'n8n-workflow';
 import { PasswordResetRequest } from '@/requests';
 import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
@@ -30,11 +29,12 @@ import { TokenExpiredError } from 'jsonwebtoken';
 import type { JwtPayload } from '@/services/jwt.service';
 import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
+import { Logger } from '@/Logger';
 
 @RestController()
 export class PasswordResetController {
 	constructor(
-		private readonly logger: ILogger,
+		private readonly logger: Logger,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly mailer: UserManagementMailer,

@@ -4,7 +4,6 @@ import type { Server } from 'http';
 import express from 'express';
 import compression from 'compression';
 import isbot from 'isbot';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import config from '@/config';
 import { N8N_VERSION, inDevelopment, inTest } from '@/constants';
@@ -19,8 +18,11 @@ import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
+import { Logger } from '@/Logger';
 
 export abstract class AbstractServer {
+	protected logger: Logger;
+
 	protected server: Server;
 
 	readonly app: express.Application;
@@ -45,8 +47,6 @@ export abstract class AbstractServer {
 
 	protected endpointWebhookWaiting: string;
 
-	protected instanceId = '';
-
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
@@ -69,6 +69,8 @@ export abstract class AbstractServer {
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
 
 		this.uniqueInstanceId = generateHostInstanceId(instanceType);
+
+		this.logger = Container.get(Logger);
 	}
 
 	async configure(): Promise<void> {
@@ -196,7 +198,7 @@ export abstract class AbstractServer {
 		this.app.use((req, res, next) => {
 			const userAgent = req.headers['user-agent'];
 			if (userAgent && checkIfBot(userAgent)) {
-				Logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
+				this.logger.info(`Blocked ${req.method} ${req.url} for "${userAgent}"`);
 				res.status(204).end();
 			} else next();
 		});

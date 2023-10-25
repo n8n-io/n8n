@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-
+import { Service } from 'typedi';
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 import get from 'lodash/get';
 
@@ -39,7 +39,6 @@ import {
 	NodeHelpers,
 	RoutingNode,
 	Workflow,
-	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
@@ -53,8 +52,8 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { Container } from 'typedi';
 import { isObjectLiteral } from './utils';
+import { Logger } from '@/Logger';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -87,12 +86,16 @@ const mockNodeTypes: INodeTypes = {
 	},
 };
 
+@Service()
 export class CredentialsHelper extends ICredentialsHelper {
-	private credentialTypes = Container.get(CredentialTypes);
-
-	private nodeTypes = Container.get(NodeTypes);
-
-	private credentialsOverwrites = Container.get(CredentialsOverwrites);
+	constructor(
+		private readonly logger: Logger,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly nodeTypes: NodeTypes,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
+	) {
+		super();
+	}
 
 	/**
 	 * Add the required authentication information to the request
@@ -349,7 +352,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
-		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
+		const decryptedDataOriginal = credentials.getData();
 
 		if (raw === true) {
 			return decryptedDataOriginal;
@@ -469,7 +472,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		credentials.setData(data, this.encryptionKey);
+		credentials.setData(data);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 		// Add special database related data
@@ -599,7 +602,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					user.isOwner,
 				);
 			} catch (error) {
-				Logger.debug('Credential test failed', error);
+				this.logger.debug('Credential test failed', error);
 				return {
 					status: 'Error',
 					message: error.message.toString(),
@@ -755,7 +758,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					message: error.cause.code,
 				};
 			}
-			Logger.debug('Credential test failed', error);
+			this.logger.debug('Credential test failed', error);
 			return {
 				status: 'Error',
 				message: error.message.toString(),

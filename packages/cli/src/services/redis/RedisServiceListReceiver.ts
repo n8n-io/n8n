@@ -1,8 +1,8 @@
 import { Service } from 'typedi';
+import { jsonParse } from 'n8n-workflow';
 import { WORKER_RESPONSE_REDIS_LIST } from './RedisServiceHelper';
 import type { RedisServiceWorkerResponseObject } from './RedisServiceCommands';
 import { RedisServiceBaseReceiver } from './RedisServiceBaseClasses';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
 @Service()
 export class RedisServiceListReceiver extends RedisServiceBaseReceiver {
@@ -37,7 +37,7 @@ export class RedisServiceListReceiver extends RedisServiceBaseReceiver {
 				}
 				return workerResponse;
 			} catch (error) {
-				LoggerProxy.warn(
+				this.logger.warn(
 					`Error parsing worker response on list ${list}: ${(error as Error).message}`,
 				);
 			}

@@ -1,5 +1,5 @@
 import type { INode } from 'n8n-workflow';
-import { LoggerProxy, type Workflow } from 'n8n-workflow';
+import { type Workflow } from 'n8n-workflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import {
@@ -7,8 +7,7 @@ import {
 	getNodesWithInaccessibleCreds,
 	validateWorkflowCredentialUsage,
 } from '@/WorkflowHelpers';
-import { getLogger } from '@/Logger';
-import type { IWorkflowExecutionDataProcess } from '../../src/Interfaces';
+import type { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FIRST_CREDENTIAL_ID = '1';
 const SECOND_CREDENTIAL_ID = '2';
@@ -17,10 +16,6 @@ const THIRD_CREDENTIAL_ID = '3';
 const NODE_WITH_NO_CRED = '0133467b-df4a-473d-9295-fdd9d01fa45a';
 const NODE_WITH_ONE_CRED = '4673f869-f2dc-4a33-b053-ca3193bc5226';
 const NODE_WITH_TWO_CRED = '9b4208bd-8f10-4a6a-ad3b-da47a326f7da';
-
-beforeAll(() => {
-	LoggerProxy.init(getLogger());
-});
 
 describe('WorkflowHelpers', () => {
 	describe('getNodesWithInaccessibleCreds', () => {
