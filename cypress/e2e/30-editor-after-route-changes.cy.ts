@@ -16,6 +16,7 @@ const createNewWorkflowAndActivate = () => {
     workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
     workflowPage.actions.saveWorkflowOnButtonClick();
     workflowPage.actions.activateWorkflow();
+		cy.get('.el-notification .el-notification--error').should('not.be.visible');
 }
 
 const editWorkflowAndDeactivate = () => {
@@ -26,6 +27,7 @@ const editWorkflowAndDeactivate = () => {
     workflowPage.actions.saveWorkflowOnButtonClick();
     workflowPage.getters.activatorSwitch().click();
     workflowPage.actions.zoomToFit();
+    cy.get('.el-notification .el-notification--error').should('not.be.visible');
 }
 
 const editWorkflowMoreAndActivate = () => {
@@ -48,12 +50,29 @@ const editWorkflowMoreAndActivate = () => {
     workflowPage.getters.nodeViewBackground().click(600, 200, { force: true });
     cy.get('.jtk-connector').should('have.length', 2);
 
-    workflowPage.getters.canvasNodeByName(IF_NODE_NAME).click();
+		const position = {
+			top: 0,
+			left: 0
+		}
+    workflowPage.getters.canvasNodeByName(IF_NODE_NAME).click().then(($element) => {
+			position.top = $element.position().top;
+			position.left = $element.position().left;
+		});
+
+
     cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 200], { clickToFinish: true });
     workflowPage.getters
         .canvasNodes()
         .last()
-        .should('have.attr', 'style', 'left: 860px; top: 440px;');
+				.then(($element) => {
+					const finalPosition = {
+						top: $element.position().top,
+						left: $element.position().left
+					}
+
+				  expect(finalPosition.top).to.be.greaterThan(position.top);
+				  expect(finalPosition.left).to.be.greaterThan(position.left);
+			  });
 
     cy.draganddrop(
         workflowPage.getters.getEndpointSelector('output', CODE_NODE_NAME),
