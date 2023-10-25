@@ -118,6 +118,12 @@
 		var(--prim-color-alt-a-s),
 		var(--prim-color-alt-a-l)
 	);
+	--prim-color-alt-a-alpha-025: hsl(
+		var(--prim-color-alt-a-h),
+		var(--prim-color-alt-a-s),
+		var(--prim-color-alt-a-l),
+		0.25
+	);
 	--prim-color-alt-a-tint-300: hsl(
 		var(--prim-color-alt-a-h),
 		var(--prim-color-alt-a-s),
