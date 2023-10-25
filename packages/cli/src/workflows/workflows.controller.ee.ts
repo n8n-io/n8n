@@ -22,6 +22,7 @@ import { RoleService } from '@/services/role.service';
 import * as utils from '@/utils';
 import { listQueryMiddleware } from '@/middlewares';
 import { TagService } from '@/services/tag.service';
+import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -185,6 +186,12 @@ EEWorkflowController.post(
 				'An error occurred while saving your workflow. Please try again.',
 			);
 		}
+
+		await Container.get(WorkflowHistoryService).saveVersion(
+			req.user,
+			savedWorkflow,
+			savedWorkflow.id,
+		);
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
 			savedWorkflow.tags = Container.get(TagService).sortByRequestOrder(savedWorkflow.tags, {

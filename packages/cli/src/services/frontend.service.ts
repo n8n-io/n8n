@@ -46,6 +46,9 @@ export class FrontendService {
 		private readonly mailer: UserManagementMailer,
 		private readonly instanceSettings: InstanceSettings,
 	) {
+		loadNodesAndCredentials.addPostProcessor(async () => this.generateTypes());
+		void this.generateTypes();
+
 		this.initSettings();
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
