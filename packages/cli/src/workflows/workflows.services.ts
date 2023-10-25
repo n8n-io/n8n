@@ -33,7 +33,6 @@ import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
-import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
 
@@ -307,11 +306,7 @@ export class WorkflowsService {
 			);
 		}
 
-		if (
-			isWorkflowHistoryLicensed() &&
-			!onlyActiveUpdate &&
-			workflow.versionId !== shared.workflow.versionId
-		) {
+		if (!onlyActiveUpdate && workflow.versionId !== shared.workflow.versionId) {
 			await Container.get(WorkflowHistoryService).saveVersion(user, workflow, workflowId);
 		}
 
