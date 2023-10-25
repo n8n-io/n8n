@@ -16,7 +16,7 @@ const createNewWorkflowAndActivate = () => {
     workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
     workflowPage.actions.saveWorkflowOnButtonClick();
     workflowPage.actions.activateWorkflow();
-		cy.get('.el-notification .el-notification--error').should('not.be.visible');
+		cy.get('.el-notification .el-notification--error').should('not.exist');
 }
 
 const editWorkflowAndDeactivate = () => {
@@ -27,7 +27,7 @@ const editWorkflowAndDeactivate = () => {
     workflowPage.actions.saveWorkflowOnButtonClick();
     workflowPage.getters.activatorSwitch().click();
     workflowPage.actions.zoomToFit();
-    cy.get('.el-notification .el-notification--error').should('not.be.visible');
+    cy.get('.el-notification .el-notification--error').should('not.exist');
 }
 
 const editWorkflowMoreAndActivate = () => {
