@@ -67,6 +67,10 @@ const actions = computed<UserAction[]>(() =>
 	})),
 );
 
+const isFirstItemShown = computed(
+	() => workflowHistory.value[0]?.versionId === route.params.versionId,
+);
+
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
@@ -326,9 +330,10 @@ watchEffect(async () => {
 			<workflow-history-content
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
+				:workflowVersion="activeWorkflowVersion"
 				:actions="actions"
 				:isListLoading="isListLoading"
+				:isFirstItemShown="isFirstItemShown"
 				@action="onAction"
 			/>
 		</div>

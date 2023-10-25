@@ -17,6 +17,7 @@ const props = defineProps<{
 	workflowVersion: WorkflowVersion | null;
 	actions: UserAction[];
 	isListLoading?: boolean;
+	isFirstItemShown?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -41,6 +42,12 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 		connections: props.workflowVersion.connections,
 	};
 });
+
+const actions = computed(() =>
+	props.isFirstItemShown
+		? props.actions.filter((action) => action.value !== 'restore')
+		: props.actions,
+);
 
 const onAction = ({
 	action,
@@ -67,11 +74,10 @@ const onAction = ({
 			<workflow-history-list-item
 				:class="$style.card"
 				v-if="props.workflowVersion"
-				:full="true"
 				:index="-1"
 				:item="props.workflowVersion"
 				:isActive="false"
-				:actions="props.actions"
+				:actions="actions"
 				@action="onAction"
 			>
 				<template #default="{ formattedCreatedAt }">
