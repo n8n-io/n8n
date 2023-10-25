@@ -1,4 +1,4 @@
-import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TwilioApi implements ICredentialType {
 	name = 'twilioApi';
@@ -34,6 +34,7 @@ export class TwilioApi implements ICredentialType {
 			displayName: 'Auth Token',
 			name: 'authToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			displayOptions: {
 				show: {
@@ -45,6 +46,7 @@ export class TwilioApi implements ICredentialType {
 			displayName: 'API Key SID',
 			name: 'apiKeySid',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			displayOptions: {
 				show: {

@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 import {
 	fullDocumentToJson,
@@ -20,6 +19,7 @@ import {
 import { collectionFields, collectionOperations } from './CollectionDescription';
 
 import { documentFields, documentOperations } from './DocumentDescription';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 export class GoogleFirebaseCloudFirestore implements INodeType {
 	description: INodeTypeDescription = {
@@ -91,6 +91,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -130,8 +131,8 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: 0 } },
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -150,7 +151,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							// @ts-ignore
 							if (item.json[column]) {
 								// @ts-ignore
-								document.fields[column] = jsonToDocument(item.json[column]);
+								document.fields[column] = jsonToDocument(item.json[column] as IDataObject);
 							} else {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(null);
@@ -166,11 +167,11 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						responseData.id = (responseData.name as string).split('/').pop();
 
 						if (simple) {
-							responseData = fullDocumentToJson(responseData);
+							responseData = fullDocumentToJson(responseData as IDataObject);
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -213,8 +214,8 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: 0 } },
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -256,7 +257,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						// @ts-ignore
 						if (item.json.hasOwnProperty(column)) {
 							// @ts-ignore
-							document[column] = jsonToDocument(item.json[column]);
+							document[column] = jsonToDocument(item.json[column] as IDataObject);
 						} else {
 							// @ts-ignore
 							document[column] = jsonToDocument(null);
@@ -288,7 +289,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					Object.assign(writeResults[i], items[i].json);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(writeResults[i]),
+						this.helpers.returnJsonArray(writeResults[i] as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 
@@ -358,7 +359,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 
@@ -395,14 +396,14 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: 0 } },
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

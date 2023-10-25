@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
@@ -17,6 +17,7 @@ export class SegmentApi implements ICredentialType {
 			displayName: 'Write Key',
 			name: 'writekey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

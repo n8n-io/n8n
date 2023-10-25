@@ -6,10 +6,7 @@ const { LoggerProxy } = require('n8n-workflow');
 const { packageDir, writeJSON } = require('./common');
 const { loadClassInIsolation } = require('../dist/ClassLoader');
 
-LoggerProxy.init({
-	log: console.log.bind(console),
-	warn: console.warn.bind(console),
-});
+LoggerProxy.init(console);
 
 const loadClass = (sourcePath) => {
 	try {
@@ -29,13 +26,18 @@ const generate = async (kind) => {
 		.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
 			cwd: packageDir,
 		})
-		.filter((filePath) => !/[vV]\d.node\.js$/.test(filePath))
 		.map(loadClass)
 		.filter((data) => !!data)
 		.reduce((obj, { className, sourcePath, instance }) => {
 			const name = kind === 'nodes' ? instance.description.name : instance.name;
-			if (name in obj) console.error('already loaded', kind, name, sourcePath);
-			else obj[name] = { className, sourcePath };
+			if (!/[vV]\d.node\.js$/.test(sourcePath)) {
+				if (name in obj) console.error('already loaded', kind, name, sourcePath);
+				else obj[name] = { className, sourcePath };
+			}
+
+			if (kind === 'credentials' && Array.isArray(instance.extends)) {
+				obj[name].extends = instance.extends;
+			}
 
 			if (kind === 'nodes') {
 				const { credentials } = instance.description;
@@ -52,6 +54,7 @@ const generate = async (kind) => {
 			}
 			return obj;
 		}, {});
+
 	LoggerProxy.info(`Detected ${Object.keys(data).length} ${kind}`);
 	await writeJSON(`known/${kind}.json`, data);
 	return data;

@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { segmentApiRequest } from './GenericFunctions';
 
@@ -8,11 +12,11 @@ import { groupFields, groupOperations } from './GroupDescription';
 
 import { identifyFields, identifyOperations } from './IdentifyDescription';
 
-import { IIdentify } from './IdentifyInterface';
+import type { IIdentify } from './IdentifyInterface';
 
 import { trackFields, trackOperations } from './TrackDescription';
 
-import { IGroup, ITrack } from './TrackInterface';
+import type { IGroup, ITrack } from './TrackInterface';
 
 import { v4 as uuid } from 'uuid';
 

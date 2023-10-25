@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const meetingRegistrantOperations: INodeProperties[] = [
 	{
@@ -199,8 +199,8 @@ export const meetingRegistrantFields: INodeProperties[] = [
 						value: 'Evaluator/Recommender',
 					},
 					{
-						name: 'Influener',
-						value: 'Influener',
+						name: 'Influencer',
+						value: 'Influencer',
 					},
 					{
 						name: 'Not Involved',

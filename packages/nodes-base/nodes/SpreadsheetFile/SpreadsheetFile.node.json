@@ -17,7 +17,7 @@
 			}
 		]
 	},
-	"alias": ["CSV", "Spreadsheet"],
+	"alias": ["CSV", "Spreadsheet", "Excel", "xls", "xlsx", "ods"],
 	"subcategories": {
 		"Core Nodes": ["Files"]
 	}

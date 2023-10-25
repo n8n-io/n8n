@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ShopifyOAuth2Api implements ICredentialType {
 	name = 'shopifyOAuth2Api';

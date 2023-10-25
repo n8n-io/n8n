@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { blocks } from './Blocks';
 
@@ -186,5 +186,17 @@ export const blockFields: INodeProperties[] = [
 		},
 		default: 50,
 		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Also Fetch Nested Blocks',
+		name: 'fetchNestedBlocks',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['block'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
 	},
 ];

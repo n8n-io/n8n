@@ -16,13 +16,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import sanitizeHtml from 'sanitize-html';
 import N8nText from '../../components/N8nText';
 import Locale from '../../mixins/locale';
 import { uid } from '../../utils';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-notice',
 	directives: {},
 	mixins: [Locale],
@@ -74,7 +74,7 @@ export default Vue.extend({
 
 			if (event.target.localName !== 'a') return;
 
-			if (event.target.dataset && event.target.dataset.key) {
+			if (event.target.dataset?.key) {
 				event.stopPropagation();
 				event.preventDefault();
 

@@ -1,22 +1,17 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function eventbriteApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 
@@ -34,7 +29,7 @@ export async function eventbriteApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 
@@ -45,9 +40,9 @@ export async function eventbriteApiRequest(
 			const credentials = await this.getCredentials('eventbriteApi');
 
 			options.headers!.Authorization = `Bearer ${credentials.apiKey}`;
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -74,7 +69,7 @@ export async function eventbriteApiRequestAllItems(
 	do {
 		responseData = await eventbriteApiRequest.call(this, method, resource, body, query);
 		query.continuation = responseData.pagination.continuation;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (
 		responseData.pagination?.has_more_items !== undefined &&
 		responseData.pagination.has_more_items !== false

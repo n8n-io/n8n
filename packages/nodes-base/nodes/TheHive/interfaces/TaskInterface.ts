@@ -17,7 +17,7 @@ export interface ITask {
 	upadtedAt?: Date;
 }
 
-export enum TaskStatus {
+export const enum TaskStatus {
 	WAITING = 'Waiting',
 	INPROGRESS = 'InProgress',
 	COMPLETED = 'Completed',

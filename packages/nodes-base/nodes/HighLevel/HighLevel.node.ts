@@ -1,4 +1,4 @@
-import { INodeProperties, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeProperties, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { contactFields, contactNotes, contactOperations } from './description/ContactDescription';
 import { opportunityFields, opportunityOperations } from './description/OpportunityDescription';

@@ -1,16 +1,13 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
+
 /* eslint-disable @typescript-eslint/no-this-alias */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import { DateTime, Duration, Interval, Settings } from 'luxon';
 import * as jmespath from 'jmespath';
 
-import {
+import type {
 	IDataObject,
 	IExecuteData,
 	INodeExecutionData,
@@ -24,10 +21,12 @@ import {
 	INodeParameterResourceLocator,
 	NodeParameterValueType,
 	WorkflowExecuteMode,
+	ProxyInput,
 } from './Interfaces';
 import * as NodeHelpers from './NodeHelpers';
 import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
+import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
@@ -61,6 +60,8 @@ export class WorkflowDataProxy {
 
 	private activeNodeName: string;
 
+	private contextNodeName: string;
+
 	private connectionInputData: INodeExecutionData[];
 
 	private siblingParameters: INodeParameters;
@@ -77,6 +78,7 @@ export class WorkflowDataProxy {
 
 	private timezone: string;
 
+	// TODO: Clean that up at some point and move all the options into an options object
 	constructor(
 		workflow: Workflow,
 		runExecutionData: IRunExecutionData | null,
@@ -91,16 +93,20 @@ export class WorkflowDataProxy {
 		executeData?: IExecuteData,
 		defaultReturnRunIndex = -1,
 		selfData = {},
+		contextNodeName?: string,
 	) {
 		this.activeNodeName = activeNodeName;
+		this.contextNodeName = contextNodeName || activeNodeName;
 		this.workflow = workflow;
 
-		this.runExecutionData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(runExecutionData)
+		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
+			? runExecutionData !== null
+				? augmentObject(runExecutionData)
+				: null
 			: runExecutionData;
 
-		this.connectionInputData = isScriptingNode(activeNodeName, workflow)
-			? deepCopy(connectionInputData)
+		this.connectionInputData = isScriptingNode(this.contextNodeName, workflow)
+			? augmentArray(connectionInputData)
 			: connectionInputData;
 
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
@@ -109,7 +115,7 @@ export class WorkflowDataProxy {
 		this.siblingParameters = siblingParameters;
 		this.mode = mode;
 		this.defaultTimezone = defaultTimezone;
-		this.timezone = (this.workflow.settings.timezone as string) || this.defaultTimezone;
+		this.timezone = workflow.settings?.timezone ?? defaultTimezone;
 		this.selfData = selfData;
 		this.additionalKeys = additionalKeys;
 		this.executeData = executeData;
@@ -126,13 +132,13 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 1) {
+		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 0) {
 			return {}; // incoming connection has pinned data, so stub context object
 		}
 
-		if (!that.runExecutionData?.executionData) {
+		if (!that.runExecutionData?.executionData && !that.runExecutionData?.resultData) {
 			throw new ExpressionError(
-				`The workflow hasn't been executed yet, so you can't reference any context data`,
+				"The workflow hasn't been executed yet, so you can't reference any context data",
 				{
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
@@ -143,6 +149,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					if (Reflect.ownKeys(target).length === 0) {
 						// Target object did not get set yet
@@ -158,7 +165,8 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
-					// eslint-disable-next-line no-param-reassign
+					if (name === 'isProxy') return true;
+
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
 
@@ -174,11 +182,13 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					name = name.toString();
 					return that.selfData[name];
 				},
@@ -197,6 +207,7 @@ export class WorkflowDataProxy {
 		const node = this.workflow.nodes[nodeName];
 
 		return new Proxy(node.parameters, {
+			has: () => true,
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
@@ -207,6 +218,9 @@ export class WorkflowDataProxy {
 				};
 			},
 			get(target, name, receiver) {
+				if (name === 'isProxy') return true;
+				if (name === 'toJSON') return () => deepCopy(target);
+
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -224,6 +238,9 @@ export class WorkflowDataProxy {
 
 					returnValue = node.parameters[name];
 				}
+
+				// Avoid recursion
+				if (returnValue === `={{ $parameter.${name} }}`) return undefined;
 
 				if (isResourceLocatorValue(returnValue)) {
 					if (returnValue.__regex && typeof returnValue.value === 'string') {
@@ -252,6 +269,9 @@ export class WorkflowDataProxy {
 						that.timezone,
 						that.additionalKeys,
 						that.executeData,
+						false,
+						{},
+						that.contextNodeName,
 					);
 				}
 
@@ -283,7 +303,7 @@ export class WorkflowDataProxy {
 
 			if (that.runExecutionData === null) {
 				throw new ExpressionError(
-					`The workflow hasn't been executed yet, so you can't reference any output data`,
+					"The workflow hasn't been executed yet, so you can't reference any output data",
 					{
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
@@ -317,9 +337,9 @@ export class WorkflowDataProxy {
 
 			const taskData = that.runExecutionData.resultData.runData[nodeName][runIndex].data!;
 
-			if (taskData.main === null || !taskData.main.length || taskData.main[0] === null) {
+			if (!taskData.main?.length || taskData.main[0] === null) {
 				// throw new Error(`No data found for item-index: "${itemIndex}"`);
-				throw new ExpressionError(`No data found from "main" input.`, {
+				throw new ExpressionError('No data found from "main" input.', {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
@@ -330,13 +350,13 @@ export class WorkflowDataProxy {
 			// (example "IF" node. If node is connected to "true" or to "false" output)
 			if (outputIndex === undefined) {
 				const nodeConnection = that.workflow.getNodeConnectionIndexes(
-					that.activeNodeName,
+					that.contextNodeName,
 					nodeName,
 					'main',
 				);
 
 				if (nodeConnection === undefined) {
-					throw new ExpressionError(`connect "${that.activeNodeName}" to "${nodeName}"`, {
+					throw new ExpressionError(`connect "${that.contextNodeName}" to "${nodeName}"`, {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
 					});
@@ -358,12 +378,6 @@ export class WorkflowDataProxy {
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
 		} else {
 			// Short syntax got used to return data from active node
-
-			// TODO: Here have to generate connection Input data for the current node by itself
-			// Data needed:
-			// #- the run-index
-			// - node which did send data (has to be the one from last recent execution)
-			// - later also the name of the input and its index (currently not needed as it is always "main" and index "0")
 			executionData = that.connectionInputData;
 		}
 
@@ -384,7 +398,9 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
+				has: () => true,
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
 					name = name.toString();
 
 					if (!node) {
@@ -420,7 +436,7 @@ export class WorkflowDataProxy {
 								for (const propertyName in binaryData) {
 									if (propertyName === 'data') {
 										// Skip the data property
-										// eslint-disable-next-line no-continue
+
 										continue;
 									}
 									(returnData[keyName] as IDataObject)[propertyName] = binaryData[propertyName];
@@ -435,10 +451,7 @@ export class WorkflowDataProxy {
 						// Get node parameter data
 						return that.nodeParameterGetter(nodeName);
 					} else if (name === 'runIndex') {
-						if (
-							that.runExecutionData === null ||
-							!that.runExecutionData.resultData.runData[nodeName]
-						) {
+						if (!that.runExecutionData?.resultData.runData[nodeName]) {
 							return -1;
 						}
 						return that.runExecutionData.resultData.runData[nodeName].length - 1;
@@ -460,17 +473,22 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				get(target, name, receiver) {
-					if (
-						typeof process === 'undefined' || // env vars are inaccessible to frontend
-						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
-					) {
+					if (name === 'isProxy') return true;
+
+					if (typeof process === 'undefined') {
+						throw new ExpressionError('not accessible via UI, please run node', {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+						});
+					}
+					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
 						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
 						});
 					}
 					return process.env[name.toString()];
@@ -486,6 +504,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return allowedValues;
 				},
@@ -496,12 +515,14 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (!that.executeData?.source) {
 						// Means the previous node did not get executed yet
 						return undefined;
 					}
 
-					const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+					const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
 
 					if (name === 'name') {
 						return sourceData.previousNode;
@@ -531,6 +552,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				ownKeys(target) {
 					return allowedValues;
 				},
@@ -541,15 +563,16 @@ export class WorkflowDataProxy {
 					};
 				},
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					if (allowedValues.includes(name.toString())) {
 						const value = that.workflow[name as keyof typeof target];
 
 						if (value === undefined && name === 'id') {
 							throw new ExpressionError('save workflow to view', {
-								description: `Please save the workflow first to use $workflow`,
+								description: 'Please save the workflow first to use $workflow',
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
-								failExecution: true,
 							});
 						}
 
@@ -572,14 +595,16 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
+				has: () => true,
 				get(target, name, receiver) {
+					if (name === 'isProxy') return true;
+
 					const nodeName = name.toString();
 
 					if (that.workflow.getNode(nodeName) === null) {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
 						});
 					}
 
@@ -612,6 +637,13 @@ export class WorkflowDataProxy {
 
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
+			if (typeof data !== 'object' || typeof query !== 'string') {
+				throw new ExpressionError('expected two arguments (Object, string) for this function', {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
+			}
+
 			if (!Array.isArray(data) && typeof data === 'object') {
 				return jmespath.search({ ...data }, query);
 			}
@@ -667,14 +699,13 @@ export class WorkflowDataProxy {
 						' <a target="_blank" href="https://docs.n8n.io/data/data-mapping/data-item-linking/item-linking-errors/">More info</a>';
 
 					context.description += moreInfoLink;
-					context.descriptionTemplate += moreInfoLink;
+					if (context.descriptionTemplate) context.descriptionTemplate += moreInfoLink;
 				}
 			}
 
 			return new ExpressionError(message, {
 				runIndex: that.runIndex,
 				itemIndex: that.itemIndex,
-				failExecution: true,
 				...context,
 			});
 		};
@@ -698,18 +729,11 @@ export class WorkflowDataProxy {
 				};
 			}
 
-			const previousNodeHasPinData =
-				sourceData && this.workflow.getPinDataOfNode(sourceData.previousNode) !== undefined;
-
 			let currentPairedItem = pairedItem;
 
 			let nodeBeforeLast: string | undefined;
 
-			while (
-				!previousNodeHasPinData &&
-				sourceData !== null &&
-				destinationNodeName !== sourceData.previousNode
-			) {
+			while (sourceData !== null && destinationNodeName !== sourceData.previousNode) {
 				taskData =
 					that.runExecutionData!.resultData.runData[sourceData.previousNode][
 						sourceData?.previousNodeRun || 0
@@ -723,7 +747,7 @@ export class WorkflowDataProxy {
 							message: 'Can’t get data',
 						},
 						nodeCause: nodeBeforeLast,
-						description: `Apologies, this is an internal error. See details for more information`,
+						description: 'Apologies, this is an internal error. See details for more information',
 						causeDetailed: 'Referencing a non-existent output on a node, problem with source data',
 						type: 'internal',
 					});
@@ -731,7 +755,7 @@ export class WorkflowDataProxy {
 
 				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionality: 'pairedItem',
 						functionOverrides: {
 							message: 'Can’t get data',
@@ -756,7 +780,7 @@ export class WorkflowDataProxy {
 
 				if (itemPreviousNode.pairedItem === undefined) {
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionality: 'pairedItem',
 						functionOverrides: {
 							message: 'Can’t get data',
@@ -791,6 +815,13 @@ export class WorkflowDataProxy {
 						.filter((result) => result !== null);
 
 					if (results.length !== 1) {
+						// Check if the results are all the same
+						const firstResult = results[0];
+						if (results.every((result) => result === firstResult)) {
+							// All results are the same so return the first one
+							return firstResult;
+						}
+
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
 							functionality: 'pairedItem',
@@ -834,10 +865,10 @@ export class WorkflowDataProxy {
 						});
 					}
 					throw createExpressionError('Can’t get data for expression', {
-						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+						messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 						functionality: 'pairedItem',
 						functionOverrides: {
-							message: `Can’t get data`,
+							message: 'Can’t get data',
 						},
 						nodeCause: nodeBeforeLast,
 						description: `In node ‘<strong>${sourceData.previousNode}</strong>’, output item ${
@@ -861,13 +892,13 @@ export class WorkflowDataProxy {
 
 			if (sourceData === null) {
 				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 					functionality: 'pairedItem',
 					functionOverrides: {
-						message: `Can’t get data`,
+						message: 'Can’t get data',
 					},
 					nodeCause: nodeBeforeLast,
-					description: `Could not resolve, proably no pairedItem exists`,
+					description: 'Could not resolve, probably no pairedItem exists',
 					type: 'no pairing info',
 					moreInfoLink: true,
 				});
@@ -881,12 +912,12 @@ export class WorkflowDataProxy {
 			const previousNodeOutput = sourceData.previousNodeOutput || 0;
 			if (previousNodeOutput >= taskData.data!.main.length) {
 				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 					functionality: 'pairedItem',
 					functionOverrides: {
-						message: `Can’t get data`,
+						message: 'Can’t get data',
 					},
-					description: `Item points to a node output which does not exist`,
+					description: 'Item points to a node output which does not exist',
 					causeDetailed: `The sourceData points to a node output ‘${previousNodeOutput}‘ which does not exist on node ‘${sourceData.previousNode}‘ (output node did probably supply a wrong one)`,
 					type: 'invalid pairing info',
 				});
@@ -894,10 +925,10 @@ export class WorkflowDataProxy {
 
 			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
 				throw createExpressionError('Can’t get data for expression', {
-					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+					messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 					functionality: 'pairedItem',
 					functionOverrides: {
-						message: `Can’t get data`,
+						message: 'Can’t get data',
 					},
 					nodeCause: nodeBeforeLast,
 					description: `In node ‘<strong>${nodeBeforeLast!}</strong>’, output item ${
@@ -928,10 +959,29 @@ export class WorkflowDataProxy {
 					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
+				if (!that?.runExecutionData?.resultData?.runData.hasOwnProperty(nodeName)) {
+					throw createExpressionError(`no data, execute "${nodeName}" node first`);
+				}
+
 				return new Proxy(
 					{},
 					{
+						has: () => true,
+						ownKeys(target) {
+							return [
+								'pairedItem',
+								'itemMatching',
+								'item',
+								'first',
+								'last',
+								'all',
+								'context',
+								'params',
+							];
+						},
 						get(target, property, receiver) {
+							if (property === 'isProxy') return true;
+
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {
 									if (itemIndex === undefined) {
@@ -952,11 +1002,11 @@ export class WorkflowDataProxy {
 
 									if (pairedItem === undefined) {
 										throw createExpressionError('Can’t get data for expression', {
-											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 											functionality: 'pairedItem',
 											functionOverrides: {
 												description: `To fetch the data from other nodes that this code needs, more information is needed from the node ‘<strong>${that.activeNodeName}</strong>‘`,
-												message: `Can’t get data`,
+												message: 'Can’t get data',
 											},
 											description: `To fetch the data from other nodes that this expression needs, more information is needed from the node ‘<strong>${that.activeNodeName}</strong>‘`,
 											causeDetailed: `Missing pairedItem data (node ‘${that.activeNodeName}‘ probably didn’t supply it)`,
@@ -969,17 +1019,18 @@ export class WorkflowDataProxy {
 											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
 											functionality: 'pairedItem',
 											functionOverrides: {
-												message: `Can’t get data`,
+												message: 'Can’t get data',
 											},
-											description: `Apologies, this is an internal error. See details for more information`,
-											causeDetailed: `Missing sourceData (probably an internal error)`,
+											description:
+												'Apologies, this is an internal error. See details for more information',
+											causeDetailed: 'Missing sourceData (probably an internal error)',
 											itemIndex,
 										});
 									}
 
 									// Before resolving the pairedItem make sure that the requested node comes in the
 									// graph before the current one
-									const parentNodes = that.workflow.getParentNodes(that.activeNodeName);
+									const parentNodes = that.workflow.getParentNodes(that.contextNodeName);
 									if (!parentNodes.includes(nodeName)) {
 										throw createExpressionError('Invalid expression', {
 											messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
@@ -993,9 +1044,9 @@ export class WorkflowDataProxy {
 										});
 									}
 
-									const sourceData: ISourceData = that.executeData?.source.main![
-										pairedItem.input || 0
-									] as ISourceData;
+									const sourceData: ISourceData | null =
+										that.executeData.source.main[pairedItem.input || 0] ??
+										that.executeData.source.main[0];
 
 									return getPairedItem(nodeName, sourceData, pairedItem);
 								};
@@ -1038,87 +1089,88 @@ export class WorkflowDataProxy {
 				);
 			},
 
-			$input: new Proxy(
-				{},
-				{
-					ownKeys(target) {
-						return ['all', 'context', 'first', 'item', 'last', 'params'];
-					},
-					getOwnPropertyDescriptor(k) {
-						return {
-							enumerable: true,
-							configurable: true,
-						};
-					},
-					get(target, property, receiver) {
-						if (property === 'item') {
-							return that.connectionInputData[that.itemIndex];
-						}
-						if (property === 'first') {
-							return (...args: unknown[]) => {
-								if (args.length) {
-									throw createExpressionError('$input.first() should have no arguments');
-								}
-
-								const result = that.connectionInputData;
-								if (result[0]) {
-									return result[0];
-								}
-								return undefined;
-							};
-						}
-						if (property === 'last') {
-							return (...args: unknown[]) => {
-								if (args.length) {
-									throw createExpressionError('$input.last() should have no arguments');
-								}
-
-								const result = that.connectionInputData;
-								if (result.length && result[result.length - 1]) {
-									return result[result.length - 1];
-								}
-								return undefined;
-							};
-						}
-						if (property === 'all') {
-							return () => {
-								const result = that.connectionInputData;
-								if (result.length) {
-									return result;
-								}
-								return [];
-							};
-						}
-
-						if (['context', 'params'].includes(property as string)) {
-							// For the following properties we need the source data so fail in case it is missing
-							// for some reason (even though that should actually never happen)
-							if (!that.executeData?.source) {
-								throw createExpressionError('Can’t get data for expression', {
-									messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
-									functionOverrides: {
-										message: 'Can’t get data',
-									},
-									description: `Apologies, this is an internal error. See details for more information`,
-									causeDetailed: `Missing sourceData (probably an internal error)`,
-									runIndex: that.runIndex,
-								});
-							}
-
-							const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
-
-							if (property === 'context') {
-								return that.nodeContextGetter(sourceData.previousNode);
-							}
-							if (property === 'params') {
-								return that.workflow.getNode(sourceData.previousNode)?.parameters;
-							}
-						}
-
-						return Reflect.get(target, property, receiver);
-					},
+			$input: new Proxy({} as ProxyInput, {
+				has: () => true,
+				ownKeys(target) {
+					return ['all', 'context', 'first', 'item', 'last', 'params'];
 				},
-			),
+				getOwnPropertyDescriptor(k) {
+					return {
+						enumerable: true,
+						configurable: true,
+					};
+				},
+				get(target, property, receiver) {
+					if (property === 'isProxy') return true;
+
+					if (property === 'item') {
+						return that.connectionInputData[that.itemIndex];
+					}
+					if (property === 'first') {
+						return (...args: unknown[]) => {
+							if (args.length) {
+								throw createExpressionError('$input.first() should have no arguments');
+							}
+
+							const result = that.connectionInputData;
+							if (result[0]) {
+								return result[0];
+							}
+							return undefined;
+						};
+					}
+					if (property === 'last') {
+						return (...args: unknown[]) => {
+							if (args.length) {
+								throw createExpressionError('$input.last() should have no arguments');
+							}
+
+							const result = that.connectionInputData;
+							if (result.length && result[result.length - 1]) {
+								return result[result.length - 1];
+							}
+							return undefined;
+						};
+					}
+					if (property === 'all') {
+						return () => {
+							const result = that.connectionInputData;
+							if (result.length) {
+								return result;
+							}
+							return [];
+						};
+					}
+
+					if (['context', 'params'].includes(property as string)) {
+						// For the following properties we need the source data so fail in case it is missing
+						// for some reason (even though that should actually never happen)
+						if (!that.executeData?.source) {
+							throw createExpressionError('Can’t get data for expression', {
+								messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+								functionOverrides: {
+									message: 'Can’t get data',
+								},
+								description:
+									'Apologies, this is an internal error. See details for more information',
+								causeDetailed: 'Missing sourceData (probably an internal error)',
+								runIndex: that.runIndex,
+							});
+						}
+
+						const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
+
+						if (property === 'context') {
+							return that.nodeContextGetter(sourceData.previousNode);
+						}
+						if (property === 'params') {
+							return that.workflow.getNode(sourceData.previousNode)?.parameters;
+						}
+					}
+
+					return Reflect.get(target, property, receiver);
+				},
+			}),
 
 			$binary: {}, // Placeholder
 			$data: {}, // Placeholder
@@ -1136,6 +1188,9 @@ export class WorkflowDataProxy {
 					that.timezone,
 					that.additionalKeys,
 					that.executeData,
+					false,
+					{},
+					that.contextNodeName,
 				);
 			},
 			$item: (itemIndex: number, runIndex?: number) => {
@@ -1153,12 +1208,22 @@ export class WorkflowDataProxy {
 					that.additionalKeys,
 					that.executeData,
 					defaultReturnRunIndex,
+					that.contextNodeName,
 				);
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
+					const node = this.workflow.nodes[nodeName];
+					let result = that.connectionInputData;
+					if (node.executeOnce === true) {
+						result = result.slice(0, 1);
+					}
+					if (result.length) {
+						return result;
+					}
+					return [];
 				}
 
 				outputIndex = outputIndex || 0;
@@ -1195,12 +1260,15 @@ export class WorkflowDataProxy {
 		};
 
 		return new Proxy(base, {
+			has: () => true,
 			get(target, name, receiver) {
+				if (name === 'isProxy') return true;
+
 				if (['$data', '$json'].includes(name as string)) {
-					return that.nodeDataGetter(that.activeNodeName, true)?.json;
+					return that.nodeDataGetter(that.contextNodeName, true)?.json;
 				}
 				if (name === '$binary') {
-					return that.nodeDataGetter(that.activeNodeName, true)?.binary;
+					return that.nodeDataGetter(that.contextNodeName, true)?.binary;
 				}
 
 				return Reflect.get(target, name, receiver);

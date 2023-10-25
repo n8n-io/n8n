@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const channelMessageOperations: INodeProperties[] = [
 	{
@@ -120,6 +120,14 @@ export const channelMessageFields: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				displayName: 'Include Link to Workflow',
+				name: 'includeLinkToWorkflow',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
+			},
 			{
 				displayName: 'Make Reply',
 				name: 'makeReply',

@@ -1,16 +1,16 @@
 import path from 'path';
+import { Container } from 'typedi';
 import type { SqliteConnectionOptions } from 'typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import type { MysqlConnectionOptions } from 'typeorm/driver/mysql/MysqlConnectionOptions';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { entities } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
-import type { DatabaseType } from '@/Interfaces';
+import type { DatabaseType } from '@db/types';
 import config from '@/config';
-import { getConfigValue } from '@/GenericHelpers';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
 
@@ -22,9 +22,10 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 		configDBType === 'sqlite'
 			? {
 					database: path.resolve(
-						UserSettings.getUserN8nFolderPath(),
+						Container.get(InstanceSettings).n8nFolder,
 						config.getEnv('database.sqlite.database'),
 					),
+					enableWAL: config.getEnv('database.sqlite.enableWAL'),
 			  }
 			: {
 					database: config.getEnv(`database.${configDBType}.database`),
@@ -36,25 +37,23 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
-		migrationsRun: true,
 		migrationsTableName: `${entityPrefix}migrations`,
 		cli: { entitiesDir, migrationsDir },
 		...connectionDetails,
 	};
 };
 
-export const getOptionOverrides = async (dbType: 'postgresdb' | 'mysqldb') => ({
-	database: (await getConfigValue(`database.${dbType}.database`)) as string,
-	host: (await getConfigValue(`database.${dbType}.host`)) as string,
-	port: (await getConfigValue(`database.${dbType}.port`)) as number,
-	username: (await getConfigValue(`database.${dbType}.user`)) as string,
-	password: (await getConfigValue(`database.${dbType}.password`)) as string,
+export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
+	database: config.getEnv(`database.${dbType}.database`),
+	host: config.getEnv(`database.${dbType}.host`),
+	port: config.getEnv(`database.${dbType}.port`),
+	username: config.getEnv(`database.${dbType}.user`),
+	password: config.getEnv(`database.${dbType}.password`),
 });
 
 export const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
 	type: 'sqlite',
 	...getDBConnectionOptions('sqlite'),
-	migrationsRun: false, // sqlite migrations are manually run in `Db.ts`
 	migrations: sqliteMigrations,
 });
 

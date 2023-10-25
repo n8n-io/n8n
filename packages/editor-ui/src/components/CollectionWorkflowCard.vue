@@ -1,13 +1,7 @@
 <template>
-	<n8n-card
-		:class="$style.card"
-		v-on="$listeners"
-	>
+	<n8n-card :class="$style.card" v-bind="$attrs">
 		<template #header v-if="!loading">
-			<span
-				v-text="title"
-				:class="$style.title"
-			/>
+			<span v-text="title" :class="$style.title" />
 		</template>
 		<n8n-loading :loading="loading" :rows="3" variant="p" />
 		<template #footer v-if="!loading">
@@ -17,11 +11,12 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'Card',
+	mixins: [genericHelpers],
 	props: {
 		loading: {
 			type: Boolean,
@@ -45,7 +40,7 @@ export default mixins(genericHelpers).extend({
 	}
 
 	&:hover {
-		box-shadow: 0 2px 4px rgba(68,28,23,0.07);
+		box-shadow: 0 2px 4px rgba(68, 28, 23, 0.07);
 	}
 
 	> div {

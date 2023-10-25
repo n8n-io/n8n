@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { mondayComApiRequest, mondayComApiRequestAllItems } from './GenericFunctions';
 
@@ -120,7 +119,7 @@ export class MondayCom implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available boards to display them to user so that he can
+			// Get all the available boards to display them to user so that they can
 			// select them easily
 			async getBoards(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -153,7 +152,7 @@ export class MondayCom implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available columns to display them to user so that he can
+			// Get all the available columns to display them to user so that they can
 			// select them easily
 			async getColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -188,7 +187,7 @@ export class MondayCom implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -728,7 +727,7 @@ export class MondayCom implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 
@@ -746,6 +745,6 @@ export class MondayCom implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

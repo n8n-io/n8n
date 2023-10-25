@@ -1,16 +1,16 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function cloudflareApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 	body = {},
@@ -35,7 +35,7 @@ export async function cloudflareApiRequest(
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'cloudflareApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -55,7 +55,7 @@ export async function cloudflareApiRequestAllItems(
 	do {
 		responseData = await cloudflareApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.result_info.total_pages !== responseData.result_info.page);
 	return returnData;
 }

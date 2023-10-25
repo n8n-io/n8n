@@ -1,0 +1,73 @@
+{
+  "name": "http request test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "12433cfb-74d9-4bf1-9afd-0ab9afc9ef19",
+      "name": "When clicking \"Execute Workflow\"",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        820,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://dummyjson.com/todos/10",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "userId",
+              "value": "42"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "07670093-862f-403f-96a5-ddf7fdb0d225",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1100,
+        360
+      ]
+    }
+  ],
+  "pinData": {
+    "HTTP Request": [
+      {
+        "json": {
+          "id": 10,
+          "todo": "Have a football scrimmage with some friends",
+          "completed": false,
+          "userId": "42"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking \"Execute Workflow\"": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "209dd43e-fa03-4da7-94fb-cecf1974c5fe",
+  "id": "108",
+  "meta": {
+    "instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+  },
+  "tags": []
+}

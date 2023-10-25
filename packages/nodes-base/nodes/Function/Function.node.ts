@@ -1,15 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	deepCopy,
+import type { NodeVMOptions } from '@n8n/vm2';
+import { NodeVM } from '@n8n/vm2';
+import type {
+	IExecuteFunctions,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
+import { deepCopy, NodeOperationError } from 'n8n-workflow';
+import { vmResolver } from '../Code/JavaScriptSandbox';
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -148,22 +148,11 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options = {
+		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
-			require: {
-				external: false as boolean | { modules: string[] },
-				builtin: [] as string[],
-			},
+			require: vmResolver,
 		};
-
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
-		}
-
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
-		}
 
 		const vm = new NodeVM(options);
 
@@ -225,16 +214,16 @@ return items;`,
 					const lineParts = stackLines.find((line: string) => line.includes('Function')).split(':');
 					if (lineParts.length > 2) {
 						const lineNumber = lineParts.splice(-2, 1);
-						if (!isNaN(lineNumber)) {
+						if (!isNaN(lineNumber as number)) {
 							error.message = `${error.message} [Line ${lineNumber}]`;
 						}
 					}
 				}
 
-				return Promise.reject(error);
+				throw error;
 			}
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

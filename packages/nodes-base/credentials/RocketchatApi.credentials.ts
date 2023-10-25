@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -23,6 +23,7 @@ export class RocketchatApi implements ICredentialType {
 			displayName: 'Auth Key',
 			name: 'authKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

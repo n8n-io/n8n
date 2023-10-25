@@ -1,6 +1,5 @@
 import express from 'express';
-import config from '@/config';
-import {
+import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -14,7 +13,7 @@ import { EEExecutionsService } from './executions.service.ee';
 export const EEExecutionsController = express.Router();
 
 EEExecutionsController.use((req, res, next) => {
-	if (!isSharingEnabled() || !config.getEnv('enterprise.workflowSharingEnabled')) {
+	if (!isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;
@@ -37,7 +36,7 @@ EEExecutionsController.get(
  * GET /executions/:id
  */
 EEExecutionsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(
 		async (
 			req: ExecutionRequest.Get,

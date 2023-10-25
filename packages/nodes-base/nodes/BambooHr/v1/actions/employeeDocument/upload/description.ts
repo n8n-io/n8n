@@ -1,4 +1,4 @@
-import { EmployeeDocumentProperties } from '../../Interfaces';
+import type { EmployeeDocumentProperties } from '../../Interfaces';
 
 export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 	{

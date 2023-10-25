@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MoceanApi implements ICredentialType {
 	name = 'moceanApi';
@@ -15,12 +15,14 @@ export class MoceanApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'mocean-api-key',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
 			displayName: 'API Secret',
 			name: 'mocean-api-secret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

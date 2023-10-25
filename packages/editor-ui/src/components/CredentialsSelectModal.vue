@@ -9,19 +9,23 @@
 		minHeight="250px"
 	>
 		<template #header>
-			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
+			<h2 :class="$style.title">
+				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
+			</h2>
 		</template>
 		<template #content>
 			<div>
-				<div :class="$style.subtitle">{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
+				<div :class="$style.subtitle">
+					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+				</div>
 				<n8n-select
 					filterable
 					defaultFirstOption
 					:placeholder="$locale.baseText('credentialSelectModal.searchForApp')"
 					size="xlarge"
 					ref="select"
-					:value="selected"
-					@change="onSelect"
+					:modelValue="selected"
+					@update:modelValue="onSelect"
 					data-test-id="new-credential-type-select"
 				>
 					<template #prefix>
@@ -54,57 +58,52 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
-
+import { defineComponent } from 'vue';
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'CredentialsSelectModal',
+	mixins: [externalHooks],
 	components: {
 		Modal,
 	},
 	async mounted() {
 		try {
 			await this.credentialsStore.fetchCredentialTypes(false);
-		} catch (e) {
-		}
+		} catch (e) {}
 		this.loading = false;
 
 		setTimeout(() => {
-			const element = this.$refs.select as HTMLSelectElement;
-			if (element) {
-				element.focus();
+			const elementRef = this.$refs.select as HTMLSelectElement | undefined;
+			if (elementRef) {
+				elementRef.focus();
 			}
 		}, 0);
 	},
 	data() {
 		return {
-			modalBus: new Vue(),
+			modalBus: createEventBus(),
 			selected: '',
 			loading: true,
 			CREDENTIAL_SELECT_MODAL_KEY,
 		};
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore),
 	},
 	methods: {
 		onSelect(type: string) {
 			this.selected = type;
 		},
-		openCredentialType () {
-			this.modalBus.$emit('close');
+		openCredentialType() {
+			this.modalBus.emit('close');
 			this.uiStore.openNewCredential(this.selected);
 
 			const telemetryPayload = {
@@ -115,7 +114,7 @@ export default mixins(externalHooks).extend({
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);
-			this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
+			void this.$externalHooks().run('credentialsSelectModal.openCredentialType', telemetryPayload);
 		},
 	},
 });

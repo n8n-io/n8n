@@ -1,5 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 export class ClassNameReplace implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,6 +48,6 @@ export class ClassNameReplace implements INodeType {
 			item.json.myString = myString;
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -24,6 +24,7 @@ export class MailjetEmailApi implements ICredentialType {
 			displayName: 'Secret Key',
 			name: 'secretKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -48,7 +49,7 @@ export class MailjetEmailApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `https://api.mailjet.com`,
+			baseURL: 'https://api.mailjet.com',
 			url: '/v3/REST/template',
 			method: 'GET',
 		},

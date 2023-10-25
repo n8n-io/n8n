@@ -1,15 +1,15 @@
 <template>
 	<n8n-select
-		:value="value"
+		v-bind="$attrs"
+		:modelValue="modelValue"
 		:filterable="true"
 		:filterMethod="setFilter"
 		:placeholder="placeholder"
 		:default-first-option="true"
-		:popper-append-to-body="true"
+		teleported
 		:popper-class="$style.limitPopperWidth"
 		:noDataText="t('nds.userSelect.noMatchingUsers')"
 		:size="size"
-		@change="onChange"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
@@ -30,41 +30,40 @@
 </template>
 
 <script lang="ts">
-import 'vue';
-import mixins from 'vue-typed-mixins';
-import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
-import { IUser } from '../../types';
+import N8nSelect from '../N8nSelect';
+import N8nOption from '../N8nOption';
+import type { IUser } from '../../types';
 import Locale from '../../mixins/locale';
 import { t } from '../../locale';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-user-select',
+	mixins: [Locale],
 	components: {
 		N8nUserInfo,
-		ElSelect,
-		ElOption,
+		N8nSelect,
+		N8nOption,
 	},
 	props: {
 		users: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<IUser[]>,
+			default: () => [],
 		},
-		value: {
+		modelValue: {
 			type: String,
 			default: '',
 		},
 		ignoreIds: {
-			type: Array,
-			default() {
-				return [];
-			},
+			type: Array as PropType<string[]>,
+			default: () => [],
 			validator: (ids: string[]) => !ids.find((id) => typeof id !== 'string'),
 		},
 		currentUserId: {
 			type: String,
+			default: '',
 		},
 		placeholder: {
 			type: String,
@@ -72,6 +71,7 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
+			default: '',
 			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
@@ -82,12 +82,12 @@ export default mixins(Locale).extend({
 	},
 	computed: {
 		filteredUsers(): IUser[] {
-			return (this.users as IUser[]).filter((user) => {
+			return this.users.filter((user) => {
 				if (user.isPendingUser || !user.email) {
 					return false;
 				}
 
-				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+				if (this.ignoreIds.includes(user.id)) {
 					return false;
 				}
 
@@ -122,9 +122,6 @@ export default mixins(Locale).extend({
 		setFilter(value: string) {
 			this.filter = value;
 		},
-		onChange(value: string) {
-			this.$emit('input', value);
-		},
 		onBlur() {
 			this.$emit('blur');
 		},
@@ -136,7 +133,6 @@ export default mixins(Locale).extend({
 				return user.email;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},
@@ -149,7 +145,7 @@ export default mixins(Locale).extend({
 	--select-option-line-height: 1;
 }
 
-.limitPopperWidth {
+:root .limitPopperWidth {
 	width: 0;
 
 	li > span {

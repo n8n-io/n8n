@@ -1,4 +1,4 @@
-import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import type { IDisplayOptions, INodeProperties } from 'n8n-workflow';
 
 const colors = [
 	{
@@ -471,6 +471,21 @@ const textContent = (displayOptions: IDisplayOptions): INodeProperties[] => [
 	},
 ];
 
+const imageBlock = (type: string): INodeProperties[] => [
+	{
+		displayName: 'Image URL',
+		name: 'url',
+		type: 'string',
+		displayOptions: {
+			show: {
+				type: [type],
+			},
+		},
+		default: '',
+		description: 'Image file reference',
+	},
+];
+
 const block = (blockType: string): INodeProperties[] => {
 	const data: INodeProperties[] = [];
 	switch (blockType) {
@@ -502,6 +517,9 @@ const block = (blockType: string): INodeProperties[] => {
 			break;
 		case 'child_page':
 			data.push(...title(blockType));
+			break;
+		case 'image':
+			data.push(...imageBlock(blockType));
 			break;
 		default:
 			data.push(
@@ -573,6 +591,7 @@ export const blocks = (resource: string, operation: string): INodeProperties[] =
 					...block('child_page'),
 					...block('bulleted_list_item'),
 					...block('numbered_list_item'),
+					...block('image'),
 				],
 			},
 		],

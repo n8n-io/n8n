@@ -1,0 +1,88 @@
+{
+	"name": "My workflow 5",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "875e8784-eb59-40d8-ba45-129a5e29881c",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [580, 140]
+		},
+		{
+			"parameters": {
+				"resource": "table",
+				"operation": "getColumns",
+				"workbook": {
+					"__rl": true,
+					"value": "01FUWX3BQ4ATCOZNR265GLA6IJEZDQUE4I",
+					"mode": "list",
+					"cachedResultName": "ПРРО копія"
+				},
+				"worksheet": {
+					"__rl": true,
+					"value": "{00000000-0001-0000-0000-000000000000}",
+					"mode": "list",
+					"cachedResultName": "Sheet1"
+				},
+				"table": {
+					"__rl": true,
+					"value": "{613E8967-D581-44ED-81D3-82A01AA6A05C}",
+					"mode": "list",
+					"cachedResultName": "Table1"
+				},
+				"returnAll": true
+			},
+			"id": "0e0ac1d2-242c-486a-9287-c70307645acc",
+			"name": "Microsoft Excel 365",
+			"type": "n8n-nodes-base.microsoftExcel",
+			"typeVersion": 2,
+			"position": [860, 140],
+			"credentials": {
+				"microsoftExcelOAuth2Api": {
+					"id": "70",
+					"name": "Microsoft Excel account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Microsoft Excel 365": [
+			{
+				"json": {
+					"name": "country"
+				}
+			},
+			{
+				"json": {
+					"name": "browser"
+				}
+			},
+			{
+				"json": {
+					"name": "session_duration"
+				}
+			},
+			{
+				"json": {
+					"name": "visits"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Microsoft Excel 365",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {}
+}

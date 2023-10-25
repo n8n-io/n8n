@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -17,6 +17,7 @@ export class TwakeCloudApi implements ICredentialType {
 			displayName: 'Workspace Key',
 			name: 'workspaceKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -1,8 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import { contenfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
+import { contentfulApiRequestAllItems, contentfulApiRequest } from './GenericFunctions';
 
 import * as SpaceDescription from './SpaceDescription';
 import * as ContentTypeDescription from './ContentTypeDescription';
@@ -19,7 +23,7 @@ export class Contentful implements INodeType {
 		icon: 'file:contentful.png',
 		group: ['input'],
 		version: 1,
-		description: 'Consume Contenful API',
+		description: 'Consume Contentful API',
 		defaults: {
 			name: 'Contentful',
 		},
@@ -183,7 +187,7 @@ export class Contentful implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(
+							responseData = await contentfulApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
@@ -196,7 +200,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -216,7 +220,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -282,7 +286,7 @@ export class Contentful implements INodeType {
 						}
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(
+							responseData = await contentfulApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
@@ -295,7 +299,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -315,7 +319,7 @@ export class Contentful implements INodeType {
 								const assets: IDataObject[] = [];
 
 								responseData.map((asset: any) => {
-									assets.push(asset.fields);
+									assets.push(asset.fields as IDataObject);
 								});
 								responseData = assets;
 							}
@@ -331,7 +335,7 @@ export class Contentful implements INodeType {
 						const env = this.getNodeParameter('environmentId', i) as string;
 
 						if (returnAll) {
-							responseData = await contenfulApiRequestAllItems.call(
+							responseData = await contentfulApiRequestAllItems.call(
 								this,
 								'items',
 								'GET',
@@ -354,7 +358,7 @@ export class Contentful implements INodeType {
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -366,6 +370,6 @@ export class Contentful implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

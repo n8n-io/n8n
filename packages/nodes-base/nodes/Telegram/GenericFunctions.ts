@@ -1,13 +1,14 @@
-import {
+import type { OptionsWithUri } from 'request';
+
+import type {
+	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
-
-import { OptionsWithUri } from 'request';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -63,12 +64,51 @@ export interface IMarkupReplyKeyboardRemove {
  * @param {IDataObject} body The body object to add fields to
  * @param {number} index The index of the item
  */
-export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
+export function addAdditionalFields(
+	this: IExecuteFunctions,
+	body: IDataObject,
+	index: number,
+	nodeVersion?: number,
+	instanceId?: string,
+) {
+	const operation = this.getNodeParameter('operation', index);
+
 	// Add the additional fields
 	const additionalFields = this.getNodeParameter('additionalFields', index);
-	Object.assign(body, additionalFields);
 
-	const operation = this.getNodeParameter('operation', index);
+	if (operation === 'sendMessage') {
+		const attributionText = 'This message was sent automatically with ';
+		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.telegram',
+		)}${instanceId ? '_' + instanceId : ''}`;
+
+		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
+			additionalFields.appendAttribution = true;
+		}
+
+		if (!additionalFields.parse_mode) {
+			additionalFields.parse_mode = 'Markdown';
+		}
+
+		const regex = /(https?|ftp|file):\/\/\S+|www\.\S+|\S+\.\S+/;
+		const containsUrl = regex.test(body.text as string);
+
+		if (!containsUrl) {
+			body.disable_web_page_preview = true;
+		}
+
+		if (additionalFields.appendAttribution) {
+			if (additionalFields.parse_mode === 'Markdown') {
+				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
+			} else if (additionalFields.parse_mode === 'HTML') {
+				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+			}
+		}
+
+		delete additionalFields.appendAttribution;
+	}
+
+	Object.assign(body, additionalFields);
 
 	// Add the reply markup
 	let replyMarkupOption = '';
@@ -173,9 +213,9 @@ export async function apiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

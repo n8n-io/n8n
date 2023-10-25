@@ -1,24 +1,25 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { INodeUi, Schema } from "@/Interface";
-import RunDataSchemaItem from "@/components/RunDataSchemaItem.vue";
+import type { INodeUi } from '@/Interface';
+import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
-import { useNDVStore } from "@/stores/ndv";
-import { useWebhooksStore } from "@/stores/webhooks";
-import { runExternalHook } from "@/mixins/externalHooks";
-import { telemetry } from "@/plugins/telemetry";
-import { IDataObject } from "n8n-workflow";
-import { getSchema, isEmpty, mergeDeep } from "@/utils";
+import { useNDVStore } from '@/stores/ndv.store';
+import { useWebhooksStore } from '@/stores/webhooks.store';
+import { telemetry } from '@/plugins/telemetry';
+import type { IDataObject } from 'n8n-workflow';
+import { isEmpty, runExternalHook } from '@/utils';
 import { i18n } from '@/plugins/i18n';
-
+import MappingPill from './MappingPill.vue';
+import { useDataSchema } from '@/composables';
 type Props = {
-	data: IDataObject[]
-	mappingEnabled: boolean
-	distanceFromActive: number
-	runIndex: number
-	totalRuns: number
-	node: INodeUi | null
-}
+	data: IDataObject[];
+	mappingEnabled: boolean;
+	distanceFromActive: number;
+	runIndex: number;
+	totalRuns: number;
+	paneType: 'input' | 'output';
+	node: INodeUi | null;
+};
 
 const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 0,
@@ -27,15 +28,11 @@ const props = withDefaults(defineProps<Props>(), {
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
 const webhooksStore = useWebhooksStore();
+const { getSchemaForExecutionData } = useDataSchema();
 
-const schema = computed<Schema>(() => {
-	const [head, ...tail] = props.data;
-	return getSchema(mergeDeep([head, ...tail, head]));
-});
+const schema = computed(() => getSchemaForExecutionData(props.data));
 
-const isDataEmpty = computed(() => {
-	return isEmpty(props.data);
-});
+const isDataEmpty = computed(() => isEmpty(props.data));
 
 const onDragStart = (el: HTMLElement) => {
 	if (el && el.dataset?.path) {
@@ -62,17 +59,18 @@ const onDragEnd = (el: HTMLElement) => {
 			...mappingTelemetry,
 		};
 
-		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+		void runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
 
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 };
-
 </script>
 
 <template>
 	<div :class="$style.schemaWrapper">
-		<n8n-info-tip v-if="isDataEmpty">{{ i18n.baseText('dataMapping.schemaView.emptyData') }}</n8n-info-tip>
+		<n8n-info-tip v-if="isDataEmpty">{{
+			i18n.baseText('dataMapping.schemaView.emptyData')
+		}}</n8n-info-tip>
 		<draggable
 			v-else
 			type="mapping"
@@ -82,22 +80,21 @@ const onDragEnd = (el: HTMLElement) => {
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
+				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
-			<template>
-				<div :class="$style.schema">
-					<run-data-schema-item
-						:schema="schema"
-						:level="0"
-						:parent="null"
-						:subKey="`${schema.type}-0-0`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
-						:node="node"
-					/>
-				</div>
-			</template>
+			<div :class="$style.schema">
+				<run-data-schema-item
+					:schema="schema"
+					:level="0"
+					:parent="null"
+					:paneType="paneType"
+					:subKey="`${schema.type}-0-0`"
+					:mappingEnabled="mappingEnabled"
+					:draggingPath="draggingPath"
+					:distanceFromActive="distanceFromActive"
+					:node="node"
+				/>
+			</div>
 		</draggable>
 	</div>
 </template>
@@ -116,7 +113,7 @@ const onDragEnd = (el: HTMLElement) => {
 	width: 100%;
 	background-color: var(--color-background-base);
 
-	> div[class*="info"] {
+	> div[class*='info'] {
 		padding: 0 var(--spacing-s);
 	}
 }
@@ -124,45 +121,5 @@ const onDragEnd = (el: HTMLElement) => {
 .schema {
 	display: inline-block;
 	padding: 0 var(--spacing-s) var(--spacing-s);
-}
-
-.dragPill {
-	display: inline-flex;
-	height: 24px;
-	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
-	background: var(--color-background-xlight);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	white-space: nowrap;
-	align-items: center;
-
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-	}
-}
-
-.droppablePill {
-	&,
-	span span {
-		color: var(--color-success);
-		border-color: var(--color-success-light);
-		background: var(--color-success-tint-3);
-	}
-}
-
-.defaultPill {
-	transform: translate(-50%, -100%);
-	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-
-	&,
-	span span {
-		color: var(--color-primary);
-		border-color: var(--color-primary-tint-1);
-		background: var(--color-primary-tint-3);
-	}
 }
 </style>

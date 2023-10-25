@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SurveyMonkeyApi implements ICredentialType {
 	name = 'surveyMonkeyApi';
@@ -34,6 +34,7 @@ export class SurveyMonkeyApi implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

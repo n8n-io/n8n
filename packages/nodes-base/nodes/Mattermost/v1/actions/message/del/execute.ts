@@ -1,6 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -14,5 +12,5 @@ export async function del(this: IExecuteFunctions, index: number): Promise<INode
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
-	return this.helpers.returnJsonArray(responseData);
+	return this.helpers.returnJsonArray(responseData as IDataObject[]);
 }

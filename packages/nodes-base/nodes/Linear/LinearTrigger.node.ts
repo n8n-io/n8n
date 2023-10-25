@@ -1,6 +1,6 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
-
-import {
+import type {
+	IHookFunctions,
+	IWebhookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -29,6 +29,20 @@ export class LinearTrigger implements INodeType {
 				name: 'linearApi',
 				required: true,
 				testedBy: 'linearApiTest',
+				displayOptions: {
+					show: {
+						authentication: ['apiToken'],
+					},
+				},
+			},
+			{
+				name: 'linearOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		webhooks: [
@@ -40,6 +54,22 @@ export class LinearTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'API Token',
+						value: 'apiToken',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'apiToken',
+			},
 			{
 				displayName: 'Team Name or ID',
 				name: 'teamId',
@@ -123,7 +153,6 @@ export class LinearTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -229,7 +258,7 @@ export class LinearTrigger implements INodeType {
 						return false;
 					}
 					// Remove from the static workflow data so that it is clear
-					// that no webhooks are registred anymore
+					// that no webhooks are registered anymore
 					delete webhookData.webhookId;
 				}
 				return true;

@@ -1,8 +1,13 @@
 <template>
 	<div v-if="webhooksNode.length" class="webhooks">
-		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')">
+		<div
+			class="clickable headline"
+			:class="{ expanded: !isMinimized }"
+			@click="isMinimized = !isMinimized"
+			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
+		>
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
-			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
+			{{ baseText.toggleTitle }}
 		</div>
 		<el-collapse-transition>
 			<div class="node-webhooks" v-if="!isMinimized">
@@ -12,104 +17,148 @@
 							<n8n-radio-buttons
 								v-model="showUrlFor"
 								:options="[
-									{ label: this.$locale.baseText('nodeWebhooks.testUrl'), value: 'test'},
-									{ label: this.$locale.baseText('nodeWebhooks.productionUrl'), value: 'production'},
+									{ label: baseText.testUrl, value: 'test' },
+									{
+										label: baseText.productionUrl,
+										value: 'production',
+									},
 								]"
 							/>
 						</el-col>
 					</el-row>
 				</div>
 
-				<n8n-tooltip v-for="(webhook, index) in webhooksNode" :key="index" class="item"  :content="$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls')" placement="left">
-					<div class="webhook-wrapper">
-							<div class="http-field">
-								<div class="http-method">
-									{{getWebhookExpressionValue(webhook, 'httpMethod')}}<br />
-								</div>
+				<n8n-tooltip
+					v-for="(webhook, index) in webhooksNode.filter((webhook) => !webhook.ndvHideUrl)"
+					:key="index"
+					class="item"
+					:content="baseText.clickToCopy"
+					placement="left"
+				>
+					<div v-if="!webhook.ndvHideMethod" class="webhook-wrapper">
+						<div class="http-field">
+							<div class="http-method">
+								{{ getWebhookExpressionValue(webhook, 'httpMethod') }}<br />
 							</div>
-							<div class="url-field">
-								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-									{{getWebhookUrlDisplay(webhook)}}<br />
-								</div>
+						</div>
+						<div class="url-field">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
 							</div>
+						</div>
+					</div>
+					<div v-else class="webhook-wrapper">
+						<div class="url-field-full-width">
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
+								{{ getWebhookUrlDisplay(webhook) }}<br />
+							</div>
+						</div>
 					</div>
 				</n8n-tooltip>
-
 			</div>
 		</el-collapse-transition>
 	</div>
 </template>
 
 <script lang="ts">
-import {
-	INodeTypeDescription,
-	IWebhookDescription,
-} from 'n8n-workflow';
+import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { useToast } from '@/composables';
+import { FORM_TRIGGER_NODE_TYPE, OPEN_URL_PANEL_TRIGGER_NODE_TYPES } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
+export default defineComponent({
+	name: 'NodeWebhooks',
+	mixins: [copyPaste, workflowHelpers],
+	props: [
+		'node', // NodeUi
+		'nodeType', // INodeTypeDescription
+	],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
+	data() {
+		return {
+			isMinimized: this.nodeType && !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name),
+			showUrlFor: 'test',
+		};
+	},
+	computed: {
+		webhooksNode(): IWebhookDescription[] {
+			if (this.nodeType === null || this.nodeType.webhooks === undefined) {
+				return [];
+			}
 
-export default mixins(
-	copyPaste,
-	showMessage,
-	workflowHelpers,
-)
-	.extend({
-		name: 'NodeWebhooks',
-		props: [
-			'node', // NodeUi
-			'nodeType', // INodeTypeDescription
-		],
-		data () {
-			return {
-				isMinimized: this.nodeType && this.nodeType.name !== WEBHOOK_NODE_TYPE,
-				showUrlFor: 'test',
-			};
+			return (this.nodeType as INodeTypeDescription).webhooks!.filter(
+				(webhookData) => webhookData.restartWebhook !== true && !webhookData.hasLifecycleMethods,
+			);
 		},
-		computed: {
-			webhooksNode (): IWebhookDescription[] {
-				if (this.nodeType === null || this.nodeType.webhooks === undefined) {
-					return [];
-				}
+		baseText() {
+			const nodeType = this.nodeType.name;
+			switch (nodeType) {
+				case FORM_TRIGGER_NODE_TYPE:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls.formTrigger'),
+						clickToDisplay: this.$locale.baseText(
+							'nodeWebhooks.clickToDisplayWebhookUrls.formTrigger',
+						),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls.formTrigger'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls.formTrigger'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title.formTrigger'),
+						copyMessage: this.$locale.baseText('nodeWebhooks.showMessage.message.formTrigger'),
+					};
 
-				return (this.nodeType as INodeTypeDescription).webhooks!.filter(webhookData => webhookData.restartWebhook !== true);
-			},
+				default:
+					return {
+						toggleTitle: this.$locale.baseText('nodeWebhooks.webhookUrls'),
+						clickToDisplay: this.$locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls'),
+						clickToHide: this.$locale.baseText('nodeWebhooks.clickToHideWebhookUrls'),
+						clickToCopy: this.$locale.baseText('nodeWebhooks.clickToCopyWebhookUrls'),
+						testUrl: this.$locale.baseText('nodeWebhooks.testUrl'),
+						productionUrl: this.$locale.baseText('nodeWebhooks.productionUrl'),
+						copyTitle: this.$locale.baseText('nodeWebhooks.showMessage.title'),
+						copyMessage: undefined,
+					};
+			}
 		},
-		methods: {
-			copyWebhookUrl (webhookData: IWebhookDescription): void {
-				const webhookUrl = this.getWebhookUrlDisplay(webhookData);
-				this.copyToClipboard(webhookUrl);
+	},
+	methods: {
+		copyWebhookUrl(webhookData: IWebhookDescription): void {
+			const webhookUrl = this.getWebhookUrlDisplay(webhookData);
+			this.copyToClipboard(webhookUrl);
 
-				this.$showMessage({
-					title: this.$locale.baseText('nodeWebhooks.showMessage.title'),
-					type: 'success',
-				});
-				this.$telemetry.track('User copied webhook URL', {
-					pane: 'parameters',
-					type: `${this.showUrlFor} url`,
-				});
-			},
-			getWebhookUrlDisplay (webhookData: IWebhookDescription): string {
-				if (this.node) {
-					return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
-				}
-				return '';
-			},
+			this.showMessage({
+				title: this.baseText.copyTitle,
+				message: this.baseText.copyMessage,
+				type: 'success',
+			});
+			this.$telemetry.track('User copied webhook URL', {
+				pane: 'parameters',
+				type: `${this.showUrlFor} url`,
+			});
 		},
-		watch: {
-			node () {
-				this.isMinimized = this.nodeType.name !== WEBHOOK_NODE_TYPE;
-			},
+		getWebhookUrlDisplay(webhookData: IWebhookDescription): string {
+			if (this.node) {
+				return this.getWebhookUrl(webhookData, this.node, this.showUrlFor);
+			}
+			return '';
 		},
-	});
+	},
+	watch: {
+		node() {
+			this.isMinimized = !OPEN_URL_PANEL_TRIGGER_NODE_TYPES.includes(this.nodeType.name);
+		},
+	},
+});
 </script>
 
 <style scoped lang="scss">
-
 .webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
@@ -126,7 +175,7 @@ export default mixins(
 	position: absolute;
 	width: 50px;
 	display: inline-block;
-	top: calc(50% - 8px)
+	top: calc(50% - 8px);
 }
 
 .http-method {
@@ -159,6 +208,10 @@ export default mixins(
 	display: inline-block;
 	width: calc(100% - 60px);
 	margin-left: 55px;
+}
+.url-field-full-width {
+	display: inline-block;
+	width: 100%;
 }
 
 .url-selection {

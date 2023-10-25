@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const chatMessageOperations: INodeProperties[] = [
 	{
@@ -94,6 +94,30 @@ export const chatMessageFields: INodeProperties[] = [
 		},
 		default: '',
 		description: 'The content of the item',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['chatMessage'],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Include Link to Workflow',
+				name: 'includeLinkToWorkflow',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to append a link to this workflow at the end of the message. This is helpful if you have many workflows sending messages.',
+			},
+		],
 	},
 
 	/* -------------------------------------------------------------------------- */

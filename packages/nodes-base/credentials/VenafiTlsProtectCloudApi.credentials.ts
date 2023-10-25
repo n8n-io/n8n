@@ -1,8 +1,8 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	NodePropertyTypes,
+	INodeProperties,
 } from 'n8n-workflow';
 
 export class VenafiTlsProtectCloudApi implements ICredentialType {
@@ -10,11 +10,14 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 
 	displayName = 'Venafi TLS Protect Cloud';
 
-	properties = [
+	documentationUrl = 'venafitlsprotectcloud';
+
+	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
-			type: 'string' as NodePropertyTypes,
+			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

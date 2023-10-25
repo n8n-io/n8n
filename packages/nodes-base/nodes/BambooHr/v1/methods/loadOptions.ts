@@ -1,4 +1,4 @@
-import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
 
@@ -22,6 +22,17 @@ export async function getTimeOffTypeID(
 	}
 	return returnData;
 }
+
+//@ts-ignore
+const sort = (a, b) => {
+	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+		return -1;
+	}
+	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+		return 1;
+	}
+	return 0;
+};
 
 export async function getCompanyFileCategories(
 	this: ILoadOptionsFunctions,
@@ -174,14 +185,3 @@ export async function getEmployeeFields(
 
 	return returnData;
 }
-
-//@ts-ignore
-const sort = (a, b) => {
-	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
-		return -1;
-	}
-	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
-		return 1;
-	}
-	return 0;
-};

@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class QuickBaseApi implements ICredentialType {
 	name = 'quickbaseApi';
@@ -20,6 +20,7 @@ export class QuickBaseApi implements ICredentialType {
 			displayName: 'User Token',
 			name: 'userToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},

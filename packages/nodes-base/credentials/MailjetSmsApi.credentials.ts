@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -17,6 +17,7 @@ export class MailjetSmsApi implements ICredentialType {
 			displayName: 'Token',
 			name: 'token',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -32,7 +33,7 @@ export class MailjetSmsApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `https://api.mailjet.com`,
+			baseURL: 'https://api.mailjet.com',
 			url: '/v4/sms',
 			method: 'GET',
 		},

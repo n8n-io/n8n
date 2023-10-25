@@ -1,15 +1,15 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IPollFunctions,
 	ITriggerFunctions,
-} from 'n8n-core';
-
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function togglApiRequest(
 	this:
@@ -17,15 +17,13 @@ export async function togglApiRequest(
 		| IPollFunctions
 		| IHookFunctions
 		| IExecuteFunctions
-		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('togglApi');
 	const headerWithAuthentication = Object.assign(
 		{},
@@ -44,12 +42,12 @@ export async function togglApiRequest(
 		body,
 		json: true,
 	};
-	if (Object.keys(options.body).length === 0) {
+	if (Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

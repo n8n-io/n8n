@@ -5,13 +5,14 @@
 </template>
 
 <script lang="ts">
-import { format, LocaleFunc, register } from 'timeago.js';
+import type { LocaleFunc } from 'timeago.js';
+import { format, register } from 'timeago.js';
 import { convertToHumanReadableDate } from '@/utils';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useRootStore } from '@/stores/n8nRootStore';
+import { useRootStore } from '@/stores/n8nRoot.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'TimeAgo',
 	props: {
 		date: {
@@ -33,7 +34,10 @@ export default Vue.extend({
 			return [
 				[this.$locale.baseText('timeAgo.justNow'), this.$locale.baseText('timeAgo.rightNow')],
 				[this.$locale.baseText('timeAgo.justNow'), this.$locale.baseText('timeAgo.rightNow')], // ['%s seconds ago', 'in %s seconds'],
-				[this.$locale.baseText('timeAgo.oneMinuteAgo'), this.$locale.baseText('timeAgo.inOneMinute')],
+				[
+					this.$locale.baseText('timeAgo.oneMinuteAgo'),
+					this.$locale.baseText('timeAgo.inOneMinute'),
+				],
 				[this.$locale.baseText('timeAgo.minutesAgo'), this.$locale.baseText('timeAgo.inMinutes')],
 				[this.$locale.baseText('timeAgo.oneHourAgo'), this.$locale.baseText('timeAgo.inOneHour')],
 				[this.$locale.baseText('timeAgo.hoursAgo'), this.$locale.baseText('timeAgo.inHours')],
@@ -49,9 +53,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
 		},

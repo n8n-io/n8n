@@ -1,17 +1,14 @@
 <template>
-	<fragment></fragment>
+	<span v-show="false" />
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { showMessage } from '@/mixins/showMessage';
-import type { ElMessageComponent } from 'element-ui/types/message';
+import { defineComponent } from 'vue';
+import type { NotificationInstance } from 'element-plus';
 import { sanitizeHtml } from '@/utils';
+import { useToast } from '@/composables';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'PageAlert',
 	props: {
 		message: {
@@ -22,27 +19,31 @@ export default mixins(
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
-			alert: null as null | ElMessageComponent,
+			alert: null as null | NotificationInstance,
 		};
 	},
 	mounted() {
-		this.alert = this.$showAlert({
+		this.alert = this.showAlert({
+			title: '',
 			message: sanitizeHtml(this.message),
 			type: 'warning',
 			duration: 0,
 			showClose: true,
 			dangerouslyUseHTMLString: true,
-			// @ts-ignore
 			customClass: this.popupClass || '',
 		});
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.alert) {
 			this.alert.close();
 		}
 	},
 });
 </script>
-

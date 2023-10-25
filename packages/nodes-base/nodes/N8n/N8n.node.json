@@ -17,6 +17,6 @@
 	},
 	"alias": ["Workflow", "Execution"],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Helpers", "Flow", "Other Trigger Nodes"]
 	}
 }

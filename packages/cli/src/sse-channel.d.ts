@@ -1,16 +1,16 @@
-import type { Request, Response } from 'express';
+import type { PushRequest, PushResponse } from './push/types';
 
 declare module 'sse-channel' {
 	declare class Channel {
 		constructor();
 
-		on(event: string, handler: (channel: string, res: Response) => void): void;
+		on(event: string, handler: (channel: string, res: PushResponse) => void): void;
 
-		removeClient: (res: Response) => void;
+		removeClient: (res: PushResponse) => void;
 
-		addClient: (req: Request, res: Response) => void;
+		addClient: (req: PushRequest, res: PushResponse) => void;
 
-		send: (msg: string, clients?: Response[]) => void;
+		send: (msg: string, clients?: PushResponse[]) => void;
 	}
 
 	export = Channel;

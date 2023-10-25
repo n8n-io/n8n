@@ -23,7 +23,6 @@ yarn-error.log*
 .editorconfig
 .eslintrc.js
 tsconfig.json
-tslint.json
 
 .turbo
 *.tsbuildinfo

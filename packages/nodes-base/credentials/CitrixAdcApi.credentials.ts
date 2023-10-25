@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -10,7 +10,7 @@ export class CitrixAdcApi implements ICredentialType {
 
 	displayName = 'Citrix ADC API';
 
-	documentationUrl = 'citrix';
+	documentationUrl = 'citrixadc';
 
 	properties: INodeProperties[] = [
 		{

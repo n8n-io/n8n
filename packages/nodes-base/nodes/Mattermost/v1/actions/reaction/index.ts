@@ -2,7 +2,7 @@ import * as create from './create';
 import * as del from './del';
 import * as getAll from './getAll';
 
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export { create, del as delete, getAll };
 

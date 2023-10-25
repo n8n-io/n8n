@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 export interface IComment {
 	body?: string;
@@ -10,7 +10,7 @@ export interface ITicket {
 	subject?: string;
 	comment?: IComment;
 	type?: string;
-	group?: string;
+	group_id?: number;
 	external_id?: string;
 	tags?: string[];
 	status?: string;

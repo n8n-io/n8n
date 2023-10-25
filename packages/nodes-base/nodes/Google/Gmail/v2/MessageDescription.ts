@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -125,7 +125,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Email Type',
 		name: 'emailType',
 		type: 'options',
-		default: 'text',
+		default: 'html',
 		required: true,
 		noDataExpression: true,
 		options: [
@@ -142,6 +142,34 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['send', 'reply'],
+			},
+			hide: {
+				'@version': [2],
+			},
+		},
+	},
+	{
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'html',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send', 'reply'],
+				'@version': [2],
 			},
 		},
 	},
@@ -171,6 +199,15 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Append n8n Attribution',
+				name: 'appendAttribution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
+			},
 			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',
@@ -224,6 +261,19 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'e.g. Nathan',
 				default: '',
 				description: "The name that will be shown in recipients' inboxes",
+			},
+			{
+				displayName: 'Send Replies To',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
+				displayOptions: {
+					hide: {
+						'/operation': ['reply'],
+					},
+				},
 			},
 			{
 				displayName: 'Reply to Sender Only',

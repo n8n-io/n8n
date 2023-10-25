@@ -7,25 +7,26 @@
 </template>
 
 <script lang="ts">
-import { useCredentialsStore } from '@/stores/credentials';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
 
-export default Vue.extend({
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import NodeIcon from '@/components/NodeIcon.vue';
+
+export default defineComponent({
+	components: {
+		NodeIcon,
+	},
 	props: {
 		credentialTypeName: {
 			type: String,
 		},
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useNodeTypesStore,
-			useRootStore,
-		),
+		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
@@ -38,7 +39,7 @@ export default Vue.extend({
 			return this.rootStore.getBaseUrl + iconUrl;
 		},
 
-		relevantNode(): INodeTypeDescription | null	 {
+		relevantNode(): INodeTypeDescription | null {
 			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
@@ -70,7 +71,7 @@ export default Vue.extend({
 
 			if (type.extends) {
 				let parentCred = null;
-				type.extends.forEach(name => {
+				type.extends.forEach((name) => {
 					parentCred = this.getCredentialWithIcon(name);
 					if (parentCred !== null) return;
 				});

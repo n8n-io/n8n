@@ -1,5 +1,5 @@
-import { IAttachment } from './ObservableInterface';
-export enum LogStatus {
+import type { IAttachment } from './ObservableInterface';
+export const enum LogStatus {
 	OK = 'Ok',
 	DELETED = 'Deleted',
 }

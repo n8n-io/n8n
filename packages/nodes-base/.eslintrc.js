@@ -1,41 +1,42 @@
+const sharedOptions = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/node'],
-	parserOptions: {
-		project: ['./tsconfig.json'],
-		tsconfigRootDir: __dirname,
-	},
+
+	...sharedOptions(__dirname),
+
+	ignorePatterns: ['index.js'],
 
 	rules: {
 		// TODO: remove all the following rules
-		eqeqeq: 'off',
-		'id-denylist': 'off',
-		'import/extensions': 'off',
-		'import/order': 'off',
-		'prefer-spread': 'off',
-		'import/no-extraneous-dependencies': 'off',
+		eqeqeq: 'warn',
+		'id-denylist': 'warn',
+		'import/extensions': 'warn',
+		'import/order': 'warn',
+		'prefer-spread': 'warn',
+		'import/no-extraneous-dependencies': 'warn',
 
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
-		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
-		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		'@typescript-eslint/no-this-alias': 'off',
-		'@typescript-eslint/no-throw-literal': 'off',
-		'@typescript-eslint/no-unnecessary-qualifier': 'off',
-		'@typescript-eslint/no-unsafe-argument': 'off',
-		'@typescript-eslint/no-unsafe-assignment': 'off',
-		'@typescript-eslint/no-unsafe-call': 'off',
-		'@typescript-eslint/no-unsafe-member-access': 'off',
-		'@typescript-eslint/no-unsafe-return': 'off',
-		'@typescript-eslint/no-unused-expressions': 'off',
-		'@typescript-eslint/no-use-before-define': 'off',
-		'@typescript-eslint/no-var-requires': 'off',
-		'@typescript-eslint/prefer-nullish-coalescing': 'off',
-		'@typescript-eslint/restrict-plus-operands': 'off',
-		'@typescript-eslint/restrict-template-expressions': 'off',
-		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/no-explicit-any': 'warn', //812 warnings, better to fix in separate PR
+		'@typescript-eslint/no-non-null-assertion': 'warn', //665 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-assignment': 'warn', //7084 problems, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-call': 'warn', //541 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-member-access': 'warn', //4591 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-return': 'warn', //438 errors, better to fix in separate PR
+		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
+		'@typescript-eslint/restrict-template-expressions': 'warn', //1152 errors, better to fix in separate PR
+		'@typescript-eslint/unbound-method': 'warn',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'@typescript-eslint/prefer-nullish-coalescing': 'warn',
+		'@typescript-eslint/no-base-to-string': 'warn',
+		'@typescript-eslint/no-redundant-type-constituents': 'warn',
+		'@typescript-eslint/no-unused-vars': 'warn',
+		'@typescript-eslint/no-unsafe-argument': 'warn',
+		'@typescript-eslint/prefer-optional-chain': 'warn',
+		'@typescript-eslint/restrict-plus-operands': 'warn',
 	},
 
 	overrides: [
@@ -46,10 +47,12 @@ module.exports = {
 				'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-miscased': 'error',
+				'n8n-nodes-base/cred-class-field-documentation-url-missing': 'error',
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
-				'n8n-nodes-base/cred-class-field-unobscured-sensitive-input': 'error',
+				'n8n-nodes-base/cred-class-field-properties-assertion': 'error',
+				'n8n-nodes-base/cred-class-field-type-options-password-missing': 'error',
 				'n8n-nodes-base/cred-class-name-missing-oauth2-suffix': 'error',
 				'n8n-nodes-base/cred-class-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
@@ -67,6 +70,7 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
 				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
+				'n8n-nodes-base/node-class-description-name-miscased': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
@@ -144,7 +148,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-resource-with-plural-option': 'error',
 				'n8n-nodes-base/node-param-resource-without-no-data-expression': 'error',
 				'n8n-nodes-base/node-param-type-options-missing-from-limit': 'error',
-				'n8n-nodes-base/node-param-type-options-missing-from-password': 'error',
+				'n8n-nodes-base/node-param-type-options-password-missing': 'error',
 			},
 		},
 	],

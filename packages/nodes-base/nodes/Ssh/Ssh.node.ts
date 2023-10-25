@@ -1,17 +1,53 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	ICredentialTestFunctions,
+	ICredentialsDecrypted,
+	IDataObject,
+	IExecuteFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
-import { readFile, rm, writeFile } from 'fs/promises';
+import { formatPrivateKey } from '@utils/utilities';
 
-import { file } from 'tmp-promise';
+import { rm, writeFile } from 'fs/promises';
 
-const nodeSSH = require('node-ssh');
+import { file as tmpFile } from 'tmp-promise';
+
+import type { Config } from 'node-ssh';
+import { NodeSSH } from 'node-ssh';
+import type { Readable } from 'stream';
+
+async function resolveHomeDir(
+	this: IExecuteFunctions,
+	path: string,
+	ssh: NodeSSH,
+	itemIndex: number,
+) {
+	if (path.startsWith('~/')) {
+		let homeDir = (await ssh.execCommand('echo $HOME')).stdout;
+
+		if (homeDir.charAt(homeDir.length - 1) !== '/') {
+			homeDir += '/';
+		}
+
+		return path.replace('~/', homeDir);
+	}
+
+	if (path.startsWith('~')) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Invalid path. Replace "~" with home directory or "~/"',
+			{
+				itemIndex,
+			},
+		);
+	}
+
+	return path;
+}
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
@@ -32,6 +68,7 @@ export class Ssh implements INodeType {
 			{
 				name: 'sshPassword',
 				required: true,
+				testedBy: 'sshConnectionTest',
 				displayOptions: {
 					show: {
 						authentication: ['password'],
@@ -41,6 +78,7 @@ export class Ssh implements INodeType {
 			{
 				name: 'sshPrivateKey',
 				required: true,
+				testedBy: 'sshConnectionTest',
 				displayOptions: {
 					show: {
 						authentication: ['privateKey'],
@@ -224,7 +262,7 @@ export class Ssh implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['file'],
-						operation: ['upload'],
+						operation: ['upload', 'download'],
 					},
 				},
 				default: {},
@@ -241,6 +279,56 @@ export class Ssh implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async sshConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as IDataObject;
+				const ssh = new NodeSSH();
+				const temporaryFiles: string[] = [];
+
+				try {
+					if (!credentials.privateKey) {
+						await ssh.connect({
+							host: credentials.host as string,
+							username: credentials.username as string,
+							port: credentials.port as number,
+							password: credentials.password as string,
+						});
+					} else {
+						const options: Config = {
+							host: credentials.host as string,
+							username: credentials.username as string,
+							port: credentials.port as number,
+							privateKey: formatPrivateKey(credentials.privateKey as string),
+						};
+
+						if (credentials.passphrase) {
+							options.passphrase = credentials.passphrase as string;
+						}
+
+						await ssh.connect(options);
+					}
+				} catch (error) {
+					const message = `SSH connection failed: ${error.message}`;
+					return {
+						status: 'Error',
+						message,
+					};
+				} finally {
+					ssh.dispose();
+					for (const tempFile of temporaryFiles) await rm(tempFile);
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -252,7 +340,7 @@ export class Ssh implements INodeType {
 
 		const temporaryFiles: string[] = [];
 
-		const ssh = new nodeSSH.NodeSSH();
+		const ssh = new NodeSSH();
 
 		try {
 			if (authentication === 'password') {
@@ -266,17 +354,12 @@ export class Ssh implements INodeType {
 				});
 			} else if (authentication === 'privateKey') {
 				const credentials = await this.getCredentials('sshPrivateKey');
-
-				const { path } = await file({ prefix: 'n8n-ssh-' });
-				temporaryFiles.push(path);
-				await writeFile(path, credentials.privateKey as string);
-
-				const options = {
+				const options: Config = {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,
-					privateKey: path,
-				} as any;
+					privateKey: formatPrivateKey(credentials.privateKey as string),
+				};
 
 				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;
@@ -290,9 +373,14 @@ export class Ssh implements INodeType {
 					if (resource === 'command') {
 						if (operation === 'execute') {
 							const command = this.getNodeParameter('command', i) as string;
-							const cwd = this.getNodeParameter('cwd', i) as string;
+							const cwd = await resolveHomeDir.call(
+								this,
+								this.getNodeParameter('cwd', i) as string,
+								ssh,
+								i,
+							);
 							returnItems.push({
-								json: await ssh.execCommand(command, { cwd }),
+								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},
@@ -302,13 +390,15 @@ export class Ssh implements INodeType {
 
 					if (resource === 'file') {
 						if (operation === 'download') {
-							const dataPropertyNameDownload = this.getNodeParameter(
-								'binaryPropertyName',
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
+							const parameterPath = await resolveHomeDir.call(
+								this,
+								this.getNodeParameter('path', i) as string,
+								ssh,
 								i,
-							) as string;
-							const parameterPath = this.getNodeParameter('path', i) as string;
+							);
 
-							const { path } = await file({ prefix: 'n8n-ssh-' });
+							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
 
 							await ssh.getFile(path, parameterPath);
@@ -330,43 +420,35 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
-							const data = await readFile(path);
-
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-								data,
-								parameterPath,
+							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
+								path,
+								fileName || parameterPath,
 							);
 						}
 
 						if (operation === 'upload') {
-							const parameterPath = this.getNodeParameter('path', i) as string;
+							const parameterPath = await resolveHomeDir.call(
+								this,
+								this.getNodeParameter('path', i) as string,
+								ssh,
+								i,
+							);
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
 
-							const item = items[i];
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 
-							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-									itemIndex: i,
-								});
+							let uploadData: Buffer | Readable;
+							if (binaryData.id) {
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
+							} else {
+								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
-
-							const binaryData = item.binary[propertyNameUpload];
-
-							if (item.binary[propertyNameUpload] === undefined) {
-								throw new NodeOperationError(
-									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
-									{ itemIndex: i },
-								);
-							}
-
-							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
-
-							const { path } = await file({ prefix: 'n8n-ssh-' });
+							const { path } = await tmpFile({ prefix: 'n8n-ssh-' });
 							temporaryFiles.push(path);
-							await writeFile(path, dataBuffer);
+							await writeFile(path, uploadData);
 
 							await ssh.putFile(
 								path,
@@ -420,9 +502,9 @@ export class Ssh implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnItems);
+			return [returnItems];
 		}
 	}
 }

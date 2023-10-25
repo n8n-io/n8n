@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { blocks } from './Blocks';
 
@@ -10,7 +10,7 @@ export const pageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['page'],
 			},
 		},
@@ -43,7 +43,7 @@ export const pageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['page'],
 			},
 		},
@@ -127,7 +127,7 @@ export const pageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['page'],
 				operation: ['archive'],
 			},
@@ -140,7 +140,7 @@ export const pageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['page'],
 				operation: ['archive'],
 			},
@@ -237,6 +237,47 @@ export const pageFields: INodeProperties[] = [
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 	...blocks('page', 'create'),
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['page'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Icon Type',
+				name: 'iconType',
+				type: 'options',
+				options: [
+					{
+						name: 'Emoji',
+						value: 'emoji',
+						description: 'Use an Emoji for the icon',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Use a file for the icon',
+					},
+				],
+				default: 'emoji',
+				description: 'The icon type for the page, Either a URL or an Emoji',
+			},
+			{
+				displayName: 'Icon',
+				name: 'icon',
+				type: 'string',
+				default: '',
+				description: 'Emoji or File URL to use as the icon',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                page:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -248,7 +289,7 @@ export const pageFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['page'],
 				operation: ['get'],
 			},
@@ -262,7 +303,7 @@ export const pageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['page'],
 				operation: ['get'],
 			},

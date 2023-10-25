@@ -1,20 +1,13 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-for-in-array */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-continue */
-/* eslint-disable no-restricted-syntax */
 
-import {
+/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+
+import type {
 	IConnections,
 	IExecuteResponsePromiseData,
 	IGetExecuteTriggerFunctions,
@@ -48,20 +41,23 @@ import {
 	IRun,
 	IRunNodeResponse,
 	NodeParameterValueType,
+	ConnectionTypes,
 } from './Interfaces';
-import { IDeferredPromise } from './DeferredPromise';
+import { Node } from './Interfaces';
+import type { IDeferredPromise } from './DeferredPromise';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
+import { NODES_WITH_RENAMABLE_CONTENT } from './Constants';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
 }
 
 export class Workflow {
-	id: string | undefined;
+	id: string;
 
 	name: string | undefined;
 
@@ -97,7 +93,7 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id;
+		this.id = parameters.id as string;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
@@ -212,7 +208,6 @@ export class Workflow {
 				continue;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
 			if (ignoreNodeTypes !== undefined && ignoreNodeTypes.includes(node.type)) {
 				continue;
 			}
@@ -318,7 +313,7 @@ export class Workflow {
 		} else if (type === 'node') {
 			if (node === undefined) {
 				throw new Error(
-					`The request data of context type "node" the node parameter has to be set!`,
+					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;
@@ -405,21 +400,18 @@ export class Workflow {
 		return this.pinData ? this.pinData[nodeName] : undefined;
 	}
 
-	/**
-	 * Renames nodes in expressions
-	 *
-	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue The parameters to check for expressions
-	 * @param {string} currentName The current name of the node
-	 * @param {string} newName The new name
-	 */
-	renameNodeInExpressions(
+	renameNodeInParameterValue(
 		parameterValue: NodeParameterValueType,
 		currentName: string,
 		newName: string,
+		{ hasRenamableContent } = { hasRenamableContent: false },
 	): NodeParameterValueType {
 		if (typeof parameterValue !== 'object') {
 			// Reached the actual value
-			if (typeof parameterValue === 'string' && parameterValue.charAt(0) === '=') {
+			if (
+				typeof parameterValue === 'string' &&
+				(parameterValue.charAt(0) === '=' || hasRenamableContent)
+			) {
 				// Is expression so has to be rewritten
 				// To not run the "expensive" regex stuff when it is not needed
 				// make a simple check first if it really contains the the node-name
@@ -467,7 +459,13 @@ export class Workflow {
 			const returnArray: any[] = [];
 
 			for (const currentValue of parameterValue) {
-				returnArray.push(this.renameNodeInExpressions(currentValue, currentName, newName));
+				returnArray.push(
+					this.renameNodeInParameterValue(
+						currentValue as NodeParameterValueType,
+						currentName,
+						newName,
+					),
+				);
 			}
 
 			return returnArray;
@@ -477,11 +475,11 @@ export class Workflow {
 		const returnData: any = {};
 
 		for (const parameterName of Object.keys(parameterValue || {})) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			returnData[parameterName] = this.renameNodeInExpressions(
+			returnData[parameterName] = this.renameNodeInParameterValue(
 				parameterValue![parameterName as keyof typeof parameterValue],
 				currentName,
 				newName,
+				{ hasRenamableContent },
 			);
 		}
 
@@ -505,11 +503,20 @@ export class Workflow {
 		// Update the expressions which reference the node
 		// with its old name
 		for (const node of Object.values(this.nodes)) {
-			node.parameters = this.renameNodeInExpressions(
+			node.parameters = this.renameNodeInParameterValue(
 				node.parameters,
 				currentName,
 				newName,
 			) as INodeParameters;
+
+			if (NODES_WITH_RENAMABLE_CONTENT.has(node.type)) {
+				node.parameters.jsCode = this.renameNodeInParameterValue(
+					node.parameters.jsCode,
+					currentName,
+					newName,
+					{ hasRenamableContent: true },
+				);
+			}
 		}
 
 		// Change all source connections
@@ -551,11 +558,11 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 */
 	getHighestNode(
 		nodeName: string,
-		type = 'main',
+		type: ConnectionTypes = 'main',
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -633,17 +640,25 @@ export class Workflow {
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
 	 */
-	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
+	getChildNodes(
+		nodeName: string,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		depth = -1,
+	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
 	}
 
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
-	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
+	getParentNodes(
+		nodeName: string,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		depth = -1,
+	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
 	}
 
@@ -651,15 +666,15 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		type = 'main',
+		connectionType: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
-		checkedNodes?: string[],
+		checkedNodesIncoming?: string[],
 	): string[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
@@ -673,57 +688,71 @@ export class Workflow {
 			return [];
 		}
 
-		if (!connections[nodeName].hasOwnProperty(type)) {
-			// Node does not have incoming connections of given type
-			return [];
+		let types: ConnectionTypes[];
+		if (connectionType === 'ALL') {
+			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
+		} else if (connectionType === 'ALL_NON_MAIN') {
+			types = Object.keys(connections[nodeName]).filter(
+				(type) => type !== 'main',
+			) as ConnectionTypes[];
+		} else {
+			types = [connectionType];
 		}
 
-		checkedNodes = checkedNodes || [];
-
-		if (checkedNodes.includes(nodeName)) {
-			// Node got checked already before
-			return [];
-		}
-
-		checkedNodes.push(nodeName);
-
-		const returnNodes: string[] = [];
 		let addNodes: string[];
 		let nodeIndex: number;
 		let i: number;
 		let parentNodeName: string;
-		connections[nodeName][type].forEach((connectionsByIndex) => {
-			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.includes(connection.node)) {
-					// Node got checked already before
-					return;
-				}
+		const returnNodes: string[] = [];
 
-				returnNodes.unshift(connection.node);
+		types.forEach((type) => {
+			if (!connections[nodeName].hasOwnProperty(type)) {
+				// Node does not have incoming connections of given type
+				return;
+			}
 
-				addNodes = this.getConnectedNodes(
-					connections,
-					connection.node,
-					type,
-					newDepth,
-					checkedNodes,
-				);
+			const checkedNodes = checkedNodesIncoming ? [...checkedNodesIncoming] : [];
 
-				for (i = addNodes.length; i--; i > 0) {
-					// Because nodes can have multiple parents it is possible that
-					// parts of the tree is parent of both and to not add nodes
-					// twice check first if they already got added before.
-					parentNodeName = addNodes[i];
-					nodeIndex = returnNodes.indexOf(parentNodeName);
+			if (checkedNodes.includes(nodeName)) {
+				// Node got checked already before
+				return;
+			}
 
-					if (nodeIndex !== -1) {
-						// Node got found before so remove it from current location
-						// that node-order stays correct
-						returnNodes.splice(nodeIndex, 1);
+			checkedNodes.push(nodeName);
+
+			connections[nodeName][type].forEach((connectionsByIndex) => {
+				connectionsByIndex.forEach((connection) => {
+					if (checkedNodes.includes(connection.node)) {
+						// Node got checked already before
+						return;
 					}
 
-					returnNodes.unshift(parentNodeName);
-				}
+					returnNodes.unshift(connection.node);
+
+					addNodes = this.getConnectedNodes(
+						connections,
+						connection.node,
+						connectionType,
+						newDepth,
+						checkedNodes,
+					);
+
+					for (i = addNodes.length; i--; i > 0) {
+						// Because nodes can have multiple parents it is possible that
+						// parts of the tree is parent of both and to not add nodes
+						// twice check first if they already got added before.
+						parentNodeName = addNodes[i];
+						nodeIndex = returnNodes.indexOf(parentNodeName);
+
+						if (nodeIndex !== -1) {
+							// Node got found before so remove it from current location
+							// that node-order stays correct
+							returnNodes.splice(nodeIndex, 1);
+						}
+
+						returnNodes.unshift(parentNodeName);
+					}
+				});
 			});
 		});
 
@@ -749,7 +778,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type = 'main';
+		const type: ConnectionTypes = 'main';
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -815,7 +844,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type = 'main',
+		type: ConnectionTypes = 'main',
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {
@@ -916,6 +945,7 @@ export class Workflow {
 		const startingNodeTypes = [
 			'n8n-nodes-base.manualTrigger',
 			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.errorTrigger',
 			'n8n-nodes-base.start',
 		];
 
@@ -965,12 +995,52 @@ export class Workflow {
 		return this.__getStartNode(Object.keys(this.nodes));
 	}
 
-	/**
-	 * Executes the Webhooks method of the node
-	 *
-	 * @param {WebhookSetupMethodNames} method The name of the method to execute
-	 */
-	async runWebhookMethod(
+	async createWebhookIfNotExists(
+		webhookData: IWebhookData,
+		nodeExecuteFunctions: INodeExecuteFunctions,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		isTest?: boolean,
+	): Promise<void> {
+		const webhookExists = await this.runWebhookMethod(
+			'checkExists',
+			webhookData,
+			nodeExecuteFunctions,
+			mode,
+			activation,
+			isTest,
+		);
+		if (!webhookExists) {
+			// If webhook does not exist yet create it
+			await this.runWebhookMethod(
+				'create',
+				webhookData,
+				nodeExecuteFunctions,
+				mode,
+				activation,
+				isTest,
+			);
+		}
+	}
+
+	async deleteWebhook(
+		webhookData: IWebhookData,
+		nodeExecuteFunctions: INodeExecuteFunctions,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		isTest?: boolean,
+	) {
+		await this.runWebhookMethod(
+			'delete',
+			webhookData,
+			nodeExecuteFunctions,
+			mode,
+			activation,
+			isTest,
+		);
+	}
+
+	private async runWebhookMethod(
 		method: WebhookSetupMethodNames,
 		webhookData: IWebhookData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
@@ -981,17 +1051,8 @@ export class Workflow {
 		const node = this.getNode(webhookData.node) as INode;
 		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
-		if (nodeType.webhookMethods === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name] === undefined) {
-			return;
-		}
-
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name][method] === undefined) {
-			return;
-		}
+		const webhookFn = nodeType.webhookMethods?.[webhookData.webhookDescription.name]?.[method];
+		if (webhookFn === undefined) return;
 
 		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(
 			this,
@@ -1002,8 +1063,8 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
-		// eslint-disable-next-line consistent-return
-		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
+
+		return webhookFn.call(thisArgs);
 	}
 
 	/**
@@ -1131,14 +1192,14 @@ export class Workflow {
 			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteWebhookFunctions(
+		const context = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
 			webhookData,
 		);
-		return nodeType.webhook.call(thisArgs);
+		return nodeType instanceof Node ? nodeType.webhook(context) : nodeType.webhook.call(context);
 	}
 
 	/**
@@ -1175,18 +1236,26 @@ export class Workflow {
 		}
 
 		let connectionInputData: INodeExecutionData[] = [];
-		if (
-			nodeType.execute ||
-			nodeType.executeSingle ||
-			(!nodeType.poll && !nodeType.trigger && !nodeType.webhook)
-		) {
-			// Only stop if first input is empty for execute & executeSingle runs. For all others run anyways
+		if (nodeType.execute || (!nodeType.poll && !nodeType.trigger && !nodeType.webhook)) {
+			// Only stop if first input is empty for execute runs. For all others run anyways
 			// because then it is a trigger node. As they only pass data through and so the input-data
 			// becomes output-data it has to be possible.
 
-			if (inputData.hasOwnProperty('main') && inputData.main.length > 0) {
-				// We always use the data of main input and the first input for executeSingle
+			if (inputData.main?.length > 0) {
+				// We always use the data of main input and the first input for execute
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
+			}
+
+			const forceInputNodeExecution = this.settings.executionOrder !== 'v1';
+			if (!forceInputNodeExecution) {
+				// If the nodes do not get force executed data of some inputs may be missing
+				// for that reason do we use the data of the first one that contains any
+				for (const mainData of inputData.main) {
+					if (mainData?.length) {
+						connectionInputData = mainData;
+						break;
+					}
+				}
 			}
 
 			if (connectionInputData.length === 0) {
@@ -1210,7 +1279,6 @@ export class Workflow {
 
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
-			connectionInputData = connectionInputData.slice(0, 1);
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
 				newInputData[inputName] = inputData[inputName].map((input) => {
@@ -1221,42 +1289,8 @@ export class Workflow {
 			inputData = newInputData;
 		}
 
-		if (nodeType.executeSingle) {
-			const returnPromises: Array<Promise<INodeExecutionData>> = [];
-
-			for (let itemIndex = 0; itemIndex < connectionInputData.length; itemIndex++) {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
-					this,
-					runExecutionData,
-					runIndex,
-					connectionInputData,
-					inputData,
-					node,
-					itemIndex,
-					additionalData,
-					executionData,
-					mode,
-				);
-
-				returnPromises.push(nodeType.executeSingle.call(thisArgs));
-			}
-
-			if (returnPromises.length === 0) {
-				return { data: null };
-			}
-
-			let promiseResults;
-			try {
-				promiseResults = await Promise.all(returnPromises);
-			} catch (error) {
-				return Promise.reject(error);
-			}
-
-			if (promiseResults) {
-				return { data: [promiseResults] };
-			}
-		} else if (nodeType.execute) {
-			const thisArgs = nodeExecuteFunctions.getExecuteFunctions(
+		if (nodeType.execute) {
+			const context = nodeExecuteFunctions.getExecuteFunctions(
 				this,
 				runExecutionData,
 				runIndex,
@@ -1267,7 +1301,11 @@ export class Workflow {
 				executionData,
 				mode,
 			);
-			return { data: await nodeType.execute.call(thisArgs) };
+			const data =
+				nodeType instanceof Node
+					? await nodeType.execute(context)
+					: await nodeType.execute.call(context);
+			return { data };
 		} else if (nodeType.poll) {
 			if (mode === 'manual') {
 				// In manual mode run the poll function
@@ -1347,8 +1385,6 @@ export class Workflow {
 				),
 			};
 		}
-
-		return { data: null };
 	}
 }
 

@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PlivoApi implements ICredentialType {
 	name = 'plivoApi';
@@ -18,6 +18,7 @@ export class PlivoApi implements ICredentialType {
 			displayName: 'Auth Token',
 			name: 'authToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

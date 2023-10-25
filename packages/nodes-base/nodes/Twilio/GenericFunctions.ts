@@ -1,8 +1,6 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions, IDataObject } from 'n8n-workflow';
 
-import { IDataObject } from 'n8n-workflow';
-
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Twilio

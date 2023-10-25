@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const postOperations: INodeProperties[] = [
 	{
@@ -156,7 +156,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Provide a short description for your image or article',
 				displayOptions: {
 					show: {
-						'/shareMediaCategory': ['ARTICLE', 'IMAGE'],
+						'/shareMediaCategory': ['ARTICLE'],
 					},
 				},
 			},

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -18,7 +17,7 @@ import {
 	certificateRequestOperations,
 } from './CertificateRequestDescription';
 
-import {
+import type {
 	ICertficateKeystoreRequest,
 	ICertficateRequest,
 	ICsrAttributes,
@@ -244,7 +243,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/outagedetection/v1/certificaterequests`,
+							'/outagedetection/v1/certificaterequests',
 							body,
 							qs,
 						);
@@ -274,7 +273,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								this,
 								'certificateRequests',
 								'GET',
-								`/outagedetection/v1/certificaterequests`,
+								'/outagedetection/v1/certificaterequests',
 								{},
 								qs,
 							);
@@ -283,7 +282,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/outagedetection/v1/certificaterequests`,
+								'/outagedetection/v1/certificaterequests',
 								{},
 								qs,
 							);
@@ -301,7 +300,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/outagedetection/v1/certificates/deletion`,
+							'/outagedetection/v1/certificates/deletion',
 							{ certificateIds: [certificateId] },
 						);
 
@@ -370,7 +369,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							);
 						}
 
-						const contentDisposition = responseData.headers['content-disposition'];
+						const contentDisposition: string = responseData.headers['content-disposition'];
 						const fileNameRegex = /(?<=filename=").*\b/;
 						const match = fileNameRegex.exec(contentDisposition);
 						let fileName = '';
@@ -380,7 +379,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						}
 
 						const binaryData = await this.helpers.prepareBinaryData(
-							Buffer.from(responseData.body),
+							Buffer.from(responseData.body as Buffer),
 							fileName,
 						);
 
@@ -417,7 +416,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								this,
 								'certificates',
 								'GET',
-								`/outagedetection/v1/certificates`,
+								'/outagedetection/v1/certificates',
 								{},
 								qs,
 							);
@@ -426,7 +425,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/outagedetection/v1/certificates`,
+								'/outagedetection/v1/certificates',
 								{},
 								qs,
 							);
@@ -464,7 +463,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/outagedetection/v1/certificaterequests`,
+							'/outagedetection/v1/certificaterequests',
 							body,
 							qs,
 						);
@@ -474,9 +473,12 @@ export class VenafiTlsProtectCloud implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-						itemData: { item: i },
-					}),
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						{
+							itemData: { item: i },
+						},
+					),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

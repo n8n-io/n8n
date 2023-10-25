@@ -9,7 +9,6 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
-		:isReadOnly="isReadOnly"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="output"
@@ -19,11 +18,18 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
-		data-test-id="ndv-output-panel"
+		:data-output-type="outputMode"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
-				<span :class="$style.title">
+				<template v-if="hasAiMetadata">
+					<n8n-radio-buttons
+						:options="outputTypes"
+						v-model="outputMode"
+						@update:modelValue="onUpdateOutputMode"
+					/>
+				</template>
+				<span :class="$style.title" v-else>
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
 				</span>
 				<RunInfo
@@ -38,27 +44,29 @@
 					tooltipPlacement="right"
 					v-if="hasNodeRun && staleData"
 				>
-					<template>
-						<span v-html="$locale.baseText(
-							hasPinData ? 'ndv.output.staleDataWarning.pinData' : 'ndv.output.staleDataWarning.regular'
-						)"></span>
-					</template>
+					<span
+						v-html="
+							$locale.baseText(
+								hasPinData
+									? 'ndv.output.staleDataWarning.pinData'
+									: 'ndv.output.staleDataWarning.regular',
+							)
+						"
+					></span>
 				</n8n-info-tip>
 			</div>
 		</template>
 
 		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
+				$locale.baseText('ndv.output.waitingToRun')
+			}}</n8n-text>
 			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="canPinData">
-					<br>
+					<br />
 					{{ $locale.baseText('generic.or') }}
-					<n8n-text
-						tag="a"
-						size="medium"
-						color="primary"
-					>
+					<n8n-text tag="a" size="medium" color="primary">
 						{{ $locale.baseText('ndv.output.insertTestData') }}
 					</n8n-text>
 				</span>
@@ -66,12 +74,30 @@
 		</template>
 
 		<template #no-output-data>
-			<n8n-text :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
+			<n8n-text :bold="true" color="text-dark" size="large">{{
+				$locale.baseText('ndv.output.noOutputData.title')
+			}}</n8n-text>
 			<n8n-text>
 				{{ $locale.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				<a @click="openSettings">{{
+					$locale.baseText('ndv.output.noOutputData.message.settings')
+				}}</a>
 				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
 			</n8n-text>
+		</template>
+
+		<template #content v-if="outputMode === 'logs'">
+			<run-data-ai :node="node" :run-index="runIndex" />
+		</template>
+		<template #recovered-artificial-output-data>
+			<div :class="$style.recoveredOutputData">
+				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
+					$locale.baseText('executionDetails.executionFailed.recoveredNodeTitle')
+				}}</n8n-text>
+				<n8n-text>
+					{{ $locale.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
+				</n8n-text>
+			</div>
 		</template>
 
 		<template #run-info v-if="!hasPinData && runsCount > 1">
@@ -81,26 +107,40 @@
 </template>
 
 <script lang="ts">
-import { IExecutionResponse, INodeUi } from '@/Interface';
-import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
-import Vue from 'vue';
-import RunData, { EnterEditModeArgs } from './RunData.vue';
+import { defineComponent } from 'vue';
+import type { IExecutionResponse, INodeUi } from '@/Interface';
+import type { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
+import RunData from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from "@/mixins/pinData";
-import mixins from 'vue-typed-mixins';
+import { pinData } from '@/mixins/pinData';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import RunDataAi from './RunDataAi/RunDataAi.vue';
+import { ndvEventBus } from '@/event-bus';
 
-type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = InstanceType<typeof RunData>;
 
-export default mixins(
-	pinData,
-).extend({
+const OUTPUT_TYPE = {
+	REGULAR: 'regular',
+	LOGS: 'logs',
+};
+
+export default defineComponent({
 	name: 'OutputPanel',
-	components: { RunData, RunInfo },
+	mixins: [pinData],
+	components: { RunData, RunInfo, RunDataAi },
+	data() {
+		return {
+			outputMode: 'regular',
+			outputTypes: [
+				{ label: this.$locale.baseText('ndv.output.outType.regular'), value: OUTPUT_TYPE.REGULAR },
+				{ label: this.$locale.baseText('ndv.output.outType.logs'), value: OUTPUT_TYPE.LOGS },
+			],
+		};
+	},
 	props: {
 		runIndex: {
 			type: Number,
@@ -127,35 +167,41 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
 				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
-		isTriggerNode (): boolean {
+		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
-		isPollingTypeNode (): boolean {
+		hasAiMetadata(): boolean {
+			if (this.node) {
+				const resultData = this.workflowsStore.getWorkflowResultDataByNodeName(this.node.name);
+
+				if (!resultData || !Array.isArray(resultData) || resultData.length === 0) {
+					return false;
+				}
+
+				return !!resultData[resultData.length - 1].metadata;
+			}
+			return false;
+		},
+		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
-		isScheduleTrigger (): boolean {
+		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
-			const executingNode = this.workflowsStore.executingNode;
-			return this.node && executingNode === this.node.name;
+			return this.node && this.workflowsStore.isNodeExecuting(this.node.name);
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -166,7 +212,7 @@ export default mixins(
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (!executionData || !executionData.resultData || !executionData.resultData.runData) {
+			if (!executionData?.resultData?.runData) {
 				return null;
 			}
 			return executionData.resultData.runData;
@@ -223,7 +269,7 @@ export default mixins(
 			const runAt = this.runTaskData.startTime;
 			return updatedAt > runAt;
 		},
-		outputPanelEditMode(): { enabled: boolean; value: string; } {
+		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		canPinData(): boolean {
@@ -232,8 +278,9 @@ export default mixins(
 	},
 	methods: {
 		insertTestData() {
-			if (this.$refs.runData) {
-				(this.$refs.runData as RunDataRef).enterEditMode({
+			const runDataRef = this.$refs.runData as RunDataRef | undefined;
+			if (runDataRef) {
+				runDataRef.enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 
@@ -265,11 +312,28 @@ export default mixins(
 		onRunIndexChange(run: number) {
 			this.$emit('runChange', run);
 		},
+		onUpdateOutputMode(outputMode: (typeof OUTPUT_TYPE)[string]) {
+			if (outputMode === OUTPUT_TYPE.LOGS) {
+				ndvEventBus.emit('setPositionByName', 'minLeft');
+			} else {
+				ndvEventBus.emit('setPositionByName', 'initial');
+			}
+		},
 	},
 });
 </script>
 
 <style lang="scss" module>
+// The items count and displayModes are rendered in the RunData component
+// this is a workaround to hide it in the output panel(for ai type) to not add unnecessary one-time props
+:global([data-output-type='logs'] [class*='itemsCount']),
+:global([data-output-type='logs'] [class*='displayModes']) {
+	display: none;
+}
+.outputTypeSelect {
+	margin-bottom: var(--spacing-4xs);
+	width: fit-content;
+}
 .titleSection {
 	display: flex;
 
@@ -286,4 +350,25 @@ export default mixins(
 	font-size: var(--font-size-s);
 }
 
+.noOutputData {
+	max-width: 180px;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
+
+	> * {
+		margin-bottom: var(--spacing-2xs);
+	}
+}
+
+.recoveredOutputData {
+	margin: auto;
+	max-width: 250px;
+	text-align: center;
+
+	> *:first-child {
+		margin-bottom: var(--spacing-m);
+	}
+}
 </style>

@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,7 +8,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
+import {
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	prepareMessage,
+} from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 
@@ -25,7 +28,7 @@ export class MicrosoftTeams implements INodeType {
 		name: 'microsoftTeams',
 		icon: 'file:teams.svg',
 		group: ['input'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft Teams API',
 		defaults: {
@@ -81,7 +84,7 @@ export class MicrosoftTeams implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the team's channels to display them to user so that he can
+			// Get all the team's channels to display them to user so that they can
 			// select them easily
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -101,7 +104,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the teams to display them to user so that he can
+			// Get all the teams to display them to user so that they can
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -116,7 +119,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -135,7 +138,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the plans to display them to user so that he can
+			// Get all the plans to display them to user so that they can
 			// select them easily
 			async getPlans(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -158,7 +161,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the plans to display them to user so that he can
+			// Get all the plans to display them to user so that they can
 			// select them easily
 			async getBuckets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -181,7 +184,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the plans to display them to user so that he can
+			// Get all the plans to display them to user so that they can
 			// select them easily
 			async getMembers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -204,7 +207,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -220,7 +223,7 @@ export class MicrosoftTeams implements INodeType {
 					'GET',
 					`/v1.0/planner/plans/${planId}/details`,
 				);
-				for (const key of Object.keys(categoryDescriptions)) {
+				for (const key of Object.keys(categoryDescriptions as IDataObject)) {
 					if (categoryDescriptions[key] !== null) {
 						returnData.push({
 							name: categoryDescriptions[key],
@@ -245,7 +248,9 @@ export class MicrosoftTeams implements INodeType {
 							.map((member: IDataObject) => member.displayName)
 							.join(', ');
 					}
-					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
+					const chatName = `${chat.topic || '(no title) - ' + (chat.id as string)} (${
+						chat.chatType
+					})`;
 					const chatId = chat.id;
 					returnData.push({
 						name: chatName,
@@ -265,6 +270,9 @@ export class MicrosoftTeams implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const nodeVersion = this.getNode().typeVersion;
+		const instanceId = this.getInstanceId();
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -364,12 +372,18 @@ export class MicrosoftTeams implements INodeType {
 						const message = this.getNodeParameter('message', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						const body: IDataObject = {
-							body: {
-								contentType: messageType,
-								content: message,
-							},
-						};
+						let includeLinkToWorkflow = options.includeLinkToWorkflow;
+						if (includeLinkToWorkflow === undefined) {
+							includeLinkToWorkflow = nodeVersion >= 1.1;
+						}
+
+						const body: IDataObject = prepareMessage.call(
+							this,
+							message,
+							messageType,
+							includeLinkToWorkflow as boolean,
+							instanceId,
+						);
 
 						if (options.makeReply) {
 							const replyToId = options.makeReply as string;
@@ -419,12 +433,19 @@ export class MicrosoftTeams implements INodeType {
 						const chatId = this.getNodeParameter('chatId', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const message = this.getNodeParameter('message', i) as string;
-						const body: IDataObject = {
-							body: {
-								contentType: messageType,
-								content: message,
-							},
-						};
+						const options = this.getNodeParameter('options', i, {});
+
+						const includeLinkToWorkflow =
+							options.includeLinkToWorkflow !== false && nodeVersion >= 1.1;
+
+						const body: IDataObject = prepareMessage.call(
+							this,
+							message,
+							messageType,
+							includeLinkToWorkflow,
+							instanceId,
+						);
+
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
@@ -499,7 +520,7 @@ export class MicrosoftTeams implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/v1.0/planner/tasks`,
+							'/v1.0/planner/tasks',
 							body,
 						);
 					}
@@ -627,7 +648,7 @@ export class MicrosoftTeams implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 
@@ -644,6 +665,6 @@ export class MicrosoftTeams implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

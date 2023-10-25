@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 import { getConditions, getSearchFilters } from './GenericFunctions';
 
@@ -14,7 +14,7 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 			},
 		},
@@ -53,7 +53,7 @@ export const databasePageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['databasePage'],
 			},
 		},
@@ -161,7 +161,7 @@ export const databasePageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['create'],
 			},
@@ -502,7 +502,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'/version': [2],
+								'@version': [2],
 								type: ['files'],
 							},
 						},
@@ -534,6 +534,47 @@ export const databasePageFields: INodeProperties[] = [
 		],
 	},
 	...blocks('databasePage', 'create'),
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['databasePage'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Icon Type',
+				name: 'iconType',
+				type: 'options',
+				options: [
+					{
+						name: 'Emoji',
+						value: 'emoji',
+						description: 'Use an Emoji for the icon',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Use a file for the icon',
+					},
+				],
+				default: 'emoji',
+				description: 'The icon type for the database page, Either a URL or an Emoji',
+			},
+			{
+				displayName: 'Icon',
+				name: 'icon',
+				type: 'string',
+				default: '',
+				description: 'Emoji or File URL to use as the icon',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                      databasePage:update                                   */
 	/* -------------------------------------------------------------------------- */
@@ -928,7 +969,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						displayOptions: {
 							show: {
-								'/version': [2],
+								'@version': [2],
 								type: ['files'],
 							},
 						},
@@ -959,6 +1000,48 @@ export const databasePageFields: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['databasePage'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		placeholder: 'Add Option',
+		options: [
+			{
+				displayName: 'Icon Type',
+				name: 'iconType',
+				type: 'options',
+				options: [
+					{
+						name: 'Emoji',
+						value: 'emoji',
+						description: 'Use an Emoji for the icon',
+					},
+					{
+						name: 'File',
+						value: 'file',
+						description: 'Use a file for the icon',
+					},
+				],
+				default: 'emoji',
+				description: 'The icon type for the database page, Either a URL or an Emoji',
+			},
+			{
+				displayName: 'Icon',
+				name: 'icon',
+				type: 'string',
+				default: '',
+				description: 'Emoji or File URL to use as the icon',
+			},
+		],
+	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:get                            */
 	/* -------------------------------------------------------------------------- */
@@ -1014,7 +1097,7 @@ export const databasePageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['get'],
 			},
@@ -1027,7 +1110,7 @@ export const databasePageFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['databasePage'],
 				operation: ['get'],
 			},
@@ -1171,7 +1254,7 @@ export const databasePageFields: INodeProperties[] = [
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						'/version': [2],
+						'@version': [2],
 						'/resource': ['databasePage'],
 						'/operation': ['getAll'],
 					},
@@ -1189,7 +1272,7 @@ export const databasePageFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/version': [1],
+						'@version': [1],
 					},
 				},
 				default: {},

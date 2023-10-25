@@ -1,27 +1,41 @@
-import Vue from 'vue';
-import { INodeUi } from '@/Interface';
-import { IPinData } from 'n8n-workflow';
+import { defineComponent } from 'vue';
+import type { INodeUi } from '@/Interface';
+import type { INodeTypeDescription, IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
 import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
 import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useToast } from '@/composables';
 
 export interface IPinDataContext {
 	node: INodeUi;
+	nodeType: INodeTypeDescription;
 	$showError(error: Error, title: string): void;
 }
 
-export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend({
+export const pinData = defineComponent({
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	computed: {
 		...mapStores(useWorkflowsStore),
-		pinData (): IPinData[string] | undefined {
-			return this.node ? this.workflowsStore.pinDataByNodeName(this.node!.name) : undefined;
+		pinData(): IPinData[string] | undefined {
+			return this.node ? this.workflowsStore.pinDataByNodeName(this.node.name) : undefined;
 		},
-		hasPinData (): boolean {
+		hasPinData(): boolean {
 			return !!this.node && typeof this.pinData !== 'undefined';
 		},
 		isPinDataNodeType(): boolean {
-			return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
+			return (
+				!!this.node &&
+				!this.isMultipleOutputsNodeType &&
+				!PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type)
+			);
+		},
+		isMultipleOutputsNodeType(): boolean {
+			return this.nodeType?.outputs.length > 1;
 		},
 	},
 	methods: {
@@ -40,7 +54,7 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 
 				error.message = message.charAt(0).toUpperCase() + message.slice(1);
 				error.message = error.message.replace(
-					'Unexpected token \' in JSON',
+					"Unexpected token ' in JSON",
 					this.$locale.baseText('runData.editOutputInvalid.singleQuote'),
 				);
 
@@ -48,7 +62,8 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 					const position = parseInt(positionMatch[1], 10);
 					const lineBreaksUpToPosition = (data.slice(0, position).match(/\n/g) || []).length;
 
-					error.message = error.message.replace(positionMatchRegEx,
+					error.message = error.message.replace(
+						positionMatchRegEx,
 						this.$locale.baseText('runData.editOutputInvalid.atPosition', {
 							interpolate: {
 								position: `${position}`,
@@ -56,16 +71,14 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 						}),
 					);
 
-					error.message = `${
-						this.$locale.baseText('runData.editOutputInvalid.onLine', {
-							interpolate: {
-								line: `${lineBreaksUpToPosition + 1}`,
-							},
-						})
-					} ${error.message}`;
+					error.message = `${this.$locale.baseText('runData.editOutputInvalid.onLine', {
+						interpolate: {
+							line: `${lineBreaksUpToPosition + 1}`,
+						},
+					})} ${error.message}`;
 				}
 
-				this.$showError(error, title);
+				this.showError(error, title);
 
 				return false;
 			}
@@ -73,8 +86,11 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 		isValidPinDataSize(data: string | object): boolean {
 			if (typeof data === 'object') data = JSON.stringify(data);
 
-			if (this.workflowsStore.pinDataSize + stringSizeInBytes(data) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
-				this.$showError(
+			if (
+				this.workflowsStore.pinDataSize + stringSizeInBytes(data) >
+				MAX_WORKFLOW_PINNED_DATA_SIZE
+			) {
+				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
 				);

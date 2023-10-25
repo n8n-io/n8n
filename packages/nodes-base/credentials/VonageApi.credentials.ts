@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class VonageApi implements ICredentialType {
 	name = 'vonageApi';
@@ -19,6 +19,7 @@ export class VonageApi implements ICredentialType {
 			displayName: 'API Secret',
 			name: 'apiSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

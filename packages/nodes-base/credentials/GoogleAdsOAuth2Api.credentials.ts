@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = ['https://www.googleapis.com/auth/adwords'];
 
@@ -16,7 +16,9 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 			displayName: 'Developer Token',
 			name: 'developerToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Scope',

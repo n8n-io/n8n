@@ -1,18 +1,48 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node">
+	<div
+		:class="nodeWrapperClass"
+		:style="nodeWrapperStyles"
+		:id="nodeId"
+		data-test-id="canvas-node"
+		:ref="data.name"
+		:data-name="data.name"
+	>
 		<div class="select-background" v-show="isSelected"></div>
-		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
-				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
-					<div v-if="hasIssues" class="node-issues">
-						<n8n-tooltip placement="bottom" >
+		<div
+			:class="{
+				'node-default': true,
+				'touch-active': isTouchActive,
+				'is-touch-device': isTouchDevice,
+			}"
+		>
+			<div
+				:class="nodeClass"
+				:style="nodeStyle"
+				@click.left="onClick"
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
+			>
+				<i class="trigger-icon" v-if="isTriggerNode">
+					<n8n-tooltip placement="bottom">
+						<template #content>
+							<span v-html="$locale.baseText('node.thisIsATriggerNode')" />
+						</template>
+						<font-awesome-icon icon="bolt" size="lg" />
+					</n8n-tooltip>
+				</i>
+				<div
+					v-if="!data.disabled"
+					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
+				>
+					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
+						<n8n-tooltip placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
-					<div v-else-if="waiting" class="waiting">
+					<div v-else-if="waiting || nodeExecutionStatus === 'waiting'" class="waiting">
 						<n8n-tooltip placement="bottom">
 							<template #content>
 								<div v-text="waiting"></div>
@@ -23,6 +53,9 @@
 					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
 						<font-awesome-icon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
+					</span>
+					<span v-else-if="nodeExecutionStatus === 'unknown'">
+						<!-- Do nothing, unknown means the node never executed -->
 					</span>
 					<span v-else-if="workflowDataItems" class="data-count">
 						<font-awesome-icon icon="check" />
@@ -35,7 +68,11 @@
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+					<n8n-tooltip
+						placement="top"
+						:visible="showTriggerNodeTooltip"
+						popper-class="node-trigger-tooltip__wrapper--item"
+					>
 						<template #content>
 							<div v-text="getTriggerNodeTooltip"></div>
 						</template>
@@ -44,8 +81,7 @@
 					<n8n-tooltip
 						v-if="isTriggerNode"
 						placement="top"
-						manual
-						:value="pinDataDiscoveryTooltipVisible"
+						:visible="pinDataDiscoveryTooltipVisible"
 						popper-class="node-trigger-tooltip__wrapper--item"
 					>
 						<template #content>
@@ -55,37 +91,74 @@
 					</n8n-tooltip>
 				</div>
 
-				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
+				<NodeIcon
+					class="node-icon"
+					:nodeType="nodeType"
+					:size="40"
+					:shrink="false"
+					:colorDefault="iconColorDefault"
+					:disabled="this.data.disabled"
+				/>
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
-
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					:title="$locale.baseText('node.deleteNode')"
+					data-test-id="delete-node-button"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" class="option" :title="$locale.baseText('node.activateDeactivateNode')">
+				<div
+					v-touch:tap="disableNode"
+					class="option"
+					:title="$locale.baseText('node.activateDeactivateNode')"
+					data-test-id="disable-node-button"
+				>
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')" v-if="isDuplicatable">
+				<div
+					v-touch:tap="duplicateNode"
+					class="option"
+					:title="$locale.baseText('node.duplicateNode')"
+					v-if="isDuplicatable"
+					data-test-id="duplicate-node-button"
+				>
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')">
+				<div
+					v-touch:tap="setNodeActive"
+					class="option touch"
+					:title="$locale.baseText('node.editNode')"
+					data-test-id="activate-node-button"
+				>
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!workflowRunning">
+				<div
+					v-touch:tap="executeNode"
+					class="option"
+					:title="$locale.baseText('node.executeNode')"
+					v-if="!workflowRunning && !isConfigNode"
+					data-test-id="execute-node-button"
+				>
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
-			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
+			<div
+				:class="{
+					'disabled-linethrough': true,
+					success: !['unknown'].includes(nodeExecutionStatus) && workflowDataItems > 0,
+				}"
+				v-if="showDisabledLinethrough"
+			></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name ph-no-capture" :title="nodeTitle">
+			<div class="node-name" :title="nodeTitle">
 				<p data-test-id="canvas-node-box-title">
 					{{ nodeTitle }}
 				</p>
-				<p v-if="data.disabled">
-					({{ $locale.baseText('node.disabled') }})
-				</p>
+				<p v-if="data.disabled">({{ $locale.baseText('node.disabled') }})</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
@@ -95,49 +168,45 @@
 </template>
 
 <script lang="ts">
-
-import Vue from 'vue';
-import { CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import {
+	CUSTOM_API_CALL_KEY,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
+	MANUAL_TRIGGER_NODE_TYPE,
+	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	NOT_DUPLICATABE_NODE_TYPES,
+	WAIT_TIME_UNLIMITED,
+} from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import {
-	IDataObject,
-	INodeTypeDescription,
-	ITaskData,
-	NodeHelpers,
-} from 'n8n-workflow';
+import type { IExecutionsSummary, INodeTypeDescription, ITaskData } from 'n8n-workflow';
+import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
-import mixins from 'vue-typed-mixins';
-
-import { get } from 'lodash';
+import { get } from 'lodash-es';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import { IExecutionsSummary, INodeUi, INodeUpdatePropertiesInformation, XYPosition } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default mixins(
-	externalHooks,
-	nodeBase,
-	nodeHelpers,
-	workflowHelpers,
-	pinData,
-	debounceHelper,
-).extend({
+export default defineComponent({
 	name: 'Node',
+	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
+		FontAwesomeIcon,
 		NodeIcon,
 	},
 	props: {
@@ -147,33 +216,42 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		showPinnedDataInfo(): boolean {
 			return this.hasPinData && !this.isProductionExecutionPreview;
 		},
 		isDuplicatable(): boolean {
-			if(!this.nodeType) return true;
-			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
+			if (!this.nodeType) return true;
+			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
+			return (
+				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
+			);
 		},
-		isScheduledGroup (): boolean {
+		isScheduledGroup(): boolean {
 			return this.nodeType?.group.includes('schedule') === true;
+		},
+		iconColorDefault(): string | undefined {
+			if (this.isConfigNode) {
+				return 'var(--color-text-base)';
+			}
+			return undefined;
 		},
 		nodeRunData(): ITaskData[] {
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
-		hasIssues (): boolean {
+		hasIssues(): boolean {
+			if (
+				this.nodeExecutionStatus &&
+				['crashed', 'error', 'failed'].includes(this.nodeExecutionStatus)
+			)
+				return true;
 			if (this.hasPinData) return false;
-			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
+			if (this.data?.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
 			return false;
 		},
-		workflowDataItems (): number {
+		workflowDataItems(): number {
 			const workflowResultDataNode = this.nodeRunData;
 			if (workflowResultDataNode === null) {
 				return 0;
@@ -184,180 +262,262 @@ export default mixins(
 		canvasOffsetPosition() {
 			return this.uiStore.nodeViewOffsetPosition;
 		},
-		getTriggerNodeTooltip (): string | undefined {
+		getTriggerNodeTooltip(): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
 				const nodeName = this.$locale.shortNodeType(this.nodeType.name);
 				const { eventTriggerDescription } = this.nodeType;
-				return this.$locale.nodeText().eventTriggerDescription(
-					nodeName,
-					eventTriggerDescription || '',
-				);
+				return this.$locale
+					.nodeText()
+					.eventTriggerDescription(nodeName, eventTriggerDescription || '');
 			} else {
-				return this.$locale.baseText(
-					'node.waitingForYouToCreateAnEventIn',
-					{
-						interpolate: {
-							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '',
-						},
+				return this.$locale.baseText('node.waitingForYouToCreateAnEventIn', {
+					interpolate: {
+						nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '',
 					},
-				);
+				});
 			}
 		},
-		isPollingTypeNode (): boolean {
+		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
-		isExecuting (): boolean {
-			return this.workflowsStore.executingNode === this.data.name;
+		isExecuting(): boolean {
+			return this.workflowsStore.isNodeExecuting(this.data.name);
 		},
-		isSingleActiveTriggerNode (): boolean {
+		isSingleActiveTriggerNode(): boolean {
 			const nodes = this.workflowsStore.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
 			return nodes.length === 1;
 		},
-		isManualTypeNode (): boolean {
+		isManualTypeNode(): boolean {
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
-		isTriggerNode (): boolean {
+		isConfigNode(): boolean {
+			return this.nodeTypesStore.isConfigNode(
+				this.getCurrentWorkflow(),
+				this.data,
+				this.data?.type ?? '',
+			);
+		},
+		isConfigurableNode(): boolean {
+			return this.nodeTypesStore.isConfigurableNode(
+				this.getCurrentWorkflow(),
+				this.data,
+				this.data?.type ?? '',
+			);
+		},
+		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
 		},
-		isTriggerNodeTooltipEmpty () : boolean {
+		isTriggerNodeTooltipEmpty(): boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
 		},
-		isNodeDisabled (): boolean | undefined {
+		isNodeDisabled(): boolean | undefined {
 			return this.node && this.node.disabled;
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
-		node (): INodeUi | undefined { // same as this.data but reactive..
+		node(): INodeUi | undefined {
+			// same as this.data but reactive..
 			return this.workflowsStore.nodesByName[this.name] as INodeUi | undefined;
 		},
-		sameTypeNodes (): INodeUi[] {
+		sameTypeNodes(): INodeUi[] {
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
-		nodeClass (): object {
+		nodeWrapperClass(): object {
+			const classes = {
+				'node-wrapper': true,
+				'node-wrapper--trigger': this.isTriggerNode,
+				'node-wrapper--configurable': this.isConfigurableNode,
+				'node-wrapper--config': this.isConfigNode,
+			};
+
+			if (this.outputs.length) {
+				const outputTypes = NodeHelpers.getConnectionTypes(this.outputs);
+				const otherOutputs = outputTypes.filter(
+					(outputName) => outputName !== NodeConnectionType.Main,
+				);
+				if (otherOutputs.length) {
+					otherOutputs.forEach((outputName) => {
+						classes[`node-wrapper--connection-type-${outputName}`] = true;
+					});
+				}
+			}
+
+			return classes;
+		},
+		nodeWrapperStyles(): object {
+			const styles: {
+				[key: string]: string | number;
+			} = {
+				left: this.position[0] + 'px',
+				top: this.position[1] + 'px',
+			};
+
+			const nonMainInputs = this.inputs.filter((input) => input !== NodeConnectionType.Main);
+			if (nonMainInputs.length) {
+				const requiredNonMainInputs = this.inputs.filter(
+					(input) => typeof input !== 'string' && input.required,
+				);
+
+				let spacerCount = 0;
+				if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+					const requiredNonMainInputsCount = requiredNonMainInputs.length;
+					const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+					spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+				}
+
+				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
+			}
+
+			return styles;
+		},
+		nodeClass(): object {
 			return {
 				'node-box': true,
 				disabled: this.data.disabled,
 				executing: this.isExecuting,
 			};
 		},
-		nodeIssues (): string[] {
-			if (this.data.issues === undefined) {
-				return [];
+		nodeExecutionStatus(): string {
+			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
+			if (nodeExecutionRunData) {
+				return nodeExecutionRunData[0].executionStatus ?? '';
 			}
-
-			return NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
+			return '';
 		},
-		nodeDisabledIcon (): string {
+		nodeIssues(): string[] {
+			const issues: string[] = [];
+			const nodeExecutionRunData = this.workflowsStore.getWorkflowRunData?.[this.name];
+			if (nodeExecutionRunData) {
+				nodeExecutionRunData.forEach((executionRunData) => {
+					if (executionRunData.error) {
+						issues.push(
+							`${executionRunData.error.message}${
+								executionRunData.error.description ? ` (${executionRunData.error.description})` : ''
+							}`,
+						);
+					}
+				});
+			}
+			if (this.data?.issues !== undefined) {
+				issues.push(...NodeHelpers.nodeIssuesToString(this.data.issues, this.data));
+			}
+			return issues;
+		},
+		nodeDisabledIcon(): string {
 			if (this.data.disabled === false) {
 				return 'pause';
 			} else {
 				return 'play';
 			}
 		},
-		position (): XYPosition {
+		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.nodeType && this.nodeType.inputs.length === 1 && this.nodeType.outputs.length === 1);
+			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
 		},
-		nodePosition (): object {
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				left: this.position[0] + 'px',
-				top: this.position[1] + 'px',
-			};
-
-			return returnStyles;
-		},
-		shortNodeType (): string {
+		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
 		},
-		nodeTitle (): string {
+		nodeTitle(): string {
 			if (this.data.name === 'Start') {
 				return this.$locale.headerText({
-					key: `headers.start.displayName`,
+					key: 'headers.start.displayName',
 					fallback: 'Start',
 				});
 			}
 
 			return this.data.name;
 		},
-		waiting (): string | undefined {
+		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
-			if (workflowExecution && workflowExecution.waitTill) {
+			if (workflowExecution?.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-						return this.$locale.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
+						return this.$locale.baseText(
+							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
+						);
 					}
-					return this.$locale.baseText(
-						'node.nodeIsWaitingTill',
-						{
-							interpolate: {
-								date: waitDate.toLocaleDateString(),
-								time: waitDate.toLocaleTimeString(),
-						 	},
+					return this.$locale.baseText('node.nodeIsWaitingTill', {
+						interpolate: {
+							date: waitDate.toLocaleDateString(),
+							time: waitDate.toLocaleTimeString(),
 						},
-					);
+					});
 				}
 			}
 
-			return;
+			return undefined;
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		nodeStyle (): object {
+		nodeStyle(): object {
+			const returnStyles: {
+				[key: string]: string;
+			} = {};
+
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+
+			if (this.isConfigurableNode || this.isConfigNode) {
+				borderColor = getStyleTokenValue('--color-foreground-dark');
+			}
 
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
-			}
-			else if (!this.isExecuting) {
+			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
+					returnStyles['border-width'] = '2px';
+					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
+				} else if (this.nodeExecutionStatus === 'unknown') {
+					borderColor = getStyleTokenValue('--color-foreground-xdark');
 				} else if (this.workflowDataItems) {
+					returnStyles['border-width'] = '2px';
+					returnStyles['border-style'] = 'solid';
 					borderColor = getStyleTokenValue('--color-success');
 				}
 			}
 
-			const returnStyles: {
-				[key: string]: string;
-			} = {
-				'border-color': borderColor,
-			};
+			returnStyles['border-color'] = borderColor;
 
 			return returnStyles;
 		},
-		isSelected (): boolean {
-			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
+		isSelected(): boolean {
+			return (
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				undefined
+			);
 		},
-		shiftOutputCount (): boolean {
-			return !!(this.nodeType && this.nodeType.outputs.length > 2);
+		shiftOutputCount(): boolean {
+			return !!(this.nodeType && this.outputs.length > 2);
 		},
-		shouldShowTriggerTooltip () : boolean {
-			return !!this.node &&
+		shouldShowTriggerTooltip(): boolean {
+			return (
+				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
+				!this.hasPinData &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
 				this.workflowDataItems === 0 &&
 				this.isSingleActiveTriggerNode &&
 				!this.isTriggerNodeTooltipEmpty &&
 				!this.hasIssues &&
-				!this.dragging;
+				!this.dragging
+			);
 		},
- 	},
+	},
 	watch: {
 		isActive(newValue, oldValue) {
 			if (!newValue && oldValue) {
@@ -389,11 +549,17 @@ export default mixins(
 			}
 		},
 		nodeRunData(newValue) {
-			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
+			if (!this.data) {
+				return;
+			}
+
+			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG);
+		const hasSeenPinDataTooltip = localStorage.getItem(
+			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
+		);
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
@@ -401,14 +567,20 @@ export default mixins(
 		}
 	},
 	mounted() {
-		this.setSubtitle();
+		setTimeout(() => {
+			this.setSubtitle();
+		}, 0);
 		if (this.nodeRunData) {
 			setTimeout(() => {
-				this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
+				this.$emit('run', {
+					name: this.data && this.data.name,
+					data: this.nodeRunData,
+					waiting: !!this.waiting,
+				});
 			}, 0);
 		}
 	},
-	data () {
+	data() {
 		return {
 			isTouchActive: false,
 			nodeSubtitle: '',
@@ -420,7 +592,13 @@ export default mixins(
 	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
-			if (!this.isTriggerNode || this.isManualTypeNode || this.isScheduledGroup || dataItemsCount === 0) return;
+			if (
+				!this.isTriggerNode ||
+				this.isManualTypeNode ||
+				this.isScheduledGroup ||
+				dataItemsCount === 0
+			)
+				return;
 
 			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
@@ -428,41 +606,68 @@ export default mixins(
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
-			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+			// why is this not a computed property? because it's a very expensive operation
+			// it requires expressions to resolve each subtitle...
+			// and ends up bogging down the UI with big workflows, for example when pasting a workflow or even opening a node...
+			// so we only update it when necessary (when node is mounted and when it's opened and closed (isActive))
+			try {
+				const nodeSubtitle =
+					this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
-			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY)
-				? ''
-				: nodeSubtitle;
-		},
-		disableNode () {
-			if (this.data !== null) {
-				this.disableNodes([this.data]);
-				this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(this.data.name, !this.data.disabled, this.data.disabled === true, this));
-				this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
+				this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
+			} catch (e) {
+				// avoid breaking UI if expression error occurs
 			}
 		},
-		executeNode () {
+		disableNode() {
+			if (this.data !== null) {
+				this.disableNodes([this.data]);
+				this.historyStore.pushCommandToUndo(
+					new EnableNodeToggleCommand(
+						this.data.name,
+						!this.data.disabled,
+						this.data.disabled === true,
+					),
+				);
+				this.$telemetry.track('User clicked node hover button', {
+					node_type: this.data.type,
+					button_name: 'disable',
+					workflow_id: this.workflowsStore.workflowId,
+				});
+			}
+		},
+		executeNode() {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'execute', workflow_id: this.workflowsStore.workflowId });
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'execute',
+				workflow_id: this.workflowsStore.workflowId,
+			});
 		},
-		deleteNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.workflowsStore.workflowId });
+		async deleteNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'delete',
+				workflow_id: this.workflowsStore.workflowId,
+			});
 
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('removeNode', this.data.name);
-			});
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('removeNode', this.data.name);
 		},
-		duplicateNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'duplicate', workflow_id: this.workflowsStore.workflowId });
-			Vue.nextTick(() => {
-				// Wait a tick else vue causes problems because the data is gone
-				this.$emit('duplicateNode', this.data.name);
+		async duplicateNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'duplicate',
+				workflow_id: this.workflowsStore.workflowId,
 			});
+			// Wait a tick else vue causes problems because the data is gone
+			await this.$nextTick();
+			this.$emit('duplicateNode', this.data.name);
 		},
 
 		onClick(event: MouseEvent) {
-			this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
+			void this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {
@@ -474,12 +679,12 @@ export default mixins(
 			}
 		},
 
-		setNodeActive () {
+		setNodeActive() {
 			this.ndvStore.activeNodeName = this.data ? this.data.name : '';
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
-		touchStart () {
-			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
+		touchStart() {
+			if (this.isTouchDevice === true && !this.isMacOs && !this.isTouchActive) {
 				this.isTouchActive = true;
 				setTimeout(() => {
 					this.isTouchActive = false;
@@ -488,28 +693,34 @@ export default mixins(
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" scoped>
-
 .node-wrapper {
+	--node-width: 100px;
+	--node-height: 100px;
+
+	--configurable-node-min-input-count: 4;
+	--configurable-node-input-width: 65px;
+
 	position: absolute;
-	width: 100px;
-	height: 100px;
+	width: var(--node-width);
+	height: var(--node-height);
 
 	.node-description {
 		position: absolute;
-		top: 100px;
-		left: -50px;
+		top: var(--node-height);
+		left: calc(var(--node-width) / 2 * -1);
 		line-height: 1.5;
 		text-align: center;
 		cursor: default;
 		padding: 8px;
-		width: 200px;
+		width: 100%;
+		min-width: calc(var(--node-width) * 2);
 		pointer-events: none; // prevent container from being draggable
 
-		.node-name > p { // must be paragraph tag to have two lines in safari
+		.node-name > p {
+			// must be paragraph tag to have two lines in safari
 			text-overflow: ellipsis;
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
@@ -541,10 +752,9 @@ export default mixins(
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: var(--color-background-xlight);
-
+			background-color: $node-background-default;
 			&.executing {
-				background-color: var(--color-primary-tint-3) !important;
+				background-color: $node-background-executing !important;
 
 				.node-executing-info {
 					display: inline-block;
@@ -603,6 +813,7 @@ export default mixins(
 
 			.items-count {
 				font-size: var(--font-size-s);
+				padding: 0;
 			}
 		}
 
@@ -624,10 +835,9 @@ export default mixins(
 			position: absolute;
 			top: -25px;
 			left: -10px;
-			width: 120px;
+			width: calc(var(--node-width) + 20px);
 			height: 26px;
 			font-size: 0.9em;
-			text-align: left;
 			z-index: 10;
 			color: #aaa;
 			text-align: center;
@@ -650,6 +860,17 @@ export default mixins(
 					font-size: 1.2em;
 				}
 			}
+
+			&:after {
+				content: '';
+				display: block;
+				position: absolute;
+				left: 0;
+				right: 0;
+				top: -1rem;
+				bottom: -1rem;
+				z-index: -1;
+			}
 		}
 
 		&.is-touch-device .node-options {
@@ -661,18 +882,168 @@ export default mixins(
 			}
 		}
 	}
+
+	&--config {
+		--configurable-node-input-width: 55px;
+		--node-width: 75px;
+		--node-height: 75px;
+
+		& [class*='node-wrapper--connection-type'] {
+			--configurable-node-options: -10px;
+		}
+		.node-default {
+			.node-options {
+				background: color-mix(in srgb, var(--color-canvas-background) 80%, transparent);
+				height: 25px;
+			}
+
+			.node-icon {
+				scale: 0.75;
+			}
+		}
+
+		.node-default {
+			.node-box {
+				border: 2px solid var(--color-foreground-xdark);
+				//background-color: $node-background-type-other;
+				border-radius: 50px;
+
+				&.executing {
+					background-color: $node-background-executing-other !important;
+				}
+
+				.node-executing-info {
+					font-size: 2.85em;
+				}
+			}
+		}
+
+		@each $node-type in $supplemental-node-types {
+			&.node-wrapper--connection-type-#{$node-type} {
+				.node-default .node-box {
+					background: var(--node-type-#{$node-type}-background);
+				}
+
+				.node-description {
+					.node-subtitle {
+						color: var(--node-type-#{$node-type}-color);
+					}
+				}
+			}
+		}
+
+		.node-info-icon {
+			bottom: 4px !important;
+			right: 50% !important;
+			transform: translateX(50%) scale(0.75);
+		}
+
+		&.node-wrapper--configurable {
+			--configurable-node-icon-offset: 20px;
+
+			.node-info-icon {
+				bottom: 1px !important;
+				right: 1px !important;
+			}
+		}
+	}
+
+	&--configurable {
+		--node-width: var(
+			--configurable-node-width,
+			calc(
+				max(var(--configurable-node-input-count, 5), var(--configurable-node-min-input-count)) *
+					var(--configurable-node-input-width)
+			)
+		);
+		--configurable-node-icon-offset: 40px;
+		--configurable-node-icon-size: 30px;
+		--configurable-node-options: -10px;
+
+		.node-description {
+			top: calc(50%);
+			transform: translateY(-50%);
+			left: calc(
+				var(--configurable-node-icon-offset) + var(--configurable-node-icon-size) + var(--spacing-s)
+			);
+			text-align: left;
+			overflow: auto;
+			white-space: normal;
+			min-width: unset;
+			max-width: calc(
+				var(--node-width) - var(--configurable-node-icon-offset) - var(
+						--configurable-node-icon-size
+					) - 2 * var(--spacing-s)
+			);
+		}
+
+		.node-default {
+			.node-icon {
+				left: var(--configurable-node-icon-offset);
+			}
+
+			.node-options {
+				left: var(--configurable-node-options, 65px);
+				height: 25px;
+			}
+
+			.node-executing-info {
+				left: -67px;
+			}
+		}
+	}
+
+	&--trigger .node-default .node-box {
+		border-radius: 32px 8px 8px 32px;
+	}
+
+	.trigger-icon {
+		position: absolute;
+		right: 100%;
+		top: 0;
+		bottom: 0;
+		margin: auto;
+		color: var(--color-primary);
+		align-items: center;
+		justify-content: center;
+		height: fit-content;
+		// Increase click radius of the bolt icon
+		padding: var(--spacing-2xs);
+	}
 }
 
 .select-background {
+	--node--selected--box-shadow-radius: 8px;
+
 	display: block;
-	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
+	background-color: hsla(
+		var(--color-foreground-base-h),
+		var(--color-foreground-base-s),
+		var(--color-foreground-base-l),
+		60%
+	);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
-	left: -8px !important;
-	top: -8px !important;
-	height: 116px;
-	width: 116px !important;
+	left: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	top: calc(var(--node--selected--box-shadow-radius) * -1) !important;
+	height: calc(100% + 2 * var(--node--selected--box-shadow-radius));
+	width: calc(100% + 2 * var(--node--selected--box-shadow-radius)) !important;
+
+	.node-wrapper--trigger & {
+		border-radius: 36px 8px 8px 36px;
+	}
+
+	.node-wrapper--config & {
+		--node--selected--box-shadow-radius: 4px;
+		border-radius: 60px;
+		background-color: hsla(
+			var(--color-foreground-base-h),
+			60%,
+			var(--color-foreground-base-l),
+			80%
+		);
+	}
 }
 
 .disabled-linethrough {
@@ -703,24 +1074,37 @@ export default mixins(
 		&--item {
 			max-width: 160px;
 			position: fixed;
-			z-index: 0!important;
+			z-index: 0 !important;
 		}
 	}
 }
-
+.dot-output-endpoint:hover circle {
+	fill: var(--color-primary);
+}
 /** connector */
 .jtk-connector {
 	z-index: 3;
 }
 
-.jtk-connector path {
-	transition: stroke .1s ease-in-out;
+.jtk-floating-endpoint {
+	opacity: 0;
 }
 
-.jtk-connector.success {
+.jtk-connector path {
+	transition: stroke 0.1s ease-in-out;
+}
+
+.jtk-overlay {
+	z-index: 3;
+}
+.jtk-connector {
 	z-index: 4;
 }
-
+.node-input-endpoint-label,
+.node-output-endpoint-label,
+.connection-run-items-label {
+	z-index: 5;
+}
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
@@ -728,29 +1112,25 @@ export default mixins(
 .jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
-
 .jtk-endpoint.dot-output-endpoint {
 	z-index: 7;
-}
-
-.jtk-overlay {
-	z-index: 7;
+	overflow: auto;
 }
 
 .disabled-linethrough {
 	z-index: 8;
 }
 
-.jtk-connector.jtk-dragging {
-	z-index: 8;
-}
-
-.jtk-drag-active.dot-output-endpoint, .jtk-drag-active.rect-input-endpoint {
+.jtk-drag-active.dot-output-endpoint,
+.jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
+}
+.rect-input-endpoint > * {
+	pointer-events: none;
 }
 
 .connection-actions {
-	z-index: 10;
+	z-index: 100;
 }
 
 .node-options {
@@ -761,88 +1141,318 @@ export default mixins(
 	z-index: 10;
 }
 
+.jtk-connector.success:not(.jtk-hover) {
+	path:not(.jtk-connector-outline) {
+		stroke: var(--color-success-light);
+	}
+	path[jtk-overlay-id='reverse-arrow'],
+	path[jtk-overlay-id='endpoint-arrow'],
+	path[jtk-overlay-id='midpoint-arrow'] {
+		fill: var(--color-success-light);
+	}
+}
 </style>
 
 <style lang="scss">
-	$--stalklength: 40px;
-	$--box-size-medium: 24px;
-	$--box-size-small: 18px;
+:root {
+	--endpoint-size-small: 14px;
+	--endpoint-size-medium: 18px;
+	--stalk-size: 40px;
+	--stalk-success-size: 87px;
+	--stalk-success-size-without-label: 40px;
+	--stalk-long-size: 127px;
+	--plus-endpoint-box-size: 24px;
+	--plus-endpoint-box-size-small: 17px;
+}
 
-	.plus-endpoint {
-		cursor: pointer;
+.plus-svg-circle {
+	z-index: 111;
+	circle {
+		stroke: var(--color-foreground-xdark);
+		stroke-width: 2px;
+		fill: var(--color-foreground-xdark);
+	}
 
-		.plus-stalk {
-			border-top: 2px solid var(--color-foreground-dark);
-			position: absolute;
-			width: $--stalklength;
-			height: 0;
-			right: 100%;
-			top: calc(50% - 1px);
-			pointer-events: none;
-
-		  .connection-run-items-label {
-				position: relative;
-				width: 100%;
-
-				span {
-					display: none;
-					left: calc(50% + 4px);
-				}
-			}
+	&:hover {
+		circle {
+			stroke: var(--color-primary);
+			fill: var(--color-primary);
 		}
+	}
+}
+.plus-stalk {
+	width: calc(var(--stalk-size) + 2px);
+	border: 1px solid var(--color-foreground-dark);
+	margin-left: calc(var(--stalk-size) / 2);
+	z-index: 3;
+	&.ep-success {
+		border-color: var(--color-success-light);
 
-		.plus-container {
-			color: var(--color-foreground-xdark);
-			border: 2px solid var(--color-foreground-xdark);
-			background-color: var(--color-background-xlight);
-			border-radius: var(--border-radius-base);
-			height: $--box-size-medium;
-			width: $--box-size-medium;
-
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			font-size: var(--font-size-2xs);
+		&:after {
+			content: attr(data-label);
 			position: absolute;
-
-			top: 0;
+			left: 0;
 			right: 0;
-			pointer-events: none;
+			bottom: 100%;
+			margin: auto;
+			margin-bottom: 2px;
+			text-align: center;
 
-			&.small {
-				height: $--box-size-small;
-				width: $--box-size-small;
-				font-size: 8px;
-			}
-
-			.fa-plus {
-				width: 1em;
-			}
+			line-height: 1.3em;
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-regular);
+			color: var(--color-success);
 		}
+	}
+}
+.connection-run-items-label {
+	// Disable points events so that the label does not block the connection
+	// mouse over event.
+	pointer-events: none;
+	span {
+		border-radius: 7px;
+		background-color: hsla(
+			var(--color-canvas-background-h),
+			var(--color-canvas-background-s),
+			var(--color-canvas-background-l),
+			0.85
+		);
+		line-height: 1.3em;
+		padding: 0px 3px;
+		white-space: nowrap;
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+		color: var(--color-success);
+		margin-top: -15px;
 
-		.drop-hover-message {
-			font-weight: var(--font-weight-bold);
-			font-size: var(--font-size-2xs);
-			line-height: var(--font-line-height-regular);
-			color: var(--color-text-light);
-
+		&.floating {
 			position: absolute;
 			top: -6px;
-			left: calc(100% + 8px);
-			width: 200px;
+			transform: translateX(-50%);
+		}
+	}
+}
+
+.connection-input-name-label {
+	position: relative;
+
+	span {
+		position: absolute;
+		top: -10px;
+		left: -60px;
+	}
+}
+
+.plus-endpoint {
+	cursor: pointer;
+	z-index: 10;
+	margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size) / 2) - 1px);
+	g {
+		fill: var(--color-background-xlight);
+		pointer-events: none;
+	}
+
+	&:hover {
+		path {
+			fill: var(--color-primary);
+		}
+		rect {
+			stroke: var(--color-primary);
+		}
+	}
+	path {
+		fill: var(--color-foreground-xdark);
+	}
+	rect {
+		stroke: var(--color-foreground-xdark);
+	}
+
+	&.small {
+		margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size-small) / 2));
+		g {
+			transform: scale(0.75);
+			transform-origin: center;
+		}
+		rect {
+			stroke-width: 2.5;
+		}
+	}
+	&:hover .plus-container {
+		color: var(--color-primary);
+		border: 2px solid var(--color-primary);
+	}
+	&:hover .drop-hover-message {
+		display: block;
+	}
+
+	&.hidden {
+		display: none;
+	}
+}
+
+.diamond-output-endpoint {
+	--diamond-output-endpoint--transition-duration: 0.15s;
+
+	transition: transform var(--diamond-output-endpoint--transition-duration) ease;
+	transform: rotate(45deg);
+	z-index: 10;
+}
+
+.add-input-endpoint {
+	--add-input-endpoint--transition-duration: 0.15s;
+
+	&:not(.jtk-endpoint-connected) {
+		cursor: pointer;
+	}
+
+	&.add-input-endpoint-multiple {
+		z-index: 100;
+		cursor: pointer;
+	}
+
+	&.jtk-endpoint-connected {
+		z-index: 10;
+	}
+
+	.add-input-endpoint-default {
+		transition: transform var(--add-input-endpoint--transition-duration) ease;
+	}
+
+	.add-input-endpoint-diamond {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-line {
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-plus-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--color-foreground-xlight);
+		stroke: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-plus-icon {
+		stroke: none;
+		transition: fill var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--svg-color, var(--color-primary));
+	}
+
+	.add-input-endpoint-connected-rectangle {
+		transition:
+			fill var(--add-input-endpoint--transition-duration) ease,
+			stroke var(--add-input-endpoint--transition-duration) ease;
+		fill: var(--color-foreground-xdark);
+		stroke: var(--color-foreground-xdark);
+	}
+
+	&.rect-input-endpoint-hover {
+		.add-input-endpoint-plus-rectangle {
+			stroke: var(--svg-color, var(--color-primary));
+		}
+
+		.add-input-endpoint-plus-icon {
+			fill: var(--svg-color, var(--color-primary));
+		}
+	}
+
+	&.jtk-endpoint-connected:not(.add-input-endpoint-multiple) {
+		.add-input-endpoint-unconnected {
 			display: none;
 		}
 
-		&.hidden > * {
-			display: none;
-		}
-
-		&.success .plus-stalk {
-			border-color: var(--color-success-light);
-
-			span {
-				display: inline;
+		&.rect-input-endpoint-hover {
+			.add-input-endpoint-connected-rectangle {
+				fill: var(--svg-color, var(--color-primary));
+				stroke: var(--svg-color, var(--color-primary));
 			}
 		}
 	}
+}
+
+.node-input-endpoint-label,
+.node-output-endpoint-label {
+	--node-endpoint-label--transition-duration: 0.15s;
+
+	background-color: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
+	border-radius: 7px;
+	font-size: 0.7em;
+	padding: 2px;
+	white-space: nowrap;
+	transition: color var(--node-endpoint-label--transition-duration) ease;
+
+	@each $node-type in $supplemental-node-types {
+		&.node-connection-type-#{$node-type} {
+			color: var(--node-type-supplemental-label-color);
+		}
+	}
+}
+
+.node-output-endpoint-label {
+	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
+
+	&--data {
+		text-align: center;
+		margin-top: calc(var(--spacing-l) * -1);
+		margin-left: 0;
+	}
+}
+
+.node-input-endpoint-label {
+	text-align: right;
+	margin-left: -25px;
+
+	&--moved {
+		margin-left: -40px;
+	}
+
+	&--data {
+		text-align: center;
+		margin-top: calc(var(--spacing-5xs) * -1);
+		margin-left: 0;
+	}
+}
+
+.hover-message.jtk-overlay {
+	--hover-message-width: 110px;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-regular);
+	color: var(--color-text-light);
+	width: var(--hover-message-width);
+	margin-left: calc(
+		(var(--hover-message-width) / 2) + var(--stalk-size) + var(--plus-endpoint-box-size) +
+			var(--spacing-2xs)
+	);
+	opacity: 0;
+	pointer-events: none;
+	&.small {
+		margin-left: calc(
+			(var(--hover-message-width) / 2) + var(--stalk-size) + var(--plus-endpoint-box-size-small) +
+				var(--spacing-2xs)
+		);
+	}
+	&.visible {
+		pointer-events: all;
+		opacity: 1;
+	}
+}
+.long-stalk {
+	--stalk-size: var(--stalk-long-size);
+}
+.ep-success {
+	--stalk-size: var(--stalk-success-size);
+}
+.ep-success--without-label {
+	--stalk-size: var(--stalk-success-size-without-label);
+}
 </style>

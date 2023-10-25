@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { stravaApiRequest, stravaApiRequestAllItems } from './GenericFunctions';
 
@@ -141,14 +145,14 @@ export class Strava implements INodeType {
 							responseData = await stravaApiRequestAllItems.call(
 								this,
 								'GET',
-								`/activities`,
+								'/activities',
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
 
-							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
+							responseData = await stravaApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById
@@ -156,14 +160,6 @@ export class Strava implements INodeType {
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
 						const updateFields = this.getNodeParameter('updateFields', i);
-
-						if (updateFields.trainer === true) {
-							updateFields.trainer = 1;
-						}
-
-						if (updateFields.commute === true) {
-							updateFields.commute = 1;
-						}
 
 						const body: IDataObject = {};
 
@@ -179,7 +175,7 @@ export class Strava implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -197,6 +193,6 @@ export class Strava implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

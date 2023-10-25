@@ -1,4 +1,4 @@
-import {
+import type {
 	GenericValue,
 	IBinaryKeyData,
 	IDataObject,
@@ -6,7 +6,12 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
-import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
+import assign from 'lodash/assign';
+import assignWith from 'lodash/assignWith';
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import mergeWith from 'lodash/mergeWith';
+import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -18,6 +23,7 @@ export type MatchFieldsOptions = {
 	outputDataFrom: MatchFieldsOutput;
 	multipleMatches: MultipleMatches;
 	disableDotNotation: boolean;
+	fuzzyCompare?: boolean;
 };
 
 export type ClashResolveOptions = {
@@ -46,6 +52,8 @@ type EntryMatches = {
 	matches: INodeExecutionData[];
 };
 
+type CompareFunction = <T, U>(a: T, b: U) => boolean;
+
 export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: string) {
 	return data.map((entry) => {
 		const json: IDataObject = {};
@@ -60,6 +68,7 @@ function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	return data.reduce((acc, entry2, i) => {
 		if (entry2 === undefined) return acc;
@@ -74,7 +83,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -90,6 +99,7 @@ function findFirstMatch(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	const index = data.findIndex((entry2) => {
 		if (entry2 === undefined) return false;
@@ -104,7 +114,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}
@@ -122,13 +132,10 @@ export function findMatches(
 	fieldsToMatch: PairToMatch[],
 	options: MatchFieldsOptions,
 ) {
-	let data1 = [...input1];
-	let data2 = [...input2];
+	const data1 = [...input1];
+	const data2 = [...input2];
 
-	if (options.joinMode === 'enrichInput2') {
-		[data1, data2] = [data2, data1];
-	}
-
+	const isEntriesEqual = fuzzyCompare(options.fuzzyCompare as boolean);
 	const disableDotNotation = options.disableDotNotation || false;
 	const multipleMatches = (options.multipleMatches as string) || 'all';
 
@@ -163,8 +170,8 @@ export function findMatches(
 
 		const foundedMatches =
 			multipleMatches === 'all'
-				? findAllMatches(data2, lookup, disableDotNotation)
-				: findFirstMatch(data2, lookup, disableDotNotation);
+				? findAllMatches(data2, lookup, disableDotNotation, isEntriesEqual)
+				: findFirstMatch(data2, lookup, disableDotNotation, isEntriesEqual);
 
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
@@ -203,88 +210,6 @@ export function findMatches(
 	return filteredData;
 }
 
-export function mergeMatched(
-	matched: EntryMatches[],
-	clashResolveOptions: ClashResolveOptions,
-	joinMode?: MatchFieldsJoinMode,
-) {
-	const returnData: INodeExecutionData[] = [];
-	let resolveClash = clashResolveOptions.resolveClash as string;
-
-	const mergeIntoSingleObject = selectMergeMethod(clashResolveOptions);
-
-	for (const match of matched) {
-		let { entry, matches } = match;
-
-		let json: IDataObject = {};
-		let binary: IBinaryKeyData = {};
-
-		if (resolveClash === 'addSuffix') {
-			let suffix1 = '1';
-			let suffix2 = '2';
-
-			if (joinMode === 'enrichInput2') {
-				[suffix1, suffix2] = [suffix2, suffix1];
-			}
-
-			[entry] = addSuffixToEntriesKeys([entry], suffix1);
-			matches = addSuffixToEntriesKeys(matches, suffix2);
-
-			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
-			binary = mergeIntoSingleObject(
-				{ ...entry.binary },
-				...matches.map((item) => item.binary as IDataObject),
-			);
-		} else {
-			let preferInput1 = 'preferInput1';
-			let preferInput2 = 'preferInput2';
-
-			if (joinMode === 'enrichInput2') {
-				[preferInput1, preferInput2] = [preferInput2, preferInput1];
-			}
-
-			if (resolveClash === undefined) {
-				resolveClash = 'preferInput2';
-			}
-
-			if (resolveClash === preferInput1) {
-				const [firstMatch, ...restMatches] = matches;
-				json = mergeIntoSingleObject(
-					{ ...firstMatch.json },
-					...restMatches.map((item) => item.json),
-					entry.json,
-				);
-				binary = mergeIntoSingleObject(
-					{ ...firstMatch.binary },
-					...restMatches.map((item) => item.binary as IDataObject),
-					entry.binary as IDataObject,
-				);
-			}
-
-			if (resolveClash === preferInput2) {
-				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
-				binary = mergeIntoSingleObject(
-					{ ...entry.binary },
-					...matches.map((item) => item.binary as IDataObject),
-				);
-			}
-		}
-
-		const pairedItem = [
-			entry.pairedItem as IPairedItemData,
-			...matches.map((m) => m.pairedItem as IPairedItemData),
-		];
-
-		returnData.push({
-			json,
-			binary,
-			pairedItem,
-		});
-	}
-
-	return returnData;
-}
-
 export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 	const mergeMode = clashResolveOptions.mergeMode as string;
 
@@ -315,6 +240,94 @@ export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 		}
 	}
 	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+}
+
+export function mergeMatched(
+	matched: EntryMatches[],
+	clashResolveOptions: ClashResolveOptions,
+	joinMode?: MatchFieldsJoinMode,
+) {
+	const returnData: INodeExecutionData[] = [];
+	let resolveClash = clashResolveOptions.resolveClash as string;
+
+	const mergeIntoSingleObject = selectMergeMethod(clashResolveOptions);
+
+	for (const match of matched) {
+		let { entry, matches } = match;
+
+		let json: IDataObject = {};
+		let binary: IBinaryKeyData = {};
+		let pairedItem: IPairedItemData[] = [];
+
+		if (resolveClash === 'addSuffix') {
+			const suffix1 = '1';
+			const suffix2 = '2';
+
+			[entry] = addSuffixToEntriesKeys([entry], suffix1);
+			matches = addSuffixToEntriesKeys(matches, suffix2);
+
+			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
+			binary = mergeIntoSingleObject(
+				{ ...entry.binary },
+				...matches.map((item) => item.binary as IDataObject),
+			);
+			pairedItem = [
+				...preparePairedItemDataArray(entry.pairedItem),
+				...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+			];
+		} else {
+			const preferInput1 = 'preferInput1';
+			const preferInput2 = 'preferInput2';
+
+			if (resolveClash === undefined) {
+				if (joinMode !== 'enrichInput2') {
+					resolveClash = 'preferInput2';
+				} else {
+					resolveClash = 'preferInput1';
+				}
+			}
+
+			if (resolveClash === preferInput1) {
+				const [firstMatch, ...restMatches] = matches;
+				json = mergeIntoSingleObject(
+					{ ...firstMatch.json },
+					...restMatches.map((item) => item.json),
+					entry.json,
+				);
+				binary = mergeIntoSingleObject(
+					{ ...firstMatch.binary },
+					...restMatches.map((item) => item.binary as IDataObject),
+					entry.binary as IDataObject,
+				);
+
+				pairedItem = [
+					...preparePairedItemDataArray(firstMatch.pairedItem),
+					...restMatches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+					...preparePairedItemDataArray(entry.pairedItem),
+				];
+			}
+
+			if (resolveClash === preferInput2) {
+				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
+				binary = mergeIntoSingleObject(
+					{ ...entry.binary },
+					...matches.map((item) => item.binary as IDataObject),
+				);
+				pairedItem = [
+					...preparePairedItemDataArray(entry.pairedItem),
+					...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+				];
+			}
+		}
+
+		returnData.push({
+			json,
+			binary,
+			pairedItem,
+		});
+	}
+
+	return returnData;
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {

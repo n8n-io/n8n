@@ -1,15 +1,15 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
+import type {
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-} from 'n8n-core';
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { get } from 'lodash';
+import get from 'lodash/get';
 
 export const eventID: { [key: string]: string } = {
 	create_client: '1',
@@ -20,7 +20,7 @@ export const eventID: { [key: string]: string } = {
 };
 
 export async function invoiceNinjaApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: IDataObject = {},
@@ -73,7 +73,7 @@ export async function invoiceNinjaApiRequestAllItems(
 		if (next) {
 			uri = next;
 		}
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.meta?.pagination?.links?.next);
 
 	return returnData;

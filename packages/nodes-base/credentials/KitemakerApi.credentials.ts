@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class KitemakerApi implements ICredentialType {
 	name = 'kitemakerApi';
@@ -12,6 +12,7 @@ export class KitemakerApi implements ICredentialType {
 			displayName: 'Personal Access Token',
 			name: 'personalAccessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

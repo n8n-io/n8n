@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -11,7 +10,7 @@ import {
 
 import { egoiApiRequest, egoiApiRequestAllItems, simplify } from './GenericFunctions';
 
-import { ICreateMemberBody } from './Interfaces';
+import type { ICreateMemberBody } from './Interfaces';
 
 import moment from 'moment-timezone';
 
@@ -749,11 +748,11 @@ export class Egoi implements INodeType {
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

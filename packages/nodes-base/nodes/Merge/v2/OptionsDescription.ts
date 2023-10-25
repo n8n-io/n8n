@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 const clashHandlingProperties: INodeProperties = {
 	displayName: 'Clash Handling',
@@ -128,6 +128,14 @@ export const optionsDescription: INodeProperties[] = [
 						'/combinationMode': ['mergeByFields'],
 					},
 				},
+			},
+			{
+				displayName: 'Fuzzy Compare',
+				name: 'fuzzyCompare',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 			},
 			{
 				displayName: 'Include Any Unpaired Items',

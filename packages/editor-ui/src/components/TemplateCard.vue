@@ -1,6 +1,11 @@
 <template>
 	<div
-		:class="[$style.card, lastItem && $style.last, firstItem && $style.first, !loading && $style.loaded]"
+		:class="[
+			$style.card,
+			lastItem && $style.last,
+			firstItem && $style.first,
+			!loading && $style.loaded,
+		]"
 		@click="onCardClick"
 	>
 		<div :class="$style.loading" v-if="loading">
@@ -8,7 +13,7 @@
 		</div>
 		<div v-else>
 			<n8n-heading :bold="true" size="small">{{ workflow.name }}</n8n-heading>
-			<div :class="$style.content">
+			<div :class="$style.content" v-if="!simpleView">
 				<span v-if="workflow.totalViews">
 					<n8n-text size="small" color="text-light">
 						<font-awesome-icon icon="eye" />
@@ -20,7 +25,9 @@
 					<TimeAgo :date="workflow.createdAt" />
 				</n8n-text>
 				<div v-if="workflow.user" :class="$style.line" v-text="'|'" />
-				<n8n-text v-if="workflow.user" size="small" color="text-light">By {{ workflow.user.username }}</n8n-text>
+				<n8n-text v-if="workflow.user" size="small" color="text-light"
+					>By {{ workflow.user.username }}</n8n-text
+				>
 			</div>
 		</div>
 		<div :class="[$style.nodesContainer, useWorkflowButton && $style.hideOnHover]" v-if="!loading">
@@ -38,13 +45,15 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
+import TimeAgo from '@/components/TimeAgo.vue';
 
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'TemplateCard',
+	mixins: [genericHelpers],
 	props: {
 		lastItem: {
 			type: Boolean,
@@ -63,8 +72,13 @@ export default mixins(genericHelpers).extend({
 		loading: {
 			type: Boolean,
 		},
+		simpleView: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	components: {
+		TimeAgo,
 		NodeList,
 	},
 	data() {
@@ -112,6 +126,7 @@ export default mixins(genericHelpers).extend({
 	background-color: var(--color-background-xlight);
 
 	display: flex;
+	align-items: center;
 	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
 	background-color: var(--color-background-xlight);
 	cursor: pointer;
@@ -172,5 +187,4 @@ export default mixins(genericHelpers).extend({
 	align-items: center;
 	flex-grow: 1;
 }
-
 </style>

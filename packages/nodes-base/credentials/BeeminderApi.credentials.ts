@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -23,6 +23,7 @@ export class BeeminderApi implements ICredentialType {
 			displayName: 'Auth Token',
 			name: 'authToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -39,7 +40,7 @@ export class BeeminderApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://www.beeminder.com/api/v1',
-			url: `=/users/{{$credentials.user}}.json`,
+			url: '=/users/{{$credentials.user}}.json',
 		},
 	};
 }

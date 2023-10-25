@@ -1,7 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { uprocApiRequest } from './GenericFunctions';
 
@@ -98,7 +102,6 @@ export class UProc implements INodeType {
 				return field.name;
 			});
 
-		const _requestPromises = [];
 		for (let i = 0; i < length; i++) {
 			try {
 				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();

@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TravisCiApi implements ICredentialType {
 	name = 'travisCiApi';
@@ -12,6 +12,7 @@ export class TravisCiApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'apiToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

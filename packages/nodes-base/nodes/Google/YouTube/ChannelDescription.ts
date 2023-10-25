@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const channelOperations: INodeProperties[] = [
 	{
@@ -229,7 +229,7 @@ export const channelFields: INodeProperties[] = [
 				resource: ['channel'],
 			},
 		},
-		description: 'ID of the video',
+		description: 'ID of the channel',
 		default: '',
 	},
 	{

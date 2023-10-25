@@ -31,9 +31,9 @@
 				</div>
 				<div :class="$style.search">
 					<n8n-input
-						:value="search"
+						:modelValue="search"
 						:placeholder="$locale.baseText('templates.searchPlaceholder')"
-						@input="onSearchInput"
+						@update:modelValue="onSearchInput"
 						@blur="trackSearch"
 						clearable
 					>
@@ -48,7 +48,6 @@
 								<span v-if="!loadingCollections" v-text="`(${collections.length})`" />
 							</n8n-heading>
 						</div>
-
 						<CollectionsCarousel
 							:collections="collections"
 							:loading="loadingCollections"
@@ -75,23 +74,30 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import CollectionsCarousel from '@/components/CollectionsCarousel.vue';
 import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
-import TemplatesView from './TemplatesView.vue';
+import TemplatesView from '@/views/TemplatesView.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { IDataObject } from 'n8n-workflow';
+import type {
+	ITemplatesCollection,
+	ITemplatesWorkflow,
+	ITemplatesQuery,
+	ITemplatesCategory,
+} from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useTemplatesStore } from '@/stores/templates';
-import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useTemplatesStore } from '@/stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
+import { useToast } from '@/composables';
+import { usePostHog } from '@/stores/posthog.store';
 
 interface ISearchEvent {
 	search_string: string;
@@ -101,13 +107,19 @@ interface ISearchEvent {
 	wf_template_repo_session_id: string;
 }
 
-export default mixins(genericHelpers, debounceHelper).extend({
+export default defineComponent({
 	name: 'TemplatesSearchView',
+	mixins: [genericHelpers, debounceHelper],
 	components: {
 		CollectionsCarousel,
 		TemplateFilters,
 		TemplateList,
 		TemplatesView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
 		return {
@@ -123,12 +135,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useTemplatesStore,
-			useUIStore,
-			useUsersStore,
-		),
+		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore, usePostHog),
 		totalWorkflows(): number {
 			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
 		},
@@ -142,10 +149,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			if (this.loadingWorkflows) {
 				return null;
 			}
-			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
-				return this.$locale.baseText('templates.endResult');
-			}
-			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
+			if (
+				!this.loadingCollections &&
+				this.workflows.length === 0 &&
+				this.collections.length === 0
+			) {
 				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
@@ -170,10 +178,10 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 	},
 	methods: {
-		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
+		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
-		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
@@ -182,12 +190,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				window.open(route.href, '_blank');
 				return;
 			} else {
-				this.$router.push({ name: page, params: { id } });
+				void this.$router.push({ name: page, params: { id } });
 			}
 		},
 		updateSearch() {
 			this.updateQueryParam(this.search, this.categories.join(','));
-			this.loadWorkflowsAndCollections(false);
+			void this.loadWorkflowsAndCollections(false);
 		},
 		updateSearchTracking(search: string, categories: number[]) {
 			if (!search) {
@@ -209,19 +217,22 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 		trackSearch() {
 			if (this.searchEventToTrack) {
-				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
+				this.$telemetry.track(
+					'User searched workflow templates',
+					this.searchEventToTrack as unknown as IDataObject,
+				);
 				this.searchEventToTrack = null;
 			}
 		},
 		openNewWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
 			this.loadingWorkflows = true;
 			this.loadingCollections = true;
 			this.search = search;
-			this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
+			void this.callDebounced('updateSearch', { debounceTime: 500, trailing: true });
 
 			if (search.length === 0) {
 				this.trackSearch();
@@ -267,7 +278,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				delete query.search;
 			}
 
-			this.$router.replace({ query });
+			void this.$router.replace({ query });
 		},
 		async onLoadMore() {
 			if (this.workflows.length >= this.totalWorkflows) {
@@ -280,7 +291,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 					search: this.search,
 				});
 			} catch (e) {
-				this.$showMessage({
+				this.showMessage({
 					title: 'Error',
 					message: 'Could not load more workflows',
 					type: 'error',
@@ -292,7 +303,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		async loadCategories() {
 			try {
 				await this.templatesStore.getCategories();
-			} catch (e) { }
+			} catch (e) {}
 			this.loadingCategories = false;
 		},
 		async loadCollections() {
@@ -302,8 +313,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 					categories: this.categories,
 					search: this.search,
 				});
-			} catch (e) {
-			}
+			} catch (e) {}
 
 			this.loadingCollections = false;
 		},
@@ -352,7 +362,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
-			if (this.$route.meta && this.$route.meta.setScrollPosition && typeof this.$route.meta.setScrollPosition === 'function') {
+			if (
+				this.$route.meta &&
+				this.$route.meta.setScrollPosition &&
+				typeof this.$route.meta.setScrollPosition === 'function'
+			) {
 				this.$route.meta.setScrollPosition(contentArea.scrollTop);
 			}
 		}
@@ -362,9 +376,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 	},
 	async mounted() {
 		setPageTitle('n8n - Templates');
-		this.loadCategories();
-		this.loadWorkflowsAndCollections(true);
-		this.usersStore.showPersonalizationSurvey();
+		void this.loadCategories();
+		void this.loadWorkflowsAndCollections(true);
+		void this.usersStore.showPersonalizationSurvey();
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
@@ -379,7 +393,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
+			this.categories = this.$route.query.categories
+				.split(',')
+				.map((categoryId) => parseInt(categoryId, 10));
 			this.areCategoriesPrepopulated = true;
 		}
 	},
@@ -404,11 +420,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 .filters {
 	width: 200px;
 	margin-bottom: var(--spacing-xl);
+	margin-right: var(--spacing-2xl);
 }
 
 .search {
 	width: 100%;
-	padding-left: var(--spacing-2xl);
 
 	> * {
 		margin-bottom: var(--spacing-l);
@@ -422,5 +438,4 @@ export default mixins(genericHelpers, debounceHelper).extend({
 .header {
 	margin-bottom: var(--spacing-2xs);
 }
-
 </style>

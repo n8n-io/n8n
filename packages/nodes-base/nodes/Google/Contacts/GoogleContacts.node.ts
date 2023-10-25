@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -62,7 +61,7 @@ export class GoogleContacts implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -70,7 +69,7 @@ export class GoogleContacts implements INodeType {
 					this,
 					'contactGroups',
 					'GET',
-					`/contactGroups`,
+					'/contactGroups',
 				);
 				for (const group of groups) {
 					const groupName = group.name;
@@ -222,7 +221,7 @@ export class GoogleContacts implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/people:createContact`,
+							'/people:createContact',
 							body,
 							qs,
 						);
@@ -505,7 +504,7 @@ export class GoogleContacts implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -522,6 +521,6 @@ export class GoogleContacts implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

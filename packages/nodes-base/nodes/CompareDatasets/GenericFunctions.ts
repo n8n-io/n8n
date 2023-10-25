@@ -1,5 +1,15 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { difference, get, intersection, isEmpty, isEqual, omit, set, union } from 'lodash';
+import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+
+import difference from 'lodash/difference';
+import get from 'lodash/get';
+import intersection from 'lodash/intersection';
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+import unset from 'lodash/unset';
+import { cloneDeep } from 'lodash';
+import set from 'lodash/set';
+import union from 'lodash/union';
+import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -11,12 +21,22 @@ type EntryMatches = {
 	matches: INodeExecutionData[];
 };
 
+type CompareFunction = <T, U>(a: T, b: U) => boolean;
+
+const processNullishValueFunction = (version: number) => {
+	if (version >= 2) {
+		return <T>(value: T) => (value === undefined ? null : value);
+	}
+	return <T>(value: T) => value || null;
+};
+
 function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
-	resolve: string,
+	options: IDataObject,
 	skipFields: string[],
+	isEntriesEqual: CompareFunction,
 ) {
 	const keys = {} as IDataObject;
 	fieldsToMatch.forEach((field) => {
@@ -25,43 +45,106 @@ function compareItems(
 
 	const keys1 = Object.keys(item1.json);
 	const keys2 = Object.keys(item2.json);
-	const intersectionKeys = intersection(keys1, keys2);
+	const allUniqueKeys = union(keys1, keys2);
 
-	const same = intersectionKeys.reduce((acc, key) => {
-		if (isEqual(item1.json[key], item2.json[key])) {
+	let keysToCompare;
+	if (options.fuzzyCompare && (options.nodeVersion as number) >= 2.1) {
+		keysToCompare = allUniqueKeys;
+	} else {
+		keysToCompare = intersection(keys1, keys2);
+	}
+
+	const same = keysToCompare.reduce((acc, key) => {
+		if (isEntriesEqual(item1.json[key], item2.json[key])) {
 			acc[key] = item1.json[key];
 		}
 		return acc;
 	}, {} as IDataObject);
 
 	const sameKeys = Object.keys(same);
-	const allUniqueKeys = union(keys1, keys2);
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
 	const skipped: IDataObject = {};
 
-	differentKeys.forEach((key) => {
-		switch (resolve) {
+	differentKeys.forEach((key, i) => {
+		const processNullishValue = processNullishValueFunction(options.nodeVersion as number);
+
+		switch (options.resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] || null;
+				different[key] = processNullishValue(item1.json[key]);
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] || null;
+				different[key] = processNullishValue(item2.json[key]);
 				break;
 			default:
-				const input1 = item1.json[key] || null;
-				const input2 = item2.json[key] || null;
-				if (skipFields.includes(key)) {
-					skipped[key] = { input1, input2 };
+				let input1 = processNullishValue(item1.json[key]);
+				let input2 = processNullishValue(item2.json[key]);
+
+				let [firstInputName, secondInputName] = ['input1', 'input2'];
+				if ((options.nodeVersion as number) >= 2) {
+					[firstInputName, secondInputName] = ['inputA', 'inputB'];
+				}
+
+				if (
+					(options.nodeVersion as number) >= 2.1 &&
+					!options.disableDotNotation &&
+					!skipFields.some((field) => field === key)
+				) {
+					const skippedFieldsWithDotNotation = skipFields.filter(
+						(field) => field.startsWith(key) && field.includes('.'),
+					);
+
+					input1 = cloneDeep(input1);
+					input2 = cloneDeep(input2);
+
+					if (
+						skippedFieldsWithDotNotation.length &&
+						(typeof input1 !== 'object' || typeof input2 !== 'object')
+					) {
+						throw new Error(
+							`The field \'${key}\' in item ${i} is not an object. It is not possible to use dot notation.`,
+						);
+					}
+
+					if (skipped[key] === undefined && skippedFieldsWithDotNotation.length) {
+						skipped[key] = { [firstInputName]: {}, [secondInputName]: {} };
+					}
+
+					for (const skippedField of skippedFieldsWithDotNotation) {
+						const nestedField = skippedField.replace(`${key}.`, '');
+						set(
+							(skipped[key] as IDataObject)[firstInputName] as IDataObject,
+							nestedField,
+							get(input1, nestedField),
+						);
+						set(
+							(skipped[key] as IDataObject)[secondInputName] as IDataObject,
+							nestedField,
+							get(input2, nestedField),
+						);
+
+						unset(input1, nestedField);
+						unset(input2, nestedField);
+					}
+
+					different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
 				} else {
-					different[key] = { input1, input2 };
+					if (skipFields.includes(key)) {
+						skipped[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+					} else {
+						different[key] = { [firstInputName]: input1, [secondInputName]: input2 };
+					}
 				}
 		}
 	});
 
 	return {
 		json: { keys, same, different, ...(!isEmpty(skipped) && { skipped }) },
+		pairedItem: [
+			...preparePairedItemDataArray(item1.pairedItem),
+			...preparePairedItemDataArray(item2.pairedItem),
+		],
 	} as INodeExecutionData;
 }
 
@@ -98,6 +181,7 @@ function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	return data.reduce((acc, entry2, i) => {
 		if (entry2 === undefined) return acc;
@@ -112,7 +196,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -128,6 +212,7 @@ function findFirstMatch(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	const index = data.findIndex((entry2) => {
 		if (entry2 === undefined) return false;
@@ -142,7 +227,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}
@@ -163,9 +248,22 @@ export function findMatches(
 	const data1 = [...input1];
 	const data2 = [...input2];
 
+	const isEntriesEqual = fuzzyCompare(
+		options.fuzzyCompare as boolean,
+		options.nodeVersion as number,
+	);
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
 	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
+
+	if (disableDotNotation && skipFields.some((field) => field.includes('.'))) {
+		const fieldToSkip = skipFields.find((field) => field.includes('.'));
+		throw new Error(
+			`Dot notation is disabled, but field to skip comparing '${
+				fieldToSkip as string
+			}' contains dot`,
+		);
+	}
 
 	const filteredData = {
 		matched: [] as EntryMatches[],
@@ -197,8 +295,8 @@ export function findMatches(
 
 		const foundedMatches =
 			multipleMatches === 'all'
-				? findAllMatches(data2, lookup, disableDotNotation)
-				: findFirstMatch(data2, lookup, disableDotNotation);
+				? findAllMatches(data2, lookup, disableDotNotation, isEntriesEqual)
+				: findFirstMatch(data2, lookup, disableDotNotation, isEntriesEqual);
 
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
@@ -227,11 +325,40 @@ export function findMatches(
 			let entryFromInput2 = match.json;
 
 			if (skipFields.length) {
-				entryFromInput1 = omit(entryFromInput1, skipFields);
-				entryFromInput2 = omit(entryFromInput2, skipFields);
+				if (disableDotNotation || !skipFields.some((field) => field.includes('.'))) {
+					entryFromInput1 = omit(entryFromInput1, skipFields);
+					entryFromInput2 = omit(entryFromInput2, skipFields);
+				} else {
+					entryFromInput1 = cloneDeep(entryFromInput1);
+					entryFromInput2 = cloneDeep(entryFromInput2);
+
+					skipFields.forEach((field) => {
+						unset(entryFromInput1, field);
+						unset(entryFromInput2, field);
+					});
+				}
 			}
-			if (isEqual(entryFromInput1, entryFromInput2)) {
-				if (!entryCopy) entryCopy = match;
+
+			let isItemsEqual = true;
+			if (options.fuzzyCompare) {
+				for (const key of Object.keys(entryFromInput1)) {
+					if (!isEntriesEqual(entryFromInput1[key], entryFromInput2[key])) {
+						isItemsEqual = false;
+						break;
+					}
+				}
+			} else {
+				isItemsEqual = isEntriesEqual(entryFromInput1, entryFromInput2);
+			}
+
+			if (isItemsEqual) {
+				if (!entryCopy) {
+					if (options.fuzzyCompare && options.resolve === 'preferInput2') {
+						entryCopy = match;
+					} else {
+						entryCopy = entryMatches.entry;
+					}
+				}
 			} else {
 				switch (options.resolve) {
 					case 'preferInput1':
@@ -257,8 +384,9 @@ export function findMatches(
 								entryMatches.entry,
 								match,
 								fieldsToMatch,
-								options.resolve as string,
+								options,
 								skipFields,
+								isEntriesEqual,
 							),
 						);
 				}
@@ -290,7 +418,15 @@ export function checkMatchFieldsInput(data: IDataObject[]) {
 	return data as PairToMatch[];
 }
 
-export function checkInput(
+export function checkInput(input: INodeExecutionData[]) {
+	if (!input) return [];
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	return input;
+}
+
+export function checkInputAndThrowError(
 	input: INodeExecutionData[],
 	fields: string[],
 	disableDotNotation: boolean,

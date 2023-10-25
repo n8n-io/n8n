@@ -1,10 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	ILoadOptionsFunctions,
+	JsonObject,
+} from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { OptionsWithUri } from 'request';
 
-import { OptionsWithUri } from 'request';
-
-import { MispCredentials } from './types';
+import type { MispCredentials } from './types';
 
 import { URL } from 'url';
 
@@ -15,14 +19,11 @@ export async function mispApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl, apiKey, allowUnauthorizedCerts } = (await this.getCredentials(
+	const { baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'mispApi',
 	)) as MispCredentials;
 
 	const options: OptionsWithUri = {
-		headers: {
-			Authorization: apiKey,
-		},
 		method,
 		body,
 		qs,
@@ -40,7 +41,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'mispApi', options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {
@@ -50,7 +51,7 @@ export async function mispApiRequest(
 		const errors = error?.error?.errors;
 
 		if (errors) {
-			const key = Object.keys(errors)[0];
+			const key = Object.keys(errors as IDataObject)[0];
 
 			if (key !== undefined) {
 				let message = errors[key].join();
@@ -63,7 +64,7 @@ export async function mispApiRequest(
 			}
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

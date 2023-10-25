@@ -1,43 +1,84 @@
 <template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:formLoading="loading"
-		data-test-id="signin-form"
-		@submit="onSubmit"
-	/>
+	<div>
+		<AuthView
+			v-if="!showMfaView"
+			:form="FORM_CONFIG"
+			:formLoading="loading"
+			:with-sso="true"
+			data-test-id="signin-form"
+			@submit="onEmailPasswordSubmitted"
+		/>
+		<MfaView
+			v-if="showMfaView"
+			@submit="onMFASubmitted"
+			@onBackClick="onBackClick"
+			@onFormChanged="onFormChanged"
+			:reportError="reportError"
+		/>
+	</div>
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/mixins/showMessage';
-
-import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import MfaView from './MfaView.vue';
+import { useToast } from '@/composables';
+import type { IFormBoxConfig } from '@/Interface';
+import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useCloudPlanStore, useUIStore } from '@/stores';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { FORM } from './MfaView.vue';
 
-export default mixins(
-	showMessage,
-).extend({
+export default defineComponent({
 	name: 'SigninView',
+	mixins: [genericHelpers],
 	components: {
 		AuthView,
+		MfaView,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	data() {
-		const FORM_CONFIG: IFormBoxConfig = {
+		return {
+			FORM_CONFIG: {} as IFormBoxConfig,
+			loading: false,
+			showMfaView: false,
+			email: '',
+			password: '',
+			reportError: false,
+		};
+	},
+	computed: {
+		...mapStores(useUsersStore, useSettingsStore, useUIStore, useCloudPlanStore),
+		userHasMfaEnabled() {
+			return !!this.usersStore.currentUser?.mfaEnabled;
+		},
+	},
+	mounted() {
+		let emailLabel = this.$locale.baseText('auth.email');
+		const ldapLoginLabel = this.settingsStore.ldapLoginLabel;
+		const isLdapLoginEnabled = this.settingsStore.isLdapLoginEnabled;
+		if (isLdapLoginEnabled && ldapLoginLabel) {
+			emailLabel = ldapLoginLabel;
+		}
+		this.FORM_CONFIG = {
 			title: this.$locale.baseText('auth.signin'),
 			buttonText: this.$locale.baseText('auth.signin'),
 			redirectText: this.$locale.baseText('forgotPassword'),
-			redirectLink: '/forgot-password',
 			inputs: [
 				{
 					name: 'email',
 					properties: {
-						label: this.$locale.baseText('auth.email'),
+						label: emailLabel,
 						type: 'email',
 						required: true,
-						validationRules: [{ name: 'VALID_EMAIL' }],
+						...(!isLdapLoginEnabled && { validationRules: [{ name: 'VALID_EMAIL' }] }),
 						showRequiredAsterisk: false,
 						validateOnBlur: false,
 						autocomplete: 'email',
@@ -59,35 +100,97 @@ export default mixins(
 			],
 		};
 
-		return {
-			FORM_CONFIG,
-			loading: false,
-		};
-	},
-	computed: {
-		...mapStores(useUsersStore),
+		if (!this.settingsStore.isDesktopDeployment) {
+			this.FORM_CONFIG.redirectLink = '/forgot-password';
+		}
 	},
 	methods: {
-		async onSubmit(values: {[key: string]: string}) {
+		async onMFASubmitted(form: { token?: string; recoveryCode?: string }) {
+			await this.login({
+				email: this.email,
+				password: this.password,
+				token: form.token,
+				recoveryCode: form.recoveryCode,
+			});
+		},
+		async onEmailPasswordSubmitted(form: { email: string; password: string }) {
+			await this.login(form);
+		},
+		async login(form: { email: string; password: string; token?: string; recoveryCode?: string }) {
 			try {
 				this.loading = true;
-				await this.usersStore.loginWithCreds(values as {email: string, password: string});
-				this.clearAllStickyNotifications();
+				await this.usersStore.loginWithCreds({
+					email: form.email,
+					password: form.password,
+					mfaToken: form.token,
+					mfaRecoveryCode: form.recoveryCode,
+				});
 				this.loading = false;
+				await this.cloudPlanStore.checkForCloudPlanData();
+				await this.settingsStore.getSettings();
+				this.clearAllStickyNotifications();
+				this.checkRecoveryCodesLeft();
 
-				if (typeof this.$route.query.redirect === 'string') {
-					const redirect = decodeURIComponent(this.$route.query.redirect);
-					if (redirect.startsWith('/')) { // protect against phishing
-						this.$router.push(redirect);
+				this.$telemetry.track('User attempted to login', {
+					result: this.showMfaView ? 'mfa_success' : 'success',
+				});
 
-						return;
-					}
+				if (this.isRedirectSafe()) {
+					const redirect = this.getRedirectQueryParameter();
+					void this.$router.push(redirect);
+					return;
 				}
 
-				this.$router.push({ name: VIEWS.HOMEPAGE });
+				await this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('auth.signin.error'));
+				if (error.errorCode === MFA_AUTHENTICATION_REQUIRED_ERROR_CODE) {
+					this.showMfaView = true;
+					this.cacheCredentials(form);
+					return;
+				}
+
+				this.$telemetry.track('User attempted to login', {
+					result: this.showMfaView ? 'mfa_token_rejected' : 'credentials_error',
+				});
+
+				if (!this.showMfaView) {
+					this.showError(error, this.$locale.baseText('auth.signin.error'));
+					this.loading = false;
+					return;
+				}
+
+				this.reportError = true;
+			}
+		},
+		onBackClick(fromForm: string) {
+			this.reportError = false;
+			if (fromForm === FORM.MFA_TOKEN) {
+				this.showMfaView = false;
 				this.loading = false;
+			}
+		},
+		onFormChanged(toForm: string) {
+			if (toForm === FORM.MFA_RECOVERY_CODE) {
+				this.reportError = false;
+			}
+		},
+		cacheCredentials(form: { email: string; password: string }) {
+			this.email = form.email;
+			this.password = form.password;
+		},
+		checkRecoveryCodesLeft() {
+			if (this.usersStore.currentUser) {
+				const { hasRecoveryCodesLeft, mfaEnabled } = this.usersStore.currentUser;
+
+				if (mfaEnabled && !hasRecoveryCodesLeft) {
+					this.showToast({
+						title: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.title'),
+						message: this.$locale.baseText('settings.mfa.toast.noRecoveryCodeLeft.message'),
+						type: 'info',
+						duration: 0,
+						dangerouslyUseHTMLString: true,
+					});
+				}
 			}
 		},
 	},

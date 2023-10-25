@@ -1,13 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateCredentialUsageTable1665484192212 implements MigrationInterface {
-	name = 'CreateCredentialUsageTable1665484192212';
-
-	async up(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class CreateCredentialUsageTable1665484192212 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}credential_usage (` +
 				'"workflowId" int NOT NULL,' +
@@ -20,13 +14,9 @@ export class CreateCredentialUsageTable1665484192212 implements MigrationInterfa
 				`CONSTRAINT "FK_${tablePrefix}7ce200a20ade7ae89fa7901da896993f" FOREIGN KEY ("credentialId") REFERENCES ${tablePrefix}credentials_entity ("id") ON DELETE CASCADE ON UPDATE CASCADE ` +
 				');',
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner) {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE "${tablePrefix}credential_usage"`);
 	}
 }

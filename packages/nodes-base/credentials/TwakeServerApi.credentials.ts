@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TwakeServerApi implements ICredentialType {
 	name = 'twakeServerApi';
@@ -24,6 +24,7 @@ export class TwakeServerApi implements ICredentialType {
 			displayName: 'Private API Key',
 			name: 'privateApiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

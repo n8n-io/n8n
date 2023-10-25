@@ -1,14 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
@@ -75,7 +74,27 @@ export class ApiTemplateIo implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: ['image', 'pdf'],
+						resource: ['image'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create a pdf',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['pdf'],
 					},
 				},
 			},
@@ -188,7 +207,8 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]`,
+				placeholder:
+					'[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]',
 			},
 			{
 				displayName: 'Properties (JSON)',
@@ -202,7 +222,7 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `{ "name": "text_1" }`,
+				placeholder: '{ "name": "text_1" }',
 			},
 			{
 				displayName: 'Overrides',
@@ -363,7 +383,7 @@ export class ApiTemplateIo implements INodeType {
 					try {
 						responseData = await apiTemplateIoApiRequest.call(this, 'GET', '/account-information');
 
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
@@ -436,11 +456,11 @@ export class ApiTemplateIo implements INodeType {
 
 						if (download) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
-							const data = await downloadImage.call(this, responseData.download_url);
+							const data = await downloadImage.call(this, responseData.download_url as string);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
-								data,
-								options.fileName || fileName,
+								data as Buffer,
+								(options.fileName as string) || (fileName as string),
 							);
 							responseData = {
 								json: responseData,
@@ -449,7 +469,7 @@ export class ApiTemplateIo implements INodeType {
 								},
 							};
 						}
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
@@ -460,7 +480,7 @@ export class ApiTemplateIo implements INodeType {
 				}
 
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		} else if (resource === 'pdf') {
@@ -516,15 +536,21 @@ export class ApiTemplateIo implements INodeType {
 							}
 						}
 
-						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, data);
+						responseData = await apiTemplateIoApiRequest.call(
+							this,
+							'POST',
+							'/create',
+							qs,
+							data as IDataObject,
+						);
 
 						if (download) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
-							const imageData = await downloadImage.call(this, responseData.download_url);
+							const imageData = await downloadImage.call(this, responseData.download_url as string);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
-								imageData,
-								options.fileName || fileName,
+								imageData as Buffer,
+								(options.fileName || fileName) as string,
 							);
 							responseData = {
 								json: responseData,
@@ -533,7 +559,7 @@ export class ApiTemplateIo implements INodeType {
 								},
 							};
 						}
-						returnData.push(responseData);
+						returnData.push(responseData as IDataObject);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ json: { error: error.message } });
@@ -543,7 +569,7 @@ export class ApiTemplateIo implements INodeType {
 					}
 				}
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		}

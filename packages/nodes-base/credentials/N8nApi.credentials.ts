@@ -1,4 +1,4 @@
-import {
+import type {
 	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -10,7 +10,7 @@ export class N8nApi implements ICredentialType {
 
 	displayName = 'n8n API';
 
-	documentationUrl = 'n8nApi';
+	documentationUrl = 'https://docs.n8n.io/api/authentication/';
 
 	properties: INodeProperties[] = [
 		{

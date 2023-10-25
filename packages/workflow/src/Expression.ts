@@ -1,7 +1,8 @@
-import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
+import * as tmpl from '@n8n_io/riot-tmpl';
 
-import {
+import type {
+	IDataObject,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -14,20 +15,47 @@ import {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError } from './ExpressionError';
+import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
-// Set it to use double curly brackets instead of single ones
-tmpl.brackets.set('{{ }}');
+import { extend, extendOptional } from './Extensions';
+import { extendedFunctions } from './Extensions/ExtendedFunctions';
+import { extendSyntax } from './Extensions/ExpressionExtension';
+import { evaluateExpression, setErrorHandler } from './ExpressionEvaluatorProxy';
+
+const IS_FRONTEND_IN_DEV_MODE =
+	typeof process === 'object' &&
+	Object.keys(process).length === 1 &&
+	'env' in process &&
+	Object.keys(process.env).length === 0;
+
+const IS_FRONTEND = typeof process === 'undefined' || IS_FRONTEND_IN_DEV_MODE;
+
+export const isSyntaxError = (error: unknown): error is SyntaxError =>
+	error instanceof SyntaxError || (error instanceof Error && error.name === 'SyntaxError');
+
+export const isExpressionError = (error: unknown): error is ExpressionError =>
+	error instanceof ExpressionError || error instanceof ExpressionExtensionError;
+
+export const isTypeError = (error: unknown): error is TypeError =>
+	error instanceof TypeError || (error instanceof Error && error.name === 'TypeError');
 
 // Make sure that error get forwarded
-tmpl.tmpl.errorHandler = (error: Error) => {
-	if (error instanceof ExpressionError) {
-		if (error.context.failExecution) {
-			throw error;
-		}
-	}
+setErrorHandler((error: Error) => {
+	if (isExpressionError(error)) throw error;
+});
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
+
+const fnConstructors = {
+	sync: Function.prototype.constructor,
+
+	async: AsyncFunction.prototype.constructor,
+	mock: () => {
+		throw new ExpressionError('Arbitrary code execution detected');
+	},
 };
 
 export class Expression {
@@ -37,6 +65,10 @@ export class Expression {
 		this.workflow = workflow;
 	}
 
+	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
+		return tmpl.tmpl(expression, data);
+	}
+
 	/**
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
@@ -44,7 +76,26 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
-		return `[${typeName}: ${JSON.stringify(value)}]`;
+
+		if (value instanceof DateTime && value.invalidReason !== null) {
+			throw new Error('invalid DateTime');
+		}
+
+		let result = '';
+		if (value instanceof Date) {
+			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
+			result = DateTime.fromJSDate(value, {
+				zone: this.workflow.settings?.timezone ?? 'default',
+			}).toISO();
+		} else {
+			result = JSON.stringify(value);
+		}
+
+		result = result
+			.replace(/,"/g, ', "') // spacing for
+			.replace(/":/g, '": '); // readability
+
+		return `[${typeName}: ${result}]`;
 	}
 
 	/**
@@ -54,6 +105,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
 		siblingParameters: INodeParameters,
@@ -68,6 +120,7 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
 		// Check if it is an expression
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
@@ -78,7 +131,7 @@ export class Expression {
 		// Is an expression
 
 		// Remove the equal sign
-		// eslint-disable-next-line no-param-reassign
+
 		parameterValue = parameterValue.substr(1);
 
 		// Generate a data proxy which allows to query workflow data
@@ -96,6 +149,7 @@ export class Expression {
 			executeData,
 			-1,
 			selfData,
+			contextNodeName,
 		);
 		const data = dataProxy.getDataProxy();
 
@@ -242,6 +296,12 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		// expression extensions
+		data.extend = extend;
+		data.extendOptional = extendOptional;
+
+		Object.assign(data, extendedFunctions);
+
 		const constructorValidation = new RegExp(/\.\s*constructor/gm);
 		if (parameterValue.match(constructorValidation)) {
 			throw new ExpressionError('Expression contains invalid constructor function call', {
@@ -252,10 +312,15 @@ export class Expression {
 		}
 
 		// Execute the expression
-		const returnValue = this.renderExpression(parameterValue, data);
+		const extendedExpression = extendSyntax(parameterValue);
+		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
-			throw new Error('Expression resolved to a function. Please add "()"');
+
+			if (returnValue.name === 'DateTime')
+				throw new Error('this is a DateTime, please access its methods');
+
+			throw new Error('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -267,21 +332,32 @@ export class Expression {
 		return returnValue;
 	}
 
-	private renderExpression(expression: string, data: IWorkflowDataProxyData): tmpl.ReturnValue {
+	private renderExpression(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	): tmpl.ReturnValue | undefined {
 		try {
-			return tmpl.tmpl(expression, data);
+			[Function, AsyncFunction].forEach(({ prototype }) =>
+				Object.defineProperty(prototype, 'constructor', { value: fnConstructors.mock }),
+			);
+			return evaluateExpression(expression, data);
 		} catch (error) {
-			if (error instanceof ExpressionError) {
-				// Ignore all errors except if they are ExpressionErrors and they are supposed
-				// to fail the execution
-				if (error.context.failExecution) {
-					throw error;
-				}
-			}
+			if (isExpressionError(error)) throw error;
 
-			if (error instanceof Error && error.name === 'SyntaxError') {
-				throw new Error('invalid syntax');
+			if (isSyntaxError(error)) throw new Error('invalid syntax');
+
+			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
+				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
+
+				if (!match?.groups?.msg) return null;
+
+				throw new Error(match.groups.msg);
 			}
+		} finally {
+			Object.defineProperty(Function.prototype, 'constructor', { value: fnConstructors.sync });
+			Object.defineProperty(AsyncFunction.prototype, 'constructor', {
+				value: fnConstructors.async,
+			});
 		}
 
 		return null;
@@ -299,8 +375,8 @@ export class Expression {
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue?: boolean | number | string,
-	): boolean | number | string | undefined {
+		defaultValue?: boolean | number | string | unknown[],
+	): boolean | number | string | undefined | unknown[] {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -403,6 +479,7 @@ export class Expression {
 	 * @param {(IRunExecutionData | null)} runExecutionData
 	 * @param {boolean} [returnObjectAsString=false]
 	 */
+	// TODO: Clean that up at some point and move all the options into an options object
 	getParameterValue(
 		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
@@ -416,6 +493,7 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
+		contextNodeName?: string,
 	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
 		const isComplexParameter = (value: NodeParameterValueType) => {
@@ -441,8 +519,10 @@ export class Expression {
 					executeData,
 					returnObjectAsString,
 					selfData,
+					contextNodeName,
 				);
 			}
+
 			return this.resolveSimpleParameterValue(
 				value as NodeParameterValue,
 				siblingParameters,
@@ -457,6 +537,7 @@ export class Expression {
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		};
 
@@ -476,13 +557,16 @@ export class Expression {
 				executeData,
 				returnObjectAsString,
 				selfData,
+				contextNodeName,
 			);
 		}
 
 		// The parameter value is complex so resolve depending on type
 		if (Array.isArray(parameterValue)) {
 			// Data is an array
-			const returnData = parameterValue.map((item) => resolveParameterValue(item, {}));
+			const returnData = parameterValue.map((item) =>
+				resolveParameterValue(item as NodeParameterValueType, {}),
+			);
 			return returnData as NodeParameterValue[] | INodeParameters[];
 		}
 
@@ -496,7 +580,7 @@ export class Expression {
 
 		// Data is an object
 		const returnData: INodeParameters = {};
-		// eslint-disable-next-line no-restricted-syntax
+
 		for (const [key, value] of Object.entries(parameterValue)) {
 			returnData[key] = resolveParameterValue(
 				value as NodeParameterValueType,

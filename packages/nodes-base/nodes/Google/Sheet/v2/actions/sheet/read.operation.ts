@@ -1,19 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { GoogleSheet } from '../../helpers/GoogleSheet';
+import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import {
 	getRangeString,
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
-import {
+import type {
 	ILookupValues,
 	RangeDetectionOptions,
 	SheetProperties,
 	SheetRangeData,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
+import { generatePairedItemData } from '../../../../../../utils/utilities';
 
 export const description: SheetProperties = [
 	{
@@ -80,8 +80,8 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...dataLocationOnSheet,
-			...outputFormatting,
+			dataLocationOnSheet,
+			outputFormatting,
 			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',
@@ -140,7 +140,7 @@ export async function execute(
 
 	const { data, headerRow, firstDataRow } = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
-	let returnData = [];
+	let responseData = [];
 
 	const lookupValues = this.getNodeParameter('filtersUI.values', 0, []) as ILookupValues[];
 
@@ -155,7 +155,7 @@ export async function execute(
 			}
 		}
 
-		returnData = await sheet.lookupValues(
+		responseData = await sheet.lookupValues(
 			data as string[][],
 			headerRow,
 			firstDataRow,
@@ -163,8 +163,18 @@ export async function execute(
 			returnAllMatches,
 		);
 	} else {
-		returnData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
+		responseData = sheet.structureArrayDataByColumn(data as string[][], headerRow, firstDataRow);
 	}
 
-	return this.helpers.returnJsonArray(returnData);
+	const items = this.getInputData();
+	const pairedItem = generatePairedItemData(items.length);
+
+	const returnData: INodeExecutionData[] = responseData.map((item, index) => {
+		return {
+			json: item,
+			pairedItem,
+		};
+	});
+
+	return returnData;
 }

@@ -1,23 +1,52 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import {
-	BINARY_ENCODING,
+import type {
+	JsonObject,
+	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
-} from 'n8n-core';
+} from 'n8n-workflow';
+import { BINARY_ENCODING, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+function getEnvironment(env: string) {
+	return {
+		sanbox: 'https://api-m.sandbox.paypal.com',
+		live: 'https://api-m.paypal.com',
+	}[env];
+}
+
+async function getAccessToken(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
+): Promise<any> {
+	const credentials = await this.getCredentials('payPalApi');
+	const env = getEnvironment(credentials.env as string);
+	const data = Buffer.from(`${credentials.clientId}:${credentials.secret}`).toString(
+		BINARY_ENCODING,
+	);
+	const headerWithAuthentication = Object.assign(
+		{},
+		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+	);
+	const options: OptionsWithUri = {
+		headers: headerWithAuthentication,
+		method: 'POST',
+		form: {
+			grant_type: 'client_credentials',
+		},
+		uri: `${env}/v1/oauth2/token`,
+		json: true,
+	};
+	try {
+		return await this.helpers.request(options);
+	} catch (error) {
+		throw new NodeOperationError(this.getNode(), error as Error);
+	}
+}
 
 export async function payPalApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
 	method: string,
 
@@ -41,51 +70,19 @@ export async function payPalApiRequest(
 		json: true,
 	};
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-function getEnvironment(env: string): string {
-	// @ts-ignore
-	return {
-		sanbox: 'https://api-m.sandbox.paypal.com',
-		live: 'https://api-m.paypal.com',
-	}[env];
-}
-
-async function getAccessToken(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
-): Promise<any> {
-	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials.env as string);
-	const data = Buffer.from(`${credentials.clientId}:${credentials.secret}`).toString(
-		BINARY_ENCODING,
-	);
-	const headerWithAuthentication = Object.assign(
-		{},
-		{ Authorization: `Basic ${data}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-	);
-	const options: OptionsWithUri = {
-		headers: headerWithAuthentication,
-		method: 'POST',
-		form: {
-			grant_type: 'client_credentials',
-		},
-		uri: `${env}/v1/oauth2/token`,
-		json: true,
-	};
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new NodeOperationError(this.getNode(), error);
+function getNext(links: IDataObject[]): string | undefined {
+	for (const link of links) {
+		if (link.rel === 'next') {
+			return link.href as string;
+		}
 	}
+	return undefined;
 }
 
 /**
@@ -93,7 +90,7 @@ async function getAccessToken(
  * and return all results
  */
 export async function payPalApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
 	endpoint: string,
 	method: string,
@@ -110,20 +107,11 @@ export async function payPalApiRequestAllItems(
 
 	do {
 		responseData = await payPalApiRequest.call(this, endpoint, method, body, query, uri);
-		uri = getNext(responseData.links);
-		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (getNext(responseData.links) !== undefined);
+		uri = getNext(responseData.links as IDataObject[]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
+	} while (getNext(responseData.links as IDataObject[]) !== undefined);
 
 	return returnData;
-}
-
-function getNext(links: IDataObject[]): string | undefined {
-	for (const link of links) {
-		if (link.rel === 'next') {
-			return link.href as string;
-		}
-	}
-	return undefined;
 }
 
 export function validateJSON(json: string | undefined): any {

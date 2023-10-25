@@ -1,4 +1,4 @@
-import { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
+import type { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
 import { apiRequestAllItems } from './GenericFunctions';
 
 type DataItemsResponse<T> = {
@@ -77,14 +77,14 @@ export const workflowIdLocator: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: '.*/workflow/([0-9]{1,})',
+						regex: '.*/workflow/([0-9a-zA-Z]{1,})',
 						errorMessage: 'Not a valid Workflow URL',
 					},
 				},
 			],
 			extractValue: {
 				type: 'regex',
-				regex: '.*/workflow/([0-9]{1,})',
+				regex: '.*/workflow/([0-9a-zA-Z]{1,})',
 			},
 		},
 		{
@@ -95,7 +95,7 @@ export const workflowIdLocator: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: '[0-9]{1,}',
+						regex: '[0-9a-zA-Z]{1,}',
 						errorMessage: 'Not a valid Workflow ID',
 					},
 				},

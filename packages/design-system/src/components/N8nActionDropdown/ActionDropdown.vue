@@ -6,7 +6,7 @@
 			@command="onSelect"
 			ref="elementDropdown"
 		>
-			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
+			<div :class="$style.activator" @click.stop.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon" />
 			</div>
 			<template #dropdown>
@@ -18,13 +18,7 @@
 						:disabled="item.disabled"
 						:divided="item.divided"
 					>
-						<div
-							:class="{
-								[$style.itemContainer]: true,
-								[$style.hasCustomStyling]: item.customClass !== undefined,
-								[item.customClass]: item.customClass !== undefined,
-							}"
-						>
+						<div :class="getItemClasses(item)" :data-test-id="`${testIdPrefix}-item-${item.id}`">
 							<span v-if="item.icon" :class="$style.icon">
 								<n8n-icon :icon="item.icon" :size="iconSize" />
 							</span>
@@ -40,15 +34,12 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
-	Dropdown as ElDropdown,
-	DropdownMenu as ElDropdownMenu,
-	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import { ElDropdown, ElDropdownMenu, ElDropdownItem } from 'element-plus';
 import N8nIcon from '../N8nIcon';
 
-interface IActionDropdownItem {
+export interface IActionDropdownItem {
 	id: string;
 	label: string;
 	icon?: string;
@@ -63,13 +54,17 @@ interface IActionDropdownItem {
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-dropdown',
 	components: {
 		ElDropdown,
 		ElDropdownMenu,
 		ElDropdownItem,
 		N8nIcon,
+	},
+	data() {
+		const testIdPrefix = this.$attrs['data-test-id'];
+		return { testIdPrefix };
 	},
 	props: {
 		items: {
@@ -98,16 +93,22 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
+			return {
+				[this.$style.itemContainer]: true,
+				[this.$style.hasCustomStyling]: item.customClass !== undefined,
+				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
+			};
+		},
 		onSelect(action: string): void {
 			this.$emit('select', action);
 		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as
-				| (Vue & { hide: () => void })
-				| undefined;
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<ElDropdown>;
+
 			// Hide dropdown when clicking outside of current document
-			if (elementDropdown && event.relatedTarget === null) {
-				elementDropdown.hide();
+			if (elementDropdown?.handleClose && event.relatedTarget === null) {
+				elementDropdown.handleClose();
 			}
 		},
 	},
@@ -115,9 +116,17 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
+.userActionsMenu {
+	min-width: 160px;
+}
+
 .activator {
 	cursor: pointer;
-	padding: var(--spacing-2xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
 	margin: 0;
 	border-radius: var(--border-radius-base);
 	line-height: normal !important;
@@ -128,7 +137,7 @@ export default Vue.extend({
 
 	&:hover {
 		background-color: var(--color-background-base);
-		color: initial !important;
+		color: var(--color-primary);
 	}
 }
 

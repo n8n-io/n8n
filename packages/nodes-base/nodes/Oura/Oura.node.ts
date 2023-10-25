@@ -1,6 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IExecuteFunctions,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { ouraApiRequest } from './GenericFunctions';
 
@@ -143,8 +147,8 @@ export class Oura implements INodeType {
 			}
 
 			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+				? returnData.push(...(responseData as IDataObject[]))
+				: returnData.push(responseData as IDataObject);
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

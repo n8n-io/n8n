@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Msg91Api implements ICredentialType {
 	name = 'msg91Api';
@@ -13,6 +13,7 @@ export class Msg91Api implements ICredentialType {
 			displayName: 'Authentication Key',
 			name: 'authkey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

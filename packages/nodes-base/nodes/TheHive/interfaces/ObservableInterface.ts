@@ -1,10 +1,10 @@
-import { TLP } from './AlertInterface';
+import type { TLP } from './AlertInterface';
 
-export enum ObservableStatus {
+export const enum ObservableStatus {
 	OK = 'Ok',
 	DELETED = 'Deleted',
 }
-export enum ObservableDataType {
+export const enum ObservableDataType {
 	'domain' = 'domain',
 	'file' = 'file',
 	'filename' = 'filename',

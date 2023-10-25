@@ -1,14 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 
-import { pgInsert, pgQuery } from '../Postgres/Postgres.node.functions';
+import { pgInsert, pgQueryV2 } from '../Postgres/v1/genericFunctions';
 
 export class QuestDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -60,6 +60,12 @@ export class QuestDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
+				typeOptions: {
+					editor: 'sqlEditor',
+					rows: 5,
+					sqlDialect: 'PostgreSQL',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -221,14 +227,10 @@ export class QuestDb implements INodeType {
 			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = (additionalFields.mode || 'independently') as string;
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-				mode,
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				overrideMode: mode,
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -243,6 +245,7 @@ export class QuestDb implements INodeType {
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
 
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			const insertData = await db.any('SELECT ${columns:name} from ${table:name}', {
 				columns: returnFields
 					.split(',')
@@ -253,16 +256,16 @@ export class QuestDb implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {
-			pgp.end();
+			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
 
-		// Close the connection
-		pgp.end();
+		// shuts down the connection pool associated with the db object to allow the process to finish
+		await db.$pool.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

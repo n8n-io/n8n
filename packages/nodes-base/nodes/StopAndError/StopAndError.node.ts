@@ -1,12 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 const errorObjectPlaceholder = `{
 	"code": "404",

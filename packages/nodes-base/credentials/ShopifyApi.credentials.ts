@@ -1,5 +1,5 @@
-import { BINARY_ENCODING } from 'n8n-core';
-import {
+import { BINARY_ENCODING } from 'n8n-workflow';
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -43,6 +43,7 @@ export class ShopifyApi implements ICredentialType {
 			displayName: 'Shared Secret',
 			name: 'sharedSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -1,4 +1,4 @@
-import { ChannelProperties } from '../../Interfaces';
+import type { ChannelProperties } from '../../Interfaces';
 
 export const channelMembersDescription: ChannelProperties = [
 	{

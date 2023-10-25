@@ -1,4 +1,4 @@
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -18,12 +18,14 @@ export class WooCommerceApi implements ICredentialType {
 			displayName: 'Consumer Key',
 			name: 'consumerKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
 			displayName: 'Consumer Secret',
 			name: 'consumerSecret',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

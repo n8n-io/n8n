@@ -1,6 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -18,7 +17,7 @@ import {
 
 import moment from 'moment';
 
-enum Status {
+const enum Status {
 	subscribe = 'subscribe',
 	unsubscribed = 'unsubscribe',
 	cleaned = 'cleaned',
@@ -1580,7 +1579,7 @@ export class Mailchimp implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1596,7 +1595,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available merge fields to display them to user so that he can
+			// Get all the available merge fields to display them to user so that they can
 			// select them easily
 			async getMergeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1617,7 +1616,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the interest fields to display them to user so that he can
+			// Get all the interest fields to display them to user so that they can
 			// select them easily
 			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -2119,7 +2118,7 @@ export class Mailchimp implements INodeType {
 						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
-								`/campaigns`,
+								'/campaigns',
 								'GET',
 								'campaigns',
 								{},
@@ -2127,7 +2126,7 @@ export class Mailchimp implements INodeType {
 							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i);
-							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
+							responseData = await mailchimpApiRequest.call(this, '/campaigns', 'GET', {}, qs);
 							responseData = responseData.campaigns;
 						}
 					}
@@ -2186,7 +2185,7 @@ export class Mailchimp implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
@@ -2198,6 +2197,6 @@ export class Mailchimp implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

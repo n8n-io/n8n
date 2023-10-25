@@ -1,108 +1,144 @@
+<script setup lang="ts">
+import { defineAsyncComponent, reactive } from 'vue';
+import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
+import {
+	DEFAULT_STICKY_HEIGHT,
+	DEFAULT_STICKY_WIDTH,
+	NODE_CREATOR_OPEN_SOURCES,
+	STICKY_NODE_TYPE,
+} from '@/constants';
+import { useUIStore } from '@/stores/ui.store';
+import type { AddedNodesAndConnections, ToggleNodeCreatorOptions } from '@/Interface';
+import { useActions } from './NodeCreator/composables/useActions';
+
+type Props = {
+	nodeViewScale: number;
+	createNodeActive?: boolean;
+};
+
+// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
+const NodeCreator = defineAsyncComponent(
+	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+);
+
+const props = withDefaults(defineProps<Props>(), {
+	createNodeActive: false,
+});
+
+const emit = defineEmits<{
+	(event: 'addNodes', value: AddedNodesAndConnections): void;
+	(event: 'toggleNodeCreator', value: ToggleNodeCreatorOptions): void;
+}>();
+
+const state = reactive({
+	showStickyButton: false,
+});
+
+const uiStore = useUIStore();
+
+const { getAddedNodesAndConnections } = useActions();
+
+function onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
+	const buttonsWrapper = mouseinEvent.target as Element;
+
+	// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
+	state.showStickyButton = true;
+	const moveCallback = (mousemoveEvent: MouseEvent) => {
+		if (buttonsWrapper) {
+			const wrapperBounds = buttonsWrapper.getBoundingClientRect();
+			const wrapperH = wrapperBounds.height;
+			const wrapperW = wrapperBounds.width;
+			const wrapperLeftNear = wrapperBounds.left;
+			const wrapperLeftFar = wrapperLeftNear + wrapperW;
+			const wrapperTopNear = wrapperBounds.top;
+			const wrapperTopFar = wrapperTopNear + wrapperH;
+			const inside =
+				mousemoveEvent.pageX > wrapperLeftNear &&
+				mousemoveEvent.pageX < wrapperLeftFar &&
+				mousemoveEvent.pageY > wrapperTopNear &&
+				mousemoveEvent.pageY < wrapperTopFar;
+			if (!inside) {
+				state.showStickyButton = false;
+				document.removeEventListener('mousemove', moveCallback, false);
+			}
+		}
+	};
+	document.addEventListener('mousemove', moveCallback, false);
+}
+
+function openNodeCreator() {
+	emit('toggleNodeCreator', {
+		source: NODE_CREATOR_OPEN_SOURCES.ADD_NODE_BUTTON,
+		createNodeActive: true,
+	});
+}
+
+function addStickyNote() {
+	if (document.activeElement) {
+		(document.activeElement as HTMLElement).blur();
+	}
+
+	const offset: [number, number] = [...uiStore.nodeViewOffsetPosition];
+
+	const position = getMidCanvasPosition(props.nodeViewScale, offset);
+	position[0] -= DEFAULT_STICKY_WIDTH / 2;
+	position[1] -= DEFAULT_STICKY_HEIGHT / 2;
+
+	emit('addNodes', getAddedNodesAndConnections([{ type: STICKY_NODE_TYPE, position }]));
+}
+
+function closeNodeCreator() {
+	emit('toggleNodeCreator', { createNodeActive: false });
+}
+
+function nodeTypeSelected(nodeTypes: string[]) {
+	emit('addNodes', getAddedNodesAndConnections(nodeTypes.map((type) => ({ type }))));
+	closeNodeCreator();
+}
+</script>
+
 <template>
 	<div>
-		<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']" @mouseenter="onCreateMenuHoverIn">
+		<div
+			v-if="!createNodeActive"
+			:class="[$style.nodeButtonsWrapper, state.showStickyButton ? $style.noEvents : '']"
+			@mouseenter="onCreateMenuHoverIn"
+		>
 			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
-				<n8n-icon-button size="xlarge" icon="plus" type="tertiary" :class="$style.nodeCreatorPlus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
-				<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
+				<n8n-icon-button
+					size="xlarge"
+					icon="plus"
+					type="tertiary"
+					:class="$style.nodeCreatorPlus"
+					@click="openNodeCreator"
+					:title="$locale.baseText('nodeView.addNode')"
+				/>
+				<div
+					:class="[$style.addStickyButton, state.showStickyButton ? $style.visibleButton : '']"
+					@click="addStickyNote"
+					data-test-id="add-sticky-button"
+				>
+					<n8n-icon-button
+						type="tertiary"
+						:icon="['far', 'note-sticky']"
+						:title="$locale.baseText('nodeView.addSticky')"
+					/>
 				</div>
 			</div>
 		</div>
-		<node-creator
-			:active="createNodeActive"
-			@nodeTypeSelected="nodeTypeSelected"
-			@closeNodeCreator="closeNodeCreator"
-		/>
+		<Suspense>
+			<NodeCreator
+				:active="createNodeActive"
+				@nodeTypeSelected="nodeTypeSelected"
+				@closeNodeCreator="closeNodeCreator"
+			/>
+		</Suspense>
 	</div>
 </template>
 
-<script lang="ts">
-import Vue from "vue";
-import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
-import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
-import { mapStores } from "pinia";
-import { useUIStore } from "@/stores/ui";
-
-export default Vue.extend({
-	name: 'node-creation',
-	components: {
-		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
-	},
-	props: {
-		nodeViewScale: {
-			type: Number,
-			required: true,
-		},
-		createNodeActive: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			showStickyButton: false,
-		};
-	},
-	computed: {
-		...mapStores(useUIStore),
-	},
-	methods: {
-		onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
-			const buttonsWrapper = mouseinEvent.target as Element;
-
-			// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
-			this.showStickyButton = true;
-			const moveCallback = (mousemoveEvent: MouseEvent) => {
-				if (buttonsWrapper) {
-					const wrapperBounds = buttonsWrapper.getBoundingClientRect();
-					const wrapperH = wrapperBounds.height;
-					const wrapperW = wrapperBounds.width;
-					const wrapperLeftNear = wrapperBounds.left;
-					const wrapperLeftFar = wrapperLeftNear + wrapperW;
-					const wrapperTopNear = wrapperBounds.top;
-					const wrapperTopFar = wrapperTopNear + wrapperH;
-					const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
-					if (!inside) {
-						this.showStickyButton = false;
-						document.removeEventListener('mousemove', moveCallback, false);
-					}
-				}
-			};
-			document.addEventListener('mousemove', moveCallback, false);
-		},
-		openNodeCreator() {
-			this.$emit('toggleNodeCreator', { source: 'add_node_button', createNodeActive: true });
-		},
-		addStickyNote() {
-			if (document.activeElement) {
-				(document.activeElement as HTMLElement).blur();
-			}
-
-			const offset: [number, number] = [...(this.uiStore.nodeViewOffsetPosition)];
-
-			const position = getMidCanvasPosition(this.nodeViewScale, offset);
-			position[0] -= DEFAULT_STICKY_WIDTH / 2;
-			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
-
-			this.$emit('addNode', [{
-				nodeTypeName: STICKY_NODE_TYPE,
-				position,
-			}]);
-		},
-		closeNodeCreator() {
-			this.$emit('toggleNodeCreator', { createNodeActive: false });
-		},
-		nodeTypeSelected(nodeTypeNames: string[]) {
-			this.$emit('addNode', nodeTypeNames.map(nodeTypeName => ({ nodeTypeName })));
-			this.closeNodeCreator();
-		},
-	},
-});
-</script>
-
 <style lang="scss" module>
 .nodeButtonsWrapper {
-	position: fixed;
+	position: absolute;
 	width: 150px;
 	height: 200px;
 	top: 0;
@@ -113,7 +149,7 @@ export default Vue.extend({
 .addStickyButton {
 	margin-top: var(--spacing-2xs);
 	opacity: 0;
-	transition: .1s;
+	transition: 0.1s;
 	transition-timing-function: linear;
 }
 
@@ -127,9 +163,9 @@ export default Vue.extend({
 }
 
 .nodeCreatorButton {
-	position: fixed;
+	position: absolute;
 	text-align: center;
-	top: calc(#{$header-height} + var(--spacing-s));
+	top: var(--spacing-s);
 	right: var(--spacing-s);
 	pointer-events: all !important;
 

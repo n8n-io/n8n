@@ -1,25 +1,13 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateIndexStoppedAt1594825041918 implements MigrationInterface {
-	name = 'CreateIndexStoppedAt1594825041918';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class CreateIndexStoppedAt1594825041918 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c1" ON "${tablePrefix}execution_entity" ("stoppedAt") `,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}cefb067df2402f6aed0638a6c1"`);
 	}
 }

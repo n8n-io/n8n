@@ -1,10 +1,32 @@
+<script setup lang="ts">
+import { useI18n } from '@/composables';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import N8nTooltip from '../N8nTooltip';
+
+export interface Props {
+	active?: boolean;
+	isAi?: boolean;
+	isTrigger?: boolean;
+	description?: string;
+	title: string;
+	showActionArrow?: boolean;
+}
+
+defineProps<Props>();
+
+defineEmits<{
+	(event: 'tooltipClick', $e: MouseEvent): void;
+}>();
+
+const i18n = useI18n();
+</script>
+
 <template>
 	<div
 		:class="{
 			[$style.creatorNode]: true,
 			[$style.hasAction]: !showActionArrow,
 		}"
-		v-on="$listeners"
 		v-bind="$attrs"
 	>
 		<div :class="$style.nodeIcon">
@@ -13,7 +35,13 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
-				<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
+				<font-awesome-icon
+					icon="bolt"
+					v-if="isTrigger"
+					size="xs"
+					:title="i18n.baseText('nodeCreator.nodeItem.triggerIconTitle')"
+					:class="$style.triggerIcon"
+				/>
 				<n8n-tooltip
 					v-if="!!$slots.tooltip"
 					placement="top"
@@ -34,40 +62,20 @@
 	</div>
 </template>
 
-<script setup lang="ts">
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import TriggerIcon from './TriggerIcon.vue';
-import N8nTooltip from '../N8nTooltip';
-
-export interface Props {
-	active?: boolean;
-	isTrigger?: boolean;
-	description?: string;
-	title: string;
-	showActionArrow?: boolean;
-}
-
-defineProps<Props>();
-
-defineEmits<{
-	(event: 'tooltipClick', $e: MouseEvent): void;
-}>();
-</script>
-
 <style lang="scss" module>
 .creatorNode {
 	display: flex;
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
-	padding: 11px 8px 11px 0;
+	padding: var(--spacing-xs) var(--spacing-2xs) var(--spacing-xs) 0;
 
 	&.hasAction {
 		user-select: none;
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--color-text-light);
+	color: var(--action-arrow-color-hover, var(--color-text-light));
 }
 
 .panelIcon {
@@ -76,7 +84,7 @@ defineEmits<{
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: var(--spacing-2xs);
-	color: var(--color-text-lighter);
+	color: var(--action-arrow-color, var(--color-text-lighter));
 	cursor: pointer;
 	background: transparent;
 	border: none;
@@ -93,16 +101,11 @@ defineEmits<{
 }
 .nodeIcon {
 	display: flex;
-	margin-right: var(--spacing-s);
-
-	& > :global(*) {
-		min-width: 25px;
-		max-width: 25px;
-	}
+	margin-right: var(--node-icon-margin-right, var(--spacing-s));
 }
 .name {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: var(--node-creator-name-weight, var(--font-weight-bold));
+	font-size: var(--node-creator-name-size, var(--font-size-s));
 	line-height: 1.115rem;
 }
 .description {
@@ -110,11 +113,17 @@ defineEmits<{
 	font-size: var(--font-size-2xs);
 	line-height: 1rem;
 	font-weight: 400;
-	color: var(--node-creator-description-colo, var(--color-text-base));
+	color: var(--node-creator-description-colos, var(--color-text-base));
+}
+
+.aiIcon {
+	margin-left: var(--spacing-3xs);
+	color: var(--color-secondary);
 }
 
 .triggerIcon {
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing-3xs);
+	color: var(--color-primary);
 }
 </style>
 

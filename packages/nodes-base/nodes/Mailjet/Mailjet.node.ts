@@ -1,16 +1,16 @@
-import { IExecuteFunctions } from 'n8n-core';
-
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { IMessage, mailjetApiRequest, validateJSON } from './GenericFunctions';
+import type { IMessage } from './GenericFunctions';
+import { mailjetApiRequest, validateJSON } from './GenericFunctions';
 
 import { emailFields, emailOperations } from './EmailDescription';
 
@@ -76,7 +76,7 @@ export class Mailjet implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available custom fields to display them to user so that he can
+			// Get all the available custom fields to display them to user so that they can
 			// select them easily
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -136,7 +136,7 @@ export class Mailjet implements INodeType {
 							if (parsedJson === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									"Parameter 'Variables (JSON)' has a invalid JSON",
 									{ itemIndex: i },
 								);
 							}
@@ -231,7 +231,7 @@ export class Mailjet implements INodeType {
 							if (parsedJson === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									"Parameter 'Variables (JSON)' has a invalid JSON",
 									{ itemIndex: i },
 								);
 							}
@@ -304,7 +304,7 @@ export class Mailjet implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 
@@ -322,6 +322,6 @@ export class Mailjet implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

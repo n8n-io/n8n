@@ -1,23 +1,20 @@
 <template>
-	<img
-		:src="basePath + 'n8n-logo-expanded.svg'"
-		:class="$style.img"
-		alt="n8n.io"
-	/>
+	<img :src="logoPath" :class="$style.img" alt="n8n.io" />
 </template>
 
 <script lang="ts">
-import { useRootStore } from '@/stores/n8nRootStore';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { useRootStore, useUIStore } from '@/stores';
 
-export default Vue.extend({
+export default defineComponent({
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore, useUIStore),
 		basePath(): string {
 			return this.rootStore.baseUrl;
+		},
+		logoPath(): string {
+			return this.basePath + this.uiStore.logo;
 		},
 	},
 });

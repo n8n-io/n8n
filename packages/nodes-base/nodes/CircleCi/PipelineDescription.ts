@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
 
 export const pipelineOperations: INodeProperties[] = [
 	{
@@ -60,7 +60,7 @@ export const pipelineFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Version control system',
+		description: 'Source control system',
 	},
 	{
 		displayName: 'Project Slug',

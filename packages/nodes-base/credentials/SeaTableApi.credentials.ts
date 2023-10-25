@@ -1,4 +1,4 @@
-import { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -52,6 +52,7 @@ export class SeaTableApi implements ICredentialType {
 			displayName: 'API Token (of a Base)',
 			name: 'token',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

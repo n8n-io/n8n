@@ -1,20 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type {
+	IExecuteFunctions,
 	IDataObject,
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodePropertyOptions,
-	NodeOperationError,
 } from 'n8n-workflow';
-import { GoogleSheet } from './GoogleSheet';
-import {
+import { NodeOperationError } from 'n8n-workflow';
+import type { GoogleSheet } from './GoogleSheet';
+import type {
 	RangeDetectionOptions,
 	ResourceLocator,
-	ResourceLocatorUiNames,
-	ROW_NUMBER,
 	SheetRangeData,
 	ValueInputOption,
 } from './GoogleSheets.types';
+import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
 
 export const untilSheetSelected = { sheetName: [''] };
 
@@ -102,7 +101,9 @@ export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = tr
 export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) {
 	const baseLength = includesRowNumber ? 1 : 0;
 	const notEmptyRows = data.filter((row) =>
-		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
+		row
+			.slice(baseLength)
+			.some((cell) => cell || typeof cell === 'number' || typeof cell === 'boolean'),
 	);
 	if (includesRowNumber) {
 		notEmptyRows[0][0] = ROW_NUMBER;
@@ -134,12 +135,18 @@ export function removeEmptyColumns(data: SheetRangeData) {
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
 		const column = data.map((row) => row[col]);
+		if (column[0] !== '') {
+			returnData.push(column);
+			continue;
+		}
 		const hasData = column.slice(1).some((cell) => cell || typeof cell === 'number');
 		if (hasData) {
 			returnData.push(column);
 		}
 	}
-	return (returnData[0] || []).map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) =>
+		returnData.map((row) => (row[i] === undefined ? '' : row[i])),
+	);
 }
 
 export function prepareSheetData(
@@ -191,12 +198,24 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 	const returnData: IDataObject[] = [];
 
 	for (let i = 0; i < inputSize; i++) {
-		const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
-		let dataToSend: IDataObject = {};
-		for (const field of fields) {
-			dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+		const nodeVersion = this.getNode().typeVersion;
+		if (nodeVersion < 4) {
+			const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as IDataObject[];
+			let dataToSend: IDataObject = {};
+			for (const field of fields) {
+				dataToSend = { ...dataToSend, [field.fieldId as string]: field.fieldValue };
+			}
+			returnData.push(dataToSend);
+		} else {
+			const mappingValues = this.getNodeParameter('columns.value', i) as IDataObject;
+			if (Object.keys(mappingValues).length === 0) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"At least one value has to be added under 'Values to Send'",
+				);
+			}
+			returnData.push(mappingValues);
 		}
-		returnData.push(dataToSend);
 	}
 
 	return returnData;
@@ -267,7 +286,7 @@ export async function autoMapInputData(
 		items.forEach((item, itemIndex) => {
 			Object.keys(item.json).forEach((key) => {
 				if (!columnNames.includes(key)) {
-					throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+					throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
 						itemIndex,
 						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 					});
@@ -295,4 +314,11 @@ export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchIt
 	});
 
 	return returnData;
+}
+
+export function cellFormatDefault(nodeVersion: number) {
+	if (nodeVersion < 4.1) {
+		return 'RAW';
+	}
+	return 'USER_ENTERED';
 }

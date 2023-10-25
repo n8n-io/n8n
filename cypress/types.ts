@@ -1,4 +1,6 @@
-export type IE2ETestPageElement = (...args: any[]) =>
+export type IE2ETestPageElement = (
+	...args: any[]
+) =>
 	| Cypress.Chainable<JQuery<HTMLElement>>
 	| Cypress.Chainable<JQuery<HTMLInputElement>>
 	| Cypress.Chainable<JQuery<HTMLButtonElement>>;

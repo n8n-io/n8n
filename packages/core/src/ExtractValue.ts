@@ -1,15 +1,13 @@
-import {
+import type {
 	INode,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
 	INodeType,
-	NodeOperationError,
 	NodeParameterValueType,
-	NodeHelpers,
-	LoggerProxy,
 } from 'n8n-workflow';
+import { NodeOperationError, NodeHelpers, LoggerProxy } from 'n8n-workflow';
 
 function findPropertyFromParameterName(
 	parameterName: string,
@@ -32,7 +30,6 @@ function findPropertyFromParameterName(
 		);
 	};
 
-	// eslint-disable-next-line no-restricted-syntax
 	for (const p of paramParts) {
 		const param = p.split('[')[0];
 		if (!property) {
