@@ -77,17 +77,16 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
-	deletionBatchSize = 100;
-
-	private intervals: Record<string, NodeJS.Timer | undefined> = {
-		softDeletion: undefined,
-		hardDeletion: undefined,
-	};
+	private hardDeletionBatchSize = 100;
 
 	private rates: Record<string, number> = {
 		softDeletion: config.getEnv('executions.pruneDataIntervals.softDelete') * TIME.MINUTE,
 		hardDeletion: config.getEnv('executions.pruneDataIntervals.hardDelete') * TIME.MINUTE,
 	};
+
+	private softDeletionInterval: NodeJS.Timer | undefined;
+
+	private hardDeletionTimeout: NodeJS.Timeout | undefined;
 
 	private isMainInstance = config.get('generic.instanceType') === 'main';
 
@@ -105,39 +104,35 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (this.isPruningEnabled) this.setSoftDeletionInterval();
 
-		this.setHardDeletionInterval();
+		this.scheduleHardDeletion();
 	}
 
 	clearTimers() {
 		if (!this.isMainInstance) return;
 
-		this.logger.debug('Clearing soft-deletion and hard-deletion intervals for executions');
+		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');
 
-		clearInterval(this.intervals.softDeletion);
-		clearInterval(this.intervals.hardDeletion);
+		clearInterval(this.softDeletionInterval);
+		clearTimeout(this.hardDeletionTimeout);
 	}
 
-	setSoftDeletionInterval() {
-		this.logger.debug(
-			`Setting soft-deletion interval (pruning) for executions every ${
-				this.rates.softDeletion / TIME.MINUTE
-			} min`,
-		);
+	setSoftDeletionInterval(rateMs = this.rates.softDeletion) {
+		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
 
-		this.intervals.softDeletion = setInterval(
+		this.logger.debug(`Setting soft-deletion interval at every ${when} (pruning cycle)`);
+
+		this.softDeletionInterval = setInterval(
 			async () => this.softDeleteOnPruningCycle(),
 			this.rates.softDeletion,
 		);
 	}
 
-	setHardDeletionInterval() {
-		this.logger.debug(
-			`Setting hard-deletion interval for executions every ${
-				this.rates.hardDeletion / TIME.MINUTE
-			} min`,
-		);
+	scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
+		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
 
-		this.intervals.hardDeletion = setInterval(
+		this.logger.debug(`Scheduling hard-deletion for next ${when} (pruning cycle)`);
+
+		this.hardDeletionTimeout = setTimeout(
 			async () => this.hardDeleteOnPruningCycle(),
 			this.rates.hardDeletion,
 		);
@@ -475,7 +470,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionIds = executions.map(({ id }) => id);
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = executionIds.splice(0, this.deletionBatchSize);
+			const batch = executionIds.splice(0, this.hardDeletionBatchSize);
 			await this.delete(batch);
 		} while (executionIds.length > 0);
 	}
@@ -484,7 +479,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 * Mark executions as deleted based on age and count, in a pruning cycle.
 	 */
 	async softDeleteOnPruningCycle() {
-		this.logger.verbose('Soft-deleting execution data from database (pruning cycle)');
+		this.logger.debug('Starting soft-deletion of executions (pruning cycle)');
 
 		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
 		const maxCount = config.getEnv('executions.pruneDataMaxCount');
@@ -513,7 +508,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const [timeBasedWhere, countBasedWhere] = toPrune;
 
-		await this.createQueryBuilder()
+		const result = await this.createQueryBuilder()
 			.update(ExecutionEntity)
 			.set({ deletedAt: new Date() })
 			.where({
@@ -529,6 +524,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				),
 			)
 			.execute();
+
+		if (result.affected === 0) {
+			this.logger.debug('Found no executions to soft-delete (pruning cycle)');
+		}
 	}
 
 	/**
@@ -544,7 +543,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				where: {
 					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
 				},
-				take: this.deletionBatchSize,
+				take: this.hardDeletionBatchSize,
 
 				/**
 				 * @important This ensures soft-deleted executions are included,
@@ -557,38 +556,33 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
 
 		if (executionIds.length === 0) {
-			this.logger.debug('Found no executions to hard-delete from database');
+			this.logger.debug('Found no executions to hard-delete (pruning cycle)');
+			this.scheduleHardDeletion();
 			return;
 		}
 
-		await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds); // only in FS mode
-
-		this.logger.debug(
-			`Hard-deleting ${executionIds.length} executions from database (pruning cycle)`,
-			{
+		try {
+			this.logger.debug('Starting hard-deletion of executions (pruning cycle)', {
 				executionIds,
-			},
-		);
+			});
 
-		// Actually delete these executions
-		await this.delete({ id: In(executionIds) });
+			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+
+			await this.delete({ id: In(executionIds) });
+		} catch (error) {
+			this.logger.error('Failed to hard-delete executions (pruning cycle)', {
+				executionIds,
+				error: error instanceof Error ? error.message : `${error}`,
+			});
+		}
 
 		/**
-		 * If the volume of executions to prune is as high as the batch size, there is a risk
-		 * that the pruning process is unable to catch up to the creation of new executions,
-		 * with high concurrency possibly leading to errors from duplicate deletions.
-		 *
-		 * Therefore, in this high-volume case we speed up the hard deletion cycle, until
-		 * the number of executions to prune is low enough to fit in a single batch.
+		 * For next batch, speed up hard-deletion cycle in high-volume case
+		 * to prevent high concurrency from causing duplicate deletions.
 		 */
-		if (executionIds.length === this.deletionBatchSize) {
-			clearInterval(this.intervals.hardDeletion);
+		const isHighVolume = executionIds.length >= this.hardDeletionBatchSize;
+		const rate = isHighVolume ? 1 * TIME.SECOND : this.rates.hardDeletion;
 
-			setTimeout(async () => this.hardDeleteOnPruningCycle(), 1 * TIME.SECOND);
-		} else {
-			if (this.intervals.hardDeletion) return;
-
-			this.setHardDeletionInterval();
-		}
+		this.scheduleHardDeletion(rate);
 	}
 }

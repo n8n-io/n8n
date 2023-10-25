@@ -47,8 +47,8 @@ export abstract class BaseCommand extends Command {
 		// Make sure the settings exist
 		this.instanceSettings = Container.get(InstanceSettings);
 
-		await Container.get(LoadNodesAndCredentials).init();
 		this.nodeTypes = Container.get(NodeTypes);
+		await Container.get(LoadNodesAndCredentials).init();
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),

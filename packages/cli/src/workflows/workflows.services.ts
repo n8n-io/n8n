@@ -28,7 +28,6 @@ import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
-import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
 import { Logger } from '@/Logger';
@@ -219,13 +218,19 @@ export class WorkflowsService {
 			);
 		}
 
+		let onlyActiveUpdate = false;
+
 		if (
-			Object.keys(workflow).length === 3 &&
-			workflow.id !== undefined &&
-			workflow.versionId !== undefined &&
-			workflow.active !== undefined
+			(Object.keys(workflow).length === 3 &&
+				workflow.id !== undefined &&
+				workflow.versionId !== undefined &&
+				workflow.active !== undefined) ||
+			(Object.keys(workflow).length === 2 &&
+				workflow.versionId !== undefined &&
+				workflow.active !== undefined)
 		) {
 			// we're just updating the active status of the workflow, don't update the versionId
+			onlyActiveUpdate = true;
 		} else {
 			// Update the workflow's version
 			workflow.versionId = uuid();
@@ -298,7 +303,7 @@ export class WorkflowsService {
 			);
 		}
 
-		if (isWorkflowHistoryLicensed() && workflow.versionId !== shared.workflow.versionId) {
+		if (!onlyActiveUpdate && workflow.versionId !== shared.workflow.versionId) {
 			await Container.get(WorkflowHistoryService).saveVersion(user, workflow, workflowId);
 		}
 
