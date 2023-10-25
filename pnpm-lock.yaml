@@ -177,6 +177,12 @@ importers:
       '@storybook/vue3-vite':
         specifier: ^7.4.0
         version: 7.4.6(@vue/compiler-core@3.3.4)(react-dom@18.2.0)(react@18.2.0)(typescript@5.2.2)(vite@4.4.7)(vue@3.3.4)
+      '@testing-library/jest-dom':
+        specifier: ^5.17.0
+        version: 5.17.0
+      '@testing-library/vue':
+        specifier: ^7.0.0
+        version: 7.0.0(@vue/compiler-sfc@3.3.4)(vue@3.3.4)
       '@tsconfig/node18':
         specifier: ^18.2.0
         version: 18.2.2
@@ -236,7 +242,7 @@ importers:
         version: 5.2.2
       unplugin-icons:
         specifier: ^0.17.0
-        version: 0.17.0
+        version: 0.17.0(@vue/compiler-sfc@3.3.4)
       vite:
         specifier: ^4.4.6
         version: 4.4.7(@types/node@18.16.16)
@@ -8746,7 +8752,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 3.13.1
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.19
+      vue-component-type-helpers: 1.8.21
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -8769,7 +8775,7 @@ packages:
       ts-dedent: 2.2.0
       type-fest: 2.19.0
       vue: 3.3.4
-      vue-component-type-helpers: 1.8.19
+      vue-component-type-helpers: 1.8.21
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -25161,7 +25167,7 @@ packages:
     resolution: {integrity: sha512-pjy2bYhSsufwWlKwPc+l3cN7+wuJlK6uz0YdJEOlQDbl6jo/YlPi4mb8agUkVC8BF7V8NuzeyPNqRksA3hztKQ==}
     engines: {node: '>= 0.8'}
 
-  /unplugin-icons@0.17.0:
+  /unplugin-icons@0.17.0(@vue/compiler-sfc@3.3.4):
     resolution: {integrity: sha512-gMv66eY/Hj64heM55XrfDH3LUCWI51mtkBVUPVl9VkpvLgAYhdVe9nRuzu6p+idmCLSQVq7xiPxQcD4aXCgW5A==}
     peerDependencies:
       '@svgr/core': '>=7.0.0'
@@ -25184,6 +25190,7 @@ packages:
       '@antfu/install-pkg': 0.1.1
       '@antfu/utils': 0.7.6
       '@iconify/utils': 2.1.11
+      '@vue/compiler-sfc': 3.3.4
       debug: 4.3.4(supports-color@8.1.1)
       kolorist: 1.8.0
       local-pkg: 0.4.3
@@ -25728,8 +25735,8 @@ packages:
       vue: 3.3.4
     dev: false
 
-  /vue-component-type-helpers@1.8.19:
-    resolution: {integrity: sha512-1OANGSZK4pzHF4uc86usWi+o5Y0zgoDtqWkPg6Am6ot+jHSAmpOah59V/4N82So5xRgivgCxGgK09lBy1XNUfQ==}
+  /vue-component-type-helpers@1.8.21:
+    resolution: {integrity: sha512-XL37QbmiqqbKrAFHPxqryMXpNgO0KMKd5bIo7LO9QABPMNEysd8xmYRIjwZhh0t2abveXjAJ//ZcAzwdxp/S3Q==}
     dev: true
 
   /vue-component-type-helpers@1.8.4:
