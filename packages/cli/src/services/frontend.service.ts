@@ -16,7 +16,7 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { License } from '@/License';
-import { getInstanceBaseUrl, isEmailSetUp } from '@/UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
@@ -28,6 +28,7 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflowHistory/workflowHistoryHelper.ee';
+import { UserManagementMailer } from '@/UserManagement/email';
 
 @Service()
 export class FrontendService {
@@ -38,6 +39,7 @@ export class FrontendService {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly license: License,
+		private readonly mailer: UserManagementMailer,
 	) {
 		this.initSettings();
 	}
@@ -103,7 +105,7 @@ export class FrontendService {
 			userManagement: {
 				quota: this.license.getUsersLimit(),
 				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
-				smtpSetup: isEmailSetUp(),
+				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
 			sso: {
@@ -155,6 +157,7 @@ export class FrontendService {
 				externalSecrets: false,
 				showNonProdBanner: false,
 				debugInEditor: false,
+				binaryDataS3: false,
 				workflowHistory: false,
 			},
 			mfa: {
@@ -224,6 +227,10 @@ export class FrontendService {
 
 		this.settings.banners.dismissed = dismissedBanners;
 
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = this.license.isBinaryDataS3Licensed();
+
 		// refresh enterprise status
 		Object.assign(this.settings.enterprise, {
 			sharing: this.license.isSharingEnabled(),
@@ -236,6 +243,7 @@ export class FrontendService {
 			externalSecrets: this.license.isExternalSecretsEnabled(),
 			showNonProdBanner: this.license.isFeatureEnabled(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
+			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
 		});

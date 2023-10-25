@@ -36,6 +36,13 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 					rows: 6,
 				},
 			},
+			{
+				displayName: 'Max Iterations',
+				name: 'maxIterations',
+				type: 'number',
+				default: 10,
+				description: 'The maximum number of iterations the agent will run before stopping',
+			},
 		],
 	},
 ];

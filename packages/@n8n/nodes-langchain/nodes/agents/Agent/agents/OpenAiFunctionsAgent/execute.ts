@@ -39,6 +39,7 @@ export async function openAiFunctionsAgentExecute(
 	)) as BaseOutputParser[];
 	const options = this.getNodeParameter('options', 0, {}) as {
 		systemMessage?: string;
+		maxIterations?: number;
 	};
 
 	const agentConfig: AgentExecutorInput = {
@@ -47,6 +48,7 @@ export async function openAiFunctionsAgentExecute(
 			prefix: options.systemMessage,
 		}),
 		tools,
+		maxIterations: options.maxIterations ?? 10,
 		memory:
 			memory ??
 			new BufferMemory({

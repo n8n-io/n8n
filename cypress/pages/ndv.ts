@@ -114,7 +114,7 @@ export class NDV extends BasePage {
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean },
+			opts?: { parseSpecialCharSequences: boolean, delay?: number },
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
@@ -199,10 +199,11 @@ export class NDV extends BasePage {
 			getVisiblePopper().find('li').last().click();
 		},
 
-		setInvalidExpression: (fieldName: string, invalidExpression?: string) => {
+		setInvalidExpression: ({ fieldName, invalidExpression, delay }: { fieldName: string, invalidExpression?: string, delay?: number }) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
+				delay,
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
 		},
