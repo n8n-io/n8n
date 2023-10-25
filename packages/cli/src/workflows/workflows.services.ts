@@ -1,11 +1,6 @@
 import { Container } from 'typedi';
 import type { IDataObject, INode, IPinData } from 'n8n-workflow';
-import {
-	NodeApiError,
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy,
-	Workflow,
-} from 'n8n-workflow';
+import { NodeApiError, ErrorReporterProxy as ErrorReporter, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
@@ -35,6 +30,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
+import { Logger } from '@/Logger';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -200,8 +196,9 @@ export class WorkflowsService {
 			}),
 		});
 
+		const logger = Container.get(Logger);
 		if (!shared) {
-			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
+			logger.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -237,7 +234,7 @@ export class WorkflowsService {
 		} else {
 			// Update the workflow's version
 			workflow.versionId = uuid();
-			LoggerProxy.verbose(
+			logger.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: shared.workflow.versionId,
@@ -514,7 +511,7 @@ export class WorkflowsService {
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
-					LoggerProxy.error(
+					Container.get(Logger).error(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 						{ workflowId: workflow.id },

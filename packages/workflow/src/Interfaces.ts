@@ -10,7 +10,7 @@ import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 
 import type { AuthenticationMethod } from './Authentication';
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
+import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';
 import type { ExpressionError } from './ExpressionError';
@@ -725,7 +725,7 @@ export interface RequestHelperFunctions {
 }
 
 export interface FunctionsBase {
-	logger: ILogger;
+	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getExecutionId(): string;
 	getNode(): INode;
@@ -1933,16 +1933,8 @@ export interface WorkflowTestData {
 	};
 }
 
-export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
-
-export interface ILogger {
-	log: (type: LogTypes, message: string, meta?: object) => void;
-	debug: (message: string, meta?: object) => void;
-	verbose: (message: string, meta?: object) => void;
-	info: (message: string, meta?: object) => void;
-	warn: (message: string, meta?: object) => void;
-	error: (message: string, meta?: object) => void;
-}
+export type LogLevel = (typeof LOG_LEVELS)[number];
+export type Logger = Record<Exclude<LogLevel, 'silent'>, (message: string, meta?: object) => void>;
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
@@ -2209,8 +2201,6 @@ export interface IPublicApiSettings {
 	};
 }
 
-export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
-
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export interface IN8nUISettings {
@@ -2261,7 +2251,7 @@ export interface IN8nUISettings {
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
-	logLevel: ILogLevel;
+	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;

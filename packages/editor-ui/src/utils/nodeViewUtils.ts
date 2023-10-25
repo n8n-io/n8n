@@ -181,46 +181,18 @@ export const getAnchorPosition = (
 	spacerIndexes: number[] = [],
 ): ArrayAnchorSpec[] => {
 	if (connectionType === NodeConnectionType.Main) {
-		const positions = {
-			input: {
-				1: [[0.01, 0.5, -1, 0]],
-				2: [
-					[0.01, 0.3, -1, 0],
-					[0.01, 0.7, -1, 0],
-				],
-				3: [
-					[0.01, 0.25, -1, 0],
-					[0.01, 0.5, -1, 0],
-					[0.01, 0.75, -1, 0],
-				],
-				4: [
-					[0.01, 0.2, -1, 0],
-					[0.01, 0.4, -1, 0],
-					[0.01, 0.6, -1, 0],
-					[0.01, 0.8, -1, 0],
-				],
-			},
-			output: {
-				1: [[0.99, 0.5, 1, 0]],
-				2: [
-					[0.99, 0.3, 1, 0],
-					[0.99, 0.7, 1, 0],
-				],
-				3: [
-					[0.99, 0.25, 1, 0],
-					[0.99, 0.5, 1, 0],
-					[0.99, 0.75, 1, 0],
-				],
-				4: [
-					[0.99, 0.2, 1, 0],
-					[0.99, 0.4, 1, 0],
-					[0.99, 0.6, 1, 0],
-					[0.99, 0.8, 1, 0],
-				],
-			},
-		};
+		const anchors: ArrayAnchorSpec[] = [];
+		const x = type === 'input' ? 0.01 : 0.99;
+		const ox = type === 'input' ? -1 : 1;
+		const oy = 0;
+		const stepSize = 1 / (amount + 1); // +1 to not touch the node boundaries
 
-		return positions[type][amount] as ArrayAnchorSpec[];
+		for (let i = 1; i <= amount; i++) {
+			const y = stepSize * i; // Multiply by index to set position
+			anchors.push([x, y, ox, oy]);
+		}
+
+		return anchors;
 	}
 
 	const y = type === 'input' ? 0.99 : 0.01;
@@ -317,15 +289,20 @@ export const getOutputEndpointStyle = (
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (labelText: string, outputName: string): OverlaySpec => ({
+export const getOutputNameOverlay = (
+	labelText: string,
+	outputName: ConnectionTypes,
+): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
 		visible: true,
-		create: (component: Endpoint) => {
+		create: (ep: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
+
+			label.setAttribute('data-endpoint-node-type', ep?.__meta?.nodeType);
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
 				label.classList.add(`node-connection-type-${getScope(outputName)}`);

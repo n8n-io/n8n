@@ -1,8 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import { mock } from 'jest-mock-extended';
-import type { ILogger, INodeTypes } from 'n8n-workflow';
-import { LoggerProxy, SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import type { INodeTypes } from 'n8n-workflow';
+import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -25,8 +24,6 @@ import {
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from './Helpers';
-
-LoggerProxy.init(mock<ILogger>());
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;

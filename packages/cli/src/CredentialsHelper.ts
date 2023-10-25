@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
+import { Service } from 'typedi';
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 import get from 'lodash/get';
 
@@ -38,7 +39,6 @@ import {
 	NodeHelpers,
 	RoutingNode,
 	Workflow,
-	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
@@ -52,8 +52,8 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { Service } from 'typedi';
 import { isObjectLiteral } from './utils';
+import { Logger } from '@/Logger';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -89,6 +89,7 @@ const mockNodeTypes: INodeTypes = {
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
+		private readonly logger: Logger,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
@@ -601,7 +602,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					user.isOwner,
 				);
 			} catch (error) {
-				Logger.debug('Credential test failed', error);
+				this.logger.debug('Credential test failed', error);
 				return {
 					status: 'Error',
 					message: error.message.toString(),
@@ -757,7 +758,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					message: error.cause.code,
 				};
 			}
-			Logger.debug('Credential test failed', error);
+			this.logger.debug('Credential test failed', error);
 			return {
 				status: 'Error',
 				message: error.message.toString(),
