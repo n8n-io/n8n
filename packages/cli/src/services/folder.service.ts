@@ -71,6 +71,9 @@ export class FolderService {
 				return {
 					...rest,
 					usageCount: workflows.length,
+					workflows: workflows.map((workflow) => {
+						return workflow.name;
+					}),
 				} as IFolderWithCountDb;
 			}) as GetAllResult<T>;
 		}

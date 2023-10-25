@@ -226,6 +226,7 @@ export interface IResource {
 	createdAt: string;
 	ownedBy?: Partial<IUser>;
 	sharedWith?: Array<Partial<IUser>>;
+	workflows?: string[];
 }
 
 interface IFilters {
@@ -257,6 +258,10 @@ export default defineComponent({
 		displayName: {
 			type: Function as PropType<(resource: IResource) => string>,
 			default: (resource: IResource) => resource.name,
+		},
+		childrenNames: {
+			type: Function as PropType<(resource: IResource) => string[]>,
+			default: (resource: IResource) => resource.workflows,
 		},
 		resources: {
 			type: Array,
@@ -375,7 +380,10 @@ export default defineComponent({
 				if (this.filtersModel.search) {
 					const searchString = this.filtersModel.search.toLowerCase();
 
-					matches = matches && this.displayName(resource).toLowerCase().includes(searchString);
+					matches = resource.workflows
+						? matches &&
+						  this.childrenNames(resource).some((obj) => obj.toLowerCase().includes(searchString))
+						: matches && this.displayName(resource).toLowerCase().includes(searchString);
 				}
 
 				if (this.additionalFiltersHandler) {
