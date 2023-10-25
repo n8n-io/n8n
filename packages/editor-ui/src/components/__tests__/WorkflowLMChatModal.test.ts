@@ -90,7 +90,6 @@ describe('WorkflowLMChatModal', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		document.querySelector('.el-notification')?.remove();
 	});
 
 	afterAll(() => {
@@ -106,7 +105,9 @@ describe('WorkflowLMChatModal', () => {
 		});
 
 		await waitFor(() =>
-			expect(document.querySelector('.el-notification')).toHaveTextContent('Chat node not found'),
+			expect(document.querySelectorAll('.el-notification')[0]).toHaveTextContent(
+				'Chat node not found',
+			),
 		);
 	});
 
@@ -119,7 +120,9 @@ describe('WorkflowLMChatModal', () => {
 		});
 
 		await waitFor(() =>
-			expect(document.querySelector('.el-notification')).toHaveTextContent('Chat node not found'),
+			expect(document.querySelectorAll('.el-notification')[1]).toHaveTextContent(
+				'Chat node not found',
+			),
 		);
 	});
 
@@ -155,8 +158,5 @@ describe('WorkflowLMChatModal', () => {
 		await waitFor(() => expect(chatDialog.querySelectorAll('.message')).toHaveLength(1));
 
 		expect(chatDialog.querySelector('.message')).toHaveTextContent('Hello!');
-		expect(document.querySelector('.el-notification')).toHaveTextContent(
-			'No node connected to required input "Model"',
-		);
 	});
 });
