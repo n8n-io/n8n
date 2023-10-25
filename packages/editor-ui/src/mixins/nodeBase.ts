@@ -261,6 +261,7 @@ export const nodeBase = defineComponent({
 						nodeId: this.nodeId,
 						index: typeIndex,
 						totalEndpoints: inputsOfSameRootType.length,
+						nodeType: node.type,
 					};
 				}
 
@@ -423,6 +424,7 @@ export const nodeBase = defineComponent({
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
+
 				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
 				if (outputConfiguration.displayName || nodeTypeData.outputNames?.[i]) {
 					// Apply output names if they got set
@@ -439,6 +441,7 @@ export const nodeBase = defineComponent({
 						nodeId: this.nodeId,
 						index: typeIndex,
 						totalEndpoints: outputsOfSameRootType.length,
+						nodeType: node.type,
 					};
 				}
 
@@ -454,6 +457,7 @@ export const nodeBase = defineComponent({
 								connectedEndpoint: endpoint,
 								showOutputLabel: outputs.length === 1,
 								size: outputs.length >= 3 ? 'small' : 'medium',
+								nodeType: node.type,
 								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},
@@ -486,6 +490,7 @@ export const nodeBase = defineComponent({
 							nodeName: node.name,
 							nodeId: this.nodeId,
 							index: typeIndex,
+							nodeType: node.type,
 							totalEndpoints: outputsOfSameRootType.length,
 						};
 					}
