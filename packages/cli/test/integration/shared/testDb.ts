@@ -447,7 +447,7 @@ export async function createManyWorkflows(
  * @param user user to assign the workflow to
  */
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
-	const { active, name, nodes, connections } = attributes;
+	const { active, name, nodes, connections, versionId } = attributes;
 
 	const workflowEntity = Db.collections.Workflow.create({
 		active: active ?? false,
@@ -463,6 +463,7 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 			},
 		],
 		connections: connections ?? {},
+		versionId: versionId ?? uuid(),
 		...attributes,
 	});
 
