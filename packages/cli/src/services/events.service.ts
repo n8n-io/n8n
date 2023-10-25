@@ -10,9 +10,9 @@ import { OwnershipService } from './ownership.service';
 @Service()
 export class EventsService extends EventEmitter {
 	constructor(
-		private logger: Logger,
-		private repository: WorkflowStatisticsRepository,
-		private ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly repository: WorkflowStatisticsRepository,
+		private readonly ownershipService: OwnershipService,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;

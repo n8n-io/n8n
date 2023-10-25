@@ -30,9 +30,9 @@ export class WaitTracker {
 	mainTimer: NodeJS.Timeout;
 
 	constructor(
-		private logger: Logger,
-		private executionRepository: ExecutionRepository,
-		private ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly ownershipService: OwnershipService,
 	) {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {

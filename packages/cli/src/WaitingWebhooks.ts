@@ -19,10 +19,10 @@ import { Logger } from '@/Logger';
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
 	constructor(
-		private logger: Logger,
-		private nodeTypes: NodeTypes,
-		private executionRepository: ExecutionRepository,
-		private ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly nodeTypes: NodeTypes,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support

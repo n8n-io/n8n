@@ -13,8 +13,8 @@ export class CredentialsOverwrites {
 	private resolvedTypes: string[] = [];
 
 	constructor(
-		private credentialTypes: CredentialTypes,
-		private logger: Logger,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly logger: Logger,
 	) {
 		const data = config.getEnv('credentials.overwrite.data');
 		const overwriteData = jsonParse<ICredentialsOverwrite>(data, {

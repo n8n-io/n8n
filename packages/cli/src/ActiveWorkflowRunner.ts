@@ -83,11 +83,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	} = {};
 
 	constructor(
-		private logger: Logger,
-		private activeExecutions: ActiveExecutions,
-		private externalHooks: ExternalHooks,
-		private nodeTypes: NodeTypes,
-		private webhookService: WebhookService,
+		private readonly logger: Logger,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly externalHooks: ExternalHooks,
+		private readonly nodeTypes: NodeTypes,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	async init() {

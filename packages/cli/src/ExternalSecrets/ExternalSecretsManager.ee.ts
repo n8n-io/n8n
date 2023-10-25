@@ -36,11 +36,11 @@ export class ExternalSecretsManager {
 	initRetryTimeouts: Record<string, NodeJS.Timer> = {};
 
 	constructor(
-		private logger: Logger,
-		private settingsRepo: SettingsRepository,
-		private license: License,
-		private secretsProviders: ExternalSecretsProviders,
-		private cipher: Cipher,
+		private readonly logger: Logger,
+		private readonly settingsRepo: SettingsRepository,
+		private readonly license: License,
+		private readonly secretsProviders: ExternalSecretsProviders,
+		private readonly cipher: Cipher,
 	) {}
 
 	async init(): Promise<void> {
