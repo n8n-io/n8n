@@ -46,12 +46,33 @@ export function getNodes() {
 }
 
 export function getNodeByName(name: string) {
-	return cy.getByTestId('canvas-node').filter(`[data-node-name="${name}"]`).eq(0);
+	return cy.getByTestId('canvas-node').filter(`[data-name="${name}"]`).eq(0);
+}
+
+export function getConnectionBySourceAndTarget(source: string, target: string) {
+	return cy
+		.get('.jtk-connector')
+		.filter(`[data-source-node="${source}"][data-target-node="${target}"]`)
+		.eq(0);
 }
 
 /**
  * Actions
  */
+
+export function addNodeToCanvas(
+	nodeDisplayName: string,
+	plusButtonClick = true,
+	preventNdvClose?: boolean,
+	action?: string,
+) {
+	new WorkflowPage().actions.addNodeToCanvas(
+		nodeDisplayName,
+		plusButtonClick,
+		preventNdvClose,
+		action,
+	);
+}
 
 export function navigateToNewWorkflowPage(preventNodeViewUnload = true) {
 	cy.visit(ROUTES.NEW_WORKFLOW_PAGE);
@@ -68,10 +89,23 @@ export function addSupplementalNodeToParent(
 ) {
 	getAddInputEndpointByType(parentNodeName, endpointType).click({ force: true });
 	getNodeCreatorItems().contains(nodeName).click();
+	getConnectionBySourceAndTarget(parentNodeName, nodeName).should('exist');
 }
 
 export function addLanguageModelNodeToParent(nodeName: string, parentNodeName: string) {
 	addSupplementalNodeToParent(nodeName, 'ai_languageModel', parentNodeName);
+}
+
+export function addMemoryNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_memory', parentNodeName);
+}
+
+export function addToolNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_tool', parentNodeName);
+}
+
+export function addOutputParserNodeToParent(nodeName: string, parentNodeName: string) {
+	addSupplementalNodeToParent(nodeName, 'ai_outputParser', parentNodeName);
 }
 
 export function clickExecuteWorkflowButton() {
@@ -83,20 +117,6 @@ export function clickManualChatButton() {
 	getManualChatModal().should('be.visible');
 }
 
-/**
- * Composables
- */
-
-export function useWorkflowPage() {
-	const page = new WorkflowPage();
-
-	return {
-		...page.actions,
-		navigateToNewWorkflowPage,
-		getNodeCreatorItems,
-		addSupplementalNodeToParent,
-		addLanguageModelNodeToParent,
-		clickExecuteWorkflowButton,
-		clickManualChatButton,
-	};
+export function openNode(nodeName: string) {
+	getNodeByName(nodeName).dblclick();
 }

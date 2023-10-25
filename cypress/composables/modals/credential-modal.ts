@@ -1,5 +1,3 @@
-import { CredentialsModal } from '../../pages';
-
 /**
  * Getters
  */
@@ -27,6 +25,7 @@ export function getCredentialDeleteButton() {
 export function getCredentialModalCloseButton() {
 	return getEditCredentialModal().find('.el-dialog__close').first();
 }
+
 /**
  * Actions
  */
@@ -52,12 +51,4 @@ export function setCredentialValues(values: Record<string, any>, save = true) {
 		saveCredential();
 		closeCredentialModal();
 	}
-}
-
-export function useCredentialModal() {
-	const page = new CredentialsModal();
-	return {
-		setCredentialValues,
-		...page.actions,
-	};
 }

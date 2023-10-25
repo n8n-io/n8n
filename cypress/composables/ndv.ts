@@ -1,5 +1,3 @@
-import { NDV } from '../pages';
-
 /**
  * Getters
  */
@@ -14,6 +12,34 @@ export function getCreateNewCredentialOption() {
 
 export function getBackToCanvasButton() {
 	return cy.getByTestId('back-to-canvas');
+}
+
+export function getExecuteNodeButton() {
+	return cy.getByTestId('node-execute-button');
+}
+
+export function getParameterInputByName(name: string) {
+	return cy.getByTestId(`parameter-input-${name}`);
+}
+
+export function getInputPanel() {
+	return cy.getByTestId('input-panel');
+}
+
+export function getMainPanel() {
+	return cy.getByTestId('node-parameters');
+}
+
+export function getOutputPanel() {
+	return cy.getByTestId('output-panel');
+}
+
+export function getOutputPanelDataContainer() {
+	return getOutputPanel().getByTestId('ndv-data-container');
+}
+
+export function getOutputPanelTable() {
+	return getOutputPanelDataContainer().get('table');
 }
 
 /**
@@ -38,16 +64,10 @@ export function clickGetBackToCanvas() {
 	getBackToCanvasButton().click();
 }
 
-/**
- * Composables
- */
+export function clickExecuteNode() {
+	getExecuteNodeButton().click();
+}
 
-export function useNDVPage() {
-	const page = new NDV();
-	return {
-		setCredentialByName,
-		clickCreateNewCredential,
-		clickGetBackToCanvas,
-		...page.actions,
-	};
+export function setParameterInputByName(name: string, value: string) {
+	getParameterInputByName(name).clear().type(value);
 }
