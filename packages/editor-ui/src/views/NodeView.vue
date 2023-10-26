@@ -265,6 +265,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 	ConnectionTypes,
+	INodeOutputConfiguration,
 } from 'n8n-workflow';
 import {
 	deepCopy,
