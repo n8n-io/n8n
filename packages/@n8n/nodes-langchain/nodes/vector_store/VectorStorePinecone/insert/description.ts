@@ -12,4 +12,11 @@ export const insertOperationDescription: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Clear Namespace',
+		name: 'clearNamespace',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to clear the namespace before inserting new data',
+	},
 ];
