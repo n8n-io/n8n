@@ -70,8 +70,8 @@ export class WorkflowRunner {
 	/**
 	 * The process did send a hook message so execute the appropriate hook
 	 */
-	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
-		void workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
+	async processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
+		await workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
 	}
 
 	/**
@@ -772,7 +772,7 @@ export class WorkflowRunner {
 					workflowHooks,
 				);
 			} else if (message.type === 'processHook') {
-				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
+				await this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
