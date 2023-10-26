@@ -16,6 +16,8 @@ import { processDocuments } from '../shared/processDocuments';
 export class VectorStoreSupabaseInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supabase: Insert',
+		// Vector Store nodes got merged into a single node
+		hidden: true,
 		name: 'vectorStoreSupabaseInsert',
 		icon: 'file:supabase.svg',
 		group: ['transform'],

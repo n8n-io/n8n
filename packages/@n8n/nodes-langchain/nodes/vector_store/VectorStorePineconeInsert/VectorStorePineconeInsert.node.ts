@@ -15,6 +15,8 @@ import { processDocuments } from '../shared/processDocuments';
 export class VectorStorePineconeInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pinecone: Insert',
+		// Vector Store nodes got merged into a single node
+		hidden: true,
 		name: 'vectorStorePineconeInsert',
 		icon: 'file:pinecone.svg',
 		group: ['transform'],

@@ -1,30 +1,30 @@
 import {
-	NodeConnectionType,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 	type SupplyData,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
+import { createClient } from '@supabase/supabase-js';
+import type { SupabaseLibArgs } from 'langchain/vectorstores/supabase';
+import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 
-export class VectorStorePineconeLoad implements INodeType {
+export class VectorStoreSupabaseLoad implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Pinecone: Load',
+		displayName: 'Supabase: Load',
+		name: 'vectorStoreSupabaseLoad',
+		icon: 'file:supabase.svg',
 		// Vector Store nodes got merged into a single node
 		hidden: true,
-		name: 'vectorStorePineconeLoad',
-		icon: 'file:pinecone.svg',
 		group: ['transform'],
 		version: 1,
-		description: 'Load data from Pinecone Vector Store index',
+		description: 'Load data from Supabase Vector Store index',
 		defaults: {
-			name: 'Pinecone: Load',
+			name: 'Supabase: Load',
 		},
 		codex: {
 			categories: ['AI'],
@@ -34,14 +34,14 @@ export class VectorStorePineconeLoad implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorepineconeload/',
+						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstoresupabaseload/',
 					},
 				],
 			},
 		},
 		credentials: [
 			{
-				name: 'pineconeApi',
+				name: 'supabaseApi',
 				required: true,
 			},
 		],
@@ -57,17 +57,20 @@ export class VectorStorePineconeLoad implements INodeType {
 		outputNames: ['Vector Store'],
 		properties: [
 			{
-				displayName: 'Pinecone Index',
-				name: 'pineconeIndex',
+				displayName: 'Table Name',
+				name: 'tableName',
 				type: 'string',
 				default: '',
 				required: true,
+				description: 'Name of the table to load from',
 			},
 			{
-				displayName: 'Pinecone Namespace',
-				name: 'pineconeNamespace',
+				displayName: 'Query Name',
+				name: 'queryName',
 				type: 'string',
-				default: '',
+				default: 'match_documents',
+				required: true,
+				description: 'Name of the query to use for matching documents',
 			},
 			{
 				displayName: 'Options',
@@ -81,31 +84,27 @@ export class VectorStorePineconeLoad implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supplying data for Pinecone Load Vector Store');
+		this.logger.verbose('Supply Supabase Load Vector Store');
 
-		const namespace = this.getNodeParameter('pineconeNamespace', itemIndex) as string;
-		const index = this.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const tableName = this.getNodeParameter('tableName', itemIndex) as string;
+		const queryName = this.getNodeParameter('queryName', itemIndex) as string;
 
-		const credentials = await this.getCredentials('pineconeApi');
+		const credentials = await this.getCredentials('supabaseApi');
 		const embeddings = (await this.getInputConnectionData(
 			NodeConnectionType.AiEmbedding,
-			itemIndex,
+			0,
 		)) as Embeddings;
 
-		const client = new PineconeClient();
-		await client.init({
-			apiKey: credentials.apiKey as string,
-			environment: credentials.environment as string,
-		});
-
-		const pineconeIndex = client.Index(index);
-		const config: PineconeLibArgs = {
-			namespace: namespace || undefined,
-			pineconeIndex,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const client = createClient(credentials.host as string, credentials.serviceRole as string);
+		const config: SupabaseLibArgs = {
+			client,
+			tableName,
+			queryName,
 			filter: getMetadataFiltersValues(this, itemIndex),
 		};
 
-		const vectorStore = await PineconeStore.fromExistingIndex(embeddings, config);
+		const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, config);
 
 		return {
 			response: logWrapper(vectorStore, this),
