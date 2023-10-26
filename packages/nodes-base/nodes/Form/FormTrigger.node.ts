@@ -105,24 +105,7 @@ export class FormTrigger implements INodeType {
 								type: 'options',
 								default: 'text',
 								description: 'The type of field to add to the form',
-								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
-									{
-										name: 'Text',
-										value: 'text',
-									},
-									{
-										name: 'Textarea',
-										value: 'textarea',
-									},
-									{
-										name: 'Password',
-										value: 'password',
-									},
-									{
-										name: 'Number',
-										value: 'number',
-									},
 									{
 										name: 'Date',
 										value: 'date',
@@ -130,6 +113,22 @@ export class FormTrigger implements INodeType {
 									{
 										name: 'Dropdown List',
 										value: 'dropdown',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+									},
+									{
+										name: 'Password',
+										value: 'password',
+									},
+									{
+										name: 'Text',
+										value: 'text',
+									},
+									{
+										name: 'Textarea',
+										value: 'textarea',
 									},
 								],
 								required: true,
