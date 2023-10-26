@@ -13,6 +13,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 
+// This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supabase: Load',

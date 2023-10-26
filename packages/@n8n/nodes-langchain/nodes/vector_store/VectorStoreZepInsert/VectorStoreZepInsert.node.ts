@@ -11,10 +11,12 @@ import type { Document } from 'langchain/document';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 
+// This node is deprecated. Use VectorStoreZep instead.
 export class VectorStoreZepInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Zep Vector Store: Insert',
 		name: 'vectorStoreZepInsert',
+		hidden: true,
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:zep.png',
 		group: ['transform'],
@@ -99,11 +101,9 @@ export class VectorStoreZepInsert implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData(0);
 		this.logger.verbose('Executing data for Zep Insert Vector Store');
-
+		const items = this.getInputData(0);
 		const collectionName = this.getNodeParameter('collectionName', 0) as string;
-
 		const options =
 			(this.getNodeParameter('options', 0) as {
 				isAutoEmbedded?: boolean;

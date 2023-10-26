@@ -13,6 +13,7 @@ import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 
+// This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supabase: Insert',
