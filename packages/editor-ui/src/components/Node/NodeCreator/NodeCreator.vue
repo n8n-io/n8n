@@ -174,7 +174,7 @@ onBeforeUnmount(() => {
 	left: $sidebar-width;
 	opacity: 0;
 	z-index: 1;
-	background: var(--color-background-dark);
+	background: var(--color-dialog-overlay-background);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
 
