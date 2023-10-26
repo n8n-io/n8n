@@ -19,7 +19,7 @@ import {
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { MainInstancePublisher } from '@/services/orchestration/main/main-instance.publisher';
 
 @Service()
 export class ExternalSecretsManager {
@@ -82,7 +82,7 @@ export class ExternalSecretsManager {
 	}
 
 	async broadcastReloadExternalSecretsProviders() {
-		await Container.get(OrchestrationMainService).broadcastReloadExternalSecretsProviders();
+		await Container.get(MainInstancePublisher).broadcastReloadExternalSecretsProviders();
 	}
 
 	private decryptSecretsSettings(value: string): ExternalSecretsSettings {

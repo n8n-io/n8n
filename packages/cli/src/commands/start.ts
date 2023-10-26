@@ -29,7 +29,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { MainInstancePublisher } from '@/services/orchestration/main/main-instance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -232,7 +232,7 @@ export class Start extends BaseCommand {
 
 	async initOrchestration() {
 		if (config.get('executions.mode') === 'queue') {
-			await Container.get(OrchestrationMainService).init();
+			await Container.get(MainInstancePublisher).init();
 			await Container.get(OrchestrationHandlerMainService).init();
 		}
 	}
