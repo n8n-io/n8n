@@ -609,7 +609,9 @@ export class FileMaker implements INodeType {
 					value: '',
 				});
 
-				for (const layout of await layoutsApiRequest.call(this)) {
+				const layouts = await layoutsApiRequest.call(this);
+
+				for (const layout of layouts) {
 					returnData.push({
 						name: layout.name,
 						value: layout.name,
@@ -621,7 +623,9 @@ export class FileMaker implements INodeType {
 			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				for (const field of await getFields.call(this)) {
+				const fields = await getFields.call(this);
+
+				for (const field of fields) {
 					returnData.push({
 						name: field.name,
 						value: field.name,
@@ -633,7 +637,9 @@ export class FileMaker implements INodeType {
 			async getScripts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				for (const script of await getScripts.call(this)) {
+				const scripts = await getScripts.call(this);
+
+				for (const script of scripts) {
 					if (!script.isFolder) {
 						returnData.push({
 							name: script.name,
@@ -647,7 +653,9 @@ export class FileMaker implements INodeType {
 			async getPortals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				Object.keys((await getPortals.call(this)) as IDataObject).forEach((portal) => {
+				const portals = await getPortals.call(this);
+
+				Object.keys(portals as IDataObject).forEach((portal) => {
 					returnData.push({
 						name: portal,
 						value: portal,
