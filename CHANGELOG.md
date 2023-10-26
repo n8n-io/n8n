@@ -1,3 +1,14 @@
+## [1.14.1](https://github.com/n8n-io/n8n/compare/n8n@1.14.0...n8n@1.14.1) (2023-10-26)
+
+
+### Bug Fixes
+
+* **core:** Ensure execution deletion in worker lifecycle hook ([#7481](https://github.com/n8n-io/n8n/issues/7481)) ([b81e5b9](https://github.com/n8n-io/n8n/commit/b81e5b92ddb96e952b2586b06d9e89c0767b9e58))
+* **core:** Upgrade crypto-js to address CVE-2023-46233  ([#7519](https://github.com/n8n-io/n8n/issues/7519)) ([0c3ee47](https://github.com/n8n-io/n8n/commit/0c3ee47787f1f9c4858fa10b6923c9a6ca54ac8e))
+* **editor:** Fixes the issue that Switch Node can not be created ([#7516](https://github.com/n8n-io/n8n/issues/7516)) ([b64146b](https://github.com/n8n-io/n8n/commit/b64146b3405436d728bba5e7b1c73fcd20a466c2))
+
+
+
 # [1.14.0](https://github.com/n8n-io/n8n/compare/n8n@1.13.0...n8n@1.14.0) (2023-10-25)
 
 
