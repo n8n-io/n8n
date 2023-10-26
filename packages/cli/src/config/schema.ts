@@ -438,6 +438,32 @@ export const schema = {
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
 			},
+			settings: {
+				lockDuration: {
+					doc: 'How long (ms) is the lease period for a worker to work on a message',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_LOCK_DURATION',
+				},
+				lockRenewTime: {
+					doc: 'How frequently (ms) should a worker renew the lease time',
+					format: Number,
+					default: 15000,
+					env: 'QUEUE_WORKER_LOCK_RENEW_TIME',
+				},
+				stalledInterval: {
+					doc: 'How often check for stalled jobs (use 0 for never checking)',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_STALLED_INTERVAL',
+				},
+				maxStalledCount: {
+					doc: 'Max amount of times a stalled job will be re-processed',
+					format: Number,
+					default: 1,
+					env: 'QUEUE_WORKER_MAX_STALLED_COUNT',
+				},
+			},
 		},
 	},
 
