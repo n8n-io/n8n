@@ -317,3 +317,17 @@ export function preparePairedItemDataArray(
 	if (Array.isArray(pairedItem)) return pairedItem;
 	return [pairedItem];
 }
+
+/**
+ * Capitalizes the first letter of a string
+ *
+ * @param {string} string The string to capitalize
+ */
+export function capitalize(str: string): string {
+	if (!str) return str;
+
+	const chars = str.split('');
+	chars[0] = chars[0].toUpperCase();
+
+	return chars.join('');
+}

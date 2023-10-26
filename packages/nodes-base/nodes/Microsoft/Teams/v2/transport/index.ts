@@ -7,12 +7,12 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+import { capitalize } from '../../../../../utils/utilities';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -35,7 +35,19 @@ export async function microsoftApiRequest(
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		const errorOptions: IDataObject = {};
+		if (error.error && error.error.error) {
+			const httpCode = error.statusCode;
+			error = error.error.error;
+			error.statusCode = httpCode;
+			errorOptions.message = error.message;
+
+			if (error.code === 'NotFound' && error.message === 'Resource not found') {
+				const nodeResource = capitalize(this.getNodeParameter('resource', 0) as string);
+				errorOptions.message = `${nodeResource} not found`;
+			}
+		}
+		throw new NodeApiError(this.getNode(), error as JsonObject, errorOptions);
 	}
 }
 

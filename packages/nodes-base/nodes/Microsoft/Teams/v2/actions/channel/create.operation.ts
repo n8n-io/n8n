@@ -67,6 +67,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const name = this.getNodeParameter('name', i) as string;
 	const options = this.getNodeParameter('options', i);
+
 	const body: IDataObject = {
 		displayName: name,
 	};

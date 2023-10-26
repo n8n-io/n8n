@@ -1,7 +1,7 @@
 import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
-import { updateDisplayOptions } from '@utils/utilities';
 import { bucketRLC, groupRLC, groupSourceOptions, memberRLC, planRLC } from '../../descriptions';
 import { microsoftApiRequest } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	groupSourceOptions,
@@ -54,7 +54,8 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Label Names or IDs',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Labels',
 				name: 'labels',
 				type: 'multiOptions',
 				typeOptions: {
@@ -62,8 +63,8 @@ const properties: INodeProperties[] = [
 					loadOptionsDependsOn: ['updateFields.planId'],
 				},
 				default: [],
-				description:
-					'Labels to assign to the task. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
+				description: 'Labels to assign to the task',
 			},
 			{
 				displayName: 'Percent Complete',
