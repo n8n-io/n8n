@@ -298,7 +298,7 @@ watchEffect(async () => {
 </script>
 <template>
 	<div :class="$style.view">
-		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
+		<n8n-heading :class="$style.header" tag="h2" size="medium">
 			{{ activeWorkflow?.name }}
 		</n8n-heading>
 		<div :class="$style.corner">

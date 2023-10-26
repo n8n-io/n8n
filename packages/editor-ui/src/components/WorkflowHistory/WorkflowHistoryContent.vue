@@ -105,7 +105,7 @@ const onAction = ({
 					</section>
 				</template>
 				<template #action-toggle-button>
-					<n8n-button type="tertiary" size="small" data-test-id="action-toggle-button">
+					<n8n-button type="tertiary" size="large" data-test-id="action-toggle-button">
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<n8n-icon class="ml-3xs" icon="chevron-down" size="small" />
 					</n8n-button>
@@ -152,8 +152,9 @@ const onAction = ({
 
 			&:first-child {
 				padding-top: var(--spacing-3xs);
-				padding-bottom: var(--spacing-3xs);
+				padding-bottom: var(--spacing-4xs);
 				* {
+					margin-top: auto;
 					font-size: var(--font-size-m);
 				}
 			}
@@ -167,6 +168,7 @@ const onAction = ({
 			}
 
 			.label {
+				color: var(--color-text-light);
 				padding-right: var(--spacing-4xs);
 			}
 
