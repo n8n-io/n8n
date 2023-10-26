@@ -10,14 +10,13 @@ import { setDefaultResultOrder } from 'dns';
 
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataService, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataService, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
-	ILogger,
 	INode,
 	INodeExecutionData,
 	IRun,
@@ -30,7 +29,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy,
 	Workflow,
 	WorkflowHooks,
 	WorkflowOperationError,
@@ -46,7 +44,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 
 import config from '@/config';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -63,7 +61,7 @@ if (process.env.NODEJS_PREFER_IPV4 === 'true') {
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 
-	logger: ILogger;
+	logger: Logger;
 
 	startedAt = new Date();
 
@@ -85,19 +83,20 @@ class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
+
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
 
 		await initErrorHandling();
 
-		const logger = (this.logger = getLogger());
-		LoggerProxy.init(logger);
-
 		this.data = inputData;
 		const { userId } = inputData;
 
-		logger.verbose('Initializing n8n sub-process', {
+		this.logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
 			workflowId: this.data.workflowData.id,
 		});
@@ -107,26 +106,21 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const userSettings = await UserSettings.prepareUserSettings();
-
-		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await loadNodesAndCredentials.init();
-
 		const nodeTypes = Container.get(NodeTypes);
+		await Container.get(LoadNodesAndCredentials).init();
 
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
-		const instanceId = userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(instanceId);
-		await Container.get(InternalHooks).init(instanceId);
+		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);
-		await license.init(instanceId);
+		await license.init();
 
 		const workflowSettings = this.data.workflowData.settings ?? {};
 

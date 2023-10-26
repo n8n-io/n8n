@@ -184,7 +184,14 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import type { IExecutionsSummary, INodeTypeDescription, ITaskData } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IExecutionsSummary,
+	INodeInputConfiguration,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	ITaskData,
+} from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
@@ -357,9 +364,15 @@ export default defineComponent({
 				top: this.position[1] + 'px',
 			};
 
-			const nonMainInputs = this.inputs.filter((input) => input !== NodeConnectionType.Main);
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const inputs =
+				NodeHelpers.getNodeInputs(workflow, this.node, this.nodeType) ||
+				([] as Array<ConnectionTypes | INodeInputConfiguration>);
+			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+			const nonMainInputs = inputTypes.filter((input) => input !== NodeConnectionType.Main);
 			if (nonMainInputs.length) {
-				const requiredNonMainInputs = this.inputs.filter(
+				const requiredNonMainInputs = inputs.filter(
 					(input) => typeof input !== 'string' && input.required,
 				);
 
@@ -372,6 +385,15 @@ export default defineComponent({
 
 				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 			}
+
+			const outputs =
+				NodeHelpers.getNodeOutputs(workflow, this.node, this.nodeType) ||
+				([] as Array<ConnectionTypes | INodeOutputConfiguration>);
+
+			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+			const mainOutputs = outputTypes.filter((output) => output === NodeConnectionType.Main);
+			styles['--node-main-output-count'] = mainOutputs.length;
 
 			return styles;
 		},
@@ -698,7 +720,12 @@ export default defineComponent({
 <style lang="scss" scoped>
 .node-wrapper {
 	--node-width: 100px;
-	--node-height: 100px;
+	/*
+		Set the node height to 100px as a base.
+		Increase height by 20px for each output beyond the 4th one.
+		max(0, var(--node-main-output-count, 1) - 4) ensures that we only start counting after the 4th output.
+	*/
+	--node-height: calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px);
 
 	--configurable-node-min-input-count: 4;
 	--configurable-node-input-width: 65px;
@@ -1158,6 +1185,7 @@ export default defineComponent({
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
+	--stalk-switch-size: 60px;
 	--stalk-success-size: 87px;
 	--stalk-success-size-without-label: 40px;
 	--stalk-long-size: 127px;
@@ -1405,6 +1433,15 @@ export default defineComponent({
 		margin-top: calc(var(--spacing-l) * -1);
 		margin-left: 0;
 	}
+
+	// Switch node allows for dynamic connection labels
+	// so we need to make sure the label does not overflow
+	&[data-endpoint-node-type='n8n-nodes-base.switch'] {
+		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
+		overflow: hidden;
+		text-overflow: ellipsis;
+		margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs) + 10px);
+	}
 }
 
 .node-input-endpoint-label {
@@ -1446,6 +1483,7 @@ export default defineComponent({
 		opacity: 1;
 	}
 }
+
 .long-stalk {
 	--stalk-size: var(--stalk-long-size);
 }
@@ -1454,5 +1492,8 @@ export default defineComponent({
 }
 .ep-success--without-label {
 	--stalk-size: var(--stalk-success-size-without-label);
+}
+[data-endpoint-node-type='n8n-nodes-base.switch'] {
+	--stalk-size: var(--stalk-switch-size);
 }
 </style>

@@ -30,7 +30,6 @@ import {
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
-	UserSettings,
 } from 'n8n-core';
 
 import type {
@@ -47,7 +46,7 @@ import type {
 	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -124,7 +123,7 @@ import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
 import { licenseController } from './license/license.controller';
-import { Push, setupPushServer, setupPushHandler } from '@/push';
+import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
 import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
@@ -146,7 +145,6 @@ import { SourceControlService } from '@/environments/sourceControl/sourceControl
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 import { ExecutionRepository, SettingsRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
 import type { FrontendService } from './services/frontend.service';
@@ -159,25 +157,23 @@ import { WorkflowHistoryController } from './workflows/workflowHistory/workflowH
 const exec = promisify(callbackExec);
 
 export class Server extends AbstractServer {
-	endpointPresetCredentials: string;
+	private endpointPresetCredentials: string;
 
-	waitTracker: WaitTracker;
+	private waitTracker: WaitTracker;
 
-	activeExecutionsInstance: ActiveExecutions;
+	private activeExecutionsInstance: ActiveExecutions;
 
-	presetCredentialsLoaded: boolean;
+	private presetCredentialsLoaded: boolean;
 
-	loadNodesAndCredentials: LoadNodesAndCredentials;
+	private loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	nodeTypes: NodeTypes;
+	private nodeTypes: NodeTypes;
 
-	credentialTypes: ICredentialTypes;
+	private credentialTypes: ICredentialTypes;
 
-	frontendService: FrontendService;
+	private frontendService?: FrontendService;
 
-	postHog: PostHogClient;
-
-	push: Push;
+	private postHog: PostHogClient;
 
 	constructor() {
 		super('main');
@@ -196,13 +192,8 @@ export class Server extends AbstractServer {
 		this.nodeTypes = Container.get(NodeTypes);
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { FrontendService } = await import('@/services/frontend.service');
-			this.frontendService = Container.get(FrontendService);
-			this.loadNodesAndCredentials.addPostProcessor(async () =>
-				this.frontendService.generateTypes(),
-			);
-			await this.frontendService.generateTypes();
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
 		}
 
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -212,10 +203,8 @@ export class Server extends AbstractServer {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		this.push = Container.get(Push);
-
 		await super.start();
-		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
@@ -281,24 +270,21 @@ export class Server extends AbstractServer {
 	}
 
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes, logger } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
 		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
-		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+		const mfaService = Container.get(MfaService);
 
 		const controllers: object[] = [
 			new EventBusController(),
 			new EventBusControllerEE(),
-			new AuthController(config, logger, internalHooks, mfaService, userService, postHog),
+			Container.get(AuthController),
 			new OwnerController(
 				config,
 				logger,
@@ -307,7 +293,7 @@ export class Server extends AbstractServer {
 				userService,
 				postHog,
 			),
-			new MeController(logger, externalHooks, internalHooks, userService),
+			Container.get(MeController),
 			new NodeTypesController(config, nodeTypes),
 			new PasswordResetController(
 				logger,
@@ -376,19 +362,19 @@ export class Server extends AbstractServer {
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
 
-		this.instanceId = await UserSettings.getInstanceId();
+		const { frontendService } = this;
+		if (frontendService) {
+			frontendService.addToSettings({
+				isNpmAvailable: await exec('npm --version')
+					.then(() => true)
+					.catch(() => false),
+				versionCli: N8N_VERSION,
+			});
 
-		this.frontendService.addToSettings({
-			isNpmAvailable: await exec('npm --version')
-				.then(() => true)
-				.catch(() => false),
-			versionCli: N8N_VERSION,
-			instanceId: this.instanceId,
-		});
+			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+		}
 
-		await this.externalHooks.run('frontend.settings', [this.frontendService.getSettings()]);
-
-		await this.postHog.init(this.instanceId);
+		await this.postHog.init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
@@ -415,7 +401,9 @@ export class Server extends AbstractServer {
 		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
-			this.frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			if (frontendService) {
+				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			}
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -468,7 +456,7 @@ export class Server extends AbstractServer {
 		try {
 			await Container.get(SamlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
+			this.logger.warn(`SAML initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
@@ -483,7 +471,7 @@ export class Server extends AbstractServer {
 		try {
 			await Container.get(SourceControlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
+			this.logger.warn(`Source Control initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
@@ -678,7 +666,7 @@ export class Server extends AbstractServer {
 				});
 
 				if (!shared) {
-					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
+					this.logger.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -725,32 +713,25 @@ export class Server extends AbstractServer {
 				const { id: credentialId } = req.query;
 
 				if (!credentialId) {
-					LoggerProxy.error('OAuth1 credential authorization failed due to missing credential ID');
+					this.logger.error('OAuth1 credential authorization failed due to missing credential ID');
 					throw new ResponseHelper.BadRequestError('Required credential ID is missing');
 				}
 
 				const credential = await getCredentialForUser(credentialId, req.user);
 
 				if (!credential) {
-					LoggerProxy.error(
+					this.logger.error(
 						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
 						{ userId: req.user.id },
 					);
 					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 				}
 
-				let encryptionKey: string;
-				try {
-					encryptionKey = await UserSettings.getEncryptionKey();
-				} catch (error) {
-					throw new ResponseHelper.InternalServerError(error.message);
-				}
-
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
 				const mode: WorkflowExecuteMode = 'internal';
 				const timezone = config.getEnv('generic.timezone');
-				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const credentialsHelper = Container.get(CredentialsHelper);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					additionalData,
 					credential as INodeCredentialsDetails,
@@ -835,7 +816,7 @@ export class Server extends AbstractServer {
 					credential.nodesAccess,
 				);
 
-				credentials.setData(decryptedDataOriginal, encryptionKey);
+				credentials.setData(decryptedDataOriginal);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 				// Add special database related data
@@ -844,7 +825,7 @@ export class Server extends AbstractServer {
 				// Update the credentials in DB
 				await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
-				LoggerProxy.verbose('OAuth1 authorization successful for new credential', {
+				this.logger.verbose('OAuth1 authorization successful for new credential', {
 					userId: req.user.id,
 					credentialId,
 				});
@@ -866,7 +847,7 @@ export class Server extends AbstractServer {
 								req.query,
 							)}`,
 						);
-						LoggerProxy.error(
+						this.logger.error(
 							'OAuth1 callback failed because of insufficient parameters received',
 							{
 								userId: req.user?.id,
@@ -879,7 +860,7 @@ export class Server extends AbstractServer {
 					const credential = await getCredentialWithoutUser(credentialId);
 
 					if (!credential) {
-						LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
+						this.logger.error('OAuth1 callback failed because of insufficient user permissions', {
 							userId: req.user?.id,
 							credentialId,
 						});
@@ -889,18 +870,11 @@ export class Server extends AbstractServer {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey: string;
-					try {
-						encryptionKey = await UserSettings.getEncryptionKey();
-					} catch (error) {
-						throw new ResponseHelper.InternalServerError(error.message);
-					}
-
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
 					const mode: WorkflowExecuteMode = 'internal';
 					const timezone = config.getEnv('generic.timezone');
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
+					const credentialsHelper = Container.get(CredentialsHelper);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						additionalData,
 						credential as INodeCredentialsDetails,
@@ -931,7 +905,7 @@ export class Server extends AbstractServer {
 					try {
 						oauthToken = await axios.request(options);
 					} catch (error) {
-						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
+						this.logger.error('Unable to fetch tokens for OAuth1 callback', {
 							userId: req.user?.id,
 							credentialId,
 						});
@@ -952,20 +926,20 @@ export class Server extends AbstractServer {
 						credential.type,
 						credential.nodesAccess,
 					);
-					credentials.setData(decryptedDataOriginal, encryptionKey);
+					credentials.setData(decryptedDataOriginal);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
 					newCredentialsData.updatedAt = new Date();
 					// Save the credentials in DB
 					await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
-					LoggerProxy.verbose('OAuth1 callback successful for new credential', {
+					this.logger.verbose('OAuth1 callback successful for new credential', {
 						userId: req.user?.id,
 						credentialId,
 					});
 					res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 				} catch (error) {
-					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
+					this.logger.error('OAuth1 callback failed because of insufficient user permissions', {
 						userId: req.user?.id,
 						credentialId: req.query.cid,
 					});
@@ -1208,17 +1182,21 @@ export class Server extends AbstractServer {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the current settings for the UI
-		this.app.get(
-			`/${this.restEndpoint}/settings`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				ResponseHelper.send(
+					async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+						void Container.get(InternalHooks).onFrontendSettingsAPI(
+							req.headers.sessionid as string,
+						);
 
-					return this.frontendService.getSettings();
-				},
-			),
-		);
+						return frontendService.getSettings();
+					},
+				),
+			);
+		}
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -1248,7 +1226,7 @@ export class Server extends AbstractServer {
 
 						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.frontendService?.generateTypes();
+						await frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1260,7 +1238,7 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (frontendService) {
 			const staticOptions: ServeStaticOptions = {
 				cacheControl: false,
 				setHeaders: (res: express.Response, path: string) => {

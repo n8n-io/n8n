@@ -9,13 +9,9 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import unset from 'lodash/unset';
-import { Credentials, UserSettings } from 'n8n-core';
-import type {
-	WorkflowExecuteMode,
-	INodeCredentialsDetails,
-	ICredentialsEncrypted,
-} from 'n8n-workflow';
-import { LoggerProxy, jsonStringify } from 'n8n-workflow';
+import { Credentials } from 'n8n-core';
+import type { WorkflowExecuteMode, INodeCredentialsDetails } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
 import * as Db from '@/Db';
@@ -27,7 +23,6 @@ import {
 	getCredentialForUser,
 	getCredentialWithoutUser,
 } from '@/CredentialsHelper';
-import { getLogger } from '@/Logger';
 import type { OAuthRequest } from '@/requests';
 import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
@@ -35,20 +30,9 @@ import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import { Container } from 'typedi';
 
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { Logger } from '@/Logger';
 
 export const oauth2CredentialController = express.Router();
-
-/**
- * Initialize Logger if needed
- */
-oauth2CredentialController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-	next();
-});
 
 const restEndpoint = config.getEnv('endpoints.rest');
 
@@ -69,27 +53,20 @@ oauth2CredentialController.get(
 		const credential = await getCredentialForUser(credentialId, req.user);
 
 		if (!credential) {
-			LoggerProxy.error('Failed to authorize OAuth2 due to lack of permissions', {
+			Container.get(Logger).error('Failed to authorize OAuth2 due to lack of permissions', {
 				userId: req.user.id,
 				credentialId,
 			});
 			throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
-		let encryptionKey: string;
-		try {
-			encryptionKey = await UserSettings.getEncryptionKey();
-		} catch (error) {
-			throw new ResponseHelper.InternalServerError((error as Error).message);
-		}
-
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
-		const credentialType = (credential as unknown as ICredentialsEncrypted).type;
+		const credentialType = credential.type;
 
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
-		const credentialsHelper = new CredentialsHelper(encryptionKey);
+		const credentialsHelper = Container.get(CredentialsHelper);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 			additionalData,
 			credential as INodeCredentialsDetails,
@@ -152,7 +129,7 @@ oauth2CredentialController.get(
 		const credentials = new Credentials(
 			credential as INodeCredentialsDetails,
 			credentialType,
-			(credential as unknown as ICredentialsEncrypted).nodesAccess,
+			credential.nodesAccess,
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
 
@@ -166,7 +143,7 @@ oauth2CredentialController.get(
 			decryptedDataOriginal.codeVerifier = code_verifier;
 		}
 
-		credentials.setData(decryptedDataOriginal, encryptionKey);
+		credentials.setData(decryptedDataOriginal);
 		const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 		// Add special database related data
@@ -175,7 +152,7 @@ oauth2CredentialController.get(
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(req.query.id, newCredentialsData);
 
-		LoggerProxy.verbose('OAuth2 authorization url created for credential', {
+		Container.get(Logger).verbose('OAuth2 authorization url created for credential', {
 			userId: req.user.id,
 			credentialId,
 		});
@@ -221,23 +198,22 @@ oauth2CredentialController.get(
 
 			if (!credential) {
 				const errorMessage = 'OAuth2 callback failed because of insufficient permissions';
-				LoggerProxy.error(errorMessage, {
+				Container.get(Logger).error(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
 				return renderCallbackError(res, errorMessage);
 			}
 
-			const encryptionKey = await UserSettings.getEncryptionKey();
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(state.cid);
 
 			const mode: WorkflowExecuteMode = 'internal';
 			const timezone = config.getEnv('generic.timezone');
-			const credentialsHelper = new CredentialsHelper(encryptionKey);
+			const credentialsHelper = Container.get(CredentialsHelper);
 			const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 				additionalData,
 				credential as INodeCredentialsDetails,
-				(credential as unknown as ICredentialsEncrypted).type,
+				credential.type,
 				mode,
 				timezone,
 				true,
@@ -245,7 +221,7 @@ oauth2CredentialController.get(
 			const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 				additionalData,
 				decryptedDataOriginal,
-				(credential as unknown as ICredentialsEncrypted).type,
+				credential.type,
 				mode,
 				timezone,
 			);
@@ -256,7 +232,7 @@ oauth2CredentialController.get(
 				!token.verify(decryptedDataOriginal.csrfSecret as string, state.token)
 			) {
 				const errorMessage = 'The OAuth2 callback state is invalid!';
-				LoggerProxy.debug(errorMessage, {
+				Container.get(Logger).debug(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
@@ -310,7 +286,7 @@ oauth2CredentialController.get(
 
 			if (oauthToken === undefined) {
 				const errorMessage = 'Unable to get OAuth2 access tokens!';
-				LoggerProxy.error(errorMessage, {
+				Container.get(Logger).error(errorMessage, {
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
@@ -330,16 +306,16 @@ oauth2CredentialController.get(
 
 			const credentials = new Credentials(
 				credential as INodeCredentialsDetails,
-				(credential as unknown as ICredentialsEncrypted).type,
-				(credential as unknown as ICredentialsEncrypted).nodesAccess,
+				credential.type,
+				credential.nodesAccess,
 			);
-			credentials.setData(decryptedDataOriginal, encryptionKey);
+			credentials.setData(decryptedDataOriginal);
 			const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 			// Add special database related data
 			newCredentialsData.updatedAt = new Date();
 			// Save the credentials in DB
 			await Db.collections.Credentials.update(state.cid, newCredentialsData);
-			LoggerProxy.verbose('OAuth2 callback successful for new credential', {
+			Container.get(Logger).verbose('OAuth2 callback successful for new credential', {
 				userId: req.user?.id,
 				credentialId: state.cid,
 			});
