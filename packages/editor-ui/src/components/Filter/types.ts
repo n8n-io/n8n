@@ -1,16 +1,8 @@
 import type { BaseTextKey } from '@/plugins/i18n';
-export type OperatorSubjectType =
-	| 'string'
-	| 'number'
-	| 'boolean'
-	| 'array'
-	| 'object'
-	| 'date'
-	| 'other'
-	| 'any';
+import type { FilterOperatorType } from 'n8n-workflow';
 
 export interface FilterOperator {
-	id: `${OperatorSubjectType}:${string}`;
+	id: `${FilterOperatorType}:${string}`;
 	name: BaseTextKey;
 	singleValue?: boolean; // default = false
 }

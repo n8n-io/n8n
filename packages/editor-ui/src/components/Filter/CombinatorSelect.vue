@@ -11,19 +11,22 @@ interface Props {
 defineProps<Props>();
 
 const emit = defineEmits<{
-	(event: 'combinatorChanged', value: FilterTypeCombinator): void;
+	(event: 'combinatorChange', value: FilterTypeCombinator): void;
 }>();
 
 const i18n = useI18n();
 
 const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
-	emit('combinatorChanged', combinator);
+	emit('combinatorChange', combinator);
 };
 </script>
 
 <template>
-	<div data-test-id="combinator-select">
-		<n8n-select :modelValue="selected" @update:modelValue="onCombinatorChange">
+	<div data-test-id="combinator-select" :class="$style.combinatorSelect">
+		<div v-if="readOnly || options.length === 1">
+			{{ i18n.baseText(`filter.combinator.${selected}`) }}
+		</div>
+		<n8n-select v-else size="small" :modelValue="selected" @update:modelValue="onCombinatorChange">
 			<n8n-option
 				v-for="option in options"
 				:key="option"
@@ -35,4 +38,11 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 	</div>
 </template>
 
-<style lang="scss" module></style>
+<style lang="scss" module>
+.combinatorSelect {
+	max-width: 80px;
+	line-height: var(--font-line-height-xloose);
+	font-size: var(--font-size-s);
+	font-style: italic;
+}
+</style>

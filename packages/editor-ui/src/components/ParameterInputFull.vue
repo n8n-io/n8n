@@ -1,16 +1,17 @@
 <template>
 	<n8n-input-label
+		:class="$style.wrapper"
 		:label="hideLabel ? '' : i18n.nodeText().inputLabelDisplayName(parameter, path)"
 		:tooltipText="hideLabel ? '' : i18n.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
+		:optionsPosition="optionsPosition"
 		:bold="false"
 		:size="label.size"
 		color="text-dark"
 	>
-		<template v-if="optionsPosition === 'top'" #options>
+		<template v-if="displayOptions && optionsPosition === 'top'" #options>
 			<parameter-options
-				v-if="displayOptions"
 				:parameter="parameter"
 				:value="value"
 				:isReadOnly="isReadOnly"
@@ -48,10 +49,12 @@
 						:modelValue="value"
 						:path="path"
 						:isReadOnly="isReadOnly"
+						:isSingleLine="isSingleLine"
 						:droppable="droppable"
 						:activeDrop="activeDrop"
 						:forceShowExpression="forceShowExpression"
 						:hint="hint"
+						:hideHint="hideHint"
 						:hide-issues="hideIssues"
 						:label="label"
 						:event-bus="eventBus"
@@ -65,6 +68,23 @@
 				</n8n-tooltip>
 			</template>
 		</draggable-target>
+		<div
+			:class="{
+				[$style.options]: true,
+				[$style.visible]: menuExpanded || focused || forceShowExpression,
+			}"
+		>
+			<parameter-options
+				v-if="optionsPosition === 'bottom'"
+				:parameter="parameter"
+				:value="value"
+				:isReadOnly="isReadOnly"
+				:showOptions="displayOptions"
+				:showExpressionSelector="showExpressionSelector"
+				@update:modelValue="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</div>
 	</n8n-input-label>
 </template>
 
@@ -136,7 +156,15 @@ export default defineComponent({
 			type: String as PropType<'bottom' | 'top'>,
 			default: 'top',
 		},
+		hideHint: {
+			type: Boolean,
+			default: false,
+		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		isSingleLine: {
 			type: Boolean,
 			default: false,
 		},
@@ -345,3 +373,26 @@ export default defineComponent({
 	},
 });
 </script>
+
+<style module>
+.wrapper {
+	position: relative;
+
+	&:hover {
+		.options {
+			opacity: 1;
+		}
+	}
+}
+.options {
+	position: absolute;
+	bottom: -24px;
+	right: 0;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+
+	&.visible {
+		opacity: 1;
+	}
+}
+</style>

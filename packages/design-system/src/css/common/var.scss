@@ -528,10 +528,14 @@ $input-placeholder-color: var(--input-placeholder-color, var(--color-text-light)
 $input-focus-border: var(--input-focus-border-color, var(--color-secondary));
 $input-border-color: var(--input-border-color, var(--border-color-base));
 $input-border-style: var(--input-border-style, var(--border-style-base));
-$input-border-width: var(--border-width-base);
+$input-border-width: var(--input-border-width, var(--border-width-base));
 $input-border: $input-border-color $input-border-style $input-border-width;
 $input-border-right-color: var(
 	--input-border-right-color,
+	var(--input-border-color, var(--border-color-base))
+);
+$input-border-bottom-color: var(
+	--input-border-bottom-color,
 	var(--input-border-color, var(--border-color-base))
 );
 

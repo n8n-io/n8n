@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import type { FilterConditionValue, FilterValue, INodeProperties } from 'n8n-workflow';
+import type {
+	FilterConditionValue,
+	FilterValue,
+	INodeProperties,
+	FilterTypeCombinator,
+	INode,
+} from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
-import { DEFAULT_MAX_CONDITIONS, DEFAULT_OPERATOR } from './constants';
-import { useI18n } from '@/composables';
+import { useNDVStore } from '@/stores/ndv.store';
+import { DEFAULT_MAX_CONDITIONS, DEFAULT_OPERATOR_VALUE } from './constants';
+import { useI18n, useDebounceHelper } from '@/composables';
 import Condition from './Condition.vue';
+import CombinatorSelect from './CombinatorSelect.vue';
 
 interface Props {
 	parameter: INodeProperties;
 	value: FilterValue;
 	path: string;
+	node: INode | null;
 }
 
 const props = defineProps<Props>();
@@ -18,7 +27,7 @@ const emit = defineEmits<{
 }>();
 
 function createCondition(): FilterConditionValue {
-	return { leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR };
+	return { leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
 }
 
 const allowedCombinators = computed(
@@ -29,7 +38,6 @@ const state = reactive<{ paramValue: FilterValue }>({
 	paramValue: {
 		conditions: props.value.conditions ?? [createCondition()],
 		combinator: props.value.combinator ?? allowedCombinators.value[0],
-		value: props.value.value,
 	},
 });
 
@@ -50,7 +58,8 @@ function addCondition(): void {
 }
 
 function onOperatorChanged(index: number, value: string): void {
-	state.paramValue.conditions[index].operator = value;
+	const [type, operation] = value.split(':');
+	state.paramValue.conditions[index].operator = { type, operation };
 }
 
 function onLeftValueChanged(index: number, value: string): void {
@@ -65,7 +74,32 @@ function onCombinatorChange(combinator: FilterTypeCombinator): void {
 	state.paramValue.combinator = combinator;
 }
 
+function onConditionRemoved(index: number): void {
+	state.paramValue.conditions.splice(index, 1);
+}
+
+const { callDebounced } = useDebounceHelper();
+
+watch(state.paramValue, (value) => {
+	void callDebounced(
+		() => {
+			emit('valueChanged', { name: props.path, value, node: props.node?.name });
+		},
+		{ debounceTime: 500 },
+	);
+});
+
 const i18n = useI18n();
+const ndvStore = useNDVStore();
+
+const issues = computed(() => {
+	if (!ndvStore.activeNode) return {};
+	return ndvStore.activeNode?.issues?.parameters ?? {};
+});
+
+function getIssues(index: number): string[] {
+	return issues.value[`${props.parameter.name}.${index}`] ?? [];
+}
 </script>
 
 <template>
@@ -78,32 +112,40 @@ const i18n = useI18n();
 			color="text-dark"
 		>
 		</n8n-input-label>
-		<div :class="$style.conditions">
-			<div v-for="(condition, index) of state.paramValue.conditions" :key="index">
-				<condition
-					:condition="condition"
-					:fixed-left-value="!!parameter.typeOptions?.filter?.leftValue"
-					:path="path"
-					@operator-changed="(value) => onOperatorChanged(index, value)"
-					@left-value-changed="(value) => onLeftValueChanged(index, value)"
-					@right-value-changed="(value) => onRightValueChanged(index, value)"
-				></condition>
+		<div :class="$style.content">
+			<div :class="$style.conditions">
+				<div v-for="(condition, index) of state.paramValue.conditions" :key="index">
+					<combinator-select
+						v-if="index !== 0"
+						:readOnly="index !== 1"
+						:options="allowedCombinators"
+						:selected="state.paramValue.combinator"
+						:class="$style.combinator"
+						@combinatorChange="onCombinatorChange"
+					/>
 
-				<combinator-select
-					:options="allowedCombinators"
-					:selected="state.paramValue.combinator"
-					@combinator-change="onCombinatorChange"
-				/>
+					<condition
+						:condition="condition"
+						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
+						:path="`${path}.${index}`"
+						:issues="getIssues(index)"
+						@operatorChange="(value) => onOperatorChanged(index, value)"
+						@leftValueChange="(value) => onLeftValueChanged(index, value)"
+						@rightValueChange="(value) => onRightValueChanged(index, value)"
+						@remove="() => onConditionRemoved(index)"
+					></condition>
+				</div>
 			</div>
+			<n8n-button
+				type="secondary"
+				block
+				@click="addCondition"
+				:class="$style.addCondition"
+				:label="i18n.baseText('filter.addCondition')"
+				:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
+				:disabled="maxConditionsReached"
+			/>
 		</div>
-		<n8n-button
-			type="tertiary"
-			block
-			@click="addCondition"
-			:class="$style.addCondition"
-			:label="i18n.baseText('filter.addCondition')"
-			:disabled="maxConditionsReached"
-		/>
 	</div>
 </template>
 
@@ -111,7 +153,8 @@ const i18n = useI18n();
 .filter {
 	display: flex;
 	flex-direction: column;
-	margin-top: var(--spacing-4xs);
+	margin: var(--spacing-xs) 0;
+	container: filter / inline-size;
 }
 
 .conditions {
@@ -119,8 +162,17 @@ const i18n = useI18n();
 	flex-direction: column;
 	gap: var(--spacing-4xs);
 }
+.content {
+	padding-left: var(--spacing-l);
+}
+.combinator {
+	position: relative;
+	z-index: 1;
+	margin-top: var(--spacing-2xs);
+	margin-bottom: calc(var(--spacing-2xs) * -1);
+}
 
 .addCondition {
-	margin-top: var(--spacing-2xs);
+	margin-top: var(--spacing-l);
 }
 </style>

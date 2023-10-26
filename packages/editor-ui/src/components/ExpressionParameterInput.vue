@@ -5,20 +5,14 @@
 		@keydown.tab="onBlur"
 	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
-			<div
-				:class="[
-					$style['prepend-section'],
-					'el-input-group__prepend',
-					{ [$style['squared']]: isForRecordLocator },
-				]"
-			>
+			<div :class="[$style['prepend-section'], 'el-input-group__prepend']">
 				<ExpressionFunctionIcon />
 			</div>
 			<InlineExpressionEditorInput
 				:modelValue="modelValue"
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
-				:isSingleLine="isForRecordLocator"
+				:isSingleLine="isSingleLine"
 				:additionalData="additionalExpressionData"
 				:path="path"
 				@focus="onFocus"
@@ -86,7 +80,7 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
-		isForRecordLocator: {
+		isSingleLine: {
 			type: Boolean,
 			default: false,
 		},
@@ -178,10 +172,6 @@ export default defineComponent({
 		width: 22px;
 		text-align: center;
 	}
-
-	.squared {
-		border-radius: 0;
-	}
 }
 
 .expression-editor-modal-opener {
@@ -193,7 +183,15 @@ export default defineComponent({
 	line-height: 9px;
 	border: var(--border-base);
 	border-top-left-radius: var(--border-radius-base);
-	border-bottom-right-radius: var(--border-radius-base);
+	border-bottom-right-radius: var(--input-border-bottom-right-radius, var(--border-radius-base));
+	border-right-color: var(
+		--input-border-right-color,
+		var(--input-border-color, var(--border-color-base))
+	);
+	border-bottom-color: var(
+		--input-border-bottom-color,
+		var(--input-border-color, var(--border-color-base))
+	);
 	cursor: pointer;
 
 	svg {

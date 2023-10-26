@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import type { FilterConditionValue } from 'n8n-workflow';
 import type { FilterOperator, FilterOperatorGroup } from './types';
 
-export const DEFAULT_MAX_CONDITIONS = 5;
+export const DEFAULT_MAX_CONDITIONS = 10;
 
 export const OPERATORS_BY_ID = {
 	'any:exists': { id: 'any:exists', name: 'filter.operator.exists', singleValue: true },
@@ -22,12 +23,15 @@ export const OPERATORS_BY_ID = {
 	'number:lt': { id: 'number:lt', name: 'filter.operator.lt' },
 	'number:gte': { id: 'number:gte', name: 'filter.operator.gte' },
 	'number:lte': { id: 'number:lte', name: 'filter.operator.lte' },
-	'date:equals': { id: 'date:equals', name: 'filter.operator.equals' },
-	'date:notEquals': { id: 'date:notEquals', name: 'filter.operator.notEquals' },
-	'date:after': { id: 'date:after', name: 'filter.operator.after' },
-	'date:before': { id: 'date:before', name: 'filter.operator.before' },
-	'date:afterOrEquals': { id: 'date:afterOrEquals', name: 'filter.operator.afterOrEquals' },
-	'date:beforeOrEquals': { id: 'date:beforeOrEquals', name: 'filter.operator.beforeOrEquals' },
+	'dateTime:equals': { id: 'dateTime:equals', name: 'filter.operator.equals' },
+	'dateTime:notEquals': { id: 'dateTime:notEquals', name: 'filter.operator.notEquals' },
+	'dateTime:after': { id: 'dateTime:after', name: 'filter.operator.after' },
+	'dateTime:before': { id: 'dateTime:before', name: 'filter.operator.before' },
+	'dateTime:afterOrEquals': { id: 'dateTime:afterOrEquals', name: 'filter.operator.afterOrEquals' },
+	'dateTime:beforeOrEquals': {
+		id: 'dateTime:beforeOrEquals',
+		name: 'filter.operator.beforeOrEquals',
+	},
 	'boolean:true': { id: 'boolean:true', name: 'filter.operator.true', singleValue: true },
 	'boolean:false': { id: 'boolean:false', name: 'filter.operator.false', singleValue: true },
 	'boolean:equals': { id: 'boolean:equals', name: 'filter.operator.equals' },
@@ -48,7 +52,10 @@ export const OPERATORS = Object.values(OPERATORS_BY_ID);
 
 export type FilterOperatorId = keyof typeof OPERATORS_BY_ID;
 
-export const DEFAULT_OPERATOR: FilterOperatorId = 'any:exists';
+export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] = {
+	type: 'any',
+	operation: 'exists',
+};
 
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{

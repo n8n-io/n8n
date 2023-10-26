@@ -2246,7 +2246,9 @@
 	"filter.operator.lengthLte": "Length less than or equal",
 	"filter.operator.empty": "Empty",
 	"filter.operator.notEmpty": "Not empty",
-	"filter.combinator.or": "Or",
-	"filter.combinator.and": "And",
-	"filter.addCondition": "Add condition"
+	"filter.combinator.or": "OR",
+	"filter.combinator.and": "AND",
+	"filter.addCondition": "Add condition",
+	"filter.removeCondition": "Remove condition",
+	"filter.maxConditions": "Maximum conditions reached"
 }

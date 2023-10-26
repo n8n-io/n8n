@@ -45,6 +45,7 @@
 				:modelValue="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
+				:isSingleLine="isSingleLine"
 				:path="path"
 				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -440,6 +441,9 @@ export default defineComponent({
 			default: () => ({}),
 		},
 		isReadOnly: {
+			type: Boolean,
+		},
+		isSingleLine: {
 			type: Boolean,
 		},
 		parameter: {

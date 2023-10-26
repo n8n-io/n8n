@@ -2,6 +2,7 @@
 	<div class="expression-edit" v-if="dialogVisible" @keydown.stop>
 		<el-dialog
 			:modelValue="dialogVisible"
+			append-to-body
 			class="expression-dialog classic"
 			width="80%"
 			:title="$locale.baseText('expressionEdit.editExpression')"

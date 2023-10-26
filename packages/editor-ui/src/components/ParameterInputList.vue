@@ -107,6 +107,7 @@
 				:parameter="parameter"
 				:value="getParameterValue(nodeValues, parameter.name, path)"
 				:path="getPath(parameter.name)"
+				:node="node"
 				@valueChanged="valueChanged"
 			/>
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">

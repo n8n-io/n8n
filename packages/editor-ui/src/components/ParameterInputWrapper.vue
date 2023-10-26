@@ -1,8 +1,5 @@
 <template>
-	<div
-		:class="{ [$style.parameterInput]: true, [$style.hintTop]: hintPosition === 'top' }"
-		data-test-id="parameter-input"
-	>
+	<div :class="$style.parameterInput" data-test-id="parameter-input">
 		<parameter-input
 			ref="param"
 			:inputSize="inputSize"
@@ -21,6 +18,7 @@
 			:expressionEvaluated="expressionValueComputed"
 			:additionalExpressionData="resolvedAdditionalExpressionData"
 			:label="label"
+			:isSingleLine="isSingleLine"
 			:data-test-id="`parameter-input-${parsedParameterName}`"
 			:event-bus="eventBus"
 			@focus="onFocus"
@@ -29,7 +27,7 @@
 			@textInput="onTextInput"
 			@update="onValueChanged"
 		/>
-		<div v-if="expressionOutput || parameterHint" :class="$style.hint">
+		<div v-if="!hideHint && (expressionOutput || parameterHint)" :class="$style.hint">
 			<div>
 				<input-hint
 					v-if="expressionOutput"
@@ -86,6 +84,9 @@ export default defineComponent({
 		isReadOnly: {
 			type: Boolean,
 		},
+		isSingleLine: {
+			type: Boolean,
+		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
 		},
@@ -108,10 +109,9 @@ export default defineComponent({
 			type: String,
 			required: false,
 		},
-		hintPosition: {
-			type: String as PropType<'top' | 'bottom'>,
+		hideHint: {
+			type: Boolean,
 			required: false,
-			default: 'bottom',
 		},
 		inputSize: {
 			type: String,
@@ -263,15 +263,6 @@ export default defineComponent({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4xs);
-
-	&.hintTop {
-		flex-direction: column-reverse;
-	}
-}
-
-.hint {
-	display: flex;
-	justify-content: space-between;
 }
 
 .hovering {

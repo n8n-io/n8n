@@ -92,7 +92,7 @@
 									v-if="isValueExpression || forceShowExpression"
 									:modelValue="expressionDisplayValue"
 									:path="path"
-									isForRecordLocator
+									isSingleLine
 									@update:modelValue="onInputChange"
 									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
