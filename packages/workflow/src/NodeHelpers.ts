@@ -1027,7 +1027,7 @@ export function getNodeInputs(
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<ConnectionTypes | INodeInputConfiguration> {
-	if (Array.isArray(nodeTypeData.inputs)) {
+	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
 	}
 

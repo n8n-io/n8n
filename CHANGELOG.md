@@ -1,3 +1,45 @@
+# [1.14.0](https://github.com/n8n-io/n8n/compare/n8n@1.13.0...n8n@1.14.0) (2023-10-25)
+
+
+### Features
+
+* **Switch Node:** Add support for infinite Switch outputs ([#7499](https://github.com/n8n-io/n8n/issues/7499)) ([2febc61](https://github.com/n8n-io/n8n/commit/2febc61ec94928eb196e1b5f815fffa13f8bae07))
+
+
+
+# [1.13.0](https://github.com/n8n-io/n8n/compare/n8n@1.12.0...n8n@1.13.0) (2023-10-25)
+
+
+### Bug Fixes
+
+* **core:** Always derive `instanceId` from the encryption key (no-changlog) ([#7501](https://github.com/n8n-io/n8n/issues/7501)) ([a9fdd01](https://github.com/n8n-io/n8n/commit/a9fdd018f4f5ba1e11cc10dc3a3b7929a586f818))
+* **core:** Do not return `inviteAcceptUrl` in response if email was sent ([#7465](https://github.com/n8n-io/n8n/issues/7465)) ([55c6a1b](https://github.com/n8n-io/n8n/commit/55c6a1b0d394265fa4018a7023971589d8e61b4a))
+* **core:** Ensure nodes post-processors run in the correct order ([#7500](https://github.com/n8n-io/n8n/issues/7500)) ([6f45298](https://github.com/n8n-io/n8n/commit/6f45298d3d61b33e762f520129f4775e216707c8)), closes [#7497](https://github.com/n8n-io/n8n/issues/7497)
+* **core:** Fix `frontend.settings` external hook execution ([#7496](https://github.com/n8n-io/n8n/issues/7496)) ([774fe20](https://github.com/n8n-io/n8n/commit/774fe202bfde4f2c5cc95f28a33185e261b031a5))
+* **core:** Handle gzip and deflate compressed request payloads ([#7461](https://github.com/n8n-io/n8n/issues/7461)) ([83762e0](https://github.com/n8n-io/n8n/commit/83762e051d5e34d9e43caebd6275780da05c6a46))
+* **core:** Reduce logging overhead for levels that do not output ([#7479](https://github.com/n8n-io/n8n/issues/7479)) ([76c0481](https://github.com/n8n-io/n8n/commit/76c04815f7f53bf6b4c06bbe5afa52f51f28750d))
+* **Customer.io Node:** Fix api endpoint when using EU region ([#7485](https://github.com/n8n-io/n8n/issues/7485)) ([519680c](https://github.com/n8n-io/n8n/commit/519680c2cf37f3b7341e87e71b911ac2fee8bdfa)), closes [#7484](https://github.com/n8n-io/n8n/issues/7484)
+* **editor:** Allow importing the same workflow multiple times ([#7458](https://github.com/n8n-io/n8n/issues/7458)) ([3c0a166](https://github.com/n8n-io/n8n/commit/3c0a166f7f1cf225e5d1b4da91f7449f2deed5ca)), closes [#7457](https://github.com/n8n-io/n8n/issues/7457)
+* **editor:** Fix canvas selection breaking after interacting with node actions ([#7466](https://github.com/n8n-io/n8n/issues/7466)) ([bc47365](https://github.com/n8n-io/n8n/commit/bc473655fbc09b1172cd6949236ca2871c9d3b8e))
+* **editor:** Fix connections disappearing after reactivating canvas and renaming a node ([#7483](https://github.com/n8n-io/n8n/issues/7483)) ([450e0cc](https://github.com/n8n-io/n8n/commit/450e0cc66abbe57697f66835a837e53b5eb883a3))
+* **Google Sheets Node:** Append or update runs forever when without column headers ([#7463](https://github.com/n8n-io/n8n/issues/7463)) ([ab6a9bb](https://github.com/n8n-io/n8n/commit/ab6a9bbac29a2caf34f4dd8211cd18116f659804))
+* **Microsoft SQL Node:** Prevent SQL injection ([#7467](https://github.com/n8n-io/n8n/issues/7467)) ([a739245](https://github.com/n8n-io/n8n/commit/a7392453323fe06371988fd5bb28d659a7a00cd8))
+* **MQTT Trigger Node:** Fix node causing a start up hang when active ([#7498](https://github.com/n8n-io/n8n/issues/7498)) ([baecb93](https://github.com/n8n-io/n8n/commit/baecb93bef30ac00f09b46ea987bb4c9a2fca394))
+* **MySQL Node:** Resolve expressions in v1 ([#7464](https://github.com/n8n-io/n8n/issues/7464)) ([5c46bb0](https://github.com/n8n-io/n8n/commit/5c46bb09c137023608119093cabdf896555b22b9))
+* **Redis Node:** Fix adding sets data types ([#7444](https://github.com/n8n-io/n8n/issues/7444)) ([4e66023](https://github.com/n8n-io/n8n/commit/4e66023cd428513b76626795c27ba0713c6c4ea9)), closes [#6339](https://github.com/n8n-io/n8n/issues/6339)
+* **Spreadsheet File Node:** Fix include empty cells not working with v2 ([#7505](https://github.com/n8n-io/n8n/issues/7505)) ([05e6f2a](https://github.com/n8n-io/n8n/commit/05e6f2a6ac43fb4059e7e6cc40af6c5d75e01c8b)), closes [Ticket#763644](https://github.com/Ticket/issues/763644)
+
+
+### Features
+
+* **core:** Add support for oauth based service accounts with UM SMTP ([#7311](https://github.com/n8n-io/n8n/issues/7311)) ([647372b](https://github.com/n8n-io/n8n/commit/647372be275c46e9963c96163c9e913a17f13e5f))
+* **editor:** Add PH tracking to event ([#7511](https://github.com/n8n-io/n8n/issues/7511)) ([c47d27d](https://github.com/n8n-io/n8n/commit/c47d27dd6da9420add7dad243b2701876f39a95b))
+* **Facebook Lead Ads Trigger Node:** Add Facebook Lead Ads Trigger Node ([#7113](https://github.com/n8n-io/n8n/issues/7113)) ([ac814a9](https://github.com/n8n-io/n8n/commit/ac814a9c613f6f9943be8002110ca9e2433918b2))
+* **Ghost Node:** Add support for lexical format ([#7488](https://github.com/n8n-io/n8n/issues/7488)) ([7b1973c](https://github.com/n8n-io/n8n/commit/7b1973c058e0cb7dfa436953c6f046c2b3b145eb))
+* **RSS Feed Trigger Node:** Add RSS feed trigger node ([#7386](https://github.com/n8n-io/n8n/issues/7386)) ([689360e](https://github.com/n8n-io/n8n/commit/689360ee069043415838f1488486ce8deaef9e38))
+
+
+
 # [1.12.0](https://github.com/n8n-io/n8n/compare/n8n@1.11.0...n8n@1.12.0) (2023-10-18)
 
 

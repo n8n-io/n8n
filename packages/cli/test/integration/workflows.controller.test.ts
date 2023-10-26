@@ -13,6 +13,7 @@ import Container from 'typedi';
 import type { ListQuery } from '@/requests';
 import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -27,12 +28,15 @@ const licenseLike = utils.mockInstance(License, {
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });
 
+const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
+
 beforeAll(async () => {
 	owner = await testDb.createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
 beforeEach(async () => {
+	jest.resetAllMocks();
 	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', WorkflowHistoryRepository]);
 	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
@@ -207,7 +211,7 @@ describe('GET /workflows', () => {
 					createdAt: any(String),
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
-					versionId: null,
+					versionId: any(String),
 					ownedBy: { id: owner.id },
 				}),
 				objectContaining({
@@ -217,7 +221,7 @@ describe('GET /workflows', () => {
 					createdAt: any(String),
 					updatedAt: any(String),
 					tags: [],
-					versionId: null,
+					versionId: any(String),
 					ownedBy: { id: owner.id },
 				}),
 			]),
@@ -423,6 +427,7 @@ describe('PATCH /workflows/:id', () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
+			versionId: workflow.versionId,
 			nodes: [
 				{
 					id: 'uuid-1234',
@@ -480,6 +485,7 @@ describe('PATCH /workflows/:id', () => {
 		const workflow = await testDb.createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
+			versionId: workflow.versionId,
 			nodes: [
 				{
 					id: 'uuid-1234',
@@ -522,5 +528,50 @@ describe('PATCH /workflows/:id', () => {
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 		).toBe(0);
+	});
+
+	test('should activate workflow without changing version ID', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const workflow = await testDb.createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			active: true,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowRunnerLike.add).toBeCalled();
+
+		const {
+			data: { id, versionId, active },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(versionId).toBe(workflow.versionId);
+		expect(active).toBe(true);
+	});
+
+	test('should deactivate workflow without changing version ID', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			active: false,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowRunnerLike.add).not.toBeCalled();
+		expect(activeWorkflowRunnerLike.remove).toBeCalled();
+
+		const {
+			data: { id, versionId, active },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(versionId).toBe(workflow.versionId);
+		expect(active).toBe(false);
 	});
 });
