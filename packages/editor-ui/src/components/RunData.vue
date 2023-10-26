@@ -1699,10 +1699,13 @@ export default defineComponent({
 }
 </style>
 
-<style lang="scss" global>
-.highlight {
+<style lang="scss" scoped>
+:deep(.highlight) {
 	background-color: #f7dc55;
 	color: black;
 	border-radius: var(--border-radius-base);
+	padding: 0 1px;
+	font-weight: normal;
+	font-style: normal;
 }
 </style>

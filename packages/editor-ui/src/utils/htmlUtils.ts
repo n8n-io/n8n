@@ -66,5 +66,5 @@ export const getBannerRowHeight = async (): Promise<number> => {
 
 export const highlightText = (text: string, search: string): string => {
 	const regex = new RegExp(`(${search})`, 'g');
-	return text.replace(regex, '<mark>$1</mark>');
+	return search ? text?.replace(regex, '<mark class="highlight">$1</mark>') : text;
 };
