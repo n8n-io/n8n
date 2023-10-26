@@ -47,7 +47,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
-import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -100,18 +99,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			where: { active: true },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		})) as IWorkflowDb[];
-
-		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
-			// Do not clean up database when skip registration is done.
-			// This flag is set when n8n is running in scaled mode.
-			// Impact is minimal, but for a short while, n8n will stop accepting requests.
-			// Also, users had issues when running multiple "main process"
-			// instances if many of them start at the same time
-			// This is not officially supported but there is no reason
-			// it should not work.
-			// Clear up active workflow table
-			await this.webhookService.deleteInstanceWebhooks();
-		}
 
 		if (workflowsData.length !== 0) {
 			this.logger.info(' ================================');
@@ -404,12 +391,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 					false,
 				);
 			} catch (error) {
-				if (
-					activation === 'init' &&
-					config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown') &&
-					error.name === 'QueryFailedError'
-				) {
-					// When skipWebhooksDeregistrationOnShutdown is enabled,
+				if (activation === 'init' && error.name === 'QueryFailedError') {
 					// n8n does not remove the registered webhooks on exit.
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error

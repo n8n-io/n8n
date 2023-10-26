@@ -63,6 +63,7 @@ import {
 	updateExistingExecution,
 } from './executionLifecycleHooks/shared/sharedHookFunctions';
 import { restoreBinaryDataId } from './executionLifecycleHooks/restoreBinaryDataId';
+import { toSaveSettings } from './executionLifecycleHooks/toSaveSettings';
 import { Logger } from './Logger';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -508,14 +509,9 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						}
 					}
 
-					const workflowSettings = this.workflowData.settings;
-					let saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-					if (workflowSettings?.saveManualExecutions !== undefined) {
-						// Apply to workflow override
-						saveManualExecutions = workflowSettings.saveManualExecutions as boolean;
-					}
+					const saveSettings = toSaveSettings(this.workflowData.settings);
 
-					if (isManualMode && !saveManualExecutions && !fullRunData.waitTill) {
+					if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 						await Container.get(ExecutionRepository).hardDelete({
 							workflowId: this.workflowData.id as string,
 							executionId: this.executionId,
@@ -524,24 +520,12 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						return;
 					}
 
-					// Check config to know if execution should be saved or not
-					let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
-					let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
-					if (this.workflowData.settings !== undefined) {
-						saveDataErrorExecution =
-							(this.workflowData.settings.saveDataErrorExecution as string) ||
-							saveDataErrorExecution;
-						saveDataSuccessExecution =
-							(this.workflowData.settings.saveDataSuccessExecution as string) ||
-							saveDataSuccessExecution;
-					}
+					const executionStatus = determineFinalExecutionStatus(fullRunData);
+					const shouldNotSave =
+						(executionStatus === 'success' && !saveSettings.success) ||
+						(executionStatus !== 'success' && !saveSettings.error);
 
-					const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
-
-					if (
-						(workflowStatusFinal === 'success' && saveDataSuccessExecution === 'none') ||
-						(workflowStatusFinal !== 'success' && saveDataErrorExecution === 'none')
-					) {
+					if (shouldNotSave) {
 						if (!fullRunData.waitTill && !isManualMode) {
 							executeErrorWorkflow(
 								this.workflowData,
@@ -564,7 +548,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					const fullExecutionData = prepareExecutionDataForDbUpdate({
 						runData: fullRunData,
 						workflowData: this.workflowData,
-						workflowStatusFinal,
+						workflowStatusFinal: executionStatus,
 						retryOf: this.retryOf,
 					});
 
@@ -1135,23 +1119,14 @@ export function getWorkflowHooksWorkerMain(
 			fullRunData: IRun,
 			newStaticData: IDataObject,
 		): Promise<void> {
-			// Check config to know if execution should be saved or not
-			let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
-			let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
-			if (this.workflowData.settings !== undefined) {
-				saveDataErrorExecution =
-					(this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
-				saveDataSuccessExecution =
-					(this.workflowData.settings.saveDataSuccessExecution as string) ||
-					saveDataSuccessExecution;
-			}
+			const executionStatus = determineFinalExecutionStatus(fullRunData);
+			const saveSettings = toSaveSettings(this.workflowData.settings);
 
-			const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+			const shouldNotSave =
+				(executionStatus === 'success' && !saveSettings.success) ||
+				(executionStatus !== 'success' && !saveSettings.error);
 
-			if (
-				(workflowStatusFinal === 'success' && saveDataSuccessExecution === 'none') ||
-				(workflowStatusFinal !== 'success' && saveDataErrorExecution === 'none')
-			) {
+			if (shouldNotSave) {
 				await Container.get(ExecutionRepository).hardDelete({
 					workflowId: this.workflowData.id as string,
 					executionId: this.executionId,
