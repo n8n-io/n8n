@@ -41,8 +41,13 @@ import type {
 	INodeOutputConfiguration,
 	INodeInputConfiguration,
 	GenericValue,
+	FilterValue,
 } from './Interfaces';
-import { isResourceMapperValue, isValidResourceLocatorParameterValue } from './type-guards';
+import {
+	isFilterValue,
+	isResourceMapperValue,
+	isValidResourceLocatorParameterValue,
+} from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
@@ -1384,6 +1389,55 @@ export const validateResourceMapperParameter = (
 	return issues;
 };
 
+/*
+ * Validates resource mapper values based on service schema
+ *
+ */
+export const validateFilterParameter = (
+	nodeProperties: INodeProperties,
+	value: FilterValue,
+): Record<string, string[]> => {
+	const composeErrorMessage = (type: string, field: 'first' | 'second') =>
+		`The value in the ${field} field cannot be converted to a ${type}. This could lead to unwanted results. Please check the value or choose a different logical operator.`;
+	return value.conditions.reduce(
+		(issues, condition, index) => {
+			const { type } = condition.operator;
+			const key = `${nodeProperties.name}.${index}`;
+
+			if (type === 'any') {
+				return issues;
+			}
+
+			const validationResultLeft = validateFieldType(
+				nodeProperties.displayName,
+				condition.leftValue,
+				type,
+			);
+
+			const validationResultRight = validateFieldType(
+				nodeProperties.displayName,
+				condition.rightValue,
+				type,
+			);
+
+			if (!validationResultLeft.valid || !validationResultRight.valid) {
+				issues[key] = [];
+			}
+
+			if (!validationResultLeft.valid) {
+				issues[key].push(composeErrorMessage(type, 'first'));
+			}
+
+			if (!validationResultRight.valid) {
+				issues[key].push(composeErrorMessage(type, 'second'));
+			}
+
+			return issues;
+		},
+		{} as Record<string, string[]>,
+	);
+};
+
 export const validateParameter = (
 	nodeProperties: INodeProperties,
 	value: GenericValue,
@@ -1529,6 +1583,14 @@ export function getParameterIssues(
 				if (foundIssues.parameters[nodeProperties.name] === undefined) {
 					foundIssues.parameters[nodeProperties.name] = [];
 				}
+				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
+			}
+		}
+	} else if (nodeProperties.type === 'filter' && isDisplayed) {
+		const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+		if (isFilterValue(value)) {
+			const issues = validateFilterParameter(nodeProperties, value);
+			if (Object.keys(issues).length > 0) {
 				foundIssues.parameters = { ...foundIssues.parameters, ...issues };
 			}
 		}

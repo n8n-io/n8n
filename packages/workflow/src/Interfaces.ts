@@ -1119,7 +1119,7 @@ type NonEmptyArray<T> = [T, ...T[]];
 export type FilterTypeCombinator = 'and' | 'or';
 
 export interface FilterTypeOptions {
-	caseSensitive?: boolean; // default = false
+	caseSensitive?: boolean | string; // default = false
 	leftValue?: string; // when set, user can't edit left side of condition
 	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
 	maxConditions?: number; // default = 5
@@ -2190,14 +2190,25 @@ export type ResourceMapperValue = {
 	schema: ResourceMapperField[];
 };
 
+export type FilterOperatorType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'array'
+	| 'object'
+	| 'dateTime'
+	| 'any';
+
 export type FilterConditionValue = {
 	leftValue: string;
+	operator: {
+		type: FilterOperatorType;
+		operation: string;
+	};
 	rightValue: string;
-	operator: string;
 };
 
 export type FilterValue = {
-	value: boolean;
 	conditions: FilterConditionValue[];
 	combinator: FilterTypeCombinator;
 };

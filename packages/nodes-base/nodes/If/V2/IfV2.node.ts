@@ -27,15 +27,47 @@ export class IfV2 implements INodeType {
 					placeholder: 'Add Condition',
 					type: 'filter',
 					default: {},
+					typeOptions: {
+						filter: {
+							caseSensitive: '={{$parameter["caseSensitive"] ?? true}}',
+						},
+					},
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					placeholder: 'Add Option',
+					default: {},
+					options: [
+						{
+							displayName: 'Case Sensitive',
+							name: 'caseSensitive',
+							type: 'boolean',
+							default: true,
+						},
+					],
 				},
 			],
 		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnDataTrue: INodeExecutionData[] = [];
-		const returnDataFalse: INodeExecutionData[] = [];
+		const thenItems: INodeExecutionData[] = [];
+		const elseItems: INodeExecutionData[] = [];
 
-		return [returnDataTrue, returnDataFalse];
+		this.getInputData().forEach((item, itemIndex) => {
+			const pass = this.getNodeParameter('conditions', itemIndex, false, {
+				extractValue: true,
+			});
+
+			if (pass) {
+				thenItems.push(item);
+			} else {
+				elseItems.push(item);
+			}
+		});
+
+		return [thenItems, elseItems];
 	}
 }
