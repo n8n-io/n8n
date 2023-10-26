@@ -521,11 +521,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					const executionStatus = determineFinalExecutionStatus(fullRunData);
+					const shouldNotSave =
+						(executionStatus === 'success' && !saveSettings.success) ||
+						(executionStatus !== 'success' && !saveSettings.error);
 
-					if (
-						(executionStatus === 'success' && saveSettings.success) ||
-						(executionStatus !== 'success' && saveSettings.error)
-					) {
+					if (shouldNotSave) {
 						if (!fullRunData.waitTill && !isManualMode) {
 							executeErrorWorkflow(
 								this.workflowData,
@@ -1119,23 +1119,14 @@ export function getWorkflowHooksWorkerMain(
 			fullRunData: IRun,
 			newStaticData: IDataObject,
 		): Promise<void> {
-			// Check config to know if execution should be saved or not
-			let saveDataErrorExecution = config.getEnv('executions.saveDataOnError') as string;
-			let saveDataSuccessExecution = config.getEnv('executions.saveDataOnSuccess') as string;
-			if (this.workflowData.settings !== undefined) {
-				saveDataErrorExecution =
-					(this.workflowData.settings.saveDataErrorExecution as string) || saveDataErrorExecution;
-				saveDataSuccessExecution =
-					(this.workflowData.settings.saveDataSuccessExecution as string) ||
-					saveDataSuccessExecution;
-			}
+			const executionStatus = determineFinalExecutionStatus(fullRunData);
+			const saveSettings = toSaveSettings(this.workflowData.settings);
 
-			const workflowStatusFinal = determineFinalExecutionStatus(fullRunData);
+			const shouldNotSave =
+				(executionStatus === 'success' && !saveSettings.success) ||
+				(executionStatus !== 'success' && !saveSettings.error);
 
-			if (
-				(workflowStatusFinal === 'success' && saveDataSuccessExecution === 'none') ||
-				(workflowStatusFinal !== 'success' && saveDataErrorExecution === 'none')
-			) {
+			if (shouldNotSave) {
 				await Container.get(ExecutionRepository).hardDelete({
 					workflowId: this.workflowData.id as string,
 					executionId: this.executionId,
