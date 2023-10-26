@@ -140,7 +140,7 @@ export default defineComponent({
 	flex-direction: column;
 	position: absolute;
 	z-index: 2; // cover tooltips
-	background: white;
+	background: var(--color-code-background);
 	border: var(--border-base);
 	border-top: none;
 	width: 100%;
@@ -183,7 +183,7 @@ export default defineComponent({
 			display: inline-block;
 			font-size: var(--font-size-2xs);
 			height: var(--font-size-m);
-			background-color: #f0f0f0;
+			background-color: var(--color-expression-syntax-example);
 			margin-left: var(--spacing-5xs);
 			margin-right: var(--spacing-5xs);
 		}
