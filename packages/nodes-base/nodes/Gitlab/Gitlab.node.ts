@@ -745,8 +745,8 @@ export class Gitlab implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: ['release', 'file'],
-						operation: ['getAll', 'list'],
+						resource: ['release', 'file', 'repository'],
+						operation: ['getAll', 'list', 'getIssues'],
 					},
 				},
 				default: false,
@@ -758,8 +758,8 @@ export class Gitlab implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: ['release', 'file'],
-						operation: ['getAll', 'list'],
+						resource: ['release', 'file', 'repository'],
+						operation: ['getAll', 'list', 'getIssues'],
 						returnAll: [false],
 					},
 				},
@@ -934,6 +934,14 @@ export class Gitlab implements INodeType {
 						type: 'string',
 						default: '',
 						description: 'Return only issues which were created by a specific user',
+					},
+					{
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						description:
+							'Search issues against their title and description',
 					},
 					{
 						displayName: 'Labels',
@@ -1562,6 +1570,12 @@ export class Gitlab implements INodeType {
 						requestMethod = 'GET';
 
 						qs = this.getNodeParameter('getRepositoryIssuesFilters', i) as IDataObject;
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
 
 						endpoint = `${baseEndpoint}/issues`;
 					}
