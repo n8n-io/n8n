@@ -3,7 +3,7 @@ import { mocked } from 'jest-mock';
 import { Container } from 'typedi';
 
 import type { INode } from 'n8n-workflow';
-import { LoggerProxy, NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -11,7 +11,6 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
-import { getLogger } from '@/Logger';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -147,7 +146,6 @@ describe('ActiveWorkflowRunner', () => {
 	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
 		variablesService.getAllCached.mockResolvedValue([]);
 	});
 

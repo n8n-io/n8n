@@ -8,11 +8,11 @@ import {
 	MERGE_NODE_NAME,
 } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
-import { WorkflowExecutionsTab } from '../pages';
+import { NDV, WorkflowExecutionsTab } from '../pages';
 
 const WorkflowPage = new WorkflowPageClass();
 const ExecutionsTab = new WorkflowExecutionsTab();
-
+const NDVDialog = new NDV();
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
 const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
@@ -29,10 +29,15 @@ describe('Canvas Node Manipulation and Navigation', () => {
 	});
 
 	it('should add switch node and test connections', () => {
-		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true);
+		const desiredOutputs = 4;
+		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true, true);
 
-		// Switch has 4 output endpoints
-		for (let i = 0; i < 4; i++) {
+		for (let i = 0; i < desiredOutputs; i++) {
+			cy.contains('Add Routing Rule').click()
+		}
+
+		NDVDialog.actions.close()
+		for (let i = 0; i < desiredOutputs; i++) {
 			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true });
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 			WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
@@ -42,7 +47,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.reload();
 		cy.waitForLoad();
 		// Make sure all connections are there after reload
-		for (let i = 0; i < 4; i++) {
+		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
 			WorkflowPage.getters
 				.canvasNodeInputEndpointByName(setName)
@@ -167,7 +172,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters
 			.canvasNodes()
 			.last()
-			.should('have.attr', 'style', 'left: 740px; top: 320px;');
+			.should('have.css', 'left', '740px')
+			.should('have.css', 'top', '320px')
 	});
 
 	it('should zoom in', () => {

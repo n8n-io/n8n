@@ -39,11 +39,6 @@ export = {
 
 				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
 
-				// LoggerProxy.verbose('New credential created', {
-				// 	credentialsId: newCredential.id,
-				// 	ownerId: req.user.id,
-				// });
-
 				return res.json(sanitizeCredentials(savedCredential));
 			} catch ({ message, httpStatusCode }) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

@@ -1,5 +1,6 @@
-import type { IDataObject } from '../../src';
-import { Expression, Workflow } from '../../src';
+import type { IDataObject } from '@/Interfaces';
+import { Expression } from '@/Expression';
+import { Workflow } from '@/Workflow';
 import * as Helpers from '../Helpers';
 
 export const TEST_TIMEZONE = 'America/New_York';
