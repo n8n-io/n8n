@@ -73,11 +73,6 @@ export abstract class BaseCommand extends Command {
 				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
-		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
-			this.logger.warn(
-				'The flag to skip webhook deregistration has been deprecated. Process termination in main mode deregisters webhooks; process termination in queue mode skips webhook deregistration.',
-			);
-		}
 
 		await Container.get(PostHogClient).init();
 		await Container.get(InternalHooks).init();

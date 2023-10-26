@@ -115,8 +115,12 @@ export class Start extends BaseCommand {
 
 			await Container.get(InternalHooks).onN8nStop();
 
+			const skipWebhookDeregistration = config.getEnv(
+				'endpoints.skipWebhooksDeregistrationOnShutdown',
+			);
+
 			const removePromises = [];
-			if (config.getEnv('executions.mode') !== 'queue') {
+			if (!skipWebhookDeregistration) {
 				removePromises.push(this.activeWorkflowRunner.removeAll());
 			}
 

@@ -101,8 +101,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
 		})) as IWorkflowDb[];
 
-		if (config.getEnv('executions.mode') !== 'queue') {
-			// Deregister webhooks when in non-queue mode.
+		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
+			// Do not clean up database when skip registration is done.
+			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
 			// Also, users had issues when running multiple "main process"
 			// instances if many of them start at the same time
@@ -405,10 +406,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.getEnv('executions.mode') === 'queue' &&
+					config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
-					// In queue mode, n8n does not remove the registered webhooks on exit.
+					// When skipWebhooksDeregistrationOnShutdown is enabled,
+					// n8n does not remove the registered webhooks on exit.
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error
 					// as it's expected to happen.
