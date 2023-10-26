@@ -24,23 +24,23 @@ export async function router(this: IExecuteFunctions) {
 		guildId = this.getNodeParameter('guildId', 0, {}, { extractValue: true }) as string;
 	}
 
-	const googleBigQuery = {
+	const discord = {
 		resource,
 		operation,
 	} as Discord;
 
-	switch (googleBigQuery.resource) {
+	switch (discord.resource) {
 		case 'channel':
-			returnData = await channel[googleBigQuery.operation].execute.call(this, guildId);
+			returnData = await channel[discord.operation].execute.call(this, guildId);
 			break;
 		case 'message':
-			returnData = await message[googleBigQuery.operation].execute.call(this, guildId);
+			returnData = await message[discord.operation].execute.call(this, guildId);
 			break;
 		case 'member':
-			returnData = await member[googleBigQuery.operation].execute.call(this, guildId);
+			returnData = await member[discord.operation].execute.call(this, guildId);
 			break;
 		case 'webhook':
-			returnData = await webhook[googleBigQuery.operation].execute.call(this);
+			returnData = await webhook[discord.operation].execute.call(this);
 			break;
 		default:
 			throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known`);
