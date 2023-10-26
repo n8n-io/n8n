@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "1.12.0",
+  "version": "1.14.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -54,7 +54,7 @@
     "axios": "^0.21.1",
     "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
-    "crypto-js": "^4.1.1",
+    "crypto-js": "^4.2.0",
     "fast-glob": "^3.2.5",
     "file-type": "^16.5.4",
     "flatted": "^3.2.4",

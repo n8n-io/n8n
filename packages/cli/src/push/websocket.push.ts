@@ -1,13 +1,16 @@
 import type WebSocket from 'ws';
+import { Service } from 'typedi';
+import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
 }
 
+@Service()
 export class WebSocketPush extends AbstractPush<WebSocket> {
-	constructor() {
-		super();
+	constructor(logger: Logger) {
+		super(logger);
 
 		// Ping all connected clients every 60 seconds
 		setInterval(() => this.pingAll(), 60 * 1000);

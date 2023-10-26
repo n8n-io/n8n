@@ -20,7 +20,7 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
@@ -31,6 +31,7 @@ import {
 } from '@/sso/ssoHelpers';
 import { InternalServerError } from '../ResponseHelper';
 import { RoleService } from '@/services/role.service';
+import { Logger } from '@/Logger';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -185,7 +186,7 @@ export const handleLdapInit = async (): Promise<void> => {
 	try {
 		await setGlobalLdapConfigVariables(ldapConfig);
 	} catch (error) {
-		Logger.warn(
+		Container.get(Logger).warn(
 			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			error,
@@ -235,7 +236,7 @@ export const findAndAuthenticateLdapUser = async (
 			void Container.get(InternalHooks).onLdapLoginSyncFailed({
 				error: e.message,
 			});
-			Logger.error('LDAP - Error during search', { message: e.message });
+			Container.get(Logger).error('LDAP - Error during search', { message: e.message });
 		}
 		return undefined;
 	}
@@ -261,7 +262,9 @@ export const findAndAuthenticateLdapUser = async (
 		await ldapService.validUser(user.dn, password);
 	} catch (e) {
 		if (e instanceof Error) {
-			Logger.error('LDAP - Error validating user against LDAP server', { message: e.message });
+			Container.get(Logger).error('LDAP - Error validating user against LDAP server', {
+				message: e.message,
+			});
 		}
 		return undefined;
 	}
