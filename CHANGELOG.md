@@ -1,3 +1,12 @@
+## [1.14.2](https://github.com/n8n-io/n8n/compare/n8n@1.14.1...n8n@1.14.2) (2023-10-26)
+
+
+### Bug Fixes
+
+* **core:** Handle missing resultData in runData  ([#7523](https://github.com/n8n-io/n8n/issues/7523)) ([a35d5f1](https://github.com/n8n-io/n8n/commit/a35d5f1b4c10082a68b3ee6943e13a174f9fe471))
+
+
+
 ## [1.14.1](https://github.com/n8n-io/n8n/compare/n8n@1.14.0...n8n@1.14.1) (2023-10-26)
 
 
