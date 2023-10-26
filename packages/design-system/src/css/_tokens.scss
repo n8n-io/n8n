@@ -106,21 +106,12 @@
 	--color-code-gutterBackground: var(--prim-gray-0);
 	--color-code-gutterForeground: var(--prim-gray-320);
 	--color-code-tags-comment: var(--prim-gray-420);
+	--color-autocomplete-selected-background: var(--prim-color-alt-e);
+	--color-autocomplete-selected-font: var(--prim-gray-0);
 
 	// Variables
 	--color-variables-usage-font: var(--color-success);
 	--color-variables-usage-syntax-bg: var(--color-success-tint-2);
-
-	// Various
-	--color-avatar-accent-1: var(--prim-gray-120);
-	--color-avatar-accent-2: var(--prim-color-alt-e-shade-100);
-	--color-info: var(--prim-gray-420);
-	--color-info-tint-1: var(--prim-gray-120);
-	--color-info-tint-2: var(--prim-gray-40);
-	--color-grey: var(--prim-gray-200);
-	--color-light-grey: var(--prim-gray-120);
-	--color-neutral: var(--prim-gray-490);
-	--color-switch: var(--prim-color-alt-i);
 
 	// Button primary
 	--color-button-primary-font: var(--prim-gray-0);
@@ -190,6 +181,17 @@
 
 	// Workflow activator
 	--color-workflow-activator-text: var(--color-danger);
+
+	// Various
+	--color-avatar-accent-1: var(--prim-gray-120);
+	--color-avatar-accent-2: var(--prim-color-alt-e-shade-100);
+	--color-info: var(--prim-gray-420);
+	--color-info-tint-1: var(--prim-gray-120);
+	--color-info-tint-2: var(--prim-gray-40);
+	--color-grey: var(--prim-gray-200);
+	--color-light-grey: var(--prim-gray-120);
+	--color-neutral: var(--prim-gray-490);
+	--color-switch: var(--prim-color-alt-i);
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system

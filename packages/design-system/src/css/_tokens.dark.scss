@@ -1,76 +1,35 @@
 @use 'sass:math';
 
 @mixin theme {
-	--color-primary-h: var(--prim-color-primary-h);
-	--color-primary-s: var(--prim-color-primary-s);
-	--color-primary-l: 68%;
-
-	// Primary
-	--color-primary-shade-1: var(--prim-color-primary-shade-100);
-	--color-primary: var(--prim-color-primary);
-	--color-primary-tint-1: var(--prim-color-primary-tint-200);
-	--color-primary-tint-2: var(--prim-color-primary-tint-250);
-	--color-primary-tint-3: var(--prim-color-primary-tint-300);
-
-	// Secondary
-	--color-secondary-shade-1: var(--prim-color-secondary-shade-100);
-	--color-secondary: var(--prim-color-secondary);
-	--color-secondary-tint-1: var(--prim-color-secondary-tint-300);
-	--color-secondary-tint-3: var(--prim-color-secondary-tint-400);
-
-	// Success
-	--color-success-shade-1: var(--prim-color-alt-a-shade-100);
-	--color-success: var(--prim-color-alt-a);
-	--color-success-light: var(--prim-color-alt-a-tint-300);
-	--color-success-tint-1: var(--prim-color-alt-a-tint-500);
-	--color-success-tint-2: var(--prim-color-alt-a-tint-550);
-
-	// Warning
-	--color-warning-shade-1: var(--prim-color-alt-b-shade-100);
-	--color-warning: var(--prim-color-alt-b);
-	--color-warning-tint-1: var(--prim-color-alt-b-tint-250);
-	--color-warning-tint-2: var(--prim-color-alt-b-tint-400);
-
-	// Danger
-	--color-danger-shade-1: var(--prim-color-alt-c-shade-100);
-	--color-danger: var(--prim-color-alt-c);
-	--color-danger-tint-1: var(--prim-color-alt-c-tint-400);
-	--color-danger-tint-2: var(--prim-color-alt-c-tint-450);
-
 	// Text
-	--color-text-dark: var(--prim-gray-40); // var(--prim-gray-0); // var(--prim-gray-740);
-	--color-text-base: var(--prim-gray-200); // var(--prim-gray-40); // var(--prim-gray-540)
-	--color-text-light: var(--prim-gray-320); // var(--prim-gray-120); // var(--prim-gray-420);
-	--color-text-lighter: var(--prim-gray-740); // var(--prim-gray-490); // var(--prim-gray-120);
-	--color-text-xlight: var(--prim-gray-820); // var(--prim-gray-740); // var(--prim-gray-0);
+	--color-text-dark: var(--prim-gray-40);
+	--color-text-base: var(--prim-gray-200);
+	--color-text-light: var(--prim-gray-320);
+	--color-text-lighter: var(--prim-gray-740);
+	--color-text-xlight: var(--prim-gray-820);
 
 	// Foreground
-	--color-foreground-xdark: var(--prim-gray-200); // var(--prim-gray-0); // var(--prim-gray-490);
-	--color-foreground-dark: var(--prim-gray-420); // var(--prim-gray-40); // var(--prim-gray-200);
-	--color-foreground-base: var(--prim-gray-670); // var(--prim-gray-120);
-	--color-foreground-light: var(--prim-gray-740); // var(--prim-gray-670); // var(--prim-gray-70);
-	--color-foreground-xlight: var(--prim-gray-820); // var(--prim-gray-740); // var(--prim-gray-0);
+	--color-foreground-xdark: var(--prim-gray-200);
+	--color-foreground-dark: var(--prim-gray-420);
+	--color-foreground-base: var(--prim-gray-670);
+	--color-foreground-light: var(--prim-gray-740);
+	--color-foreground-xlight: var(--prim-gray-820);
 
 	// Background
-	--color-background-dark: var(--prim-gray-70); // var(--prim-gray-0); // var(--prim-gray-820);
-	--color-background-medium: var(--prim-gray-540); // var(--prim-gray-490); // var(--prim-gray-120);
-	--color-background-base: var(--prim-gray-670); // var(--prim-gray-540); // var(--prim-gray-40);
-	--color-background-light: var(--prim-gray-820); // var(--prim-gray-820); // var(--prim-gray-10);
-	--color-background-xlight: var(--prim-gray-740); // var(--prim-gray-740); // var(--prim-gray-0);
+	--color-background-dark: var(--prim-gray-70);
+	--color-background-medium: var(--prim-gray-540);
+	--color-background-base: var(--prim-gray-670);
+	--color-background-light: var(--prim-gray-820);
+	--color-background-xlight: var(--prim-gray-740);
 
 	// Canvas
-	--color-canvas-background: var(--prim-gray-820); // var(--prim-gray-10);
-	--color-canvas-dot: var(--prim-gray-670); // var(--prim-gray-120);
+	--color-canvas-background: var(--prim-gray-820);
+	--color-canvas-dot: var(--prim-gray-670);
 	--color-canvas-read-only-line: var(--prim-gray-800);
 	--color-canvas-node-background: var(--prim-gray-40);
 	--color-canvas-node-pinned-border: var(--prim-color-secondary-tint-100);
 	--color-canvas-selected: var(--prim-gray-0-alpha-025);
 	--node-type-main-color: var(--prim-gray-420);
-
-	// Sticky
-	--color-sticky-default-background: var(--prim-color-alt-d);
-	--color-sticky-default-border: var(--prim-color-alt-d-shade-150);
-	--color-sticky-font: var(--prim-gray-740);
 
 	// Expressions
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
@@ -111,39 +70,13 @@
 	--color-variables-usage-font: var(--prim-color-alt-a-tint-300);
 	--color-variables-usage-syntax-bg: var(--prim-color-alt-a-alpha-025);
 
-	// Various
-	--color-avatar-accent-1: var(--prim-gray-120);
-	--color-avatar-accent-2: var(--prim-color-alt-e-shade-100);
-	--color-info: var(--prim-gray-420);
-	--color-info-tint-1: var(--prim-gray-120);
-	--color-info-tint-2: var(--prim-gray-40);
-	--color-grey: var(--prim-gray-200);
-	--color-light-grey: var(--prim-gray-120);
-	--color-neutral: var(--prim-gray-490);
-	--color-switch: var(--prim-color-alt-i);
-
 	// Button primary
-	--color-button-primary-font: var(--prim-gray-0);
-	--color-button-primary-border: var(--prim-color-primary);
-	--color-button-primary-background: var(--prim-color-primary);
-	--color-button-primary-hover-active-border: var(--prim-color-primary-shade-100);
-	--color-button-primary-hover-active-background: var(--prim-color-primary-shade-100);
-	--color-button-primary-focus-outline: var(--prim-color-primary-tint-200);
 	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-025);
 	--color-button-primary-disabled-border: transparent;
 	--color-button-primary-disabled-background: var(--prim-color-primary-alpha-04);
 
 	// Button secondary
-	--color-button-secondary-font: var(--prim-gray-670);
 	--color-button-secondary-border: var(--prim-gray-420);
-	--color-button-secondary-background: var(--prim-gray-0);
-	--color-button-secondary-hover-active-focus-font: var(--prim-color-primary);
-	--color-button-secondary-hover-active-border: var(--prim-color-primary);
-	--color-button-secondary-hover-background: var(--prim-color-primary-tint-300);
-	--color-button-secondary-active-background: var(--prim-color-primary-tint-250);
-	--color-button-secondary-focus-outline: var(--prim-gray-120);
-	--color-button-secondary-disabled-font: var(--prim-gray-200);
-	--color-button-secondary-disabled-border: var(--prim-gray-200);
 
 	// Text button
 	--color-text-button-secondary-font: var(--prim-gray-320);
@@ -156,13 +89,6 @@
 
 	// Notification
 	--color-notification-background: var(--prim-gray-740);
-
-	// Execution card
-	--execution-card-border-success: var(--prim-color-alt-a-tint-300);
-	--execution-card-border-error: var(--prim-color-alt-c-tint-250);
-	--execution-card-border-waiting: var(--prim-color-secondary-tint-300);
-	--execution-card-border-running: var(--prim-color-alt-b-tint-250);
-	--execution-card-border-unknown: var(--prim-gray-120);
 
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);
