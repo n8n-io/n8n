@@ -151,7 +151,7 @@ export class BinaryDataService {
 
 		if (!manager) return;
 
-		await manager.deleteMany(ids);
+		if (manager.deleteMany) await manager.deleteMany(ids);
 	}
 
 	@LogCatch((error) =>

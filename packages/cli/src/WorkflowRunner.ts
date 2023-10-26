@@ -18,7 +18,6 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
@@ -54,8 +53,11 @@ import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEven
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { ExecutionRepository } from '@db/repositories';
+import { Logger } from './Logger';
 
 export class WorkflowRunner {
+	logger: Logger;
+
 	activeExecutions: ActiveExecutions;
 
 	push: Push;
@@ -63,6 +65,7 @@ export class WorkflowRunner {
 	jobQueue: Queue;
 
 	constructor() {
+		this.logger = Container.get(Logger);
 		this.push = Container.get(Push);
 		this.activeExecutions = Container.get(ActiveExecutions);
 	}
@@ -298,14 +301,14 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, undefined, restartExecutionId);
 		additionalData.executionId = executionId;
 
-		Logger.verbose(
+		this.logger.verbose(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
 
 		try {
-			Logger.verbose(
+			this.logger.verbose(
 				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
 				{ executionId },
 			);
@@ -349,7 +352,7 @@ export class WorkflowRunner {
 			});
 
 			if (data.executionData !== undefined) {
-				Logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
+				this.logger.debug(`Execution ID ${executionId} had Execution data. Running with payload.`, {
 					executionId,
 				});
 				const workflowExecute = new WorkflowExecute(
@@ -363,7 +366,9 @@ export class WorkflowRunner {
 				data.startNodes === undefined ||
 				data.startNodes.length === 0
 			) {
-				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, { executionId });
+				this.logger.debug(`Execution ID ${executionId} will run executing all nodes.`, {
+					executionId,
+				});
 				// Execute all nodes
 
 				const startNode = WorkflowHelpers.getExecutionStartNode(data, workflow);
@@ -377,7 +382,7 @@ export class WorkflowRunner {
 					data.pinData,
 				);
 			} else {
-				Logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
+				this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 				// Execute only the nodes between start and destination nodes
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.runPartialWorkflow(
@@ -576,7 +581,7 @@ export class WorkflowRunner {
 						data.workflowData,
 						{ retryOf: data.retryOf ? data.retryOf.toString() : undefined },
 					);
-					Logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
+					this.logger.error(`Problem with execution ${executionId}: ${error.message}. Aborting.`);
 					if (clearWatchdogInterval !== undefined) {
 						clearWatchdogInterval();
 					}
@@ -590,11 +595,11 @@ export class WorkflowRunner {
 					this.activeExecutions.getPostExecutePromiseCount(executionId) > 0;
 
 				if (executionHasPostExecutionPromises) {
-					Logger.debug(
+					this.logger.debug(
 						`Reading execution data for execution ${executionId} from db for PostExecutionPromise.`,
 					);
 				} else {
-					Logger.debug(
+					this.logger.debug(
 						`Skipping execution data for execution ${executionId} since there are no PostExecutionPromise.`,
 					);
 				}
@@ -737,7 +742,7 @@ export class WorkflowRunner {
 
 		// Listen to data from the subprocess
 		subprocess.on('message', async (message: IProcessMessage) => {
-			Logger.debug(
+			this.logger.debug(
 				`Received child process message of type ${message.type} for execution ID ${executionId}.`,
 				{ executionId },
 			);
@@ -811,7 +816,7 @@ export class WorkflowRunner {
 		// Also get informed when the processes does exit especially when it did crash or timed out
 		subprocess.on('exit', async (code, signal) => {
 			if (signal === 'SIGTERM') {
-				Logger.debug(`Subprocess for execution ID ${executionId} timed out.`, { executionId });
+				this.logger.debug(`Subprocess for execution ID ${executionId} timed out.`, { executionId });
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
 
@@ -823,7 +828,7 @@ export class WorkflowRunner {
 					workflowHooks,
 				);
 			} else if (code !== 0) {
-				Logger.debug(
+				this.logger.debug(
 					`Subprocess for execution ID ${executionId} finished with error code ${code}.`,
 					{ executionId },
 				);

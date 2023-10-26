@@ -3,7 +3,6 @@ import type { RedisServicePubSubPublisher } from '../../redis/RedisServicePubSub
 
 export interface WorkerCommandReceivedHandlerOptions {
 	queueModeId: string;
-	instanceId: string;
 	redisPublisher: RedisServicePubSubPublisher;
 	getRunningJobIds: () => string[];
 	getRunningJobsSummary: () => WorkerJobStatusSummary[];

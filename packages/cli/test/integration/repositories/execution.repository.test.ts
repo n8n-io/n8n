@@ -3,20 +3,17 @@ import * as Db from '@/Db';
 
 import * as testDb from '../shared/testDb';
 import type { ExecutionStatus } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-import type { ExecutionRepository } from '../../../src/databases/repositories';
-import type { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
-import { TIME } from '../../../src/constants';
+import type { ExecutionRepository } from '@/databases/repositories';
+import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { TIME } from '@/constants';
 
-describe('ExecutionRepository.prune()', () => {
+describe('softDeleteOnPruningCycle()', () => {
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
 	let executionRepository: ExecutionRepository;
 	let workflow: Awaited<ReturnType<typeof testDb.createWorkflow>>;
 
 	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
 		await testDb.init();
 
 		const { Execution } = Db.collections;
