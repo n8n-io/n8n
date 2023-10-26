@@ -124,6 +124,7 @@ export class WorkflowPage extends BasePage {
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),
 		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
+		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
 	};
 	actions = {
 		visit: (preventNodeViewUnload = true) => {

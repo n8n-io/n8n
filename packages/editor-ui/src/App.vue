@@ -20,9 +20,10 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
+					<component v-else :is="Component" />
 				</router-view>
 			</div>
 			<Modals />
@@ -257,7 +258,7 @@ export default defineComponent({
 				void this.postAuthenticate();
 			}
 		},
-		async $route(route) {
+		async $route() {
 			await this.initSettings();
 			await this.redirectIfNecessary();
 
