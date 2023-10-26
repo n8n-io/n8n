@@ -54,19 +54,6 @@ const properties: INodeProperties[] = [
 				},
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Labels',
-				name: 'labels',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-					loadOptionsDependsOn: ['updateFields.planId'],
-				},
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'Labels to assign to the task',
-			},
-			{
 				displayName: 'Percent Complete',
 				name: 'percentComplete',
 				type: 'number',
@@ -142,12 +129,6 @@ export async function execute(this: IExecuteFunctions, i: number) {
 
 	const body: IDataObject = {};
 	Object.assign(body, updateFields);
-
-	if (Array.isArray(body.labels)) {
-		body.appliedCategories = (body.labels as string[]).map((label) => ({
-			[label]: true,
-		}));
-	}
 
 	const task = await microsoftApiRequest.call(this, 'GET', `/v1.0/planner/tasks/${taskId}`);
 

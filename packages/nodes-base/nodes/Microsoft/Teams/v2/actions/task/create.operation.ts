@@ -42,19 +42,6 @@ const properties: INodeProperties[] = [
 					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.”.',
 			},
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
-				displayName: 'Labels',
-				name: 'labels',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-					loadOptionsDependsOn: ['planId.value'],
-				},
-				default: [],
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
-				description: 'Labels to assign to the task',
-			},
-			{
 				displayName: 'Percent Complete',
 				name: 'percentComplete',
 				type: 'number',
@@ -111,12 +98,6 @@ export async function execute(this: IExecuteFunctions, i: number) {
 			},
 		};
 		delete body.assignedTo;
-	}
-
-	if (Array.isArray(body.labels)) {
-		body.appliedCategories = (body.labels as string[]).map((label) => ({
-			[label]: true,
-		}));
 	}
 
 	return microsoftApiRequest.call(this, 'POST', '/v1.0/planner/tasks', body);
