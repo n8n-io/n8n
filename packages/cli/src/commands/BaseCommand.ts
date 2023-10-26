@@ -76,7 +76,7 @@ export abstract class BaseCommand extends Command {
 
 		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
 			this.logger.warn(
-				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been deprecated. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
+				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
 			);
 		}
 
