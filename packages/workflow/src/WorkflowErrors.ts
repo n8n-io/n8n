@@ -29,7 +29,6 @@ export class SubworkflowOperationError extends WorkflowOperationError {
 
 	constructor(message: string, description: string) {
 		super(message);
-		this.severity = 'warning';
 		this.name = this.constructor.name;
 		this.description = description;
 
