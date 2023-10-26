@@ -11,6 +11,13 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { metadataFilterField } from '../../../utils/sharedFields';
 
+// Dependencies needed underneath the hood for the loaders. We add them
+// here only to track where what dependency is sued
+// import 'd3-dsv'; // for csv
+import 'mammoth'; // for docx
+import '@gxl/epub-parser'; // for epub
+import 'pdf-parse'; // for pdf
+
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Binary Input Loader',
