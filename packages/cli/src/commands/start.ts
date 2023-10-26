@@ -21,7 +21,6 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { TestWebhooks } from '@/TestWebhooks';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
@@ -114,21 +113,6 @@ export class Start extends BaseCommand {
 			Container.get(ExecutionRepository).clearTimers();
 
 			await Container.get(InternalHooks).onN8nStop();
-
-			const skipWebhookDeregistration = config.getEnv(
-				'endpoints.skipWebhooksDeregistrationOnShutdown',
-			);
-
-			const removePromises = [];
-			if (!skipWebhookDeregistration) {
-				removePromises.push(this.activeWorkflowRunner.removeAll());
-			}
-
-			// Remove all test webhooks
-			const testWebhooks = Container.get(TestWebhooks);
-			removePromises.push(testWebhooks.removeAll());
-
-			await Promise.all(removePromises);
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);
