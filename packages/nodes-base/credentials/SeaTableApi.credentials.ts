@@ -1,24 +1,10 @@
-import type { ICredentialType, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-// Get options for timezones
-const timezones: INodePropertyOptions[] = moment.tz
-	.countries()
-	.reduce((tz: INodePropertyOptions[], country: string) => {
-		const zonesForCountry = moment.tz
-			.zonesForCountry(country)
-			.map((zone) => ({ value: zone, name: zone }));
-		return tz.concat(zonesForCountry);
-	}, []);
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SeaTableApi implements ICredentialType {
 	name = 'seaTableApi';
-
 	displayName = 'SeaTable API';
-
-	documentationUrl = 'seaTable';
-
+	documentationUrl =
+		'https://seatable.io/docs/n8n-integration/erstellen-eines-api-tokens-fuer-n8n/?lang=auto';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',
@@ -41,7 +27,7 @@ export class SeaTableApi implements ICredentialType {
 			name: 'domain',
 			type: 'string',
 			default: '',
-			placeholder: 'https://www.mydomain.com',
+			placeholder: 'https://seatable.example.com',
 			displayOptions: {
 				show: {
 					environment: ['selfHosted'],
@@ -52,16 +38,20 @@ export class SeaTableApi implements ICredentialType {
 			displayName: 'API Token (of a Base)',
 			name: 'token',
 			type: 'string',
+			description:
+				'The API-Token of the SeaTable base you would like to use with n8n. n8n can only connect to one base a at a time.',
 			typeOptions: { password: true },
 			default: '',
 		},
-		{
-			displayName: 'Timezone',
-			name: 'timezone',
-			type: 'options',
-			default: '',
-			description: "Seatable server's timezone",
-			options: [...timezones],
-		},
 	];
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials?.domain || "https://cloud.seatable.io" }}',
+			url: '/api/v2.1/dtable/app-access-token/',
+			headers: {
+				Authorization: '={{"Token " + $credentials.token}}',
+			},
+		},
+	};
 }
