@@ -11,7 +11,7 @@ export function determineFinalExecutionStatus(runData: IRun): ExecutionStatus {
 	const workflowHasCrashed = runData.status === 'crashed';
 	const workflowWasCanceled = runData.status === 'canceled';
 	const workflowDidSucceed =
-		!runData.data.resultData.error && !workflowHasCrashed && !workflowWasCanceled;
+		!runData.data.resultData?.error && !workflowHasCrashed && !workflowWasCanceled;
 	let workflowStatusFinal: ExecutionStatus = workflowDidSucceed ? 'success' : 'failed';
 	if (workflowHasCrashed) workflowStatusFinal = 'crashed';
 	if (workflowWasCanceled) workflowStatusFinal = 'canceled';
