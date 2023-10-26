@@ -191,11 +191,7 @@ export class ActiveExecutions {
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
 		if (this.activeExecutions[executionId] === undefined) {
-			const toThrow = new WorkflowOperationError(
-				`There is no active execution with id "${executionId}".`,
-			);
-			toThrow.severity = 'warning';
-			throw toThrow;
+			throw new WorkflowOperationError(`There is no active execution with id "${executionId}".`);
 		}
 
 		// Create the promise which will be resolved when the execution finished
