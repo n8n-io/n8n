@@ -261,6 +261,12 @@
 		var(--prim-color-alt-g-l)
 	);
 
+	--prim-color-alt-g-tint-150: hsl(
+		var(--prim-color-alt-g-h),
+		var(--prim-color-alt-g-s),
+		calc(var(--prim-color-alt-g-l) + 15%)
+	);
+
 	// Color Alternate H
 	--prim-color-alt-h-h: 184;
 	--prim-color-alt-h-s: 44%;

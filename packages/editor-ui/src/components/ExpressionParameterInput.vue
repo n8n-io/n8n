@@ -164,6 +164,10 @@ export default defineComponent({
 .expression-parameter-input {
 	position: relative;
 
+	:global(.cm-editor) {
+		background-color: var(--color-code-background);
+	}
+
 	.all-sections {
 		height: 30px;
 		display: flex;
