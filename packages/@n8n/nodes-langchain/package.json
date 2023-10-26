@@ -89,7 +89,7 @@
       "dist/nodes/vector_store/VectorStorePineconeInsert/VectorStorePineconeInsert.node.js",
       "dist/nodes/vector_store/VectorStorePineconeLoad/VectorStorePineconeLoad.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
-      "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreSupabase/VectorStoreSupabase.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
     ]

@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { metadataFilterField } from '../../../../utils/sharedFields';
 
 export const loadOperationDescription: INodeProperties[] = [
 	{
@@ -15,11 +16,24 @@ export const loadOperationDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Top K',
+		displayName: 'Limit',
 		name: 'topK',
 		type: 'number',
 		default: 4,
 		description: 'Number of top results to fetch from vector store',
+		displayOptions: {
+			show: {
+				operation: ['load'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [metadataFilterField],
 		displayOptions: {
 			show: {
 				operation: ['load'],

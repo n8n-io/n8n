@@ -4,7 +4,7 @@ import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 
 export async function processDocuments(
-	documentInput: N8nJsonLoader | Array<Document<Record<string, unknown>>>,
+	documentInput: N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>,
 	inputItems: INodeExecutionData[],
 ) {
 	let processedDocuments: Document[];
