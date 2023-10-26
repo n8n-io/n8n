@@ -325,7 +325,7 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 		}
 
 		return node;
-	});
+	}, nodes[0]);
 };
 
 export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
@@ -949,15 +949,17 @@ export const getInputEndpointUUID = (
 export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const nodes = [...workflowNodes];
 
-	const leftmostTop = getLeftmostTopNode(nodes);
+	if (nodes.length) {
+		const leftmostTop = getLeftmostTopNode(nodes);
 
-	const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
-	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+		const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+		const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
-	nodes.map((node) => {
-		node.position[0] += diffX + NODE_SIZE * 2;
-		node.position[1] += diffY;
-	});
+		nodes.forEach((node) => {
+			node.position[0] += diffX + NODE_SIZE * 2;
+			node.position[1] += diffY;
+		});
+	}
 
 	return nodes;
 };
