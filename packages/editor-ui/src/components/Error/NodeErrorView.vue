@@ -271,7 +271,7 @@ export default defineComponent({
 }
 
 .error-message {
-	color: #ff0000;
+	color: var(--color-ndv-ouptut-error-font);
 	font-weight: bold;
 	font-size: 1.1rem;
 }
