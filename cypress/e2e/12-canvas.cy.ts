@@ -30,6 +30,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 
 	it('should add switch node and test connections', () => {
 		const desiredOutputs = 4;
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME, true);
 		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true, true);
 
 		for (let i = 0; i < desiredOutputs; i++) {
@@ -43,9 +44,14 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			WorkflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, false);
 			WorkflowPage.actions.zoomToFit();
 		}
+		WorkflowPage.getters.nodeViewBackground().click({ force: true });
+		WorkflowPage.getters.canvasNodePlusEndpointByName(`${EDIT_FIELDS_SET_NODE_NAME}3`).click();
+		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, false);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		cy.reload();
 		cy.waitForLoad();
+		// Make sure outputless switch was connected correctly
+		cy.get(`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`).should('be.visible');
 		// Make sure all connections are there after reload
 		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
