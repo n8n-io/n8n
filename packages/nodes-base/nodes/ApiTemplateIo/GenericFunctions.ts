@@ -81,3 +81,47 @@ export async function downloadImage(this: IExecuteFunctions, url: string) {
 		encoding: null,
 	});
 }
+
+export async function apiTemplateIoApiRequestV2(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	qs = {},
+	body = {},
+) {
+	const options: OptionsWithUri = {
+		headers: {
+			'user-agent': 'n8n',
+			Accept: 'application/json',
+		},
+		uri: `https://rest.apitemplate.io/v2${endpoint}`,
+		method,
+		qs,
+		body,
+		followRedirect: true,
+		followAllRedirects: true,
+		json: true,
+	};
+
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
+
+	try {
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			'apiTemplateIoApi',
+			options,
+		);
+		if (response.status === 'error') {
+			throw new NodeApiError(this.getNode(), response.message as JsonObject);
+		}
+		return response;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
+}
