@@ -1,5 +1,8 @@
 <template>
-	<div class="workflow-activator">
+	<div
+		class="workflow-activator"
+		:class="couldNotBeStarted && workflowActive && 'workflow-activator-error'"
+	>
 		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
 			<n8n-text
 				v-if="workflowActive"
@@ -158,6 +161,12 @@ export default defineComponent({
 
 	:deep(.el-loading-spinner) {
 		margin-top: -10px;
+	}
+}
+
+.workflow-activator.workflow-activator-error {
+	:deep(.n8n-text) {
+		color: var(--color-workflow-activator-text);
 	}
 }
 
