@@ -14,16 +14,19 @@
     },
     {
       "parameters": {
+        "operation": "get",
         "teamId": {
           "__rl": true,
-          "value": "1644e7fe-547e-4223-a24f-922395865343",
+          "value": "e25bae35-7bcc-4fb7-b4f2-0d5caef251fd",
           "mode": "list",
-          "cachedResultName": "5w1hb7"
+          "cachedResultName": "Retail"
         },
-        "name": "New Channel",
-        "options": {
-          "description": "new channel description",
-          "type": "private"
+        "channelId": {
+          "__rl": true,
+          "value": "19:dff84a49e5124cc89dff0192c621ea0f@thread.tacv2",
+          "mode": "list",
+          "cachedResultName": "General",
+          "cachedResultUrl": "https://teams.microsoft.com/l/channel/19%3Adff84a49e5124cc89dff0192c621ea0f%40thread.tacv2/Retail?groupId=e25bae35-7bcc-4fb7-b4f2-0d5caef251fd&tenantId=tenantId-111-222-333&allowXTenantAccess=False"
         }
       },
       "id": "9f3bb031-3ad8-4480-b2f8-fae1325f6953",
@@ -57,15 +60,16 @@
     "No Operation, do nothing": [
       {
         "json": {
-          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#teams('1644e7fe-547e-4223-a24f-922395865343')/channels/$entity",
-          "id": "19:16259efabba44a66916d91dd91862a6f@thread.tacv2",
-          "createdDateTime": "2023-10-26T05:37:43.4798824Z",
-          "displayName": "New Channel",
-          "description": "new channel description",
+          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#teams('e25bae35-7bcc-4fb7-b4f2-0d5caef251fd')/channels/$entity",
+          "id": "19:dff84a49e5124cc89dff0192c621ea0f@thread.tacv2",
+          "createdDateTime": "2022-03-26T17:16:51Z",
+          "displayName": "General",
+          "description": "Description of Retail",
           "isFavoriteByDefault": null,
-          "email": "",
-          "webUrl": "https://teams.microsoft.com/l/channel/19%3a16259efabba44a66916d91dd91862a6f%40thread.tacv2/New+Channel?groupId=1644e7fe-547e-4223-a24f-922395865343&tenantId=tenantId-111-222-333",
-          "membershipType": "private"
+          "email": "Retail@5w1hb7.onmicrosoft.com",
+          "tenantId": "tenantId-111-222-333",
+          "webUrl": "https://teams.microsoft.com/l/channel/19%3Adff84a49e5124cc89dff0192c621ea0f%40thread.tacv2/General?groupId=e25bae35-7bcc-4fb7-b4f2-0d5caef251fd&tenantId=tenantId-111-222-333&allowXTenantAccess=True",
+          "membershipType": "standard"
         }
       }
     ]
@@ -98,7 +102,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "ec0b4e3d-2fd7-4fac-90e5-f18ecd620a8f",
+  "versionId": "021e8e46-fd28-4dfb-bd94-b288a8541940",
   "id": "i3NYGF0LXV4qDFV9",
   "meta": {
     "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"

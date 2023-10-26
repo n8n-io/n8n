@@ -8,13 +8,13 @@ import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
 const microsoftApiRequestSpy = jest.spyOn(transport, 'microsoftApiRequest');
 
 microsoftApiRequestSpy.mockImplementation(async (method: string) => {
-	if (method === 'DELETE') {
+	if (method === 'PATCH') {
 		return {};
 	}
 });
 
-describe('Test MicrosoftTeamsV2, channel => deleteChannel', () => {
-	const workflows = ['nodes/Microsoft/Teams/test/v2/node/channel/deleteChannel.workflow.json'];
+describe('Test MicrosoftTeamsV2, channel => update', () => {
+	const workflows = ['nodes/Microsoft/Teams/test/v2/node/channel/update.workflow.json'];
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
@@ -39,8 +39,9 @@ describe('Test MicrosoftTeamsV2, channel => deleteChannel', () => {
 
 		expect(microsoftApiRequestSpy).toHaveBeenCalledTimes(1);
 		expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
-			'DELETE',
-			'/v1.0/teams/1644e7fe-547e-4223-a24f-922395865343/channels/19:16259efabba44a66916d91dd91862a6f@thread.tacv2',
+			'PATCH',
+			'/v1.0/teams/e25bae35-7bcc-4fb7-b4f2-0d5caef251fd/channels/19:b9daa3647ff8450bacaf39490d3e05e2@thread.tacv2',
+			{ description: 'new channel description', displayName: 'New Deals' },
 		);
 
 		expect(result.finished).toEqual(true);

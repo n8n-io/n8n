@@ -14,16 +14,23 @@
     },
     {
       "parameters": {
+        "operation": "update",
         "teamId": {
           "__rl": true,
-          "value": "1644e7fe-547e-4223-a24f-922395865343",
+          "value": "e25bae35-7bcc-4fb7-b4f2-0d5caef251fd",
           "mode": "list",
-          "cachedResultName": "5w1hb7"
+          "cachedResultName": "Retail"
         },
-        "name": "New Channel",
+        "channelId": {
+          "__rl": true,
+          "value": "19:b9daa3647ff8450bacaf39490d3e05e2@thread.tacv2",
+          "mode": "list",
+          "cachedResultName": "Deals",
+          "cachedResultUrl": "https://teams.microsoft.com/l/channel/19%3Ab9daa3647ff8450bacaf39490d3e05e2%40thread.tacv2/Deals?groupId=e25bae35-7bcc-4fb7-b4f2-0d5caef251fd&tenantId=tenantId-111-222-333&allowXTenantAccess=False"
+        },
+        "name": "New Deals",
         "options": {
-          "description": "new channel description",
-          "type": "private"
+          "description": "new channel description"
         }
       },
       "id": "9f3bb031-3ad8-4480-b2f8-fae1325f6953",
@@ -57,15 +64,7 @@
     "No Operation, do nothing": [
       {
         "json": {
-          "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#teams('1644e7fe-547e-4223-a24f-922395865343')/channels/$entity",
-          "id": "19:16259efabba44a66916d91dd91862a6f@thread.tacv2",
-          "createdDateTime": "2023-10-26T05:37:43.4798824Z",
-          "displayName": "New Channel",
-          "description": "new channel description",
-          "isFavoriteByDefault": null,
-          "email": "",
-          "webUrl": "https://teams.microsoft.com/l/channel/19%3a16259efabba44a66916d91dd91862a6f%40thread.tacv2/New+Channel?groupId=1644e7fe-547e-4223-a24f-922395865343&tenantId=tenantId-111-222-333",
-          "membershipType": "private"
+          "success": true
         }
       }
     ]
@@ -98,7 +97,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "ec0b4e3d-2fd7-4fac-90e5-f18ecd620a8f",
+  "versionId": "75151dab-2cd1-42ee-9a01-e61cf6a1245e",
   "id": "i3NYGF0LXV4qDFV9",
   "meta": {
     "instanceId": "b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363"

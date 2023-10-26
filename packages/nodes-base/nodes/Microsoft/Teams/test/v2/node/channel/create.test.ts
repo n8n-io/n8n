@@ -21,7 +21,7 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 			isFavoriteByDefault: null,
 			email: '',
 			webUrl:
-				'https://teams.microsoft.com/l/channel/19%3a16259efabba44a66916d91dd91862a6f%40thread.tacv2/New+Channel?groupId=1644e7fe-547e-4223-a24f-922395865343&tenantId=23786ca6-7ff2-4672-87d0-5c649ee0a337',
+				'https://teams.microsoft.com/l/channel/19%3a16259efabba44a66916d91dd91862a6f%40thread.tacv2/New+Channel?groupId=1644e7fe-547e-4223-a24f-922395865343&tenantId=tenantId-111-222-333',
 			membershipType: 'private',
 		};
 	}
