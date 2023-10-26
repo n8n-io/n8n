@@ -7,13 +7,15 @@ export class Cipher {
 	constructor(private readonly instanceSettings: InstanceSettings) {}
 
 	encrypt(data: string | object) {
+		const { encryptionKey } = this.instanceSettings;
 		return AES.encrypt(
 			typeof data === 'string' ? data : JSON.stringify(data),
-			this.instanceSettings.encryptionKey,
+			encryptionKey,
 		).toString();
 	}
 
 	decrypt(data: string) {
-		return AES.decrypt(data, this.instanceSettings.encryptionKey).toString(enc.Utf8);
+		const { encryptionKey } = this.instanceSettings;
+		return AES.decrypt(data, encryptionKey).toString(enc.Utf8);
 	}
 }
