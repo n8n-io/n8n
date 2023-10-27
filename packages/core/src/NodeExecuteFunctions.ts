@@ -2532,7 +2532,6 @@ const getRequestHelperFunctions = (
 		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
 		returnObjectAsString = false,
 	): NodeParameterValueType => {
-		// Expressions can not access data
 		const runExecutionData: IRunExecutionData | null = null;
 		const connectionInputData: INodeExecutionData[] = [];
 		const mode: WorkflowExecuteMode = 'internal';
@@ -2668,18 +2667,14 @@ const getRequestHelperFunctions = (
 					hashData.previousLength = contentLength;
 				}
 
-				// Give only access to certain keys
-				const newResponse: IN8nHttpFullResponse = {
-					body: {},
-					headers: {},
-					statusCode: 0,
-				};
-
-				for (const key of Object.keys(newResponse)) {
-					// TODO: Do that properly
-					// @ts-ignore
-					newResponse[key] = tempResponseData[key];
-				}
+				const newResponse: IN8nHttpFullResponse = Object.assign(
+					{
+						body: {},
+						headers: {},
+						statusCode: 0,
+					},
+					pick(tempResponseData, ['body', 'headers', 'statusCode']),
+				);
 
 				if (
 					newResponse.body?.constructor.name === 'IncomingMessage' &&
