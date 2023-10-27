@@ -6,6 +6,7 @@ import * as channel from './channel';
 import * as member from './member';
 import * as webhook from './webhook';
 import type { Discord } from './node.type';
+import { getGuildId } from '../transport';
 
 export async function router(this: IExecuteFunctions) {
 	let returnData: INodeExecutionData[] = [];
@@ -21,7 +22,7 @@ export async function router(this: IExecuteFunctions) {
 	let guildId = '';
 
 	if (resource !== 'webhook') {
-		guildId = this.getNodeParameter('guildId', 0, {}, { extractValue: true }) as string;
+		guildId = await getGuildId.call(this);
 	}
 
 	const discord = {

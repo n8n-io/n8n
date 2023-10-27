@@ -6,7 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
+import {
+	checkUserAccessToChannel,
+	discordApiMultiPartRequest,
+	discordApiRequest,
+} from '../../transport';
 import {
 	embedsFixedCollection,
 	filesFixedCollection,
@@ -135,6 +139,13 @@ export async function execute(
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
+	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
+	let userGuilds = [];
+
+	if (isOAuth2) {
+		userGuilds = await discordApiRequest.call(this, 'GET', '/users/@me/guilds');
+	}
+
 	for (let i = 0; i < items.length; i++) {
 		const content = this.getNodeParameter('content', i) as string;
 		const options = prepareOptions(this.getNodeParameter('options', i, {}), guildId);
@@ -179,6 +190,8 @@ export async function execute(
 			if (!channelId) {
 				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
 			}
+
+			if (isOAuth2) await checkUserAccessToChannel.call(this, channelId, userGuilds, i);
 
 			let response: IDataObject[] = [];
 

@@ -1,10 +1,8 @@
 import type { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { discordApiRequest } from '../transport';
+import { discordApiRequest, getGuildId } from '../transport';
 
 export async function getRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const guildId = this.getNodeParameter('guildId', undefined, {
-		extractValue: true,
-	}) as string;
+	const guildId = await getGuildId.call(this);
 
 	let response = await discordApiRequest.call(this, 'GET', `/guilds/${guildId}/roles`);
 

@@ -8,7 +8,7 @@ import type {
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
-import { sleep, NodeApiError, jsonParse } from 'n8n-workflow';
+import { sleep, NodeApiError, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import type FormData from 'form-data';
 
@@ -137,7 +137,7 @@ export async function discordApiMultiPartRequest(
 	}
 }
 
-export async function botHasAccessToGuild(
+export async function checkBotAccessToGuild(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
 	guildId: string,
 	botId: string,
@@ -157,15 +157,72 @@ export async function botHasAccessToGuild(
 	return false;
 }
 
-export async function botHasAccessToChannel(
+async function checkUserAccess(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
+	guildId: string,
+	itemIndex = 0,
+	userGuilds?: IDataObject[],
+) {
+	if (!userGuilds) {
+		userGuilds = (await discordApiRequest.call(this, 'GET', '/users/@me/guilds')) as IDataObject[];
+	}
+
+	if (!userGuilds.some((guild) => guild.id === guildId)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`You do not have access to the guild with the id ${guildId}.`,
+			{
+				itemIndex,
+			},
+		);
+	}
+}
+
+export async function checkUserAccessToChannel(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
 	channelId: string,
-	botId: string,
+	userGuilds: IDataObject[],
+	itemIndex = 0,
 ) {
+	let guildId = '';
 	try {
 		const channel = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
-		return await botHasAccessToGuild.call(this, channel.guild_id, botId);
+		guildId = channel.guild_id;
 	} catch (error) {}
 
-	return false;
+	await checkUserAccess.call(this, guildId, itemIndex, userGuilds);
+}
+
+export async function getGuildId(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
+) {
+	const guildId = this.getNodeParameter('guildId', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
+	if (isOAuth2) await checkUserAccess.call(this, guildId);
+
+	return guildId;
+}
+
+export async function getChannelIdSetup(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
+) {
+	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
+	let userGuilds: IDataObject[] = [];
+
+	if (isOAuth2) {
+		userGuilds = await discordApiRequest.call(this, 'GET', '/users/@me/guilds');
+	}
+
+	return async (i: number) => {
+		const channelId = this.getNodeParameter('channelId', i, undefined, {
+			extractValue: true,
+		}) as string;
+
+		if (isOAuth2) await checkUserAccessToChannel.call(this, channelId, userGuilds, i);
+
+		return channelId;
+	};
 }

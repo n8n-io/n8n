@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { createSimplifyFunction, parseDiscordError, prepareErrorData } from '../../helpers/utils';
-import { discordApiRequest } from '../../transport';
+import { discordApiRequest, getChannelIdSetup } from '../../transport';
 import { channelRLC, simplifyBoolean } from '../common.description';
 import { returnAllOrLimit } from '../../../../../utils/descriptions';
 
@@ -47,11 +47,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		'type',
 	]);
 
+	const getChannelId = await getChannelIdSetup.call(this);
+
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const channelId = this.getNodeParameter('channelId', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const channelId = await getChannelId(i);
 
 			const returnAll = this.getNodeParameter('returnAll', i, false);
 

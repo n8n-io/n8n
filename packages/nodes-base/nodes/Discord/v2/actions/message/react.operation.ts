@@ -1,7 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
-import { discordApiRequest } from '../../transport';
+import { discordApiRequest, getChannelIdSetup } from '../../transport';
 import { channelRLC, messageIdString } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -33,11 +33,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
+	const getChannelId = await getChannelIdSetup.call(this);
+
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const channelId = this.getNodeParameter('channelId', i, undefined, {
-				extractValue: true,
-			}) as string;
+			const channelId = await getChannelId(i);
 
 			const messageId = this.getNodeParameter('messageId', i) as string;
 			const emoji = this.getNodeParameter('emoji', i) as string;
