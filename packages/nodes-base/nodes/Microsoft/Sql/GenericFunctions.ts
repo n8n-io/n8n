@@ -1,7 +1,8 @@
-/* eslint-disable @typescript-eslint/ban-types */
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import type { ITables } from './TableInterface';
+import type { ITables, OperationInputData } from './interfaces';
+import { chunk, flatten } from '@utils/utilities';
+import mssql from 'mssql';
 
 /**
  * Returns a copy of the item which only contains the json data and
@@ -30,6 +31,7 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
  * @param {function} getNodeParam getter for the Node's Parameters
  */
 export function createTableStruct(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	items: INodeExecutionData[],
 	additionalProperties: string[] = [],
@@ -61,10 +63,9 @@ export function createTableStruct(
  * @param {ITables} tables The ITables to be processed.
  * @param {function} buildQueryQueue function that builds the queue of promises
  */
-
 export async function executeQueryQueue(
 	tables: ITables,
-	buildQueryQueue: Function,
+	buildQueryQueue: (data: OperationInputData) => Array<Promise<object>>,
 ): Promise<any[]> {
 	return Promise.all(
 		Object.keys(tables).map(async (table) => {
@@ -82,68 +83,120 @@ export async function executeQueryQueue(
 	);
 }
 
-/**
- * Extracts the values from the item for INSERT
- *
- * @param {IDataObject} item The item to extract
- */
-export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item)
-		.map((val) => {
-			//the column cannot be found in the input
-			//so, set it to null in the sql query
-			if (val === null) {
-				return 'NULL';
-			} else if (typeof val === 'string') {
-				return `'${val.replace(/'/g, "''")}'`;
-			} else if (typeof val === 'boolean') {
-				return +!!val;
-			}
-			return val;
-		}) // maybe other types such as dates have to be handled as well
-		.join(',')})`;
-}
-
-/**
- * Extracts the SET from the item for UPDATE
- *
- * @param {IDataObject} item The item to extract from
- * @param {string[]} columns The columns to update
- */
-export function extractUpdateSet(item: IDataObject, columns: string[]): string {
-	return columns
-		.map(
-			(column) =>
-				`"${column}" = ${typeof item[column] === 'string' ? `'${item[column]}'` : item[column]}`,
-		)
-		.join(',');
-}
-
-/**
- * Extracts the WHERE condition from the item for UPDATE
- *
- * @param {IDataObject} item The item to extract from
- * @param {string} key The column name to build the condition with
- */
-export function extractUpdateCondition(item: IDataObject, key: string): string {
-	return `${key} = ${typeof item[key] === 'string' ? `'${item[key]}'` : item[key]}`;
-}
-
-/**
- * Extracts the WHERE condition from the items for DELETE
- *
- * @param {IDataObject[]} items The items to extract the values from
- * @param {string} key The column name to extract the value from for the delete condition
- */
-export function extractDeleteValues(items: IDataObject[], key: string): string {
-	return `(${items
-		.map((item) => (typeof item[key] === 'string' ? `'${item[key]}'` : item[key]))
-		.join(',')})`;
-}
-
 export function formatColumns(columns: string) {
 	return columns
 		.split(',')
-		.map((column) => `"${column.trim()}"`)
-		.join(',');
+		.map((column) => `[${column.trim()}]`)
+		.join(', ');
+}
+
+export function configurePool(credentials: IDataObject) {
+	const config = {
+		server: credentials.server as string,
+		port: credentials.port as number,
+		database: credentials.database as string,
+		user: credentials.user as string,
+		password: credentials.password as string,
+		domain: credentials.domain ? (credentials.domain as string) : undefined,
+		connectionTimeout: credentials.connectTimeout as number,
+		requestTimeout: credentials.requestTimeout as number,
+		options: {
+			encrypt: credentials.tls as boolean,
+			enableArithAbort: false,
+			tdsVersion: credentials.tdsVersion as string,
+			trustServerCertificate: credentials.allowUnauthorizedCerts as boolean,
+		},
+	};
+
+	return new mssql.ConnectionPool(config);
+}
+
+export async function insertOperation(tables: ITables, pool: mssql.ConnectionPool) {
+	return executeQueryQueue(
+		tables,
+		({ table, columnString, items }: OperationInputData): Array<Promise<object>> => {
+			return chunk(items, 1000).map(async (insertValues) => {
+				const request = pool.request();
+
+				const valuesPlaceholder = [];
+
+				for (const [rIndex, entry] of insertValues.entries()) {
+					const row = Object.values(entry);
+					valuesPlaceholder.push(`(${row.map((_, vIndex) => `@r${rIndex}v${vIndex}`).join(', ')})`);
+					for (const [vIndex, value] of row.entries()) {
+						request.input(`r${rIndex}v${vIndex}`, value);
+					}
+				}
+
+				const query = `INSERT INTO [${table}] (${formatColumns(
+					columnString,
+				)}) VALUES ${valuesPlaceholder.join(', ')};`;
+
+				return request.query(query);
+			});
+		},
+	);
+}
+
+export async function updateOperation(tables: ITables, pool: mssql.ConnectionPool) {
+	return executeQueryQueue(
+		tables,
+		({ table, columnString, items }: OperationInputData): Array<Promise<object>> => {
+			return items.map(async (item) => {
+				const request = pool.request();
+				const columns = columnString.split(',').map((column) => column.trim());
+
+				const setValues: string[] = [];
+				const condition = `${item.updateKey} = @condition`;
+				request.input('condition', item[item.updateKey as string]);
+
+				for (const [index, col] of columns.entries()) {
+					setValues.push(`[${col}] = @v${index}`);
+					request.input(`v${index}`, item[col]);
+				}
+
+				const query = `UPDATE [${table}] SET ${setValues.join(', ')} WHERE ${condition};`;
+
+				return request.query(query);
+			});
+		},
+	);
+}
+
+export async function deleteOperation(tables: ITables, pool: mssql.ConnectionPool) {
+	const queriesResults = await Promise.all(
+		Object.keys(tables).map(async (table) => {
+			const deleteKeyResults = Object.keys(tables[table]).map(async (deleteKey) => {
+				const deleteItemsList = chunk(
+					tables[table][deleteKey].map((item) =>
+						copyInputItem(item as INodeExecutionData, [deleteKey]),
+					),
+					1000,
+				);
+				const queryQueue = deleteItemsList.map(async (deleteValues) => {
+					const request = pool.request();
+					const valuesPlaceholder: string[] = [];
+
+					for (const [index, entry] of deleteValues.entries()) {
+						valuesPlaceholder.push(`@v${index}`);
+						request.input(`v${index}`, entry[deleteKey]);
+					}
+
+					const query = `DELETE FROM [${table}] WHERE [${deleteKey}] IN (${valuesPlaceholder.join(
+						', ',
+					)});`;
+
+					return request.query(query);
+				});
+				return Promise.all(queryQueue);
+			});
+			return Promise.all(deleteKeyResults);
+		}),
+	);
+
+	return flatten(queriesResults).reduce(
+		(acc: number, resp: mssql.IResult<object>): number =>
+			(acc += resp.rowsAffected.reduce((sum, val) => (sum += val))),
+		0,
+	);
 }

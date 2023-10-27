@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "1.12.0",
+  "version": "1.14.0",
   "description": "n8n Workflow Automation Tool",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -30,7 +30,7 @@
     "lint": "eslint . --quiet",
     "lintfix": "eslint . --fix",
     "postpack": "rm -f oclif.manifest.json",
-    "prepack": "oclif-dev manifest",
+    "prepack": "OCLIF_TS_NODE=0 oclif-dev manifest",
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
@@ -99,7 +99,7 @@
   },
   "dependencies": {
     "@n8n/client-oauth2": "workspace:*",
-    "@n8n_io/license-sdk": "~2.6.1",
+    "@n8n_io/license-sdk": "~2.7.1",
     "@oclif/command": "^1.8.16",
     "@oclif/config": "^1.18.17",
     "@oclif/core": "^1.16.4",
@@ -121,7 +121,6 @@
     "connect-history-api-fallback": "^1.6.0",
     "convict": "^6.2.4",
     "cookie-parser": "^1.4.6",
-    "crypto-js": "~4.1.1",
     "csrf": "^3.1.0",
     "curlconverter": "3.21.0",
     "dotenv": "^8.0.0",

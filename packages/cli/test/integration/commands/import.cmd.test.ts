@@ -1,14 +1,10 @@
 import * as Config from '@oclif/config';
-import { mock } from 'jest-mock-extended';
-import { type ILogger, LoggerProxy } from 'n8n-workflow';
 
 import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as testDb from '../shared/testDb';
 import { mockInstance } from '../shared/utils/';
-
-LoggerProxy.init(mock<ILogger>());
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);

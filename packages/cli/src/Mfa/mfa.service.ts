@@ -1,15 +1,15 @@
 import { v4 as uuid } from 'uuid';
-import { AES, enc } from 'crypto-js';
-import { TOTPService } from './totp.service';
 import { Service } from 'typedi';
-import { UserRepository } from '@/databases/repositories';
+import { Cipher } from 'n8n-core';
+import { UserRepository } from '@db/repositories';
+import { TOTPService } from './totp.service';
 
 @Service()
 export class MfaService {
 	constructor(
 		private userRepository: UserRepository,
 		public totp: TOTPService,
-		private encryptionKey: string,
+		private cipher: Cipher,
 	) {}
 
 	public generateRecoveryCodes(n = 10) {
@@ -17,9 +17,7 @@ export class MfaService {
 	}
 
 	public generateEncryptedRecoveryCodes() {
-		return this.generateRecoveryCodes().map((code) =>
-			AES.encrypt(code, this.encryptionKey).toString(),
-		);
+		return this.generateRecoveryCodes().map((code) => this.cipher.encrypt(code));
 	}
 
 	public async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
@@ -34,10 +32,8 @@ export class MfaService {
 	}
 
 	public encryptSecretAndRecoveryCodes(rawSecret: string, rawRecoveryCodes: string[]) {
-		const encryptedSecret = AES.encrypt(rawSecret, this.encryptionKey).toString(),
-			encryptedRecoveryCodes = rawRecoveryCodes.map((code) =>
-				AES.encrypt(code, this.encryptionKey).toString(),
-			);
+		const encryptedSecret = this.cipher.encrypt(rawSecret),
+			encryptedRecoveryCodes = rawRecoveryCodes.map((code) => this.cipher.encrypt(code));
 		return {
 			encryptedRecoveryCodes,
 			encryptedSecret,
@@ -46,10 +42,8 @@ export class MfaService {
 
 	private decryptSecretAndRecoveryCodes(mfaSecret: string, mfaRecoveryCodes: string[]) {
 		return {
-			decryptedSecret: AES.decrypt(mfaSecret, this.encryptionKey).toString(enc.Utf8),
-			decryptedRecoveryCodes: mfaRecoveryCodes.map((code) =>
-				AES.decrypt(code, this.encryptionKey).toString(enc.Utf8),
-			),
+			decryptedSecret: this.cipher.decrypt(mfaSecret),
+			decryptedRecoveryCodes: mfaRecoveryCodes.map((code) => this.cipher.decrypt(code)),
 		};
 	}
 
@@ -66,7 +60,7 @@ export class MfaService {
 	}
 
 	public encryptRecoveryCodes(mfaRecoveryCodes: string[]) {
-		return mfaRecoveryCodes.map((code) => AES.encrypt(code, this.encryptionKey).toString());
+		return mfaRecoveryCodes.map((code) => this.cipher.encrypt(code));
 	}
 
 	public async disableMfa(userId: string) {

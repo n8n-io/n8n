@@ -7,7 +7,7 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
+import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
@@ -20,12 +20,15 @@ import type {
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories';
+import { Logger } from '@/Logger';
 
 @Service()
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
+
+	constructor(private readonly logger: Logger) {}
 
 	/**
 	 * Add a new active execution
@@ -225,7 +228,7 @@ export class ActiveExecutions {
 
 	async setStatus(executionId: string, status: ExecutionStatus): Promise<void> {
 		if (this.activeExecutions[executionId] === undefined) {
-			LoggerProxy.debug(
+			this.logger.debug(
 				`There is no active execution with id "${executionId}", can't update status to ${status}.`,
 			);
 			return;
