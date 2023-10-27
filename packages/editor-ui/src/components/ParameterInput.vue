@@ -1376,6 +1376,10 @@ export default defineComponent({
 	right: 0;
 }
 
+.el-input--suffix .el-input__inner {
+	padding-right: 0;
+}
+
 .textarea-modal-opener {
 	position: absolute;
 	right: 0;
