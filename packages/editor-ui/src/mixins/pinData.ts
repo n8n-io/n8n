@@ -111,8 +111,9 @@ export const pinData = defineComponent({
 			}
 
 			if (
+				isValid &&
 				stringSizeInBytes(workflowJson) + newPinDataSize >
-				MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
+					MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
 			) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLargeWorkflow.description')),
