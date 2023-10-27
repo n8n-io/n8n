@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { uptimeRobotApiRequest } from './GenericFunctions';
 
 import { monitorFields, monitorOperations } from './MonitorDescription';
@@ -18,8 +19,6 @@ import {
 } from './MaintenanceWindowDescription';
 
 import { publicStatusPageFields, publicStatusPageOperations } from './PublicStatusPageDescription';
-
-import moment from 'moment-timezone';
 
 export class UptimeRobot implements INodeType {
 	description: INodeTypeDescription = {

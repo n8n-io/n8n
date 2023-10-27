@@ -8,6 +8,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import partialRight from 'lodash/partialRight';
 import {
 	bitwardenApiRequest as tokenlessBitwardenApiRequest,
 	getAccessToken,
@@ -31,9 +33,6 @@ import type {
 	MemberUpdateFields,
 } from './descriptions/MemberDescription';
 import { memberFields, memberOperations } from './descriptions/MemberDescription';
-
-import isEmpty from 'lodash/isEmpty';
-import partialRight from 'lodash/partialRight';
 
 export class Bitwarden implements INodeType {
 	description: INodeTypeDescription = {

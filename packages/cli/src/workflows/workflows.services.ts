@@ -506,7 +506,6 @@ export class WorkflowsService {
 			if (isWorkflowIdValid(workflow.id)) {
 				// Workflow is saved so update in database
 				try {
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					await WorkflowsService.saveStaticDataById(workflow.id, workflow.staticData);
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
