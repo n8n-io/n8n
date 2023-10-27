@@ -643,9 +643,6 @@ export default defineComponent({
 		this.init();
 
 		if (!this.isPaneTypeInput) {
-			dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
-			dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
-
 			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
 		this.ndvStore.setNDVBranchIndex({
@@ -657,8 +654,6 @@ export default defineComponent({
 	},
 	beforeUnmount() {
 		this.hidePinDataDiscoveryTooltip();
-		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
-		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),

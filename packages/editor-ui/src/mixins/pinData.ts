@@ -27,10 +27,6 @@ export const pinData = defineComponent({
 			...useToast(),
 		};
 	},
-	mounted() {
-		dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
-		dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
-	},
 	computed: {
 		...mapStores(useWorkflowsStore, useNDVStore),
 		pinData(): IPinData[string] | undefined {
