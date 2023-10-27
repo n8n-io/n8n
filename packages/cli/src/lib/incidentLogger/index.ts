@@ -34,7 +34,7 @@ export const createIncidentLog = async (
 		});
 	} catch (error) {
 		console.log('ERROR while creating Incident Log:', error);
-		throw error;
+		// throw error;
 	}
 };
 
@@ -90,7 +90,7 @@ export const logIncidentFromWorkflowExecute = async (
 			);
 		} catch (e) {
 			console.log('ERROR when attemping to create incident log:', e);
-			throw error;
+			// throw error;
 		}
 	}
 };
