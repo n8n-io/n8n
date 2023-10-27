@@ -30,7 +30,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { InternalServerError } from '../ResponseHelper';
+import { BadRequestError, InternalServerError } from '../ResponseHelper';
 import { RoleService } from '@/services/role.service';
 
 /**
@@ -169,6 +169,12 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 
 	if (!valid) {
 		throw new Error(message);
+	}
+
+	if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
+		throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
+	} else {
+		await setCurrentAuthenticationMethod('ldap');
 	}
 
 	LdapManager.updateConfig({ ...ldapConfig });
