@@ -108,7 +108,6 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	...defaults,
 });
 
-let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
@@ -329,13 +328,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		// Returns a workflow instance.
 		getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
-			const nodeTypes = this.getNodeTypes();
 			let workflowId: string | undefined = this.workflowId;
 			if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				workflowId = undefined;
 			}
 
-			cachedWorkflow = new Workflow({
+			const nodeTypes = this.getNodeTypes();
+			return new Workflow({
 				id: workflowId,
 				name: this.workflowName,
 				nodes: copyData ? deepCopy(nodes) : nodes,
@@ -346,20 +345,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				// @ts-ignore
 				pinData: this.getPinData,
 			});
-
-			return cachedWorkflow;
 		},
 
 		getCurrentWorkflow(copyData?: boolean): Workflow {
-			const nodes = this.getNodes();
-			const connections = this.allConnections;
-			const cacheKey = JSON.stringify({ nodes, connections });
-			if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
-				return cachedWorkflow;
-			}
-			cachedWorkflowKey = cacheKey;
+			if (cachedWorkflow && !copyData) return cachedWorkflow;
 
-			return this.getWorkflow(nodes, connections, copyData);
+			const nodes = this.allNodes;
+			const connections = this.allConnections;
+			cachedWorkflow = this.getWorkflow(nodes, connections, copyData);
+			return cachedWorkflow;
 		},
 
 		// Returns a workflow from a given URL
@@ -409,6 +403,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		resetWorkflow() {
+			cachedWorkflow = null;
+
 			const usersStore = useUsersStore();
 			const settingsStore = useSettingsStore();
 
