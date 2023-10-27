@@ -45,7 +45,7 @@ export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 
 		const success = await this.redisClient?.setnx(key, value);
 
-		return !!success; // whether key did not exist and was set
+		return !!success;
 	}
 
 	async setExpiration(key: string, ttl: number) {
