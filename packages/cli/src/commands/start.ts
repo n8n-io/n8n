@@ -21,11 +21,11 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
+import { License, FeatureNotLicensedError } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
 import { MainInstancePublisher } from '@/services/orchestration/main/main-instance.publisher';
@@ -215,10 +215,29 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') === 'queue') {
+		if (config.get('executions.mode') !== 'queue') return;
+
+		const isLeaderSelectionEnabled = config.get('leaderSelection.enabled');
+
+		if (!isLeaderSelectionEnabled) {
 			await Container.get(MainInstancePublisher).init();
 			await Container.get(OrchestrationHandlerMainService).init();
+			return;
 		}
+
+		const isLeaderSelectionLicensed = Container.get(License).isMultipleMainInstancesLicensed();
+
+		if (!isLeaderSelectionLicensed) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { MultipleMainInstancesPublisher } = await import(
+			'@/services/orchestration/main/multiple-main-instances.publisher.ee'
+		);
+
+		await Container.get(MultipleMainInstancesPublisher).init();
+		await Container.get(OrchestrationHandlerMainService).init();
 	}
 
 	async run() {
