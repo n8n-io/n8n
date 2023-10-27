@@ -1,14 +1,13 @@
 import type express from 'express';
 import { Service } from 'typedi';
 
-import {
-	type IWebhookData,
-	type IWorkflowExecuteAdditionalData,
-	type IHttpRequestMethods,
-	type Workflow,
-	type WorkflowActivateMode,
-	type WorkflowExecuteMode,
-	WorkflowOperationError,
+import type {
+	IWebhookData,
+	IWorkflowExecuteAdditionalData,
+	IHttpRequestMethods,
+	Workflow,
+	WorkflowActivateMode,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import { ActiveWebhooks } from '@/ActiveWebhooks';
@@ -191,12 +190,6 @@ export class TestWebhooks implements IWebhookManager {
 		sessionId?: string,
 		destinationNode?: string,
 	): Promise<boolean> {
-		if (workflow.id === undefined) {
-			throw new WorkflowOperationError(
-				'Missing workflow ID. Please save the workflow before adding a webhook.',
-			);
-		}
-
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
 			additionalData,
