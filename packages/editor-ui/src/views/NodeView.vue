@@ -3184,7 +3184,9 @@ export default defineComponent({
 					nodeName,
 				) as INodeExecutionData[];
 				if (pinDataForNode) {
-					this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
+					try {
+						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
+					} catch (error) {}
 				}
 
 				this.uiStore.stateIsDirty = true;
@@ -3921,7 +3923,12 @@ export default defineComponent({
 						(tempNode) => tempNode.name === nodeNameTable[nodeName],
 					);
 
-					pinDataSuccess = this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+					try {
+						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+						pinDataSuccess = true;
+					} catch (error) {
+						pinDataSuccess = false;
+					}
 				}
 			}
 

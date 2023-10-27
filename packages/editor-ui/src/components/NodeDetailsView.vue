@@ -643,7 +643,9 @@ export default defineComponent({
 					const { value } = this.outputPanelEditMode;
 
 					if (this.activeNode) {
-						this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						try {
+							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						} catch (error) {}
 					}
 				}
 

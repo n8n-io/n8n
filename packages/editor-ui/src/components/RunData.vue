@@ -1013,16 +1013,17 @@ export default defineComponent({
 			this.onExitEditMode({ type: 'cancel' });
 		},
 		onClickSaveEdit() {
+			if (!this.node) {
+				return;
+			}
+
 			const { value } = this.editMode;
 
 			this.clearAllStickyNotifications();
 
-			const pinDataSuccess = this.setPinData(
-				this.node,
-				clearJsonKey(value) as INodeExecutionData[],
-				'save-edit',
-			);
-			if (!pinDataSuccess) {
+			try {
+				this.setPinData(this.node, clearJsonKey(value) as INodeExecutionData[], 'save-edit');
+			} catch (error) {
 				return;
 			}
 
@@ -1044,6 +1045,10 @@ export default defineComponent({
 		}: {
 			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
 		}) {
+			if (!this.node) {
+				return;
+			}
+
 			if (source === 'pin-icon-click') {
 				const telemetryPayload = {
 					node_type: this.activeNode.type,
@@ -1063,8 +1068,9 @@ export default defineComponent({
 				return;
 			}
 
-			const pinDataSuccess = this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
-			if (!pinDataSuccess) {
+			try {
+				this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
+			} catch (error) {
 				return;
 			}
 

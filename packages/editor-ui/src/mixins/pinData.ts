@@ -21,6 +21,15 @@ export interface IPinDataContext {
 	$showError(error: Error, title: string): void;
 }
 
+type PinDataSource =
+	| 'pin-icon-click'
+	| 'save-edit'
+	| 'on-ndv-close-modal'
+	| 'duplicate-node'
+	| 'add-nodes';
+
+type UnpinDataSource = 'unpin-and-execute-modal';
+
 export const pinData = defineComponent({
 	setup() {
 		return {
@@ -125,11 +134,11 @@ export const pinData = defineComponent({
 
 			return isValid;
 		},
-		setPinData(node: INodeUi | null, data: string | INodeExecutionData[], source: string): boolean {
+		setPinData(node: INodeUi, data: string | INodeExecutionData[], source: PinDataSource): boolean {
 			if (typeof data === 'string') {
 				if (!this.isValidPinDataJSON(data)) {
 					this.onDataPinningError({ errorType: 'invalid-json', source });
-					return false;
+					throw new Error('Invalid JSON');
 				}
 
 				data = jsonParse(data);
@@ -137,19 +146,17 @@ export const pinData = defineComponent({
 
 			if (!this.isValidPinDataSize(data, node?.name ?? '')) {
 				this.onDataPinningError({ errorType: 'data-too-large', source });
-				return false;
+				throw new Error('Data too large');
 			}
 
 			this.onDataPinningSuccess({ source });
 			this.workflowsStore.pinData({ node, data });
-
-			return true;
 		},
-		unsetPinData(node: INodeUi | null, source: string): void {
+		unsetPinData(node: INodeUi | null, source: UnpinDataSource): void {
 			this.onDataUnpinning({ source });
 			this.workflowsStore.unpinData({ node });
 		},
-		onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
+		onDataPinningSuccess({ source }: { source: PinDataSource }) {
 			const telemetryPayload = {
 				pinning_source: source,
 				node_type: this.activeNode?.type,
@@ -166,7 +173,7 @@ export const pinData = defineComponent({
 			source,
 		}: {
 			errorType: 'data-too-large' | 'invalid-json';
-			source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit';
+			source: PinDataSource;
 		}) {
 			this.$telemetry.track('Ndv data pinning failure', {
 				pinning_source: source,
