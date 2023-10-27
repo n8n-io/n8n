@@ -52,9 +52,9 @@ const allowedCombinators = computed<FilterTypeCombinator[]>(
 
 const state = reactive<{ paramValue: FilterValue }>({
 	paramValue: {
-		options: DEFAULT_FILTER_OPTIONS,
-		conditions: props.value.conditions ?? [createCondition()],
-		combinator: props.value.combinator ?? allowedCombinators.value[0],
+		options: props.value?.options ?? DEFAULT_FILTER_OPTIONS,
+		conditions: props.value?.conditions ?? [createCondition()],
+		combinator: props.value?.combinator ?? allowedCombinators.value[0],
 	},
 });
 
@@ -141,7 +141,7 @@ function getIssues(index: number): string[] {
 </script>
 
 <template>
-	<div :class="$style.filter" data-test-id="filter">
+	<div :class="$style.filter" :data-test-id="`filter-${parameter.name}`">
 		<n8n-input-label
 			:label="parameter.displayName"
 			:underline="true"
@@ -165,7 +165,7 @@ function getIssues(index: number): string[] {
 					<condition
 						:condition="condition"
 						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
-						:canRemove="index !== 0"
+						:canRemove="index !== 0 || state.paramValue.conditions.length > 1"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
 						@operatorChange="(value) => onOperatorChanged(index, value)"
@@ -183,6 +183,7 @@ function getIssues(index: number): string[] {
 				:label="i18n.baseText('filter.addCondition')"
 				:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
 				:disabled="maxConditionsReached"
+				data-test-id="filter-add-condition"
 			/>
 		</div>
 	</div>

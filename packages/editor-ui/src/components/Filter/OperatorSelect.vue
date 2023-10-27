@@ -33,8 +33,13 @@ const getOperatorId = (operator: FilterOperator): string =>
 </script>
 
 <template>
-	<div data-test-id="operator-select">
-		<n8n-select size="small" :modelValue="state.selected" @update:modelValue="onOperatorChange">
+	<div>
+		<n8n-select
+			data-test-id="filter-operator-select"
+			size="small"
+			:modelValue="state.selected"
+			@update:modelValue="onOperatorChange"
+		>
 			<template v-if="selectedGroupIcon" #prefix>
 				<n8n-icon :class="$style.selectedGroupIcon" :icon="selectedGroupIcon" />
 			</template>

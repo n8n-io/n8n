@@ -22,7 +22,7 @@ const onCombinatorChange = (combinator: FilterTypeCombinator): void => {
 </script>
 
 <template>
-	<div data-test-id="combinator-select" :class="$style.combinatorSelect">
+	<div data-test-id="filter-combinator-select" :class="$style.combinatorSelect">
 		<div v-if="readOnly || options.length === 1">
 			{{ i18n.baseText(`filter.combinator.${selected}`) }}
 		</div>

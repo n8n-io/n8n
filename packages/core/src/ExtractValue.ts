@@ -1,5 +1,4 @@
 import {
-	type FilterValue,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -135,7 +134,7 @@ function extractValueFilter(
 		);
 	}
 
-	return executeFilter(value as FilterValue);
+	return executeFilter(value);
 }
 
 function extractValueOther(

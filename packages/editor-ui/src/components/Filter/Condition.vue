@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { FilterConditionValue, INodeProperties } from 'n8n-workflow';
-import { computed } from 'vue';
-import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
-import type { FilterOperator } from './types';
-import OperatorSelect from './OperatorSelect.vue';
+import type { IUpdateInformation } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import { useI18n } from '@/composables';
-import type { IUpdateInformation } from '@/Interface';
+import type { FilterConditionValue, INodeProperties } from 'n8n-workflow';
+import { computed } from 'vue';
+import OperatorSelect from './OperatorSelect.vue';
+import { OPERATORS_BY_ID, type FilterOperatorId } from './constants';
+import type { FilterOperator } from './types';
 
 interface Props {
 	path: string;
@@ -62,7 +62,7 @@ const i18n = useI18n();
 			[$style.wrapper]: true,
 			[$style.hasIssues]: issues.length > 0,
 		}"
-		data-test-id="condition"
+		data-test-id="filter-condition"
 	>
 		<n8n-icon-button
 			v-if="canRemove"
@@ -70,6 +70,7 @@ const i18n = useI18n();
 			text
 			size="mini"
 			icon="trash"
+			data-test-id="filter-remove-condition"
 			:title="i18n.baseText('filter.removeCondition')"
 			:class="$style.remove"
 			@click="onRemove"
@@ -100,6 +101,7 @@ const i18n = useI18n();
 						:value="condition.leftValue"
 						:path="`${path}.left`"
 						:class="[$style.input, $style.inputLeft]"
+						data-test-id="filter-condition-left"
 						@update="onLeftValueChange"
 					/>
 					<operator-select
@@ -118,6 +120,7 @@ const i18n = useI18n();
 						:value="condition.rightValue"
 						:path="`${path}.right`"
 						:class="[$style.input, $style.inputRight]"
+						data-test-id="filter-condition-right"
 						@update="onRightValueChange"
 					/>
 				</div>
