@@ -6,8 +6,6 @@ export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow requ
 export const MAX_PINNED_DATA_SIZE = import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE
 	? parseInt(import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
 	: 12582912; // Workflow pinned data size limit in bytes
-console.log('MAX_WORKFLOW_SIZE', import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE);
-
 export const MAX_DISPLAY_DATA_SIZE = 204800;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 

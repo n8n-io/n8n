@@ -103,10 +103,6 @@ export const pinData = defineComponent({
 			const newPinDataSize = this.workflowsStore.getPinDataSize(newPinData);
 
 			let isValid = true;
-
-			console.log('MAX_WORKFLOW_SIZE', import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE);
-			console.log('newPinDataSize', newPinDataSize, MAX_PINNED_DATA_SIZE);
-
 			if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
