@@ -274,6 +274,21 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
+			const pinData = this.workflowsStore.getPinData;
+
+			// Return the first parent node that contains data
+			for (const parentNodeName of this.parentNodes) {
+				// Check first for pinned data
+				if (pinData[parentNodeName]) {
+					return parentNodeName;
+				}
+
+				// Check then the data of the current execution
+				if (this.workflowRunData?.[parentNodeName]) {
+					return parentNodeName;
+				}
+			}
+
 			return this.parentNodes[0];
 		},
 		isExecutableTriggerNode(): boolean {
@@ -617,8 +632,8 @@ export default defineComponent({
 			}
 
 			if (
-				typeof this.activeNodeType.outputs === 'string' ||
-				typeof this.activeNodeType.inputs === 'string'
+				typeof this.activeNodeType?.outputs === 'string' ||
+				typeof this.activeNodeType?.inputs === 'string'
 			) {
 				// TODO: We should keep track of if it actually changed and only do if required
 				// Whenever a node with custom inputs and outputs gets closed redraw it in case

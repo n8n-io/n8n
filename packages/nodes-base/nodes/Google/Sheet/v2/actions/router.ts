@@ -20,7 +20,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 		let results: INodeExecutionData[] | undefined;
 		if (googleSheets.resource === 'sheet') {
 			const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-			const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+			const spreadsheetId = getSpreadsheetId(
+				this.getNode(),
+				mode as ResourceLocator,
+				value as string,
+			);
 
 			const googleSheet = new GoogleSheet(spreadsheetId, this);
 

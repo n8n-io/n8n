@@ -41,6 +41,9 @@ const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
 const observer = ref<IntersectionObserver | null>(null);
 
+const getActions = (index: number) =>
+	index === 0 ? props.actions.filter((action) => action.value !== 'restore') : props.actions;
+
 const observeElement = (element: Element) => {
 	observer.value = new IntersectionObserver(
 		([entry]) => {
@@ -109,7 +112,7 @@ const onItemMounted = ({
 			:index="index"
 			:item="item"
 			:isActive="item.versionId === props.activeItem?.versionId"
-			:actions="props.actions"
+			:actions="getActions(index)"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"

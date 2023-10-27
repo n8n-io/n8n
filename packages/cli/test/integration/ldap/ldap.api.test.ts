@@ -2,6 +2,7 @@ import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
+
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
@@ -9,25 +10,21 @@ import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
-import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
+import { saveLdapSynchronization } from '@/Ldap/helpers';
 import type { LdapConfig } from '@/Ldap/types';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
-
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
+import Container from 'typedi';
+import { Cipher } from 'n8n-core';
 
 jest.mock('@/telemetry');
-jest.mock('@/UserManagement/email/NodeMailer');
 
 let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-
-LoggerProxy.init(getLogger());
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
@@ -56,11 +53,9 @@ beforeAll(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
+	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
 		defaultLdapConfig.bindingAdminPassword,
 	);
-
-	await utils.initEncryptionKey();
 
 	await setCurrentAuthenticationMethod('email');
 });
@@ -80,7 +75,6 @@ beforeEach(async () => {
 	jest.mock('@/telemetry');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
 });
 
 const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {

@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { AES, enc } from 'crypto-js';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { Container } from 'typedi';
-import { UserSettings } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
@@ -21,7 +20,7 @@ import {
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import {
@@ -32,6 +31,7 @@ import {
 } from '@/sso/ssoHelpers';
 import { InternalServerError } from '../ResponseHelper';
 import { RoleService } from '@/services/role.service';
+import { Logger } from '@/Logger';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -111,22 +111,6 @@ export const validateLdapConfigurationSchema = (
 };
 
 /**
- * Encrypt password using the instance's encryption key
- */
-export const encryptPassword = async (password: string): Promise<string> => {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return AES.encrypt(password, encryptionKey).toString();
-};
-
-/**
- * Decrypt password using the instance's encryption key
- */
-export const decryptPassword = async (password: string): Promise<string> => {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return AES.decrypt(password, encryptionKey).toString(enc.Utf8);
-};
-
-/**
  * Retrieve the LDAP configuration (decrypted) form the database
  */
 export const getLdapConfig = async (): Promise<LdapConfig> => {
@@ -134,7 +118,7 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 		key: LDAP_FEATURE_NAME,
 	});
 	const configurationData = jsonParse<LdapConfig>(configuration.value);
-	configurationData.bindingAdminPassword = await decryptPassword(
+	configurationData.bindingAdminPassword = Container.get(Cipher).decrypt(
 		configurationData.bindingAdminPassword,
 	);
 	return configurationData;
@@ -173,7 +157,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 
 	LdapManager.updateConfig({ ...ldapConfig });
 
-	ldapConfig.bindingAdminPassword = await encryptPassword(ldapConfig.bindingAdminPassword);
+	ldapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(ldapConfig.bindingAdminPassword);
 
 	if (!ldapConfig.loginEnabled) {
 		ldapConfig.synchronizationEnabled = false;
@@ -202,7 +186,7 @@ export const handleLdapInit = async (): Promise<void> => {
 	try {
 		await setGlobalLdapConfigVariables(ldapConfig);
 	} catch (error) {
-		Logger.warn(
+		Container.get(Logger).warn(
 			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			error,
@@ -252,7 +236,7 @@ export const findAndAuthenticateLdapUser = async (
 			void Container.get(InternalHooks).onLdapLoginSyncFailed({
 				error: e.message,
 			});
-			Logger.error('LDAP - Error during search', { message: e.message });
+			Container.get(Logger).error('LDAP - Error during search', { message: e.message });
 		}
 		return undefined;
 	}
@@ -278,7 +262,9 @@ export const findAndAuthenticateLdapUser = async (
 		await ldapService.validUser(user.dn, password);
 	} catch (e) {
 		if (e instanceof Error) {
-			Logger.error('LDAP - Error validating user against LDAP server', { message: e.message });
+			Container.get(Logger).error('LDAP - Error validating user against LDAP server', {
+				message: e.message,
+			});
 		}
 		return undefined;
 	}

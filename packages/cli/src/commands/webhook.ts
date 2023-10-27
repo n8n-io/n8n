@@ -1,5 +1,5 @@
 import { flags } from '@oclif/command';
-import { LoggerProxy, sleep } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 import config from '@/config';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { WebhookServer } from '@/WebhookServer';
@@ -36,7 +36,7 @@ export class Webhook extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		LoggerProxy.info('\nStopping n8n...');
+		this.logger.info('\nStopping n8n...');
 
 		try {
 			await this.externalHooks.run('n8n.stop', []);
@@ -54,7 +54,7 @@ export class Webhook extends BaseCommand {
 			let count = 0;
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
-					LoggerProxy.info(
+					this.logger.info(
 						`Waiting for ${executingWorkflows.length} active executions to finish...`,
 					);
 				}
