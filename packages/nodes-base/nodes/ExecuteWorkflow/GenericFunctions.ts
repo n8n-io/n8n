@@ -1,11 +1,10 @@
+import { readFile as fsReadFile } from 'fs/promises';
 import {
 	NodeOperationError,
 	type IExecuteFunctions,
 	type IExecuteWorkflowInfo,
 	jsonParse,
 } from 'n8n-workflow';
-
-import { readFile as fsReadFile } from 'fs/promises';
 
 export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex = 0) {
 	const workflowInfo: IExecuteWorkflowInfo = {};

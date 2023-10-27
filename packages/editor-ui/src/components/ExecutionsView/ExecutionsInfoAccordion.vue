@@ -89,7 +89,7 @@ export default defineComponent({
 	},
 	computed: {
 		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore),
-		accordionItems(): Object[] {
+		accordionItems(): object[] {
 			return [
 				{
 					id: 'productionExecutions',
@@ -114,7 +114,7 @@ export default defineComponent({
 			];
 		},
 		shouldExpandAccordion(): boolean {
-			if (this.initiallyExpanded === false) {
+			if (!this.initiallyExpanded) {
 				return false;
 			}
 			return (
