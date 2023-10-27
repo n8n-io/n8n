@@ -69,8 +69,6 @@ export function executeFilterCondition(
 					return left.endsWith(right);
 				case 'notEndsWith':
 					return !left.endsWith(right);
-				case 'notEndsWith':
-					return !left.endsWith(right);
 				case 'regex':
 					return new RegExp(right).test(left);
 				case 'notRegex':
