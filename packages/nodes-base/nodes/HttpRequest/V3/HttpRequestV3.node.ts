@@ -1670,7 +1670,7 @@ export class HttpRequestV3 implements INodeType {
 				};
 
 				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
-					// Itterate over all parameters and add them to the request
+					// Iterate over all parameters and add them to the request
 					paginationData.request = {};
 					pagination.parameters.parameters.forEach((parameter) => {
 						if (!paginationData.request[parameter.type]) {
