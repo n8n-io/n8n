@@ -4,7 +4,7 @@ import type { INodeTypeDescription, IPinData, INodeExecutionData } from 'n8n-wor
 import { stringSizeInBytes } from '@/utils';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
-	MAX_WORKFLOW_PIN_DATA_SIZE,
+	MAX_PINNED_DATA_SIZE,
 	MAX_WORKFLOW_SIZE,
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/constants';
@@ -13,13 +13,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
-import { dataPinningEventBus } from '@/event-bus';
-
-export interface IPinDataContext {
-	node: INodeUi;
-	nodeType: INodeTypeDescription;
-	$showError(error: Error, title: string): void;
-}
 
 type PinDataSource =
 	| 'pin-icon-click'
@@ -110,7 +103,11 @@ export const pinData = defineComponent({
 			const newPinDataSize = this.workflowsStore.getPinDataSize(newPinData);
 
 			let isValid = true;
-			if (newPinDataSize > MAX_WORKFLOW_PIN_DATA_SIZE) {
+
+			console.log('MAX_WORKFLOW_SIZE', import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE);
+			console.log('newPinDataSize', newPinDataSize, MAX_PINNED_DATA_SIZE);
+
+			if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),

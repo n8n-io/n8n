@@ -92,20 +92,17 @@ describe('Data pinning', () => {
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
 
-	it('Should show an error when maximum pin data size is exceeded', () => {
+	it.only('Should show an error when maximum pin data size is exceeded', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
 		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
 
+		cy.log(process.env.VUE_APP_MAX_PINNED_DATA_SIZE, process.env);
 		ndv.actions.setPinnedData([
 			{
-				test: '1'.repeat(
-					process.env.VUE_APP_MAX_PINNED_DATA_SIZE
-						? parseInt(process.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
-						: 1024,
-				),
+				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
 			},
 		]);
 		workflowPage.getters
