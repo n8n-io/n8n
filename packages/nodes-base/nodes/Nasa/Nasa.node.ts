@@ -7,9 +7,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
-
 import moment from 'moment';
+import { nasaApiRequest, nasaApiRequestAllItems } from './GenericFunctions';
 
 export class Nasa implements INodeType {
 	description: INodeTypeDescription = {
@@ -1130,11 +1129,11 @@ export class Nasa implements INodeType {
 		}
 
 		if (resource === 'earthImagery' && operation === 'get') {
-			return this.prepareOutputData(items);
+			return [items];
 		} else if (resource === 'astronomyPictureOfTheDay' && operation === 'get' && download) {
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

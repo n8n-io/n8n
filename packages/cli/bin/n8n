@@ -32,9 +32,17 @@ if (![18, 20].includes(nodeVersionMajor)) {
 // Prevent oclif from loading ts-node and typescript
 process.env.OCLIF_TS_NODE = '0';
 
+// Disable nodejs custom inspection across the app
+const { inspect } = require('util');
+inspect.defaultOptions.customInspect = false;
+
 require('express-async-errors');
 require('source-map-support').install();
 require('reflect-metadata');
+
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	require('dns').setDefaultResultOrder('ipv4first');
+}
 
 require('@oclif/command')
 	.run()

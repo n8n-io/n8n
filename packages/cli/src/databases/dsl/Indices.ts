@@ -13,9 +13,9 @@ abstract class IndexOperation extends LazyPromise<void> {
 	}
 
 	constructor(
-		protected tablePrefix: string,
 		protected tableName: string,
 		protected columnNames: string[],
+		protected tablePrefix: string,
 		queryRunner: QueryRunner,
 		protected customIndexName?: string,
 	) {
@@ -27,14 +27,14 @@ abstract class IndexOperation extends LazyPromise<void> {
 
 export class CreateIndex extends IndexOperation {
 	constructor(
-		tablePrefix: string,
 		tableName: string,
 		columnNames: string[],
 		protected isUnique: boolean,
+		tablePrefix: string,
 		queryRunner: QueryRunner,
 		customIndexName?: string,
 	) {
-		super(tablePrefix, tableName, columnNames, queryRunner, customIndexName);
+		super(tableName, columnNames, tablePrefix, queryRunner, customIndexName);
 	}
 
 	async execute(queryRunner: QueryRunner) {

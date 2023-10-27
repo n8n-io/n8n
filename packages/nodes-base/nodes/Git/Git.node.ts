@@ -1,3 +1,5 @@
+import { access, mkdir } from 'fs/promises';
+import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -5,6 +7,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
+import simpleGit from 'simple-git';
 import {
 	addConfigFields,
 	addFields,
@@ -14,13 +18,6 @@ import {
 	pushFields,
 	tagFields,
 } from './descriptions';
-
-import type { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
-import simpleGit from 'simple-git';
-
-import { access, mkdir } from 'fs/promises';
-
-import { URL } from 'url';
 
 export class Git implements INodeType {
 	description: INodeTypeDescription = {
@@ -500,6 +497,6 @@ export class Git implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

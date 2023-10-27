@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { tz } from 'moment-timezone';
 import {
 	adjustAddress,
 	adjustAgentRoles,
@@ -56,8 +57,6 @@ import {
 } from './descriptions';
 
 import type { AddressFixedCollection, LoadedResource, LoadedUser, RolesParameter } from './types';
-
-import { tz } from 'moment-timezone';
 
 export class Freshservice implements INodeType {
 	description: INodeTypeDescription = {
@@ -1390,6 +1389,6 @@ export class Freshservice implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

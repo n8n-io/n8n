@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+import { v4 as uuid } from 'uuid';
 import {
 	encodeURIComponentOnce,
 	getCalendars,
@@ -23,10 +25,6 @@ import { eventFields, eventOperations } from './EventDescription';
 import { calendarFields, calendarOperations } from './CalendarDescription';
 
 import type { IEvent } from './EventInterface';
-
-import moment from 'moment-timezone';
-
-import { v4 as uuid } from 'uuid';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -602,6 +600,6 @@ export class GoogleCalendar implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

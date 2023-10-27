@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IOAuth2Options,
 } from 'n8n-workflow';
@@ -12,7 +11,7 @@ import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import get from 'lodash/get';
 
 export async function slackApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 	body: object = {},
@@ -131,11 +130,11 @@ export async function slackApiRequestAllItems(
 }
 
 export function getMessageContent(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	i: number,
+	nodeVersion: number,
+	instanceId?: string,
 ) {
-	const nodeVersion = this.getNode().typeVersion;
-
 	const includeLinkToWorkflow = this.getNodeParameter(
 		'otherOptions.includeLinkToWorkflow',
 		i,
@@ -143,7 +142,9 @@ export function getMessageContent(
 	) as IDataObject;
 
 	const { id } = this.getWorkflow();
-	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n&utm_medium=slackNode|n8n workflow>_`;
+	const automatedMessage = `_Automated with this <${this.getInstanceBaseUrl()}workflow/${id}?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+		'n8n-nodes-base.slack',
+	)}${instanceId ? '_' + instanceId : ''}|n8n workflow>_`;
 	const messageType = this.getNodeParameter('messageType', i) as string;
 
 	let content: IDataObject = {};

@@ -156,6 +156,7 @@
 					{{ $locale.baseText(linkedRuns ? 'runData.unlinking.hint' : 'runData.linking.hint') }}
 				</template>
 				<n8n-icon-button
+					class="linkRun"
 					:icon="linkedRuns ? 'unlink' : 'link'"
 					text
 					type="tertiary"
@@ -166,6 +167,7 @@
 
 			<slot name="run-info"></slot>
 		</div>
+		<slot name="before-data" />
 
 		<div
 			v-if="maxOutputIndex > 0 && branches.length > 1"
@@ -247,6 +249,7 @@
 						})
 					}}
 				</n8n-text>
+				<slot name="content" v-else-if="$slots['content']"></slot>
 				<NodeErrorView
 					v-else
 					:error="workflowRunData[node.name][runIndex].error"
@@ -291,6 +294,9 @@
 					@click="downloadJsonData()"
 				/>
 			</div>
+
+			<!-- V-else slot named content which only renders if $slots.content is passed and hasNodeRun -->
+			<slot name="content" v-else-if="hasNodeRun && $slots['content']"></slot>
 
 			<div
 				v-else-if="
@@ -341,7 +347,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputData="inputData" />
+				<run-data-html :inputHtml="inputData[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -376,7 +382,7 @@
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
 						>
-							<div>
+							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
 									{{ key }}
 								</div>
@@ -426,7 +432,7 @@
 										v-if="isViewable(index, key)"
 										size="small"
 										:label="$locale.baseText('runData.showBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-view-binary-data"
 										@click="displayBinaryData(index, key)"
 									/>
 									<n8n-button
@@ -434,7 +440,7 @@
 										size="small"
 										type="secondary"
 										:label="$locale.baseText('runData.downloadBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-download-binary-data"
 										@click="downloadBinaryData(index, key)"
 									/>
 								</div>
@@ -489,16 +495,20 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import type {
+	ConnectionTypes,
 	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeOutputConfiguration,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
 } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 import type {
 	IExecutionResponse,
@@ -535,6 +545,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -613,6 +624,7 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			connectionType: NodeConnectionType.Main,
 			binaryDataPreviewActive: false,
 			dataSize: 0,
 			showData: false,
@@ -678,10 +690,27 @@ export default defineComponent({
 			return this.displayMode === 'schema';
 		},
 		isTriggerNode(): boolean {
+			if (this.node === null) {
+				return false;
+			}
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		canPinData(): boolean {
+			// Only "main" inputs can pin data
+
+			if (this.node === null) {
+				return false;
+			}
+
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const workflowNode = workflow.getNode(this.node.name);
+			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+			const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
+
 			return (
+				!nonMainInputs &&
 				!this.isPaneTypeInput &&
 				this.isPinDataNodeType &&
 				!(this.binaryData && this.binaryData.length > 0)
@@ -698,7 +727,7 @@ export default defineComponent({
 			}
 
 			const schemaView = { label: this.$locale.baseText('runData.schema'), value: 'schema' };
-			if (this.isPaneTypeInput) {
+			if (this.isPaneTypeInput && !isEmpty(this.jsonData)) {
 				defaults.unshift(schemaView);
 			} else {
 				defaults.push(schemaView);
@@ -732,13 +761,7 @@ export default defineComponent({
 			return Boolean(this.subworkflowExecutionError);
 		},
 		hasRunError(): boolean {
-			return Boolean(
-				this.node &&
-					this.workflowRunData &&
-					this.workflowRunData[this.node.name] &&
-					this.workflowRunData[this.node.name][this.runIndex] &&
-					this.workflowRunData[this.node.name][this.runIndex].error,
-			);
+			return Boolean(this.node && this.workflowRunData?.[this.node.name]?.[this.runIndex]?.error);
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -748,7 +771,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -760,7 +783,7 @@ export default defineComponent({
 			return (this.dataSize / 1024 / 1000).toLocaleString();
 		},
 		maxOutputIndex(): number {
-			if (this.node === null) {
+			if (this.node === null || this.runIndex === undefined) {
 				return 0;
 			}
 
@@ -776,7 +799,7 @@ export default defineComponent({
 
 			if (runData[this.node.name][this.runIndex]) {
 				const taskData = runData[this.node.name][this.runIndex].data;
-				if (taskData && taskData.main) {
+				if (taskData?.main) {
 					return taskData.main.length - 1;
 				}
 			}
@@ -807,7 +830,13 @@ export default defineComponent({
 			let inputData: INodeExecutionData[] = [];
 
 			if (this.node) {
-				inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+				inputData = this.getNodeInputData(
+					this.node,
+					this.runIndex,
+					this.currentOutputIndex,
+					this.paneType,
+					this.connectionType,
+				);
 			}
 
 			if (inputData.length === 0 || !Array.isArray(inputData)) {
@@ -858,20 +887,15 @@ export default defineComponent({
 			return binaryData.filter((data) => Boolean(data && Object.keys(data).length));
 		},
 		currentOutputIndex(): number {
-			if (
-				this.overrideOutputs &&
-				this.overrideOutputs.length &&
-				!this.overrideOutputs.includes(this.outputIndex)
-			) {
-				return this.overrideOutputs[0] as number;
+			if (this.overrideOutputs?.length && !this.overrideOutputs.includes(this.outputIndex)) {
+				return this.overrideOutputs[0];
 			}
 
 			return this.outputIndex;
 		},
 		branches(): ITab[] {
-			function capitalize(name: string) {
-				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
-			}
+			const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
+
 			const branches: ITab[] = [];
 
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
@@ -881,6 +905,7 @@ export default defineComponent({
 				const itemsCount = this.getDataCount(this.runIndex, i);
 				const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
 				let outputName = this.getOutputName(i);
+
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
@@ -914,6 +939,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getResolvedNodeOutputs() {
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+
+				if (workflowNode) {
+					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+					return outputs;
+				}
+			}
+			return [];
+		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -939,12 +976,12 @@ export default defineComponent({
 				return;
 			}
 
-			if (
-				value &&
-				value.length > 0 &&
-				!this.isReadOnlyRoute &&
-				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
-			) {
+			const pinDataDiscoveryFlag = useStorage(
+				LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
+				undefined,
+			).value;
+
+			if (value && value.length > 0 && !this.isReadOnlyRoute && !pinDataDiscoveryFlag) {
 				this.pinDataDiscoveryComplete();
 
 				setTimeout(() => {
@@ -1216,7 +1253,11 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
-		getDataCount(runIndex: number, outputIndex: number) {
+		getDataCount(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		) {
 			if (this.pinData) {
 				return this.pinData.length;
 			}
@@ -1246,7 +1287,11 @@ export default defineComponent({
 				return 0;
 			}
 
-			const inputData = this.getMainInputData(runData[this.node.name][runIndex].data!, outputIndex);
+			const inputData = this.getInputData(
+				runData[this.node.name][runIndex].data!,
+				outputIndex,
+				connectionType,
+			);
 
 			return inputData.length;
 		},
@@ -1255,6 +1300,12 @@ export default defineComponent({
 			this.outputIndex = 0;
 			this.refreshDataSize();
 			this.closeBinaryDataDisplay();
+			let outputTypes: ConnectionTypes[] = [];
+			if (this.nodeType !== null && this.node !== null) {
+				const outputs = this.getResolvedNodeOutputs();
+				outputTypes = NodeHelpers.getConnectionTypes(outputs);
+			}
+			this.connectionType = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
 			if (this.binaryData.length > 0) {
 				this.ndvStore.setPanelDisplayMode({
 					pane: this.paneType as 'input' | 'output',
@@ -1277,7 +1328,9 @@ export default defineComponent({
 		},
 		isViewable(index: number, key: string): boolean {
 			const { fileType } = this.binaryData[index][key];
-			return !!fileType && ['image', 'video', 'text', 'json'].includes(fileType);
+			return (
+				!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
+			);
 		},
 		isDownloadable(index: number, key: string): boolean {
 			const { mimeType, fileName } = this.binaryData[index][key];
@@ -1297,7 +1350,13 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+			const inputData = this.getNodeInputData(
+				this.node,
+				this.runIndex,
+				this.currentOutputIndex,
+				this.paneType,
+				this.connectionType,
+			);
 
 			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
 			const blob = new Blob([JSON.stringify(inputData, null, 2)], { type: 'application/json' });
@@ -1321,7 +1380,13 @@ export default defineComponent({
 			}
 
 			const nodeType = this.nodeType;
-			if (!nodeType || !nodeType.outputNames || nodeType.outputNames.length <= outputIndex) {
+			const outputs = this.getResolvedNodeOutputs();
+			const outputConfiguration = outputs?.[outputIndex] as INodeOutputConfiguration;
+
+			if (outputConfiguration && isObject(outputConfiguration)) {
+				return outputConfiguration?.displayName;
+			}
+			if (!nodeType?.outputNames || nodeType.outputNames.length <= outputIndex) {
 				return outputIndex + 1;
 			}
 
@@ -1332,7 +1397,13 @@ export default defineComponent({
 			this.showData = false;
 
 			// Check how much data there is to display
-			const inputData = this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex);
+			const inputData = this.getNodeInputData(
+				this.node,
+				this.runIndex,
+				this.currentOutputIndex,
+				this.paneType,
+				this.connectionType,
+			);
 
 			const offset = this.pageSize * (this.currentPage - 1);
 			const jsonItems = inputData.slice(offset, offset + this.pageSize).map((item) => item.json);
@@ -1468,6 +1539,7 @@ export default defineComponent({
 
 .dataContainer {
 	position: relative;
+	overflow-y: auto;
 	height: 100%;
 
 	&:hover {
@@ -1517,7 +1589,7 @@ export default defineComponent({
 	align-items: center;
 	bottom: 0;
 	padding: 5px;
-	overflow: auto;
+	overflow-y: hidden;
 }
 
 .pageSizeSelector {
@@ -1616,7 +1688,6 @@ export default defineComponent({
 
 .editMode {
 	height: 100%;
-	max-height: calc(100% - var(--spacing-3xl));
 	display: flex;
 	flex-direction: column;
 	justify-content: stretch;

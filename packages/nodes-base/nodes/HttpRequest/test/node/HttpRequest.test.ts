@@ -1,6 +1,11 @@
-import { setup, equalityTest, workflowToTests, getWorkflowFilenames } from '@test/nodes/Helpers';
-
 import nock from 'nock';
+import {
+	initBinaryDataService,
+	setup,
+	equalityTest,
+	workflowToTests,
+	getWorkflowFilenames,
+} from '@test/nodes/Helpers';
 
 describe('Test HTTP Request Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);
@@ -8,7 +13,8 @@ describe('Test HTTP Request Node', () => {
 
 	const baseUrl = 'https://dummyjson.com';
 
-	beforeAll(() => {
+	beforeAll(async () => {
+		await initBinaryDataService();
 		nock.disableNetConnect();
 
 		//GET

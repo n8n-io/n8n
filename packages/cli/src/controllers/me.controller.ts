@@ -1,62 +1,37 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
+import { Response } from 'express';
+import { Service } from 'typedi';
+import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
-import {
-	compareHash,
-	hashPassword,
-	sanitizeUser,
-	validatePassword,
-} from '@/UserManagement/UserManagementHelper';
+import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
-import type { UserRepository } from '@db/repositories';
-import { Response } from 'express';
-import type { ILogger } from 'n8n-workflow';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import type {
-	PublicUser,
-	IDatabaseCollections,
-	IExternalHooksClass,
-	IInternalHooksClass,
-} from '@/Interfaces';
-import { randomBytes } from 'crypto';
+import type { PublicUser } from '@/Interfaces';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
-import { UserService } from '@/user/user.service';
+import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 
+@Service()
 @Authorized()
 @RestController('/me')
 export class MeController {
-	private readonly logger: ILogger;
-
-	private readonly externalHooks: IExternalHooksClass;
-
-	private readonly internalHooks: IInternalHooksClass;
-
-	private readonly userRepository: UserRepository;
-
-	constructor({
-		logger,
-		externalHooks,
-		internalHooks,
-		repositories,
-	}: {
-		logger: ILogger;
-		externalHooks: IExternalHooksClass;
-		internalHooks: IInternalHooksClass;
-		repositories: Pick<IDatabaseCollections, 'User'>;
-	}) {
-		this.logger = logger;
-		this.externalHooks = externalHooks;
-		this.internalHooks = internalHooks;
-		this.userRepository = repositories.User;
-	}
+	constructor(
+		private readonly logger: Logger,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
+		private readonly userService: UserService,
+	) {}
 
 	/**
 	 * Update the logged-in user's properties, except password.
@@ -99,11 +74,8 @@ export class MeController {
 			}
 		}
 
-		await this.userRepository.update(userId, payload);
-		const user = await this.userRepository.findOneOrFail({
-			where: { id: userId },
-			relations: { globalRole: true },
-		});
+		await this.userService.update(userId, payload);
+		const user = await this.userService.findOneOrFail({ where: { id: userId } });
 
 		this.logger.info('User updated successfully', { userId });
 
@@ -115,9 +87,11 @@ export class MeController {
 			fields_changed: updatedKeys,
 		});
 
-		await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
+		const publicUser = await this.userService.toPublic(user);
 
-		return sanitizeUser(user);
+		await this.externalHooks.run('user.profile.update', [currentEmail, publicUser]);
+
+		return publicUser;
 	}
 
 	/**
@@ -154,7 +128,7 @@ export class MeController {
 
 		req.user.password = await hashPassword(validPassword);
 
-		const user = await this.userRepository.save(req.user);
+		const user = await this.userService.save(req.user);
 		this.logger.info('Password updated successfully', { userId: user.id });
 
 		await issueCookie(res, user);
@@ -186,8 +160,9 @@ export class MeController {
 			throw new BadRequestError('Personalization answers are mandatory');
 		}
 
-		await this.userRepository.save({
+		await this.userService.save({
 			id: req.user.id,
+			// @ts-ignore
 			personalizationAnswers,
 		});
 
@@ -205,9 +180,7 @@ export class MeController {
 	async createAPIKey(req: AuthenticatedRequest) {
 		const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-		await this.userRepository.update(req.user.id, {
-			apiKey,
-		});
+		await this.userService.update(req.user.id, { apiKey });
 
 		void this.internalHooks.onApiKeyCreated({
 			user: req.user,
@@ -230,9 +203,7 @@ export class MeController {
 	 */
 	@Delete('/api-key')
 	async deleteAPIKey(req: AuthenticatedRequest) {
-		await this.userRepository.update(req.user.id, {
-			apiKey: null,
-		});
+		await this.userService.update(req.user.id, { apiKey: null });
 
 		void this.internalHooks.onApiKeyDeleted({
 			user: req.user,
@@ -250,9 +221,9 @@ export class MeController {
 		const payload = plainToInstance(UserSettingsUpdatePayload, req.body);
 		const { id } = req.user;
 
-		await UserService.updateUserSettings(id, payload);
+		await this.userService.updateSettings(id, payload);
 
-		const user = await this.userRepository.findOneOrFail({
+		const user = await this.userService.findOneOrFail({
 			select: ['settings'],
 			where: { id },
 		});

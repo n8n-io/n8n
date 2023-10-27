@@ -2,6 +2,7 @@ export * from './canvas.store';
 export * from './communityNodes.store';
 export * from './credentials.store';
 export * from './environments.ee.store';
+export * from './externalSecrets.ee.store';
 export * from './history.store';
 export * from './logStreaming.store';
 export * from './n8nRoot.store';

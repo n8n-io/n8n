@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { tmpdir } from 'os';
 import { mkdirSync, mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { setGlobalState } from 'n8n-workflow';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
@@ -18,14 +19,12 @@ if (inE2ETests) {
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		N8N_AI_ENABLED: 'true',
 	};
 } else if (inTest) {
-	const testsDir = join(tmpdir(), 'n8n-tests/');
-	mkdirSync(testsDir, { recursive: true });
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
-	process.env.N8N_USER_FOLDER = mkdtempSync(testsDir);
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
 	dotenv.config();
@@ -73,6 +72,10 @@ if (!inE2ETests && !inTest) {
 
 config.validate({
 	allowed: 'strict',
+});
+
+setGlobalState({
+	defaultTimezone: config.getEnv('generic.timezone'),
 });
 
 // eslint-disable-next-line import/no-default-export

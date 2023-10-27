@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ColumnInfo,
 	EnumInfo,
@@ -199,6 +200,15 @@ export function addReturning(
 	return [`${query} RETURNING $${replacementIndex}:name`, [...replacements, outputColumns]];
 }
 
+const isSelectQuery = (query: string) => {
+	return query
+		.replace(/\/\*.*?\*\//g, '') // remove multiline comments
+		.replace(/\n/g, '')
+		.split(';')
+		.filter((statement) => statement && !statement.startsWith('--')) // remove comments and empty statements
+		.every((statement) => statement.trim().toLowerCase().startsWith('select'));
+};
+
 export function configureQueryRunner(
 	this: IExecuteFunctions,
 	node: INode,
@@ -208,7 +218,8 @@ export function configureQueryRunner(
 ) {
 	return async (queries: QueryWithValues[], items: INodeExecutionData[], options: IDataObject) => {
 		let returnData: INodeExecutionData[] = [];
-		const emptyReturnData = options.operation === 'select' ? [] : [{ json: { success: true } }];
+		const emptyReturnData: INodeExecutionData[] =
+			options.operation === 'select' ? [] : [{ json: { success: true } }];
 
 		const queryBatching = (options.queryBatching as QueryMode) || 'single';
 
@@ -221,7 +232,21 @@ export function configureQueryRunner(
 						});
 					})
 					.flat();
-				returnData = returnData.length ? returnData : emptyReturnData;
+
+				if (!returnData.length) {
+					const pairedItem = generatePairedItemData(queries.length);
+
+					if ((options?.nodeVersion as number) < 2.3) {
+						if (emptyReturnData.length) {
+							emptyReturnData[0].pairedItem = pairedItem;
+						}
+						returnData = emptyReturnData;
+					} else {
+						returnData = queries.every((query) => isSelectQuery(query.query))
+							? []
+							: [{ json: { success: true }, pairedItem }];
+					}
+				}
 			} catch (err) {
 				const error = parsePostgresError(node, err, queries);
 				if (!continueOnFail) throw error;
@@ -242,13 +267,26 @@ export function configureQueryRunner(
 				const result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const transactionResult: IDataObject[] = await transaction.any(
-							queries[i].query,
-							queries[i].values,
-						);
+						const query = queries[i].query;
+						const values = queries[i].values;
+
+						let transactionResults;
+						if ((options?.nodeVersion as number) < 2.3) {
+							transactionResults = await transaction.any(query, values);
+						} else {
+							transactionResults = (await transaction.multi(query, values)).flat();
+						}
+
+						if (!transactionResults.length) {
+							if ((options?.nodeVersion as number) < 2.3) {
+								transactionResults = emptyReturnData;
+							} else {
+								transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							}
+						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
+							wrapData(transactionResults),
 							{ itemData: { item: i } },
 						);
 
@@ -265,17 +303,30 @@ export function configureQueryRunner(
 		}
 
 		if (queryBatching === 'independently') {
-			returnData = await db.task(async (t) => {
+			returnData = await db.task(async (task) => {
 				const result: INodeExecutionData[] = [];
 				for (let i = 0; i < queries.length; i++) {
 					try {
-						const transactionResult: IDataObject[] = await t.any(
-							queries[i].query,
-							queries[i].values,
-						);
+						const query = queries[i].query;
+						const values = queries[i].values;
+
+						let transactionResults;
+						if ((options?.nodeVersion as number) < 2.3) {
+							transactionResults = await task.any(query, values);
+						} else {
+							transactionResults = (await task.multi(query, values)).flat();
+						}
+
+						if (!transactionResults.length) {
+							if ((options?.nodeVersion as number) < 2.3) {
+								transactionResults = emptyReturnData;
+							} else {
+								transactionResults = isSelectQuery(query) ? [] : [{ success: true }];
+							}
+						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							wrapData(transactionResult.length ? transactionResult : emptyReturnData),
+							wrapData(transactionResults),
 							{ itemData: { item: i } },
 						);
 
@@ -414,3 +465,16 @@ export function checkItemAgainstSchema(
 
 	return item;
 }
+
+export const configureTableSchemaUpdater = (initialSchema: string, initialTable: string) => {
+	let currentSchema = initialSchema;
+	let currentTable = initialTable;
+	return async (db: PgpDatabase, tableSchema: ColumnInfo[], schema: string, table: string) => {
+		if (currentSchema !== schema || currentTable !== table) {
+			currentSchema = schema;
+			currentTable = table;
+			tableSchema = await getTableSchema(db, schema, table);
+		}
+		return tableSchema;
+	};
+};

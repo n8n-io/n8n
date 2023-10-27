@@ -2,6 +2,7 @@ import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
+
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
@@ -9,17 +10,17 @@ import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
-import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
+import { saveLdapSynchronization } from '@/Ldap/helpers';
 import type { LdapConfig } from '@/Ldap/types';
-import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
+import Container from 'typedi';
+import { Cipher } from 'n8n-core';
 
 jest.mock('@/telemetry');
-jest.mock('@/UserManagement/email/NodeMailer');
 
 let globalMemberRole: Role;
 let owner: User;
@@ -52,11 +53,9 @@ beforeAll(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
+	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
 		defaultLdapConfig.bindingAdminPassword,
 	);
-
-	await utils.initEncryptionKey();
 
 	await setCurrentAuthenticationMethod('email');
 });
@@ -76,7 +75,6 @@ beforeEach(async () => {
 	jest.mock('@/telemetry');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
 });
 
 const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
@@ -569,25 +567,4 @@ describe('Instance owner should able to delete LDAP users', () => {
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
 		await authOwnerAgent.post(`/users/${member.id}?transferId=${owner.id}`);
 	});
-});
-
-test('Sign-type should be returned when listing users', async () => {
-	const ldapConfig = await createLdapConfig();
-	LdapManager.updateConfig(ldapConfig);
-
-	await testDb.createLdapUser(
-		{
-			globalRole: globalMemberRole,
-		},
-		uniqueId(),
-	);
-
-	const allUsers = await testDb.getAllUsers();
-	expect(allUsers.length).toBe(2);
-
-	const ownerUser = allUsers.find((u) => u.email === owner.email)!;
-	expect(sanitizeUser(ownerUser).signInType).toStrictEqual('email');
-
-	const memberUser = allUsers.find((u) => u.email !== owner.email)!;
-	expect(sanitizeUser(memberUser).signInType).toStrictEqual('ldap');
 });

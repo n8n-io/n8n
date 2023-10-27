@@ -21,6 +21,7 @@ import type {
 	ExecutionStatus,
 	IExecutionsSummary,
 	FeatureFlags,
+	INodeProperties,
 	IUserSettings,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
@@ -84,6 +85,10 @@ export interface ICredentialsTypeData {
 export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
+
+/**
+ * @important Do not add to these collections. Inject the repository as a dependency instead.
+ */
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export interface IDatabaseCollections extends Record<string, Repository<any>> {
@@ -166,7 +171,7 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
-	id?: string;
+	id: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
@@ -183,6 +188,11 @@ export interface IExecutionDb extends IExecutionBase {
 	waitTill?: Date | null;
 	workflowData?: IWorkflowBase;
 }
+
+/**
+ * Payload for creating or updating an execution.
+ */
+export type ExecutionPayload = Omit<IExecutionDb, 'id'>;
 
 export interface IExecutionPushResponse {
 	executionId?: string;
@@ -338,6 +348,9 @@ export interface IDiagnosticInfo {
 	smtp_set_up: boolean;
 	ldap_allowed: boolean;
 	saml_enabled: boolean;
+	binary_data_s3: boolean;
+	licensePlanName?: string;
+	licenseTenantId?: number;
 }
 
 export interface ITelemetryUserDeletionData {
@@ -460,6 +473,13 @@ export interface IInternalHooksClass {
 	onApiKeyCreated(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void>;
 	onVariableCreated(createData: { variable_type: string }): Promise<void>;
+	onExternalSecretsProviderSettingsSaved(saveData: {
+		user_id?: string;
+		vault_type: string;
+		is_valid: boolean;
+		is_new: boolean;
+		error_message?: string;
+	}): Promise<void>;
 }
 
 export interface IVersionNotificationSettings {
@@ -758,14 +778,13 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	hasRecoveryCodesLeft: boolean;
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
 	settings?: IUserSettings | null;
 	inviteAcceptUrl?: string;
-}
-
-export interface CurrentUser extends PublicUser {
+	isOwner?: boolean;
 	featureFlags?: FeatureFlags;
 }
 
@@ -777,5 +796,36 @@ export interface N8nApp {
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
+
+export interface SecretsProviderSettings<T = IDataObject> {
+	connected: boolean;
+	connectedAt: Date | null;
+	settings: T;
+}
+
+export interface ExternalSecretsSettings {
+	[key: string]: SecretsProviderSettings;
+}
+
+export type SecretsProviderState = 'initializing' | 'connected' | 'error';
+
+export abstract class SecretsProvider {
+	displayName: string;
+
+	name: string;
+
+	properties: INodeProperties[];
+
+	state: SecretsProviderState;
+
+	abstract init(settings: SecretsProviderSettings): Promise<void>;
+	abstract connect(): Promise<void>;
+	abstract disconnect(): Promise<void>;
+	abstract update(): Promise<void>;
+	abstract test(): Promise<[boolean] | [boolean, string]>;
+	abstract getSecret(name: string): IDataObject | undefined;
+	abstract hasSecret(name: string): boolean;
+	abstract getSecretNames(): string[];
+}
 
 export type N8nInstanceType = 'main' | 'webhook' | 'worker';

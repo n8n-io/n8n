@@ -8,9 +8,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
-
 import moment from 'moment-timezone';
+import { pushbulletApiRequest, pushbulletApiRequestAllItems } from './GenericFunctions';
 
 export class Pushbullet implements INodeType {
 	description: INodeTypeDescription = {
@@ -506,6 +505,6 @@ export class Pushbullet implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

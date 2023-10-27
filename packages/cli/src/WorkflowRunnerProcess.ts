@@ -1,23 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-shadow */
-
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'source-map-support/register';
 import 'reflect-metadata';
+import { setDefaultResultOrder } from 'dns';
+
 import { Container } from 'typedi';
 import type { IProcessMessage } from 'n8n-core';
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataService, WorkflowExecute } from 'n8n-core';
 
 import type {
 	ExecutionError,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
-	ILogger,
 	INode,
 	INodeExecutionData,
 	IRun,
@@ -30,13 +29,10 @@ import type {
 } from 'n8n-workflow';
 import {
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy,
 	Workflow,
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import type {
@@ -48,7 +44,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 
 import config from '@/config';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
@@ -58,10 +54,14 @@ import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 
+if (process.env.NODEJS_PREFER_IPV4 === 'true') {
+	setDefaultResultOrder('ipv4first');
+}
+
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 
-	logger: ILogger;
+	logger: Logger;
 
 	startedAt = new Date();
 
@@ -83,19 +83,20 @@ class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
+
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
 
 		await initErrorHandling();
 
-		const logger = (this.logger = getLogger());
-		LoggerProxy.init(logger);
-
 		this.data = inputData;
 		const { userId } = inputData;
 
-		logger.verbose('Initializing n8n sub-process', {
+		this.logger.verbose('Initializing n8n sub-process', {
 			pid: process.pid,
 			workflowId: this.data.workflowData.id,
 		});
@@ -105,28 +106,21 @@ class WorkflowRunnerProcess {
 		// Init db since we need to read the license.
 		await Db.init();
 
-		const userSettings = await UserSettings.prepareUserSettings();
-
-		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await loadNodesAndCredentials.init();
-
 		const nodeTypes = Container.get(NodeTypes);
-		const credentialTypes = Container.get(CredentialTypes);
-		CredentialsOverwrites(credentialTypes);
+		await Container.get(LoadNodesAndCredentials).init();
 
 		// Load all external hooks
 		const externalHooks = Container.get(ExternalHooks);
 		await externalHooks.init();
 
-		const instanceId = userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(instanceId);
-		await Container.get(InternalHooks).init(instanceId);
+		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
-		await BinaryDataManager.init(binaryDataConfig);
+		await Container.get(BinaryDataService).init(binaryDataConfig);
 
 		const license = Container.get(License);
-		await license.init(instanceId);
+		await license.init();
 
 		const workflowSettings = this.data.workflowData.settings ?? {};
 
@@ -184,14 +178,14 @@ class WorkflowRunnerProcess {
 		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 			executionId: inputData.executionId,
 		});
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		additionalData.sendMessageToUI = async (source: string, message: any) => {
+
+		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;
 			}
 
 			try {
-				await sendToParentProcess('sendMessageToUI', { source, message });
+				await sendToParentProcess('sendDataToUI', { type, data });
 			} catch (error) {
 				ErrorReporter.error(error);
 				this.logger.error(
@@ -287,8 +281,7 @@ class WorkflowRunnerProcess {
 		if (
 			this.data.runData === undefined ||
 			this.data.startNodes === undefined ||
-			this.data.startNodes.length === 0 ||
-			this.data.destinationNode === undefined
+			this.data.startNodes.length === 0
 		) {
 			// Execute all nodes
 

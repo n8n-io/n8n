@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "1.2.0",
+  "version": "1.9.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -22,8 +22,8 @@
     "build:storybook": "storybook build",
     "storybook": "storybook dev -p 6006",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint src --ext .js,.ts,.vue --quiet --report-unused-disable-directives",
-    "lintfix": "eslint src --ext .js,.ts,.vue --fix --report-unused-disable-directives"
+    "lint": "eslint src --ext .js,.ts,.vue --quiet",
+    "lintfix": "eslint src --ext .js,.ts,.vue --fix"
   },
   "peerDependencies": {
     "@fortawesome/fontawesome-svg-core": "1.x",

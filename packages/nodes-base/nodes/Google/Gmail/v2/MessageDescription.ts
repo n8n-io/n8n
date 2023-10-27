@@ -125,7 +125,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Email Type',
 		name: 'emailType',
 		type: 'options',
-		default: 'text',
+		default: 'html',
 		required: true,
 		noDataExpression: true,
 		options: [
@@ -142,6 +142,34 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				resource: ['message'],
 				operation: ['send', 'reply'],
+			},
+			hide: {
+				'@version': [2],
+			},
+		},
+	},
+	{
+		displayName: 'Email Type',
+		name: 'emailType',
+		type: 'options',
+		default: 'html',
+		required: true,
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Text',
+				value: 'text',
+			},
+			{
+				name: 'HTML',
+				value: 'html',
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send', 'reply'],
+				'@version': [2],
 			},
 		},
 	},
@@ -171,6 +199,15 @@ export const messageFields: INodeProperties[] = [
 		},
 		default: {},
 		options: [
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Append n8n Attribution',
+				name: 'appendAttribution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to include the phrase “This email was sent automatically with n8n” to the end of the email',
+			},
 			{
 				displayName: 'Attachments',
 				name: 'attachmentsUi',

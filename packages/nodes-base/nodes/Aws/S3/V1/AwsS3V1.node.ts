@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { paramCase, snakeCase } from 'change-case';
-
 import { createHash } from 'crypto';
+import { paramCase, snakeCase } from 'change-case';
 
 import { Builder } from 'xml2js';
 
@@ -907,9 +906,9 @@ export class AwsS3V1 implements INodeType {
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

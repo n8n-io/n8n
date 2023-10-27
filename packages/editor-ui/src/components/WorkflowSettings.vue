@@ -67,7 +67,7 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
-				<div v-if="isSharingEnabled">
+				<div v-if="isSharingEnabled" data-test-id="workflow-caller-policy">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
@@ -114,6 +114,7 @@
 								type="text"
 								v-model="workflowSettings.callerIds"
 								@update:modelValue="onCallerIdsInput"
+								data-test-id="workflow-caller-policy-workflow-ids"
 							/>
 						</el-col>
 					</el-row>
@@ -374,13 +375,11 @@ import {
 
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
-import {
-	useWorkflowsStore,
-	useSettingsStore,
-	useRootStore,
-	useWorkflowsEEStore,
-	useUsersStore,
-} from '@/stores';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useWorkflowsEEStore } from '@/stores/workflows.ee.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { createEventBus } from 'n8n-design-system/utils';
 
 export default defineComponent({
@@ -566,9 +565,9 @@ export default defineComponent({
 	},
 	methods: {
 		onCallerIdsInput(str: string) {
-			this.workflowSettings.callerIds = /^[0-9,\s]+$/.test(str)
+			this.workflowSettings.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
 				? str
-				: str.replace(/[^0-9,\s]/g, '');
+				: str.replace(/[^a-zA-Z0-9,\s]/g, '');
 		},
 		closeDialog() {
 			this.modalBus.emit('close');
@@ -687,19 +686,21 @@ export default defineComponent({
 						{
 							interpolate: {
 								defaultValue: this.defaultValues.saveExecutionProgress
-									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes')
-									: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+									? this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save')
+									: this.$locale.baseText(
+											'workflowSettings.saveExecutionProgressOptions.doNotSave',
+									  ),
 							},
 						},
 					),
 				},
 				{
 					key: true,
-					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.yes'),
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.save'),
 				},
 				{
 					key: false,
-					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.no'),
+					value: this.$locale.baseText('workflowSettings.saveExecutionProgressOptions.doNotSave'),
 				},
 			]);
 		},
@@ -710,18 +711,18 @@ export default defineComponent({
 				value: this.$locale.baseText('workflowSettings.saveManualOptions.defaultSave', {
 					interpolate: {
 						defaultValue: this.defaultValues.saveManualExecutions
-							? this.$locale.baseText('workflowSettings.saveManualOptions.yes')
-							: this.$locale.baseText('workflowSettings.saveManualOptions.no'),
+							? this.$locale.baseText('workflowSettings.saveManualOptions.save')
+							: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 					},
 				}),
 			});
 			this.saveManualOptions.push({
 				key: true,
-				value: this.$locale.baseText('workflowSettings.saveManualOptions.yes'),
+				value: this.$locale.baseText('workflowSettings.saveManualOptions.save'),
 			});
 			this.saveManualOptions.push({
 				key: false,
-				value: this.$locale.baseText('workflowSettings.saveManualOptions.no'),
+				value: this.$locale.baseText('workflowSettings.saveManualOptions.doNotSave'),
 			});
 		},
 

@@ -74,6 +74,6 @@ export class ErrorTrigger implements INodeType {
 			};
 		}
 
-		return this.prepareOutputData(items);
+		return [items];
 	}
 }

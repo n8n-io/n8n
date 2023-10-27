@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { listFields, listOperations } from './ListDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -16,8 +17,6 @@ import type { SendMailBody } from './MailDescription';
 import { mailFields, mailOperations } from './MailDescription';
 
 import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 export class SendGrid implements INodeType {
 	description: INodeTypeDescription = {
@@ -654,6 +653,6 @@ export class SendGrid implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

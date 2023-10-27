@@ -4,10 +4,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import prettier from 'prettier/standalone';
-import htmlParser from 'prettier/parser-html';
-import cssParser from 'prettier/parser-postcss';
-import jsParser from 'prettier/parser-babel';
+import { format } from 'prettier';
+import htmlParser from 'prettier/plugins/html';
+import cssParser from 'prettier/plugins/postcss';
+import jsParser from 'prettier/plugins/babel';
+import * as estree from 'prettier/plugins/estree';
 import { htmlLanguage, autoCloseTags, html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, insertNewlineAndIndent, history, redo } from '@codemirror/commands';
@@ -94,7 +95,9 @@ export default defineComponent({
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
-				theme,
+				theme({
+					isReadOnly: this.isReadOnly,
+				}),
 				lineNumbers(),
 				highlightActiveLineGutter(),
 				history(),
@@ -102,6 +105,7 @@ export default defineComponent({
 				dropCursor(),
 				indentOnInput(),
 				highlightActiveLine(),
+				EditorView.editable.of(!this.isReadOnly),
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;
@@ -191,16 +195,16 @@ export default defineComponent({
 			);
 		},
 
-		format() {
+		async format() {
 			if (this.sections.length === 1 && this.isMissingHtmlTags()) {
 				const zerothSection = this.sections.at(0) as Section;
 
-				const formatted = prettier
-					.format(zerothSection.content, {
+				const formatted = (
+					await format(zerothSection.content, {
 						parser: 'html',
 						plugins: [htmlParser],
 					})
-					.trim();
+				).trim();
 
 				return this.editor.dispatch({
 					changes: { from: 0, to: this.doc.length, insert: formatted },
@@ -211,7 +215,7 @@ export default defineComponent({
 
 			for (const { kind, content } of this.sections) {
 				if (kind === 'style') {
-					const formattedStyle = prettier.format(content, {
+					const formattedStyle = await format(content, {
 						parser: 'css',
 						plugins: [cssParser],
 					});
@@ -220,9 +224,9 @@ export default defineComponent({
 				}
 
 				if (kind === 'script') {
-					const formattedScript = prettier.format(content, {
+					const formattedScript = await format(content, {
 						parser: 'babel',
-						plugins: [jsParser],
+						plugins: [jsParser, estree],
 					});
 
 					formatted.push(`<script>\n${formattedScript}<` + '/script>');
@@ -238,7 +242,7 @@ export default defineComponent({
 
 					const { pre, rest } = match.groups;
 
-					const formattedRest = prettier.format(rest, {
+					const formattedRest = await format(rest, {
 						parser: 'html',
 						plugins: [htmlParser],
 					});

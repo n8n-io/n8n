@@ -134,7 +134,7 @@ import type {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -274,6 +274,21 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
+			const pinData = this.workflowsStore.getPinData;
+
+			// Return the first parent node that contains data
+			for (const parentNodeName of this.parentNodes) {
+				// Check first for pinned data
+				if (pinData[parentNodeName]) {
+					return parentNodeName;
+				}
+
+				// Check then the data of the current execution
+				if (this.workflowRunData?.[parentNodeName]) {
+					return parentNodeName;
+				}
+			}
+
 			return this.parentNodes[0];
 		},
 		isExecutableTriggerNode(): boolean {
@@ -299,7 +314,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -329,18 +344,27 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null) {
+			if (this.inputNode === null && this.activeNode === null) {
 				return 0;
 			}
+
+			const workflowNode = this.workflow.getNode(this.activeNode.name);
+			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
+
+			let node = this.inputNode;
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (runData === null || !runData.hasOwnProperty(this.inputNode.name)) {
+			if (outputs.filter((output) => output !== NodeConnectionType.Main).length) {
+				node = this.activeNode;
+			}
+
+			if (!node || !runData || !runData.hasOwnProperty(node.name)) {
 				return 0;
 			}
 
-			if (runData[this.inputNode.name].length) {
-				return runData[this.inputNode.name].length - 1;
+			if (runData[node.name].length) {
+				return runData[node.name].length - 1;
 			}
 
 			return 0;
@@ -539,7 +563,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
 			}
@@ -605,6 +629,19 @@ export default defineComponent({
 		async close() {
 			if (this.isDragging) {
 				return;
+			}
+
+			if (
+				typeof this.activeNodeType?.outputs === 'string' ||
+				typeof this.activeNodeType?.inputs === 'string'
+			) {
+				// TODO: We should keep track of if it actually changed and only do if required
+				// Whenever a node with custom inputs and outputs gets closed redraw it in case
+				// they changed
+				const nodeName = this.activeNode.name;
+				setTimeout(() => {
+					this.$emit('redrawNode', nodeName);
+				}, 1);
 			}
 
 			if (this.outputPanelEditMode.enabled) {

@@ -13,7 +13,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { SpyInstance } from 'vitest';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
-let fetchFieldsSpy: SpyInstance, resolveParameterSpy: SpyInstance;
+let fetchFieldsSpy: SpyInstance;
+let resolveParameterSpy: SpyInstance;
 
 const renderComponent = createComponentRenderer(ResourceMapper, DEFAULT_SETUP);
 
@@ -24,7 +25,7 @@ describe('ResourceMapper.vue', () => {
 			.spyOn(nodeTypeStore, 'getResourceMapperFields')
 			.mockResolvedValue(MAPPING_COLUMNS_RESPONSE);
 		resolveParameterSpy = vi
-			.spyOn(workflowHelpers, 'resolveParameter')
+			.spyOn(workflowHelpers, 'resolveRequiredParameters')
 			.mockReturnValue(NODE_PARAMETER_VALUES);
 	});
 
@@ -221,7 +222,11 @@ describe('ResourceMapper.vue', () => {
 		expect(
 			getByTestId('mapping-fields-container').querySelectorAll('.parameter-input').length,
 		).toBe(4);
-		expect(queryAllByTestId('remove-field-button').length).toBe(1);
+		expect(
+			getByTestId('mapping-fields-container').querySelectorAll(
+				'[data-test-id^="remove-field-button"]',
+			).length,
+		).toBe(1);
 	});
 
 	it('should render correct options based on saved schema', async () => {
@@ -288,5 +293,47 @@ describe('ResourceMapper.vue', () => {
 		});
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('renders initially selected matching column properly', async () => {
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: {
+						parameters: {
+							columns: {
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['name'],
+								schema: [
+									{
+										id: 'name',
+										displayName: 'name',
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'email',
+										displayName: 'email',
+										canBeUsedToMatch: true,
+									},
+								],
+							},
+						},
+					},
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: false,
+							},
+						},
+					},
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+
+		expect(getByTestId('matching-column-select').querySelector('input')).toHaveValue('name');
 	});
 });

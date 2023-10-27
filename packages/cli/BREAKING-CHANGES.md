@@ -2,6 +2,45 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 1.15.0
+
+### What changed?
+
+Until now, in main mode, n8n used to deregister webhooks at shutdown and reregister them at startup. Queue mode and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` skipped webhook deregistration.
+
+As from now, in both main and queue modes, n8n no longer deregisters webhooks at startup and shutdown, and the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN` is removed. n8n assumes that third-party services will retry unhandled webhook requests.
+
+### When is action necessary?
+
+If using the flag `N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN`, note that it no longer has effect and can be removed from your settings.
+
+## 1.9.0
+
+### What changed?
+
+In nodes, `this.helpers.getBinaryStream()` is now async.
+
+### When is action necessary?
+
+If your node uses `this.helpers.getBinaryStream()`, add `await` when calling it.
+
+Example:
+
+```typescript
+const binaryStream = this.helpers.getBinaryStream(id); // until 1.9.0
+const binaryStream = await this.helpers.getBinaryStream(id); // since 1.9.0
+```
+
+## 1.5.0
+
+### What changed?
+
+In the Code node, `console.log` does not output to stdout by default.
+
+### When is action necessary?
+
+If you were relying on `console.log` for non-manual executions of a Code node, you need to set the env variable `CODE_ENABLE_STDOUT` to `true` to send Code node logs to process's stdout.
+
 ## 1.2.0
 
 ### What changed?

@@ -284,7 +284,7 @@ export const pushConnection = defineComponent({
 				// The workflow finished executing
 				let pushData: IPushDataExecutionFinished;
 				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
-					pushData = recoveredPushData as IPushDataExecutionFinished;
+					pushData = recoveredPushData;
 				} else {
 					pushData = receivedData.data as IPushDataExecutionFinished;
 				}
@@ -329,12 +329,7 @@ export const pushConnection = defineComponent({
 					);
 				}
 
-				const lineNumber =
-					runDataExecuted &&
-					runDataExecuted.data &&
-					runDataExecuted.data.resultData &&
-					runDataExecuted.data.resultData.error &&
-					runDataExecuted.data.resultData.error.lineNumber;
+				const lineNumber = runDataExecuted?.data?.resultData?.error?.lineNumber;
 
 				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
@@ -449,16 +444,13 @@ export const pushConnection = defineComponent({
 					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
-					if (execution && execution.executedNode) {
+					if (execution?.executedNode) {
 						const node = this.workflowsStore.getNodeByName(execution.executedNode);
 						const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 						const nodeOutput =
 							execution &&
 							execution.executedNode &&
-							execution.data &&
-							execution.data.resultData &&
-							execution.data.resultData.runData &&
-							execution.data.resultData.runData[execution.executedNode];
+							execution.data?.resultData?.runData?.[execution.executedNode];
 						if (nodeType && nodeType.polling && !nodeOutput) {
 							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
@@ -494,7 +486,7 @@ export const pushConnection = defineComponent({
 					runDataExecuted.data.resultData.runData = this.workflowsStore.getWorkflowRunData;
 				}
 
-				this.workflowsStore.executingNode = null;
+				this.workflowsStore.executingNode.length = 0;
 				this.workflowsStore.setWorkflowExecutionData(runDataExecuted as IExecutionResponse);
 				this.uiStore.removeActiveAction('workflowRunning');
 
@@ -507,12 +499,11 @@ export const pushConnection = defineComponent({
 				let itemsCount = 0;
 				if (
 					lastNodeExecuted &&
-					runDataExecuted.data.resultData.runData[lastNodeExecuted as string] &&
+					runDataExecuted.data.resultData.runData[lastNodeExecuted] &&
 					!runDataExecutedErrorMessage
 				) {
 					itemsCount =
-						runDataExecuted.data.resultData.runData[lastNodeExecuted as string][0].data!.main[0]!
-							.length;
+						runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 				}
 
 				void this.$externalHooks().run('pushConnection.executionFinished', {
@@ -543,10 +534,11 @@ export const pushConnection = defineComponent({
 				// A node finished to execute. Add its data
 				const pushData = receivedData.data;
 				this.workflowsStore.addNodeExecutionData(pushData);
+				this.workflowsStore.removeExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'nodeExecuteBefore') {
 				// A node started to be executed. Set it as executing.
 				const pushData = receivedData.data;
-				this.workflowsStore.executingNode = pushData.nodeName;
+				this.workflowsStore.addExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'testWebhookDeleted') {
 				// A test-webhook was deleted
 				const pushData = receivedData.data;
@@ -595,7 +587,7 @@ export const pushConnection = defineComponent({
 					interpolate: { error: '!' },
 				});
 
-				if (error && error.message) {
+				if (error?.message) {
 					let nodeName: string | undefined;
 					if ('node' in error) {
 						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;

@@ -1,5 +1,5 @@
-import FormData from 'form-data';
 import type { Readable } from 'stream';
+import FormData from 'form-data';
 import {
 	BINARY_ENCODING,
 	type IDataObject,
@@ -160,7 +160,7 @@ export const objectOperations: INodeProperties[] = [
 
 									const binaryData = this.helpers.assertBinaryData(binaryPropertyName);
 									if (binaryData.id) {
-										content = this.helpers.getBinaryStream(binaryData.id);
+										content = await this.helpers.getBinaryStream(binaryData.id);
 										const binaryMetadata = await this.helpers.getBinaryMetadata(binaryData.id);
 										contentType = binaryMetadata.mimeType ?? 'application/octet-stream';
 										contentLength = binaryMetadata.fileSize;

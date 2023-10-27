@@ -13,6 +13,7 @@ import type {
 	INodeParameters,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
+	INodeProperties,
 } from 'n8n-workflow';
 
 import type { ComponentPublicInstance } from 'vue';
@@ -36,7 +37,7 @@ import type { N8nInput } from 'n8n-design-system';
 export interface ExternalHooks {
 	parameterInput: {
 		mount: Array<
-			(meta: { inputFieldRef?: InstanceType<typeof N8nInput>; parameter: { name: string } }) => void
+			(meta: { inputFieldRef?: InstanceType<typeof N8nInput>; parameter?: INodeProperties }) => void
 		>;
 		modeSwitch: Array<(meta: ITelemetryTrackProperties) => void>;
 		updated: Array<(meta: { remoteParameterOptions: NodeListOf<Element> }) => void>;

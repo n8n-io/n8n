@@ -125,6 +125,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
@@ -139,7 +140,6 @@ import SaveButton from '@/components/SaveButton.vue';
 import Modal from '@/components/Modal.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
@@ -157,6 +157,8 @@ import {
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 	isCredentialModalState,
+	isExpression,
+	isTestableExpression,
 } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 
@@ -268,7 +270,7 @@ export default defineComponent({
 
 		setTimeout(async () => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner === true) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
 					// sharees can't see properties, so this check would always fail for them
 					// if the credential contains required fields.
 					this.showValidationWarning = true;
@@ -362,7 +364,7 @@ export default defineComponent({
 		},
 		isCredentialTestable(): boolean {
 			// Sharees can always test since they can't see the data.
-			if (this.credentialPermissions.isOwner === false) {
+			if (!this.credentialPermissions.isOwner) {
 				return true;
 			}
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
@@ -370,12 +372,13 @@ export default defineComponent({
 			}
 
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
-			const hasExpressions = Object.values(credentialData).reduce(
+			const hasUntestableExpressions = Object.values(credentialData).reduce(
 				(accu: boolean, value: CredentialInformation) =>
-					accu || (typeof value === 'string' && value.startsWith('=')),
+					accu ||
+					(typeof value === 'string' && isExpression(value) && !isTestableExpression(value)),
 				false,
 			);
-			if (hasExpressions) {
+			if (hasUntestableExpressions) {
 				return false;
 			}
 
@@ -445,8 +448,14 @@ export default defineComponent({
 					return false;
 				}
 
-				if (property.type === 'number' && typeof this.credentialData[property.name] !== 'number') {
-					return false;
+				if (property.type === 'number') {
+					const isExpression =
+						typeof this.credentialData[property.name] === 'string' &&
+						this.credentialData[property.name].startsWith('=');
+
+					if (typeof this.credentialData[property.name] !== 'number' && !isExpression) {
+						return false;
+					}
 				}
 			}
 			return true;
@@ -486,7 +495,7 @@ export default defineComponent({
 		defaultCredentialTypeName(): string {
 			let credentialTypeName = this.credentialTypeName;
 			if (!credentialTypeName || credentialTypeName === 'null') {
-				if (this.activeNodeType && this.activeNodeType.credentials) {
+				if (this.activeNodeType?.credentials) {
 					credentialTypeName = this.activeNodeType.credentials[0].name;
 				}
 			}
@@ -692,7 +701,7 @@ export default defineComponent({
 		getParentTypes(name: string): string[] {
 			const credentialType = this.credentialsStore.getCredentialTypeByName(name);
 
-			if (credentialType === undefined || credentialType.extends === undefined) {
+			if (credentialType?.extends === undefined) {
 				return [];
 			}
 
@@ -819,7 +828,7 @@ export default defineComponent({
 
 			this.isSaving = false;
 			if (credential) {
-				this.credentialId = credential.id as string;
+				this.credentialId = credential.id;
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;
@@ -835,12 +844,17 @@ export default defineComponent({
 					this.testedSuccessfully = false;
 				}
 
+				const usesExternalSecrets = Object.entries(credentialDetails.data || {}).some(([, value]) =>
+					/=.*\{\{[^}]*\$secrets\.[^}]+}}.*/.test(`${value}`),
+				);
+
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
 					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
+					uses_external_secrets: usesExternalSecrets,
 				};
 
 				if (this.isOAuthType) {

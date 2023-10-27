@@ -101,6 +101,20 @@
 				data-test-id="workflow-save-button"
 				@click="onSaveButtonClick"
 			/>
+			<router-link
+				v-if="isWorkflowHistoryFeatureEnabled"
+				:to="workflowHistoryRoute"
+				:class="$style.workflowHistoryButton"
+			>
+				<n8n-icon-button
+					:disabled="isWorkflowHistoryButtonDisabled"
+					data-test-id="workflow-history-button"
+					type="tertiary"
+					icon="history"
+					size="medium"
+					text
+				/>
+			</router-link>
 			<div :class="$style.workflowMenuContainer">
 				<input
 					:class="$style.hiddenInput"
@@ -163,7 +177,6 @@ import {
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
 import { createEventBus } from 'n8n-design-system/utils';
-import { useCloudPlanStore } from '@/stores';
 import { nodeViewEventBus } from '@/event-bus';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
@@ -223,7 +236,6 @@ export default defineComponent({
 			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
-			useCloudPlanStore,
 			useSourceControlStore,
 		),
 		currentUser(): IUser | null {
@@ -337,6 +349,22 @@ export default defineComponent({
 
 			return actions;
 		},
+		isWorkflowHistoryFeatureEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.WorkflowHistory,
+			);
+		},
+		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
+			return {
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId: this.currentWorkflowId,
+				},
+			};
+		},
+		isWorkflowHistoryButtonDisabled(): boolean {
+			return this.workflowsStore.isNewWorkflow;
+		},
 	},
 	methods: {
 		async onSaveButtonClick() {
@@ -391,7 +419,7 @@ export default defineComponent({
 
 			const saved = await this.saveCurrentWorkflow({ tags });
 			this.$telemetry.track('User edited workflow tags', {
-				workflow_id: this.currentWorkflowId as string,
+				workflow_id: this.currentWorkflowId,
 				new_tag_count: tags.length,
 			});
 
@@ -447,27 +475,27 @@ export default defineComponent({
 			cb(saved);
 		},
 		async handleFileImport(): Promise<void> {
-			const reader = new FileReader();
-			reader.onload = (event: ProgressEvent) => {
-				const data = (event.target as FileReader).result;
-
-				let workflowData: IWorkflowDataUpdate;
-				try {
-					workflowData = JSON.parse(data as string);
-				} catch (error) {
-					this.showMessage({
-						title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
-						message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
-						type: 'error',
-					});
-					return;
-				}
-
-				nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
-			};
-
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
 			if (inputRef?.files && inputRef.files.length !== 0) {
+				const reader = new FileReader();
+				reader.onload = () => {
+					let workflowData: IWorkflowDataUpdate;
+					try {
+						workflowData = JSON.parse(reader.result as string);
+					} catch (error) {
+						this.showMessage({
+							title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
+							message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
+							type: 'error',
+						});
+						return;
+					} finally {
+						reader.onload = undefined;
+						inputRef.value = null;
+					}
+
+					nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
+				};
 				reader.readAsText(inputRef.files[0]);
 			}
 		},
@@ -597,7 +625,7 @@ export default defineComponent({
 			}
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
+			void this.uiStore.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 		},
 	},
 	watch: {
@@ -691,5 +719,24 @@ $--header-spacing: 20px;
 
 .disabledShareButton {
 	cursor: not-allowed;
+}
+
+.workflowHistoryButton {
+	width: 30px;
+	height: 30px;
+	margin-left: var(--spacing-m);
+	margin-right: var(--spacing-4xs);
+	color: var(--color-text-dark);
+	border-radius: var(--border-radius-base);
+
+	&:hover {
+		background-color: var(--color-background-base);
+	}
+
+	:disabled {
+		background: transparent;
+		border: none;
+		opacity: 0.5;
+	}
 }
 </style>

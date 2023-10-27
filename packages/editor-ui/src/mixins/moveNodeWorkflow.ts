@@ -30,7 +30,7 @@ export const moveNodeWorkflow = defineComponent({
 			this.moveLastPosition[1] = y;
 		},
 		mouseDownMoveWorkflow(e: MouseEvent, moveButtonPressed: boolean) {
-			if (this.isCtrlKeyPressed(e) === false && !moveButtonPressed) {
+			if (!this.isCtrlKeyPressed(e) && !moveButtonPressed) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
@@ -55,7 +55,7 @@ export const moveNodeWorkflow = defineComponent({
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
 		},
 		mouseUpMoveWorkflow(e: MouseEvent) {
-			if (this.uiStore.nodeViewMoveInProgress === false) {
+			if (!this.uiStore.nodeViewMoveInProgress) {
 				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;

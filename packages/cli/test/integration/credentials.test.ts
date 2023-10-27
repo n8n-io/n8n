@@ -1,11 +1,9 @@
 import type { SuperAgentTest } from 'supertest';
-import { UserSettings } from 'n8n-core';
 
 import * as Db from '@/Db';
 import config from '@/config';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import type { Credentials } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
@@ -59,9 +57,9 @@ describe('GET /credentials', () => {
 		expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
 
 		const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
-		response.body.data.forEach((credential: CredentialsEntity) => {
+		response.body.data.forEach((credential: Credentials.WithOwnedByAndSharedWith) => {
 			validateMainCredentialData(credential);
-			expect(credential.data).toBeUndefined();
+			expect('data' in credential).toBe(false);
 			expect(savedCredentialsIds).toContain(credential.id);
 		});
 	});
@@ -124,23 +122,10 @@ describe('POST /credentials', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
-				expect(response.statusCode).toBe(400);
-			}),
-		);
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
+			expect(response.statusCode).toBe(400);
+		}
 	});
 
 	test('should ignore ID in payload', async () => {
@@ -370,35 +355,22 @@ describe('PATCH /credentials/:id', () => {
 	test('should fail with invalid inputs', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-		await Promise.all(
-			INVALID_PAYLOADS.map(async (invalidPayload) => {
-				const response = await authOwnerAgent
-					.patch(`/credentials/${savedCredential.id}`)
-					.send(invalidPayload);
+		for (const invalidPayload of INVALID_PAYLOADS) {
+			const response = await authOwnerAgent
+				.patch(`/credentials/${savedCredential.id}`)
+				.send(invalidPayload);
 
-				if (response.statusCode === 500) {
-					console.log(response.statusCode, response.body);
-				}
-				expect(response.statusCode).toBe(400);
-			}),
-		);
+			if (response.statusCode === 500) {
+				console.log(response.statusCode, response.body);
+			}
+			expect(response.statusCode).toBe(400);
+		}
 	});
 
 	test('should fail if cred not found', async () => {
 		const response = await authOwnerAgent.patch('/credentials/123').send(randomCredentialPayload());
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent.post('/credentials').send(randomCredentialPayload());
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
 	});
 });
 
@@ -508,21 +480,6 @@ describe('GET /credentials/:id', () => {
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
 	});
 
-	test('should fail with missing encryption key', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent
-			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
-	});
-
 	test('should return 404 if cred not found', async () => {
 		const response = await authOwnerAgent.get('/credentials/789');
 		expect(response.statusCode).toBe(404);
@@ -532,14 +489,25 @@ describe('GET /credentials/:id', () => {
 	});
 });
 
-function validateMainCredentialData(credential: CredentialsEntity) {
-	expect(typeof credential.name).toBe('string');
-	expect(typeof credential.type).toBe('string');
-	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');
-	// @ts-ignore
-	expect(credential.ownedBy).toBeUndefined();
-	// @ts-ignore
-	expect(credential.sharedWith).toBeUndefined();
+function validateMainCredentialData(credential: Credentials.WithOwnedByAndSharedWith) {
+	const { name, type, nodesAccess, sharedWith, ownedBy } = credential;
+
+	expect(typeof name).toBe('string');
+	expect(typeof type).toBe('string');
+	expect(typeof nodesAccess?.[0].nodeType).toBe('string');
+
+	if (sharedWith) {
+		expect(Array.isArray(sharedWith)).toBe(true);
+	}
+
+	if (ownedBy) {
+		const { id, email, firstName, lastName } = ownedBy;
+
+		expect(typeof id).toBe('string');
+		expect(typeof email).toBe('string');
+		expect(typeof firstName).toBe('string');
+		expect(typeof lastName).toBe('string');
+	}
 }
 
 const INVALID_PAYLOADS = [

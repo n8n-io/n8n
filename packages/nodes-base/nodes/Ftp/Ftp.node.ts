@@ -1,3 +1,9 @@
+import { createWriteStream } from 'fs';
+import { basename, dirname } from 'path';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -10,17 +16,11 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
-import { createWriteStream } from 'fs';
-import { basename, dirname } from 'path';
-import type { Readable } from 'stream';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
 import { file as tmpFile } from 'tmp-promise';
 
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
+import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;
@@ -649,7 +649,7 @@ export class Ftp implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -759,7 +759,7 @@ export class Ftp implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -806,7 +806,7 @@ export class Ftp implements INodeType {
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 
 			throw error;

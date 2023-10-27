@@ -1,8 +1,8 @@
 import type { IDataObject, INode } from 'n8n-workflow';
 
-import { createMockExecuteFunction } from '@test/nodes/Helpers';
-
+import mysql2 from 'mysql2/promise';
 import * as deleteTable from '../../v2/actions/database/deleteTable.operation';
+
 import * as executeQuery from '../../v2/actions/database/executeQuery.operation';
 import * as insert from '../../v2/actions/database/insert.operation';
 import * as select from '../../v2/actions/database/select.operation';
@@ -11,8 +11,7 @@ import * as upsert from '../../v2/actions/database/upsert.operation';
 
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { configureQueryRunner } from '../../v2/helpers/utils';
-
-import mysql2 from 'mysql2/promise';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',
@@ -97,7 +96,7 @@ describe('Test MySql V2, operations', () => {
 		const result = await deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
 		expect(poolQuerySpy).toBeCalledTimes(1);
 		expect(poolQuerySpy).toBeCalledWith('DROP TABLE IF EXISTS `test_table`');
@@ -133,7 +132,7 @@ describe('Test MySql V2, operations', () => {
 		const result = await deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
 		expect(poolQuerySpy).toBeCalledTimes(1);
 		expect(poolQuerySpy).toBeCalledWith('TRUNCATE TABLE `test_table`');
@@ -183,7 +182,7 @@ describe('Test MySql V2, operations', () => {
 		const result = await deleteTable.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
 		expect(poolQuerySpy).toBeCalledTimes(1);
 		expect(poolQuerySpy).toBeCalledWith(
@@ -208,7 +207,6 @@ describe('Test MySql V2, operations', () => {
 
 		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
 			const result = [];
-			console.log(query);
 			if (query?.toLowerCase().includes('select')) {
 				result.push([{ id: 1, name: 'test 1' }]);
 			} else {
@@ -305,14 +303,14 @@ describe('Test MySql V2, operations', () => {
 
 		const runQueries: QueryRunner = configureQueryRunner.call(
 			fakeExecuteFunction,
-			nodeOptions,
+			{ ...nodeOptions, nodeVersion: 2 },
 			pool,
 		);
 
 		const result = await select.execute.call(fakeExecuteFunction, emptyInputItems, runQueries);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		const connectionBeginTransactionSpy = jest.spyOn(fakeConnection, 'beginTransaction');
 		const connectionCommitSpy = jest.spyOn(fakeConnection, 'commit');
@@ -378,7 +376,7 @@ describe('Test MySql V2, operations', () => {
 		);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(connectionQuerySpy).toBeCalledTimes(1);
 		expect(connectionQuerySpy).toBeCalledWith(
@@ -439,7 +437,10 @@ describe('Test MySql V2, operations', () => {
 		);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }, { json: { success: true } }]);
+		expect(result).toEqual([
+			{ json: { success: true }, pairedItem: { item: 0 } },
+			{ json: { success: true }, pairedItem: { item: 1 } },
+		]);
 
 		expect(connectionQuerySpy).toBeCalledTimes(2);
 		expect(connectionQuerySpy).toBeCalledWith(
@@ -501,7 +502,7 @@ describe('Test MySql V2, operations', () => {
 		);
 
 		expect(result).toBeDefined();
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }, { item: 1 }] }]);
 
 		expect(poolQuerySpy).toBeCalledTimes(1);
 		expect(poolQuerySpy).toBeCalledWith(

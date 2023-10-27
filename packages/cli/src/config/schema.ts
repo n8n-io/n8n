@@ -1,29 +1,23 @@
 import path from 'path';
 import convict from 'convict';
-import { UserSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
+import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
+import { ensureStringArray } from './utils';
 
 convict.addFormat({
-	name: 'nodes-list',
-	// @ts-ignore
-	validate(values: string[], { env }: { env: string }): void {
-		try {
-			if (!Array.isArray(values)) {
-				throw new Error();
-			}
+	name: 'json-string-array',
+	coerce: (rawStr: string) =>
+		jsonParse<string[]>(rawStr, {
+			errorMessage: `Expected this value "${rawStr}" to be valid JSON`,
+		}),
+	validate: ensureStringArray,
+});
 
-			for (const value of values) {
-				if (typeof value !== 'string') {
-					throw new Error();
-				}
-			}
-		} catch (error) {
-			throw new TypeError(`${env} is not a valid Array of strings.`);
-		}
-	},
-	coerce(rawValue: string): string[] {
-		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
-	},
+convict.addFormat({
+	name: 'comma-separated-list',
+	coerce: (rawStr: string) => rawStr.split(','),
+	validate: ensureStringArray,
 });
 
 export const schema = {
@@ -56,7 +50,7 @@ export const schema = {
 			maxQueryExecutionTime: {
 				doc: 'Maximum number of milliseconds query should be executed before logger logs a warning. Set 0 to disable long running query warning',
 				format: Number,
-				default: 1000,
+				default: 0, // 0 disables the slow-query log
 				env: 'DB_LOGGING_MAX_EXECUTION_TIME',
 			},
 		},
@@ -99,6 +93,12 @@ export const schema = {
 			},
 
 			ssl: {
+				enabled: {
+					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
+					format: 'Boolean',
+					default: false,
+					env: 'DB_POSTGRESDB_SSL_ENABLED',
+				},
 				ca: {
 					doc: 'SSL certificate authority',
 					format: String,
@@ -119,7 +119,7 @@ export const schema = {
 				},
 				rejectUnauthorized: {
 					doc: 'If unauthorized SSL connections should be rejected',
-					format: 'Boolean',
+					format: Boolean,
 					default: true,
 					env: 'DB_POSTGRESDB_SSL_REJECT_UNAUTHORIZED',
 				},
@@ -163,6 +163,12 @@ export const schema = {
 				format: String,
 				default: 'database.sqlite',
 				env: 'DB_SQLITE_DATABASE',
+			},
+			enableWAL: {
+				doc: 'Enable SQLite WAL mode',
+				format: Boolean,
+				default: false,
+				env: 'DB_SQLITE_ENABLE_WAL',
 			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
@@ -209,7 +215,7 @@ export const schema = {
 		},
 		onboardingFlowDisabled: {
 			doc: 'Show onboarding flow in new workflow',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
@@ -282,7 +288,7 @@ export const schema = {
 		},
 		saveExecutionProgress: {
 			doc: 'Whether or not to save progress for each node executed',
-			format: 'Boolean',
+			format: Boolean,
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
 		},
@@ -294,40 +300,54 @@ export const schema = {
 		// in the editor.
 		saveDataManualExecutions: {
 			doc: 'Save data of executions when started manually via editor',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS',
 		},
 
 		// To not exceed the database's capacity and keep its size moderate
-		// the execution data gets pruned regularly (default: 1 hour interval).
+		// the execution data gets pruned regularly (default: 15 minute interval).
 		// All saved execution data older than the max age will be deleted.
 		// Pruning is currently not activated by default, which will change in
 		// a future version.
 		pruneData: {
 			doc: 'Delete data of past executions on a rolling basis',
-			format: 'Boolean',
+			format: Boolean,
 			default: true,
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get soft-deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
 		},
-		pruneDataTimeout: {
-			doc: 'Timeout (seconds) after execution data has been pruned',
+		pruneDataHardDeleteBuffer: {
+			doc: 'How old (hours) the finished execution data has to be to get hard-deleted. By default, this buffer excludes recent executions as the user may need them while building a workflow.',
 			format: Number,
-			default: 3600,
-			env: 'EXECUTIONS_DATA_PRUNE_TIMEOUT',
+			default: 1,
+			env: 'EXECUTIONS_DATA_HARD_DELETE_BUFFER',
+		},
+		pruneDataIntervals: {
+			hardDelete: {
+				doc: 'How often (minutes) execution data should be hard-deleted',
+				format: Number,
+				default: 15,
+				env: 'EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL',
+			},
+			softDelete: {
+				doc: 'How often (minutes) execution data should be soft-deleted',
+				format: Number,
+				default: 60,
+				env: 'EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL',
+			},
 		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
 		// Deletes the oldest entries first
 		// Set to 0 for No limit
 		pruneDataMaxCount: {
-			doc: 'Maximum number of executions to keep in DB. 0 = no limit',
+			doc: "Maximum number of finished executions to keep in DB. Doesn't necessarily prune exactly to max number. 0 = no limit",
 			format: Number,
 			default: 10000,
 			env: 'EXECUTIONS_DATA_PRUNE_MAX_COUNT',
@@ -338,7 +358,7 @@ export const schema = {
 		health: {
 			active: {
 				doc: 'If health checks should be enabled',
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'QUEUE_HEALTH_CHECK_ACTIVE',
 			},
@@ -399,6 +419,12 @@ export const schema = {
 					default: '',
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
+				tls: {
+					format: Boolean,
+					default: false,
+					env: 'QUEUE_BULL_REDIS_TLS',
+					doc: 'Enable TLS on Redis connections. Default: false',
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
@@ -411,6 +437,32 @@ export const schema = {
 				format: Number,
 				default: 30,
 				env: 'QUEUE_WORKER_TIMEOUT',
+			},
+			settings: {
+				lockDuration: {
+					doc: 'How long (ms) is the lease period for a worker to work on a message',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_LOCK_DURATION',
+				},
+				lockRenewTime: {
+					doc: 'How frequently (ms) should a worker renew the lease time',
+					format: Number,
+					default: 15000,
+					env: 'QUEUE_WORKER_LOCK_RENEW_TIME',
+				},
+				stalledInterval: {
+					doc: 'How often check for stalled jobs (use 0 for never checking)',
+					format: Number,
+					default: 30000,
+					env: 'QUEUE_WORKER_STALLED_INTERVAL',
+				},
+				maxStalledCount: {
+					doc: 'Max amount of times a stalled job will be re-processed',
+					format: Number,
+					default: 1,
+					env: 'QUEUE_WORKER_MAX_STALLED_COUNT',
+				},
 			},
 		},
 	},
@@ -425,6 +477,19 @@ export const schema = {
 			format: '*',
 			default: 'America/New_York',
 			env: 'GENERIC_TIMEZONE',
+		},
+
+		instanceType: {
+			doc: 'Type of n8n instance',
+			format: ['main', 'webhook', 'worker'] as const,
+			default: 'main',
+		},
+
+		releaseChannel: {
+			doc: 'N8N release channel',
+			format: ['stable', 'beta', 'nightly', 'dev'] as const,
+			default: 'dev',
+			env: 'N8N_RELEASE_TYPE',
 		},
 	},
 
@@ -519,7 +584,7 @@ export const schema = {
 		},
 		metrics: {
 			enable: {
-				format: 'Boolean',
+				format: Boolean,
 				default: false,
 				env: 'N8N_METRICS',
 				doc: 'Enable /metrics endpoint. Default: false',
@@ -729,6 +794,18 @@ export const schema = {
 						default: '',
 						env: 'N8N_SMTP_PASS',
 					},
+					serviceClient: {
+						doc: 'SMTP OAuth Service Client',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_SERVICE_CLIENT',
+					},
+					privateKey: {
+						doc: 'SMTP OAuth Private Key',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_PRIVATE_KEY',
+					},
 				},
 				sender: {
 					doc: 'How to display sender name',
@@ -762,7 +839,7 @@ export const schema = {
 	externalFrontendHooksUrls: {
 		doc: 'URLs to external frontend hooks files, ; separated',
 		format: String,
-		default: 'https://public.n8n.cloud/posthog-hooks.js',
+		default: '',
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
@@ -776,13 +853,13 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: 'nodes-list',
+			format: 'json-string-array',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: 'nodes-list',
+			format: 'json-string-array',
 			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
@@ -800,18 +877,12 @@ export const schema = {
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
 		},
-		packagesMissing: {
-			// Used to have a persistent list of packages
-			doc: 'Contains a comma separated list of packages that failed to load during startup',
-			format: String,
-			default: '',
-		},
 	},
 
 	logs: {
 		level: {
 			doc: 'Log output level',
-			format: ['error', 'warn', 'info', 'verbose', 'debug', 'silent'] as const,
+			format: LOG_LEVELS,
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -837,7 +908,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(Container.get(InstanceSettings).n8nFolder, 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -890,34 +961,61 @@ export const schema = {
 
 	binaryDataManager: {
 		availableModes: {
-			format: String,
+			format: 'comma-separated-list',
 			default: 'filesystem',
 			env: 'N8N_AVAILABLE_BINARY_DATA_MODES',
 			doc: 'Available modes of binary data storage, as comma separated strings',
 		},
 		mode: {
-			format: ['default', 'filesystem'] as const,
+			format: ['default', 'filesystem', 's3'] as const,
 			default: 'default',
 			env: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			doc: 'Storage mode for binary data',
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
-		binaryDataTTL: {
-			format: Number,
-			default: 60,
-			env: 'N8N_BINARY_DATA_TTL',
-			doc: 'TTL for binary data of unsaved executions in minutes',
-		},
-		persistedBinaryDataTTL: {
-			format: Number,
-			default: 1440,
-			env: 'N8N_PERSISTED_BINARY_DATA_TTL',
-			doc: 'TTL for persisted binary data in minutes (binary data gets deleted if not persisted before TTL expires)',
+	},
+
+	externalStorage: {
+		s3: {
+			host: {
+				format: String,
+				default: '',
+				env: 'N8N_EXTERNAL_STORAGE_S3_HOST',
+				doc: 'Host of the n8n bucket in S3-compatible external storage, e.g. `s3.us-east-1.amazonaws.com`',
+			},
+			bucket: {
+				name: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME',
+					doc: 'Name of the n8n bucket in S3-compatible external storage',
+				},
+				region: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION',
+					doc: 'Region of the n8n bucket in S3-compatible external storage, e.g. `us-east-1`',
+				},
+			},
+			credentials: {
+				accessKey: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY',
+					doc: 'Access key in S3-compatible external storage',
+				},
+				accessSecret: {
+					format: String,
+					default: '',
+					env: 'N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET',
+					doc: 'Access secret in S3-compatible external storage',
+				},
+			},
 		},
 	},
 
@@ -926,6 +1024,15 @@ export const schema = {
 			format: String,
 			default: 'default',
 			env: 'N8N_DEPLOYMENT_TYPE',
+		},
+	},
+
+	mfa: {
+		enabled: {
+			format: Boolean,
+			default: true,
+			doc: 'Whether to enable MFA feature in instance.',
+			env: 'N8N_MFA_ENABLED',
 		},
 	},
 
@@ -1121,6 +1228,12 @@ export const schema = {
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
 			},
 		},
+		crashRecoveryMode: {
+			doc: 'Should n8n try to recover execution details after a crash, or just mark pending executions as crashed',
+			format: ['simple', 'extensive'] as const,
+			default: 'extensive',
+			env: 'N8N_EVENTBUS_RECOVERY_MODE',
+		},
 	},
 
 	redis: {
@@ -1129,6 +1242,11 @@ export const schema = {
 			format: String,
 			default: 'n8n',
 			env: 'N8N_REDIS_KEY_PREFIX',
+		},
+		queueModeId: {
+			doc: 'Unique ID for this n8n instance, is usually set automatically by n8n during startup',
+			format: String,
+			default: '',
 		},
 	},
 
@@ -1172,6 +1290,55 @@ export const schema = {
 				default: 3600 * 1000, // 1 hour
 				env: 'N8N_CACHE_REDIS_TTL',
 			},
+		},
+	},
+
+	ai: {
+		enabled: {
+			doc: 'Whether AI features are enabled',
+			format: Boolean,
+			default: false,
+			env: 'N8N_AI_ENABLED',
+		},
+	},
+
+	expression: {
+		evaluator: {
+			doc: 'Expression evaluator to use',
+			format: ['tmpl', 'tournament'] as const,
+			default: 'tournament',
+			env: 'N8N_EXPRESSION_EVALUATOR',
+		},
+		reportDifference: {
+			doc: 'Whether to report differences in the evaluator outputs',
+			format: Boolean,
+			default: false,
+			env: 'N8N_EXPRESSION_REPORT_DIFFERENCE',
+		},
+	},
+
+	sourceControl: {
+		defaultKeyPairType: {
+			doc: 'Default SSH key type to use when generating SSH keys',
+			format: ['rsa', 'ed25519'] as const,
+			default: 'ed25519',
+			env: 'N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE',
+		},
+	},
+
+	workflowHistory: {
+		enabled: {
+			doc: 'Whether to save workflow history versions',
+			format: Boolean,
+			default: true,
+			env: 'N8N_WORKFLOW_HISTORY_ENABLED',
+		},
+
+		pruneTime: {
+			doc: 'Time (in hours) to keep workflow history versions for',
+			format: Number,
+			default: -1,
+			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
 };

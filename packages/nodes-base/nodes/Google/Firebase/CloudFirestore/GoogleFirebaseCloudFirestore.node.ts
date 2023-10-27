@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
+import { generatePairedItemData } from '../../../../utils/utilities';
 import {
 	fullDocumentToJson,
 	googleApiRequest,
@@ -90,6 +91,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const itemData = generatePairedItemData(items.length);
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
@@ -130,7 +132,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -213,7 +215,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
@@ -395,13 +397,13 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
-					{ itemData: { item: 0 } },
+					{ itemData },
 				);
 
 				returnData.push(...executionData);
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

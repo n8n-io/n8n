@@ -186,7 +186,7 @@ export default defineComponent({
 			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
+			void this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
 	},
 	mounted() {

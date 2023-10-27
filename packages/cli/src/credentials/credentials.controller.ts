@@ -1,33 +1,21 @@
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
-import { deepCopy, LoggerProxy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
-import { getLogger } from '@/Logger';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsDb } from '@/Interfaces';
-import type { CredentialRequest } from '@/requests';
+import type { CredentialRequest, ListQuery } from '@/requests';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { listQueryMiddleware } from '@/middlewares';
+import { Logger } from '@/Logger';
 
 export const credentialsController = express.Router();
-
-/**
- * Initialize Logger if needed
- */
-credentialsController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-	next();
-});
-
 credentialsController.use('/', EECredentialsController);
 
 /**
@@ -35,8 +23,9 @@ credentialsController.use('/', EECredentialsController);
  */
 credentialsController.get(
 	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsDb[]> => {
-		return CredentialsService.getAll(req.user, { roles: ['owner'] });
+	listQueryMiddleware,
+	ResponseHelper.send(async (req: ListQuery.Request) => {
+		return CredentialsService.getMany(req.user, { listQueryOptions: req.listQueryOptions });
 	}),
 );
 
@@ -84,9 +73,8 @@ credentialsController.get(
 			return { ...rest };
 		}
 
-		const key = await CredentialsService.getEncryptionKey();
 		const decryptedData = CredentialsService.redact(
-			await CredentialsService.decrypt(key, credential),
+			CredentialsService.decrypt(credential),
 			credential,
 		);
 
@@ -104,16 +92,15 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const encryptionKey = await CredentialsService.getEncryptionKey();
 		const sharing = await CredentialsService.getSharing(req.user, credentials.id);
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
-			const decryptedData = await CredentialsService.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = CredentialsService.decrypt(sharing.credentials);
 			mergedCredentials.data = CredentialsService.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return CredentialsService.test(req.user, encryptionKey, mergedCredentials);
+		return CredentialsService.test(req.user, mergedCredentials);
 	}),
 );
 
@@ -125,8 +112,7 @@ credentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Create) => {
 		const newCredential = await CredentialsService.prepareCreateData(req.body);
 
-		const key = await CredentialsService.getEncryptionKey();
-		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
+		const encryptedData = CredentialsService.createEncryptedData(null, newCredential);
 		const credential = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		void Container.get(InternalHooks).onUserCreatedCredentials({
@@ -152,10 +138,13 @@ credentialsController.patch(
 		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
 		if (!sharing) {
-			LoggerProxy.info('Attempt to update credential blocked due to lack of permissions', {
-				credentialId,
-				userId: req.user.id,
-			});
+			Container.get(Logger).info(
+				'Attempt to update credential blocked due to lack of permissions',
+				{
+					credentialId,
+					userId: req.user.id,
+				},
+			);
 			throw new ResponseHelper.NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
 			);
@@ -163,14 +152,12 @@ credentialsController.patch(
 
 		const { credentials: credential } = sharing;
 
-		const key = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decrypt(key, credential);
+		const decryptedData = CredentialsService.decrypt(credential);
 		const preparedCredentialData = await CredentialsService.prepareUpdateData(
 			req.body,
 			decryptedData,
 		);
 		const newCredentialData = CredentialsService.createEncryptedData(
-			key,
 			credentialId,
 			preparedCredentialData,
 		);
@@ -186,7 +173,7 @@ credentialsController.patch(
 		// Remove the encrypted data as it is not needed in the frontend
 		const { data: _, ...rest } = responseData;
 
-		LoggerProxy.verbose('Credential updated', { credentialId });
+		Container.get(Logger).verbose('Credential updated', { credentialId });
 
 		return { ...rest };
 	}),
@@ -203,10 +190,13 @@ credentialsController.delete(
 		const sharing = await CredentialsService.getSharing(req.user, credentialId);
 
 		if (!sharing) {
-			LoggerProxy.info('Attempt to delete credential blocked due to lack of permissions', {
-				credentialId,
-				userId: req.user.id,
-			});
+			Container.get(Logger).info(
+				'Attempt to delete credential blocked due to lack of permissions',
+				{
+					credentialId,
+					userId: req.user.id,
+				},
+			);
 			throw new ResponseHelper.NotFoundError(
 				'Credential to be deleted not found. You can only removed credentials owned by you',
 			);

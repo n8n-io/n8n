@@ -1,3 +1,5 @@
+import { rm, writeFile } from 'fs/promises';
+import type { Readable } from 'stream';
 import type {
 	ICredentialTestFunctions,
 	ICredentialsDecrypted,
@@ -10,15 +12,11 @@ import type {
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
-import { formatPrivateKey } from '@utils/utilities';
-
-import { rm, writeFile } from 'fs/promises';
-
 import { file as tmpFile } from 'tmp-promise';
 
 import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
-import type { Readable } from 'stream';
+import { formatPrivateKey } from '@utils/utilities';
 
 async function resolveHomeDir(
 	this: IExecuteFunctions,
@@ -441,7 +439,7 @@ export class Ssh implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -502,9 +500,9 @@ export class Ssh implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnItems);
+			return [returnItems];
 		}
 	}
 }

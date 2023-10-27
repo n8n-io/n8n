@@ -56,6 +56,9 @@ export class TestWebhooks implements IWebhookManager {
 		const httpMethod = request.method;
 		let path = request.params.path;
 
+		// Reset request parameters
+		request.params = {} as WebhookRequest['params'];
+
 		// Remove trailing slash
 		if (path.endsWith('/')) {
 			path = path.slice(0, -1);
@@ -280,13 +283,5 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		return foundWebhook;
-	}
-
-	/**
-	 * Removes all the currently active test webhooks
-	 */
-	async removeAll(): Promise<void> {
-		const workflows = Object.values(this.testWebhookData).map(({ workflow }) => workflow);
-		return this.activeWebhooks.removeAll(workflows);
 	}
 }

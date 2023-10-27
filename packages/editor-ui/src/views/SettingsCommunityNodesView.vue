@@ -55,6 +55,7 @@
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+	COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
@@ -190,7 +191,7 @@ export default defineComponent({
 			if (this.settingsStore.isQueueModeEnabled) {
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.queueMode.warning', {
-						interpolate: { docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL },
+						interpolate: { docURL: COMMUNITY_NODES_MANUAL_INSTALLATION_DOCS_URL },
 					}),
 					calloutTheme: 'warning',
 					hideButton: true,
@@ -213,11 +214,7 @@ export default defineComponent({
 			this.openInstallModal();
 		},
 		goToUpgrade(): void {
-			const linkUrl = `${this.$locale.baseText(
-				'contextual.upgradeLinkUrl.desktop',
-			)}&utm_campaign=upgrade-community-nodes&selfHosted=true`;
-
-			window.open(linkUrl, '_blank');
+			void this.uiStore.goToUpgrade('community-nodes', 'upgrade-community-nodes');
 		},
 		openInstallModal(): void {
 			const telemetryPayload = {

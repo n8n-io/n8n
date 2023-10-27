@@ -7,6 +7,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { tz } from 'moment-timezone';
 import {
 	adjustAccounts,
 	adjustAttendees,
@@ -37,8 +38,6 @@ import {
 } from './descriptions';
 
 import type { FreshworksConfigResponse, LoadedCurrency, LoadedUser, LoadOption } from './types';
-
-import { tz } from 'moment-timezone';
 
 export class FreshworksCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -994,6 +993,6 @@ export class FreshworksCrm implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

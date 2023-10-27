@@ -9,6 +9,7 @@ export { default as N8nButton } from './N8nButton';
 export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCard } from './N8nCard';
 export { default as N8nCheckbox } from './N8nCheckbox';
+export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nColorPicker } from './N8nColorPicker';
 export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nFormBox } from './N8nFormBox';

@@ -1,10 +1,11 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { FeatureFlags, IDataObject, ITelemetryTrackProperties } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
@@ -40,11 +41,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 	if (!window.featureFlags) {
 		// for testing
-		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
-		if (cachedOverrdies) {
+		const cachedOverrides = useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, undefined).value;
+		if (cachedOverrides) {
 			try {
-				console.log('Overriding feature flags', cachedOverrdies);
-				overrides.value = JSON.parse(cachedOverrdies);
+				console.log('Overriding feature flags', cachedOverrides);
+				overrides.value = JSON.parse(cachedOverrides);
 			} catch (e) {
 				console.log('Could not override experiment', e);
 			}
@@ -174,6 +175,23 @@ export const usePostHog = defineStore('posthog', () => {
 		trackedDemoExp.value[name] = variant;
 	};
 
+	const capture = (event: string, properties: IDataObject) => {
+		if (typeof window.posthog?.capture === 'function') {
+			window.posthog.capture(event, properties);
+		}
+	};
+
+	const setMetadata = (metadata: IDataObject, target: 'user' | 'events') => {
+		if (typeof window.posthog?.people?.set !== 'function') return;
+		if (typeof window.posthog?.register !== 'function') return;
+
+		if (target === 'user') {
+			window.posthog?.people?.set(metadata);
+		} else if (target === 'events') {
+			window.posthog?.register(metadata);
+		}
+	};
+
 	return {
 		init,
 		isVariantEnabled,
@@ -181,5 +199,7 @@ export const usePostHog = defineStore('posthog', () => {
 		reset,
 		track,
 		identify,
+		capture,
+		setMetadata,
 	};
 });

@@ -1,6 +1,5 @@
 import get from 'lodash/get';
 import type {
-	CredentialInformation,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IContextObject,
@@ -38,52 +37,27 @@ import type { Workflow } from '@/Workflow';
 import { WorkflowDataProxy } from '@/WorkflowDataProxy';
 import { WorkflowHooks } from '@/WorkflowHooks';
 import * as NodeHelpers from '@/NodeHelpers';
+import { deepCopy } from '@/utils';
+import { getGlobalState } from '@/GlobalState';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;
 }
 
 export class Credentials extends ICredentials {
-	hasNodeAccess(nodeType: string): boolean {
+	hasNodeAccess() {
 		return true;
 	}
 
-	setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void {
+	setData(data: ICredentialDataDecryptedObject) {
 		this.data = JSON.stringify(data);
 	}
 
-	setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void {
-		let fullData;
-		try {
-			fullData = this.getData(encryptionKey);
-		} catch (e) {
-			fullData = {};
-		}
-
-		fullData[key] = data;
-
-		return this.setData(fullData, encryptionKey);
-	}
-
-	getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject {
+	getData(): ICredentialDataDecryptedObject {
 		if (this.data === undefined) {
 			throw new Error('No data is set so nothing can be returned.');
 		}
 		return JSON.parse(this.data);
-	}
-
-	getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation {
-		const fullData = this.getData(encryptionKey, nodeType);
-
-		if (fullData === null) {
-			throw new Error('No data was set.');
-		}
-
-		if (!fullData.hasOwnProperty(key)) {
-			throw new Error(`No data for key "${key}" exists.`);
-		}
-
-		return fullData[key];
 	}
 
 	getDataToSave(): ICredentialsEncrypted {
@@ -125,6 +99,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -154,7 +129,6 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
-	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData: IExecuteData,
 	fallbackValue?: any,
@@ -180,7 +154,6 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 		);
 	} catch (e) {
@@ -267,7 +240,6 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -282,7 +254,7 @@ export function getExecuteFunctions(
 				return additionalData.restApiUrl;
 			},
 			getTimezone: (): string => {
-				return additionalData.timezone;
+				return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
 			},
 			getExecuteData: (): IExecuteData => {
 				return executeData;
@@ -304,7 +276,6 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
-					additionalData.timezone,
 					{},
 					executeData,
 				);
@@ -448,7 +419,7 @@ export function getExecuteSingleFunctions(
 				return additionalData.restApiUrl;
 			},
 			getTimezone: (): string => {
-				return additionalData.timezone;
+				return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
 			},
 			getExecuteData: (): IExecuteData => {
 				return executeData;
@@ -471,7 +442,6 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					{},
 					fallbackValue,
 				);
@@ -493,7 +463,6 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
-					additionalData.timezone,
 					{},
 					executeData,
 				);
@@ -701,13 +670,11 @@ export function WorkflowExecuteAdditionalData(): IWorkflowExecuteAdditionalData 
 	};
 
 	return {
-		credentialsHelper: new CredentialsHelper(''),
+		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks({}, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
-		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',

@@ -20,9 +20,10 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
+					<component v-else :is="Component" />
 				</router-view>
 			</div>
 			<Modals />
@@ -36,16 +37,17 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { extendExternalHooks } from '@/mixins/externalHooks';
 import { newVersions } from '@/mixins/newVersions';
+import { useStorage } from '@vueuse/core';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { CLOUD_TRIAL_CHECK_INTERVAL, HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast } from '@/composables';
+import { useGlobalLinkActions, useTitleChange, useToast, useExternalHooks } from '@/composables';
 import {
 	useUIStore,
 	useSettingsStore,
@@ -59,7 +61,7 @@ import {
 } from '@/stores';
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { useRoute } from 'vue-router';
-import { useExternalHooks } from '@/composables';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'App',
@@ -114,6 +116,8 @@ export default defineComponent({
 			try {
 				await this.settingsStore.getSettings();
 				this.settingsInitialized = true;
+				// Re-compute title since settings are now available
+				useTitleChange().titleReset();
 			} catch (e) {
 				this.showToast({
 					title: this.$locale.baseText('startupError'),
@@ -165,14 +169,22 @@ export default defineComponent({
 				console.log(HIRING_BANNER);
 			}
 		},
+		async checkForCloudData() {
+			await this.cloudPlanStore.checkForCloudPlanData();
+			await this.cloudPlanStore.fetchUserCloudAccount();
+		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
+<<<<<<< HEAD
 			await this.initHooks();
+=======
+			ExpressionEvaluatorProxy.setEvaluator(useSettingsStore().settings.expressions.evaluator);
+>>>>>>> master
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {
 			this.uiStore.currentView = this.$route.name || '';
-			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
+			if (this.$route?.meta?.templatesEnabled) {
 				this.templatesStore.setSessionId();
 			} else {
 				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
@@ -227,38 +239,9 @@ export default defineComponent({
 			return;
 		},
 		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
+			const theme = useStorage(LOCAL_STORAGE_THEME, undefined).value;
 			if (theme) {
 				window.document.body.classList.add(`theme-${theme}`);
-			}
-		},
-		async checkForCloudPlanData(): Promise<void> {
-			try {
-				await this.cloudPlanStore.getOwnerCurrentPlan();
-				if (!this.cloudPlanStore.userIsTrialing) return;
-				await this.cloudPlanStore.getInstanceCurrentUsage();
-				this.startPollingInstanceUsageData();
-			} catch {}
-		},
-		startPollingInstanceUsageData() {
-			const interval = setInterval(async () => {
-				try {
-					await this.cloudPlanStore.getInstanceCurrentUsage();
-					if (this.cloudPlanStore.trialExpired || this.cloudPlanStore.allExecutionsUsed) {
-						clearTimeout(interval);
-						return;
-					}
-				} catch {}
-			}, CLOUD_TRIAL_CHECK_INTERVAL);
-		},
-		async initBanners(): Promise<void> {
-			if (this.cloudPlanStore.userIsTrialing) {
-				await this.uiStore.dismissBanner('V1', 'temporary');
-				if (this.cloudPlanStore.trialExpired) {
-					this.uiStore.showBanner('TRIAL_OVER');
-				} else {
-					this.uiStore.showBanner('TRIAL');
-				}
 			}
 		},
 		async postAuthenticate() {
@@ -284,10 +267,7 @@ export default defineComponent({
 		await this.authenticate();
 		await this.redirectIfNecessary();
 		void this.checkForNewVersions();
-		await this.checkForCloudPlanData();
-		await this.initBanners();
-
-		void this.checkForCloudPlanData();
+		await this.checkForCloudData();
 		void this.postAuthenticate();
 
 		this.loading = false;
@@ -305,7 +285,7 @@ export default defineComponent({
 				void this.postAuthenticate();
 			}
 		},
-		async $route(route) {
+		async $route() {
 			await this.initSettings();
 			await this.redirectIfNecessary();
 

@@ -6,8 +6,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import type {
 	PgpDatabase,
 	QueriesRunner,
@@ -21,9 +19,11 @@ import {
 	getTableSchema,
 	prepareItem,
 	replaceEmptyStringsByNulls,
+	configureTableSchemaUpdater,
 } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -170,7 +170,7 @@ const properties: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				'@version': [2.2],
+				'@version': [2.2, 2.3],
 			},
 		},
 	},
@@ -197,19 +197,31 @@ export async function execute(
 	db: PgpDatabase,
 ): Promise<INodeExecutionData[]> {
 	items = replaceEmptyStringsByNulls(items, nodeOptions.replaceEmptyStrings as boolean);
+	const nodeVersion = nodeOptions.nodeVersion as number;
+
+	let schema = this.getNodeParameter('schema', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	let table = this.getNodeParameter('table', 0, undefined, {
+		extractValue: true,
+	}) as string;
+
+	const updateTableSchema = configureTableSchemaUpdater(schema, table);
+
+	let tableSchema = await getTableSchema(db, schema, table);
 
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const schema = this.getNodeParameter('schema', i, undefined, {
+		schema = this.getNodeParameter('schema', i, undefined, {
 			extractValue: true,
 		}) as string;
 
-		const table = this.getNodeParameter('table', i, undefined, {
+		table = this.getNodeParameter('table', i, undefined, {
 			extractValue: true,
 		}) as string;
 
-		const nodeVersion = this.getNode().typeVersion;
 		const columnsToMatchOn: string[] =
 			nodeVersion < 2.2
 				? [this.getNodeParameter('columnToMatchOn', i) as string]
@@ -255,7 +267,7 @@ export async function execute(
 			);
 		}
 
-		const tableSchema = await getTableSchema(db, schema, table);
+		tableSchema = await updateTableSchema(db, tableSchema, schema, table);
 
 		item = checkItemAgainstSchema(this.getNode(), item, tableSchema, i);
 

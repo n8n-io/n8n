@@ -1,3 +1,4 @@
+import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,7 +9,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Readable } from 'stream';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -838,7 +838,7 @@ export class YouTube implements INodeType {
 
 						if (binaryData.id) {
 							// Stream data in 256KB chunks, and upload the via the resumable upload api
-							fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+							fileContent = await this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 							const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 							contentLength = metadata.fileSize;
 							mimeType = metadata.mimeType ?? binaryData.mimeType;
@@ -1068,6 +1068,6 @@ export class YouTube implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

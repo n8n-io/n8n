@@ -11,7 +11,10 @@ export async function searchWorkbooks(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const q = filter ? encodeURI(`.xlsx AND ${filter}`) : '.xlsx';
+	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
+	const extensionFilter = fileExtensions.join(' OR ');
+
+	const q = filter || extensionFilter;
 
 	let response: IDataObject = {};
 
@@ -37,10 +40,22 @@ export async function searchWorkbooks(
 		);
 	}
 
+	if (response.value && filter) {
+		response.value = (response.value as IDataObject[]).filter((workbook: IDataObject) => {
+			return fileExtensions.some((extension) => (workbook.name as string).includes(extension));
+		});
+	}
+
 	return {
 		results: (response.value as IDataObject[]).map((workbook: IDataObject) => {
+			for (const extension of fileExtensions) {
+				if ((workbook.name as string).includes(extension)) {
+					workbook.name = (workbook.name as string).replace(extension, '');
+					break;
+				}
+			}
 			return {
-				name: (workbook.name as string).replace('.xlsx', ''),
+				name: workbook.name as string,
 				value: workbook.id as string,
 				url: workbook.webUrl as string,
 			};

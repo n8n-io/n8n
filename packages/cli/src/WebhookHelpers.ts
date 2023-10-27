@@ -14,7 +14,7 @@ import stream from 'stream';
 import { promisify } from 'util';
 import formidable from 'formidable';
 
-import { BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
+import { BinaryDataService, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
 	IBinaryData,
@@ -38,7 +38,7 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
+	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -62,6 +62,8 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
+import { WorkflowsService } from './workflows/workflows.services';
+import { Logger } from './Logger';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -108,7 +110,16 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error);
+			if (
+				error.errorCode === 404 &&
+				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
+			) {
+				const isTestWebhook = req.originalUrl.includes('webhook-test');
+				res.status(404);
+				return res.render('form-trigger-404', { isTestWebhook });
+			} else {
+				return ResponseHelper.sendErrorResponse(res, error as Error);
+			}
 		}
 
 		// Don't respond, if already responded
@@ -159,23 +170,6 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-export function decodeWebhookResponse(
-	response: IExecuteResponsePromiseData,
-): IExecuteResponsePromiseData {
-	if (
-		typeof response === 'object' &&
-		typeof response.body === 'object' &&
-		(response.body as IDataObject)['__@N8nEncodedBuffer@__']
-	) {
-		response.body = Buffer.from(
-			(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
-			BINARY_ENCODING,
-		);
-	}
-
-	return response;
-}
-
 export function encodeWebhookResponse(
 	response: IExecuteResponsePromiseData,
 ): IExecuteResponsePromiseData {
@@ -188,6 +182,15 @@ export function encodeWebhookResponse(
 
 	return response;
 }
+
+const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
+	for (const key in values) {
+		const value = values[key];
+		if (Array.isArray(value) && value.length === 1) {
+			values[key] = value[0];
+		}
+	}
+};
 
 /**
  * Executes a webhook
@@ -243,7 +246,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseMode,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		'onReceived',
@@ -252,7 +254,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		200,
@@ -262,7 +263,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		'firstEntryJson',
@@ -285,7 +285,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		'={{$parameter["options"]["binaryData"]}}',
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		false,
@@ -309,6 +308,8 @@ export async function executeWebhook(
 				});
 				req.body = await new Promise((resolve) => {
 					form.parse(req, async (err, data, files) => {
+						normalizeFormData(data);
+						normalizeFormData(files);
 						resolve({ data, files });
 					});
 				});
@@ -354,7 +355,7 @@ export async function executeWebhook(
 		}
 
 		// Save static data if it changed
-		await WorkflowHelpers.saveStaticData(workflow);
+		await WorkflowsService.saveStaticData(workflow);
 
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 			$executionId: executionId,
@@ -365,7 +366,6 @@ export async function executeWebhook(
 				workflowStartNode,
 				webhookData.webhookDescription.responseHeaders,
 				executionMode,
-				additionalData.timezone,
 				additionalKeys,
 				undefined,
 				undefined,
@@ -500,7 +500,7 @@ export async function executeWebhook(
 			responsePromise = await createDeferredPromise<IN8nHttpFullResponse>();
 			responsePromise
 				.promise()
-				.then((response: IN8nHttpFullResponse) => {
+				.then(async (response: IN8nHttpFullResponse) => {
 					if (didSendResponse) {
 						return;
 					}
@@ -508,10 +508,9 @@ export async function executeWebhook(
 					const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 					if (binaryData?.id) {
 						res.header(response.headers);
-						const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
-						void pipeline(stream, res).then(() =>
-							responseCallback(null, { noWebhookResponse: true }),
-						);
+						const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+						await pipeline(stream, res);
+						responseCallback(null, { noWebhookResponse: true });
 					} else if (Buffer.isBuffer(response.body)) {
 						res.header(response.headers);
 						res.end(response.body);
@@ -530,7 +529,7 @@ export async function executeWebhook(
 				})
 				.catch(async (error) => {
 					ErrorReporter.error(error);
-					Logger.error(
+					Container.get(Logger).error(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },
 					);
@@ -547,225 +546,224 @@ export async function executeWebhook(
 			responsePromise,
 		);
 
-		Logger.verbose(
+		Container.get(Logger).verbose(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
 
-		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
-			executionId,
-		) as Promise<IExecutionDb | undefined>;
-		executePromise
-			.then(async (data) => {
-				if (data === undefined) {
-					if (!didSendResponse) {
-						responseCallback(null, {
-							data: {
-								message: 'Workflow executed successfully but no data was returned',
-							},
-							responseCode,
-						});
-						didSendResponse = true;
-					}
-					return undefined;
-				}
-
-				if (workflowData.pinData) {
-					data.data.resultData.pinData = workflowData.pinData;
-				}
-
-				const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-				if (data.data.resultData.error || returnData?.error !== undefined) {
-					if (!didSendResponse) {
-						responseCallback(null, {
-							data: {
-								message: 'Error in workflow',
-							},
-							responseCode: 500,
-						});
-					}
-					didSendResponse = true;
-					return data;
-				}
-
-				if (responseMode === 'responseNode') {
-					if (!didSendResponse) {
-						// Return an error if no Webhook-Response node did send any data
-						responseCallback(null, {
-							data: {
-								message: 'Workflow executed successfully',
-							},
-							responseCode,
-						});
-						didSendResponse = true;
-					}
-					return undefined;
-				}
-
-				if (returnData === undefined) {
-					if (!didSendResponse) {
-						responseCallback(null, {
-							data: {
-								message: 'Workflow executed successfully but the last node did not return any data',
-							},
-							responseCode,
-						});
-					}
-					didSendResponse = true;
-					return data;
-				}
-
-				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
-					$executionId: executionId,
-				};
-
-				if (!didSendResponse) {
-					let data: IDataObject | IDataObject[] | undefined;
-
-					if (responseData === 'firstEntryJson') {
-						// Return the JSON data of the first entry
-
-						if (returnData.data!.main[0]![0] === undefined) {
-							responseCallback(new Error('No item to return got found'), {});
-							didSendResponse = true;
-							return undefined;
-						}
-
-						data = returnData.data!.main[0]![0].json;
-
-						const responsePropertyName = workflow.expression.getSimpleParameterValue(
-							workflowStartNode,
-							webhookData.webhookDescription.responsePropertyName,
-							executionMode,
-							additionalData.timezone,
-							additionalKeys,
-							undefined,
-							undefined,
-						);
-
-						if (responsePropertyName !== undefined) {
-							data = get(data, responsePropertyName as string) as IDataObject;
-						}
-
-						const responseContentType = workflow.expression.getSimpleParameterValue(
-							workflowStartNode,
-							webhookData.webhookDescription.responseContentType,
-							executionMode,
-							additionalData.timezone,
-							additionalKeys,
-							undefined,
-							undefined,
-						);
-
-						if (responseContentType !== undefined) {
-							// Send the webhook response manually to be able to set the content-type
-							res.setHeader('Content-Type', responseContentType as string);
-
-							// Returning an object, boolean, number, ... causes problems so make sure to stringify if needed
-							if (
-								data !== null &&
-								data !== undefined &&
-								['Buffer', 'String'].includes(data.constructor.name)
-							) {
-								res.end(data);
-							} else {
-								res.end(JSON.stringify(data));
-							}
-
+		if (!didSendResponse) {
+			// Get a promise which resolves when the workflow did execute and send then response
+			const executePromise = Container.get(ActiveExecutions).getPostExecutePromise(
+				executionId,
+			) as Promise<IExecutionDb | undefined>;
+			executePromise
+				.then(async (data) => {
+					if (data === undefined) {
+						if (!didSendResponse) {
 							responseCallback(null, {
-								noWebhookResponse: true,
+								data: {
+									message: 'Workflow executed successfully but no data was returned',
+								},
+								responseCode,
 							});
 							didSendResponse = true;
 						}
-					} else if (responseData === 'firstEntryBinary') {
-						// Return the binary data of the first entry
-						data = returnData.data!.main[0]![0];
+						return undefined;
+					}
 
-						if (data === undefined) {
-							responseCallback(new Error('No item was found to return'), {});
-							didSendResponse = true;
-							return undefined;
+					if (workflowData.pinData) {
+						data.data.resultData.pinData = workflowData.pinData;
+					}
+
+					const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+					if (data.data.resultData.error || returnData?.error !== undefined) {
+						if (!didSendResponse) {
+							responseCallback(null, {
+								data: {
+									message: 'Error in workflow',
+								},
+								responseCode: 500,
+							});
 						}
+						didSendResponse = true;
+						return data;
+					}
 
-						if (data.binary === undefined) {
-							responseCallback(new Error('No binary data was found to return'), {});
-							didSendResponse = true;
-							return undefined;
-						}
-
-						const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
-							workflowStartNode,
-							webhookData.webhookDescription.responseBinaryPropertyName,
-							executionMode,
-							additionalData.timezone,
-							additionalKeys,
-							undefined,
-							'data',
-						);
-
-						if (responseBinaryPropertyName === undefined && !didSendResponse) {
-							responseCallback(new Error("No 'responseBinaryPropertyName' is set"), {});
+					if (responseMode === 'responseNode') {
+						if (!didSendResponse) {
+							// Return an error if no Webhook-Response node did send any data
+							responseCallback(null, {
+								data: {
+									message: 'Workflow executed successfully',
+								},
+								responseCode,
+							});
 							didSendResponse = true;
 						}
+						return undefined;
+					}
 
-						const binaryData = (data.binary as IBinaryKeyData)[
-							responseBinaryPropertyName as string
-						];
-						if (binaryData === undefined && !didSendResponse) {
-							responseCallback(
-								new Error(
-									`The binary property '${responseBinaryPropertyName}' which should be returned does not exist`,
-								),
-								{},
+					if (returnData === undefined) {
+						if (!didSendResponse) {
+							responseCallback(null, {
+								data: {
+									message:
+										'Workflow executed successfully but the last node did not return any data',
+								},
+								responseCode,
+							});
+						}
+						didSendResponse = true;
+						return data;
+					}
+
+					const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+						$executionId: executionId,
+					};
+
+					if (!didSendResponse) {
+						let data: IDataObject | IDataObject[] | undefined;
+
+						if (responseData === 'firstEntryJson') {
+							// Return the JSON data of the first entry
+
+							if (returnData.data!.main[0]![0] === undefined) {
+								responseCallback(new Error('No item to return got found'), {});
+								didSendResponse = true;
+								return undefined;
+							}
+
+							data = returnData.data!.main[0]![0].json;
+
+							const responsePropertyName = workflow.expression.getSimpleParameterValue(
+								workflowStartNode,
+								webhookData.webhookDescription.responsePropertyName,
+								executionMode,
+								additionalKeys,
+								undefined,
+								undefined,
 							);
-							didSendResponse = true;
+
+							if (responsePropertyName !== undefined) {
+								data = get(data, responsePropertyName as string) as IDataObject;
+							}
+
+							const responseContentType = workflow.expression.getSimpleParameterValue(
+								workflowStartNode,
+								webhookData.webhookDescription.responseContentType,
+								executionMode,
+								additionalKeys,
+								undefined,
+								undefined,
+							);
+
+							if (responseContentType !== undefined) {
+								// Send the webhook response manually to be able to set the content-type
+								res.setHeader('Content-Type', responseContentType as string);
+
+								// Returning an object, boolean, number, ... causes problems so make sure to stringify if needed
+								if (
+									data !== null &&
+									data !== undefined &&
+									['Buffer', 'String'].includes(data.constructor.name)
+								) {
+									res.end(data);
+								} else {
+									res.end(JSON.stringify(data));
+								}
+
+								responseCallback(null, {
+									noWebhookResponse: true,
+								});
+								didSendResponse = true;
+							}
+						} else if (responseData === 'firstEntryBinary') {
+							// Return the binary data of the first entry
+							data = returnData.data!.main[0]![0];
+
+							if (data === undefined) {
+								responseCallback(new Error('No item was found to return'), {});
+								didSendResponse = true;
+								return undefined;
+							}
+
+							if (data.binary === undefined) {
+								responseCallback(new Error('No binary data was found to return'), {});
+								didSendResponse = true;
+								return undefined;
+							}
+
+							const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
+								workflowStartNode,
+								webhookData.webhookDescription.responseBinaryPropertyName,
+								executionMode,
+								additionalKeys,
+								undefined,
+								'data',
+							);
+
+							if (responseBinaryPropertyName === undefined && !didSendResponse) {
+								responseCallback(new Error("No 'responseBinaryPropertyName' is set"), {});
+								didSendResponse = true;
+							}
+
+							const binaryData = (data.binary as IBinaryKeyData)[
+								responseBinaryPropertyName as string
+							];
+							if (binaryData === undefined && !didSendResponse) {
+								responseCallback(
+									new Error(
+										`The binary property '${responseBinaryPropertyName}' which should be returned does not exist`,
+									),
+									{},
+								);
+								didSendResponse = true;
+							}
+
+							if (!didSendResponse) {
+								// Send the webhook response manually
+								res.setHeader('Content-Type', binaryData.mimeType);
+								if (binaryData.id) {
+									const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
+									await pipeline(stream, res);
+								} else {
+									res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
+								}
+
+								responseCallback(null, {
+									noWebhookResponse: true,
+								});
+							}
+						} else if (responseData === 'noData') {
+							// Return without data
+							data = undefined;
+						} else {
+							// Return the JSON data of all the entries
+							data = [];
+							for (const entry of returnData.data!.main[0]!) {
+								data.push(entry.json);
+							}
 						}
 
 						if (!didSendResponse) {
-							// Send the webhook response manually
-							res.setHeader('Content-Type', binaryData.mimeType);
-							if (binaryData.id) {
-								const stream = BinaryDataManager.getInstance().getBinaryStream(binaryData.id);
-								await pipeline(stream, res);
-							} else {
-								res.end(Buffer.from(binaryData.data, BINARY_ENCODING));
-							}
-
 							responseCallback(null, {
-								noWebhookResponse: true,
+								data,
+								responseCode,
 							});
 						}
-					} else if (responseData === 'noData') {
-						// Return without data
-						data = undefined;
-					} else {
-						// Return the JSON data of all the entries
-						data = [];
-						for (const entry of returnData.data!.main[0]!) {
-							data.push(entry.json);
-						}
 					}
+					didSendResponse = true;
 
+					return data;
+				})
+				.catch((e) => {
 					if (!didSendResponse) {
-						responseCallback(null, {
-							data,
-							responseCode,
-						});
+						responseCallback(new Error('There was a problem executing the workflow'), {});
 					}
-				}
-				didSendResponse = true;
 
-				return data;
-			})
-			.catch((e) => {
-				if (!didSendResponse) {
-					responseCallback(new Error('There was a problem executing the workflow'), {});
-				}
-
-				throw new ResponseHelper.InternalServerError(e.message);
-			});
-
+					throw new ResponseHelper.InternalServerError(e.message);
+				});
+		}
 		return executionId;
 	} catch (e) {
 		const error =

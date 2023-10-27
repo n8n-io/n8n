@@ -1,7 +1,12 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import type { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.types';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
-import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
+import {
+	autoMapInputData,
+	cellFormatDefault,
+	mapFields,
+	untilSheetSelected,
+} from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData } from './commonDescription';
 
 export const description: SheetProperties = [
@@ -131,7 +136,7 @@ export const description: SheetProperties = [
 			show: {
 				resource: ['sheet'],
 				operation: ['append'],
-				'@version': [4],
+				'@version': [4, 4.1],
 			},
 			hide: {
 				...untilSheetSelected,
@@ -154,7 +159,7 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...cellFormat,
+			cellFormat,
 			{
 				displayName: 'Data Location on Sheet',
 				name: 'locationDefine',
@@ -181,7 +186,11 @@ export const description: SheetProperties = [
 					},
 				],
 			},
-			...handlingExtraData,
+			handlingExtraData,
+			{
+				...handlingExtraData,
+				displayOptions: { show: { '/columns.mappingMode': ['autoMapInputData'] } },
+			},
 		],
 	},
 ];
@@ -227,13 +236,20 @@ export async function execute(
 		setData,
 		sheetName,
 		headerRow,
-		(options.cellFormat as ValueInputOption) || 'RAW',
+		(options.cellFormat as ValueInputOption) || cellFormatDefault(nodeVersion),
 		false,
 	);
 
 	if (nodeVersion < 4 || dataMode === 'autoMapInputData') {
 		return items;
 	} else {
-		return this.helpers.returnJsonArray(setData);
+		const returnData: INodeExecutionData[] = [];
+		for (const [index, entry] of setData.entries()) {
+			returnData.push({
+				json: entry,
+				pairedItems: { item: index },
+			});
+		}
+		return returnData;
 	}
 }

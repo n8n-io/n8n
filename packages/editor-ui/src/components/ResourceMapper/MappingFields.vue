@@ -10,8 +10,8 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import ParameterIssues from '../ParameterIssues.vue';
-import ParameterOptions from '../ParameterOptions.vue';
+import ParameterIssues from '@/components//ParameterIssues.vue';
+import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores';
@@ -65,7 +65,7 @@ function markAsReadOnly(field: ResourceMapperField): boolean {
 
 const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	return props.fieldsToMap
-		.filter((field) => field.display !== false && field.removed !== true)
+		.filter((field) => field.display && field.removed !== true)
 		.map((field) => {
 			return {
 				displayName: getFieldLabel(field),
@@ -98,7 +98,7 @@ const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boo
 });
 
 const removedFields = computed<ResourceMapperField[]>(() => {
-	return props.fieldsToMap.filter((field) => field.removed === true && field.display !== false);
+	return props.fieldsToMap.filter((field) => field.removed === true && field.display);
 });
 
 const addFieldOptions = computed<Array<{ name: string; value: string; disabled?: boolean }>>(() => {
@@ -132,7 +132,7 @@ const parameterActions = computed<Array<{ label: string; value: string; disabled
 					interpolate: { fieldWord: pluralFieldWordCapitalized.value },
 				}),
 				value: 'removeAllFields',
-				disabled: isRemoveAllAvailable.value === false,
+				disabled: !isRemoveAllAvailable.value,
 			},
 		];
 	},
@@ -159,7 +159,14 @@ const resourceMapperMode = computed<string | undefined>(() => {
 	return resourceMapperTypeOptions.value?.mode;
 });
 
+const resourceMapperValuesLabel = computed<string | undefined>(() => {
+	return resourceMapperTypeOptions.value?.valuesLabel;
+});
+
 const valuesLabel = computed<string>(() => {
+	if (resourceMapperValuesLabel.value) {
+		return resourceMapperValuesLabel.value;
+	}
 	if (resourceMapperMode.value && resourceMapperMode.value === 'update') {
 		return locale.baseText('resourceMapper.valuesToUpdate.label');
 	}
@@ -222,8 +229,8 @@ function getFieldIssues(field: INodeProperties): string[] {
 
 	let fieldIssues: string[] = [];
 	const key = `${props.parameter.name}.${fieldName}`;
-	if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
-		fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
+	if (nodeIssues.parameters && key in nodeIssues.parameters) {
+		fieldIssues = fieldIssues.concat(nodeIssues.parameters[key]);
 	}
 	return fieldIssues;
 }
@@ -233,6 +240,10 @@ function getParamType(field: ResourceMapperField): NodePropertyTypes {
 		return field.type as NodePropertyTypes;
 	}
 	return 'string';
+}
+
+function getParsedFieldName(fullName: string): string {
+	return parseResourceMapperFieldName(fullName) ?? fullName;
 }
 
 function onValueChanged(value: IUpdateInformation): void {
@@ -276,6 +287,7 @@ defineExpose({
 			:size="labelSize"
 			:showOptions="true"
 			:showExpressionSelector="false"
+			inputName="columns"
 			color="text-dark"
 		>
 			<template #options>
@@ -336,7 +348,7 @@ defineExpose({
 							},
 						})
 					"
-					data-test-id="remove-field-button"
+					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					@click="removeField(field.name)"
 				/>
 			</div>

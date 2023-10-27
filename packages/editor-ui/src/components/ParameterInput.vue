@@ -46,6 +46,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				:path="path"
+				:additional-expression-data="additionalExpressionData"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
 				@update:modelValue="expressionUpdated"
 				@modalOpenerClick="openExpressionEditorModal"
@@ -98,6 +99,7 @@
 					:defaultValue="parameter.default"
 					:language="editorLanguage"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					:aiButtonEnabled="settingsStore.isCloudDeployment"
 					@update:modelValue="valueChangedDebounced"
 				/>
@@ -117,7 +119,20 @@
 					:modelValue="modelValue"
 					:dialect="getArgument('sqlDialect')"
 					:isReadOnly="isReadOnly"
+					:rows="getArgument('rows')"
 					@update:modelValue="valueChangedDebounced"
+				/>
+
+				<code-node-editor
+					v-else-if="editorType === 'json' && !isExecuteWorkflowNode(node)"
+					:mode="node.parameters.mode"
+					:modelValue="modelValue"
+					:defaultValue="parameter.default"
+					:language="editorLanguage"
+					:isReadOnly="isReadOnly"
+					:aiButtonEnabled="false"
+					@update:modelValue="valueChangedDebounced"
+					:rows="getArgument('rows')"
 				/>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
@@ -126,6 +141,7 @@
 						:modelValue="modelValue"
 						:language="editorLanguage"
 						:isReadOnly="true"
+						:rows="getArgument('rows')"
 					/>
 				</div>
 
@@ -366,6 +382,7 @@ import type {
 	IParameterLabel,
 	EditorType,
 	CodeNodeEditorLanguage,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers, CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 
@@ -382,7 +399,14 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
-import { CODE_NODE_TYPE, CUSTOM_API_CALL_KEY, HTML_NODE_TYPE } from '@/constants';
+
+import {
+	CUSTOM_API_CALL_KEY,
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	HTML_NODE_TYPE,
+	NODES_USING_CODE_NODE_EDITOR,
+} from '@/constants';
+
 import type { PropType } from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import { useWorkflowsStore } from '@/stores/workflows.store';
@@ -411,6 +435,10 @@ export default defineComponent({
 		TextEdit,
 	},
 	props: {
+		additionalExpressionData: {
+			type: Object as PropType<IDataObject>,
+			default: () => ({}),
+		},
 		isReadOnly: {
 			type: Boolean,
 		},
@@ -604,7 +632,7 @@ export default defineComponent({
 			return this.i18n.baseText('parameterInput.parameter', interpolation);
 		},
 		displayValue(): string | number | boolean | null {
-			if (this.remoteParameterOptionsLoading === true) {
+			if (this.remoteParameterOptionsLoading) {
 				// If it is loading options from server display
 				// to user that the data is loading. If not it would
 				// display the user the key instead of the value it
@@ -618,7 +646,7 @@ export default defineComponent({
 			}
 
 			let returnValue;
-			if (this.isValueExpression === false) {
+			if (!this.isValueExpression) {
 				returnValue = this.isResourceLocatorParameter
 					? isResourceLocatorValue(this.modelValue)
 						? this.modelValue.value
@@ -678,7 +706,7 @@ export default defineComponent({
 			return 'text';
 		},
 		getIssues(): string[] {
-			if (this.hideIssues === true || this.node === null) {
+			if (this.hideIssues || this.node === null) {
 				return [];
 			}
 
@@ -700,7 +728,7 @@ export default defineComponent({
 				issues.parameters[this.parameter.name] = [issue];
 			} else if (
 				['options', 'multiOptions'].includes(this.parameter.type) &&
-				this.remoteParameterOptionsLoading === false &&
+				!this.remoteParameterOptionsLoading &&
 				this.remoteParameterOptionsLoadingIssues === null &&
 				this.parameterOptions
 			) {
@@ -735,7 +763,7 @@ export default defineComponent({
 						issues.parameters[this.parameter.name] = [issue];
 					}
 				}
-			} else if (this.remoteParameterOptionsLoadingIssues !== null) {
+			} else if (this.remoteParameterOptionsLoadingIssues !== null && !this.isValueExpression) {
 				if (issues.parameters === undefined) {
 					issues.parameters = {};
 				}
@@ -744,11 +772,7 @@ export default defineComponent({
 				];
 			}
 
-			if (
-				issues !== undefined &&
-				issues.parameters !== undefined &&
-				issues.parameters[this.parameter.name] !== undefined
-			) {
+			if (issues?.parameters?.[this.parameter.name] !== undefined) {
 				return issues.parameters[this.parameter.name];
 			}
 
@@ -764,7 +788,7 @@ export default defineComponent({
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
 			| undefined {
-			if (this.hasRemoteMethod === false) {
+			if (!this.hasRemoteMethod) {
 				// Options are already given
 				return this.parameter.options;
 			}
@@ -881,8 +905,9 @@ export default defineComponent({
 		async loadRemoteParameterOptions() {
 			if (
 				this.node === null ||
-				this.hasRemoteMethod === false ||
-				this.remoteParameterOptionsLoading
+				!this.hasRemoteMethod ||
+				this.remoteParameterOptionsLoading ||
+				!this.parameter
 			) {
 				return;
 			}
@@ -894,7 +919,8 @@ export default defineComponent({
 
 			try {
 				const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
-				const resolvedNodeParameters = this.resolveParameter(
+				const resolvedNodeParameters = this.resolveRequiredParameters(
+					this.parameter,
 					currentNodeParameters,
 				) as INodeParameters;
 				const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
@@ -935,7 +961,7 @@ export default defineComponent({
 				return;
 			}
 
-			if ((this.node.type as string).startsWith('n8n-nodes-base')) {
+			if (this.node.type.startsWith('n8n-nodes-base')) {
 				this.$telemetry.track('User opened Expression Editor', {
 					node_type: this.node.type,
 					parameter_name: this.parameter.displayName,
@@ -1022,16 +1048,17 @@ export default defineComponent({
 			this.$emit('focus');
 		},
 		isCodeNode(node: INodeUi): boolean {
-			return node.type === CODE_NODE_TYPE;
+			return NODES_USING_CODE_NODE_EDITOR.includes(node.type);
 		},
 		isHtmlNode(node: INodeUi): boolean {
 			return node.type === HTML_NODE_TYPE;
 		},
+		isExecuteWorkflowNode(node: INodeUi): boolean {
+			return node.type === EXECUTE_WORKFLOW_NODE_TYPE;
+		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
-			const valueMatch = (value as string).match(
-				/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/,
-			);
+			const valueMatch = value.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/);
 			if (valueMatch === null) {
 				// TODO: Display something if value is not valid
 				return null;
@@ -1212,7 +1239,7 @@ export default defineComponent({
 			}
 		}
 
-		if (this.hasRemoteMethod === true && this.node !== null) {
+		if (this.hasRemoteMethod && this.node !== null) {
 			// Make sure to load the parameter options
 			// directly and whenever the credentials change
 			this.$watch(
@@ -1220,13 +1247,13 @@ export default defineComponent({
 				() => {
 					void this.loadRemoteParameterOptions();
 				},
-				{ deep: true, immediate: true },
+				{ immediate: true },
 			);
 		}
 
 		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
-			inputFieldRef: this.$refs['inputField'] as InstanceType<typeof Vue>,
+			inputFieldRef: this.$refs.inputField as InstanceType<typeof N8nInput>,
 		});
 	},
 	beforeUnmount() {
@@ -1341,6 +1368,10 @@ export default defineComponent({
 
 .input-with-opener .el-input__suffix {
 	right: 0;
+}
+
+.el-input--suffix .el-input__inner {
+	padding-right: 0;
 }
 
 .textarea-modal-opener {
