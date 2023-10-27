@@ -74,7 +74,7 @@ import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { executionDataToJson, highlightText, isString, shorten } from '@/utils';
+import { executionDataToJson, highlightText, isString, sanitizeHtml, shorten } from '@/utils';
 import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
@@ -198,7 +198,7 @@ export default defineComponent({
 			return path.replace(/^(\["?\d"?]\.?)/g, '');
 		},
 		highlightSearchTerm(value: string): string {
-			return highlightText(this.getContent(value), this.search);
+			return sanitizeHtml(highlightText(this.getContent(value), this.search));
 		},
 	},
 });

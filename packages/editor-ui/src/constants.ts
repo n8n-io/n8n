@@ -613,6 +613,7 @@ export const ALLOWED_HTML_TAGS = [
 	'small',
 	'details',
 	'summary',
+	'mark',
 ];
 
 export const CLOUD_CHANGE_PLAN_PAGE = window.location.host.includes('stage-app.n8n.cloud')

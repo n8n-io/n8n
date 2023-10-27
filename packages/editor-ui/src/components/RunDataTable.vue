@@ -386,7 +386,7 @@ export default defineComponent({
 			return value;
 		},
 		highlightSearchTerm(value: string): string {
-			return highlightText(this.getValueToRender(value), this.search);
+			return sanitizeHtml(highlightText(this.getValueToRender(value), this.search));
 		},
 		onDragStart() {
 			this.draggedColumn = true;
