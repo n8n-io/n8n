@@ -58,12 +58,10 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 
 		if (this.isLeader) {
 			this.logger.debug(`Leader is this instance "${this.id}"`);
-			this.logger.debug(`Keeping leadership for ${this.leaderKeyTtl} seconds...`);
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 		} else {
 			this.logger.debug(`Leader is other instance "${leaderId}"`);
-			this.logger.debug(`Rechecking leadership in ${this.leaderKeyTtl} seconds`);
 
 			this.leaderId = leaderId;
 		}
