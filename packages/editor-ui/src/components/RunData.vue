@@ -191,6 +191,7 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
+			<input type="text" />
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
