@@ -2,7 +2,7 @@ import type { NodeCreatorOpenSource } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
 
 export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
-export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Workflow size limit in bytes
+export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
 export const MAX_WORKFLOW_PIN_DATA_SIZE =
 	import.meta.env.VUE_APP_MAX_WORKFLOW_PIN_DATA_SIZE ?? 12582912; // Workflow pinned data size limit in bytes
 export const MAX_DISPLAY_DATA_SIZE = 204800;
