@@ -28,7 +28,7 @@ import { InternalHooks } from '@/InternalHooks';
 import { License, FeatureNotLicensedError } from '@/License';
 import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
-import { MainInstancePublisher } from '@/services/orchestration/main/main-instance.publisher';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -111,6 +111,15 @@ export class Start extends BaseCommand {
 			await Container.get(License).shutdown();
 
 			Container.get(ExecutionRepository).clearTimers();
+
+			if (config.getEnv('leaderSelection.enabled')) {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
+
+				await Container.get(MultiMainInstancePublisher).destroy();
+			}
 
 			await Container.get(InternalHooks).onN8nStop();
 
@@ -217,26 +226,22 @@ export class Start extends BaseCommand {
 	async initOrchestration() {
 		if (config.get('executions.mode') !== 'queue') return;
 
-		const isLeaderSelectionEnabled = config.get('leaderSelection.enabled');
-
-		if (!isLeaderSelectionEnabled) {
-			await Container.get(MainInstancePublisher).init();
+		if (!config.get('leaderSelection.enabled')) {
+			await Container.get(SingleMainInstancePublisher).init();
 			await Container.get(OrchestrationHandlerMainService).init();
 			return;
 		}
 
-		const isLeaderSelectionLicensed = Container.get(License).isMultipleMainInstancesLicensed();
-
-		if (!isLeaderSelectionLicensed) {
+		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const { MultipleMainInstancesPublisher } = await import(
-			'@/services/orchestration/main/multiple-main-instances.publisher.ee'
+		const { MultiMainInstancePublisher } = await import(
+			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 		);
 
-		await Container.get(MultipleMainInstancesPublisher).init();
+		await Container.get(MultiMainInstancePublisher).init();
 		await Container.get(OrchestrationHandlerMainService).init();
 	}
 

@@ -1,13 +1,12 @@
 import { Logger } from '@/Logger';
 import { Service } from 'typedi';
 import { OrchestrationService } from '../../orchestration.base.service';
-import { SanityCheck } from './main-instance-sanity-check.decorator';
 
 /**
- * Publishes to command channel. For use in main instance only.
+ * For use in main instance, in single main instance scenario.
  */
 @Service()
-export class MainInstancePublisher extends OrchestrationService {
+export class SingleMainInstancePublisher extends OrchestrationService {
 	constructor(protected readonly logger: Logger) {
 		super();
 	}
@@ -16,18 +15,22 @@ export class MainInstancePublisher extends OrchestrationService {
 		return this.initialized && this.isQueueMode && this.isMainInstance;
 	}
 
-	@SanityCheck()
 	async getWorkerStatus(id?: string) {
-		this.logger.debug('Sending "getStatus" to command channel');
+		if (!this.sanityCheck()) return;
+
+		const command = 'getStatus';
+
+		this.logger.debug(`Sending "${command}" to command channel`);
 
 		await this.redisPublisher.publishToCommandChannel({
-			command: 'getStatus',
+			command,
 			targets: id ? [id] : undefined,
 		});
 	}
 
-	@SanityCheck()
 	async getWorkerIds() {
+		if (!this.sanityCheck()) return;
+
 		const command = 'getId';
 
 		this.logger.debug(`Sending "${command}" to command channel`);
@@ -35,8 +38,9 @@ export class MainInstancePublisher extends OrchestrationService {
 		await this.redisPublisher.publishToCommandChannel({ command });
 	}
 
-	@SanityCheck()
 	async broadcastRestartEventbusAfterDestinationUpdate() {
+		if (!this.sanityCheck()) return;
+
 		const command = 'restartEventBus';
 
 		this.logger.debug(`Sending "${command}" to command channel`);
@@ -44,8 +48,9 @@ export class MainInstancePublisher extends OrchestrationService {
 		await this.redisPublisher.publishToCommandChannel({ command });
 	}
 
-	@SanityCheck()
 	async broadcastReloadExternalSecretsProviders() {
+		if (!this.sanityCheck()) return;
+
 		const command = 'reloadExternalSecretsProviders';
 
 		this.logger.debug(`Sending "${command}" to command channel`);
