@@ -344,7 +344,8 @@ export const nodeBase = defineComponent({
 
 			// TODO: There are still a lot of references of "main" in NodesView and
 			//       other locations. So assume there will be more problems
-
+			let maxLabelLength = 0;
+			const outputConfigurations: INodeOutputConfiguration[] = [];
 			this.outputs.forEach((value, i) => {
 				let outputConfiguration: INodeOutputConfiguration;
 				if (typeof value === 'string') {
@@ -354,6 +355,24 @@ export const nodeBase = defineComponent({
 				} else {
 					outputConfiguration = value;
 				}
+				if (nodeTypeData.outputNames?.[i]) {
+					outputConfiguration.displayName = nodeTypeData.outputNames[i];
+				}
+
+				if (outputConfiguration.displayName) {
+					maxLabelLength =
+						outputConfiguration.displayName.length > maxLabelLength
+							? outputConfiguration.displayName.length
+							: maxLabelLength;
+				}
+
+				outputConfigurations.push(outputConfiguration);
+			});
+
+			const endpointLabelLength = maxLabelLength < 4 ? 'short' : 'medium';
+
+			this.outputs.forEach((value, i) => {
+				const outputConfiguration = outputConfigurations[i];
 
 				const outputName: ConnectionTypes = outputConfiguration.type;
 
@@ -426,10 +445,10 @@ export const nodeBase = defineComponent({
 				);
 
 				this.__addEndpointTestingData(endpoint, 'output', typeIndex);
-				if (outputConfiguration.displayName || nodeTypeData.outputNames?.[i]) {
+				if (outputConfiguration.displayName) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(
-						outputConfiguration.displayName || nodeTypeData.outputNames[i],
+						outputConfiguration.displayName,
 						outputName,
 						outputConfiguration?.category,
 					);
@@ -442,7 +461,7 @@ export const nodeBase = defineComponent({
 						nodeId: this.nodeId,
 						index: typeIndex,
 						totalEndpoints: outputsOfSameRootType.length,
-						nodeType: node.type,
+						endpointLabelLength,
 					};
 				}
 
@@ -458,7 +477,7 @@ export const nodeBase = defineComponent({
 								connectedEndpoint: endpoint,
 								showOutputLabel: this.outputs.length === 1,
 								size: this.outputs.length >= 3 ? 'small' : 'medium',
-								nodeType: node.type,
+								endpointLabelLength,
 								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},
