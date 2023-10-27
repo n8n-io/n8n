@@ -125,6 +125,7 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
+	IDataObject,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '@/components/CredentialIcon.vue';
@@ -139,7 +140,6 @@ import SaveButton from '@/components/SaveButton.vue';
 import Modal from '@/components/Modal.vue';
 import InlineNameEdit from '@/components/InlineNameEdit.vue';
 import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature, MODAL_CONFIRM } from '@/constants';
-import type { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import type { IPermissions } from '@/permissions';
 import { getCredentialPermissions } from '@/permissions';
@@ -270,7 +270,7 @@ export default defineComponent({
 
 		setTimeout(async () => {
 			if (this.credentialId) {
-				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner === true) {
+				if (!this.requiredPropertiesFilled && this.credentialPermissions.isOwner) {
 					// sharees can't see properties, so this check would always fail for them
 					// if the credential contains required fields.
 					this.showValidationWarning = true;
@@ -364,7 +364,7 @@ export default defineComponent({
 		},
 		isCredentialTestable(): boolean {
 			// Sharees can always test since they can't see the data.
-			if (this.credentialPermissions.isOwner === false) {
+			if (!this.credentialPermissions.isOwner) {
 				return true;
 			}
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
@@ -495,7 +495,7 @@ export default defineComponent({
 		defaultCredentialTypeName(): string {
 			let credentialTypeName = this.credentialTypeName;
 			if (!credentialTypeName || credentialTypeName === 'null') {
-				if (this.activeNodeType && this.activeNodeType.credentials) {
+				if (this.activeNodeType?.credentials) {
 					credentialTypeName = this.activeNodeType.credentials[0].name;
 				}
 			}
@@ -701,7 +701,7 @@ export default defineComponent({
 		getParentTypes(name: string): string[] {
 			const credentialType = this.credentialsStore.getCredentialTypeByName(name);
 
-			if (credentialType === undefined || credentialType.extends === undefined) {
+			if (credentialType?.extends === undefined) {
 				return [];
 			}
 
@@ -828,7 +828,7 @@ export default defineComponent({
 
 			this.isSaving = false;
 			if (credential) {
-				this.credentialId = credential.id as string;
+				this.credentialId = credential.id;
 
 				if (this.isCredentialTestable) {
 					this.isTesting = true;

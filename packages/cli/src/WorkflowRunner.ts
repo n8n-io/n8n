@@ -37,7 +37,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
-// eslint-disable-next-line import/no-cycle
+
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 // eslint-disable-next-line import/no-cycle

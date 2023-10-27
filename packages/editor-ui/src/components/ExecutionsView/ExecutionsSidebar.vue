@@ -145,7 +145,7 @@ export default defineComponent({
 				}
 			}
 		},
-		onRetryExecution(payload: Object) {
+		onRetryExecution(payload: object) {
 			this.$emit('retryExecution', payload);
 		},
 		onRefresh(): void {

@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { OptionsWithUri } from 'request';
 
 import type {
@@ -13,8 +14,6 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 import upperFirst from 'lodash/upperFirst';
-
-import { createHash } from 'crypto';
 
 export async function webexApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,

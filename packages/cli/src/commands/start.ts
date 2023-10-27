@@ -248,7 +248,6 @@ export class Start extends BaseCommand {
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 			await Container.get(CommunityPackagesService).setMissingPackages({
 				reinstallMissingPackages: flags.reinstallMissingPackages,

@@ -964,7 +964,7 @@ async function executeWorkflow(
 	activeExecutions.remove(executionId, data);
 	// Workflow did fail
 	const { error } = data.data.resultData;
-	// eslint-disable-next-line @typescript-eslint/no-throw-literal
+
 	throw objectToError(
 		{
 			...error,

@@ -24,7 +24,6 @@ import { TagService } from '@/services/tag.service';
 import { Logger } from '@/Logger';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
 
 EEWorkflowController.use((req, res, next) => {

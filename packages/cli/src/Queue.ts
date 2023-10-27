@@ -43,9 +43,9 @@ export class Queue {
 		const prefix = getRedisPrefix(bullPrefix);
 		const clusterNodes = getRedisClusterNodes();
 		const usesRedisCluster = clusterNodes.length > 0;
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		const { default: Bull } = await import('bull');
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		const { default: Redis } = await import('ioredis');
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
