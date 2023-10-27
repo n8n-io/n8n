@@ -1635,7 +1635,7 @@ export class HttpRequestV3 implements INodeType {
 				if (autoDetectResponseFormat) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'Pagination is not supported in combination with Response Format "Autodetect"!',
+						"To use pagination, please set the specific response format (rather than 'Autodetect')",
 						{
 							description:
 								'Please add the option "Response" under "Options" and set "Response Format" to the expected format',
