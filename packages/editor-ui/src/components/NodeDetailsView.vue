@@ -344,7 +344,7 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null && this.activeNode === null) {
+			if (this.inputNode === null || this.activeNode === null) {
 				return 0;
 			}
 
@@ -355,7 +355,7 @@ export default defineComponent({
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (outputs.filter((output) => output !== NodeConnectionType.Main).length) {
+			if (outputs.some((output) => output !== NodeConnectionType.Main)) {
 				node = this.activeNode;
 			}
 
