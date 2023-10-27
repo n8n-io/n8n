@@ -7,11 +7,12 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { createDeferredPromise, LoggerProxy } from 'n8n-workflow';
+import { WorkflowOperationError, createDeferredPromise } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
 import type {
+	ExecutionPayload,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionsCurrentSummary,
@@ -19,12 +20,15 @@ import type {
 } from '@/Interfaces';
 import { isWorkflowIdValid } from '@/utils';
 import { ExecutionRepository } from '@db/repositories';
+import { Logger } from '@/Logger';
 
 @Service()
 export class ActiveExecutions {
 	private activeExecutions: {
 		[index: string]: IExecutingWorkflowData;
 	} = {};
+
+	constructor(private readonly logger: Logger) {}
 
 	/**
 	 * Add a new active execution
@@ -38,7 +42,7 @@ export class ActiveExecutions {
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
-			const fullExecutionData: IExecutionDb = {
+			const fullExecutionData: ExecutionPayload = {
 				data: executionData.executionData!,
 				mode: executionData.executionMode,
 				finished: false,
@@ -56,9 +60,8 @@ export class ActiveExecutions {
 				fullExecutionData.workflowId = workflowId;
 			}
 
-			const executionResult = await Container.get(ExecutionRepository).createNewExecution(
-				fullExecutionData,
-			);
+			const executionResult =
+				await Container.get(ExecutionRepository).createNewExecution(fullExecutionData);
 			executionId = executionResult.id;
 			if (executionId === undefined) {
 				throw new Error('There was an issue assigning an execution id to the execution');
@@ -124,6 +127,10 @@ export class ActiveExecutions {
 		this.activeExecutions[executionId].responsePromise?.resolve(response);
 	}
 
+	getPostExecutePromiseCount(executionId: string): number {
+		return this.activeExecutions[executionId]?.postExecutePromises.length ?? 0;
+	}
+
 	/**
 	 * Remove an active execution
 	 *
@@ -183,12 +190,12 @@ export class ActiveExecutions {
 	 * @param {string} executionId The id of the execution to wait for
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new WorkflowOperationError(`There is no active execution with id "${executionId}".`);
+		}
+
 		// Create the promise which will be resolved when the execution finished
 		const waitPromise = await createDeferredPromise<IRun | undefined>();
-
-		if (this.activeExecutions[executionId] === undefined) {
-			throw new Error(`There is no active execution with id "${executionId}".`);
-		}
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 
@@ -221,7 +228,7 @@ export class ActiveExecutions {
 
 	async setStatus(executionId: string, status: ExecutionStatus): Promise<void> {
 		if (this.activeExecutions[executionId] === undefined) {
-			LoggerProxy.debug(
+			this.logger.debug(
 				`There is no active execution with id "${executionId}", can't update status to ${status}.`,
 			);
 			return;

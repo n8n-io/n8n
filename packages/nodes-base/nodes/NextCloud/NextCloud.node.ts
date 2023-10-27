@@ -14,6 +14,7 @@ import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
 import { nextCloudApiRequest } from './GenericFunctions';
+import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
 	description: INodeTypeDescription = {
@@ -860,7 +861,7 @@ export class NextCloud implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData().slice();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 		let credentials;
@@ -1103,7 +1104,7 @@ export class NextCloud implements INodeType {
 						if (resource === 'file' && operation === 'download') {
 							items[i].json = { error: error.message };
 						} else {
-							returnData.push({ error: error.message });
+							returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 						}
 						continue;
 					}
@@ -1114,6 +1115,7 @@ export class NextCloud implements INodeType {
 				if (resource === 'file' && operation === 'download') {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
+						pairedItem: { item: i },
 						binary: {},
 					};
 
@@ -1153,7 +1155,12 @@ export class NextCloud implements INodeType {
 						});
 					});
 
-					returnData.push(jsonResponseData);
+					const executionData = this.helpers.constructExecutionMetaData(
+						wrapData(jsonResponseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
@@ -1180,7 +1187,12 @@ export class NextCloud implements INodeType {
 							});
 						});
 
-						returnData.push(jsonResponseData);
+						const executionData = this.helpers.constructExecutionMetaData(
+							wrapData(jsonResponseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					} else {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
@@ -1204,7 +1216,7 @@ export class NextCloud implements INodeType {
 						});
 
 						jsonResponseData.forEach((value) => {
-							returnData.push({ id: value } as IDataObject);
+							returnData.push({ json: { id: value }, pairedItem: { item: i } });
 						});
 					}
 				} else if (resource === 'folder' && operation === 'list') {
@@ -1265,19 +1277,23 @@ export class NextCloud implements INodeType {
 								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
-								returnData.push(newItem);
+								returnData.push({ json: newItem, pairedItem: { item: i } });
 							}
 						}
 					}
 				} else {
-					returnData.push(responseData as IDataObject);
+					const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
+						itemData: { item: i },
+					});
+
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ error: error.message });
+						returnData.push({ json: { error: error.message }, pairedItem: { item: i } });
 					}
 					continue;
 				}
@@ -1287,10 +1303,10 @@ export class NextCloud implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output get replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return [returnData];
 		}
 	}
 }

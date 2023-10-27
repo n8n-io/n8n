@@ -115,6 +115,7 @@ export class Html implements INodeType {
 				displayName: 'Binary Property',
 				name: 'dataPropertyName',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['extractHtmlContent'],
@@ -130,6 +131,7 @@ export class Html implements INodeType {
 				displayName: 'JSON Property',
 				name: 'dataPropertyName',
 				type: 'string',
+				requiresDataPath: 'single',
 				displayOptions: {
 					show: {
 						operation: ['extractHtmlContent'],
@@ -411,7 +413,16 @@ export class Html implements INodeType {
 			table += '</tbody>';
 			table += '</table>';
 
-			return this.prepareOutputData([{ json: { table } }]);
+			return [
+				[
+					{
+						json: { table },
+						pairedItem: items.map((_item, index) => ({
+							item: index,
+						})),
+					},
+				],
+			];
 		}
 
 		let item: INodeExecutionData;
@@ -528,6 +539,6 @@ export class Html implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

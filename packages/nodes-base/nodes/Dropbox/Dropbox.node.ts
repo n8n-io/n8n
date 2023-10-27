@@ -1017,10 +1017,10 @@ export class Dropbox implements INodeType {
 
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

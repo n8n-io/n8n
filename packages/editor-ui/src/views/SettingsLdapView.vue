@@ -6,7 +6,7 @@
 			</n8n-heading>
 		</div>
 
-		<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right" class="mb-l">
+		<n8n-info-tip type="note" theme="info" tooltipPlacement="right" class="mb-l">
 			{{ $locale.baseText('settings.ldap.note') }}
 		</n8n-info-tip>
 		<n8n-action-box
@@ -222,7 +222,7 @@ export default defineComponent({
 	},
 	methods: {
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
+			void this.uiStore.goToUpgrade('ldap', 'upgrade-ldap');
 		},
 		cellClassStyle({ row, column }: CellStyle<TableRow>) {
 			if (column.property === 'status') {

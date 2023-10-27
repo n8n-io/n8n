@@ -1,4 +1,4 @@
-import { NodeHelpers, Workflow, LoggerProxy as Logger } from 'n8n-workflow';
+import { NodeHelpers, Workflow } from 'n8n-workflow';
 import { Service } from 'typedi';
 import type express from 'express';
 
@@ -14,13 +14,15 @@ import type {
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { ExecutionRepository } from '@db/repositories';
 import { OwnershipService } from './services/ownership.service';
+import { Logger } from '@/Logger';
 
 @Service()
 export class WaitingWebhooks implements IWebhookManager {
 	constructor(
-		private nodeTypes: NodeTypes,
-		private executionRepository: ExecutionRepository,
-		private ownershipService: OwnershipService,
+		private readonly logger: Logger,
+		private readonly nodeTypes: NodeTypes,
+		private readonly executionRepository: ExecutionRepository,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
@@ -30,7 +32,10 @@ export class WaitingWebhooks implements IWebhookManager {
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
-		Logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
+		this.logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
+
+		// Reset request parameters
+		req.params = {} as WaitingWebhookRequest['params'];
 
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,

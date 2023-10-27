@@ -2,14 +2,13 @@ import { readFileSync } from 'fs';
 import type { SuperAgentTest } from 'supertest';
 import { agent as testAgent } from 'supertest';
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 
 import { AbstractServer } from '@/AbstractServer';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import { getLogger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
@@ -18,51 +17,46 @@ describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
 	mockInstance(InternalHooks);
 	mockInstance(Push);
-	LoggerProxy.init(getLogger());
 
 	let agent: SuperAgentTest;
 
+	beforeAll(async () => {
+		await testDb.init();
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+	});
+
 	describe('Content-Type support', () => {
 		beforeAll(async () => {
-			await testDb.init();
-
 			const node = new WebhookTestingNode();
 			const user = await testDb.createUser();
-			await testDb.createWorkflow(
-				{
-					active: true,
-					nodes: [
-						{
-							name: 'Webhook',
-							type: node.description.name,
-							typeVersion: 1,
-							parameters: {
-								httpMethod: 'POST',
-								path: 'abcd',
-							},
-							id: '74786112-fb73-4d80-bd9a-43982939b801',
-							webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
-							position: [740, 420],
-						},
-					],
-				},
-				user,
-			);
+			await testDb.createWorkflow(createWebhookWorkflow(node), user);
 
 			const nodeTypes = mockInstance(NodeTypes);
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
 			await initActiveWorkflowRunner();
+
 			const server = new (class extends AbstractServer {})();
 			await server.start();
 			agent = testAgent(server.app);
 		});
 
+		afterAll(async () => {
+			await testDb.truncate(['Workflow']);
+		});
+
 		test('should handle JSON', async () => {
 			const response = await agent.post('/webhook/abcd').send({ test: true });
 			expect(response.statusCode).toEqual(200);
-			expect(response.body).toEqual({ type: 'application/json', body: { test: true } });
+			expect(response.body).toEqual({
+				type: 'application/json',
+				body: { test: true },
+				params: {},
+			});
 		});
 
 		test('should handle XML', async () => {
@@ -83,6 +77,7 @@ describe('Webhook API', () => {
 						inner: 'value',
 					},
 				},
+				params: {},
 			});
 		});
 
@@ -95,6 +90,7 @@ describe('Webhook API', () => {
 			expect(response.body).toEqual({
 				type: 'application/x-www-form-urlencoded',
 				body: { x: '5', y: 'str', z: 'false' },
+				params: {},
 			});
 		});
 
@@ -107,27 +103,69 @@ describe('Webhook API', () => {
 			expect(response.body).toEqual({
 				type: 'text/plain',
 				body: '{"key": "value"}',
+				params: {},
 			});
 		});
 
 		test('should handle multipart/form-data', async () => {
 			const response = await agent
 				.post('/webhook/abcd')
-				.field('field', 'value')
-				.attach('file', Buffer.from('random-text'))
+				.field('field1', 'value1')
+				.field('field2', 'value2')
+				.field('field2', 'value3')
+				.attach('file1', Buffer.from('random-text'))
+				.attach('file2', Buffer.from('random-text'))
+				.attach('file2', Buffer.from('random-text'))
 				.set('content-type', 'multipart/form-data');
 
 			expect(response.statusCode).toEqual(200);
 			expect(response.body.type).toEqual('multipart/form-data');
-			const {
-				data,
-				files: {
-					file: [file],
+			const { data, files } = response.body.body;
+			expect(data).toEqual({ field1: 'value1', field2: ['value2', 'value3'] });
+
+			expect(files.file1).not.toBeInstanceOf(Array);
+			expect(files.file1.mimetype).toEqual('application/octet-stream');
+			expect(readFileSync(files.file1.filepath, 'utf-8')).toEqual('random-text');
+			expect(files.file2).toBeInstanceOf(Array);
+			expect(files.file2.length).toEqual(2);
+		});
+	});
+
+	describe('Params support', () => {
+		beforeAll(async () => {
+			const node = new WebhookTestingNode();
+			const user = await testDb.createUser();
+			await testDb.createWorkflow(createWebhookWorkflow(node, ':variable', 'PATCH'), user);
+
+			const nodeTypes = mockInstance(NodeTypes);
+			nodeTypes.getByName.mockReturnValue(node);
+			nodeTypes.getByNameAndVersion.mockReturnValue(node);
+
+			await initActiveWorkflowRunner();
+
+			const server = new (class extends AbstractServer {})();
+			await server.start();
+			agent = testAgent(server.app);
+		});
+
+		afterAll(async () => {
+			await testDb.truncate(['Workflow']);
+		});
+
+		test('should handle params', async () => {
+			const response = await agent
+				.patch('/webhook/5ccef736-be16-4d10-b7fb-feed7a61ff22/test')
+				.send({ test: true });
+			expect(response.statusCode).toEqual(200);
+			expect(response.body).toEqual({
+				type: 'application/json',
+				body: { test: true },
+				params: {
+					variable: 'test',
 				},
-			} = response.body.body;
-			expect(data).toEqual({ field: ['value'] });
-			expect(file.mimetype).toEqual('application/octet-stream');
-			expect(readFileSync(file.filepath, 'utf-8')).toEqual('random-text');
+			});
+
+			await agent.post('/webhook/abcd').send({ test: true }).expect(404);
 		});
 	});
 
@@ -171,8 +209,28 @@ describe('Webhook API', () => {
 				webhookResponse: {
 					type: req.contentType,
 					body: req.body,
+					params: req.params,
 				},
 			};
 		}
 	}
+
+	const createWebhookWorkflow = (
+		node: WebhookTestingNode,
+		path = 'abcd',
+		httpMethod = 'POST',
+	): Partial<WorkflowEntity> => ({
+		active: true,
+		nodes: [
+			{
+				name: 'Webhook',
+				type: node.description.name,
+				typeVersion: 1,
+				parameters: { httpMethod, path },
+				id: '74786112-fb73-4d80-bd9a-43982939b801',
+				webhookId: '5ccef736-be16-4d10-b7fb-feed7a61ff22',
+				position: [740, 420],
+			},
+		],
+	});
 });

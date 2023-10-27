@@ -147,7 +147,7 @@ export default defineComponent({
 	methods: {
 		async onAddSharee(userId: string) {
 			const sharee = { ...this.usersStore.getUserById(userId), isOwner: false };
-			this.$emit('change', (this.credentialData.sharedWith || []).concat(sharee));
+			this.$emit('update:modelValue', (this.credentialData.sharedWith || []).concat(sharee));
 		},
 		async onRemoveSharee(userId: string) {
 			const user = this.usersStore.getUserById(userId);
@@ -170,7 +170,7 @@ export default defineComponent({
 
 				if (confirm === MODAL_CONFIRM) {
 					this.$emit(
-						'change',
+						'update:modelValue',
 						this.credentialData.sharedWith.filter((sharee: IUser) => {
 							return sharee.id !== user.id;
 						}),
@@ -186,7 +186,7 @@ export default defineComponent({
 			this.modalBus.emit('close');
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
+			void this.uiStore.goToUpgrade('credential_sharing', 'upgrade-credentials-sharing');
 		},
 	},
 	mounted() {

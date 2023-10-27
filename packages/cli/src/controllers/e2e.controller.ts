@@ -12,6 +12,7 @@ import { LICENSE_FEATURES, inE2ETests } from '@/constants';
 import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
 import type { BooleanLicenseFeature } from '@/Interfaces';
+import { MfaService } from '@/Mfa/mfa.service';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
@@ -61,8 +62,11 @@ export class E2EController {
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
+		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
+		[LICENSE_FEATURES.SHOW_NON_PROD_BANNER]: false,
 		[LICENSE_FEATURES.WORKFLOW_HISTORY]: false,
 		[LICENSE_FEATURES.DEBUG_IN_EDITOR]: false,
+		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
 	};
 
 	constructor(
@@ -71,6 +75,7 @@ export class E2EController {
 		private settingsRepo: SettingsRepository,
 		private userRepo: UserRepository,
 		private workflowRunner: ActiveWorkflowRunner,
+		private mfaService: MfaService,
 	) {
 		license.isFeatureEnabled = (feature: BooleanLicenseFeature) =>
 			this.enabledFeatures[feature] ?? false;
@@ -104,7 +109,7 @@ export class E2EController {
 
 	private async resetLogStreaming() {
 		for (const id in eventBus.destinations) {
-			await eventBus.removeDestination(id);
+			await eventBus.removeDestination(id, false);
 		}
 	}
 
@@ -135,13 +140,24 @@ export class E2EController {
 			roles.map(([name, scope], index) => ({ name, scope, id: (index + 1).toString() })),
 		);
 
-		const users = [];
-		users.push({
+		const instanceOwner = {
 			id: uuid(),
 			...owner,
 			password: await hashPassword(owner.password),
 			globalRoleId: globalOwnerRoleId,
-		});
+		};
+
+		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
+			const { encryptedRecoveryCodes, encryptedSecret } =
+				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
+			instanceOwner.mfaSecret = encryptedSecret;
+			instanceOwner.mfaRecoveryCodes = encryptedRecoveryCodes;
+		}
+
+		const users = [];
+
+		users.push(instanceOwner);
+
 		for (const { password, ...payload } of members) {
 			users.push(
 				this.userRepo.create({
@@ -152,8 +168,6 @@ export class E2EController {
 				}),
 			);
 		}
-
-		console.log('users', users);
 
 		await this.userRepo.insert(users);
 

@@ -665,6 +665,10 @@ export class Redis implements INodeType {
 				for (let index = 0; index < (value as string[]).length; index++) {
 					await clientLset(keyName, index, (value as IDataObject)[index]!.toString());
 				}
+			} else if (type === 'sets') {
+				const clientSadd = util.promisify(client.sadd).bind(client);
+				//@ts-ignore
+				await clientSadd(keyName, value);
 			}
 
 			if (expire) {
@@ -707,7 +711,7 @@ export class Redis implements INodeType {
 						const clientInfo = util.promisify(client.info).bind(client);
 						const result = await clientInfo();
 
-						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as string) }]));
+						resolve([[{ json: convertInfoToObject(result as string) }]]);
 						client.quit();
 					} else if (
 						['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
@@ -838,7 +842,7 @@ export class Redis implements INodeType {
 						}
 
 						client.quit();
-						resolve(this.prepareOutputData(returnItems));
+						resolve([returnItems]);
 					}
 				} catch (error) {
 					reject(error);

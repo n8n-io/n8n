@@ -1,11 +1,9 @@
 import type { SuperAgentTest } from 'supertest';
 import { In } from 'typeorm';
-import { UserSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 
 import * as Db from '@/Db';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import type { CredentialWithSharings } from '@/credentials/credentials.types';
+import type { Credentials } from '@/requests';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
@@ -92,10 +90,10 @@ describe('GET /credentials', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
 		const ownerCredential = response.body.data.find(
-			(e: CredentialWithSharings) => e.ownedBy?.id === owner.id,
+			(e: Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === owner.id,
 		);
 		const memberCredential = response.body.data.find(
-			(e: CredentialWithSharings) => e.ownedBy?.id === member1.id,
+			(e: Credentials.WithOwnedByAndSharedWith) => e.ownedBy?.id === member1.id,
 		);
 
 		validateMainCredentialData(ownerCredential);
@@ -304,21 +302,6 @@ describe('GET /credentials/:id', () => {
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
 	});
 
-	test('should fail with missing encryption key', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent
-			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
-	});
-
 	test('should return 404 if cred not found', async () => {
 		const response = await authOwnerAgent.get('/credentials/789');
 		expect(response.statusCode).toBe(404);
@@ -497,7 +480,7 @@ describe('PUT /credentials/:id/share', () => {
 	});
 });
 
-function validateMainCredentialData(credential: CredentialWithSharings) {
+function validateMainCredentialData(credential: Credentials.WithOwnedByAndSharedWith) {
 	expect(typeof credential.name).toBe('string');
 	expect(typeof credential.type).toBe('string');
 	expect(typeof credential.nodesAccess[0].nodeType).toBe('string');

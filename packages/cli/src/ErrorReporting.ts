@@ -1,11 +1,15 @@
 import { createHash } from 'crypto';
 import config from '@/config';
-import { ErrorReporterProxy, NodeError } from 'n8n-workflow';
+import { ErrorReporterProxy, ExecutionBaseError } from 'n8n-workflow';
 
 let initialized = false;
 
 export const initErrorHandling = async () => {
 	if (initialized) return;
+
+	process.on('uncaughtException', (error) => {
+		ErrorReporterProxy.error(error);
+	});
 
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
 	if (!config.getEnv('diagnostics.enabled') || !dsn) {
@@ -35,17 +39,13 @@ export const initErrorHandling = async () => {
 
 	const seenErrors = new Set<string>();
 	addGlobalEventProcessor((event, { originalException }) => {
-		if (originalException instanceof NodeError && originalException.severity === 'warning')
+		if (originalException instanceof ExecutionBaseError && originalException.severity === 'warning')
 			return null;
 		if (!event.exception) return null;
 		const eventHash = createHash('sha1').update(JSON.stringify(event.exception)).digest('base64');
 		if (seenErrors.has(eventHash)) return null;
 		seenErrors.add(eventHash);
 		return event;
-	});
-
-	process.on('uncaughtException', (error) => {
-		ErrorReporterProxy.error(error);
 	});
 
 	ErrorReporterProxy.init({

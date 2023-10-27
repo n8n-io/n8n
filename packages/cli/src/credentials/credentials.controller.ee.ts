@@ -1,16 +1,16 @@
 import express from 'express';
 import type { INodeCredentialTestResult } from 'n8n-workflow';
-import { deepCopy, LoggerProxy } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
 import type { CredentialRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
-import type { CredentialWithSharings } from './credentials.types';
+import { OwnershipService } from '@/services/ownership.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
@@ -26,27 +26,6 @@ EECredentialsController.use((req, res, next) => {
 });
 
 /**
- * GET /credentials
- */
-EECredentialsController.get(
-	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<CredentialWithSharings[]> => {
-		try {
-			const allCredentials = await EECredentials.getAll(req.user, {
-				relations: ['shared', 'shared.role', 'shared.user'],
-			});
-
-			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) =>
-				EECredentials.addOwnerAndSharings(credential),
-			);
-		} catch (error) {
-			LoggerProxy.error('Request to list credentials failed', error as Error);
-			throw error;
-		}
-	}),
-);
-
-/**
  * GET /credentials/:id
  */
 EECredentialsController.get(
@@ -59,7 +38,7 @@ EECredentialsController.get(
 		let credential = (await EECredentials.get(
 			{ id: credentialId },
 			{ relations: ['shared', 'shared.role', 'shared.user'] },
-		)) as CredentialsEntity & CredentialWithSharings;
+		)) as CredentialsEntity;
 
 		if (!credential) {
 			throw new ResponseHelper.NotFoundError(
@@ -73,7 +52,7 @@ EECredentialsController.get(
 			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
-		credential = EECredentials.addOwnerAndSharings(credential);
+		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
 
 		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
 			const { data: _, ...rest } = credential;
@@ -82,11 +61,7 @@ EECredentialsController.get(
 
 		const { data: _, ...rest } = credential;
 
-		const key = await EECredentials.getEncryptionKey();
-		const decryptedData = EECredentials.redact(
-			await EECredentials.decrypt(key, credential),
-			credential,
-		);
+		const decryptedData = EECredentials.redact(EECredentials.decrypt(credential), credential);
 
 		return { data: decryptedData, ...rest };
 	}),
@@ -102,8 +77,6 @@ EECredentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const encryptionKey = await EECredentials.getEncryptionKey();
-
 		const credentialId = credentials.id;
 		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialId);
 
@@ -113,17 +86,17 @@ EECredentialsController.post(
 				throw new ResponseHelper.UnauthorizedError('Forbidden');
 			}
 
-			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = EECredentials.decrypt(sharing.credentials);
 			Object.assign(credentials, { data: decryptedData });
 		}
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
-			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = EECredentials.decrypt(sharing.credentials);
 			mergedCredentials.data = EECredentials.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return EECredentials.test(req.user, encryptionKey, mergedCredentials);
+		return EECredentials.test(req.user, mergedCredentials);
 	}),
 );
 

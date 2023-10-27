@@ -1,27 +1,24 @@
 import type { CookieOptions, Response } from 'express';
+import { Container } from 'typedi';
 import jwt from 'jsonwebtoken';
 import { mock, anyObject, captor } from 'jest-mock-extended';
-import type { ILogger } from 'n8n-workflow';
-import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import type { UserRepository } from '@db/repositories';
 import { MeController } from '@/controllers';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { BadRequestError } from '@/ResponseHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { UserService } from '@/services/user.service';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 import { badPasswords } from '../shared/testData';
+import { mockInstance } from '../../integration/shared/utils';
 
 describe('MeController', () => {
-	const logger = mock<ILogger>();
-	const externalHooks = mock<IExternalHooksClass>();
-	const internalHooks = mock<IInternalHooksClass>();
-	const userRepository = mock<UserRepository>();
-	const controller = new MeController({
-		logger,
-		externalHooks,
-		internalHooks,
-		repositories: { User: userRepository },
-	});
+	const externalHooks = mockInstance(ExternalHooks);
+	const internalHooks = mockInstance(InternalHooks);
+	const userService = mockInstance(UserService);
+	const controller = Container.get(MeController);
 
 	describe('updateCurrentUser', () => {
 		it('should throw BadRequestError if email is missing in the payload', async () => {
@@ -48,12 +45,13 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userRepository.findOneOrFail.mockResolvedValue(user);
+			userService.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
 			await controller.updateCurrentUser(req, res);
 
-			expect(userRepository.update).toHaveBeenCalled();
+			expect(userService.update).toHaveBeenCalled();
 
 			const cookieOptions = captor<CookieOptions>();
 			expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed-token', cookieOptions);
@@ -76,7 +74,7 @@ describe('MeController', () => {
 			const reqBody = { email: 'valid@email.com', firstName: 'John', lastName: 'Potato' };
 			const req = mock<MeRequest.UserUpdate>({ user, body: reqBody });
 			const res = mock<Response>();
-			userRepository.findOneOrFail.mockResolvedValue(user);
+			userService.findOneOrFail.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 
 			// Add invalid data to the request payload
@@ -84,9 +82,9 @@ describe('MeController', () => {
 
 			await controller.updateCurrentUser(req, res);
 
-			expect(userRepository.update).toHaveBeenCalled();
+			expect(userService.update).toHaveBeenCalled();
 
-			const updatedUser = userRepository.update.mock.calls[0][1];
+			const updatedUser = userService.update.mock.calls[0][1];
 			expect(updatedUser.email).toBe(reqBody.email);
 			expect(updatedUser.firstName).toBe(reqBody.firstName);
 			expect(updatedUser.lastName).toBe(reqBody.lastName);
@@ -138,7 +136,7 @@ describe('MeController', () => {
 				body: { currentPassword: 'old_password', newPassword: 'NewPassword123' },
 			});
 			const res = mock<Response>();
-			userRepository.save.calledWith(req.user).mockResolvedValue(req.user);
+			userService.save.calledWith(req.user).mockResolvedValue(req.user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
 
 			await controller.updatePassword(req, res);
@@ -171,7 +169,7 @@ describe('MeController', () => {
 		describe('createAPIKey', () => {
 			it('should create and save an API key', async () => {
 				const { apiKey } = await controller.createAPIKey(req);
-				expect(userRepository.update).toHaveBeenCalledWith(req.user.id, { apiKey });
+				expect(userService.update).toHaveBeenCalledWith(req.user.id, { apiKey });
 			});
 		});
 
@@ -185,7 +183,7 @@ describe('MeController', () => {
 		describe('deleteAPIKey', () => {
 			it('should delete the API key', async () => {
 				await controller.deleteAPIKey(req);
-				expect(userRepository.update).toHaveBeenCalledWith(req.user.id, { apiKey: null });
+				expect(userService.update).toHaveBeenCalledWith(req.user.id, { apiKey: null });
 			});
 		});
 	});

@@ -112,19 +112,19 @@ export async function initDB(this: ITriggerFunctions | ILoadOptionsFunctions) {
 }
 
 export async function searchSchema(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-	const { db, pgp } = await initDB.call(this);
+	const { db } = await initDB.call(this);
 	const schemaList = await db.any('SELECT schema_name FROM information_schema.schemata');
 	const results: INodeListSearchItems[] = (schemaList as IDataObject[]).map((s) => ({
 		name: s.schema_name as string,
 		value: s.schema_name as string,
 	}));
-	pgp.end();
+	await db.$pool.end();
 	return { results };
 }
 
 export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const schema = this.getNodeParameter('schema', 0) as IDataObject;
-	const { db, pgp } = await initDB.call(this);
+	const { db } = await initDB.call(this);
 	let tableList = [];
 	try {
 		tableList = await db.any(
@@ -138,6 +138,6 @@ export async function searchTables(this: ILoadOptionsFunctions): Promise<INodeLi
 		name: s.table_name as string,
 		value: s.table_name as string,
 	}));
-	pgp.end();
+	await db.$pool.end();
 	return { results };
 }

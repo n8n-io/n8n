@@ -10,8 +10,8 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import ParameterIssues from '../ParameterIssues.vue';
-import ParameterOptions from '../ParameterOptions.vue';
+import ParameterIssues from '@/components//ParameterIssues.vue';
+import ParameterOptions from '@/components//ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores';
@@ -159,7 +159,14 @@ const resourceMapperMode = computed<string | undefined>(() => {
 	return resourceMapperTypeOptions.value?.mode;
 });
 
+const resourceMapperValuesLabel = computed<string | undefined>(() => {
+	return resourceMapperTypeOptions.value?.valuesLabel;
+});
+
 const valuesLabel = computed<string>(() => {
+	if (resourceMapperValuesLabel.value) {
+		return resourceMapperValuesLabel.value;
+	}
 	if (resourceMapperMode.value && resourceMapperMode.value === 'update') {
 		return locale.baseText('resourceMapper.valuesToUpdate.label');
 	}
@@ -235,6 +242,10 @@ function getParamType(field: ResourceMapperField): NodePropertyTypes {
 	return 'string';
 }
 
+function getParsedFieldName(fullName: string): string {
+	return parseResourceMapperFieldName(fullName) ?? fullName;
+}
+
 function onValueChanged(value: IUpdateInformation): void {
 	emit('fieldValueChanged', value);
 }
@@ -276,6 +287,7 @@ defineExpose({
 			:size="labelSize"
 			:showOptions="true"
 			:showExpressionSelector="false"
+			inputName="columns"
 			color="text-dark"
 		>
 			<template #options>
@@ -336,7 +348,7 @@ defineExpose({
 							},
 						})
 					"
-					data-test-id="remove-field-button"
+					:data-test-id="`remove-field-button-${getParsedFieldName(field.name)}`"
 					@click="removeField(field.name)"
 				/>
 			</div>

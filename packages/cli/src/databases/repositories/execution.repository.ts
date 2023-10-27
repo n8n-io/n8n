@@ -1,29 +1,40 @@
 import { Service } from 'typedi';
-import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+	Brackets,
+	DataSource,
+	Not,
+	In,
+	IsNull,
+	LessThanOrEqual,
+	MoreThanOrEqual,
+	Repository,
+} from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOptionsWhere,
 	SelectQueryBuilder,
 } from 'typeorm';
-import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
+import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
+import { BinaryDataService } from 'n8n-core';
 import type {
+	ExecutionPayload,
 	IExecutionBase,
-	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/Interfaces';
-import { LoggerProxy } from 'n8n-workflow';
-import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
-import { ExecutionDataRepository } from './executionData.repository';
-import type { ExecutionData } from '../entities/ExecutionData';
+
+import config from '@/config';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
+import type { ExecutionData } from '../entities/ExecutionData';
+import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
-import { DateUtils } from 'typeorm/util/DateUtils';
-import { BinaryDataManager } from 'n8n-core';
-import config from '@/config';
+import { ExecutionDataRepository } from './executionData.repository';
+import { TIME, inTest } from '@/constants';
+import { Logger } from '@/Logger';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -66,11 +77,65 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
+	private hardDeletionBatchSize = 100;
+
+	private rates: Record<string, number> = {
+		softDeletion: config.getEnv('executions.pruneDataIntervals.softDelete') * TIME.MINUTE,
+		hardDeletion: config.getEnv('executions.pruneDataIntervals.hardDelete') * TIME.MINUTE,
+	};
+
+	private softDeletionInterval: NodeJS.Timer | undefined;
+
+	private hardDeletionTimeout: NodeJS.Timeout | undefined;
+
+	private isMainInstance = config.get('generic.instanceType') === 'main';
+
+	private isPruningEnabled = config.getEnv('executions.pruneData');
+
 	constructor(
 		dataSource: DataSource,
+		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
+
+		if (!this.isMainInstance || inTest) return;
+
+		if (this.isPruningEnabled) this.setSoftDeletionInterval();
+
+		this.scheduleHardDeletion();
+	}
+
+	clearTimers() {
+		if (!this.isMainInstance) return;
+
+		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');
+
+		clearInterval(this.softDeletionInterval);
+		clearTimeout(this.hardDeletionTimeout);
+	}
+
+	setSoftDeletionInterval(rateMs = this.rates.softDeletion) {
+		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
+
+		this.logger.debug(`Setting soft-deletion interval at every ${when} (pruning cycle)`);
+
+		this.softDeletionInterval = setInterval(
+			async () => this.softDeleteOnPruningCycle(),
+			this.rates.softDeletion,
+		);
+	}
+
+	scheduleHardDeletion(rateMs = this.rates.hardDeletion) {
+		const when = [(rateMs / TIME.MINUTE).toFixed(2), 'min'].join(' ');
+
+		this.logger.debug(`Scheduling hard-deletion for next ${when} (pruning cycle)`);
+
+		this.hardDeletionTimeout = setTimeout(
+			async () => this.hardDeleteOnPruningCycle(),
+			this.rates.hardDeletion,
+		);
 	}
 
 	async findMultipleExecutions(
@@ -203,7 +268,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
-	async createNewExecution(execution: IExecutionDb) {
+	async createNewExecution(execution: ExecutionPayload) {
 		const { data, workflowData, ...rest } = execution;
 
 		const newExecution = await this.save(rest);
@@ -214,6 +279,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 
 		return newExecution;
+	}
+
+	async markAsCrashed(executionIds: string[]) {
+		await this.update(
+			{ id: In(executionIds) },
+			{
+				status: 'crashed',
+				stoppedAt: new Date(),
+			},
+		);
+	}
+
+	/**
+	 * Permanently remove a single execution and its binary data.
+	 */
+	async hardDelete(ids: { workflowId: string; executionId: string }) {
+		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
 	}
 
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
@@ -236,16 +318,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// @ts-ignore
 			await this.executionDataRepository.update({ executionId }, executionData);
 		}
-	}
-
-	async deleteExecution(executionId: string, deferBinaryDataDeletion = false) {
-		const binaryDataManager = BinaryDataManager.getInstance();
-		if (deferBinaryDataDeletion) {
-			await binaryDataManager.markDataForDeletionByExecutionId(executionId);
-		} else {
-			await binaryDataManager.deleteBinaryDataByExecutionIds([executionId]);
-		}
-		return this.delete({ id: executionId });
 	}
 
 	async countExecutions(
@@ -287,7 +359,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		} catch (error) {
 			if (error instanceof Error) {
-				LoggerProxy.warn(`Failed to get executions count from Postgres: ${error.message}`, {
+				this.logger.warn(`Failed to get executions count from Postgres: ${error.message}`, {
 					error,
 				});
 			}
@@ -331,7 +403,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			.orderBy({ 'execution.id': 'DESC' })
 			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
-
 		if (excludedExecutionIds.length > 0) {
 			query.andWhere('execution.id NOT IN (:...excludedExecutionIds)', { excludedExecutionIds });
 		}
@@ -357,7 +428,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutions(
+	async deleteExecutionsByFilter(
 		filters: IGetExecutionsQueryFilter | undefined,
 		accessibleWorkflowIds: string[],
 		deleteConditions: {
@@ -389,7 +460,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (!executions.length) {
 			if (deleteConditions.ids) {
-				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+				this.logger.error('Failed to delete an execution due to insufficient permissions', {
 					executionIds: deleteConditions.ids,
 				});
 			}
@@ -397,13 +468,121 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const executionIds = executions.map(({ id }) => id);
-		const binaryDataManager = BinaryDataManager.getInstance();
-		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
-
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = executionIds.splice(0, 500);
+			const batch = executionIds.splice(0, this.hardDeletionBatchSize);
 			await this.delete(batch);
 		} while (executionIds.length > 0);
+	}
+
+	/**
+	 * Mark executions as deleted based on age and count, in a pruning cycle.
+	 */
+	async softDeleteOnPruningCycle() {
+		this.logger.debug('Starting soft-deletion of executions (pruning cycle)');
+
+		const maxAge = config.getEnv('executions.pruneDataMaxAge'); // in h
+		const maxCount = config.getEnv('executions.pruneDataMaxCount');
+
+		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
+		const date = new Date();
+		date.setHours(date.getHours() - maxAge);
+
+		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
+			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
+			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
+		];
+
+		if (maxCount > 0) {
+			const executions = await this.find({
+				select: ['id'],
+				skip: maxCount,
+				take: 1,
+				order: { id: 'DESC' },
+			});
+
+			if (executions[0]) {
+				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
+			}
+		}
+
+		const [timeBasedWhere, countBasedWhere] = toPrune;
+
+		const result = await this.createQueryBuilder()
+			.update(ExecutionEntity)
+			.set({ deletedAt: new Date() })
+			.where({
+				deletedAt: IsNull(),
+				// Only mark executions as deleted if they are in an end state
+				status: Not(In(['new', 'running', 'waiting'])),
+			})
+			.andWhere(
+				new Brackets((qb) =>
+					countBasedWhere
+						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
+						: qb.where(timeBasedWhere),
+				),
+			)
+			.execute();
+
+		if (result.affected === 0) {
+			this.logger.debug('Found no executions to soft-delete (pruning cycle)');
+		}
+	}
+
+	/**
+	 * Permanently remove all soft-deleted executions and their binary data, in a pruning cycle.
+	 */
+	private async hardDeleteOnPruningCycle() {
+		const date = new Date();
+		date.setHours(date.getHours() - config.getEnv('executions.pruneDataHardDeleteBuffer'));
+
+		const workflowIdsAndExecutionIds = (
+			await this.find({
+				select: ['workflowId', 'id'],
+				where: {
+					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				},
+				take: this.hardDeletionBatchSize,
+
+				/**
+				 * @important This ensures soft-deleted executions are included,
+				 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
+				 */
+				withDeleted: true,
+			})
+		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
+
+		const executionIds = workflowIdsAndExecutionIds.map((o) => o.executionId);
+
+		if (executionIds.length === 0) {
+			this.logger.debug('Found no executions to hard-delete (pruning cycle)');
+			this.scheduleHardDeletion();
+			return;
+		}
+
+		try {
+			this.logger.debug('Starting hard-deletion of executions (pruning cycle)', {
+				executionIds,
+			});
+
+			await this.binaryDataService.deleteMany(workflowIdsAndExecutionIds);
+
+			await this.delete({ id: In(executionIds) });
+		} catch (error) {
+			this.logger.error('Failed to hard-delete executions (pruning cycle)', {
+				executionIds,
+				error: error instanceof Error ? error.message : `${error}`,
+			});
+		}
+
+		/**
+		 * For next batch, speed up hard-deletion cycle in high-volume case
+		 * to prevent high concurrency from causing duplicate deletions.
+		 */
+		const isHighVolume = executionIds.length >= this.hardDeletionBatchSize;
+		const rate = isHighVolume ? 1 * TIME.SECOND : this.rates.hardDeletion;
+
+		this.scheduleHardDeletion(rate);
 	}
 }

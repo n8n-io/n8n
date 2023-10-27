@@ -1199,6 +1199,6 @@ export class ActiveCampaign implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

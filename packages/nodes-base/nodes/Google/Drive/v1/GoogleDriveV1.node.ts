@@ -2442,7 +2442,7 @@ export class GoogleDriveV1 implements INodeType {
 							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 							if (binaryData.id) {
 								// Stream data in 256KB chunks, and upload the via the resumable upload api
-								fileContent = this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
+								fileContent = await this.helpers.getBinaryStream(binaryData.id, UPLOAD_CHUNK_SIZE);
 								const metadata = await this.helpers.getBinaryMetadata(binaryData.id);
 								contentLength = metadata.fileSize;
 								originalFilename = metadata.fileName;
@@ -2736,10 +2736,10 @@ export class GoogleDriveV1 implements INodeType {
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output items get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

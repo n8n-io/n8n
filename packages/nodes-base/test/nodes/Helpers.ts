@@ -3,7 +3,8 @@ import path from 'path';
 import { tmpdir } from 'os';
 import { isEmpty } from 'lodash';
 import { get } from 'lodash';
-import { BinaryDataManager, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { Container } from 'typedi';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,
@@ -17,7 +18,6 @@ import type {
 	IGetNodeParameterOptions,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
-	ILogger,
 	INode,
 	INodeCredentials,
 	INodeCredentialsDetails,
@@ -32,7 +32,7 @@ import type {
 	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
@@ -123,6 +123,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -173,9 +174,8 @@ export function WorkflowExecuteAdditionalData(
 		credentialsHelper: new CredentialsHelper(credentialTypes),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
 		timezone: workflowTestData?.input.workflowData.settings?.timezone || 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
@@ -215,16 +215,14 @@ export function createTemporaryDir(prefix = 'n8n') {
 	return mkdtempSync(path.join(tmpdir(), prefix));
 }
 
-export async function initBinaryDataManager(mode: 'default' | 'filesystem' = 'default') {
-	const temporaryDir = createTemporaryDir();
-	await BinaryDataManager.init({
-		mode,
-		availableModes: mode,
-		localStoragePath: temporaryDir,
-		binaryDataTTL: 1,
-		persistedBinaryDataTTL: 1,
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({
+		mode: 'default',
+		availableModes: [mode],
+		localStoragePath: createTemporaryDir(),
 	});
-	return temporaryDir;
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 const credentialTypes = new CredentialType();
@@ -266,15 +264,6 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		nodeTypes.addNode(nodeName, node);
 	}
 
-	const fakeLogger = {
-		log: () => {},
-		debug: () => {},
-		verbose: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-	} as ILogger;
-	LoggerProxy.init(fakeLogger);
 	return nodeTypes;
 }
 

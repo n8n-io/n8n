@@ -13,7 +13,6 @@ import type {
 	INode,
 	INodeCredentialsDetails,
 	INodeType,
-	INodeTypeData,
 	INodeTypes,
 	IRun,
 	ITaskData,
@@ -24,7 +23,7 @@ import type {
 	WorkflowTestData,
 } from 'n8n-workflow';
 
-import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, WorkflowHooks, INodeTypeData } from 'n8n-workflow';
 import { Credentials } from '@/Credentials';
 
 import { predefinedNodesTypes } from './constants';
@@ -53,6 +52,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	}
 
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -129,15 +129,12 @@ export function WorkflowExecuteAdditionalData(
 		connections: {},
 	};
 
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-	// @ts-ignore
 	return {
-		credentialsHelper: new CredentialsHelper(''),
+		credentialsHelper: new CredentialsHelper(),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo) => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
 		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',

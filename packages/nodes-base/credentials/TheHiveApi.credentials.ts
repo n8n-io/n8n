@@ -36,14 +36,15 @@ export class TheHiveApi implements ICredentialType {
 			description: 'The version of api to be used',
 			options: [
 				{
-					name: 'Version 1',
+					name: 'TheHive 4+ (api v1)',
 					value: 'v1',
-					description: 'API version supported by TheHive 4',
+					description:
+						'API version with TheHive 4 support, also works with TheHive 5 but not all features are supported',
 				},
 				{
-					name: 'Version 0',
+					name: 'TheHive 3 (api v0)',
 					value: '',
-					description: 'API version supported by TheHive 3',
+					description: 'API version with TheHive 3 support',
 				},
 			],
 		},

@@ -6,7 +6,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
+import { WebhookPathAlreadyTakenError } from 'n8n-workflow';
 import * as NodeExecuteFunctions from 'n8n-core';
 
 @Service()
@@ -46,9 +46,7 @@ export class ActiveWebhooks {
 
 		// check that there is not a webhook already registered with that path/method
 		if (this.webhookUrls[webhookKey] && !webhookData.webhookId) {
-			throw new Error(
-				`The URL path that the "${webhookData.node}" node uses is already taken. Please change it to something else.`,
-			);
+			throw new WebhookPathAlreadyTakenError(webhookData.node);
 		}
 
 		if (this.workflowWebhooks[webhookData.workflowId] === undefined) {
@@ -63,25 +61,13 @@ export class ActiveWebhooks {
 		this.webhookUrls[webhookKey].push(webhookData);
 
 		try {
-			const webhookExists = await workflow.runWebhookMethod(
-				'checkExists',
+			await workflow.createWebhookIfNotExists(
 				webhookData,
 				NodeExecuteFunctions,
 				mode,
 				activation,
 				this.testWebhooks,
 			);
-			if (webhookExists !== true) {
-				// If webhook does not exist yet create it
-				await workflow.runWebhookMethod(
-					'create',
-					webhookData,
-					NodeExecuteFunctions,
-					mode,
-					activation,
-					this.testWebhooks,
-				);
-			}
 		} catch (error) {
 			// If there was a problem unregister the webhook again
 			if (this.webhookUrls[webhookKey].length <= 1) {
@@ -169,7 +155,7 @@ export class ActiveWebhooks {
 	 *
 	 */
 	async removeWorkflow(workflow: Workflow): Promise<boolean> {
-		const workflowId = workflow.id!.toString();
+		const workflowId = workflow.id;
 
 		if (this.workflowWebhooks[workflowId] === undefined) {
 			// If it did not exist then there is nothing to remove
@@ -183,8 +169,7 @@ export class ActiveWebhooks {
 		// Go through all the registered webhooks of the workflow and remove them
 
 		for (const webhookData of webhooks) {
-			await workflow.runWebhookMethod(
-				'delete',
+			await workflow.deleteWebhook(
 				webhookData,
 				NodeExecuteFunctions,
 				mode,

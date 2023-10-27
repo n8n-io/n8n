@@ -2,7 +2,7 @@ import type express from 'express';
 import { Service } from 'typedi';
 import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import { AuthError, BadRequestError } from '@/ResponseHelper';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
@@ -27,6 +27,7 @@ import https from 'https';
 import type { SamlLoginBinding } from './types';
 import { validateMetadata, validateResponse } from './samlValidator';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { Logger } from '@/Logger';
 
 @Service()
 export class SamlService {
@@ -70,6 +71,8 @@ export class SamlService {
 		};
 	}
 
+	constructor(private readonly logger: Logger) {}
+
 	async init(): Promise<void> {
 		// load preferences first but do not apply so as to not load samlify unnecessarily
 		await this.loadFromDbAndApplySamlPreferences(false);
@@ -81,7 +84,7 @@ export class SamlService {
 
 	async loadSamlify() {
 		if (this.samlify === undefined) {
-			LoggerProxy.debug('Loading samlify library into memory');
+			this.logger.debug('Loading samlify library into memory');
 			this.samlify = await import('samlify');
 		}
 		this.samlify.setSchemaValidator({

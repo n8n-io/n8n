@@ -870,7 +870,10 @@ export class AwsS3V2 implements INodeType {
 							let uploadData: Buffer | Readable;
 							multipartHeaders['Content-Type'] = binaryPropertyData.mimeType;
 							if (binaryPropertyData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryPropertyData.id, UPLOAD_CHUNK_SIZE);
+								uploadData = await this.helpers.getBinaryStream(
+									binaryPropertyData.id,
+									UPLOAD_CHUNK_SIZE,
+								);
 								const createMultiPartUpload = await awsApiRequestREST.call(
 									this,
 									servicePath,
@@ -1070,9 +1073,9 @@ export class AwsS3V2 implements INodeType {
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

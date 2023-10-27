@@ -20,6 +20,7 @@ import { recordFields, recordOperations } from './RecordDescription';
 import { v4 as uuid } from 'uuid';
 
 import { oldVersionNotice } from '@utils/descriptions';
+import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',
@@ -198,6 +199,8 @@ export class GoogleBigQueryV1 implements INodeType {
 
 				body.rows = rows;
 
+				const itemData = generatePairedItemData(items.length);
+
 				try {
 					responseData = await googleApiRequest.call(
 						this,
@@ -208,14 +211,14 @@ export class GoogleBigQueryV1 implements INodeType {
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData as IDataObject[]),
-						{ itemData: { item: 0 } },
+						{ itemData },
 					);
 					returnData.push(...executionData);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData: { item: 0 } },
+							{ itemData },
 						);
 						returnData.push(...executionErrorData);
 					}
@@ -301,6 +304,6 @@ export class GoogleBigQueryV1 implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
