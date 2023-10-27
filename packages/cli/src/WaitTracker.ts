@@ -110,7 +110,7 @@ export class WaitTracker {
 		}
 
 		if (!['new', 'unknown', 'waiting', 'running'].includes(execution.status)) {
-			throw new Error(
+			throw new WorkflowOperationError(
 				`Only running or waiting executions can be stopped and ${executionId} is currently ${execution.status}.`,
 			);
 		}
