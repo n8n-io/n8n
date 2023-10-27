@@ -64,6 +64,7 @@ export async function slackApiRequest(
 				{
 					description:
 						'Hint: Upgrade to a Slack plan that includes the functionality you want to use.',
+					severity: 'warning',
 				},
 			);
 		} else if (response.error === 'missing_scope') {
@@ -72,6 +73,7 @@ export async function slackApiRequest(
 				'Your Slack credential is missing required Oauth Scopes',
 				{
 					description: `Add the following scope(s) to your Slack App: ${response.needed}`,
+					severity: 'warning',
 				},
 			);
 		}
