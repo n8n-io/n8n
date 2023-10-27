@@ -766,7 +766,7 @@ $main-panel-width: 360px;
 	left: var(--spacing-l);
 
 	span {
-		color: var(--color-ndv-back-text);
+		color: var(--color-ndv-back-font);
 	}
 
 	&:hover {

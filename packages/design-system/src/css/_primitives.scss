@@ -82,6 +82,12 @@
 		var(--prim-color-secondary-s),
 		var(--prim-color-secondary-l)
 	);
+	--prim-color-secondary-alpha-025: hsla(
+		var(--prim-color-secondary-h),
+		var(--prim-color-secondary-s),
+		var(--prim-color-secondary-l),
+		0.25
+	);
 	--prim-color-secondary-tint-100: hsl(
 		var(--prim-color-secondary-h),
 		var(--prim-color-secondary-s),
@@ -129,6 +135,11 @@
 		var(--prim-color-alt-a-s),
 		calc(var(--prim-color-alt-a-l) + 30%)
 	);
+	--prim-color-alt-a-tint-400: hsl(
+		var(--prim-color-alt-a-h),
+		var(--prim-color-alt-a-s),
+		calc(var(--prim-color-alt-a-l) + 40%)
+	);
 	--prim-color-alt-a-tint-500: hsl(
 		var(--prim-color-alt-a-h),
 		var(--prim-color-alt-a-s),
@@ -154,6 +165,12 @@
 		var(--prim-color-alt-b-h),
 		var(--prim-color-alt-b-s),
 		var(--prim-color-alt-b-l)
+	);
+	--prim-color-alt-b-alpha-02: hsla(
+		var(--prim-color-alt-b-h),
+		var(--prim-color-alt-b-s),
+		var(--prim-color-alt-b-l),
+		0.2
 	);
 	--prim-color-alt-b-tint-250: hsl(
 		var(--prim-color-alt-b-h),
@@ -181,11 +198,11 @@
 		var(--prim-color-alt-c-s),
 		var(--prim-color-alt-c-l)
 	);
-	--prim-color-alt-c-alpha-025: hsl(
+	--prim-color-alt-c-alpha-02: hsl(
 		var(--prim-color-alt-c-h),
 		var(--prim-color-alt-c-s),
 		var(--prim-color-alt-c-l),
-		0.25
+		0.2
 	);
 	--prim-color-alt-c-tint-150: hsl(
 		var(--prim-color-alt-c-h),

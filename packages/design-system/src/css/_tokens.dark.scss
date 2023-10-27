@@ -36,7 +36,7 @@
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-alpha-025);
 	--color-invalid-resolvable-foreground: var(--prim-color-alt-c-tint-250);
-	--color-invalid-resolvable-background: var(--prim-color-alt-c-alpha-025);
+	--color-invalid-resolvable-background: var(--prim-color-alt-c-alpha-02);
 	--color-expression-editor-background: var(--prim-gray-800);
 	--color-expression-syntax-example: var(--prim-gray-670);
 
@@ -94,92 +94,46 @@
 	// NDV
 	--color-run-data-background: var(--prim-gray-800);
 	--color-ndv-droppable-parameter: var(--prim-color-primary);
-	--color-ndv-back-text: var(--prim-gray-0);
+	--color-ndv-back-font: var(--prim-gray-0);
 	--color-ndv-ouptut-error-font: var(--prim-color-alt-c-tint-150);
 
 	// Notice
-	--color-notice-font: var(--prim-gray-540);
+	--color-notice-warning-border: var(--prim-color-alt-b-tint-250);
+	--color-notice-warning-background: var(--prim-color-alt-b-alpha-02);
+	--color-notice-font: var(--prim-gray-0);
+
+	// Callout
+	--color-callout-info-border: var(--prim-gray-420);
+	--color-callout-info-background: var(--color-foreground-xlight);
+	--color-callout-info-font: var(--prim-gray-0);
+	--color-callout-success-border: var(--color-success);
+	--color-callout-success-background: var(--prim-color-alt-a-alpha-025);
+	--color-callout-success-font: var(--prim-gray-0);
+	--color-callout-warning-border: var(--color-warning);
+	--color-callout-warning-background: var(--prim-color-alt-b-alpha-02);
+	--color-callout-warning-font: var(--prim-gray-0);
+	--color-callout-danger-border: var(--color-danger);
+	--color-callout-danger-background: var(--prim-color-alt-c-alpha-02);
+	--color-callout-danger-font: var(--prim-gray-0);
+	--color-callout-secondary-border: var(--color-secondary);
+	--color-callout-secondary-background: var(--prim-color-secondary-alpha-025);
+	--color-callout-secondary-font: var(--prim-gray-0);
 
 	// Dialog
 	--color-dialog-overlay-background: var(--prim-color-alt-j-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
 
 	// Avatar
-	--color-avatar-text: var(--prim-gray-0);
+	--color-avatar-font: var(--prim-gray-0);
 
 	// Value Survey
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
 
-	// Generated Color Shades from 50 to 950
-	// Not yet used in design system
-	// ! REMOVE THIS
-	@each $color in ('neutral', 'success', 'warning', 'danger') {
-		@each $shade
-			in (
-				50,
-				100,
-				150,
-				200,
-				250,
-				300,
-				350,
-				400,
-				450,
-				500,
-				550,
-				600,
-				650,
-				700,
-				750,
-				800,
-				850,
-				900,
-				950
-			)
-		{
-			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
-			--color-#{$color}-#{$shade}: hsl(
-				var(--color-#{$color}-h),
-				var(--color-#{$color}-s),
-				var(--color-#{$color}-#{$shade}-l)
-			);
-		}
-	}
-
-	--border-radius-xlarge: 12px;
-	--border-radius-large: 8px;
-	--border-radius-base: 4px;
-	--border-radius-small: 2px;
 	--border-color-base: var(--color-foreground-base);
 	--border-color-light: var(--color-foreground-light);
 
-	--border-style-base: solid;
-	--border-width-base: 1px;
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-
-	--font-size-3xs: 0.625rem;
-	--font-size-2xs: 0.75rem;
-	--font-size-xs: 0.8125rem;
-	--font-size-s: 0.875rem;
-	--font-size-m: 1rem;
-	--font-size-l: 1.125rem;
-	--font-size-xl: 1.25rem;
-	--font-size-2xl: 1.75rem;
-
-	--font-line-height-compact: 1.25;
-	--font-line-height-regular: 1.3;
-	--font-line-height-loose: 1.35;
-	--font-line-height-xloose: 1.5;
-
-	--font-weight-regular: 400;
-	--font-weight-bold: 600;
-	--font-family: 'Open Sans', sans-serif;
-	--font-family-monospace: Menlo, Consolas, 'DejaVu Sans Mono', monospace;
-}
-
-body[data-theme='dark'] {
-	@include theme;
 }
 
 @media (prefers-color-scheme: dark) {

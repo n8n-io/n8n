@@ -22,6 +22,7 @@
 	--color-success-shade-1: var(--prim-color-alt-a-shade-100);
 	--color-success: var(--prim-color-alt-a);
 	--color-success-light: var(--prim-color-alt-a-tint-300);
+	--color-success-light-2: var(--prim-color-alt-a-tint-400);
 	--color-success-tint-1: var(--prim-color-alt-a-tint-500);
 	--color-success-tint-2: var(--prim-color-alt-a-tint-550);
 
@@ -167,18 +168,42 @@
 	// NDV
 	--color-run-data-background: var(--color-background-base);
 	--color-ndv-droppable-parameter: var(--color-secondary);
-	--color-ndv-back-text: var(--prim-gray-0);
+	--color-ndv-back-font: var(--prim-gray-0);
 	--color-ndv-ouptut-error-font: var(--prim-color-alt-c);
 
 	// Notice
+	--color-notice-warning-border: var(--color-warning-tint-1);
+	--color-notice-warning-background: var(--color-warning-tint-2);
 	--color-notice-font: var(--color-text-base);
+
+	// Callout
+	--color-callout-info-border: var(--color-foreground-base);
+	--color-callout-info-background: var(--color-foreground-xlight);
+	--color-callout-info-font: var(--color-info);
+	--color-callout-info-icon: var(--color-info);
+	--color-callout-success-border: var(--color-success-light-2);
+	--color-callout-success-background: var(--color-success-tint-2);
+	--color-callout-success-font: var(--color-success);
+	--color-callout-success-icon: var(--color-success);
+	--color-callout-warning-border: var(--color-warning-tint-1);
+	--color-callout-warning-background: var(--color-warning-tint-2);
+	--color-callout-warning-font: var(--color-warning);
+	--color-callout-warning-icon: var(--color-warning);
+	--color-callout-danger-border: var(--color-danger-tint-1);
+	--color-callout-danger-background: var(--color-danger-tint-2);
+	--color-callout-danger-font: var(--color-danger);
+	--color-callout-danger-icon: var(--color-danger);
+	--color-callout-secondary-border: var(--color-secondary-tint-1);
+	--color-callout-secondary-background: var(--color-secondary-tint-3);
+	--color-callout-secondary-font: var(--color-secondary);
+	--color-callout-secondary-icon: var(--color-secondary);
 
 	// Dialog
 	--color-dialog-overlay-background: var(--prim-gray-0-alpha-075);
 	--color-dialog-overlay-background-dark: var(--prim-color-alt-j-alpha-075);
 
 	// Avatar
-	--color-avatar-text: var(--color-text-xlight);
+	--color-avatar-font: var(--color-text-xlight);
 
 	// Value Survey
 	--color-value-survey-background: var(--prim-gray-740);
@@ -197,7 +222,6 @@
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
-	// ! REMOVE THIS
 	@each $color in ('neutral', 'success', 'warning', 'danger') {
 		@each $shade
 			in (

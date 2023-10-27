@@ -111,8 +111,8 @@ export default defineComponent({
 }
 
 .warning {
-	--border-color: var(--color-warning-tint-1);
-	--background-color: var(--color-warning-tint-2);
+	--border-color: var(--color-notice-warning-border);
+	--background-color: var(--color-notice-warning-background);
 }
 
 .danger {
