@@ -1,140 +1,120 @@
-import { NodeConnectionType, NodeOperationError } from 'n8n-workflow';
-import type {
-	IExecuteFunctions,
-	INodeType,
-	INodeTypeDescription,
-	SupplyData,
-	INodeExecutionData,
-} from 'n8n-workflow';
-import { insertOperationDescription } from './insert/description';
-import { loadOperationDescription } from './load/description';
-import { retrieveOperationDescription } from './retrieve/description';
-import { retrieveSupplyData } from './retrieve/supply';
-import { loadExecute } from './load/execute';
+import type { INodeProperties } from 'n8n-workflow';
+import type { IZepConfig } from 'langchain/vectorstores/zep';
+import { ZepVectorStore } from 'langchain/vectorstores/zep';
+import type { VectorStore } from 'langchain/vectorstores/base';
+import { createVectorStoreNode } from '../shared/createVectorStoreNode';
+import { metadataFilterField } from '../../../utils/sharedFields';
 
-export class VectorStoreZep implements INodeType {
-	description: INodeTypeDescription = {
+const embeddingDimensions: INodeProperties = {
+	displayName: 'Embedding Dimensions',
+	name: 'embeddingDimensions',
+	type: 'number',
+	default: 1536,
+	description: 'Whether to allow using characters from the Unicode surrogate blocks',
+};
+
+const insertFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			embeddingDimensions,
+			{
+				displayName: 'Is Auto Embedded',
+				name: 'isAutoEmbedded',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to automatically embed documents when they are added',
+			},
+		],
+	},
+];
+
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [embeddingDimensions, metadataFilterField],
+	},
+];
+
+export const VectorStoreZep = createVectorStoreNode({
+	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
-		icon: 'file:zep.png',
-		group: ['transform'],
-		version: 1,
 		description: 'Work with your data in Zep Vector Store',
-		defaults: {
-			name: 'Zep Vector Store',
-		},
-		codex: {
-			categories: ['AI'],
-			subcategories: {
-				AI: ['Vector Stores'],
-			},
-			resources: {
-				primaryDocumentation: [
-					{
-						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorezepload/',
-					},
-				],
-			},
-		},
 		credentials: [
 			{
 				name: 'zepApi',
 				required: true,
 			},
 		],
-		inputs: `={{
-			((parameters) => {
-				const operation = parameters.operation;
-				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
+		icon: 'file:zep.png',
+		docsUrl:
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorezep/',
+	},
+	sharedFields: [
+		{
+			displayName: 'Collection Name',
+			name: 'collectionName',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+	],
+	insertFields,
+	loadFields: retrieveFields,
+	retrieveFields,
+	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
+		const collectionName = context.getNodeParameter('collectionName', itemIndex) as string;
 
-				if (['insert', 'load'].includes(operation)) {
-					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
-				}
+		const options =
+			(context.getNodeParameter('options', itemIndex) as {
+				embeddingDimensions?: number;
+			}) || {};
 
-				if (operation === 'insert') {
-					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
-				}
-				return inputs
-			})($parameter)
-		}}`,
-		outputs: `={{
-			((parameters) => {
-				const operation = parameters.operation;
-				if (operation === 'retrieve') {
-					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
-				}
-				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
-			})($parameter)
-		}}`,
-		properties: [
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				default: 'retrieve',
-				options: [
-					{
-						name: 'Get Many',
-						value: 'load',
-						description: 'Get many ranked documents from vector store for query',
-						action: 'Get many ranked documents from vector store for query',
-					},
-					{
-						name: 'Insert Documents',
-						value: 'insert',
-						description: 'Insert documents into vector store',
-						action: 'Insert documents into vector store',
-					},
-					{
-						name: 'Retrieve Documents (For Agent/Chain)',
-						value: 'retrieve',
-						description: 'Retrieve documents from vector store to be used with AI nodes',
-						action: 'Retrieve documents from vector store to be used with AI nodes',
-					},
-				],
-			},
-			{
-				displayName: 'Collection Name',
-				name: 'collectionName',
-				type: 'string',
-				default: '',
-				required: true,
-			},
-			...insertOperationDescription,
-			...loadOperationDescription,
-			...retrieveOperationDescription,
-		],
-	};
+		const credentials = (await context.getCredentials('zepApi')) as {
+			apiKey?: string;
+			apiUrl: string;
+		};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const operation = this.getNodeParameter('operation', 0) as 'load' | 'insert' | 'retrieve';
+		const zepConfig: IZepConfig = {
+			apiUrl: credentials.apiUrl,
+			apiKey: credentials.apiKey,
+			collectionName,
+			embeddingDimensions: options.embeddingDimensions ?? 1536,
+			metadata: filter,
+		};
 
-		if (operation === 'load') {
-			return loadExecute.call(this);
-		}
+		return new ZepVectorStore(embeddings, zepConfig);
+	},
+	async populateVectorStore(context, embeddings, documents) {
+		const collectionName = context.getNodeParameter('collectionName', 0) as string;
+		const options =
+			(context.getNodeParameter('options', 0) as {
+				isAutoEmbedded?: boolean;
+				embeddingDimensions?: number;
+			}) || {};
 
-		if (operation === 'insert') {
-			// return insertExecute.call(this);
-		}
+		const credentials = (await context.getCredentials('zepApi')) as {
+			apiKey?: string;
+			apiUrl: string;
+		};
 
-		throw new NodeOperationError(
-			this.getNode(),
-			'Only the "load" and "insert" operations are supported with execute',
-		);
-	}
+		const zepConfig = {
+			apiUrl: credentials.apiUrl,
+			apiKey: credentials.apiKey,
+			collectionName,
+			embeddingDimensions: options.embeddingDimensions ?? 1536,
+			isAutoEmbedded: options.isAutoEmbedded ?? true,
+		};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		const operation = this.getNodeParameter('operation', 0) as 'load' | 'insert' | 'retrieve';
-
-		if (operation === 'retrieve') {
-			return retrieveSupplyData.call(this, itemIndex);
-		}
-
-		throw new NodeOperationError(
-			this.getNode(),
-			'Only the "retrieve" operation is supported to supply data',
-		);
-	}
-}
+		ZepVectorStore.fromDocuments(documents, embeddings, zepConfig) as Promise<VectorStore>;
+	},
+});
