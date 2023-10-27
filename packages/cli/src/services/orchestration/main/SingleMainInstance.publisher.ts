@@ -1,6 +1,6 @@
 import { Logger } from '@/Logger';
 import { Service } from 'typedi';
-import { OrchestrationService } from '../../orchestration.base.service';
+import { OrchestrationService } from '@/services/orchestration.base.service';
 
 /**
  * For use in main instance, in single main instance scenario.
