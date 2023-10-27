@@ -213,8 +213,7 @@ export class License {
 	}
 
 	isMultipleMainInstancesLicensed() {
-		// @TODO: Remove temp `true` once flag is merged to sandbox
-		return true || this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
 	isVariablesEnabled() {
