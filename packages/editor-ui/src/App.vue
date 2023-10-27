@@ -175,11 +175,8 @@ export default defineComponent({
 		},
 		async initialize(): Promise<void> {
 			await this.initSettings();
-<<<<<<< HEAD
 			await this.initHooks();
-=======
 			ExpressionEvaluatorProxy.setEvaluator(useSettingsStore().settings.expressions.evaluator);
->>>>>>> master
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage(): void {
