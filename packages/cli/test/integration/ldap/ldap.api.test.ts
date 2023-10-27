@@ -57,8 +57,6 @@ beforeAll(async () => {
 		defaultLdapConfig.bindingAdminPassword,
 	);
 
-	await utils.initEncryptionKey();
-
 	await setCurrentAuthenticationMethod('ldap');
 });
 
