@@ -524,6 +524,7 @@ export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValu
 
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse | Readable;
+	__bodyResolved?: boolean;
 	headers: IDataObject;
 	statusCode: number;
 	statusMessage?: string;

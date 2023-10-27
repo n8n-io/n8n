@@ -2683,7 +2683,14 @@ const getRequestHelperFunctions = (
 					const data = await this.helpers
 						.binaryToBuffer(newResponse.body as Buffer | Readable)
 						.then((body) => body.toString());
-					newResponse.body = jsonParse(data, { fallbackValue: {} });
+
+					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
+					if (responseContentType.includes('application/json')) {
+						newResponse.body = jsonParse(data, { fallbackValue: {} });
+					} else {
+						newResponse.body = data;
+					}
+					tempResponseData.__bodyResolved = true;
 					tempResponseData.body = newResponse.body;
 				}
 

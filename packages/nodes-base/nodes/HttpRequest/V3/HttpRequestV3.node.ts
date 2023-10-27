@@ -1632,17 +1632,6 @@ export class HttpRequestV3 implements INodeType {
 			} catch (e) {}
 
 			if (pagination && pagination.paginationMode !== 'off') {
-				if (autoDetectResponseFormat) {
-					throw new NodeOperationError(
-						this.getNode(),
-						"To use pagination, please set the specific response format (rather than 'Autodetect')",
-						{
-							description:
-								'Please add the option "Response" under "Options" and set "Response Format" to the expected format',
-						},
-					);
-				}
-
 				let continueExpression = '={{false}}';
 				if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
 					// Split out comma separated list of status codes into array
@@ -1795,7 +1784,7 @@ export class HttpRequestV3 implements INodeType {
 
 				if (autoDetectResponseFormat) {
 					const responseContentType = response.headers['content-type'] ?? '';
-					if (responseContentType.includes('application/json')) {
+					if (responseContentType.includes('application/json') && !response.__bodyResolved) {
 						responseFormat = 'json';
 						const neverError = this.getNodeParameter(
 							'options.response.response.neverError',
@@ -1815,10 +1804,12 @@ export class HttpRequestV3 implements INodeType {
 						responseFormat = 'file';
 					} else {
 						responseFormat = 'text';
-						const data = await this.helpers
-							.binaryToBuffer(response.body as Buffer | Readable)
-							.then((body) => body.toString());
-						response.body = !data ? undefined : data;
+						if (!response.__bodyResolved) {
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
+							response.body = !data ? undefined : data;
+						}
 					}
 				}
 
