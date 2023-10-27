@@ -569,7 +569,6 @@ export class RoutingNode {
 						// Make the HTTP request
 						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
-							// TODO: This will probably overwrite data, so should use lodash merge
 							{ ...requestData, options: { ...requestData.options, ...paginateRequestData } },
 							credentialType,
 							credentialsDecrypted,
