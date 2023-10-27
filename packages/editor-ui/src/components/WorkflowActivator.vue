@@ -1,8 +1,5 @@
 <template>
-	<div
-		class="workflow-activator"
-		:class="couldNotBeStarted && workflowActive && 'workflow-activator-error'"
-	>
+	<div class="workflow-activator">
 		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
 			<n8n-text
 				v-if="workflowActive"
@@ -164,15 +161,9 @@ export default defineComponent({
 	}
 }
 
-.workflow-activator.workflow-activator-error {
-	:deep(.n8n-text) {
-		color: var(--color-workflow-activator-text);
-	}
-}
-
 .could-not-be-started {
 	display: inline-block;
-	color: #ff4949;
+	color: var(--color-text-danger);
 	margin-left: 0.5em;
 }
 </style>
