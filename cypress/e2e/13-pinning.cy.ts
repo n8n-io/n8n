@@ -62,7 +62,7 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		cy.reload();
+		// cy.reload();
 		workflowPage.actions.openNode('Schedule Trigger');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
@@ -71,7 +71,7 @@ describe('Data pinning', () => {
 
 	it('Should be duplicating pin data when duplicating node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
-		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
@@ -87,8 +87,8 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		cy.reload();
-		workflowPage.actions.openNode('Set1');
+		// cy.reload();
+		workflowPage.actions.openNode('Edit Fields1');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
@@ -96,16 +96,24 @@ describe('Data pinning', () => {
 
 	it('Should show an error when maximum pin data size is exceeded', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
-		workflowPage.actions.addNodeToCanvas('Set', true, true);
+		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
 		ndv.getters.editPinnedDataButton().should('be.visible');
 
-		ndv.actions.setPinnedData([{ test: '1'.repeat(1024) }]);
+		ndv.actions.setPinnedData([
+			{
+				test: '1'.repeat(
+					process.env.VUE_APP_MAX_WORKFLOW_PIN_DATA_SIZE
+						? parseInt(process.env.VUE_APP_MAX_WORKFLOW_PIN_DATA_SIZE, 10)
+						: 1024,
+				),
+			},
+		]);
 		workflowPage.getters
 			.errorToast()
 			.closest('div')
-			.should('contain', 'You can pin at most 12MB of output per workflow.');
+			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
 		ndv.actions.close();
 	});
 
