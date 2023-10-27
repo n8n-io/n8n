@@ -1986,7 +1986,7 @@ export default defineComponent({
 							];
 							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
 								workflow,
-								lastSelectedNode!,
+								lastSelectedNode,
 								sourceNodeType,
 							);
 							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
@@ -2010,7 +2010,7 @@ export default defineComponent({
 						// outputs here is to calculate the position it is fine to assume
 						// that they have no outputs and are so treated as a regular node
 						// with only "main" outputs.
-						outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData!, nodeTypeData);
+						outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeData);
 					} catch (e) {}
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(

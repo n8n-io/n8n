@@ -1,3 +1,9 @@
+import { createWriteStream } from 'fs';
+import { basename, dirname } from 'path';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -10,17 +16,11 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
-import { createWriteStream } from 'fs';
-import { basename, dirname } from 'path';
-import type { Readable } from 'stream';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
 import { file as tmpFile } from 'tmp-promise';
 
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
+import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;

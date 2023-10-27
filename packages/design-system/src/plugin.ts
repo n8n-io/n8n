@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Plugin } from 'vue';
 import {
 	N8nActionBox,

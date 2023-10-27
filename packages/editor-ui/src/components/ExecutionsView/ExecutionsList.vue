@@ -98,8 +98,7 @@ export default defineComponent({
 		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		hidePreview(): boolean {
 			const activeNotPresent =
-				this.filterApplied &&
-				!(this.executions as IExecutionsSummary[]).find((ex) => ex.id === this.activeExecution?.id);
+				this.filterApplied && !this.executions.find((ex) => ex.id === this.activeExecution?.id);
 			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
@@ -193,7 +192,7 @@ export default defineComponent({
 			}
 		}
 
-		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh;
 		void this.startAutoRefreshInterval();
 		document.addEventListener('visibilitychange', this.onDocumentVisibilityChange);
 
@@ -581,7 +580,7 @@ export default defineComponent({
 			this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {
-			if (!nodes || !nodes.length) {
+			if (!nodes?.length) {
 				return;
 			}
 
@@ -723,7 +722,7 @@ export default defineComponent({
 					loadWorkflow,
 				);
 
-				if (retrySuccessful === true) {
+				if (retrySuccessful) {
 					this.showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
 						type: 'success',

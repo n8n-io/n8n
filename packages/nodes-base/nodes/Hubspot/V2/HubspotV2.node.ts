@@ -17,6 +17,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
+import { generatePairedItemData } from '../../../utils/utilities';
 import {
 	clean,
 	getAssociations,
@@ -44,9 +46,6 @@ import { ticketFields, ticketOperations } from './TicketDescription';
 import type { IForm } from './FormInterface';
 
 import type { IAssociation, IDeal } from './DealInterface';
-
-import { snakeCase } from 'change-case';
-import { generatePairedItemData } from '../../../utils/utilities';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
