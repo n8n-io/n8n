@@ -200,6 +200,10 @@ export default defineComponent({
 		margin-top: 10px;
 		padding: 0 15px;
 	}
+
+	h2 {
+		color: var(--color-value-survey-font);
+	}
 }
 
 .content {
@@ -214,6 +218,9 @@ export default defineComponent({
 .wrapper {
 	display: flex;
 	flex-direction: column;
+	.text span {
+		color: var(--color-value-survey-font);
+	}
 }
 
 .buttons {
@@ -256,7 +263,7 @@ export default defineComponent({
 }
 
 .valueSurvey {
-	background: var(--color-background-dark);
+	background: var(--color-value-survey-background);
 	height: 120px;
 	top: auto;
 
@@ -278,7 +285,7 @@ export default defineComponent({
 			right: 16px;
 			position: absolute;
 			font-weight: var(--font-weight-bold);
-			color: var(--color-text-xlight);
+			color: var(--color-value-survey-font);
 
 			@media (max-width: $breakpoint-xs) {
 				top: 2px;
