@@ -41,6 +41,7 @@ const properties: INodeProperties[] = [
 				default: 8000,
 				typeOptions: {
 					minValue: 8000,
+					maxValue: 96000,
 				},
 				description: 'The bitrate (in bits) of the voice channel',
 				hint: 'Only applicable to voice channels',

@@ -257,6 +257,7 @@ export const roleMultiOptions: INodeProperties = {
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getRoles',
+		loadOptionsDependsOn: ['userId.value', 'guildId.value', 'operation'],
 	},
 	required: true,
 	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options

@@ -25,7 +25,7 @@ export async function getRoles(this: ILoadOptionsFunctions): Promise<INodeProper
 	}
 
 	return response
-		.filter((role: IDataObject) => role.name !== '@everyone')
+		.filter((role: IDataObject) => role.name !== '@everyone' && !role.managed)
 		.map((role: IDataObject) => ({
 			name: role.name as string,
 			value: role.id as string,

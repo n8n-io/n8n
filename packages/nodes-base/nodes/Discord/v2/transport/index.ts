@@ -67,7 +67,7 @@ export async function discordApiRequest(
 		method,
 		qs,
 		body,
-		url: `https://discord.com/api/v10/${endpoint}`,
+		url: `https://discord.com/api/v10${endpoint}`,
 		json: true,
 	};
 
@@ -111,7 +111,7 @@ export async function discordApiMultiPartRequest(
 		headers,
 		method,
 		formData,
-		url: `https://discord.com/api/v10/${endpoint}`,
+		url: `https://discord.com/api/v10${endpoint}`,
 	};
 
 	if (credentialType === 'discordWebhookApi') {
@@ -135,4 +135,37 @@ export async function discordApiMultiPartRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function botHasAccessToGuild(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
+	guildId: string,
+	botId: string,
+) {
+	try {
+		const members: Array<{ user: { id: string } }> = await discordApiRequest.call(
+			this,
+			'GET',
+			`/guilds/${guildId}/members`,
+			undefined,
+			{ limit: 1000 },
+		);
+
+		return members.some((member) => member.user.id === botId);
+	} catch (error) {}
+
+	return false;
+}
+
+export async function botHasAccessToChannel(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions,
+	channelId: string,
+	botId: string,
+) {
+	try {
+		const channel = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
+		return await botHasAccessToGuild.call(this, channel.guild_id, botId);
+	} catch (error) {}
+
+	return false;
 }

@@ -11,6 +11,8 @@ import { jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow
 
 import type { DiscordAttachment, DiscordWebhook } from './Interfaces';
 
+import { oldVersionNotice } from '../../../utils/descriptions';
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',
 	name: 'discord',
@@ -24,12 +26,7 @@ const versionDescription: INodeTypeDescription = {
 	inputs: ['main'],
 	outputs: ['main'],
 	properties: [
-		{
-			displayName: 'Version 1',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-		},
+		oldVersionNotice,
 		{
 			displayName: 'Webhook URL',
 			name: 'webhookUri',

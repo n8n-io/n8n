@@ -1,5 +1,5 @@
 import type { IDataObject, ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { discordApiRequest } from '../transport';
+import { botHasAccessToGuild, discordApiRequest } from '../transport';
 
 export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const response = (await discordApiRequest.call(
@@ -8,8 +8,23 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 		'/users/@me/guilds',
 	)) as IDataObject[];
 
+	let guilds: IDataObject[] = [];
+
+	const authentication = this.getNodeParameter('authentication', 0);
+
+	if (authentication === 'oAuth2') {
+		const botId = (await discordApiRequest.call(this, 'GET', '/users/@me')).id as string;
+
+		for (const guild of response) {
+			if (!(await botHasAccessToGuild.call(this, guild.id as string, botId))) continue;
+			guilds.push(guild);
+		}
+	} else {
+		guilds = response;
+	}
+
 	return {
-		results: response.map((guild) => ({
+		results: guilds.map((guild) => ({
 			name: guild.name as string,
 			value: guild.id as string,
 			url: `https://discord.com/channels/${guild.id}`,
@@ -75,13 +90,15 @@ export async function categorySearch(this: ILoadOptionsFunctions): Promise<INode
 
 export async function userSearch(
 	this: ILoadOptionsFunctions,
+	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const guildId = this.getNodeParameter('guildId', undefined, {
 		extractValue: true,
 	}) as string;
 
-	const qs = { limit: 1000, after: paginationToken };
+	const limit = 100;
+	const qs = { limit, after: paginationToken };
 
 	const response = await discordApiRequest.call(
 		this,
@@ -98,7 +115,12 @@ export async function userSearch(
 		};
 	}
 
-	const lastUserId = response[response.length - 1].user.id as string;
+	let lastUserId;
+
+	//less then limit means that there are no more users to return, so leave lastUserId undefined
+	if (!(response.length < limit)) {
+		lastUserId = response[response.length - 1].user.id as string;
+	}
 
 	return {
 		results: (response as Array<{ user: IDataObject }>).map(({ user }) => ({
