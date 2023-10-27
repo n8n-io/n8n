@@ -1,8 +1,8 @@
 import type { INodeProperties, IExecuteFunctions } from 'n8n-workflow';
-import { updateDisplayOptions } from '@utils/utilities';
 import { groupRLC, groupSourceOptions, planRLC } from '../../descriptions';
-import { returnAllOrLimit } from '@utils/descriptions';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { updateDisplayOptions } from '@utils/utilities';
+import { returnAllOrLimit } from '@utils/descriptions';
 
 const properties: INodeProperties[] = [
 	groupSourceOptions,
@@ -56,7 +56,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		const memberId = ((await microsoftApiRequest.call(this, 'GET', '/v1.0/me')) as { id: string })
 			.id;
 		if (returnAll) {
-			await microsoftApiRequestAllItems.call(
+			return microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',
@@ -77,7 +77,7 @@ export async function execute(this: IExecuteFunctions, i: number) {
 		//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
 		const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 		if (returnAll) {
-			await microsoftApiRequestAllItems.call(
+			return microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',

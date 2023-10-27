@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "67842ad2-2475-4094-854f-8efd732ff234",
+      "id": "6666-9999-77777",
       "name": "When clicking \"Execute Workflow\"",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -26,7 +26,7 @@
           "type": "private"
         }
       },
-      "id": "9f3bb031-3ad8-4480-b2f8-fae1325f6953",
+      "id": "6666-5555-77777",
       "name": "Microsoft Teams",
       "type": "n8n-nodes-base.microsoftTeams",
       "typeVersion": 2,

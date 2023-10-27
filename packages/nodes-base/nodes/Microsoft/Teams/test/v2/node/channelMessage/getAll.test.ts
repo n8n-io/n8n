@@ -34,7 +34,7 @@ microsoftApiRequestSpy.mockImplementation(async (_, method: string) => {
 					device: null,
 					user: {
 						'@odata.type': '#microsoft.graph.teamworkUserIdentity',
-						id: 'b834447b-6848-4af9-8390-d2259ce46b74',
+						id: '11111-2222-3333',
 						displayName: 'My Name',
 						userIdentityType: 'aadUser',
 						tenantId: 'tenantId-111-222-333',

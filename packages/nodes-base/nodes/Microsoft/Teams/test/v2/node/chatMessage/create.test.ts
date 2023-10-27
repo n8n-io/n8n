@@ -11,23 +11,22 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 	if (method === 'POST') {
 		return {
 			'@odata.context':
-				"https://graph.microsoft.com/beta/$metadata#teams('1111-2222-3333')/channels('threadId')/messages/$entity",
-			id: '1698324478896',
+				"https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",
+			id: '1698378560692',
 			replyToId: null,
-			etag: '1698324478896',
+			etag: '1698378560692',
 			messageType: 'message',
-			createdDateTime: '2023-10-26T12:47:58.896Z',
-			lastModifiedDateTime: '2023-10-26T12:47:58.896Z',
+			createdDateTime: '2023-10-27T03:49:20.692Z',
+			lastModifiedDateTime: '2023-10-27T03:49:20.692Z',
 			lastEditedDateTime: null,
 			deletedDateTime: null,
 			subject: null,
 			summary: null,
-			chatId: null,
+			chatId: '19:ebed9ad42c904d6c83adf0db360053ec@thread.v2',
 			importance: 'normal',
 			locale: 'en-us',
-			webUrl:
-				'https://teams.microsoft.com/l/message/threadId/1698324478896?groupId=1111-2222-3333&tenantId=tenantId-111-222-333&createdTime=1698324478896&parentMessageId=1698324478896',
-			onBehalfOf: null,
+			webUrl: null,
+			channelIdentity: null,
 			policyViolation: null,
 			eventDetail: null,
 			from: {
@@ -36,17 +35,14 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 				user: {
 					'@odata.type': '#microsoft.graph.teamworkUserIdentity',
 					id: '11111-2222-3333',
-					displayName: 'My Name',
+					displayName: 'Michael Kret',
 					userIdentityType: 'aadUser',
 				},
 			},
 			body: {
 				contentType: 'html',
-				content: 'new sale',
-			},
-			channelIdentity: {
-				teamId: '1111-2222-3333',
-				channelId: '42:aaabbbccc.tacv2',
+				content:
+					'Hello!<br>\n<br>\n<em> Powered by <a href="http://localhost:5678/workflow/i3NYGF0LXV4qDFV9?utm_source=n8n-internal&amp;utm_medium=powered_by&amp;utm_campaign=n8n-nodes-base.microsoftTeams_b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363">this n8n workflow</a> </em>',
 			},
 			attachments: [],
 			mentions: [],
@@ -55,8 +51,8 @@ microsoftApiRequestSpy.mockImplementation(async (method: string) => {
 	}
 });
 
-describe('Test MicrosoftTeamsV2, channelMessage => create', () => {
-	const workflows = ['nodes/Microsoft/Teams/test/v2/node/channelMessage/create.workflow.json'];
+describe('Test MicrosoftTeamsV2, chatMessage => create', () => {
+	const workflows = ['nodes/Microsoft/Teams/test/v2/node/chatMessage/create.workflow.json'];
 	const tests = workflowToTests(workflows);
 
 	beforeAll(() => {
@@ -82,8 +78,14 @@ describe('Test MicrosoftTeamsV2, channelMessage => create', () => {
 		expect(microsoftApiRequestSpy).toHaveBeenCalledTimes(1);
 		expect(microsoftApiRequestSpy).toHaveBeenCalledWith(
 			'POST',
-			'/beta/teams/1111-2222-3333/channels/42:aaabbbccc.tacv2/messages',
-			{ body: { content: 'new sale', contentType: 'html' } },
+			'/v1.0/chats/19:ebed9ad42c904d6c83adf0db360053ec@thread.v2/messages',
+			{
+				body: {
+					content:
+						'Hello!<br><br><em> Powered by <a href="workflow/test?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams_b888bd11cd1ddbb95450babf3e199556799d999b896f650de768b8370ee50363">this n8n workflow</a> </em>',
+					contentType: 'html',
+				},
+			},
 		);
 
 		expect(result.finished).toEqual(true);

@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {},
-      "id": "67842ad2-2475-4094-854f-8efd732ff234",
+      "id": "6666-9999-77777",
       "name": "When clicking \"Execute Workflow\"",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -34,7 +34,7 @@
           "includeLinkToWorkflow": false
         }
       },
-      "id": "9f3bb031-3ad8-4480-b2f8-fae1325f6953",
+      "id": "6666-5555-77777",
       "name": "Microsoft Teams",
       "type": "n8n-nodes-base.microsoftTeams",
       "typeVersion": 2,
@@ -88,7 +88,7 @@
             "device": null,
             "user": {
               "@odata.type": "#microsoft.graph.teamworkUserIdentity",
-              "id": "b834447b-6848-4af9-8390-d2259ce46b74",
+              "id": "11111-2222-3333",
               "displayName": "My Name",
               "userIdentityType": "aadUser"
             }
