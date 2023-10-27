@@ -1136,6 +1136,10 @@ export default defineComponent({
 	ul {
 		padding: 0 !important;
 	}
+
+	& > div {
+		background-color: transparent;
+	}
 }
 
 .header {
