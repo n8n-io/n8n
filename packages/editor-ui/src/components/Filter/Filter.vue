@@ -1,17 +1,29 @@
 <script setup lang="ts">
+import { isEqual } from 'lodash-es';
+
 import type {
 	FilterConditionValue,
 	FilterValue,
 	INodeProperties,
 	FilterTypeCombinator,
 	INode,
+	NodeParameterValue,
+	FilterOptionsValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
 import { useNDVStore } from '@/stores/ndv.store';
-import { DEFAULT_MAX_CONDITIONS, DEFAULT_OPERATOR_VALUE } from './constants';
+import {
+	DEFAULT_FILTER_OPTIONS,
+	DEFAULT_MAX_CONDITIONS,
+	DEFAULT_OPERATOR_VALUE,
+	type FilterOperatorId,
+	OPERATORS_BY_ID,
+} from './constants';
 import { useI18n, useDebounceHelper } from '@/composables';
 import Condition from './Condition.vue';
 import CombinatorSelect from './CombinatorSelect.vue';
+import { resolveParameter } from '@/mixins/workflowHelpers';
+import type { FilterOperator } from './types';
 
 interface Props {
 	parameter: INodeProperties;
@@ -23,19 +35,24 @@ interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	(event: 'valueChanged', value: FilterValue): void;
+	(event: 'valueChanged', value: { name: string; node: string; value: FilterValue }): void;
 }>();
+
+const i18n = useI18n();
+const ndvStore = useNDVStore();
+const { callDebounced } = useDebounceHelper();
 
 function createCondition(): FilterConditionValue {
 	return { leftValue: '', rightValue: '', operator: DEFAULT_OPERATOR_VALUE };
 }
 
-const allowedCombinators = computed(
+const allowedCombinators = computed<FilterTypeCombinator[]>(
 	() => props.parameter.typeOptions?.filter?.allowedCombinators ?? ['and', 'or'],
 );
 
 const state = reactive<{ paramValue: FilterValue }>({
 	paramValue: {
+		options: DEFAULT_FILTER_OPTIONS,
 		conditions: props.value.conditions ?? [createCondition()],
 		combinator: props.value.combinator ?? allowedCombinators.value[0],
 	},
@@ -44,22 +61,62 @@ const state = reactive<{ paramValue: FilterValue }>({
 const maxConditions = computed(
 	() => props.parameter.typeOptions?.filter?.maxConditions ?? DEFAULT_MAX_CONDITIONS,
 );
+
 const maxConditionsReached = computed(
 	() => maxConditions.value <= state.paramValue.conditions.length,
 );
 
+const issues = computed(() => {
+	if (!ndvStore.activeNode) return {};
+	return ndvStore.activeNode?.issues?.parameters ?? {};
+});
+
 watch(
-	() => state.paramValue,
-	(value) => emit('valueChanged', value),
+	() => props.node?.parameters,
+	() => {
+		const typeOptions = props.parameter.typeOptions?.filter;
+
+		if (!typeOptions) {
+			return;
+		}
+
+		let newOptions: FilterOptionsValue = DEFAULT_FILTER_OPTIONS;
+		try {
+			newOptions = {
+				...DEFAULT_FILTER_OPTIONS,
+				...resolveParameter(typeOptions as NodeParameterValue),
+			};
+		} catch (error) {}
+
+		if (!isEqual(state.paramValue.options, newOptions)) {
+			state.paramValue.options = newOptions;
+		}
+	},
+	{ immediate: true },
 );
+
+watch(state.paramValue, (value) => {
+	void callDebounced(
+		() => {
+			emit('valueChanged', { name: props.path, value, node: props.node?.name as string });
+		},
+		{ debounceTime: 1000 },
+	);
+});
 
 function addCondition(): void {
 	state.paramValue.conditions.push(createCondition());
 }
 
-function onOperatorChanged(index: number, value: string): void {
-	const [type, operation] = value.split(':');
-	state.paramValue.conditions[index].operator = { type, operation };
+function onOperatorChanged(index: number, operatorId: string): void {
+	const operator = OPERATORS_BY_ID[operatorId as FilterOperatorId] as FilterOperator;
+
+	state.paramValue.conditions[index].operator = {
+		type: operator.type,
+		operation: operator.operation,
+		rightType: operator.rightType,
+		singleValue: operator.singleValue,
+	};
 }
 
 function onLeftValueChanged(index: number, value: string): void {
@@ -77,25 +134,6 @@ function onCombinatorChange(combinator: FilterTypeCombinator): void {
 function onConditionRemoved(index: number): void {
 	state.paramValue.conditions.splice(index, 1);
 }
-
-const { callDebounced } = useDebounceHelper();
-
-watch(state.paramValue, (value) => {
-	void callDebounced(
-		() => {
-			emit('valueChanged', { name: props.path, value, node: props.node?.name });
-		},
-		{ debounceTime: 500 },
-	);
-});
-
-const i18n = useI18n();
-const ndvStore = useNDVStore();
-
-const issues = computed(() => {
-	if (!ndvStore.activeNode) return {};
-	return ndvStore.activeNode?.issues?.parameters ?? {};
-});
 
 function getIssues(index: number): string[] {
 	return issues.value[`${props.parameter.name}.${index}`] ?? [];
@@ -127,6 +165,7 @@ function getIssues(index: number): string[] {
 					<condition
 						:condition="condition"
 						:fixedLeftValue="!!parameter.typeOptions?.filter?.leftValue"
+						:canRemove="index !== 0"
 						:path="`${path}.${index}`"
 						:issues="getIssues(index)"
 						@operatorChange="(value) => onOperatorChanged(index, value)"
@@ -154,7 +193,6 @@ function getIssues(index: number): string[] {
 	display: flex;
 	flex-direction: column;
 	margin: var(--spacing-xs) 0;
-	container: filter / inline-size;
 }
 
 .conditions {

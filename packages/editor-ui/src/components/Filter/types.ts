@@ -1,10 +1,8 @@
 import type { BaseTextKey } from '@/plugins/i18n';
-import type { FilterOperatorType } from 'n8n-workflow';
+import type { FilterOperatorValue } from 'n8n-workflow';
 
-export interface FilterOperator {
-	id: `${FilterOperatorType}:${string}`;
+export interface FilterOperator extends FilterOperatorValue {
 	name: BaseTextKey;
-	singleValue?: boolean; // default = false
 }
 
 export interface FilterOperatorGroup {

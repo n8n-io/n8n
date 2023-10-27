@@ -1119,7 +1119,7 @@ type NonEmptyArray<T> = [T, ...T[]];
 export type FilterTypeCombinator = 'and' | 'or';
 
 export interface FilterTypeOptions {
-	caseSensitive?: boolean | string; // default = false
+	caseSensitive?: boolean | string; // default = true
 	leftValue?: string; // when set, user can't edit left side of condition
 	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
 	maxConditions?: number; // default = 5
@@ -2199,16 +2199,26 @@ export type FilterOperatorType =
 	| 'dateTime'
 	| 'any';
 
+export interface FilterOperatorValue {
+	type: FilterOperatorType;
+	operation: string;
+	rightType?: FilterOperatorType;
+	singleValue?: boolean; // default = false
+}
+
 export type FilterConditionValue = {
 	leftValue: string;
-	operator: {
-		type: FilterOperatorType;
-		operation: string;
-	};
+	operator: FilterOperatorValue;
 	rightValue: string;
 };
 
+export type FilterOptionsValue = {
+	caseSensitive: boolean;
+	leftValue: string;
+};
+
 export type FilterValue = {
+	options: FilterOptionsValue;
 	conditions: FilterConditionValue[];
 	combinator: FilterTypeCombinator;
 };

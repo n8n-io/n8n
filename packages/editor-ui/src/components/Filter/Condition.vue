@@ -11,12 +11,17 @@ import type { IUpdateInformation } from '@/Interface';
 
 interface Props {
 	path: string;
-	fixedLeftValue: boolean;
 	condition: FilterConditionValue;
-	issues: string[];
+	issues?: string[];
+	fixedLeftValue?: boolean;
+	canRemove?: boolean;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+	issues: () => [],
+	canRemove: true,
+	fixedLeftValue: false,
+});
 
 const emit = defineEmits<{
 	(event: 'operatorChange', value: string): void;
@@ -54,13 +59,13 @@ const i18n = useI18n();
 <template>
 	<div
 		:class="{
-			[$style.condition]: true,
-			[$style.hideRightInput]: operator.singleValue,
+			[$style.wrapper]: true,
 			[$style.hasIssues]: issues.length > 0,
 		}"
 		data-test-id="condition"
 	>
 		<n8n-icon-button
+			v-if="canRemove"
 			type="tertiary"
 			text
 			size="mini"
@@ -69,45 +74,62 @@ const i18n = useI18n();
 			:class="$style.remove"
 			@click="onRemove"
 		></n8n-icon-button>
-		<div :class="$style.triple">
-			<parameter-input-full
-				v-if="!fixedLeftValue"
-				displayOptions
-				hideLabel
-				hideHint
-				isSingleLine
-				:parameter="parameter"
-				:value="condition.leftValue"
-				:path="`${path}.left`"
-				:class="[$style.input, $style.inputLeft]"
-				@update="onLeftValueChange"
-			/>
-			<operator-select
-				:class="$style.select"
-				:selected="operator.id"
-				@operatorChange="onOperatorChange"
-			></operator-select>
-			<parameter-input-full
-				v-if="!operator.singleValue"
-				displayOptions
-				hideLabel
-				hideHint
-				isSingleLine
-				optionsPosition="bottom"
-				:parameter="parameter"
-				:value="condition.rightValue"
-				:path="`${path}.right`"
-				:class="[$style.input, $style.inputRight]"
-				@update="onRightValueChange"
-			/>
-		</div>
+		<n8n-resize-observer
+			:class="$style.observer"
+			:breakpoints="[
+				{ bp: 'stacked', width: 340 },
+				{ bp: 'medium', width: 480 },
+			]"
+		>
+			<template #default="{ bp }">
+				<div
+					:class="{
+						[$style.condition]: true,
+						[$style.hideRightInput]: operator.singleValue,
+						[$style.stacked]: bp === 'stacked',
+						[$style.medium]: bp === 'medium',
+					}"
+				>
+					<parameter-input-full
+						v-if="!fixedLeftValue"
+						displayOptions
+						hideLabel
+						hideHint
+						isSingleLine
+						:parameter="parameter"
+						:value="condition.leftValue"
+						:path="`${path}.left`"
+						:class="[$style.input, $style.inputLeft]"
+						@update="onLeftValueChange"
+					/>
+					<operator-select
+						:class="$style.select"
+						:selected="`${operator.type}:${operator.operation}`"
+						@operatorChange="onOperatorChange"
+					></operator-select>
+					<parameter-input-full
+						v-if="!operator.singleValue"
+						displayOptions
+						hideLabel
+						hideHint
+						isSingleLine
+						:optionsPosition="bp === 'default' ? 'top' : 'bottom'"
+						:parameter="parameter"
+						:value="condition.rightValue"
+						:path="`${path}.right`"
+						:class="[$style.input, $style.inputRight]"
+						@update="onRightValueChange"
+					/>
+				</div>
+			</template>
+		</n8n-resize-observer>
 
 		<parameter-issues v-if="issues.length > 0" :issues="issues" :class="$style.issues" />
 	</div>
 </template>
 
 <style lang="scss" module>
-.condition {
+.wrapper {
 	position: relative;
 	display: flex;
 	align-items: flex-end;
@@ -128,12 +150,13 @@ const i18n = useI18n();
 	}
 }
 
-.triple {
-	--condition-select-width: 140px;
-	--condition-input-width: 180px;
+.condition {
 	display: flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	align-items: flex-end;
+}
+
+.observer {
 	width: 100%;
 }
 
@@ -143,24 +166,17 @@ const i18n = useI18n();
 }
 
 .select {
-	flex-basis: var(--condition-select-width);
 	flex-shrink: 0;
-	flex-grow: 1;
+	flex-grow: 0;
+	flex-basis: 160px;
 	--input-border-radius: 0;
 	--input-border-right-color: transparent;
 }
 
-.hideRightInput {
-	.select {
-		--input-border-top-right-radius: var(--border-radius-base);
-		--input-border-bottom-right-radius: var(--border-radius-base);
-		--input-border-right-color: var(--input-border-color-base);
-	}
-}
-
 .input {
-	flex-grow: 10;
-	flex-basis: var(--condition-input-width);
+	flex-shrink: 0;
+	flex-basis: 160px;
+	flex-grow: 1;
 }
 
 .inputLeft {
@@ -174,6 +190,14 @@ const i18n = useI18n();
 	--input-border-bottom-left-radius: 0;
 }
 
+.hideRightInput {
+	.select {
+		--input-border-top-right-radius: var(--border-radius-base);
+		--input-border-bottom-right-radius: var(--border-radius-base);
+		--input-border-right-color: var(--input-border-color-base);
+	}
+}
+
 .remove {
 	position: absolute;
 	left: calc(var(--spacing-l) * -1);
@@ -182,7 +206,9 @@ const i18n = useI18n();
 	transition: opacity 100ms ease-in;
 }
 
-@container filter (max-width: 524px) {
+.medium {
+	flex-wrap: wrap;
+
 	.select {
 		--input-border-top-right-radius: var(--border-radius-base);
 		--input-border-bottom-right-radius: 0;
@@ -198,11 +224,13 @@ const i18n = useI18n();
 	}
 
 	.inputRight {
+		flex-basis: 340px;
+		flex-shrink: 1;
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: var(--border-radius-base);
 	}
 
-	.hideRightInput {
+	&.hideRightInput {
 		.select {
 			--input-border-bottom-color: var(--input-border-color-base);
 			--input-border-top-left-radius: 0;
@@ -220,27 +248,33 @@ const i18n = useI18n();
 	}
 }
 
-@container filter (max-width: 344px) {
+.stacked {
+	display: block;
+
 	.select {
-		--input-border-top-right-radius: 0;
-		--input-border-bottom-right-radius: 0;
-		--input-border-bottom-color: transparent;
+		width: 100%;
 		--input-border-right-color: var(--input-border-color-base);
+		--input-border-bottom-color: transparent;
+		--input-border-radius: 0;
 	}
 
 	.inputLeft {
 		--input-border-right-color: var(--input-border-color-base);
+		--input-border-bottom-color: transparent;
+		--input-border-top-left-radius: var(--border-radius-base);
 		--input-border-top-right-radius: var(--border-radius-base);
 		--input-border-bottom-left-radius: 0;
-		--input-border-bottom-color: transparent;
+		--input-border-bottom-right-radius: 0;
 	}
 
 	.inputRight {
+		--input-border-top-left-radius: 0;
 		--input-border-top-right-radius: 0;
 		--input-border-bottom-left-radius: var(--border-radius-base);
+		--input-border-bottom-right-radius: var(--border-radius-base);
 	}
 
-	.hideRightInput {
+	&.hideRightInput {
 		.select {
 			--input-border-bottom-color: var(--input-border-color-base);
 			--input-border-top-left-radius: 0;

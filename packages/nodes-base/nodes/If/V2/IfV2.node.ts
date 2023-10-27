@@ -29,7 +29,7 @@ export class IfV2 implements INodeType {
 					default: {},
 					typeOptions: {
 						filter: {
-							caseSensitive: '={{$parameter["caseSensitive"] ?? true}}',
+							caseSensitive: '={{$parameter.options.caseSensitive}}',
 						},
 					},
 				},

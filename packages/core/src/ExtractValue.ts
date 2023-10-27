@@ -1,17 +1,15 @@
-import type {
-	FilterConditionValue,
-	FilterTypeOptions,
-	FilterValue,
-	INode,
-	INodeParameters,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-	INodeType,
-	NodeParameterValueType,
+import {
+	type FilterValue,
+	type INode,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type INodeType,
+	type NodeParameterValueType,
+	isFilterValue,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeHelpers, LoggerProxy, validateFieldType } from 'n8n-workflow';
-import type { DateTime } from 'luxon';
+import { NodeOperationError, NodeHelpers, LoggerProxy, executeFilter } from 'n8n-workflow';
 
 function findPropertyFromParameterName(
 	parameterName: string,
@@ -122,244 +120,12 @@ function extractValueRLC(
 	return executeRegexExtractValue(value.value, regex, parameterName, property.displayName);
 }
 
-function executeFilterCondition(
-	condition: FilterConditionValue,
-	options?: FilterTypeOptions,
-): boolean {
-	switch (condition.operator.type) {
-		case 'any': {
-			const exists = condition.leftValue !== undefined && condition.leftValue !== null;
-
-			switch (condition.operator.operation) {
-				case 'exists':
-					return exists;
-				case 'notExists':
-					return !exists;
-			}
-
-			break;
-		}
-		case 'string': {
-			const parsedLeftValue = validateFieldType(
-				'filter',
-				condition.leftValue,
-				condition.operator.type,
-			);
-			const parsedRightValue = validateFieldType(
-				'filter',
-				condition.rightValue,
-				condition.operator.type,
-			);
-
-			if (!parsedLeftValue.valid || !parsedRightValue.valid) {
-				return false;
-			}
-
-			let leftValue = parsedLeftValue.newValue as string;
-			let rightValue = parsedRightValue.newValue as string;
-
-			if (options?.caseSensitive === false) {
-				leftValue = leftValue.toLocaleLowerCase();
-				rightValue = rightValue.toLocaleLowerCase();
-			}
-
-			switch (condition.operator.operation) {
-				case 'equals':
-					return leftValue === rightValue;
-				case 'notEquals':
-					return leftValue !== rightValue;
-				case 'contains':
-					return leftValue.includes(rightValue);
-				case 'notContains':
-					return !leftValue.includes(rightValue);
-				case 'startsWith':
-					return leftValue.startsWith(rightValue);
-				case 'notStartsWith':
-					return !leftValue.startsWith(rightValue);
-				case 'endsWith':
-					return leftValue.endsWith(rightValue);
-				case 'notEndsWith':
-					return !leftValue.endsWith(rightValue);
-				case 'notEndsWith':
-					return !leftValue.endsWith(rightValue);
-				case 'regex':
-					return new RegExp(rightValue).test(leftValue);
-				case 'notRegex':
-					return !new RegExp(rightValue).test(leftValue);
-			}
-
-			break;
-		}
-		case 'number': {
-			const parsedLeftValue = validateFieldType(
-				'filter',
-				condition.leftValue,
-				condition.operator.type,
-			);
-			const parsedRightValue = validateFieldType(
-				'filter',
-				condition.rightValue,
-				condition.operator.type,
-			);
-
-			if (!parsedLeftValue.valid || !parsedRightValue.valid) {
-				return false;
-			}
-
-			const leftValue = parsedLeftValue.newValue as number;
-			const rightValue = parsedRightValue.newValue as number;
-
-			switch (condition.operator.operation) {
-				case 'equals':
-					return leftValue === rightValue;
-				case 'notEquals':
-					return leftValue !== rightValue;
-				case 'gt':
-					return leftValue > rightValue;
-				case 'lt':
-					return leftValue < rightValue;
-				case 'gte':
-					return leftValue >= rightValue;
-				case 'lte':
-					return leftValue <= rightValue;
-			}
-		}
-		case 'dateTime': {
-			const parsedLeftValue = validateFieldType(
-				'filter',
-				condition.leftValue,
-				condition.operator.type,
-			);
-			const parsedRightValue = validateFieldType(
-				'filter',
-				condition.rightValue,
-				condition.operator.type,
-			);
-
-			if (!parsedLeftValue.valid || !parsedRightValue.valid) {
-				return false;
-			}
-
-			const leftValue = parsedLeftValue.newValue as DateTime;
-			const rightValue = parsedRightValue.newValue as DateTime;
-
-			switch (condition.operator.operation) {
-				case 'equals':
-					return leftValue.toMillis() === rightValue.toMillis();
-				case 'notEquals':
-					return leftValue.toMillis() !== rightValue.toMillis();
-				case 'after':
-					return leftValue.toMillis() > rightValue.toMillis();
-				case 'before':
-					return leftValue.toMillis() < rightValue.toMillis();
-				case 'afterOrEquals':
-					return leftValue.toMillis() >= rightValue.toMillis();
-				case 'beforeOrEquals':
-					return leftValue.toMillis() <= rightValue.toMillis();
-			}
-		}
-		case 'boolean': {
-			const parsedLeftValue = validateFieldType(
-				'filter',
-				condition.leftValue,
-				condition.operator.type,
-			);
-			const parsedRightValue = validateFieldType(
-				'filter',
-				condition.rightValue,
-				condition.operator.type,
-			);
-
-			if (!parsedLeftValue.valid || !parsedRightValue.valid) {
-				return false;
-			}
-
-			const leftValue = parsedLeftValue.newValue as boolean;
-			const rightValue = parsedRightValue.newValue as boolean;
-
-			switch (condition.operator.operation) {
-				case 'true':
-					return leftValue;
-				case 'false':
-					return !leftValue;
-				case 'equals':
-					return leftValue === rightValue;
-				case 'notEquals':
-					return leftValue !== rightValue;
-			}
-		}
-		case 'array': {
-			const parsedLeftValue = validateFieldType(
-				'filter',
-				condition.leftValue,
-				condition.operator.type,
-			);
-			const parsedRightValue = validateFieldType(
-				'filter',
-				condition.rightValue,
-				condition.operator.type,
-			);
-
-			if (!parsedLeftValue.valid || !parsedRightValue.valid) {
-				return false;
-			}
-
-			const leftValue = parsedLeftValue.newValue as unknown[];
-			const rightValue = parsedRightValue.newValue as unknown[];
-
-			switch (condition.operator.operation) {
-				case 'contains':
-					return rightValue.some((item) => leftValue.includes(item));
-				case 'notContains':
-					return !rightValue.some((item) => leftValue.includes(item));
-				case 'lengthEquals':
-					return leftValue.length === rightValue.length;
-				case 'lengthNotEquals':
-					return leftValue.length !== rightValue.length;
-				case 'lengthGt':
-					return leftValue.length > rightValue.length;
-				case 'lengthLt':
-					return leftValue.length < rightValue.length;
-				case 'lengthGte':
-					return leftValue.length >= rightValue.length;
-				case 'lengthLte':
-					return leftValue.length <= rightValue.length;
-			}
-		}
-		case 'object': {
-			const parsedLeftValue = validateFieldType(
-				'filter',
-				condition.leftValue,
-				condition.operator.type,
-			);
-
-			if (!parsedLeftValue.valid) {
-				return false;
-			}
-
-			const leftValue = parsedLeftValue.newValue as object;
-
-			switch (condition.operator.operation) {
-				case 'empty':
-					return Object.keys(leftValue).length === 0;
-				case 'notEmpty':
-					return Object.keys(leftValue).length !== 0;
-			}
-		}
-	}
-
-	LoggerProxy.error(
-		`Unknown filter parameter operator "${condition.operator.type}:${condition.operator.operation}"`,
-	);
-	return false;
-}
-
 function extractValueFilter(
 	value: NodeParameterValueType | object,
 	property: INodeProperties,
 	parameterName: string,
 ): NodeParameterValueType | object {
-	if (typeof value !== 'object' || !value || !('conditions' in value)) {
+	if (!isFilterValue(value)) {
 		return value;
 	}
 
@@ -369,19 +135,7 @@ function extractValueFilter(
 		);
 	}
 
-	const filterValue = value as FilterValue;
-
-	if (filterValue.combinator === 'and') {
-		return filterValue.conditions.every((condition) =>
-			executeFilterCondition(condition, property.typeOptions?.filter),
-		);
-	} else if (filterValue.combinator === 'or') {
-		return filterValue.conditions.some((condition) =>
-			executeFilterCondition(condition, property.typeOptions?.filter),
-		);
-	}
-
-	return false;
+	return executeFilter(value as FilterValue);
 }
 
 function extractValueOther(

@@ -2,6 +2,7 @@
 import { useI18n } from '@/composables';
 import { OPERATOR_GROUPS } from './constants';
 import { reactive, computed } from 'vue';
+import type { FilterOperator } from './types';
 
 interface Props {
 	selected: string;
@@ -26,6 +27,9 @@ const onOperatorChange = (operator: string): void => {
 const selectedGroupIcon = computed(
 	() => groups.find((group) => group.id === state.selected.split(':')[0])?.icon,
 );
+
+const getOperatorId = (operator: FilterOperator): string =>
+	`${operator.type}:${operator.operation}`;
 </script>
 
 <template>
@@ -42,8 +46,8 @@ const selectedGroupIcon = computed(
 					</div>
 					<n8n-option
 						v-for="operator in group.children"
-						:key="operator.id"
-						:value="operator.id"
+						:key="getOperatorId(operator)"
+						:value="getOperatorId(operator)"
 						:label="i18n.baseText(operator.name)"
 					/>
 				</div>

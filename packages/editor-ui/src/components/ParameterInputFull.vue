@@ -106,10 +106,10 @@ import {
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import type {
-	INodeParameters,
 	INodeProperties,
 	INodePropertyMode,
 	IParameterLabel,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import type { BaseTextKey } from '@/plugins/i18n';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -183,7 +183,7 @@ export default defineComponent({
 			type: String,
 		},
 		value: {
-			type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
+			type: [Number, String, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 		},
 		label: {
 			type: Object as PropType<IParameterLabel>,

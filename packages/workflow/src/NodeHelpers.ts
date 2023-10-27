@@ -1252,6 +1252,13 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 };
 
 export const tryToParseDateTime = (value: unknown): DateTime => {
+	if (typeof value === 'number') {
+		const unixDate = DateTime.fromSeconds(value);
+		if (unixDate.isValid) {
+			return unixDate;
+		}
+	}
+
 	const dateString = String(value).trim();
 
 	// Rely on luxon to parse different date formats
@@ -1390,7 +1397,7 @@ export const validateResourceMapperParameter = (
 };
 
 /*
- * Validates resource mapper values based on service schema
+ * Validates filter value based on type
  *
  */
 export const validateFilterParameter = (
@@ -1399,26 +1406,24 @@ export const validateFilterParameter = (
 ): Record<string, string[]> => {
 	const composeErrorMessage = (type: string, field: 'first' | 'second') =>
 		`The value in the ${field} field cannot be converted to a ${type}. This could lead to unwanted results. Please check the value or choose a different logical operator.`;
+
 	return value.conditions.reduce(
 		(issues, condition, index) => {
-			const { type } = condition.operator;
+			const { type, rightType, singleValue } = condition.operator;
 			const key = `${nodeProperties.name}.${index}`;
 
 			if (type === 'any') {
 				return issues;
 			}
 
-			const validationResultLeft = validateFieldType(
-				nodeProperties.displayName,
-				condition.leftValue,
-				type,
-			);
+			const validationResultLeft = condition.leftValue.startsWith('=')
+				? { valid: true }
+				: validateFieldType(nodeProperties.displayName, condition.leftValue, type);
 
-			const validationResultRight = validateFieldType(
-				nodeProperties.displayName,
-				condition.rightValue,
-				type,
-			);
+			const validationResultRight =
+				condition.rightValue.startsWith('=') || singleValue || rightType === 'any'
+					? { valid: true }
+					: validateFieldType(nodeProperties.displayName, condition.rightValue, rightType ?? type);
 
 			if (!validationResultLeft.valid || !validationResultRight.valid) {
 				issues[key] = [];
