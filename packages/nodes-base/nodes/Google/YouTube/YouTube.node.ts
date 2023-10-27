@@ -1,3 +1,4 @@
+import type { Readable } from 'stream';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -8,7 +9,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
-import type { Readable } from 'stream';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 

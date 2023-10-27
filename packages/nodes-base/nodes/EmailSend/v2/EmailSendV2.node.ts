@@ -9,7 +9,6 @@ import type {
 
 import * as send from './send.operation';
 
-// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',

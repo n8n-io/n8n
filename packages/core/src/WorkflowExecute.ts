@@ -274,7 +274,6 @@ export class WorkflowExecute {
 				}
 
 				// Only run the parent nodes and no others
-				// eslint-disable-next-line prefer-const
 				runNodeFilter = workflow
 					.getParentNodes(destinationNode)
 					.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);

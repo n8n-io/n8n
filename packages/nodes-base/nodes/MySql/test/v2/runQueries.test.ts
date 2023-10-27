@@ -1,12 +1,10 @@
-import { createMockExecuteFunction } from '@test/nodes/Helpers';
-
+import type { IDataObject, INode } from 'n8n-workflow';
+import mysql2 from 'mysql2/promise';
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { BATCH_MODE } from '../../v2/helpers/interfaces';
 
-import type { IDataObject, INode } from 'n8n-workflow';
-
-import mysql2 from 'mysql2/promise';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',

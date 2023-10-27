@@ -1,8 +1,8 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { contactFields } from '../../helpers/utils';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
-import { updateDisplayOptions } from '@utils/utilities';
 import { returnAllOrLimit } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	...returnAllOrLimit,

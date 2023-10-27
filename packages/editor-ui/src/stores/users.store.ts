@@ -102,7 +102,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			return false;
 		},
 		personalizedNodeTypes(): string[] {
-			const user = this.currentUser as IUser | null;
+			const user = this.currentUser;
 			if (!user) {
 				return [];
 			}
