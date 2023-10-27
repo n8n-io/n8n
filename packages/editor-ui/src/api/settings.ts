@@ -9,7 +9,10 @@ import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL } from '@/constants'
 import type { IN8nUISettings } from 'n8n-workflow';
 
 export async function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {
-	return makeRestApiRequest(context, 'GET', '/settings');
+	const settings: IN8nUISettings = await makeRestApiRequest(context, 'GET', '/settings');
+	settings.n8nMetadata = { userId: '1' };
+	settings.deployment.type = 'cloud';
+	return settings;
 }
 
 export async function getPromptsData(instanceId: string, userId: string): Promise<IN8nPrompts> {
