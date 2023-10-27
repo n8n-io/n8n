@@ -54,6 +54,7 @@ export class Queue {
 		// More here: https://github.com/OptimalBits/bull/issues/890
 		this.jobQueue = new Bull('jobs', {
 			prefix,
+			settings: config.get('queue.bull.settings'),
 			createClient: (type, clientConfig) =>
 				usesRedisCluster
 					? getRedisClusterClient(Redis, clientConfig, (type + '(bull)') as RedisClientType)
