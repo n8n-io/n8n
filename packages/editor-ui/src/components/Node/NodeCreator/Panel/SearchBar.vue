@@ -25,6 +25,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
+import { useExternalHooks } from '@/composables';
 
 export interface Props {
 	placeholder: string;
@@ -44,6 +45,8 @@ const state = reactive({
 	inputRef: null as HTMLInputElement | null,
 });
 
+const externalHooks = useExternalHooks();
+
 function focus() {
 	state.inputRef?.focus();
 }
@@ -58,7 +61,7 @@ function clear() {
 }
 
 onMounted(() => {
-	$externalHooks().run('nodeCreatorSearchBar.mount', { inputRef: state.inputRef });
+	void externalHooks.run('nodeCreatorSearchBar.mount', { inputRef: state.inputRef });
 	setTimeout(focus, 0);
 });
 

@@ -133,21 +133,21 @@ export default defineComponent({
 		async initHooks(): Promise<void> {
 			const hooksImports = [];
 
-			if (this.settingsStore.isCloudDeployment) {
-				hooksImports.push(
-					import('./hooks/cloud').then(({ n8nCloudHooks }) => {
-						extendExternalHooks(n8nCloudHooks);
-					}),
-				);
-			}
+			// if (this.settingsStore.isCloudDeployment) {
+			hooksImports.push(
+				import('./hooks/cloud').then(({ n8nCloudHooks }) => {
+					extendExternalHooks(n8nCloudHooks);
+				}),
+			);
+			// }
 
-			if (this.settingsStore.isTelemetryEnabled) {
-				hooksImports.push(
-					import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
-						extendExternalHooks(n8nPosthogHooks);
-					}),
-				);
-			}
+			// if (this.settingsStore.isTelemetryEnabled) {
+			hooksImports.push(
+				import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
+					extendExternalHooks(n8nPosthogHooks);
+				}),
+			);
+			// }
 
 			await Promise.allSettled(hooksImports);
 		},

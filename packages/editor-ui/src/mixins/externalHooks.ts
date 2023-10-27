@@ -258,6 +258,8 @@ export function extendExternalHooks(hooks: PartialDeep<ExternalHooks>) {
 			(window.n8nExternalHooks as GenericHooksType)[resource][operator].push(...context[operator]);
 		}
 	}
+
+	console.log(window.n8nExternalHooks);
 }
 
 export async function runExternalHook(eventName: string, metadata?: IDataObject) {
