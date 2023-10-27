@@ -35,6 +35,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
@@ -212,7 +213,7 @@ export default defineComponent({
 			return;
 		},
 		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
+			const theme = useStorage(LOCAL_STORAGE_THEME, undefined).value;
 			if (theme) {
 				window.document.body.classList.add(`theme-${theme}`);
 			}

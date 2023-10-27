@@ -170,6 +170,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
@@ -579,9 +580,10 @@ export default defineComponent({
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = localStorage.getItem(
+		const hasSeenPinDataTooltip = useStorage(
 			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-		);
+			undefined,
+		).value;
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
