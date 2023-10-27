@@ -3183,7 +3183,7 @@ export default defineComponent({
 				const pinDataForNode = this.workflowsStore.pinDataByNodeName(
 					nodeName,
 				) as INodeExecutionData[];
-				if (pinDataForNode) {
+				if (pinDataForNode?.length) {
 					try {
 						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
 					} catch (error) {}
@@ -3916,6 +3916,10 @@ export default defineComponent({
 				for (const nodeName of Object.keys(data.pinData)) {
 					// Pin data limit reached
 					if (!pinDataSuccess) {
+						this.showError(
+							new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
+							this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+						);
 						continue;
 					}
 
