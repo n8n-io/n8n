@@ -46,7 +46,6 @@ setErrorHandler((error: Error) => {
 	if (isExpressionError(error)) throw error;
 });
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 const AsyncFunction = (async () => {}).constructor as FunctionConstructor;
 
 const fnConstructors = {

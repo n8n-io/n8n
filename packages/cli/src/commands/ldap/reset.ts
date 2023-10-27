@@ -7,7 +7,6 @@ export class Reset extends BaseCommand {
 	static description = '\nResets the database to the default ldap state';
 
 	async run(): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { AuthIdentity, AuthProviderSyncHistory, Settings, User } = Db.collections;
 		const ldapIdentities = await AuthIdentity.find({
 			where: { providerType: 'ldap' },
