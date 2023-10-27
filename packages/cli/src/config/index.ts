@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import { tmpdir } from 'os';
 import { mkdirSync, mkdtempSync, readFileSync } from 'fs';
 import { join } from 'path';
+import { setGlobalState } from 'n8n-workflow';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
@@ -71,6 +72,10 @@ if (!inE2ETests && !inTest) {
 
 config.validate({
 	allowed: 'strict',
+});
+
+setGlobalState({
+	defaultTimezone: config.getEnv('generic.timezone'),
 });
 
 // eslint-disable-next-line import/no-default-export
