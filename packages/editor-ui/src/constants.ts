@@ -224,9 +224,8 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 // Node Connection Types
 export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	NodeConnectionType.AiTool,
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 	NodeConnectionType.Main,
 ];
 

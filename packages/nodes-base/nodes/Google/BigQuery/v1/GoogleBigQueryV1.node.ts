@@ -13,14 +13,13 @@ import type {
 
 import { NodeApiError } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
+import { generatePairedItemData } from '../../../../utils/utilities';
 import { googleApiRequest, googleApiRequestAllItems, simplify } from './GenericFunctions';
 
 import { recordFields, recordOperations } from './RecordDescription';
 
-import { v4 as uuid } from 'uuid';
-
 import { oldVersionNotice } from '@utils/descriptions';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google BigQuery',

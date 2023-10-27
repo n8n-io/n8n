@@ -1,7 +1,7 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { constructExecutionMetaData } from 'n8n-core';
-import { prepareOutput } from '../../../v2/helpers/utils';
 import { mock } from 'jest-mock-extended';
+import { prepareOutput } from '../../../v2/helpers/utils';
 
 describe('Google BigQuery v2 Utils', () => {
 	it('should prepareOutput', () => {

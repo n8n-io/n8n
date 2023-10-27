@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { DateTime } from 'luxon';
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
@@ -15,8 +16,6 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
-
-import { DateTime } from 'luxon';
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {

@@ -7,12 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import get from 'lodash/get';
 import unset from 'lodash/unset';
 import { disableDotNotationBoolean } from '../common.descriptions';
 import { prepareFieldsArray } from '../../helpers/utils';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

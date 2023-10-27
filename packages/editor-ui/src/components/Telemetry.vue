@@ -25,9 +25,7 @@ export default defineComponent({
 			return this.usersStore.currentUserId || '';
 		},
 		isTelemetryEnabledOnRoute(): boolean {
-			return this.$route.meta && this.$route.meta.telemetry
-				? !this.$route.meta.telemetry.disabled
-				: true;
+			return this.$route.meta?.telemetry ? !this.$route.meta.telemetry.disabled : true;
 		},
 		telemetry(): ITelemetrySettings {
 			return this.settingsStore.telemetry;

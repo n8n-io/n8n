@@ -105,6 +105,7 @@ import {
 	createDeferredPromise,
 	deepCopy,
 	fileTypeFromMimeType,
+	getGlobalState,
 	isObjectEmpty,
 	isResourceMapperValue,
 	validateFieldType,
@@ -131,7 +132,7 @@ import {
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from './Constants';
 import { extractValue } from './ExtractValue';
-import type { ExtendedValidationResult, IResponseError, IWorkflowSettings } from './Interfaces';
+import type { ExtendedValidationResult, IResponseError } from './Interfaces';
 import { getClientCredentialsToken } from './OAuth2Helper';
 import {
 	getAllWorkflowExecutionMetadata,
@@ -1544,7 +1545,6 @@ export async function httpRequestWithAuthentication(
 			requestOptions,
 			workflow,
 			node,
-			additionalData.timezone,
 		);
 		return await httpRequest(requestOptions);
 	} catch (error) {
@@ -1577,7 +1577,6 @@ export async function httpRequestWithAuthentication(
 						requestOptions,
 						workflow,
 						node,
-						additionalData.timezone,
 					);
 				}
 				// retry the request
@@ -1740,7 +1739,6 @@ export async function requestWithAuthentication(
 			requestOptions as IHttpRequestOptions,
 			workflow,
 			node,
-			additionalData.timezone,
 		);
 		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
 	} catch (error) {
@@ -1765,7 +1763,6 @@ export async function requestWithAuthentication(
 						requestOptions as IHttpRequestOptions,
 						workflow,
 						node,
-						additionalData.timezone,
 					);
 					// retry the request
 					return await proxyRequestToAxios(
@@ -1972,7 +1969,6 @@ export async function getCredentials(
 		nodeCredentials,
 		type,
 		mode,
-		additionalData.timezone,
 		false,
 		expressionResolveValues,
 	);
@@ -2222,7 +2218,6 @@ export function getNodeParameter(
 	parameterName: string,
 	itemIndex: number,
 	mode: WorkflowExecuteMode,
-	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	executeData?: IExecuteData,
 	fallbackValue?: any,
@@ -2253,7 +2248,6 @@ export function getNodeParameter(
 			node.name,
 			connectionInputData,
 			mode,
-			timezone,
 			additionalKeys,
 			executeData,
 			false,
@@ -2308,7 +2302,6 @@ export function getNodeWebhookUrl(
 	node: INode,
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
-	timezone: string,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	isTest?: boolean,
 ): string | undefined {
@@ -2327,7 +2320,6 @@ export function getNodeWebhookUrl(
 		node,
 		webhookDescription.path,
 		mode,
-		timezone,
 		additionalKeys,
 	);
 	if (path === undefined) {
@@ -2338,7 +2330,6 @@ export function getNodeWebhookUrl(
 		node,
 		webhookDescription.isFullPath,
 		mode,
-		timezone,
 		additionalKeys,
 		undefined,
 		false,
@@ -2348,17 +2339,9 @@ export function getNodeWebhookUrl(
 
 /**
  * Returns the timezone for the workflow
- *
  */
-export function getTimezone(
-	workflow: Workflow,
-	additionalData: IWorkflowExecuteAdditionalData,
-): string {
-	// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-	if (workflow.settings !== undefined && workflow.settings.timezone !== undefined) {
-		return (workflow.settings as IWorkflowSettings).timezone as string;
-	}
-	return additionalData.timezone;
+export function getTimezone(workflow: Workflow): string {
+	return workflow.settings.timezone ?? getGlobalState().defaultTimezone;
 }
 
 /**
@@ -2508,7 +2491,7 @@ const getCommonWorkflowFunctions = (
 	getRestApiUrl: () => additionalData.restApiUrl,
 	getInstanceBaseUrl: () => additionalData.instanceBaseUrl,
 	getInstanceId: () => Container.get(InstanceSettings).instanceId,
-	getTimezone: () => getTimezone(workflow, additionalData),
+	getTimezone: () => getTimezone(workflow),
 
 	prepareOutputData: async (outputData) => [outputData],
 });
@@ -2772,7 +2755,6 @@ export function getExecutePollFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
@@ -2831,7 +2813,6 @@ export function getExecuteTriggerFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
@@ -2890,7 +2871,6 @@ export function getExecuteFunctions(
 					node.name,
 					connectionInputData,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
@@ -2983,7 +2963,6 @@ export function getExecuteFunctions(
 								parameterName,
 								itemIndex,
 								mode,
-								additionalData.timezone,
 								getAdditionalKeys(additionalData, mode, runExecutionData),
 								executeData,
 								fallbackValue,
@@ -3142,7 +3121,6 @@ export function getExecuteFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
@@ -3159,7 +3137,6 @@ export function getExecuteFunctions(
 					connectionInputData,
 					{},
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
@@ -3306,7 +3283,6 @@ export function getExecuteSingleFunctions(
 					node.name,
 					connectionInputData,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
@@ -3377,7 +3353,6 @@ export function getExecuteSingleFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 					fallbackValue,
@@ -3394,7 +3369,6 @@ export function getExecuteSingleFunctions(
 					connectionInputData,
 					{},
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					executeData,
 				);
@@ -3489,7 +3463,6 @@ export function getLoadOptionsFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
@@ -3538,7 +3511,6 @@ export function getExecuteHookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, runExecutionData),
 					undefined,
 					fallbackValue,
@@ -3552,7 +3524,6 @@ export function getExecuteHookFunctions(
 					node,
 					additionalData,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, null),
 					isTest,
 				);
@@ -3615,7 +3586,6 @@ export function getExecuteWebhookFunctions(
 					parameterName,
 					itemIndex,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, null),
 					undefined,
 					fallbackValue,
@@ -3653,7 +3623,6 @@ export function getExecuteWebhookFunctions(
 					node,
 					additionalData,
 					mode,
-					additionalData.timezone,
 					getAdditionalKeys(additionalData, mode, null),
 				),
 			getWebhookName: () => webhookData.webhookDescription.name,
