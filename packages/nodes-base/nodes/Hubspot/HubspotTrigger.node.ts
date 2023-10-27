@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -11,8 +12,6 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
-
-import { createHash } from 'crypto';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -150,6 +149,22 @@ export class HubspotTrigger implements INodeType {
 										value: 'deal.propertyChange',
 										description:
 											"To get notified if a specified property is changed for any deal in a customer's account",
+									},
+									{
+										name: 'Ticket Created',
+										value: 'ticket.creation',
+										description: "To get notified if a ticket is created in a customer's account",
+									},
+									{
+										name: 'Ticket Deleted',
+										value: 'ticket.deletion',
+										description: "To get notified if any ticket is deleted in a customer's account",
+									},
+									{
+										name: 'Ticket Property Changed',
+										value: 'ticket.propertyChange',
+										description:
+											"To get notified if a specified property is changed for any ticket in a customer's account",
 									},
 								],
 								default: 'contact.creation',

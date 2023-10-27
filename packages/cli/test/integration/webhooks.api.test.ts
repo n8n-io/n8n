@@ -2,12 +2,10 @@ import { readFileSync } from 'fs';
 import type { SuperAgentTest } from 'supertest';
 import { agent as testAgent } from 'supertest';
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
 
 import { AbstractServer } from '@/AbstractServer';
 import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
-import { getLogger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
 import { Push } from '@/push';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -19,7 +17,6 @@ describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
 	mockInstance(InternalHooks);
 	mockInstance(Push);
-	LoggerProxy.init(getLogger());
 
 	let agent: SuperAgentTest;
 

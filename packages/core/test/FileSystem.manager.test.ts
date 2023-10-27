@@ -151,6 +151,18 @@ describe('deleteMany()', () => {
 
 		expect(fsp.rm).toHaveBeenCalledTimes(2);
 	});
+
+	it('should suppress error on non-existing filepath', async () => {
+		const ids = [{ workflowId: 'does-not-exist', executionId: 'does-not-exist' }];
+
+		fsp.rm = jest.fn().mockResolvedValue(undefined);
+
+		const promise = fsManager.deleteMany(ids);
+
+		await expect(promise).resolves.not.toThrow();
+
+		expect(fsp.rm).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe('rename()', () => {

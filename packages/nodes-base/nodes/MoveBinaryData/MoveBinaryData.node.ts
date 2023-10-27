@@ -292,7 +292,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
-						displayName: 'Mime Type',
+						displayName: 'MIME Type',
 						name: 'mimeType',
 						type: 'string',
 						displayOptions: {

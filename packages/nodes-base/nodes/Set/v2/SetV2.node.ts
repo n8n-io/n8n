@@ -21,7 +21,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'set',
 	icon: 'fa:pen',
 	group: ['input'],
-	version: [3, 3.1],
+	version: [3, 3.1, 3.2],
 	description: 'Change the structure of your items',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {

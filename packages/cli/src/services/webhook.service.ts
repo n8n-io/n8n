@@ -107,12 +107,6 @@ export class WebhookService {
 		return this.deleteWebhooks(webhooks);
 	}
 
-	async deleteInstanceWebhooks() {
-		const webhooks = await this.webhookRepository.find();
-
-		return this.deleteWebhooks(webhooks);
-	}
-
 	private async deleteWebhooks(webhooks: WebhookEntity[]) {
 		void this.cacheService.deleteMany(webhooks.map((w) => w.cacheKey));
 

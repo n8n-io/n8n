@@ -1,6 +1,5 @@
-import { paramCase, snakeCase } from 'change-case';
-
 import { createHash } from 'crypto';
+import { paramCase, snakeCase } from 'change-case';
 
 import { Builder } from 'xml2js';
 

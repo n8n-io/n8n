@@ -127,8 +127,8 @@ export default function useCanvasMouseSelect() {
 	}
 
 	function mouseUpMouseSelect(e: MouseEvent) {
-		if (selectActive.value === false) {
-			if (isTouchDevice === true && e.target instanceof HTMLElement) {
+		if (!selectActive.value) {
+			if (isTouchDevice && e.target instanceof HTMLElement) {
 				if (e.target && e.target.id.includes('node-view')) {
 					// Deselect all nodes
 					deselectAllNodes();
@@ -156,7 +156,7 @@ export default function useCanvasMouseSelect() {
 		_hideSelectBox();
 	}
 	function mouseDownMouseSelect(e: MouseEvent, moveButtonPressed: boolean) {
-		if (isCtrlKeyPressed(e) === true || moveButtonPressed) {
+		if (isCtrlKeyPressed(e) || moveButtonPressed) {
 			// We only care about it when the ctrl key is not pressed at the same time.
 			// So we exit when it is pressed.
 			return;

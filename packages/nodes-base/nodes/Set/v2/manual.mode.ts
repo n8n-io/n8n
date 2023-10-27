@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '../../../utils/utilities';
 import {
 	parseJsonParameter,
 	validateEntry,
@@ -14,7 +15,6 @@ import {
 	resolveRawData,
 } from './helpers/utils';
 import type { SetField, SetNodeOptions } from './helpers/interfaces';
-import { updateDisplayOptions } from '../../../utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -182,7 +182,12 @@ export async function execute(
 		const newData: IDataObject = {};
 
 		for (const entry of fields) {
-			if (entry.type === 'objectValue' && rawFieldsData[entry.name] !== undefined) {
+			if (
+				entry.type === 'objectValue' &&
+				rawFieldsData[entry.name] !== undefined &&
+				entry.objectValue !== undefined &&
+				entry.objectValue !== null
+			) {
 				entry.objectValue = parseJsonParameter(
 					resolveRawData.call(this, rawFieldsData[entry.name] as string, i),
 					node,
