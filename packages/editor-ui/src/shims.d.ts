@@ -13,7 +13,7 @@ declare global {
 			PROD: boolean;
 			NODE_ENV: 'development' | 'production';
 			VUE_APP_URL_BASE_API: string;
-			VUE_APP_MAX_WORKFLOW_PIN_DATA_SIZE: number;
+			VUE_APP_MAX_PINNED_DATA_SIZE: number;
 		};
 	}
 

@@ -102,8 +102,8 @@ describe('Data pinning', () => {
 		ndv.actions.setPinnedData([
 			{
 				test: '1'.repeat(
-					process.env.VUE_APP_MAX_WORKFLOW_PIN_DATA_SIZE
-						? parseInt(process.env.VUE_APP_MAX_WORKFLOW_PIN_DATA_SIZE, 10)
+					process.env.VUE_APP_MAX_PINNED_DATA_SIZE
+						? parseInt(process.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
 						: 1024,
 				),
 			},
