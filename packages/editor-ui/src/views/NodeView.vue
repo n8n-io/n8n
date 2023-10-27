@@ -3923,10 +3923,7 @@ export default defineComponent({
 						continue;
 					}
 
-					const node = Object.values(tempWorkflow.nodes).find(
-						(tempNode) => tempNode.name === nodeNameTable[nodeName],
-					);
-
+					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
 					try {
 						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
 						pinDataSuccess = true;
