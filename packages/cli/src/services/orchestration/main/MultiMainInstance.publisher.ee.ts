@@ -49,8 +49,6 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 
 		const leaderId = await this.redisPublisher.get(this.leaderKey);
 
-		this.emit('leader-checked', leaderId);
-
 		if (!leaderId) {
 			this.logger.debug('Leadership vacant, attempting to become leader...');
 			await this.tryBecomeLeader();
@@ -78,7 +76,6 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 		const keySetSuccessfully = await this.redisPublisher.setIfNotExists(this.leaderKey, this.id);
 
 		if (keySetSuccessfully) {
-			this.emit('leadership-acquired', this.isLeader);
 			this.logger.debug(`Leader is now this instance "${this.id}"`);
 
 			this.leaderId = this.id;
