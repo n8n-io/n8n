@@ -515,7 +515,6 @@ export default defineComponent({
 				connectionInputData,
 				{},
 				'manual',
-				this.rootStore.timezone,
 				additionalKeys,
 			);
 			const proxy = dataProxy.getDataProxy();

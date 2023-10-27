@@ -216,7 +216,6 @@ export function resolveParameter(
 		activeNode!.name,
 		_connectionInputData,
 		'manual',
-		useRootStore().timezone,
 		additionalKeys,
 		_executeData,
 		false,

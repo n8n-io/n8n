@@ -304,7 +304,6 @@ const dataProxy = new WorkflowDataProxy(
 	lastNodeConnectionInputData || [],
 	{},
 	'manual',
-	'America/New_York',
 	{},
 	executeData,
 );
