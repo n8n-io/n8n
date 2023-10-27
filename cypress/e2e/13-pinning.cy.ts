@@ -62,7 +62,6 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		// cy.reload();
 		workflowPage.actions.openNode('Schedule Trigger');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
@@ -87,7 +86,6 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		// cy.reload();
 		workflowPage.actions.openNode('Edit Fields1');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
