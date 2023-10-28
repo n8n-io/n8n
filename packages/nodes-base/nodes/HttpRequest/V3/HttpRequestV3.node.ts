@@ -1784,22 +1784,24 @@ export class HttpRequestV3 implements INodeType {
 
 				if (autoDetectResponseFormat) {
 					const responseContentType = response.headers['content-type'] ?? '';
-					if (responseContentType.includes('application/json') && !response.__bodyResolved) {
+					if (responseContentType.includes('application/json')) {
 						responseFormat = 'json';
-						const neverError = this.getNodeParameter(
-							'options.response.response.neverError',
-							0,
-							false,
-						) as boolean;
+						if (!response.__bodyResolved) {
+							const neverError = this.getNodeParameter(
+								'options.response.response.neverError',
+								0,
+								false,
+							) as boolean;
 
-						const data = await this.helpers
-							.binaryToBuffer(response.body as Buffer | Readable)
-							.then((body) => body.toString());
-						response.body = jsonParse(data, {
-							...(neverError
-								? { fallbackValue: {} }
-								: { errorMessage: 'Invalid JSON in response body' }),
-						});
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
+							response.body = jsonParse(data, {
+								...(neverError
+									? { fallbackValue: {} }
+									: { errorMessage: 'Invalid JSON in response body' }),
+							});
+						}
 					} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 						responseFormat = 'file';
 					} else {
