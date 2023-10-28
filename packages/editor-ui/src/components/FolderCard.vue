@@ -129,9 +129,9 @@ export default defineComponent({
 		async onAction(action: string) {
 			if (action === FOLDER_LIST_ITEM_ACTIONS.OPEN) {
 				await this.onClick();
-			} else if (action === FOLDER_LIST_ITEM_ACTIONS.SHARE) {
+			} else if (action === FOLDER_LIST_ITEM_ACTIONS.RENAME) {
 				this.uiStore.openModalWithData({
-					name: WORKFLOW_SHARE_MODAL_KEY,
+					name: FOLDER_RENAME_MODAL_KEY,
 					data: { id: this.data.id },
 				});
 			} else if (action === FOLDER_LIST_ITEM_ACTIONS.DELETE) {
