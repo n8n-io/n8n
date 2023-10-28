@@ -2621,6 +2621,39 @@ const getRequestHelperFunctions = (
 					tempResponseData = await this.helpers.request(tempRequestOptions);
 				}
 
+				const newResponse: IN8nHttpFullResponse = Object.assign(
+					{
+						body: {},
+						headers: {},
+						statusCode: 0,
+					},
+					pick(tempResponseData, ['body', 'headers', 'statusCode']),
+				);
+
+				let contentBody: Exclude<IN8nHttpResponse, Buffer>;
+
+				if (
+					newResponse.body?.constructor.name === 'IncomingMessage' &&
+					paginationOptions.binaryResult !== true
+				) {
+					const data = await this.helpers
+						.binaryToBuffer(newResponse.body as Buffer | Readable)
+						.then((body) => body.toString());
+					// Keep the original string version that we can use it to hash if needed
+					contentBody = data;
+
+					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
+					if (responseContentType.includes('application/json')) {
+						newResponse.body = jsonParse(data, { fallbackValue: {} });
+					} else {
+						newResponse.body = data;
+					}
+					tempResponseData.__bodyResolved = true;
+					tempResponseData.body = newResponse.body;
+				} else {
+					contentBody = newResponse.body;
+				}
+
 				if (paginationOptions.binaryResult !== true || tempResponseData.headers.etag) {
 					// If the data is not binary (and so not a stream), or an etag is present,
 					// we check via etag or hash if identical data is received
@@ -2637,10 +2670,10 @@ const getRequestHelperFunctions = (
 							hash = tempResponseData.headers.etag as string;
 						} else {
 							// If there is no etag, we calculate a hash from the data in the body
-							hash = crypto
-								.createHash('md5')
-								.update(JSON.stringify(tempResponseData.body))
-								.digest('base64');
+							if (typeof contentBody !== 'string') {
+								contentBody = JSON.stringify(contentBody);
+							}
+							hash = crypto.createHash('md5').update(contentBody).digest('base64');
 						}
 
 						if (hashData.previousHash === hash) {
@@ -2665,33 +2698,6 @@ const getRequestHelperFunctions = (
 						hashData.identicalCount = 0;
 					}
 					hashData.previousLength = contentLength;
-				}
-
-				const newResponse: IN8nHttpFullResponse = Object.assign(
-					{
-						body: {},
-						headers: {},
-						statusCode: 0,
-					},
-					pick(tempResponseData, ['body', 'headers', 'statusCode']),
-				);
-
-				if (
-					newResponse.body?.constructor.name === 'IncomingMessage' &&
-					paginationOptions.binaryResult !== true
-				) {
-					const data = await this.helpers
-						.binaryToBuffer(newResponse.body as Buffer | Readable)
-						.then((body) => body.toString());
-
-					const responseContentType = newResponse.headers['content-type']?.toString() ?? '';
-					if (responseContentType.includes('application/json')) {
-						newResponse.body = jsonParse(data, { fallbackValue: {} });
-					} else {
-						newResponse.body = data;
-					}
-					tempResponseData.__bodyResolved = true;
-					tempResponseData.body = newResponse.body;
 				}
 
 				responseData.push(tempResponseData);
