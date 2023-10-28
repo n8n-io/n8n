@@ -500,7 +500,7 @@
 		},
 		{
 			"parameters": {
-				"content": "### Next URL\nResponse Format: Autodetect",
+				"content": "### Next URL\nResponse Format: Autodetect\nActual Response Format: JSON",
 				"height": 458.3224664750446,
 				"width": 323.21100909416833
 			},
@@ -615,7 +615,7 @@
 			"name": "Data 1",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [540, -1032]
+			"position": [440, -1020]
 		},
 		{
 			"parameters": {
@@ -662,15 +662,15 @@
 		},
 		{
 			"parameters": {
-				"content": "### Next URL\nResponse Format: Text",
-				"height": 411.38360906408417,
-				"width": 363.5274479049966
+				"content": "### Next URL\nResponse Format: Autodetect\nActual Response Format: text",
+				"height": 437.60980047313967,
+				"width": 323.31395441111135
 			},
 			"id": "4be6d042-ee89-45da-bcac-07f9c4ce4dac",
 			"name": "Sticky Note9",
 			"type": "n8n-nodes-base.stickyNote",
 			"typeVersion": 1,
-			"position": [820, -780]
+			"position": [820, -806.2261914090556]
 		},
 		{
 			"parameters": {
@@ -1529,7 +1529,7 @@
 	"settings": {
 		"executionOrder": "v1"
 	},
-	"versionId": "92c22251-befe-405b-945e-8bd397a44b20",
+	"versionId": "24c0feef-1565-4936-a28f-7111760e6204",
 	"id": "ZKVF9JrrzoxXbUqu",
 	"meta": {
 		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
