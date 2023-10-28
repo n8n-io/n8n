@@ -28,6 +28,7 @@ import { ExpressionError } from './ExpressionError';
 import type { Workflow } from './Workflow';
 import { augmentArray, augmentObject } from './AugmentObject';
 import { deepCopy } from './utils';
+import { getGlobalState } from './GlobalState';
 
 export function isResourceLocatorValue(value: unknown): value is INodeParameterResourceLocator {
 	return Boolean(
@@ -48,57 +49,28 @@ const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 };
 
 export class WorkflowDataProxy {
-	private workflow: Workflow;
-
 	private runExecutionData: IRunExecutionData | null;
 
-	private defaultReturnRunIndex: number;
-
-	private runIndex: number;
-
-	private itemIndex: number;
-
-	private activeNodeName: string;
-
-	private contextNodeName: string;
-
 	private connectionInputData: INodeExecutionData[];
-
-	private siblingParameters: INodeParameters;
-
-	private mode: WorkflowExecuteMode;
-
-	private selfData: IDataObject;
-
-	private additionalKeys: IWorkflowDataProxyAdditionalKeys;
-
-	private executeData: IExecuteData | undefined;
-
-	private defaultTimezone: string;
 
 	private timezone: string;
 
 	// TODO: Clean that up at some point and move all the options into an options object
 	constructor(
-		workflow: Workflow,
+		private workflow: Workflow,
 		runExecutionData: IRunExecutionData | null,
-		runIndex: number,
-		itemIndex: number,
-		activeNodeName: string,
+		private runIndex: number,
+		private itemIndex: number,
+		private activeNodeName: string,
 		connectionInputData: INodeExecutionData[],
-		siblingParameters: INodeParameters,
-		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		defaultReturnRunIndex = -1,
-		selfData = {},
-		contextNodeName?: string,
+		private siblingParameters: INodeParameters,
+		private mode: WorkflowExecuteMode,
+		private additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		private executeData?: IExecuteData,
+		private defaultReturnRunIndex = -1,
+		private selfData: IDataObject = {},
+		private contextNodeName: string = activeNodeName,
 	) {
-		this.activeNodeName = activeNodeName;
-		this.contextNodeName = contextNodeName || activeNodeName;
-		this.workflow = workflow;
-
 		this.runExecutionData = isScriptingNode(this.contextNodeName, workflow)
 			? runExecutionData !== null
 				? augmentObject(runExecutionData)
@@ -109,16 +81,7 @@ export class WorkflowDataProxy {
 			? augmentArray(connectionInputData)
 			: connectionInputData;
 
-		this.defaultReturnRunIndex = defaultReturnRunIndex;
-		this.runIndex = runIndex;
-		this.itemIndex = itemIndex;
-		this.siblingParameters = siblingParameters;
-		this.mode = mode;
-		this.defaultTimezone = defaultTimezone;
-		this.timezone = workflow.settings?.timezone ?? defaultTimezone;
-		this.selfData = selfData;
-		this.additionalKeys = additionalKeys;
-		this.executeData = executeData;
+		this.timezone = workflow.settings?.timezone ?? getGlobalState().defaultTimezone;
 		Settings.defaultZone = this.timezone;
 	}
 
@@ -266,7 +229,6 @@ export class WorkflowDataProxy {
 						that.activeNodeName,
 						that.connectionInputData,
 						that.mode,
-						that.timezone,
 						that.additionalKeys,
 						that.executeData,
 						false,
@@ -1185,7 +1147,6 @@ export class WorkflowDataProxy {
 					that.activeNodeName,
 					that.connectionInputData,
 					that.mode,
-					that.timezone,
 					that.additionalKeys,
 					that.executeData,
 					false,
@@ -1204,10 +1165,10 @@ export class WorkflowDataProxy {
 					this.connectionInputData,
 					that.siblingParameters,
 					that.mode,
-					that.defaultTimezone,
 					that.additionalKeys,
 					that.executeData,
 					defaultReturnRunIndex,
+					{},
 					that.contextNodeName,
 				);
 				return dataProxy.getDataProxy();
