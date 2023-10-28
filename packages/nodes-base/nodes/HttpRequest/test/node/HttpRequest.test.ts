@@ -125,7 +125,7 @@ describe('Test HTTP Request Node', () => {
 			.persist()
 			.get('/users')
 			.query(true)
-			.reply((uri) => {
+			.reply(function (uri) {
 				const data = parseUrl(uri, true);
 				const skip = parseInt((data.query.skip as string) || '0', 10);
 				const limit = parseInt((data.query.limit as string) || '10', 10);
@@ -142,10 +142,24 @@ describe('Test HTTP Request Node', () => {
 				}
 
 				if (!response.length) {
-					return [404, response, { 'next-url': nextUrl }];
+					return [
+						404,
+						response,
+						{
+							'next-url': nextUrl,
+							'content-type': this.req.headers['content-type'] || 'application/json',
+						},
+					];
 				}
 
-				return [200, response, { 'next-url': nextUrl }];
+				return [
+					200,
+					response,
+					{
+						'next-url': nextUrl,
+						'content-type': this.req.headers['content-type'] || 'application/json',
+					},
+				];
 			});
 	});
 
