@@ -2531,7 +2531,6 @@ const getRequestHelperFunctions = (
 				node.name,
 				connectionInputData,
 				mode,
-				additionalData.timezone,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,
