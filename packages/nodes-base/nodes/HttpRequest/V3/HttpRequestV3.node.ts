@@ -1898,7 +1898,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				} else {
 					// responseFormat: 'json'
-					if (fullResponse === true) {
+					if (fullResponse) {
 						const returnItem: IDataObject = {};
 						for (const property of fullResponseProperties) {
 							returnItem[property] = response[property];
