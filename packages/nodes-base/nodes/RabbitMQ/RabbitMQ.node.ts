@@ -425,7 +425,7 @@ export class RabbitMQ implements INodeType {
 
 				options = this.getNodeParameter('options', 0, {});
 
-				channel = await rabbitmqConnectQueue.call(this, queue, options);
+				channel = await rabbitmqConnectQueue.call(this, queue, "", "", options);
 
 				const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 

@@ -59,6 +59,22 @@ export class RabbitMQTrigger implements INodeType {
 				description: 'The name of the queue to read from',
 			},
 			{
+				displayName: 'Exchange',
+				name: 'exchange',
+				type: 'string',
+				default: '',
+				placeholder: 'exchange-name',
+				description: 'The name of the exchange to queue bind',
+			},
+			{
+				displayName: 'Routing Key',
+				name: 'routingKey',
+				type: 'string',
+				default: '',
+				placeholder: 'routing-key',
+				description: 'The name of the routing key to queue bind',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -173,9 +189,11 @@ export class RabbitMQTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
+		const exchange = this.getNodeParameter('exchange') as string;
+		const routingKey = this.getNodeParameter('routingKey') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		const channel = await rabbitmqConnectQueue.call(this, queue, options);
+		const channel = await rabbitmqConnectQueue.call(this, queue, exchange, routingKey, options);
 
 		let parallelMessages =
 			options.parallelMessages !== undefined && options.parallelMessages !== -1
