@@ -95,7 +95,6 @@
 				"options": {
 					"response": {
 						"response": {
-							"neverError": true,
 							"responseFormat": "json"
 						}
 					},

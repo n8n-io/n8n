@@ -2555,6 +2555,7 @@ const getRequestHelperFunctions = (
 				requestOptions.qs = {};
 			}
 			requestOptions.resolveWithFullResponse = true;
+			requestOptions.simple = false;
 
 			let tempResponseData: IN8nHttpFullResponse;
 			let makeAdditionalRequest: boolean;
@@ -2695,6 +2696,38 @@ const getRequestHelperFunctions = (
 				) as boolean;
 
 				if (makeAdditionalRequest) {
+					if (tempResponseData.statusCode < 200 || tempResponseData.statusCode >= 300) {
+						// We have it configured to let all requests pass no matter the response code
+						// via "requestOptions.simple = false" to not by default fail if it is for example
+						// configured to stop on 404 response codes. For that reason we have to throw here
+						// now an error manually if the response code is not a success one.
+						let data = tempResponseData.body;
+						if (
+							data?.constructor.name === 'IncomingMessage' &&
+							paginationOptions.binaryResult !== true
+						) {
+							data = await this.helpers
+								.binaryToBuffer(tempResponseData.body as Buffer | Readable)
+								.then((body) => body.toString());
+						} else if (typeof data === 'object') {
+							data = JSON.stringify(data);
+						}
+
+						throw Object.assign(
+							new Error(`${tempResponseData.statusCode} - "${data?.toString()}"`),
+							{
+								statusCode: tempResponseData.statusCode,
+								error: data,
+								isAxiosError: true,
+								response: {
+									headers: tempResponseData.headers,
+									status: tempResponseData.statusCode,
+									statusText: tempResponseData.statusMessage,
+								},
+							},
+						);
+					}
+
 					responseData.push(tempResponseData);
 				}
 
