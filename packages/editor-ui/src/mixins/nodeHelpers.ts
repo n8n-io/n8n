@@ -646,7 +646,6 @@ export const nodeHelpers = defineComponent({
 						data as INode,
 						nodeType.subtitle,
 						'internal',
-						this.rootStore.timezone,
 						{},
 						undefined,
 						PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

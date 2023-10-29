@@ -173,7 +173,7 @@ export default defineComponent({
 			return this.currentUser?.signInType === 'ldap';
 		},
 		isLDAPFeatureEnabled(): boolean {
-			return this.settingsStore.settings.enterprise.ldap === true;
+			return this.settingsStore.settings.enterprise.ldap;
 		},
 		signInWithSaml(): boolean {
 			return (

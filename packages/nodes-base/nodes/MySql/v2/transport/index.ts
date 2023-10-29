@@ -1,10 +1,10 @@
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
 
 import mysql2 from 'mysql2/promise';
 import type { Client, ConnectConfig } from 'ssh2';
 
 import type { Mysql2Pool } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {

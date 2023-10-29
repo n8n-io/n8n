@@ -10,6 +10,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { OptionsWithUri } from 'request';
 import {
 	formatFeed,
 	formatResults,
@@ -34,8 +35,6 @@ import {
 } from './descriptions';
 
 import type { SplunkCredentials, SplunkFeedResponse } from './types';
-
-import type { OptionsWithUri } from 'request';
 
 export class Splunk implements INodeType {
 	description: INodeTypeDescription = {

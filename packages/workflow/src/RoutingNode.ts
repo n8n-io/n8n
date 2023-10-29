@@ -701,7 +701,6 @@ export class RoutingNode {
 				this.node.name,
 				this.connectionInputData,
 				this.mode,
-				this.additionalData.timezone,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,

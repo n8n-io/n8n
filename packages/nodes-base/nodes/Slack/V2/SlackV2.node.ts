@@ -17,6 +17,7 @@ import type {
 
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment';
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
 import { starFields, starOperations } from './StarDescription';
@@ -30,8 +31,6 @@ import {
 	validateJSON,
 	getMessageContent,
 } from './GenericFunctions';
-
-import moment from 'moment';
 
 export class SlackV2 implements INodeType {
 	description: INodeTypeDescription;

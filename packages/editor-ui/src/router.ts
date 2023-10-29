@@ -1,3 +1,4 @@
+import { useStorage } from '@vueuse/core';
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
@@ -235,6 +236,7 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
+			keepWorkflowAlive: true,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -362,6 +364,7 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
+			keepWorkflowAlive: true,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -393,6 +396,7 @@ export const routes = [
 		},
 		meta: {
 			nodeView: true,
+			keepWorkflowAlive: true,
 			permissions: {
 				allow: {
 					loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -791,7 +795,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !window.localStorage.getItem('audit-logs'),
+							shouldDeny: () => !useStorage('audit-logs', undefined).value,
 						},
 					},
 				},

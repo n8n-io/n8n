@@ -22,8 +22,6 @@ import {
 	sleep,
 } from 'n8n-workflow';
 
-import { keysToLowercase } from '@utils/utilities';
-
 import type { OptionsWithUri } from 'request-promise-native';
 
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
@@ -36,6 +34,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
