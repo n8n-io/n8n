@@ -445,19 +445,29 @@ export default defineComponent({
 					type: 'options',
 					options: [
 						{
-							name: 'Stop Workflow',
+							name: this.$locale.baseText('nodeSettings.onError.options.stopWorkflow.displayName'),
 							value: 'stopWorkflow',
-							description: 'Halt execution and fail workflow',
+							description: this.$locale.baseText(
+								'nodeSettings.onError.options.stopWorkflow.description',
+							),
 						},
 						{
-							name: 'Continue',
+							name: this.$locale.baseText(
+								'nodeSettings.onError.options.continueRegularOutput.displayName',
+							),
 							value: 'continueRegularOutput',
-							description: 'Pass error message as item in regular output',
+							description: this.$locale.baseText(
+								'nodeSettings.onError.options.continueRegularOutput.description',
+							),
 						},
 						{
-							name: 'Continue (using error output)',
+							name: this.$locale.baseText(
+								'nodeSettings.onError.options.continueErrorOutput.displayName',
+							),
 							value: 'continueErrorOutput',
-							description: 'Pass item to an extra `error` output',
+							description: this.$locale.baseText(
+								'nodeSettings.onError.options.continueErrorOutput.description',
+							),
 						},
 					],
 					default: 'stopWorkflow',
@@ -651,7 +661,7 @@ export default defineComponent({
 			}
 
 			if (parameterData.name === 'onError') {
-// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
+				// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
 				this.$emit('redrawRequired');
 			}
 

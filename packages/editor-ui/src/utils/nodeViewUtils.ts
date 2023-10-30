@@ -316,7 +316,6 @@ export const getOutputNameOverlay = (
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
 
-			label.setAttribute('data-endpoint-node-type', ep?.__meta?.nodeType);
 			if (ep?.__meta?.endpointLabelLength) {
 				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
 			}
