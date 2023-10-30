@@ -211,13 +211,13 @@ export class RoutingNode {
 
 				returnData.push(...responseData);
 			} catch (error) {
-				interface RoutingError extends NodeError {
+				interface AxiosError extends NodeError {
 					isAxiosError: boolean;
 					description: string | undefined;
 					response?: { status: number };
 				}
 
-				const routingError = error as RoutingError;
+				const routingError = error as AxiosError;
 
 				if (this.node.continueOnFail) {
 					returnData.push({ json: {}, error: routingError });
