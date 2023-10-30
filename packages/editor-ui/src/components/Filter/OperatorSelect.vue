@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@/composables';
 import { OPERATOR_GROUPS } from './constants';
-import { reactive, computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { FilterOperator } from './types';
 
 interface Props {
@@ -10,7 +10,10 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const state = reactive({ selected: props.selected });
+const selected = ref(props.selected);
+const menuOpen = ref(false);
+const submenu = ref('none');
+
 const emit = defineEmits<{
 	(event: 'operatorChange', value: string): void;
 }>();
@@ -20,16 +23,29 @@ const i18n = useI18n();
 const groups = OPERATOR_GROUPS;
 
 const onOperatorChange = (operator: string): void => {
-	state.selected = operator;
+	selected.value = operator;
 	emit('operatorChange', operator);
 };
 
 const selectedGroupIcon = computed(
-	() => groups.find((group) => group.id === state.selected.split(':')[0])?.icon,
+	() => groups.find((group) => group.id === selected.value.split(':')[0])?.icon,
 );
 
 const getOperatorId = (operator: FilterOperator): string =>
 	`${operator.type}:${operator.operation}`;
+
+function onSelectVisibleChange(open: boolean) {
+	menuOpen.value = open;
+	if (!open) {
+		submenu.value = 'none';
+	}
+}
+
+function onGroupSelect(group: string) {
+	if (menuOpen.value) {
+		submenu.value = group;
+	}
+}
 </script>
 
 <template>
@@ -37,24 +53,46 @@ const getOperatorId = (operator: FilterOperator): string =>
 		<n8n-select
 			data-test-id="filter-operator-select"
 			size="small"
-			:modelValue="state.selected"
+			:modelValue="selected"
 			@update:modelValue="onOperatorChange"
+			@visible-change="onSelectVisibleChange"
 		>
 			<template v-if="selectedGroupIcon" #prefix>
-				<n8n-icon :class="$style.selectedGroupIcon" :icon="selectedGroupIcon" />
+				<n8n-icon
+					:class="$style.selectedGroupIcon"
+					:icon="selectedGroupIcon"
+					color="text-light"
+					size="small"
+				/>
 			</template>
 			<div :class="$style.groups">
 				<div :key="group.name" v-for="group of groups">
-					<div v-if="group.children.length > 0" :class="$style.groupTitle">
-						<n8n-icon v-if="group.icon" :icon="group.icon" />
-						<span>{{ i18n.baseText(group.name) }}</span>
-					</div>
-					<n8n-option
-						v-for="operator in group.children"
-						:key="getOperatorId(operator)"
-						:value="getOperatorId(operator)"
-						:label="i18n.baseText(operator.name)"
-					/>
+					<n8n-popover
+						:visible="submenu === group.id"
+						placement="right-start"
+						:show-arrow="false"
+						:offset="2"
+						:popper-style="{ padding: 'var(--spacing-3xs) 0' }"
+						width="auto"
+					>
+						<template #reference>
+							<div
+								v-if="group.children.length > 0"
+								@mouseenter="() => onGroupSelect(group.id)"
+								@click="() => onGroupSelect(group.id)"
+								:class="$style.groupTitle"
+							>
+								<n8n-icon v-if="group.icon" :icon="group.icon" color="text-light" size="small" />
+								<span>{{ i18n.baseText(group.name) }}</span>
+							</div>
+						</template>
+						<n8n-option
+							v-for="operator in group.children"
+							:key="getOperatorId(operator)"
+							:value="getOperatorId(operator)"
+							:label="i18n.baseText(operator.name)"
+						/>
+					</n8n-popover>
 				</div>
 			</div>
 		</n8n-select>
@@ -69,16 +107,21 @@ const getOperatorId = (operator: FilterOperator): string =>
 .groups {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
 }
 
 .groupTitle {
 	display: flex;
-	gap: var(--spacing-4xs);
-	align-items: baseline;
+	gap: var(--spacing-2xs);
+	align-items: center;
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-base);
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	line-height: var(--font-line-height-regular);
+	color: var(--color-text-dark);
+	padding: var(--spacing-2xs) var(--spacing-s);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color-background-base);
+	}
 }
 </style>
