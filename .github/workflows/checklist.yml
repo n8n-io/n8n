@@ -17,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3.5.3
       - name: Checklist
-        uses: n8n-io/contextual-qa-checklist-action
+        uses: n8n-io/contextual-qa-checklist-action@v1.0.0
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
           comment-footer: Make sure to check off this list before asking for review.
