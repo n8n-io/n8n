@@ -39,4 +39,30 @@ export class RedisServicePubSubPublisher extends RedisServiceBaseSender {
 	async publishToWorkerChannel(message: RedisServiceWorkerResponseObject): Promise<void> {
 		await this.publish(WORKER_RESPONSE_REDIS_CHANNEL, JSON.stringify(message));
 	}
+
+	async setIfNotExists(key: string, value: string) {
+		if (!this.redisClient) await this.init();
+
+		const success = await this.redisClient?.setnx(key, value);
+
+		return !!success;
+	}
+
+	async setExpiration(key: string, ttl: number) {
+		if (!this.redisClient) await this.init();
+
+		await this.redisClient?.expire(key, ttl);
+	}
+
+	async get(key: string) {
+		if (!this.redisClient) await this.init();
+
+		return this.redisClient?.get(key);
+	}
+
+	async clear(key: string) {
+		if (!this.redisClient) await this.init();
+
+		await this.redisClient?.del(key);
+	}
 }
