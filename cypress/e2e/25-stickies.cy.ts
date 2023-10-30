@@ -68,7 +68,7 @@ describe('Canvas Actions', () => {
 		workflowPage.getters.stickies().should('have.length', 0);
 	});
 
-	it.only('change sticky color', () => {
+	it('change sticky color', () => {
 		workflowPage.actions.addSticky();
 
 		workflowPage.getters.stickies().should('have.length', 1);
