@@ -113,7 +113,6 @@ export class Start extends BaseCommand {
 			Container.get(ExecutionRepository).clearTimers();
 
 			if (config.getEnv('leaderSelection.enabled')) {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
 				const { MultiMainInstancePublisher } = await import(
 					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 				);
@@ -236,7 +235,6 @@ export class Start extends BaseCommand {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
-		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const { MultiMainInstancePublisher } = await import(
 			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 		);
