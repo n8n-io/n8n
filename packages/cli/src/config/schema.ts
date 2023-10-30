@@ -1346,7 +1346,7 @@ export const schema = {
 		enabled: {
 			doc: 'Whether to enable leader selection for multiple main instances (license required)',
 			format: Boolean,
-			default: true,
+			default: false,
 			env: 'N8N_LEADER_SELECTION_ENABLED',
 		},
 		ttl: {
