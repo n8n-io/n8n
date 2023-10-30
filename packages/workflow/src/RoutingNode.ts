@@ -217,13 +217,13 @@ export class RoutingNode {
 					response?: { status: number };
 				}
 
-				const routingError = error as AxiosError;
+				let routingError = error as AxiosError;
 
 				if (this.node.continueOnFail) {
 					returnData.push({ json: {}, error: routingError });
 					continue;
 				}
-				if (error instanceof NodeApiError) error = error.cause;
+				if (error instanceof NodeApiError) routingError = error.cause as AxiosError;
 
 				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
