@@ -333,6 +333,9 @@ export class WorkflowPage extends BasePage {
 		pickNonDefaultColor: () => {
 			this.getters.colors().eq(1).click();
 		},
+		pickDefaultColor: () => {
+			this.getters.colors().eq(0).click();
+		},
 		editSticky: (content: string) => {
 			this.getters.stickies().dblclick().find('textarea').clear().type(content).type('{esc}');
 		},
