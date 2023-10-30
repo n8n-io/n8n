@@ -10,7 +10,6 @@ import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 
 import type { AuthenticationMethod } from './Authentication';
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
 import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { ExecutionStatus } from './ExecutionStatus';

@@ -57,14 +57,26 @@ export class IfV2 implements INodeType {
 		const elseItems: INodeExecutionData[] = [];
 
 		this.getInputData().forEach((item, itemIndex) => {
-			const pass = this.getNodeParameter('conditions', itemIndex, false, {
-				extractValue: true,
-			});
+			try {
+				const pass = this.getNodeParameter('conditions', itemIndex, false, {
+					extractValue: true,
+				});
 
-			if (pass) {
-				thenItems.push(item);
-			} else {
-				elseItems.push(item);
+				if (item.pairedItem === undefined) {
+					item.pairedItem = { item: itemIndex };
+				}
+
+				if (pass) {
+					thenItems.push(item);
+				} else {
+					elseItems.push(item);
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					elseItems.push(item);
+				} else {
+					throw error;
+				}
 			}
 		});
 
