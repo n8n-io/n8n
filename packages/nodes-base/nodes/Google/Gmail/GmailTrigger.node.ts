@@ -184,7 +184,7 @@ export class GmailTrigger implements INodeType {
 						name: 'downloadAttachments',
 						type: 'boolean',
 						default: false,
-						description: "Whether the emaail's attachments will be downloaded",
+						description: "Whether the email's attachments will be downloaded",
 					},
 				],
 			},
