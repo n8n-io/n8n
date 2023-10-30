@@ -25,13 +25,12 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ResourceMapperFields,
-	Workflow,
 	ConnectionTypes,
 } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType, Workflow } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
-import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
@@ -141,6 +140,42 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 							}
 							acc[outputType].push(node.name);
 						});
+					} else {
+						// If outputs is not an array, it must be a string expression
+						// in which case we need to fake workflow and node to evaluate the outputs expressions
+						const fakeINode: INode = {
+							id: '',
+							name: node.displayName,
+							typeVersion: Array.isArray(node.version)
+								? node.version[node.version.length - 1]
+								: node.version,
+							type: node.name,
+							position: [1, 1],
+							parameters: {},
+						};
+
+						let workflow: Workflow | null = new Workflow({
+							nodes: [fakeINode],
+							connections: {},
+							active: false,
+							nodeTypes: {
+								getByName() {
+									return { description: node };
+								},
+								getByNameAndVersion() {
+									return { description: node };
+								},
+							},
+						});
+						const outputs = NodeHelpers.getNodeOutputs(workflow, fakeINode, node);
+						outputs.forEach((value: ConnectionTypes | INodeOutputConfiguration) => {
+							const outputType = typeof value === 'string' ? value : value.type;
+							if (!acc[outputType]) {
+								acc[outputType] = [];
+							}
+							acc[outputType].push(node.name);
+						});
+						workflow = null;
 					}
 
 					return acc;

@@ -84,7 +84,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: `={{
 			((parameters) => {
-				const operation = parameters.operation;
+				const operation = parameters?.operation;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
 
 				if (['insert', 'load'].includes(operation)) {
@@ -99,7 +99,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		}}`,
 			outputs: `={{
 			((parameters) => {
-				const operation = parameters.operation;
+				const operation = parameters?.operation ?? 'retrieve';
 				if (operation === 'retrieve') {
 					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
 				}
