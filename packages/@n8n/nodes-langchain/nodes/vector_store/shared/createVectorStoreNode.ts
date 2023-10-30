@@ -46,13 +46,13 @@ interface VectorStoreNodeConstructorArgs {
 	) => Promise<VectorStore>;
 }
 
-function transformDescriptionForOperation(
+function transformDescriptionForOperationMode(
 	fields: INodeProperties[],
-	operation: 'insert' | 'load' | 'retrieve',
+	mode: 'insert' | 'load' | 'retrieve',
 ) {
 	return fields.map((field) => ({
 		...field,
-		displayOptions: { show: { operation: [operation] } },
+		displayOptions: { show: { mode: [mode] } },
 	}));
 }
 export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
@@ -84,14 +84,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 			inputs: `={{
 			((parameters) => {
-				const operation = parameters?.operation;
+				const mode = parameters?.mode;
 				const inputs = [{ displayName: "Embedding", type: "${NodeConnectionType.AiEmbedding}", required: true, maxConnections: 1}]
 
-				if (['insert', 'load'].includes(operation)) {
+				if (['insert', 'load'].includes(mode)) {
 					inputs.push({ displayName: "", type: "${NodeConnectionType.Main}"})
 				}
 
-				if (operation === 'insert') {
+				if (mode === 'insert') {
 					inputs.push({ displayName: "Document", type: "${NodeConnectionType.AiDocument}", required: true, maxConnections: 1})
 				}
 				return inputs
@@ -99,8 +99,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		}}`,
 			outputs: `={{
 			((parameters) => {
-				const operation = parameters?.operation ?? 'retrieve';
-				if (operation === 'retrieve') {
+				const mode = parameters?.mode ?? 'retrieve';
+				if (mode === 'retrieve') {
 					return [{ displayName: "Vector Store", type: "${NodeConnectionType.AiVectorStore}"}]
 				}
 				return [{ displayName: "", type: "${NodeConnectionType.Main}"}]
@@ -108,8 +108,8 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 		}}`,
 			properties: [
 				{
-					displayName: 'Operation',
-					name: 'operation',
+					displayName: 'Operation Mode',
+					name: 'mode',
 					type: 'options',
 					noDataExpression: true,
 					default: 'retrieve',
@@ -135,7 +135,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					],
 				},
 				...args.sharedFields,
-				...transformDescriptionForOperation(args.insertFields ?? [], 'insert'),
+				...transformDescriptionForOperationMode(args.insertFields ?? [], 'insert'),
 				// Query and topK are always used for the load operation
 				{
 					displayName: 'Query',
@@ -146,7 +146,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					description: 'Query to search for documents',
 					displayOptions: {
 						show: {
-							operation: ['load'],
+							mode: ['load'],
 						},
 					},
 				},
@@ -158,24 +158,24 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					description: 'Number of top results to fetch from vector store',
 					displayOptions: {
 						show: {
-							operation: ['load'],
+							mode: ['load'],
 						},
 					},
 				},
-				...transformDescriptionForOperation(args.loadFields ?? [], 'load'),
-				...transformDescriptionForOperation(args.retrieveFields ?? [], 'retrieve'),
+				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
+				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 			],
 		};
 
 		async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-			const operation = this.getNodeParameter('operation', 0) as 'load' | 'insert' | 'retrieve';
+			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionType.AiEmbedding,
 				0,
 			)) as Embeddings;
 
-			if (operation === 'load') {
+			if (mode === 'load') {
 				const items = this.getInputData(0);
 
 				const resultData = [];
@@ -213,7 +213,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				return this.prepareOutputData(resultData);
 			}
 
-			if (operation === 'insert') {
+			if (mode === 'insert') {
 				const items = this.getInputData(0);
 
 				const documentInput = (await this.getInputConnectionData(
@@ -233,19 +233,19 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load" and "insert" operations are supported with execute',
+				'Only the "load" and "insert" operation modes are supported with execute',
 			);
 		}
 
 		async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-			const operation = this.getNodeParameter('operation', 0) as 'load' | 'insert' | 'retrieve';
+			const mode = this.getNodeParameter('mode', 0) as 'load' | 'insert' | 'retrieve';
 			const filter = getMetadataFiltersValues(this, itemIndex);
 			const embeddings = (await this.getInputConnectionData(
 				NodeConnectionType.AiEmbedding,
 				0,
 			)) as Embeddings;
 
-			if (operation === 'retrieve') {
+			if (mode === 'retrieve') {
 				const vectorStore = await args.getVectorStoreClient(this, filter, embeddings, itemIndex);
 				return {
 					response: logWrapper(vectorStore, this),
@@ -254,7 +254,7 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "retrieve" operation is supported to supply data',
+				'Only the "retrieve" operation mode is supported to supply data',
 			);
 		}
 	};
