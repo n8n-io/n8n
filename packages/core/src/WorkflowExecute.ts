@@ -9,6 +9,7 @@ import PCancelable from 'p-cancelable';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	GenericValue,
 	IConnection,
 	IDataObject,
 	IExecuteData,
@@ -1107,7 +1108,13 @@ export class WorkflowExecute {
 												continue;
 											}
 
-											const errorData = item.error || item.json.error;
+											let errorData: GenericValue | undefined;
+											if (item.error) {
+												errorData = item.error;
+												item.error = undefined;
+											} else if (item.json.error && Object.keys(item.json).length === 1) {
+												errorData = item.json.error;
+											}
 
 											if (errorData) {
 												const pairedItemData =
