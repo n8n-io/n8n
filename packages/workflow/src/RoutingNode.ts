@@ -211,6 +211,11 @@ export class RoutingNode {
 
 				returnData.push(...responseData);
 			} catch (error) {
+				if (this.node.continueOnFail) {
+					returnData.push({ json: {}, error: error as NodeError });
+					continue;
+				}
+
 				interface AxiosError extends NodeError {
 					isAxiosError: boolean;
 					description: string | undefined;
@@ -219,10 +224,6 @@ export class RoutingNode {
 
 				let routingError = error as AxiosError;
 
-				if (this.node.continueOnFail) {
-					returnData.push({ json: {}, error: routingError });
-					continue;
-				}
 				if (error instanceof NodeApiError) routingError = error.cause as AxiosError;
 
 				throw new NodeApiError(this.node, error as JsonObject, {
