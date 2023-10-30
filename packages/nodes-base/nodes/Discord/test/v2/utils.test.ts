@@ -7,7 +7,7 @@ import {
 	setupChannelGetter,
 } from '../../v2/helpers/utils';
 
-import * as transport from '../../v2//transport';
+import * as transport from '../../v2//transport/discord.api';
 
 const node: INode = {
 	id: '1',

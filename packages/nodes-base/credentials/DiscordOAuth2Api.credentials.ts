@@ -52,11 +52,5 @@ export class DiscordOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'permissions=1642758929655',
 		},
-		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'hidden',
-			default: 'body',
-		},
 	];
 }
