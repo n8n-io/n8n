@@ -69,7 +69,7 @@
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
 						@openSettings="openSettings"
-						@select="onInputSelect"
+						@changeInputNode="onInputNodeChange"
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
 						@itemHover="onInputItemHover"
@@ -344,7 +344,7 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null && this.activeNode === null) {
+			if (this.inputNode === null || this.activeNode === null) {
 				return 0;
 			}
 
@@ -355,7 +355,7 @@ export default defineComponent({
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (outputs.filter((output) => output !== NodeConnectionType.Main).length) {
+			if (outputs.some((output) => output !== NodeConnectionType.Main)) {
 				node = this.activeNode;
 			}
 
@@ -710,7 +710,7 @@ export default defineComponent({
 				pane,
 			});
 		},
-		onInputSelect(value: string, index: number) {
+		onInputNodeChange(value: string, index: number) {
 			this.runInputIndex = -1;
 			this.isLinkingEnabled = true;
 			this.selectedInput = value;
