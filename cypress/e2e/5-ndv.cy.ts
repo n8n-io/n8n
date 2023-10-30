@@ -42,7 +42,7 @@ describe('NDV', () => {
 		ndv.getters.outputDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
-	it('should change input', () => {
+	it('should change input and go back to canvas', () => {
 		cy.createFixtureWorkflow('NDV-test-select-input.json', `NDV test select input ${uuid()}`);
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
@@ -50,6 +50,9 @@ describe('NDV', () => {
 		ndv.getters.inputOption().last().click();
 		ndv.getters.inputDataContainer().find('[class*=schema_]').should('exist');
 		ndv.getters.inputDataContainer().should('contain', 'start');
+		ndv.getters.backToCanvas().click();
+		ndv.getters.container().should('not.be.visible');
+		cy.shouldNotHaveConsoleErrors();
 	});
 
 	it('should show correct validation state for resource locator params', () => {
