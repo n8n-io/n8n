@@ -106,7 +106,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): Promise<IHttpRequestOptions> {
 		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
@@ -131,20 +130,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 				if (authenticate.type === 'generic') {
 					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
 						Object.entries(outerValue).forEach(([key, value]) => {
-							keyResolved = this.resolveValue(
-								key,
-								{ $credentials: credentials },
-								workflow,
-								node,
-								defaultTimezone,
-							);
+							keyResolved = this.resolveValue(key, { $credentials: credentials }, workflow, node);
 
 							valueResolved = this.resolveValue(
 								value as string,
 								{ $credentials: credentials },
 								workflow,
 								node,
-								defaultTimezone,
 							);
 
 							// @ts-ignore
@@ -226,7 +218,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): string {
 		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
@@ -236,7 +227,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			node,
 			parameterValue,
 			'internal',
-			defaultTimezone,
 			additionalKeys,
 			undefined,
 			'',
@@ -347,7 +337,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
@@ -367,7 +356,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedDataOriginal,
 			type,
 			mode,
-			defaultTimezone,
 			expressionResolveValues,
 			canUseSecrets,
 		);
@@ -381,7 +369,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 		canUseSecrets?: boolean,
 	): ICredentialDataDecryptedObject {
@@ -413,8 +400,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		});
 
 		if (expressionResolveValues) {
-			const timezone = expressionResolveValues.workflow.settings.timezone ?? defaultTimezone;
-
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
 					decryptedData as INodeParameters,
@@ -424,7 +409,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.node.name,
 					expressionResolveValues.connectionInputData,
 					mode,
-					timezone,
 					additionalKeys,
 					undefined,
 					false,
@@ -447,7 +431,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mockNode,
 				decryptedData as INodeParameters,
 				mode,
-				defaultTimezone,
 				additionalKeys,
 				undefined,
 				undefined,
@@ -597,7 +580,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					credentialsDecrypted.data,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
-					additionalData.timezone,
 					undefined,
 					user.isOwner,
 				);

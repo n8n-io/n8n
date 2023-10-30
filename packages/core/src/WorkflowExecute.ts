@@ -277,7 +277,6 @@ export class WorkflowExecute {
 				}
 
 				// Only run the parent nodes and no others
-				// eslint-disable-next-line prefer-const
 				runNodeFilter = workflow
 					.getParentNodes(destinationNode)
 					.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
@@ -801,7 +800,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new Error(
+			throw new WorkflowOperationError(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
 			);
 		}
@@ -1518,7 +1517,6 @@ export class WorkflowExecute {
 										checkNode,
 										requiredInputs,
 										this.mode,
-										this.additionalData.timezone,
 										{ $version: checkNode.typeVersion },
 										undefined,
 										[],

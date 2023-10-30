@@ -69,7 +69,7 @@
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
 						@openSettings="openSettings"
-						@select="onInputSelect"
+						@changeInputNode="onInputNodeChange"
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
 						@itemHover="onInputItemHover"
@@ -713,7 +713,7 @@ export default defineComponent({
 				pane,
 			});
 		},
-		onInputSelect(value: string, index: number) {
+		onInputNodeChange(value: string, index: number) {
 			this.runInputIndex = -1;
 			this.isLinkingEnabled = true;
 			this.selectedInput = value;
