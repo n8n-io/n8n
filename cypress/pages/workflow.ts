@@ -124,6 +124,7 @@ export class WorkflowPage extends BasePage {
 		addStickyButton: () => cy.getByTestId('add-sticky-button'),
 		stickies: () => cy.getByTestId('sticky'),
 		editorTabButton: () => cy.getByTestId('radio-button-workflow'),
+		workflowHistoryButton: () => cy.getByTestId('workflow-history-button'),
 		colors: () => cy.getByTestId('color'),
 	};
 	actions = {
@@ -341,6 +342,13 @@ export class WorkflowPage extends BasePage {
 		},
 		shouldHaveWorkflowName: (name: string) => {
 			this.getters.workflowNameInputContainer().invoke('attr', 'title').should('include', name);
+		},
+		testLassoSelection: (from: [number, number], to: [number, number]) => {
+			cy.getByTestId('node-view-wrapper').trigger('mousedown', from[0], from[1], { force: true });
+			cy.getByTestId('node-view-wrapper').trigger('mousemove', to[0], to[1], { force: true });
+			cy.get('#select-box').should('be.visible');
+			cy.getByTestId('node-view-wrapper').trigger('mouseup', to[0], to[1], { force: true });
+			cy.get('#select-box').should('not.be.visible');
 		},
 	};
 }

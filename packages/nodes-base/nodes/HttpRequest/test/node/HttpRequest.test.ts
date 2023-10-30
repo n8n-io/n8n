@@ -1,3 +1,4 @@
+import nock from 'nock';
 import {
 	initBinaryDataService,
 	setup,
@@ -5,8 +6,6 @@ import {
 	workflowToTests,
 	getWorkflowFilenames,
 } from '@test/nodes/Helpers';
-
-import nock from 'nock';
 
 describe('Test HTTP Request Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);

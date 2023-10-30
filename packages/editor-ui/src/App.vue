@@ -20,9 +20,10 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
+					<component v-else :is="Component" />
 				</router-view>
 			</div>
 			<Modals />
@@ -34,6 +35,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
@@ -211,7 +213,7 @@ export default defineComponent({
 			return;
 		},
 		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
+			const theme = useStorage(LOCAL_STORAGE_THEME, undefined).value;
 			if (theme) {
 				window.document.body.classList.add(`theme-${theme}`);
 			}
@@ -257,7 +259,7 @@ export default defineComponent({
 				void this.postAuthenticate();
 			}
 		},
-		async $route(route) {
+		async $route() {
 			await this.initSettings();
 			await this.redirectIfNecessary();
 

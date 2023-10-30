@@ -31,6 +31,7 @@ import { ExecutionRepository } from '@db/repositories';
 import { RoleService } from './services/role.service';
 import type { EventPayloadWorkflow } from './eventbus/EventMessageClasses/EventMessageWorkflow';
 import { determineFinalExecutionStatus } from './executionLifecycleHooks/shared/sharedHookFunctions';
+import { InstanceSettings } from 'n8n-core';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -50,22 +51,13 @@ function userToPayload(user: User): {
 
 @Service()
 export class InternalHooks implements IInternalHooksClass {
-	private instanceId: string;
-
-	public get telemetryInstanceId(): string {
-		return this.instanceId;
-	}
-
-	public get telemetryInstance(): Telemetry {
-		return this.telemetry;
-	}
-
 	constructor(
 		private telemetry: Telemetry,
 		private nodeTypes: NodeTypes,
 		private roleService: RoleService,
 		private executionRepository: ExecutionRepository,
 		eventsService: EventsService,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		eventsService.on('telemetry.onFirstProductionWorkflowSuccess', async (metrics) =>
 			this.onFirstProductionWorkflowSuccess(metrics),
@@ -75,9 +67,7 @@ export class InternalHooks implements IInternalHooksClass {
 		);
 	}
 
-	async init(instanceId: string) {
-		this.instanceId = instanceId;
-		this.telemetry.setInstanceId(instanceId);
+	async init() {
 		await this.telemetry.init();
 	}
 
@@ -813,7 +803,7 @@ export class InternalHooks implements IInternalHooksClass {
 				user_id: userCreatedCredentialsData.user.id,
 				credential_type: userCreatedCredentialsData.credential_type,
 				credential_id: userCreatedCredentialsData.credential_id,
-				instance_id: this.instanceId,
+				instance_id: this.instanceSettings.instanceId,
 			}),
 		]);
 	}
@@ -847,7 +837,7 @@ export class InternalHooks implements IInternalHooksClass {
 				user_id_sharer: userSharedCredentialsData.user_id_sharer,
 				user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
 				sharees_removed: userSharedCredentialsData.sharees_removed,
-				instance_id: this.instanceId,
+				instance_id: this.instanceSettings.instanceId,
 			}),
 		]);
 	}

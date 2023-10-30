@@ -9,12 +9,15 @@ import { useExternalSecretsStore } from '@/stores/externalSecrets.ee.store';
 import { useUIStore } from '@/stores';
 import { useRoute } from 'vue-router';
 import ParameterInputExpanded from '@/components/ParameterInputExpanded.vue';
-import type { IUpdateInformation, ExternalSecretsProviderData } from '@/Interface';
+import type {
+	IUpdateInformation,
+	ExternalSecretsProviderData,
+	ExternalSecretsProvider,
+} from '@/Interface';
 import type { IParameterLabel } from 'n8n-workflow';
 import ExternalSecretsProviderImage from '@/components/ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from '@/components/ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { createEventBus } from 'n8n-design-system/utils';
-import type { ExternalSecretsProvider } from '@/Interface';
 
 const props = defineProps({
 	data: {
