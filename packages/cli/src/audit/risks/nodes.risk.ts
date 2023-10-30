@@ -17,7 +17,6 @@ import type { Risk } from '@/audit/types';
 async function getCommunityNodeDetails() {
 	if (!config.getEnv('nodes.communityPackages.enabled')) return [];
 
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const { CommunityPackagesService } = await import('@/services/communityPackages.service');
 	const installedPackages = await Container.get(CommunityPackagesService).getAllInstalledPackages();
 

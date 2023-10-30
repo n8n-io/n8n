@@ -23,7 +23,7 @@ export class SwitchV2 implements INodeType {
 				color: '#506000',
 			},
 			inputs: ['main'],
-			// eslint-disable-next-line prettier/prettier
+
 			outputs: `={{
 					((parameters) => {
 						const rules = parameters.rules?.rules ?? [];
@@ -499,7 +499,7 @@ export class SwitchV2 implements INodeType {
 							mode: ['rules'],
 						},
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+
 					typeOptions: {
 						loadOptionsDependsOn: ['rules.rules'],
 						loadOptionsMethod: 'getFallbackOutputOptions',

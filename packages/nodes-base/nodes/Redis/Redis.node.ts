@@ -1,3 +1,4 @@
+import util from 'util';
 import type {
 	IExecuteFunctions,
 	GenericValue,
@@ -14,8 +15,6 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
 import redis from 'redis';
-
-import util from 'util';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {

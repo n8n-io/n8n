@@ -112,11 +112,9 @@ export default defineComponent({
 		},
 		// Returns all the options which did not get added already
 		parameterOptions(): Array<INodePropertyOptions | INodeProperties> {
-			return (this.filteredOptions as Array<INodePropertyOptions | INodeProperties>).filter(
-				(option) => {
-					return !this.propertyNames.includes(option.name);
-				},
-			);
+			return this.filteredOptions.filter((option) => {
+				return !this.propertyNames.includes(option.name);
+			});
 		},
 		propertyNames(): string[] {
 			if (this.values) {

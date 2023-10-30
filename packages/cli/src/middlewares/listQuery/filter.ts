@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import * as ResponseHelper from '@/ResponseHelper';
 import { WorkflowFilter } from './dtos/workflow.filter.dto';
 import { CredentialsFilter } from './dtos/credentials.filter.dto';
