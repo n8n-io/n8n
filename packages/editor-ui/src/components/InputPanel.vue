@@ -163,7 +163,13 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi } from '@/Interface';
 import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
-import type { ConnectionTypes, IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IConnectedNode,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	Workflow,
+} from 'n8n-workflow';
 import RunData from './RunData.vue';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import NodeExecuteButton from './NodeExecuteButton.vue';
@@ -263,9 +269,9 @@ export default defineComponent({
 			}
 
 			if (
-				(inputs.length === 0 ||
-					inputs.find((inputName) => inputName !== NodeConnectionType.Main)) &&
-				outputs.find((outputName) => outputName !== NodeConnectionType.Main)
+				inputs.length === 0 ||
+				(inputs.every((input) => this.filterOutConnectionType(input, NodeConnectionType.Main)) &&
+					outputs.find((output) => this.filterOutConnectionType(output, NodeConnectionType.Main)))
 			) {
 				return true;
 			}
@@ -376,6 +382,14 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		filterOutConnectionType(
+			item: ConnectionTypes | INodeOutputConfiguration,
+			type: ConnectionTypes,
+		) {
+			if (!item) return false;
+
+			return typeof item === 'string' ? item !== type : item.type !== type;
+		},
 		onInputModeChange(val: MappingMode) {
 			this.inputMode = val;
 		},
