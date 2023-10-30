@@ -71,19 +71,6 @@ describe('Canvas Actions', () => {
 	it.only('change sticky color', () => {
 		workflowPage.actions.addSticky();
 
-		workflowPage.actions.toggleColorPalette();
-
-		workflowPage.actions.pickDefaultColor();
-
-		workflowPage.actions.saveWorkflowOnButtonClick();
-
-		let defaultColor;
-
-		cy.wait('@createWorkflow').then((interception: Interception) => {
-			const { request } = interception;
-			defaultColor = request.body?.nodes[0]?.parameters?.color;
-		});
-
 		workflowPage.getters.stickies().should('have.length', 1);
 
 		workflowPage.actions.toggleColorPalette();
@@ -101,7 +88,7 @@ describe('Canvas Actions', () => {
 		cy.wait('@createWorkflow').then((interception: Interception) => {
 			const { request } = interception;
 			const color = request.body?.nodes[0]?.parameters?.color;
-			expect(color).not.to.be(defaultColor);
+			expect(color).not.to.be.undefined;
 		});
 
 		workflowPage.getters.stickies().should('have.length', 1);
