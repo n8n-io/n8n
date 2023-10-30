@@ -1,12 +1,14 @@
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+
+import { discordApiRequest } from '../transport';
+import { checkAccessToGuild } from '../helpers/utils';
 
 import * as message from './message';
 import * as channel from './channel';
 import * as member from './member';
 import * as webhook from './webhook';
 import type { Discord } from './node.type';
-import { getGuildId } from '../transport';
 
 export async function router(this: IExecuteFunctions) {
 	let returnData: INodeExecutionData[] = [];
@@ -20,9 +22,24 @@ export async function router(this: IExecuteFunctions) {
 	const operation = this.getNodeParameter('operation', 0);
 
 	let guildId = '';
+	let userGuilds: IDataObject[] = [];
 
 	if (resource !== 'webhook') {
-		guildId = await getGuildId.call(this);
+		guildId = this.getNodeParameter('guildId', 0, '', {
+			extractValue: true,
+		}) as string;
+
+		const isOAuth2 = this.getNodeParameter('authentication', 0, '') === 'oAuth2';
+
+		if (isOAuth2) {
+			userGuilds = (await discordApiRequest.call(
+				this,
+				'GET',
+				'/users/@me/guilds',
+			)) as IDataObject[];
+
+			checkAccessToGuild(this.getNode(), guildId, userGuilds);
+		}
 	}
 
 	const discord = {
@@ -32,10 +49,10 @@ export async function router(this: IExecuteFunctions) {
 
 	switch (discord.resource) {
 		case 'channel':
-			returnData = await channel[discord.operation].execute.call(this, guildId);
+			returnData = await channel[discord.operation].execute.call(this, guildId, userGuilds);
 			break;
 		case 'message':
-			returnData = await message[discord.operation].execute.call(this, guildId);
+			returnData = await message[discord.operation].execute.call(this, guildId, userGuilds);
 			break;
 		case 'member':
 			returnData = await member[discord.operation].execute.call(this, guildId);

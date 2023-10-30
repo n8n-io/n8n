@@ -1,7 +1,12 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { parseDiscordError, prepareErrorData } from '../../helpers/utils';
-import { discordApiRequest, getChannelIdSetup } from '../../transport';
+import { parseDiscordError, prepareErrorData, setupChannelGetter } from '../../helpers/utils';
+import { discordApiRequest } from '../../transport';
 import { channelRLC, messageIdString } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -29,11 +34,15 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+export async function execute(
+	this: IExecuteFunctions,
+	guildId: string,
+	userGuilds: IDataObject[],
+): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
-	const getChannelId = await getChannelIdSetup.call(this);
+	const getChannelId = await setupChannelGetter.call(this, userGuilds);
 
 	for (let i = 0; i < items.length; i++) {
 		try {

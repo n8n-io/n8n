@@ -6,11 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../utils/utilities';
-import {
-	checkUserAccessToChannel,
-	discordApiMultiPartRequest,
-	discordApiRequest,
-} from '../../transport';
+import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 import {
 	embedsFixedCollection,
 	filesFixedCollection,
@@ -19,6 +15,7 @@ import {
 } from '../common.description';
 
 import {
+	checkAccessToChannel,
 	parseDiscordError,
 	prepareEmbeds,
 	prepareErrorData,
@@ -135,16 +132,12 @@ export const description = updateDisplayOptions(displayOptions, properties);
 export async function execute(
 	this: IExecuteFunctions,
 	guildId: string,
+	userGuilds: IDataObject[],
 ): Promise<INodeExecutionData[]> {
 	const returnData: INodeExecutionData[] = [];
 	const items = this.getInputData();
 
 	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
-	let userGuilds = [];
-
-	if (isOAuth2) {
-		userGuilds = await discordApiRequest.call(this, 'GET', '/users/@me/guilds');
-	}
 
 	for (let i = 0; i < items.length; i++) {
 		const content = this.getNodeParameter('content', i) as string;
@@ -191,7 +184,7 @@ export async function execute(
 				throw new NodeOperationError(this.getNode(), 'Channel ID is required');
 			}
 
-			if (isOAuth2) await checkUserAccessToChannel.call(this, channelId, userGuilds, i);
+			if (isOAuth2) await checkAccessToChannel.call(this, channelId, userGuilds, i);
 
 			let response: IDataObject[] = [];
 

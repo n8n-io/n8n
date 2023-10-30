@@ -2,6 +2,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
@@ -9,6 +10,7 @@ import { isEmpty } from 'lodash';
 import FormData from 'form-data';
 import { capitalize } from '../../../../utils/utilities';
 import { extension } from 'mime-types';
+import { discordApiRequest } from '../transport';
 
 export const createSimplifyFunction =
 	(includedFields: string[]) =>
@@ -225,4 +227,61 @@ export async function prepareMultiPartForm(
 	}
 
 	return multiPartBody;
+}
+
+export function checkAccessToGuild(
+	node: INode,
+	guildId: string,
+	userGuilds: IDataObject[],
+	itemIndex = 0,
+) {
+	if (!userGuilds.some((guild) => guild.id === guildId)) {
+		throw new NodeOperationError(
+			node,
+			`You do not have access to the guild with the id ${guildId}.`,
+			{
+				itemIndex,
+			},
+		);
+	}
+}
+
+export async function checkAccessToChannel(
+	this: IExecuteFunctions,
+	channelId: string,
+	userGuilds: IDataObject[],
+	itemIndex = 0,
+) {
+	let guildId = '';
+
+	try {
+		const channel = await discordApiRequest.call(this, 'GET', `/channels/${channelId}`);
+		guildId = channel.guild_id;
+	} catch (error) {}
+
+	if (!guildId) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Could not fing server for channel with the id ${channelId}`,
+			{
+				itemIndex,
+			},
+		);
+	}
+
+	checkAccessToGuild(this.getNode(), guildId, userGuilds, itemIndex);
+}
+
+export async function setupChannelGetter(this: IExecuteFunctions, userGuilds: IDataObject[]) {
+	const isOAuth2 = this.getNodeParameter('authentication', 0) === 'oAuth2';
+
+	return async (i: number) => {
+		const channelId = this.getNodeParameter('channelId', i, undefined, {
+			extractValue: true,
+		}) as string;
+
+		if (isOAuth2) await checkAccessToChannel.call(this, channelId, userGuilds, i);
+
+		return channelId;
+	};
 }

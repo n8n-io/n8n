@@ -3,7 +3,44 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 } from 'n8n-workflow';
-import { checkBotAccessToGuild, discordApiRequest, getGuildId } from '../transport';
+import { discordApiRequest } from '../transport';
+import { checkAccessToGuild } from '../helpers/utils';
+
+async function getGuildId(this: ILoadOptionsFunctions) {
+	const guildId = this.getNodeParameter('guildId', undefined, {
+		extractValue: true,
+	}) as string;
+
+	const isOAuth2 = this.getNodeParameter('authentication', '') === 'oAuth2';
+
+	if (isOAuth2) {
+		const userGuilds = (await discordApiRequest.call(
+			this,
+			'GET',
+			'/users/@me/guilds',
+		)) as IDataObject[];
+
+		checkAccessToGuild(this.getNode(), guildId, userGuilds);
+	}
+
+	return guildId;
+}
+
+async function checkBotAccessToGuild(this: ILoadOptionsFunctions, guildId: string, botId: string) {
+	try {
+		const members: Array<{ user: { id: string } }> = await discordApiRequest.call(
+			this,
+			'GET',
+			`/guilds/${guildId}/members`,
+			undefined,
+			{ limit: 1000 },
+		);
+
+		return members.some((member) => member.user.id === botId);
+	} catch (error) {}
+
+	return false;
+}
 
 export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	const response = (await discordApiRequest.call(
