@@ -277,12 +277,13 @@ export default defineComponent({
 		onResizeEnd() {
 			this.isResizing = false;
 		},
-		setParameters(params: { content?: string; height?: number; width?: number }) {
+		setParameters(params: { content?: string; height?: number; width?: number; color?: string }) {
 			if (this.node) {
 				const nodeParameters = {
 					content: isString(params.content) ? params.content : this.node.parameters.content,
 					height: isNumber(params.height) ? params.height : this.node.parameters.height,
 					width: isNumber(params.width) ? params.width : this.node.parameters.width,
+					color: isString(params.color) ? params.color : this.node.parameters.color,
 				};
 
 				const updateInformation: IUpdateInformation = {
