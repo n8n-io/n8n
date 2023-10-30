@@ -125,7 +125,7 @@ export default defineComponent({
 			this.latestValue = value;
 			this.segments = segments;
 
-			if (forceUpdate === true) {
+			if (forceUpdate) {
 				this.updateDisplayValue();
 				this.$emit('update:modelValue', this.latestValue);
 			} else {

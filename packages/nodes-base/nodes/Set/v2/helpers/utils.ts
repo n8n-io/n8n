@@ -11,9 +11,9 @@ import set from 'lodash/set';
 import get from 'lodash/get';
 import unset from 'lodash/unset';
 
+import { getResolvables } from '../../../../utils/utilities';
 import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';
-import { getResolvables } from '../../../../utils/utilities';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {

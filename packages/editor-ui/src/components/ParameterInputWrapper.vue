@@ -170,7 +170,7 @@ export default defineComponent({
 			if (this.isValueExpression) {
 				return undefined;
 			}
-			if (this.selectedRLMode && this.selectedRLMode.hint) {
+			if (this.selectedRLMode?.hint) {
 				return this.selectedRLMode.hint;
 			}
 

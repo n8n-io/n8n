@@ -890,7 +890,6 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.path,
 			mode,
-			additionalData.timezone,
 			{},
 		);
 		if (nodeWebhookPath === undefined) {
@@ -914,7 +913,6 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.isFullPath,
 			'internal',
-			additionalData.timezone,
 			{},
 			undefined,
 			false,
@@ -923,7 +921,6 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.restartWebhook,
 			'internal',
-			additionalData.timezone,
 			{},
 			undefined,
 			false,
@@ -934,7 +931,6 @@ export function getNodeWebhooks(
 			node,
 			webhookDescription.httpMethod,
 			mode,
-			additionalData.timezone,
 			{},
 			undefined,
 			'GET',
@@ -1032,7 +1028,7 @@ export function getNodeInputs(
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<ConnectionTypes | INodeInputConfiguration> {
-	if (Array.isArray(nodeTypeData.inputs)) {
+	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
 	}
 
@@ -1042,7 +1038,6 @@ export function getNodeInputs(
 			node,
 			nodeTypeData.inputs,
 			'internal',
-			'',
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {
@@ -1065,7 +1060,6 @@ export function getNodeOutputs(
 			node,
 			nodeTypeData.outputs,
 			'internal',
-			'',
 			{},
 		) || []) as ConnectionTypes[];
 	} catch (e) {

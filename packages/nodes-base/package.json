@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.12.0",
+  "version": "1.14.0",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -106,6 +106,7 @@
       "dist/credentials/F5BigIpApi.credentials.js",
       "dist/credentials/FacebookGraphApi.credentials.js",
       "dist/credentials/FacebookGraphAppApi.credentials.js",
+      "dist/credentials/FacebookLeadAdsOAuth2Api.credentials.js",
       "dist/credentials/FigmaApi.credentials.js",
       "dist/credentials/FileMaker.credentials.js",
       "dist/credentials/FlowApi.credentials.js",
@@ -485,6 +486,7 @@
       "dist/nodes/ExecutionData/ExecutionData.node.js",
       "dist/nodes/Facebook/FacebookGraphApi.node.js",
       "dist/nodes/Facebook/FacebookTrigger.node.js",
+      "dist/nodes/FacebookLeadAds/FacebookLeadAdsTrigger.node.js",
       "dist/nodes/Figma/FigmaTrigger.node.js",
       "dist/nodes/FileMaker/FileMaker.node.js",
       "dist/nodes/Filter/Filter.node.js",
