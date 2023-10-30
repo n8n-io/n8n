@@ -651,8 +651,7 @@ export default defineComponent({
 			}
 
 			if (parameterData.name === 'onError') {
-				// If that parameter changed we have to redraw the connections as maybe
-				// the error output as to get added or removed
+// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
 				this.$emit('redrawRequired');
 			}
 
