@@ -11,7 +11,7 @@ import { hackerNewsApiRequest, hackerNewsApiRequestAllItems } from './GenericFun
 
 export class HackerNews implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Hacker News',
+		displayName: 'Hacker News EDITED',
 		name: 'hackerNews',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:hackernews.png',
