@@ -180,7 +180,7 @@ export default defineComponent({
 		focusOnInput(): void {
 			setTimeout(() => {
 				const inputRef = this.$refs.nameInput as N8nInputRef | undefined;
-				if (inputRef && inputRef.focus) {
+				if (inputRef?.focus) {
 					inputRef.focus();
 				}
 			}, INPUT_TRANSITION_TIMEOUT);
@@ -189,7 +189,7 @@ export default defineComponent({
 		focusOnDelete(): void {
 			setTimeout(() => {
 				const inputRef = this.$refs.deleteHiddenInput as N8nInputRef | undefined;
-				if (inputRef && inputRef.focus) {
+				if (inputRef?.focus) {
 					inputRef.focus();
 				}
 			}, DELETE_TRANSITION_TIMEOUT);
@@ -206,7 +206,7 @@ export default defineComponent({
 	},
 	watch: {
 		rows(newValue: ITagRow[] | undefined) {
-			if (newValue && newValue[0] && newValue[0].create) {
+			if (newValue?.[0] && newValue[0].create) {
 				this.focusOnCreate();
 			}
 		},

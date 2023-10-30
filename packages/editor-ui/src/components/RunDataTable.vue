@@ -160,10 +160,9 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import type { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/utils';
+import { getPairedItemId, shorten } from '@/utils';
 import type { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
@@ -384,7 +383,7 @@ export default defineComponent({
 			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
-			if (el && el.dataset.value) {
+			if (el?.dataset.value) {
 				this.draggingPath = el.dataset.value;
 			}
 

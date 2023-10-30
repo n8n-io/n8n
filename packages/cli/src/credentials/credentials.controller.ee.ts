@@ -12,7 +12,6 @@ import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 import type { CredentialsEntity } from '@/databases/entities/CredentialsEntity';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {
@@ -61,11 +60,7 @@ EECredentialsController.get(
 
 		const { data: _, ...rest } = credential;
 
-		const key = await EECredentials.getEncryptionKey();
-		const decryptedData = EECredentials.redact(
-			await EECredentials.decrypt(key, credential),
-			credential,
-		);
+		const decryptedData = EECredentials.redact(EECredentials.decrypt(credential), credential);
 
 		return { data: decryptedData, ...rest };
 	}),
@@ -81,8 +76,6 @@ EECredentialsController.post(
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
 		const { credentials } = req.body;
 
-		const encryptionKey = await EECredentials.getEncryptionKey();
-
 		const credentialId = credentials.id;
 		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialId);
 
@@ -92,17 +85,17 @@ EECredentialsController.post(
 				throw new ResponseHelper.UnauthorizedError('Forbidden');
 			}
 
-			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = EECredentials.decrypt(sharing.credentials);
 			Object.assign(credentials, { data: decryptedData });
 		}
 
 		const mergedCredentials = deepCopy(credentials);
 		if (mergedCredentials.data && sharing?.credentials) {
-			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			const decryptedData = EECredentials.decrypt(sharing.credentials);
 			mergedCredentials.data = EECredentials.unredact(mergedCredentials.data, decryptedData);
 		}
 
-		return EECredentials.test(req.user, encryptionKey, mergedCredentials);
+		return EECredentials.test(req.user, mergedCredentials);
 	}),
 );
 

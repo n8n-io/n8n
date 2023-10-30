@@ -84,7 +84,7 @@ export default defineComponent({
 		},
 		iconStyleData(): object {
 			const nodeType = this.nodeType as ITemplatesNode | null;
-			const color = nodeType ? nodeType.defaults && nodeType!.defaults.color : '';
+			const color = nodeType ? nodeType.defaults && nodeType.defaults.color : '';
 			if (!this.size) {
 				return { color };
 			}

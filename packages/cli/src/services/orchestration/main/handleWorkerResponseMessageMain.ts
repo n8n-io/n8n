@@ -1,13 +1,12 @@
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
-import type { RedisServiceWorkerResponseObject } from '../../redis/RedisServiceCommands';
-import { Push } from '../../../push';
+import { jsonParse } from 'n8n-workflow';
 import Container from 'typedi';
+import { Logger } from '@/Logger';
+import { Push } from '../../../push';
+import type { RedisServiceWorkerResponseObject } from '../../redis/RedisServiceCommands';
 
 export async function handleWorkerResponseMessageMain(messageString: string) {
 	const workerResponse = jsonParse<RedisServiceWorkerResponseObject>(messageString);
 	if (workerResponse) {
-		// TODO: Handle worker response
-
 		switch (workerResponse.command) {
 			case 'getStatus':
 				const push = Container.get(Push);
@@ -19,7 +18,7 @@ export async function handleWorkerResponseMessageMain(messageString: string) {
 			case 'getId':
 				break;
 			default:
-				LoggerProxy.debug(
+				Container.get(Logger).debug(
 					`Received worker response ${workerResponse.command} from ${workerResponse.workerId}`,
 				);
 		}

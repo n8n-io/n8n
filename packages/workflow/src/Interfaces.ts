@@ -2,23 +2,23 @@
 
 import type * as express from 'express';
 import type FormData from 'form-data';
+import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
-import type { Readable } from 'stream';
-import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions } from 'request-promise-native';
-import type { PathLike } from 'fs';
+import type { Readable } from 'stream';
+import type { URLSearchParams } from 'url';
 
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES } from './Constants';
+import type { AuthenticationMethod } from './Authentication';
+import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './Constants';
 import type { IDeferredPromise } from './DeferredPromise';
+import type { ExecutionStatus } from './ExecutionStatus';
+import type { ExpressionError } from './ExpressionError';
+import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { Workflow } from './Workflow';
-import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
-import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import type { ExpressionError } from './ExpressionError';
-import type { ExecutionStatus } from './ExecutionStatus';
-import type { AuthenticationMethod } from './Authentication';
+import type { WorkflowHooks } from './WorkflowHooks';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -108,17 +108,13 @@ export abstract class ICredentials {
 		this.data = data;
 	}
 
-	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
-
-	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+	abstract getData(nodeType?: string): ICredentialDataDecryptedObject;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
 	abstract hasNodeAccess(nodeType: string): boolean;
 
-	abstract setData(data: ICredentialDataDecryptedObject, encryptionKey: string): void;
-
-	abstract setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void;
+	abstract setData(data: ICredentialDataDecryptedObject): void;
 }
 
 export interface IUser {
@@ -192,8 +188,6 @@ export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
 export abstract class ICredentialsHelper {
-	constructor(readonly encryptionKey: string) {}
-
 	abstract getParentTypes(name: string): string[];
 
 	abstract authenticate(
@@ -202,7 +196,6 @@ export abstract class ICredentialsHelper {
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(
@@ -223,7 +216,6 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -731,7 +723,7 @@ export interface RequestHelperFunctions {
 }
 
 export interface FunctionsBase {
-	logger: ILogger;
+	logger: Logger;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getExecutionId(): string;
 	getNode(): INode;
@@ -740,7 +732,7 @@ export interface FunctionsBase {
 	getTimezone(): string;
 	getRestApiUrl(): string;
 	getInstanceBaseUrl(): string;
-	getInstanceId(): Promise<string>;
+	getInstanceId(): string;
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
@@ -773,7 +765,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			inputName: ConnectionTypes,
 			itemIndex: number,
 			inputIndex?: number,
-			nodeNameOverride?: string,
 		): Promise<unknown>;
 		getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 		getNodeOutputs(): INodeOutputConfiguration[];
@@ -1290,7 +1281,7 @@ export interface SupplyData {
 
 export interface INodeType {
 	description: INodeTypeDescription;
-	supplyData?(this: IExecuteFunctions): Promise<SupplyData>;
+	supplyData?(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData>;
 	execute?(
 		this: IExecuteFunctions,
 	): Promise<INodeExecutionData[][] | NodeExecutionWithMetadata[][] | null>;
@@ -1534,8 +1525,6 @@ export const enum NodeConnectionType {
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiTool = 'ai_tool',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	AiVectorRetriever = 'ai_vectorRetriever',
-	// eslint-disable-next-line @typescript-eslint/naming-convention
 	AiVectorStore = 'ai_vectorStore',
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	Main = 'main',
@@ -1630,6 +1619,7 @@ export interface IWebhookDescription {
 	responseMode?: WebhookResponseMode | string;
 	responseData?: WebhookResponseData | string;
 	restartWebhook?: boolean;
+	hasLifecycleMethods?: boolean; // set automatically by generate-ui-types
 	ndvHideUrl?: boolean; // If true the webhook will not be displayed in the editor
 	ndvHideMethod?: boolean; // If true the method will not be displayed in the editor
 }
@@ -1849,7 +1839,6 @@ export interface IWorkflowExecuteHooks {
 
 export interface IWorkflowExecuteAdditionalData {
 	credentialsHelper: ICredentialsHelper;
-	encryptionKey: string;
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -1862,7 +1851,6 @@ export interface IWorkflowExecuteAdditionalData {
 			parentWorkflowSettings?: IWorkflowSettings;
 		},
 	) => Promise<any>;
-	// hooks?: IWorkflowExecuteHooks;
 	executionId?: string;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
@@ -1872,7 +1860,6 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
-	timezone: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -1943,16 +1930,8 @@ export interface WorkflowTestData {
 	};
 }
 
-export type LogTypes = 'debug' | 'verbose' | 'info' | 'warn' | 'error';
-
-export interface ILogger {
-	log: (type: LogTypes, message: string, meta?: object) => void;
-	debug: (message: string, meta?: object) => void;
-	verbose: (message: string, meta?: object) => void;
-	info: (message: string, meta?: object) => void;
-	warn: (message: string, meta?: object) => void;
-	error: (message: string, meta?: object) => void;
-}
+export type LogLevel = (typeof LOG_LEVELS)[number];
+export type Logger = Record<Exclude<LogLevel, 'silent'>, (message: string, meta?: object) => void>;
 
 export interface IStatusCodeMessages {
 	[key: string]: string;
@@ -2219,8 +2198,6 @@ export interface IPublicApiSettings {
 	};
 }
 
-export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
-
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export interface IN8nUISettings {
@@ -2271,7 +2248,7 @@ export interface IN8nUISettings {
 	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
-	logLevel: ILogLevel;
+	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	templates: {
 		enabled: boolean;

@@ -16,8 +16,8 @@ import {
 	microsoftApiRequestAllItems,
 } from '../../transport';
 
-import { updateDisplayOptions } from '@utils/utilities';
 import { folderRLC, returnAllOrLimit } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	folderRLC,

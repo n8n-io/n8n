@@ -35,7 +35,7 @@ const schema = computed(() => getSchemaForExecutionData(props.data));
 const isDataEmpty = computed(() => isEmpty(props.data));
 
 const onDragStart = (el: HTMLElement) => {
-	if (el && el.dataset?.path) {
+	if (el?.dataset?.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
