@@ -238,7 +238,7 @@ export function checkAccessToGuild(
 	if (!userGuilds.some((guild) => guild.id === guildId)) {
 		throw new NodeOperationError(
 			node,
-			`You do not have access to the guild with the id ${guildId}.`,
+			`You do not have access to the guild with the id ${guildId}`,
 			{
 				itemIndex,
 			},
