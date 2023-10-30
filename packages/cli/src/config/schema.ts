@@ -95,7 +95,7 @@ export const schema = {
 			ssl: {
 				enabled: {
 					doc: 'If SSL should be enabled. If `ca`, `cert`, or `key` are defined, this will automatically default to true',
-					format: 'Boolean',
+					format: Boolean,
 					default: false,
 					env: 'DB_POSTGRESDB_SSL_ENABLED',
 				},
@@ -691,24 +691,6 @@ export const schema = {
 			default: false,
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
-		},
-		skipWebhooksDeregistrationOnShutdown: {
-			/**
-			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
-			 * and registers on startup / activation. If we skip
-			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
-			 * We don't have to worry about startup as it always
-			 * checks if webhooks already exist.
-			 * If users want to upgrade n8n, it is possible to run
-			 * two instances simultaneously without downtime, similar
-			 * to blue/green deployment.
-			 * WARNING: Trigger nodes (like Cron) will cause duplication
-			 * of work, so be aware when using.
-			 */
-			doc: 'Deregister webhooks on external services only when workflows are deactivated.',
-			format: Boolean,
-			default: false,
-			env: 'N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN',
 		},
 	},
 

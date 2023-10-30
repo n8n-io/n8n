@@ -9,7 +9,6 @@ import * as ResponseHelper from '@/ResponseHelper';
 import { isSharingEnabled } from '@/UserManagement/UserManagementHelper';
 import { EEExecutionsService } from './executions.service.ee';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEExecutionsController = express.Router();
 
 EEExecutionsController.use((req, res, next) => {

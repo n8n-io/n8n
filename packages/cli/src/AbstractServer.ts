@@ -37,8 +37,6 @@ export abstract class AbstractServer {
 
 	protected sslCert: string;
 
-	protected timezone: string;
-
 	protected restEndpoint: string;
 
 	protected endpointWebhook: string;
@@ -60,8 +58,6 @@ export abstract class AbstractServer {
 		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
-
-		this.timezone = config.getEnv('generic.timezone');
 
 		this.restEndpoint = config.getEnv('endpoints.rest');
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
