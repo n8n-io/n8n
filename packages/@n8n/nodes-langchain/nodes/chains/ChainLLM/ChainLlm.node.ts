@@ -28,13 +28,12 @@ interface MessagesTemplate {
 
 function getChainPromptTemplate(
 	llm: BaseLanguageModel | BaseChatModel,
-	query: string,
 	messages?: MessagesTemplate[],
 	formatInstructions?: string,
 ) {
 	const queryTemplate = new PromptTemplate({
-		template: `${query}${formatInstructions ? '\n{formatInstructions}' : ''}`,
-		inputVariables: [],
+		template: `{query}${formatInstructions ? '\n{formatInstructions}' : ''}`,
+		inputVariables: ['query'],
 		partialVariables: formatInstructions ? { formatInstructions } : undefined,
 	});
 
@@ -63,13 +62,14 @@ function getChainPromptTemplate(
 
 async function createSimpleLLMChain(
 	llm: BaseLanguageModel,
+	query: string,
 	prompt: ChatPromptTemplate | PromptTemplate,
 ): Promise<string[]> {
 	const chain = new LLMChain({
 		llm,
 		prompt,
 	});
-	const response = (await chain.call({})) as string[];
+	const response = (await chain.call({ query })) as string[];
 
 	return Array.isArray(response) ? response : [response];
 }
@@ -89,15 +89,11 @@ async function getChain(
 		0,
 	)) as BaseOutputParser[];
 
-	const chatTemplate: ChatPromptTemplate | PromptTemplate = getChainPromptTemplate(
-		llm,
-		query,
-		messages,
-	);
+	const chatTemplate: ChatPromptTemplate | PromptTemplate = getChainPromptTemplate(llm, messages);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
 	if (!outputParsers.length) {
-		return createSimpleLLMChain(llm, chatTemplate);
+		return createSimpleLLMChain(llm, query, chatTemplate);
 	}
 
 	// If there's only one output parser, use it; otherwise, create a combined output parser
@@ -107,7 +103,7 @@ async function getChain(
 	const formatInstructions = combinedOutputParser.getFormatInstructions();
 
 	// Create a prompt template incorporating the format instructions and query
-	const prompt = getChainPromptTemplate(llm, query, messages, formatInstructions);
+	const prompt = getChainPromptTemplate(llm, messages, formatInstructions);
 
 	const chain = prompt.pipe(llm).pipe(combinedOutputParser);
 
