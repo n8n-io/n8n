@@ -21,7 +21,7 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
+import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
@@ -169,10 +169,11 @@ export class Start extends BaseCommand {
 		}
 
 		const closingTitleTag = '</title>';
+		const { staticCacheDir } = this.instanceSettings;
 		const compileFile = async (fileName: string) => {
 			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
 			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-				const destFile = path.join(GENERATED_STATIC_DIR, fileName);
+				const destFile = path.join(staticCacheDir, fileName);
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
