@@ -140,6 +140,10 @@
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 }
 
+body[data-theme='dark'] {
+	@include theme;
+}
+
 @media (prefers-color-scheme: dark) {
 	body:not([data-theme]) {
 		@include theme;
