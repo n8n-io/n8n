@@ -57,7 +57,7 @@ const hiddenUsersCount = computed(() => {
 });
 
 const menuHeight = computed(() => {
-	return groupCount.value > 1 ? 220 : 180;
+	return groupCount.value > 1 ? 220 : 190;
 });
 </script>
 
