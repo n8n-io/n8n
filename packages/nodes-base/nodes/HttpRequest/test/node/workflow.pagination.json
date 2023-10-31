@@ -1015,6 +1015,11 @@
 				"json": {
 					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]"
 				}
+			},
+			{
+				"json": {
+					"data": "[]"
+				}
 			}
 		],
 		"Response Empty Next with Max Pages": [
@@ -1121,6 +1126,17 @@
 						"next-url": "https://dummyjson.com/users?skip=16&limit=4"
 					},
 					"statusCode": 200,
+					"statusMessage": null
+				}
+			},
+			{
+				"json": {
+					"data": "[]",
+					"headers": {
+						"content-type": "application/json",
+						"next-url": "https://dummyjson.com/users?skip=20&limit=4"
+					},
+					"statusCode": 404,
 					"statusMessage": null
 				}
 			}
@@ -1327,6 +1343,11 @@
 				"json": {
 					"data": "[{\"id\":12},{\"id\":13},{\"id\":14}]"
 				}
+			},
+			{
+				"json": {
+					"data": "[]"
+				}
 			}
 		],
 		"Response Empty - Include Full Response1": [
@@ -1371,6 +1392,17 @@
 						"next-url": "https://dummyjson.com/users?skip=16&limit=4"
 					},
 					"statusCode": 200,
+					"statusMessage": null
+				}
+			},
+			{
+				"json": {
+					"data": "[]",
+					"headers": {
+						"content-type": "text/plain",
+						"next-url": "https://dummyjson.com/users?skip=20&limit=4"
+					},
+					"statusCode": 404,
 					"statusMessage": null
 				}
 			}

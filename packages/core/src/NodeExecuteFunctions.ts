@@ -2683,8 +2683,17 @@ const getRequestHelperFunctions = (
 					hashData.previousLength = contentLength;
 				}
 
+				responseData.push(tempResponseData);
+
 				additionalKeys.$response = newResponse;
 				additionalKeys.$count = additionalKeys.$count + 1;
+
+				if (
+					paginationOptions.maxRequests &&
+					additionalKeys.$count >= paginationOptions.maxRequests
+				) {
+					break;
+				}
 
 				makeAdditionalRequest = getResolvedValue(
 					paginationOptions.continue,
@@ -2727,15 +2736,6 @@ const getRequestHelperFunctions = (
 							},
 						);
 					}
-
-					responseData.push(tempResponseData);
-				}
-
-				if (
-					paginationOptions.maxRequests &&
-					additionalKeys.$count >= paginationOptions.maxRequests
-				) {
-					break;
 				}
 			} while (makeAdditionalRequest);
 
