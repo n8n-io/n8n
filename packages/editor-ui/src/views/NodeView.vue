@@ -1977,21 +1977,25 @@ export default defineComponent({
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
+
 						if (sourceNodeType) {
 							const offsets = [
 								[-100, 100],
 								[-140, 0, 140],
 								[-240, -100, 100, 240],
 							];
+
 							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
 								workflow,
 								lastSelectedNode,
 								sourceNodeType,
 							);
 							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+
 							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
 								(output) => output === NodeConnectionType.Main,
 							);
+
 							if (sourceNodeOutputMainOutputs.length > 1) {
 								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
 								const sourceOutputIndex = lastSelectedConnection.__meta
@@ -2004,9 +2008,9 @@ export default defineComponent({
 
 					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
 					try {
-						// It fails when the outputs are an expression. As those node have
+						// It fails when the outputs are an expression. As those nodes have
 						// normally no outputs by default and the only reason we need the
-						// outputs here is to calculate the position it is fine to assume
+						// outputs here is to calculate the position, it is fine to assume
 						// that they have no outputs and are so treated as a regular node
 						// with only "main" outputs.
 						outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeData);
@@ -2570,7 +2574,9 @@ export default defineComponent({
 					);
 					if (sourceInfo.type !== NodeConnectionType.Main) {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
+						info.connection.setPaintStyle(
+							getConnectorPaintStyleData(info.connection, info.sourceEndpoint.parameters.category),
+						);
 						endpointArrow?.setVisible(false);
 					}
 				}

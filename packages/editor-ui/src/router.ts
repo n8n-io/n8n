@@ -1,3 +1,4 @@
+import { useStorage } from '@vueuse/core';
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
@@ -327,6 +328,7 @@ export const routes = [
 		},
 		meta: {
 			templatesEnabled: true,
+			keepWorkflowAlive: true,
 			getRedirect: getTemplatesRedirect,
 			permissions: {
 				allow: {
@@ -345,6 +347,7 @@ export const routes = [
 		},
 		meta: {
 			templatesEnabled: true,
+			keepWorkflowAlive: true,
 			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
 			permissions: {
 				allow: {
@@ -794,7 +797,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !window.localStorage.getItem('audit-logs'),
+							shouldDeny: () => !useStorage('audit-logs', undefined).value,
 						},
 					},
 				},
