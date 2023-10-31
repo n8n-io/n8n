@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { IUser } from '@/types';
+import type { IUser, UserStackGroups } from '@/types';
 import N8nAvatar from '../N8nAvatar';
 import N8nUserInfo from '../N8nUserInfo';
 import type { PropType } from 'vue';
@@ -7,7 +7,7 @@ import { computed } from 'vue';
 
 const props = defineProps({
 	users: {
-		type: Object as PropType<{ [groupName: string]: IUser[] }>,
+		type: Object as PropType<UserStackGroups>,
 		required: true,
 	},
 	currentUserEmail: {
@@ -26,9 +26,8 @@ const props = defineProps({
 	},
 });
 
-// Filter out empty groups
-const groups = computed(() => {
-	const users: { [groupName: string]: IUser[] } = {};
+const nonEmptyGroups = computed(() => {
+	const users: UserStackGroups = {};
 
 	for (const groupName in props.users) {
 		if (props.users[groupName].length > 0) {
@@ -40,7 +39,7 @@ const groups = computed(() => {
 });
 
 const groupCount = computed(() => {
-	return Object.keys(props.users).length;
+	return Object.keys(nonEmptyGroups.value).length;
 });
 
 const flatUserList = computed(() => {
@@ -88,8 +87,8 @@ const menuHeight = computed(() => {
 			</div>
 			<template #dropdown>
 				<el-dropdown-menu class="user-stack-list">
-					<div v-for="(groupUsers, index) in groups" :key="index">
-						<div v-if="groupUsers.length > 0" :class="$style.groupContainer">
+					<div v-for="(groupUsers, index) in nonEmptyGroups" :key="index">
+						<div :class="$style.groupContainer">
 							<el-dropdown-item>
 								<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
 							</el-dropdown-item>
@@ -157,7 +156,7 @@ const menuHeight = computed(() => {
 
 <style lang="scss">
 .user-stack-list {
-	border: none !important;
+	border: none;
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
