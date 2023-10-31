@@ -171,7 +171,7 @@ export class ChatTrigger implements INodeType {
 				.split('\n')
 				.filter((line) => line)
 				.map((line) => line.trim());
-			const instanceId = await this.getInstanceId();
+			const instanceId = this.getInstanceId();
 
 			const page = createPage({
 				i18n: {
