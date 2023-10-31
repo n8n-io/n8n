@@ -62,8 +62,8 @@ const menuHeight = computed(() => {
 </script>
 
 <template>
-	<div :class="`user-stack ${$style.container}`">
-		<el-dropdown trigger="hover" :max-height="menuHeight">
+	<div class="user-stack" data-test-id="user-stack-container">
+		<el-dropdown trigger="hover" :max-height="menuHeight" >
 			<div :class="$style.avatars">
 				<n8n-avatar
 					v-for="user in flatUserList.slice(0, avatarCount)"
@@ -79,7 +79,7 @@ const menuHeight = computed(() => {
 				<el-dropdown-menu class="user-bunch-list">
 					<el-dropdown-item v-for="(usersList, index) in groups" :key="index">
 						<div v-if="usersList.length > 0" :class="$style.groupContainer">
-							<div v-if="groupCount > 1" :class="$style.groupName">{{ index }}</div>
+							<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
 							<div :class="$style.groupUsers">
 								<n8n-user-info
 									v-for="user in usersList"

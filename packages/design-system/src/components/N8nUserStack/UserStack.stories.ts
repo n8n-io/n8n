@@ -118,18 +118,6 @@ SingleGroup.args = {
 				disabled: true,
 			},
 			{
-				id: '3',
-				firstName: 'John',
-				lastName: 'Doe',
-				fullName: 'John Doe',
-				email: 'john@n8n.io',
-				isDefaultUser: false,
-				isPendingUser: false,
-				isOwner: false,
-				signInType: 'email',
-				disabled: false,
-			},
-			{
 				id: '4',
 				firstName: 'Jane',
 				lastName: 'Doe',
@@ -157,8 +145,8 @@ SingleGroup.args = {
 	},
 };
 
-export const ThreeUsers = Template.bind({});
-ThreeUsers.args = {
+export const NoCutoff = Template.bind({});
+NoCutoff.args = {
 	currentUserEmail: 'sunny@n8n.io',
 	users: {
 		Owners: [
