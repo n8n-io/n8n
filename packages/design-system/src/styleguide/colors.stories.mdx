@@ -44,7 +44,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="success">
 		{{
-			template: `<color-circles :colors="['--color-success-shade-1', '--color-success', '--color-success-light', '--color-success-tint-1', '--color-success-tint-2']" />`,
+			template: `<color-circles :colors="['--color-success-shade-1', '--color-success', '--color-success-light',  '--color-success-light-2', '--color-success-tint-1', '--color-success-tint-2']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -83,7 +83,7 @@ import ColorCircles from './ColorCircles.vue';
 <Canvas>
 	<Story name="text">
 		{{
-			template: `<color-circles :colors="['--color-text-dark', '--color-text-base', '--color-text-light', '--color-text-lighter', '--color-text-xlight']" />`,
+			template: `<color-circles :colors="['--color-text-dark', '--color-text-base', '--color-text-light', '--color-text-lighter', '--color-text-xlight', '--color-text-danger']" />`,
 			components: {
 				ColorCircles,
 			},
@@ -110,71 +110,6 @@ import ColorCircles from './ColorCircles.vue';
 	<Story name="background">
 		{{
 			template: `<color-circles :colors="['--color-background-dark', '--color-background-medium', '--color-background-base', '--color-background-light', '--color-background-xlight']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Canvas
-
-<Canvas>
-	<Story name="canvas">
-		{{
-			template: `<color-circles :colors="['--color-canvas-dot', '--color-canvas-background']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Sticky
-
-<Canvas>
-	<Story name="sticky">
-		{{
-			template: `<color-circles :colors="['--color-sticky-default-background', '--color-sticky-default-border']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Expressions
-
-<Canvas>
-	<Story name="expressions">
-		{{
-			template: `<color-circles :colors="['--color-valid-resolvable-foreground', '--color-valid-resolvable-background', '--color-invalid-resolvable-foreground', '--color-invalid-resolvable-background', '--color-expression-editor-background', '--color-expression-syntax-example']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Code
-
-<Canvas>
-	<Story name="code">
-		{{
-			template: `<color-circles :colors="['--color-code-tags-string', '--color-code-tags-primitive', '--color-code-tags-keyword', '--color-code-tags-operator', '--color-code-tags-variable', '--color-code-tags-definition', '--color-json-default', '--color-json-null', '--color-json-boolean', '--color-json-number', '--color-json-string', '--color-json-key', '--color-json-brackets', '--color-json-brackets-hover', '--color-json-line', '--color-json-highlight', '--color-code-background', '--color-code-background-readonly', '--color-code-foreground', '--color-code-caret', '--color-code-selection', '--color-code-gutterBackground', '--color-code-gutterForeground', '--color-code-lineHighlight', '--color-code-tags-comment']" />`,
-			components: {
-				ColorCircles,
-			},
-		}}
-	</Story>
-</Canvas>
-
-## Various
-
-<Canvas>
-	<Story name="various">
-		{{
-			template: `<color-circles :colors="['--color-avatar-accent-1', '--color-avatar-accent-2', '--color-info', '--color-info-tint-1', '--color-info-tint-2', '--color-grey', '--color-light-grey', '--color-neutral', '--color-switch']" />`,
 			components: {
 				ColorCircles,
 			},
