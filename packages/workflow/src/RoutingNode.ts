@@ -123,8 +123,9 @@ export class RoutingNode {
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
+			let thisArgs: IExecuteSingleFunctions | undefined;
 			try {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+				thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
 					this.workflow,
 					this.runExecutionData,
 					runIndex,
@@ -211,7 +212,7 @@ export class RoutingNode {
 
 				returnData.push(...responseData);
 			} catch (error) {
-				if (this.node.continueOnFail) {
+				if (thisArgs !== undefined && thisArgs.continueOnFail()) {
 					returnData.push({ json: {}, error: error as NodeError });
 					continue;
 				}

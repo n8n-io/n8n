@@ -1297,6 +1297,15 @@ export default defineComponent({
 		stroke: var(--color-foreground-xdark);
 	}
 
+	&.error {
+		path {
+			fill: var(--node-error-output-color);
+		}
+		rect {
+			stroke: var(--node-error-output-color);
+		}
+	}
+
 	&.small {
 		margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size-small) / 2));
 		g {
@@ -1427,6 +1436,10 @@ export default defineComponent({
 	}
 }
 
+.node-output-endpoint-label.node-connection-category-error {
+	color: var(--node-error-output-color);
+}
+
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
 
@@ -1436,9 +1449,9 @@ export default defineComponent({
 		margin-left: 0;
 	}
 
-	// Switch node allows for dynamic connection labels
+	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&[data-endpoint-node-type='n8n-nodes-base.switch'] {
+	&[data-endpoint-label-length='medium'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1495,7 +1508,8 @@ export default defineComponent({
 .ep-success--without-label {
 	--stalk-size: var(--stalk-success-size-without-label);
 }
-[data-endpoint-node-type='n8n-nodes-base.switch'] {
+
+[data-endpoint-label-length='medium'] {
 	--stalk-size: var(--stalk-switch-size);
 }
 </style>
