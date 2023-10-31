@@ -34,7 +34,6 @@ import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
-import { dataPinningEventBus } from '@/event-bus';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';

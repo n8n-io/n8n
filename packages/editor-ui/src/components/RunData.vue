@@ -540,7 +540,7 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
