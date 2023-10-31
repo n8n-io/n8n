@@ -85,6 +85,7 @@
 				<n8n-input-label :label="i18n.baseText('settings.personal.theme')">
 					<n8n-select
 						:class="$style.themeSelect"
+						data-test-id="theme-select"
 						size="small"
 						@update:modelValue="selectTheme"
 						:modelValue="currentTheme"

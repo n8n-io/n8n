@@ -1,5 +1,5 @@
 import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
-import { SettingsUsersPage, WorkflowPage } from '../pages';
+import { SettingsSidebar, SettingsUsersPage, WorkflowPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 
 /**
@@ -25,6 +25,7 @@ const updatedPersonalData = {
 const usersSettingsPage = new SettingsUsersPage();
 const workflowPage = new WorkflowPage();
 const personalSettingsPage = new PersonalSettingsPage();
+const settingsSidebar = new SettingsSidebar();
 
 describe('User Management', { disableAutoLogin: true }, () => {
 	before(() => cy.enableFeature('sharing'));
@@ -140,5 +141,17 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			updatedPersonalData.newEmail,
 			updatedPersonalData.newPassword,
 		);
+	});
+
+	it('should be able to change theme', () => {
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+
+		personalSettingsPage.actions.changeTheme('Dark');
+		cy.get('body').should('have.attr', 'data-theme', 'dark');
+		settingsSidebar.actions.back();
+
+		cy.visit(personalSettingsPage.url);
+		personalSettingsPage.actions.changeTheme('Light');
+		cy.get('body').should('have.attr', 'data-theme', 'light');
 	});
 });
