@@ -11,6 +11,9 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
+import { RedisService } from '@/services/redis.service';
+import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
+import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
@@ -18,6 +21,9 @@ beforeAll(() => {
 	mockInstance(ExternalSecretsManager);
 	mockInstance(ActiveWorkflowRunner);
 	mockInstance(WorkflowHistoryManager);
+	mockInstance(RedisService);
+	mockInstance(RedisServicePubSubPublisher);
+	mockInstance(RedisServicePubSubSubscriber);
 });
 
 afterEach(() => {
