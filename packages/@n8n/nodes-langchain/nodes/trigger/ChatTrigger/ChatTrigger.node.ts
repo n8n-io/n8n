@@ -97,8 +97,8 @@ export class ChatTrigger implements INodeType {
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
 			{
-				displayName: 'Additional Fields',
-				name: 'additionalFields',
+				displayName: 'Options',
+				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Field',
 				default: {},
@@ -165,7 +165,7 @@ export class ChatTrigger implements INodeType {
 				| 'none'
 				| 'basicAuth'
 				| 'headerAuth';
-			const additionalFields = this.getNodeParameter('additionalFields', {});
+			const options = this.getNodeParameter('options', {});
 			const initialMessagesRaw = this.getNodeParameter('initialMessages', '') as string;
 			const initialMessages = initialMessagesRaw
 				.split('\n')
@@ -175,7 +175,7 @@ export class ChatTrigger implements INodeType {
 
 			const page = createPage({
 				i18n: {
-					en: additionalFields as Record<string, string>,
+					en: options as Record<string, string>,
 				},
 				initialMessages,
 				webhookUrl,
