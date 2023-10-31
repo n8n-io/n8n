@@ -78,11 +78,7 @@ describe('Data pinning', () => {
 		ndv.actions.setPinnedData([{ test: 1 }]);
 		ndv.actions.close();
 
-		workflowPage.getters
-			.canvasNodes()
-			.last()
-			.find('[data-test-id="duplicate-node-button"]')
-			.click({ force: true });
+		workflowPage.actions.duplicateNode(workflowPage.getters.canvasNodes().last());
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
