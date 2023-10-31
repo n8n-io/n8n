@@ -12,7 +12,8 @@ const props = defineProps({
 	},
 	currentUserEmail: {
 		type: String,
-		required: true,
+		required: false,
+		default: '',
 	},
 	maxAvatars: {
 		type: Number,
