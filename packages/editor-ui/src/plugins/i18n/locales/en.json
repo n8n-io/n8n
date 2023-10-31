@@ -611,6 +611,7 @@
 	"workerList.pageTitle": "Workers",
 	"workerList.empty": "No workers",
 	"workerList.item.lastUpdated": "Last updated",
+	"workerList.item.listTitle": "Current Jobs",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",

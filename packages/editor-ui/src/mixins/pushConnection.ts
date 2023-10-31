@@ -200,7 +200,6 @@ export const pushConnection = defineComponent({
 
 			if (receivedData.type === 'sendWorkerStatusMessage') {
 				const pushData = receivedData.data;
-				console.log('updateWorkerStatus', pushData.status);
 				this.orchestrationManagerStore.updateWorkerStatus(pushData.status);
 				return true;
 			}

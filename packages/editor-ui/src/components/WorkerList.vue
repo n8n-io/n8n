@@ -8,63 +8,11 @@
 			<div v-if="isMounting">
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
 			</div>
-			<div v-else :class="$style.execTable">
-				<div v-for="worker in combinedWorkers" :key="worker.workerId">
-					<WorkerCard :workerId="worker.workerId" />
+			<div v-else>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :workerId="workerId" />
 				</div>
-				<table>
-					<thead>
-						<tr>
-							<th>Id</th>
-							<th>Jobs</th>
-							<th>Load(avg)</th>
-							<th>Mem(free)</th>
-							<th>Mem(Total)</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr
-							v-for="worker in combinedWorkers"
-							:key="worker.workerId"
-							:class="getRowClass(worker)"
-						>
-							<td>
-								<span
-									><a href="#" :class="$style.link">{{ worker.workerId }}</a></span
-								>
-							</td>
-							<td>
-								<div
-									v-for="job in worker.runningJobsSummary"
-									:key="job.executionId"
-									:class="$style.executionlink"
-								>
-									<a :href="'/workflow/' + job.workflowId + '/executions/' + job.executionId"
-										>{{ job.workflowName }} ({{ job.executionId }})</a
-									>
-								</div>
-							</td>
-							<td>
-								<span>{{ averageLoadAvg(worker.loadAvg) }}</span>
-							</td>
-							<td>
-								<span>{{ (worker.freeMem / 1024 / 1024 / 1024).toFixed(2) }}GB</span>
-							</td>
-							<td>
-								<span>{{ (worker.totalMem / 1024 / 1024 / 1024).toFixed(2) }}GB</span>
-							</td>
-						</tr>
-					</tbody>
-				</table>
 			</div>
-
-			<!-- <div
-				v-if="!combinedWorkers.length && !isMounting"
-				:class="$style.loadedAll"
-				data-test-id="worker-list-empty"
-			>
-				{{ i18n.baseText('workerList.empty') }}
-			</div> -->
 		</div>
 	</div>
 </template>
@@ -87,7 +35,7 @@ import WorkerCard from './WorkerCard.vue';
 
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
-	name: 'ExecutionsList',
+	name: 'WorkerList',
 	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
 	components: { PushConnectionTracker, WorkerCard },
@@ -97,15 +45,10 @@ export default defineComponent({
 			default: true,
 		},
 	},
-	setup(props) {
+	setup() {
 		const i18n = useI18n();
-
-		//ts-ignore
-		const pushConnSetup = pushConnection.setup?.(props) ?? {};
 		return {
 			i18n,
-			// eslint-disable-next-line @typescript-eslint/no-misused-promises
-			...pushConnSetup,
 		};
 	},
 	data() {
@@ -115,9 +58,11 @@ export default defineComponent({
 	},
 	mounted() {
 		setPageTitle(`n8n - ${this.pageTitle}`);
+		this.isMounting = false;
+	},
+	beforeMount() {
 		this.pushConnect();
 		this.orchestrationManagerStore.startWorkerStatusPolling();
-		this.isMounting = false;
 	},
 	beforeUnmount() {
 		this.orchestrationManagerStore.stopWorkerStatusPolling();
@@ -131,6 +76,9 @@ export default defineComponent({
 				returnData.push(this.orchestrationManagerStore.workers[workerId]);
 			}
 			return returnData;
+		},
+		workerIds(): string[] {
+			return Object.keys(this.orchestrationManagerStore.workers);
 		},
 		pageTitle() {
 			return this.i18n.baseText('workerList.pageTitle');
@@ -181,151 +129,13 @@ export default defineComponent({
 	margin-bottom: var(--spacing-s);
 }
 
-.execListHeaderControls {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-}
-
-.status {
-	line-height: 22.6px;
-	text-align: center;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-bold);
-
-	.crashed &,
-	.failed & {
-		color: var(--color-danger);
-	}
-
-	.waiting & {
-		color: var(--color-secondary);
-	}
-
-	.success & {
-		font-weight: var(--font-weight-normal);
-	}
-
-	.new &,
-	.running & {
-		color: var(--color-warning);
-	}
-
-	.unknown & {
-		color: var(--color-background-dark);
-	}
-}
-
-.execTable {
-	/*
-	  Table height needs to be set to 0 in order to use height 100% for elements in table cells
-	*/
-	height: 0;
-	width: 100%;
-	text-align: left;
-	font-size: var(--font-size-s);
-
-	thead th {
-		position: sticky;
-		top: calc(var(--spacing-3xl) * -1);
-		z-index: 2;
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-background-base);
-
-		&:first-child {
-			padding-left: var(--spacing-s);
-		}
-	}
-
-	th,
-	td {
-		height: 100%;
-		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-background-xlight);
-
-		&:not(:first-child, :nth-last-child(-n + 3)) {
-			width: 100%;
-		}
-
-		&:nth-last-child(-n + 2) {
-			padding-left: 0;
-		}
-
-		@media (min-width: $breakpoint-sm) {
-			&:not(:nth-child(2)) {
-				&,
-				div,
-				span {
-					white-space: nowrap;
-				}
-			}
-		}
-	}
-
-	.execRow {
-		color: var(--color-text-base);
-
-		td:first-child {
-			width: 30px;
-			padding: 0 var(--spacing-s) 0 0;
-
-			/*
-			  This is needed instead of table cell border because they are overlapping the sticky header
-			*/
-			&::before {
-				content: '';
-				display: inline-block;
-				width: var(--spacing-4xs);
-				height: 100%;
-				vertical-align: middle;
-				margin-right: var(--spacing-xs);
-			}
-		}
-
-		&:nth-child(even) td {
-			background: var(--color-background-light);
-		}
-
-		&:hover td {
-			background: var(--color-primary-tint-3);
-		}
-
-		&.crashed td:first-child::before,
-		&.failed td:first-child::before {
-			background: hsl(var(--color-danger-h), 94%, 80%);
-		}
-
-		&.success td:first-child::before {
-			background: hsl(var(--color-success-h), 60%, 70%);
-		}
-
-		&.new td:first-child::before,
-		&.running td:first-child::before {
-			background: hsl(var(--color-warning-h), 94%, 80%);
-		}
-
-		&.waiting td:first-child::before {
-			background: hsl(var(--color-secondary-h), 94%, 80%);
-		}
-
-		&.unknown td:first-child::before {
-			background: var(--color-text-light);
-		}
-	}
+.card {
+	margin-bottom: var(--spacing-s);
 }
 
 .tableLoader {
 	width: 100%;
 	height: 48px;
 	margin-bottom: var(--spacing-2xs);
-}
-
-.link {
-	color: var(--color-text-base);
-	text-decoration: underline;
-}
-
-.executionlink {
-	padding-bottom: 10px;
 }
 </style>

@@ -41,6 +41,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		stopWorkerStatusPolling() {
 			if (this.statusInterval) {
 				clearInterval(this.statusInterval);
+				this.statusInterval = null;
 			}
 		},
 		getWorkerLastUpdated(workerId: string): number {

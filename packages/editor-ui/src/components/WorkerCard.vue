@@ -1,43 +1,31 @@
 <template>
-	<n8n-card :class="$style.cardLink" @click="onClick" v-show="worker">
+	<n8n-card :class="$style.cardLink" v-if="worker">
 		<template #header>
-			<n8n-heading tag="h2" bold :class="$style.cardHeading" data-test-id="workflow-card-name">
-				{{ worker?.workerId }}
+			<n8n-heading
+				tag="h2"
+				bold
+				:class="stale ? [$style.cardHeading, $style.stale] : [$style.cardHeading]"
+				data-test-id="workflow-card-name"
+			>
+				{{ worker.workerId }} ({{ worker.hostname }}) | Average Load:
+				{{ averageLoadAvg(worker.loadAvg ?? [0]) }} | Memory:
+				{{ (worker.freeMem / 1024 / 1024 / 1024).toFixed(2) }}GB /
+				{{ (worker.totalMem / 1024 / 1024 / 1024).toFixed(2) }}GB {{ stale ? ' (stale)' : '' }}
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
-			<n8n-text color="text-light" size="small">
-				<span v-show="worker"
-					>{{ $locale.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdate }}s ago |
-				</span>
-				<n8n-info-accordion
-					:class="[$style.accordion]"
-					:title="'Jobs (' + jobCount + ')'"
-					:items="jobs"
-					:initiallyExpanded="false"
-					:headerIcon="{ icon: 'tasks', color: 'black' }"
-					@click:body="onAccordionClick"
-				></n8n-info-accordion>
-				<div
-					v-for="job in worker?.runningJobsSummary"
-					:key="job.executionId"
-					:class="$style.executionlink"
+			<n8n-text color="text-light" size="small" :class="$style.container">
+				<span
+					>{{ $locale.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdateString }}s
+					ago | Architecture: {{ worker.arch }} | Platform: {{ worker.platform }} | Up since:
+					{{ upTime(worker.uptime) }}</span
 				>
-					<a :href="'/workflow/' + job.workflowId + '/executions/' + job.executionId"
-						>{{ job.workflowName }} ({{ job.executionId }})</a
-					>
-				</div>
+				<WorkerJobAccordion :items="worker.runningJobsSummary" />
 			</n8n-text>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" ref="cardActions">
-				<!-- <n8n-action-toggle
-					:actions="actions"
-					theme="dark"
-					@action="onAction"
-					@click.stop
-					data-test-id="workflow-card-actions"
-				/> -->
+				<!-- For future Worker actions -->
 			</div>
 		</template>
 	</n8n-card>
@@ -47,6 +35,7 @@
 import { useOrchestrationStore } from '../stores/orchestration.store';
 import type { IPushDataWorkerStatusPayload } from '../Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import WorkerJobAccordion from './WorkerJobAccordion.vue';
 
 let interval: NodeJS.Timer;
 
@@ -56,41 +45,26 @@ const props = defineProps<{
 	workerId: string;
 }>();
 
-const secondsSinceLastUpdate = ref<string>('0');
+const secondsSinceLastUpdateString = ref<string>('0');
+const stale = ref<boolean>(false);
 
-// const lastUpdated = computed((): number => {
-// 	const workerLastUpdated = orchestrationStore.getWorkerLastUpdated(props.workerId);
-// 	return workerLastUpdated ?? 0;
-// });
-// const secondsSinceLastUpdate = computed((): string => {
-// 	return Math.floor((Date.now() - lastUpdated.value) / 1000).toFixed(1);
-// });
 const worker = computed((): IPushDataWorkerStatusPayload | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
 
-const jobCount = computed((): number => {
-	return worker.value?.runningJobsSummary?.length ?? 0;
-});
+function averageLoadAvg(loads: number[]) {
+	return (loads.reduce((prev, curr) => prev + curr, 0) / loads.length).toFixed(2);
+}
 
-const jobs = computed((): Object[] => {
-	if (!worker.value?.runningJobsSummary) {
-		return [];
-	}
-	return worker.value?.runningJobsSummary.map((job) => {
-		// const executionLink = `<a :href="'/workflow/' + job.workflowId + '/executions/' + job.executionId"
-		// 								>{{ job.workflowName }} ({{ job.executionId }})</a
-		// 							>`;
-		return {
-			id: job.executionId,
-			label: 'label',
-			icon: 'times',
-			iconColor: 'success',
-		};
-	});
-
-	return worker.value?.runningJobsSummary ?? [];
-});
+function upTime(seconds: number): string {
+	const days = Math.floor(seconds / (3600 * 24));
+	seconds -= days * 3600 * 24;
+	const hrs = Math.floor(seconds / 3600);
+	seconds -= hrs * 3600;
+	const mnts = Math.floor(seconds / 60);
+	seconds -= mnts * 60;
+	return `${days}d ${hrs}h ${mnts}m ${Math.floor(seconds)}s`;
+}
 
 onMounted(() => {
 	interval = setInterval(() => {
@@ -98,52 +72,22 @@ onMounted(() => {
 		if (!lastUpdated) {
 			return;
 		}
-		secondsSinceLastUpdate.value = Math.ceil((Date.now() - lastUpdated) / 1000).toFixed(0);
+		const secondsSinceLastUpdate = Math.ceil((Date.now() - lastUpdated) / 1000);
+		stale.value = secondsSinceLastUpdate > 10;
+		secondsSinceLastUpdateString.value = secondsSinceLastUpdate.toFixed(0);
 	}, 500);
 });
 
 onBeforeUnmount(() => {
 	clearInterval(interval);
 });
-
-function onAccordionClick(event: MouseEvent): void {
-	if (event.target instanceof HTMLAnchorElement) {
-		event.preventDefault();
-		// this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-	}
-}
-// computed: {
-// 	...mapStores(useOrchestrationStore),
-// },
-// 	methods: {
-// 		async onClick(event: Event) {
-// 			if (this.$refs.cardActions === event.target) {
-// 				return;
-// 			}
-
-// 			// if (event.metaKey || event.ctrlKey) {
-// 			// 	const route = this.$router.resolve({
-// 			// 		name: VIEWS.WORKFLOW,
-// 			// 		params: { name: this.data.id },
-// 			// 	});
-// 			// 	window.open(route.href, '_blank');
-
-// 			return;
-// 		},
-// 	},
-// 	// onClickTag(tagId: string, event: PointerEvent) {
-// 	// 	event.stopPropagation();
-
-// 	// 	this.$emit('click:tag', tagId, event);
-// 	// },
-// 	// },
-// });
-async function onClick(event: Event) {
-	return;
-}
 </script>
 
 <style lang="scss" module>
+.container {
+	width: 100%;
+}
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -161,6 +105,10 @@ async function onClick(event: Event) {
 	padding: var(--spacing-s) 0 0 var(--spacing-s);
 }
 
+.stale {
+	opacity: 0.5;
+}
+
 .cardDescription {
 	min-height: 19px;
 	display: flex;
@@ -176,45 +124,5 @@ async function onClick(event: Event) {
 	align-self: stretch;
 	padding: 0 var(--spacing-s) 0 0;
 	cursor: default;
-}
-
-.accordion {
-	background: none;
-	width: 100%;
-
-	// Accordion header
-	& > div:nth-child(1) {
-		display: flex;
-		flex-direction: row;
-		padding: var(--spacing-xs);
-		width: 100%;
-		user-select: none;
-		color: var(--color-text-base) !important;
-	}
-
-	// Accordion description
-	& > div:nth-child(2) {
-		display: flex;
-		flex-direction: column;
-		width: 100%;
-		padding: 0 var(--spacing-l) var(--spacing-s) !important;
-
-		span {
-			width: 100%;
-		}
-	}
-
-	footer {
-		text-align: left;
-		width: 100%;
-		font-size: var(--font-size-2xs);
-	}
-
-	.disabled a {
-		color: currentColor;
-		cursor: not-allowed;
-		opacity: 0.5;
-		text-decoration: none;
-	}
 }
 </style>
