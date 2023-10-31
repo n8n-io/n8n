@@ -920,6 +920,7 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
+export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
 	id: string;
 	name: string;
@@ -934,6 +935,7 @@ export interface INode {
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	executeOnce?: boolean;
+	onError?: OnError;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
@@ -1546,6 +1548,7 @@ export interface INodeInputConfiguration {
 }
 
 export interface INodeOutputConfiguration {
+	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;
@@ -1653,6 +1656,11 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
+	$getPairedItem: (
+		destinationNodeName: string,
+		incomingSourceData: ISourceData | null,
+		pairedItem: IPairedItemData,
+	) => INodeExecutionData | null;
 	constructor: any;
 }
 
