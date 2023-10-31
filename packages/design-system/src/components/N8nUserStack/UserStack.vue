@@ -114,7 +114,7 @@ const menuHeight = computed(() => {
 	align-items: center;
 	width: 28px;
 	height: 28px;
-	color: var(--color-text-dark);
+	color: var(--color-text-base);
 	background-color: var(--color-background-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-3xs);
