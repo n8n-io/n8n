@@ -227,7 +227,7 @@ export default defineComponent({
 					);
 					shouldUnpinAndExecute = confirmResult === MODAL_CONFIRM;
 
-					if (shouldUnpinAndExecute) {
+					if (shouldUnpinAndExecute && this.node) {
 						this.unsetPinData(this.node, 'unpin-and-execute-modal');
 					}
 				}

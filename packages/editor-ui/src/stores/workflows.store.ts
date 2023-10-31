@@ -272,9 +272,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 	actions: {
-		getPinDataSize(pinData: Record<string, unknown> = {}): number {
+		getPinDataSize(pinData: Record<string, string | INodeExecutionData[]> = {}): number {
 			return Object.values(pinData).reduce<number>((acc, value) => {
-				return acc + stringSizeInBytes(value as IDataObject);
+				return acc + stringSizeInBytes(value);
 			}, 0);
 		},
 		getNodeTypes(): INodeTypes {

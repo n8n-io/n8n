@@ -14,14 +14,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useToast } from '@/composables';
 import { jsonParse, jsonStringify } from 'n8n-workflow';
 
-type PinDataSource =
+export type PinDataSource =
 	| 'pin-icon-click'
 	| 'save-edit'
 	| 'on-ndv-close-modal'
 	| 'duplicate-node'
 	| 'add-nodes';
 
-type UnpinDataSource = 'unpin-and-execute-modal';
+export type UnpinDataSource = 'unpin-and-execute-modal';
 
 export const pinData = defineComponent({
 	setup() {
@@ -102,30 +102,28 @@ export const pinData = defineComponent({
 			const newPinData = { ...currentPinData, [activeNodeName]: data };
 			const newPinDataSize = this.workflowsStore.getPinDataSize(newPinData);
 
-			let isValid = true;
 			if (newPinDataSize > MAX_PINNED_DATA_SIZE) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
 				);
 
-				isValid = false;
+				return false;
 			}
 
 			if (
-				isValid &&
 				stringSizeInBytes(workflowJson) + newPinDataSize >
-					MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
+				MAX_WORKFLOW_SIZE - MAX_EXPECTED_REQUEST_SIZE
 			) {
 				this.showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLargeWorkflow.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLargeWorkflow.title'),
 				);
 
-				isValid = false;
+				return false;
 			}
 
-			return isValid;
+			return true;
 		},
 		setPinData(node: INodeUi, data: string | INodeExecutionData[], source: PinDataSource): boolean {
 			if (typeof data === 'string') {
@@ -137,15 +135,15 @@ export const pinData = defineComponent({
 				data = jsonParse(data);
 			}
 
-			if (!this.isValidPinDataSize(data, node?.name ?? '')) {
+			if (!this.isValidPinDataSize(data, node.name)) {
 				this.onDataPinningError({ errorType: 'data-too-large', source });
 				throw new Error('Data too large');
 			}
 
 			this.onDataPinningSuccess({ source });
-			this.workflowsStore.pinData({ node, data });
+			this.workflowsStore.pinData({ node, data: data as INodeExecutionData[] });
 		},
-		unsetPinData(node: INodeUi | null, source: UnpinDataSource): void {
+		unsetPinData(node: INodeUi, source: UnpinDataSource): void {
 			this.onDataUnpinning({ source });
 			this.workflowsStore.unpinData({ node });
 		},
