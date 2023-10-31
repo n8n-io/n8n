@@ -17,6 +17,10 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 		return this.id === this.leaderId;
 	}
 
+	public get isFollower() {
+		return !this.isLeader;
+	}
+
 	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
 
 	private readonly leaderKeyTtl = config.getEnv('leaderSelection.ttl');
