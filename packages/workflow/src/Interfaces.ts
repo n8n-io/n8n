@@ -1887,7 +1887,14 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook';
-export type WorkflowActivateMode = 'init' | 'create' | 'update' | 'activate' | 'manual';
+
+export type WorkflowActivateMode =
+	| 'init'
+	| 'create'
+	| 'update'
+	| 'activate'
+	| 'manual'
+	| 'leadershipChange';
 
 export interface IWorkflowHooksOptionalParameters {
 	parentProcessMode?: string;

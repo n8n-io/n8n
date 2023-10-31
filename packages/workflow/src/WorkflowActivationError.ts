@@ -13,7 +13,7 @@ interface WorkflowActivationErrorOptions {
 export class WorkflowActivationError extends ExecutionBaseError {
 	node: INode | undefined;
 
-	constructor(message: string, { cause, node, severity }: WorkflowActivationErrorOptions) {
+	constructor(message: string, { cause, node, severity }: WorkflowActivationErrorOptions = {}) {
 		let error = cause as Error;
 		if (cause instanceof ExecutionBaseError) {
 			error = new Error(cause.message);

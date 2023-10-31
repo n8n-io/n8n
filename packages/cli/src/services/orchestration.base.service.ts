@@ -2,8 +2,9 @@ import Container from 'typedi';
 import { RedisService } from './redis.service';
 import type { RedisServicePubSubPublisher } from './redis/RedisServicePubSubPublisher';
 import config from '@/config';
+import { EventEmitter } from 'node:events';
 
-export abstract class OrchestrationService {
+export abstract class OrchestrationService extends EventEmitter {
 	protected initialized = false;
 
 	protected queueModeId: string;
@@ -29,6 +30,7 @@ export abstract class OrchestrationService {
 	}
 
 	constructor() {
+		super();
 		this.redisService = Container.get(RedisService);
 		this.queueModeId = config.getEnv('redis.queueModeId');
 	}
