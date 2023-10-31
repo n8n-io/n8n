@@ -505,52 +505,52 @@ export type IPushData =
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered;
 
-type PushDataExecutionRecovered = {
+export type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
 	type: 'executionRecovered';
 };
 
-type PushDataExecutionFinished = {
+export type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
 };
 
-type PushDataExecutionStarted = {
+export type PushDataExecutionStarted = {
 	data: IPushDataExecutionStarted;
 	type: 'executionStarted';
 };
 
-type PushDataExecuteAfter = {
+export type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
 };
 
-type PushDataExecuteBefore = {
+export type PushDataExecuteBefore = {
 	data: IPushDataNodeExecuteBefore;
 	type: 'nodeExecuteBefore';
 };
 
-type PushDataConsoleMessage = {
+export type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
 };
 
-type PushDataReloadNodeType = {
+export type PushDataReloadNodeType = {
 	data: IPushDataReloadNodeType;
 	type: 'reloadNodeType';
 };
 
-type PushDataRemoveNodeType = {
+export type PushDataRemoveNodeType = {
 	data: IPushDataRemoveNodeType;
 	type: 'removeNodeType';
 };
 
-type PushDataTestWebhook = {
+export type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
 
-type PushDataNodeDescriptionUpdated = {
+export type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };

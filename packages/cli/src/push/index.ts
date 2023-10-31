@@ -16,18 +16,28 @@ import type { IPushDataType } from '@/Interfaces';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
+/**
+ * Push service for uni- or bi-directional communication with frontend clients.
+ * Uses either server-sent events (SSE, unidirectional from backend --> frontend)
+ * or WebSocket (bidirectional backend <--> frontend) depending on the configuration.
+ *
+ * @emits message when a message is received from a client
+ */
 @Service()
 export class Push extends EventEmitter {
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(req.query.sessionId, req.ws);
+			(this.backend as WebSocketPush).add(req.query.sessionId, req.userId, req.ws);
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(req.query.sessionId, { req, res });
+			(this.backend as SSEPush).add(req.query.sessionId, req.userId, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
+			return;
 		}
+
+		this.backend.on('message', (msg) => this.emit('message', msg));
 		this.emit('editorUiConnected', req.query.sessionId);
 	}
 
@@ -82,7 +92,8 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			const authCookie: string = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-			await resolveJwt(authCookie);
+			const user = await resolveJwt(authCookie);
+			req.userId = user.id;
 		} catch (error) {
 			if (ws) {
 				ws.send(`Unauthorized: ${(error as Error).message}`);

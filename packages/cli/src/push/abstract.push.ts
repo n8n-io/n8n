@@ -1,17 +1,29 @@
+import { EventEmitter } from 'events';
 import { jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import { Logger } from '@/Logger';
+import type { User } from '@/databases/entities/User';
 
-export abstract class AbstractPush<T> {
+/**
+ * Abstract class for two-way push communication.
+ * Keeps track of user sessions and enables sending messages.
+ *
+ * @emits message when a message is received from a client
+ */
+export abstract class AbstractPush<T> extends EventEmitter {
 	protected connections: Record<string, T> = {};
+
+	protected userIdBySessionId: Record<string, string> = {};
 
 	protected abstract close(connection: T): void;
 	protected abstract sendToOne(connection: T, data: string): void;
 
-	constructor(private readonly logger: Logger) {}
+	constructor(protected readonly logger: Logger) {
+		super();
+	}
 
-	protected add(sessionId: string, connection: T): void {
-		const { connections } = this;
+	protected add(sessionId: string, userId: User['id'], connection: T): void {
+		const { connections, userIdBySessionId: userIdsBySessionId } = this;
 		this.logger.debug('Add editor-UI session', { sessionId });
 
 		const existingConnection = connections[sessionId];
@@ -21,12 +33,24 @@ export abstract class AbstractPush<T> {
 		}
 
 		connections[sessionId] = connection;
+		userIdsBySessionId[sessionId] = userId;
+	}
+
+	protected onMessageReceived(sessionId: string, msg: unknown): void {
+		this.logger.debug('Received message from editor-UI', { sessionId, msg });
+		const userId = this.userIdBySessionId[sessionId];
+		this.emit('message', {
+			sessionId,
+			userId,
+			msg,
+		});
 	}
 
 	protected remove(sessionId?: string): void {
 		if (sessionId !== undefined) {
 			this.logger.debug('Remove editor-UI session', { sessionId });
 			delete this.connections[sessionId];
+			delete this.userIdBySessionId[sessionId];
 		}
 	}
 
