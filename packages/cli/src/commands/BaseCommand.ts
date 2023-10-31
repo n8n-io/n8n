@@ -243,7 +243,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
-		if (config.getEnv('leaderSelection.enabled')) {
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled')) {
 			const { MultiMainInstancePublisher } = await import(
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
