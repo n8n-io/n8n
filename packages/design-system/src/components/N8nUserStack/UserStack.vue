@@ -19,6 +19,11 @@ const props = defineProps({
 		default: 2,
 		validator: (value: number) => value > 0,
 	},
+	dropdownTrigger: {
+		type: String,
+		default: 'hover',
+		validator: (value: string) => ['hover', 'click'].includes(value),
+	},
 });
 
 // Filter out empty groups
@@ -65,7 +70,11 @@ const menuHeight = computed(() => {
 
 <template>
 	<div class="user-stack" data-test-id="user-stack-container">
-		<el-dropdown trigger="hover" :max-height="menuHeight" popper-class="user-stack-popper">
+		<el-dropdown
+			:trigger="$props.dropdownTrigger"
+			:max-height="menuHeight"
+			popper-class="user-stack-popper"
+		>
 			<div :class="$style.avatars">
 				<n8n-avatar
 					v-for="user in flatUserList.slice(0, visibleAvatarCount)"
@@ -167,5 +176,6 @@ const menuHeight = computed(() => {
 	border-radius: var(--border-radius-base);
 	padding: var(--spacing-5xs) 0;
 	box-shadow: 0px 2px 8px 0px #441c171a;
+	background-color: var(--color-background-xlight);
 }
 </style>
