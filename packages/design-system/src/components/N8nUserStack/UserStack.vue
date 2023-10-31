@@ -17,6 +17,7 @@ const props = defineProps({
 	maxAvatars: {
 		type: Number,
 		default: 2,
+		validator: (value: number) => value > 0,
 	},
 });
 
@@ -47,7 +48,7 @@ const flatUserList = computed(() => {
 });
 
 const avatarCount = computed(() => {
-	return flatUserList.value.length > props.maxAvatars + 1
+	return flatUserList.value.length >= props.maxAvatars
 		? props.maxAvatars
 		: flatUserList.value.length;
 });
@@ -63,7 +64,7 @@ const menuHeight = computed(() => {
 
 <template>
 	<div class="user-stack" data-test-id="user-stack-container">
-		<el-dropdown trigger="hover" :max-height="menuHeight" >
+		<el-dropdown trigger="hover" :max-height="menuHeight" popper-class="user-stack-popper">
 			<div :class="$style.avatars">
 				<n8n-avatar
 					v-for="user in flatUserList.slice(0, avatarCount)"
@@ -76,20 +77,22 @@ const menuHeight = computed(() => {
 				<div v-if="hiddenUsersCount > 0" :class="$style.hiddenBadge">+{{ hiddenUsersCount }}</div>
 			</div>
 			<template #dropdown>
-				<el-dropdown-menu class="user-bunch-list">
-					<el-dropdown-item v-for="(usersList, index) in groups" :key="index">
+				<el-dropdown-menu class="user-stack-list">
+					<div v-for="(usersList, index) in groups" :key="index">
 						<div v-if="usersList.length > 0" :class="$style.groupContainer">
-							<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
+							<el-dropdown-item>
+								<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
+							</el-dropdown-item>
 							<div :class="$style.groupUsers">
-								<n8n-user-info
-									v-for="user in usersList"
-									:key="user.id"
-									v-bind="user"
-									:isCurrentUser="user.email === props.currentUserEmail"
-								/>
+								<el-dropdown-item v-for="user in usersList" :key="user.id">
+									<n8n-user-info
+										v-bind="user"
+										:isCurrentUser="user.email === props.currentUserEmail"
+									/>
+								</el-dropdown-item>
 							</div>
 						</div>
-					</el-dropdown-item>
+					</div>
 				</el-dropdown-menu>
 			</template>
 		</el-dropdown>
@@ -122,6 +125,10 @@ const menuHeight = computed(() => {
 .groupContainer {
 	display: flex;
 	flex-direction: column;
+
+	& + & {
+		margin-top: var(--spacing-3xs);
+	}
 }
 
 .groupName {
@@ -129,26 +136,35 @@ const menuHeight = computed(() => {
 	color: var(--color-text-light);
 	text-transform: uppercase;
 	font-weight: var(--font-weight-bold);
-	margin-bottom: var(--spacing-3xs);
+	margin-bottom: var(--spacing-4xs);
 }
 .groupUsers {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-xs);
+	gap: var(--spacing-2xs);
 }
 </style>
 
 <style lang="scss">
-.user-bunch-list {
+.user-stack-list {
+	border: none !important;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+
 	.el-dropdown-menu__item {
 		line-height: var(--font-line-height-regular);
-	}
-	li + li {
-		margin-top: var(--spacing-xs);
 	}
 
 	li:hover {
 		color: currentColor !important;
 	}
+}
+
+.user-stack-popper {
+	border: 1px solid var(--border-color-light);
+	border-radius: var(--border-radius-base);
+	padding: var(--spacing-5xs) 0;
+	box-shadow: 0px 2px 8px 0px #441c171a;
 }
 </style>
