@@ -21,6 +21,7 @@ const props = defineProps({
 	},
 });
 
+// Filter out empty groups
 const groups = computed(() => {
 	const users: { [groupName: string]: IUser[] } = {};
 
@@ -47,14 +48,14 @@ const flatUserList = computed(() => {
 	return users;
 });
 
-const avatarCount = computed(() => {
+const visibleAvatarCount = computed(() => {
 	return flatUserList.value.length >= props.maxAvatars
 		? props.maxAvatars
 		: flatUserList.value.length;
 });
 
 const hiddenUsersCount = computed(() => {
-	return flatUserList.value.length - avatarCount.value;
+	return flatUserList.value.length - visibleAvatarCount.value;
 });
 
 const menuHeight = computed(() => {
@@ -67,7 +68,7 @@ const menuHeight = computed(() => {
 		<el-dropdown trigger="hover" :max-height="menuHeight" popper-class="user-stack-popper">
 			<div :class="$style.avatars">
 				<n8n-avatar
-					v-for="user in flatUserList.slice(0, avatarCount)"
+					v-for="user in flatUserList.slice(0, visibleAvatarCount)"
 					:key="user.id"
 					:firstName="user.firstName"
 					:lastName="user.lastName"
@@ -78,13 +79,13 @@ const menuHeight = computed(() => {
 			</div>
 			<template #dropdown>
 				<el-dropdown-menu class="user-stack-list">
-					<div v-for="(usersList, index) in groups" :key="index">
-						<div v-if="usersList.length > 0" :class="$style.groupContainer">
+					<div v-for="(groupUsers, index) in groups" :key="index">
+						<div v-if="groupUsers.length > 0" :class="$style.groupContainer">
 							<el-dropdown-item>
 								<header v-if="groupCount > 1" :class="$style.groupName">{{ index }}</header>
 							</el-dropdown-item>
 							<div :class="$style.groupUsers">
-								<el-dropdown-item v-for="user in usersList" :key="user.id">
+								<el-dropdown-item v-for="user in groupUsers" :key="user.id">
 									<n8n-user-info
 										v-bind="user"
 										:isCurrentUser="user.email === props.currentUserEmail"
