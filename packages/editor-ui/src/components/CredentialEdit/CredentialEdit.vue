@@ -53,7 +53,12 @@
 		<template #content>
 			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div :class="$style.sidebar">
-					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
+					<n8n-menu
+						mode="tabs"
+						:items="sidebarItems"
+						:transparentBackground="true"
+						@select="onTabSelect"
+					></n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<CredentialConfig
