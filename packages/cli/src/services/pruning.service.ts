@@ -58,10 +58,6 @@ export class PruningService {
 	}
 
 	async stopPruning() {
-		const isPruningEnabled = await this.isPruningEnabled();
-
-		if (!isPruningEnabled) return;
-
 		if (this.isMultiMainScenario) {
 			const { MultiMainInstancePublisher } = await import(
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
