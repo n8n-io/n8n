@@ -13,7 +13,7 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 
 	private leaderId: string | undefined;
 
-	private get isLeader() {
+	public get isLeader() {
 		return this.id === this.leaderId;
 	}
 
