@@ -26,12 +26,15 @@ afterEach(() => {
 });
 
 test('should not init license if instance is follower in multi-main scenario', async () => {
+	config.set('executions.mode', 'queue');
 	config.set('leaderSelection.enabled', true);
 
 	jest.spyOn(MultiMainInstancePublisher.prototype, 'isFollower', 'get').mockReturnValue(true);
 	jest.spyOn(BaseCommand.prototype, 'init').mockImplementation(async () => {});
 
-	const licenseMock = mockInstance(License);
+	const licenseMock = mockInstance(License, {
+		isMultipleMainInstancesLicensed: jest.fn().mockReturnValue(true),
+	});
 
 	const startCmd = new Start([], oclifConfig);
 
