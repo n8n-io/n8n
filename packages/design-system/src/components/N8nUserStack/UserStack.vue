@@ -14,6 +14,10 @@ const props = defineProps({
 		type: String,
 		required: true,
 	},
+	maxAvatars: {
+		type: Number,
+		default: 2,
+	},
 });
 
 const groups = computed(() => {
@@ -42,17 +46,27 @@ const flatUserList = computed(() => {
 	return users;
 });
 
+const avatarCount = computed(() => {
+	return flatUserList.value.length > props.maxAvatars + 1
+		? props.maxAvatars
+		: flatUserList.value.length;
+});
+
 const hiddenUsersCount = computed(() => {
-	return flatUserList.value.length - 3;
+	return flatUserList.value.length - avatarCount.value;
+});
+
+const menuHeight = computed(() => {
+	return groupCount.value > 1 ? 220 : 180;
 });
 </script>
 
 <template>
-	<div :class="$style.container">
-		<el-dropdown trigger="hover">
+	<div :class="`user-stack ${$style.container}`">
+		<el-dropdown trigger="hover" :max-height="menuHeight">
 			<div :class="$style.avatars">
 				<n8n-avatar
-					v-for="user in flatUserList.slice(0, 3)"
+					v-for="user in flatUserList.slice(0, avatarCount)"
 					:key="user.id"
 					:firstName="user.firstName"
 					:lastName="user.lastName"
