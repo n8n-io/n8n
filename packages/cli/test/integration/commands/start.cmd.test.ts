@@ -14,6 +14,7 @@ import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHist
 import { RedisService } from '@/services/redis.service';
 import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSubPublisher';
 import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
@@ -24,6 +25,8 @@ beforeAll(() => {
 	mockInstance(RedisService);
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
+	mockInstance(MultiMainInstancePublisher);
+	mockInstance(OrchestrationHandlerMainService);
 });
 
 afterEach(() => {
