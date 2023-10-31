@@ -1034,6 +1034,7 @@ export default defineComponent({
 			try {
 				this.setPinData(this.node, clearJsonKey(value) as INodeExecutionData[], 'save-edit');
 			} catch (error) {
+				console.error(error);
 				return;
 			}
 
@@ -1081,6 +1082,7 @@ export default defineComponent({
 			try {
 				this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
 			} catch (error) {
+				console.error(error);
 				return;
 			}
 

@@ -3239,7 +3239,9 @@ export default defineComponent({
 				if (pinDataForNode?.length) {
 					try {
 						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
-					} catch (error) {}
+					} catch (error) {
+						console.error(error);
+					}
 				}
 
 				this.uiStore.stateIsDirty = true;
@@ -3981,6 +3983,7 @@ export default defineComponent({
 						pinDataSuccess = true;
 					} catch (error) {
 						pinDataSuccess = false;
+						console.error(error);
 					}
 				}
 			}

@@ -663,7 +663,9 @@ export default defineComponent({
 					if (this.activeNode) {
 						try {
 							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
-						} catch (error) {}
+						} catch (error) {
+							console.error(error);
+						}
 					}
 				}
 
