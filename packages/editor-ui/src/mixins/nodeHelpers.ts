@@ -44,7 +44,6 @@ import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
-import { searchInObject } from '@/utils/objectUtils';
 
 export const nodeHelpers = defineComponent({
 	computed: {
