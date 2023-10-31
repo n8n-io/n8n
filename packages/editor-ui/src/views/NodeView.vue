@@ -3233,9 +3233,7 @@ export default defineComponent({
 
 				await this.addNodes([newNodeData], [], true);
 
-				const pinDataForNode = this.workflowsStore.pinDataByNodeName(
-					nodeName,
-				) as INodeExecutionData[];
+				const pinDataForNode = this.workflowsStore.pinDataByNodeName(nodeName);
 				if (pinDataForNode?.length) {
 					try {
 						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
