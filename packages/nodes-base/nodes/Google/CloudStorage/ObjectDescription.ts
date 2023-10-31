@@ -1,5 +1,5 @@
-import FormData from 'form-data';
 import type { Readable } from 'stream';
+import FormData from 'form-data';
 import {
 	BINARY_ENCODING,
 	type IDataObject,

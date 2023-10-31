@@ -173,9 +173,7 @@ const hasAvailableMatchingColumns = computed<boolean>(() => {
 		return (
 			state.paramValue.schema.filter(
 				(field) =>
-					(field.canBeUsedToMatch || field.defaultMatch) &&
-					field.display !== false &&
-					field.removed !== true,
+					(field.canBeUsedToMatch || field.defaultMatch) && field.display && field.removed !== true,
 			).length > 0
 		);
 	}

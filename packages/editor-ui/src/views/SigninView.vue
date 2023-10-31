@@ -21,7 +21,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import AuthView from './AuthView.vue';
-import MfaView from './MfaView.vue';
+import MfaView, { FORM } from './MfaView.vue';
 import { useToast } from '@/composables';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS } from '@/constants';
@@ -30,7 +30,6 @@ import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useCloudPlanStore, useUIStore } from '@/stores';
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { FORM } from './MfaView.vue';
 
 export default defineComponent({
 	name: 'SigninView',

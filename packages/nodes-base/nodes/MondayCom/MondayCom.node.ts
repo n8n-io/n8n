@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
 import { mondayComApiRequest, mondayComApiRequestAllItems } from './GenericFunctions';
 
 import { boardFields, boardOperations } from './BoardDescription';
@@ -18,8 +19,6 @@ import { boardColumnFields, boardColumnOperations } from './BoardColumnDescripti
 import { boardGroupFields, boardGroupOperations } from './BoardGroupDescription';
 
 import { boardItemFields, boardItemOperations } from './BoardItemDescription';
-
-import { snakeCase } from 'change-case';
 
 interface IGraphqlBody {
 	query: string;

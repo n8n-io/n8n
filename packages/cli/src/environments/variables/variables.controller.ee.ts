@@ -1,5 +1,5 @@
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
+import { Container } from 'typedi';
 
 import * as ResponseHelper from '@/ResponseHelper';
 import type { VariablesRequest } from '@/requests';
@@ -9,14 +9,10 @@ import {
 	VariablesValidationError,
 } from './variables.service.ee';
 import { isVariablesEnabled } from './enviromentHelpers';
-import Container from 'typedi';
+import { Logger } from '@/Logger';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEVariablesController = express.Router();
 
-/**
- * Initialize Logger if needed
- */
 EEVariablesController.use((req, res, next) => {
 	if (!isVariablesEnabled()) {
 		next('router');
@@ -30,9 +26,12 @@ EEVariablesController.post(
 	'/',
 	ResponseHelper.send(async (req: VariablesRequest.Create) => {
 		if (req.user.globalRole.name !== 'owner') {
-			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
-				userId: req.user.id,
-			});
+			Container.get(Logger).info(
+				'Attempt to update a variable blocked due to lack of permissions',
+				{
+					userId: req.user.id,
+				},
+			);
 			throw new ResponseHelper.AuthError('Unauthorized');
 		}
 		const variable = req.body;
@@ -55,10 +54,13 @@ EEVariablesController.patch(
 	ResponseHelper.send(async (req: VariablesRequest.Update) => {
 		const id = req.params.id;
 		if (req.user.globalRole.name !== 'owner') {
-			LoggerProxy.info('Attempt to update a variable blocked due to lack of permissions', {
-				id,
-				userId: req.user.id,
-			});
+			Container.get(Logger).info(
+				'Attempt to update a variable blocked due to lack of permissions',
+				{
+					id,
+					userId: req.user.id,
+				},
+			);
 			throw new ResponseHelper.AuthError('Unauthorized');
 		}
 		const variable = req.body;

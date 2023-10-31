@@ -1,3 +1,4 @@
+import { exec } from 'child_process';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -5,8 +6,6 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import { exec } from 'child_process';
 
 export interface IExecReturnData {
 	exitCode: number;
