@@ -8,6 +8,7 @@
 			<div v-if="isMounting">
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
 			</div>
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
 			<div v-else>
 				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
 					<WorkerCard :workerId="workerId" />

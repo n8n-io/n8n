@@ -609,7 +609,7 @@
 	"executionsList.debug.paywall.link.text": "Read more in the docs",
 	"executionsList.debug.paywall.link.url": "https://docs.n8n.io/workflows/executions/debug/",
 	"workerList.pageTitle": "Workers",
-	"workerList.empty": "No workers",
+	"workerList.empty": "No workers are responding or available",
 	"workerList.item.lastUpdated": "Last updated",
 	"workerList.item.listTitle": "Current Jobs",
 	"executionSidebar.executionName": "Execution {id}",
