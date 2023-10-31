@@ -3,10 +3,9 @@ import { SecretsProvider } from '@/Interfaces';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import type { AxiosInstance, AxiosResponse } from 'axios';
 import axios from 'axios';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 import { EXTERNAL_SECRETS_NAME_REGEX } from '../constants';
-
-const logger = getLogger();
+import { Container } from 'typedi';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
@@ -239,6 +238,10 @@ export class VaultProvider extends SecretsProvider {
 
 	private refreshAbort = new AbortController();
 
+	constructor(readonly logger = Container.get(Logger)) {
+		super();
+	}
+
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as VaultSettings;
 
@@ -274,7 +277,7 @@ export class VaultProvider extends SecretsProvider {
 				);
 			} catch {
 				this.state = 'error';
-				logger.error('Failed to connect to Vault using Username and Password credentials.');
+				this.logger.error('Failed to connect to Vault using Username and Password credentials.');
 				return;
 			}
 		} else if (this.settings.authMethod === 'appRole') {
@@ -282,7 +285,7 @@ export class VaultProvider extends SecretsProvider {
 				this.#currentToken = await this.authAppRole(this.settings.roleId, this.settings.secretId);
 			} catch {
 				this.state = 'error';
-				logger.error('Failed to connect to Vault using AppRole credentials.');
+				this.logger.error('Failed to connect to Vault using AppRole credentials.');
 				return;
 			}
 		}
@@ -297,13 +300,13 @@ export class VaultProvider extends SecretsProvider {
 			}
 		} catch (e) {
 			this.state = 'error';
-			logger.error('Failed credentials test on Vault connect.');
+			this.logger.error('Failed credentials test on Vault connect.');
 		}
 
 		try {
 			await this.update();
 		} catch {
-			logger.warn('Failed to update Vault secrets');
+			this.logger.warn('Failed to update Vault secrets');
 		}
 	}
 
@@ -343,7 +346,9 @@ export class VaultProvider extends SecretsProvider {
 			[this.#tokenInfo] = await this.getTokenInfo();
 
 			if (!this.#tokenInfo) {
-				logger.error('Failed to fetch token info during renewal. Cancelling all future renewals.');
+				this.logger.error(
+					'Failed to fetch token info during renewal. Cancelling all future renewals.',
+				);
 				return;
 			}
 
@@ -353,7 +358,7 @@ export class VaultProvider extends SecretsProvider {
 
 			this.setupTokenRefresh();
 		} catch {
-			logger.error('Failed to renew Vault token. Attempting to reconnect.');
+			this.logger.error('Failed to renew Vault token. Attempting to reconnect.');
 			void this.connect();
 		}
 	};

@@ -110,7 +110,7 @@ function onDrop(event: DragEvent) {
 watch(
 	() => props.active,
 	(isActive) => {
-		if (isActive === false) {
+		if (!isActive) {
 			setShowScrim(false);
 			resetViewStacks();
 		}

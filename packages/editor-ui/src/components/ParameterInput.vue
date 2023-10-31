@@ -632,7 +632,7 @@ export default defineComponent({
 			return this.i18n.baseText('parameterInput.parameter', interpolation);
 		},
 		displayValue(): string | number | boolean | null {
-			if (this.remoteParameterOptionsLoading === true) {
+			if (this.remoteParameterOptionsLoading) {
 				// If it is loading options from server display
 				// to user that the data is loading. If not it would
 				// display the user the key instead of the value it
@@ -646,7 +646,7 @@ export default defineComponent({
 			}
 
 			let returnValue;
-			if (this.isValueExpression === false) {
+			if (!this.isValueExpression) {
 				returnValue = this.isResourceLocatorParameter
 					? isResourceLocatorValue(this.modelValue)
 						? this.modelValue.value
@@ -706,7 +706,7 @@ export default defineComponent({
 			return 'text';
 		},
 		getIssues(): string[] {
-			if (this.hideIssues === true || this.node === null) {
+			if (this.hideIssues || this.node === null) {
 				return [];
 			}
 
@@ -728,7 +728,7 @@ export default defineComponent({
 				issues.parameters[this.parameter.name] = [issue];
 			} else if (
 				['options', 'multiOptions'].includes(this.parameter.type) &&
-				this.remoteParameterOptionsLoading === false &&
+				!this.remoteParameterOptionsLoading &&
 				this.remoteParameterOptionsLoadingIssues === null &&
 				this.parameterOptions
 			) {
@@ -772,11 +772,7 @@ export default defineComponent({
 				];
 			}
 
-			if (
-				issues !== undefined &&
-				issues.parameters !== undefined &&
-				issues.parameters[this.parameter.name] !== undefined
-			) {
+			if (issues?.parameters?.[this.parameter.name] !== undefined) {
 				return issues.parameters[this.parameter.name];
 			}
 
@@ -792,7 +788,7 @@ export default defineComponent({
 		parameterOptions():
 			| Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>
 			| undefined {
-			if (this.hasRemoteMethod === false) {
+			if (!this.hasRemoteMethod) {
 				// Options are already given
 				return this.parameter.options;
 			}
@@ -909,7 +905,7 @@ export default defineComponent({
 		async loadRemoteParameterOptions() {
 			if (
 				this.node === null ||
-				this.hasRemoteMethod === false ||
+				!this.hasRemoteMethod ||
 				this.remoteParameterOptionsLoading ||
 				!this.parameter
 			) {
@@ -965,7 +961,7 @@ export default defineComponent({
 				return;
 			}
 
-			if ((this.node.type as string).startsWith('n8n-nodes-base')) {
+			if (this.node.type.startsWith('n8n-nodes-base')) {
 				this.$telemetry.track('User opened Expression Editor', {
 					node_type: this.node.type,
 					parameter_name: this.parameter.displayName,
@@ -1062,9 +1058,7 @@ export default defineComponent({
 		},
 		rgbaToHex(value: string): string | null {
 			// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
-			const valueMatch = (value as string).match(
-				/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/,
-			);
+			const valueMatch = value.match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/);
 			if (valueMatch === null) {
 				// TODO: Display something if value is not valid
 				return null;
@@ -1245,7 +1239,7 @@ export default defineComponent({
 			}
 		}
 
-		if (this.hasRemoteMethod === true && this.node !== null) {
+		if (this.hasRemoteMethod && this.node !== null) {
 			// Make sure to load the parameter options
 			// directly and whenever the credentials change
 			this.$watch(
@@ -1259,7 +1253,7 @@ export default defineComponent({
 
 		void this.$externalHooks().run('parameterInput.mount', {
 			parameter: this.parameter,
-			inputFieldRef: this.$refs['inputField'],
+			inputFieldRef: this.$refs.inputField,
 		});
 	},
 	beforeUnmount() {
@@ -1374,6 +1368,10 @@ export default defineComponent({
 
 .input-with-opener .el-input__suffix {
 	right: 0;
+}
+
+.el-input--suffix .el-input__inner {
+	padding-right: 0;
 }
 
 .textarea-modal-opener {

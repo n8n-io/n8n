@@ -18,6 +18,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
+import { generatePairedItemData } from '../../utils/utilities';
 import { nodeProperties } from './MongoDbProperties';
 
 import {
@@ -29,7 +30,6 @@ import {
 } from './GenericFunctions';
 
 import type { IMongoParametricCredentials } from './mongoDb.types';
-import { generatePairedItemData } from '../../utils/utilities';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = {

@@ -161,7 +161,7 @@ export default defineComponent({
 			});
 		},
 		onDragStart(el: HTMLElement) {
-			if (el && el.dataset.path) {
+			if (el?.dataset.path) {
 				this.draggingPath = el.dataset.path;
 			}
 
@@ -169,24 +169,22 @@ export default defineComponent({
 		},
 		onDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
+			const mappingTelemetry = this.ndvStore.mappingTelemetry;
+			const telemetryPayload = {
+				src_node_type: this.node.type,
+				src_field_name: el.dataset.name || '',
+				src_nodes_back: this.distanceFromActive,
+				src_run_index: this.runIndex,
+				src_runs_total: this.totalRuns,
+				src_field_nest_level: el.dataset.depth || 0,
+				src_view: 'json',
+				src_element: el,
+				success: false,
+				...mappingTelemetry,
+			};
 
 			setTimeout(() => {
-				const mappingTelemetry = this.ndvStore.mappingTelemetry;
-				const telemetryPayload = {
-					src_node_type: this.node.type,
-					src_field_name: el.dataset.name || '',
-					src_nodes_back: this.distanceFromActive,
-					src_run_index: this.runIndex,
-					src_runs_total: this.totalRuns,
-					src_field_nest_level: el.dataset.depth || 0,
-					src_view: 'json',
-					src_element: el,
-					success: false,
-					...mappingTelemetry,
-				};
-
 				void this.$externalHooks().run('runDataJson.onDragEnd', telemetryPayload);
-
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
 		},

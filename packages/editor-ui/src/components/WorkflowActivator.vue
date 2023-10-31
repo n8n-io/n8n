@@ -82,7 +82,7 @@ export default defineComponent({
 			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
 		},
 		getActiveColor(): string {
-			if (this.couldNotBeStarted === true) {
+			if (this.couldNotBeStarted) {
 				return '#ff4949';
 			}
 			return '#13ce66';

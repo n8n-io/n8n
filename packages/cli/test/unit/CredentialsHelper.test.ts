@@ -12,6 +12,7 @@ import { CredentialsHelper } from '@/CredentialsHelper';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { mockInstance } from '../integration/shared/utils';
+import Container from 'typedi';
 
 describe('CredentialsHelper', () => {
 	const TEST_ENCRYPTION_KEY = 'test';
@@ -266,8 +267,6 @@ describe('CredentialsHelper', () => {
 			nodeTypes,
 		});
 
-		const timezone = 'America/New_York';
-
 		for (const testData of tests) {
 			test(testData.description, async () => {
 				mockNodesAndCredentials.loadedCredentials = {
@@ -277,7 +276,7 @@ describe('CredentialsHelper', () => {
 					},
 				};
 
-				const credentialsHelper = new CredentialsHelper(TEST_ENCRYPTION_KEY);
+				const credentialsHelper = Container.get(CredentialsHelper);
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
@@ -285,7 +284,6 @@ describe('CredentialsHelper', () => {
 					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
-					timezone,
 				);
 
 				expect(result).toEqual(testData.output);

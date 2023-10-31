@@ -5,3 +5,9 @@ export interface ITables {
 		[key: string]: IDataObject[];
 	};
 }
+
+export type OperationInputData = {
+	table: string;
+	columnString: string;
+	items: IDataObject[];
+};
