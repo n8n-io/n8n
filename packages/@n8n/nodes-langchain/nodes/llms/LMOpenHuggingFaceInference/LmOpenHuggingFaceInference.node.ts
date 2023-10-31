@@ -7,8 +7,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { HuggingFaceInference } from 'langchain/llms/hf';
 import { logWrapper } from '../../../utils/logWrapper';
+import { HuggingFaceInference } from './HuggingFaceInferenceEndpoints';
 
 export class LmOpenHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,6 +61,13 @@ export class LmOpenHuggingFaceInference implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
+					{
+						displayName: 'Custom Inference Endpoint',
+						name: 'endpointUrl',
+						default: '',
+						description: 'Custom endpoint URL',
+						type: 'string',
+					},
 					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',

@@ -223,6 +223,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -264,6 +265,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 	ConnectionTypes,
+	INodeOutputConfiguration,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -343,7 +345,6 @@ import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEnd
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
-import { UPDATE_WEBHOOK_ID_NODE_TYPES } from '@/constants';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1968,29 +1969,47 @@ export default defineComponent({
 					this.canvasStore.newNodeInsertPosition = null;
 				} else {
 					let yOffset = 0;
+					const workflow = this.getCurrentWorkflow();
 
 					if (lastSelectedConnection) {
 						const sourceNodeType = this.nodeTypesStore.getNodeType(
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
-						const offsets = [
-							[-100, 100],
-							[-140, 0, 140],
-							[-240, -100, 100, 240],
-						];
-						if (sourceNodeType && sourceNodeType.outputs.length > 1) {
-							const offset = offsets[sourceNodeType.outputs.length - 2];
-							const sourceOutputIndex = lastSelectedConnection.__meta
-								? lastSelectedConnection.__meta.sourceOutputIndex
-								: 0;
-							yOffset = offset[sourceOutputIndex];
+						if (sourceNodeType) {
+							const offsets = [
+								[-100, 100],
+								[-140, 0, 140],
+								[-240, -100, 100, 240],
+							];
+							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
+								workflow,
+								lastSelectedNode!,
+								sourceNodeType,
+							);
+							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
+								(output) => output === NodeConnectionType.Main,
+							);
+							if (sourceNodeOutputMainOutputs.length > 1) {
+								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const sourceOutputIndex = lastSelectedConnection.__meta
+									? lastSelectedConnection.__meta.sourceOutputIndex
+									: 0;
+								yOffset = offset[sourceOutputIndex];
+							}
 						}
 					}
 
-					const workflow = this.getCurrentWorkflow();
-					const workflowNode = workflow.getNode(newNodeData.name);
-					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
+					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+					try {
+						// It fails when the outputs are an expression. As those node have
+						// normally no outputs by default and the only reason we need the
+						// outputs here is to calculate the position it is fine to assume
+						// that they have no outputs and are so treated as a regular node
+						// with only "main" outputs.
+						outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData!, nodeTypeData);
+					} catch (e) {}
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
 						lastSelectedNode.type,
@@ -1998,7 +2017,10 @@ export default defineComponent({
 					);
 
 					// If node has only scoped outputs, position it below the last selected node
-					if (outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)) {
+					if (
+						outputTypes.length > 0 &&
+						outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+					) {
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
 							workflow,
@@ -2023,6 +2045,7 @@ export default defineComponent({
 							[100, 0],
 						);
 					} else {
+						// Has only main outputs or no outputs at all
 						const inputs = NodeHelpers.getNodeInputs(
 							workflow,
 							lastSelectedNode,
@@ -2892,6 +2915,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+			this.eventsAttached = false;
 		},
 		unbindEndpointEventListeners(bind = true) {
 			if (this.instance) {
@@ -3004,6 +3028,9 @@ export default defineComponent({
 								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
 								{
 									workflow_id: workflow.id,
+								},
+								{
+									withPostHog: true,
 								},
 							);
 						}

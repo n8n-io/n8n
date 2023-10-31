@@ -166,6 +166,18 @@ describe('Execute Spreadsheet File Node', () => {
 				},
 			},
 		},
+		{
+			description: 'execute includeempty.json',
+			input: {
+				workflowData: loadWorkflow('workflow.empty.json', 'includeempty.csv'),
+			},
+			output: {
+				nodeData: {
+					'Include Empty': [[{ json: { A: '1', B: '', C: '3' } }]],
+					'Ignore Empty': [[{ json: { A: '1', C: '3' } }]],
+				},
+			},
+		},
 	];
 
 	const nodeTypes = Helpers.setup(tests);
