@@ -23,7 +23,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		},
 		removeStaleWorkers() {
 			for (const id in this.workersLastUpdated) {
-				if (this.workersLastUpdated[id] + 2000 < Date.now()) {
+				if (this.workersLastUpdated[id] + 20000 < Date.now()) {
 					delete this.workers[id];
 					delete this.workersLastUpdated[id];
 				}
@@ -42,6 +42,12 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 			if (this.statusInterval) {
 				clearInterval(this.statusInterval);
 			}
+		},
+		getWorkerLastUpdated(workerId: string): number {
+			return this.workersLastUpdated[workerId] ?? 0;
+		},
+		getWorkerStatus(workerId: string): IPushDataWorkerStatusPayload | undefined {
+			return this.workers[workerId];
 		},
 	},
 });

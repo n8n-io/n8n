@@ -265,7 +265,7 @@ export default defineComponent({
 				},
 				{
 					id: 'workersview',
-					icon: 'truck-fast',
+					icon: 'truck-monster',
 					label: this.$locale.baseText('mainSidebar.workersView'),
 					position: 'top',
 					activateOnRouteNames: [VIEWS.WORKER_VIEW],

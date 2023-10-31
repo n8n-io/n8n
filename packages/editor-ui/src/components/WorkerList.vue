@@ -8,54 +8,63 @@
 			<div v-if="isMounting">
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
 			</div>
-			<table v-else :class="$style.execTable">
-				<thead>
-					<tr>
-						<th>Id</th>
-						<th>Jobs</th>
-						<th>Load(avg)</th>
-						<th>Mem(free)</th>
-						<th>Mem(Total)</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr v-for="worker in combinedWorkers" :key="worker.workerId" :class="getRowClass(worker)">
-						<td>
-							<span
-								><a href="#" :class="$style.link">{{ worker.workerId }}</a></span
-							>
-						</td>
-						<td>
-							<div
-								v-for="job in worker.runningJobsSummary"
-								:key="job.executionId"
-								:class="$style.executionlink"
-							>
-								<a :href="'/workflow/' + job.workflowId + '/executions/' + job.executionId"
-									>{{ job.workflowName }} ({{ job.executionId }})</a
+			<div v-else :class="$style.execTable">
+				<div v-for="worker in combinedWorkers" :key="worker.workerId">
+					<WorkerCard :workerId="worker.workerId" />
+				</div>
+				<table>
+					<thead>
+						<tr>
+							<th>Id</th>
+							<th>Jobs</th>
+							<th>Load(avg)</th>
+							<th>Mem(free)</th>
+							<th>Mem(Total)</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr
+							v-for="worker in combinedWorkers"
+							:key="worker.workerId"
+							:class="getRowClass(worker)"
+						>
+							<td>
+								<span
+									><a href="#" :class="$style.link">{{ worker.workerId }}</a></span
 								>
-							</div>
-						</td>
-						<td>
-							<span>{{ averageLoadAvg(worker.loadAvg) }}</span>
-						</td>
-						<td>
-							<span>{{ (worker.freeMem / 1024 / 1024 / 1024).toFixed(2) }}GB</span>
-						</td>
-						<td>
-							<span>{{ (worker.totalMem / 1024 / 1024 / 1024).toFixed(2) }}GB</span>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+							</td>
+							<td>
+								<div
+									v-for="job in worker.runningJobsSummary"
+									:key="job.executionId"
+									:class="$style.executionlink"
+								>
+									<a :href="'/workflow/' + job.workflowId + '/executions/' + job.executionId"
+										>{{ job.workflowName }} ({{ job.executionId }})</a
+									>
+								</div>
+							</td>
+							<td>
+								<span>{{ averageLoadAvg(worker.loadAvg) }}</span>
+							</td>
+							<td>
+								<span>{{ (worker.freeMem / 1024 / 1024 / 1024).toFixed(2) }}GB</span>
+							</td>
+							<td>
+								<span>{{ (worker.totalMem / 1024 / 1024 / 1024).toFixed(2) }}GB</span>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 
-			<div
+			<!-- <div
 				v-if="!combinedWorkers.length && !isMounting"
 				:class="$style.loadedAll"
 				data-test-id="worker-list-empty"
 			>
 				{{ i18n.baseText('workerList.empty') }}
-			</div>
+			</div> -->
 		</div>
 	</div>
 </template>
@@ -74,12 +83,14 @@ import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '../stores/orchestration.store';
 import { setPageTitle } from '@/utils';
 import { pushConnection } from '../mixins/pushConnection';
+import WorkerCard from './WorkerCard.vue';
 
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
 	name: 'ExecutionsList',
 	mixins: [pushConnection, externalHooks, genericHelpers, executionHelpers],
-	components: { PushConnectionTracker },
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/naming-convention
+	components: { PushConnectionTracker, WorkerCard },
 	props: {
 		autoRefreshEnabled: {
 			type: Boolean,
