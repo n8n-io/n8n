@@ -166,7 +166,7 @@ export default defineComponent({
 
 			this.$telemetry.page(this.$route);
 		},
-		async authenticate() {
+		async checkRouteAccess() {
 			// redirect to setup page. user should be redirected to this only once
 			if (this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
@@ -198,19 +198,17 @@ export default defineComponent({
 				}
 			}
 
-			// if cannot access page and is logged in
-			return this.$router.replace({ name: VIEWS.HOMEPAGE });
-		},
-		async redirectIfNecessary() {
+			// if redirect is set in meta, redirect to that
 			const redirect =
 				this.$route.meta &&
 				typeof this.$route.meta.getRedirect === 'function' &&
 				this.$route.meta.getRedirect();
-
 			if (redirect) {
 				return this.$router.replace(redirect);
 			}
-			return;
+
+			// if cannot access page and is logged in
+			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		setTheme() {
 			const theme = useStorage(LOCAL_STORAGE_THEME, undefined).value;
@@ -234,14 +232,14 @@ export default defineComponent({
 			this.postAuthenticateDone = true;
 		},
 	},
-	async created() {
+	created() {
 		this.setTheme();
-		await this.initialize();
 		this.logHiringBanner();
-		await this.authenticate();
-		await this.redirectIfNecessary();
+	},
+	async mounted() {
+		await this.initialize();
 		void this.checkForNewVersions();
-		await this.checkForCloudData();
+		void this.checkForCloudData();
 		void this.postAuthenticate();
 
 		this.loading = false;
@@ -250,7 +248,7 @@ export default defineComponent({
 		void this.externalHooks.run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
-			await this.nodeTypesStore.getNodeTranslationHeaders();
+			void this.nodeTypesStore.getNodeTranslationHeaders();
 		}
 	},
 	watch: {
@@ -261,7 +259,7 @@ export default defineComponent({
 		},
 		async $route() {
 			await this.initSettings();
-			await this.redirectIfNecessary();
+			await this.checkRouteAccess();
 
 			this.trackPage();
 		},
