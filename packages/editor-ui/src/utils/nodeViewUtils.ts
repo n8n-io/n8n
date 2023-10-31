@@ -112,7 +112,11 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	stroke: getStyleTokenValue('--color-foreground-dark', true),
 };
 
-export const getConnectorColor = (type: ConnectionTypes): string => {
+export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
+	if (category === 'error') {
+		return '--node-error-output-color';
+	}
+
 	if (type === NodeConnectionType.Main) {
 		return '--node-type-main-color';
 	}
@@ -121,7 +125,10 @@ export const getConnectorColor = (type: ConnectionTypes): string => {
 };
 
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	const additionalStyles: PaintStyle = {};
 	if (connection.parameters.type !== NodeConnectionType.Main) {
 		additionalStyles.dashstyle = '5 3';
@@ -134,15 +141,21 @@ export const getConnectorPaintStylePull = (connection: Connection): PaintStyle =
 };
 
 export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
 	};
 };
 
-export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+export const getConnectorPaintStyleData = (
+	connection: Connection,
+	category?: string,
+): PaintStyle => {
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
 		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
@@ -292,6 +305,7 @@ export const getOutputEndpointStyle = (
 export const getOutputNameOverlay = (
 	labelText: string,
 	outputName: ConnectionTypes,
+	category?: string,
 ): OverlaySpec => ({
 	type: 'Custom',
 	options: {
@@ -302,10 +316,15 @@ export const getOutputNameOverlay = (
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
 
-			label.setAttribute('data-endpoint-node-type', ep?.__meta?.nodeType);
+			if (ep?.__meta?.endpointLabelLength) {
+				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
+			}
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
 				label.classList.add(`node-connection-type-${getScope(outputName)}`);
+			}
+			if (category) {
+				label.classList.add(`node-connection-category-${category}`);
 			}
 			return label;
 		},
