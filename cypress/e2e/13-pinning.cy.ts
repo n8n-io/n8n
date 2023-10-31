@@ -102,9 +102,7 @@ describe('Data pinning', () => {
 		]);
 		workflowPage.getters
 			.errorToast()
-			.closest('div')
 			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
-		ndv.actions.close();
 	});
 
 	it('Should be able to reference paired items in a node located before pinned data', () => {

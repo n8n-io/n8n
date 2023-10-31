@@ -48,7 +48,7 @@ export class WorkflowPage extends BasePage {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
 		successToast: () => cy.get('.el-notification .el-notification--success').parent(),
-		errorToast: () => cy.get('.el-notification .el-notification--error'),
+		errorToast: () => cy.get('.el-notification .el-notification--error').parent(),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
