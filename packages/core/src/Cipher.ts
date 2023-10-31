@@ -19,6 +19,7 @@ export class Cipher {
 
 	decrypt(data: string) {
 		const input = Buffer.from(data, 'base64');
+		if (input.length < 16) return '';
 		const salt = input.subarray(8, 16);
 		const [key, iv] = this.getKeyAndIv(salt);
 		const contents = input.subarray(16);

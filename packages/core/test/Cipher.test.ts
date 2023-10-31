@@ -26,5 +26,10 @@ describe('Cipher', () => {
 			const decrypted = cipher.decrypt('U2FsdGVkX194VEoX27o3+y5jUd1JTTmVwkOKjVhB6Jg=');
 			expect(decrypted).toEqual('random-string');
 		});
+
+		it('should not try to decrypt if the input is shorter than 16 bytes', () => {
+			const decrypted = cipher.decrypt('U2FsdGVkX194VEo');
+			expect(decrypted).toEqual('');
+		});
 	});
 });
