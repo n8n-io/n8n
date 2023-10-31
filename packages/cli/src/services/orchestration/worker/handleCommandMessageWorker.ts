@@ -33,7 +33,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 				}
 				switch (message.command) {
 					case 'getStatus':
-						if (!debounceMessageReceiver(message, 300)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,
@@ -57,14 +57,14 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						});
 						break;
 					case 'getId':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
 							command: message.command,
 						});
 						break;
 					case 'restartEventBus':
-						if (!debounceMessageReceiver(message, 100)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(MessageEventBus).restart();
 							await options.redisPublisher.publishToWorkerChannel({
@@ -86,7 +86,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						}
 						break;
 					case 'reloadExternalSecretsProviders':
-						if (!debounceMessageReceiver(message, 200)) return;
+						if (!debounceMessageReceiver(message, 500)) return;
 						try {
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
 							await options.redisPublisher.publishToWorkerChannel({
