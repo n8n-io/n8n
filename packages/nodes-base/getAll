@@ -1,0 +1,4 @@
+
+> n8n-nodes-base@1.14.0 test /home/michael/Work/n8n/packages/nodes-base
+> jest "-t" "Test" "DiscordV2," "message" "="
+
