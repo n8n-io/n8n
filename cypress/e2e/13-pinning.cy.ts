@@ -69,7 +69,7 @@ describe('Data pinning', () => {
 	});
 
 	it('Should be duplicating pin data when duplicating node', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
@@ -93,7 +93,7 @@ describe('Data pinning', () => {
 	});
 
 	it('Should show an error when maximum pin data size is exceeded', () => {
-		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: false });
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
 		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
