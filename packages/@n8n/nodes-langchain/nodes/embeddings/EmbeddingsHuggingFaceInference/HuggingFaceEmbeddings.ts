@@ -1,3 +1,6 @@
+/*
+	This is extended HuggingFaceInferenceEmbeddings class from langchain package(/langchain/src/embeddings/hf.ts) with custom inference endpoint support back-ported. Once the PR(#3104) to implement this in langchain-ai/langchainjs is merged, we can remove this file and use the original one.
+*/
 import type { HfInferenceEndpoint } from '@huggingface/inference';
 import { HfInference } from '@huggingface/inference';
 import type { EmbeddingsParams } from 'langchain/embeddings/base';

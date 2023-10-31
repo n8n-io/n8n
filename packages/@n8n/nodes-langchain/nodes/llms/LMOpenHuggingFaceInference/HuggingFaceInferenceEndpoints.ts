@@ -1,3 +1,6 @@
+/*
+	This is extended HuggingFaceInference class from langchain package(/langchain/src/llms/hf.ts) with custom inference endpoint support back-ported. Once the PR(#3104) to implement this in langchain-ai/langchainjs is merged, we can remove this file and use the original one.
+*/
 import type { BaseLLMParams } from 'langchain/llms/base';
 import { LLM } from 'langchain/llms/base';
 
