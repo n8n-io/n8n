@@ -5,6 +5,8 @@
 	--color-primary-s: var(--prim-color-primary-s);
 	--color-primary-l: 68%;
 
+	// Primary tokens
+
 	// Primary
 	--color-primary-shade-1: var(--prim-color-primary-shade-100);
 	--color-primary: var(--prim-color-primary);
@@ -59,6 +61,8 @@
 	--color-background-base: var(--prim-gray-40);
 	--color-background-light: var(--prim-gray-10);
 	--color-background-xlight: var(--prim-gray-0);
+
+	// Secondary tokens
 
 	// Canvas
 	--color-canvas-background: var(--prim-gray-10);
@@ -148,6 +152,11 @@
 
 	// Text button
 	--color-text-button-secondary-font: var(--prim-gray-670);
+
+	// Node Creator Button
+	--color-button-node-creator-border-font: var(--prim-gray-540);
+	--color-button-node-creator-hover-border-font: var(--prim-color-primary);
+	--color-button-node-creator-background: var(--prim-gray-0);
 
 	// Table
 	--color-table-header-background: var(--color-background-base);

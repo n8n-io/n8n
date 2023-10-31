@@ -1,6 +1,8 @@
 @use 'sass:math';
 
 @mixin theme {
+	// Primary tokens
+
 	// Text
 	--color-text-dark: var(--prim-gray-40);
 	--color-text-base: var(--prim-gray-200);
@@ -22,6 +24,8 @@
 	--color-background-base: var(--prim-gray-670);
 	--color-background-light: var(--prim-gray-820);
 	--color-background-xlight: var(--prim-gray-740);
+
+	// Secondary tokens
 
 	// Canvas
 	--color-canvas-background: var(--prim-gray-820);
