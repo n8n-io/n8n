@@ -27,7 +27,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:backgroundColor="node.parameters.color"
+					:backgroundColor="extractColorFromParameter(node.parameters.color)"
 					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
@@ -75,17 +75,18 @@
 						<div
 							class="color"
 							data-test-id="color"
-							v-for="(color, index) in availableColors"
+							v-for="(_, index) in Array.from({ length: 7 })"
 							:key="index"
-							v-on:click="changeColor(color)"
+							v-on:click="changeColor(index + 1)"
+							:class="`sticky-color-${index + 1}`"
 							:style="{
-								'background-color': color,
 								'border-width': '1px',
 								'border-style': 'solid',
 								'border-color': 'var(--color-text-dark)',
 								'box-shadow':
-									(index === 0 && node?.parameters.color === '') || color === node?.parameters.color
-										? `0 0 0 1px ${color}`
+									(index === 0 && node?.parameters.color === '') ||
+									index + 1 === extractIndexFromParameter(node?.parameters.color)
+										? `0 0 0 1px var(--sticky-color-${index + 1})`
 										: 'none',
 							}"
 						></div>
@@ -202,15 +203,6 @@ export default defineComponent({
 	data() {
 		return {
 			forceActions: false,
-			availableColors: [
-				'#fff5d6',
-				'#FDE9D8',
-				'#FBDADD',
-				'#DCF9EB',
-				'#D6EBFF',
-				'#E7D6FF',
-				'#F0F3F9',
-			],
 			isResizing: false,
 			isTouchActive: false,
 		};
@@ -227,10 +219,22 @@ export default defineComponent({
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
 		},
-		changeColor(color: string) {
+		getColorFromIndex(index: number) {
+			const element = document.getElementsByClassName(`sticky-color-${index}`)[0];
+			const color = getComputedStyle(element).getPropertyValue(`--sticky-color-${index}`);
+			return color;
+		},
+		extractColorFromParameter(color?: string) {
+			return color?.split('-')[0];
+		},
+		extractIndexFromParameter(color?: string) {
+			return Number(color?.split('-')[1]);
+		},
+		changeColor(index: number) {
+			const color = this.getColorFromIndex(index);
 			this.workflowsStore.updateNodeProperties({
 				name: this.name,
-				properties: { parameters: { ...this.node.parameters, color } },
+				properties: { parameters: { ...this.node.parameters, color: `${color}-${index}` } },
 			});
 		},
 		onEdit(edit: boolean) {
@@ -415,5 +419,33 @@ export default defineComponent({
 	&:hover {
 		cursor: pointer;
 	}
+}
+
+.sticky-color-1 {
+	background-color: var(--sticky-color-1);
+}
+
+.sticky-color-2 {
+	background-color: var(--sticky-color-2);
+}
+
+.sticky-color-3 {
+	background-color: var(--sticky-color-3);
+}
+
+.sticky-color-4 {
+	background-color: var(--sticky-color-4);
+}
+
+.sticky-color-5 {
+	background-color: var(--sticky-color-5);
+}
+
+.sticky-color-6 {
+	background-color: var(--sticky-color-6);
+}
+
+.sticky-color-7 {
+	background-color: var(--sticky-color-7);
 }
 </style>
