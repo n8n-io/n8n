@@ -111,7 +111,7 @@
     "@getzep/zep-js": "^0.7.1",
     "@google-ai/generativelanguage": "^0.2.1",
     "@gxl/epub-parser": "^2.0.4",
-    "@huggingface/inference": "1.8.0",
+    "@huggingface/inference": "2.6.4",
     "@pinecone-database/pinecone": "^0.1.6",
     "@supabase/supabase-js": "^2.33.2",
     "@tensorflow-models/universal-sentence-encoder": "1.3.3",
