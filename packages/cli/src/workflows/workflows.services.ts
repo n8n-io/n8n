@@ -1,11 +1,6 @@
 import { Container } from 'typedi';
 import type { IDataObject, INode, IPinData } from 'n8n-workflow';
-import {
-	NodeApiError,
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy,
-	Workflow,
-} from 'n8n-workflow';
+import { NodeApiError, ErrorReporterProxy as ErrorReporter, Workflow } from 'n8n-workflow';
 import type { FindManyOptions, FindOptionsSelect, FindOptionsWhere, UpdateResult } from 'typeorm';
 import { In, Like } from 'typeorm';
 import pick from 'lodash/pick';
@@ -33,8 +28,9 @@ import { WorkflowRepository } from '@/databases/repositories';
 import { RoleService } from '@/services/role.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { isStringArray, isWorkflowIdValid } from '@/utils';
-import { isWorkflowHistoryLicensed } from './workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
+import { BinaryDataService } from 'n8n-core';
+import { Logger } from '@/Logger';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -200,8 +196,9 @@ export class WorkflowsService {
 			}),
 		});
 
+		const logger = Container.get(Logger);
 		if (!shared) {
-			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
+			logger.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -221,17 +218,23 @@ export class WorkflowsService {
 			);
 		}
 
+		let onlyActiveUpdate = false;
+
 		if (
-			Object.keys(workflow).length === 3 &&
-			workflow.id !== undefined &&
-			workflow.versionId !== undefined &&
-			workflow.active !== undefined
+			(Object.keys(workflow).length === 3 &&
+				workflow.id !== undefined &&
+				workflow.versionId !== undefined &&
+				workflow.active !== undefined) ||
+			(Object.keys(workflow).length === 2 &&
+				workflow.versionId !== undefined &&
+				workflow.active !== undefined)
 		) {
 			// we're just updating the active status of the workflow, don't update the versionId
+			onlyActiveUpdate = true;
 		} else {
 			// Update the workflow's version
 			workflow.versionId = uuid();
-			LoggerProxy.verbose(
+			logger.verbose(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 				{
 					previousVersionId: shared.workflow.versionId,
@@ -300,8 +303,8 @@ export class WorkflowsService {
 			);
 		}
 
-		if (isWorkflowHistoryLicensed()) {
-			await Container.get(WorkflowHistoryService).saveVersion(user, shared.workflow);
+		if (!onlyActiveUpdate && workflow.versionId !== shared.workflow.versionId) {
+			await Container.get(WorkflowHistoryService).saveVersion(user, workflow, workflowId);
 		}
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
@@ -463,7 +466,13 @@ export class WorkflowsService {
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
+		const idsForDeletion = await Db.collections.Execution.find({
+			select: ['id'],
+			where: { workflowId },
+		}).then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
+
 		await Db.collections.Workflow.delete(workflowId);
+		await Container.get(BinaryDataService).deleteMany(idsForDeletion);
 
 		void Container.get(InternalHooks).onWorkflowDeleted(user, workflowId, false);
 		await Container.get(ExternalHooks).run('workflow.afterDelete', [workflowId]);
@@ -502,7 +511,7 @@ export class WorkflowsService {
 					workflow.staticData.__dataChanged = false;
 				} catch (error) {
 					ErrorReporter.error(error);
-					LoggerProxy.error(
+					Container.get(Logger).error(
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 						`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 						{ workflowId: workflow.id },

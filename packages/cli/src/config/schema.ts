@@ -1,7 +1,8 @@
 import path from 'path';
 import convict from 'convict';
-import { UserSettings } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
+import { LOG_LEVELS, jsonParse } from 'n8n-workflow';
 import { ensureStringArray } from './utils';
 
 convict.addFormat({
@@ -305,7 +306,7 @@ export const schema = {
 		},
 
 		// To not exceed the database's capacity and keep its size moderate
-		// the execution data gets pruned regularly (default: 1 hour interval).
+		// the execution data gets pruned regularly (default: 15 minute interval).
 		// All saved execution data older than the max age will be deleted.
 		// Pruning is currently not activated by default, which will change in
 		// a future version.
@@ -316,10 +317,30 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_PRUNE',
 		},
 		pruneDataMaxAge: {
-			doc: 'How old (hours) the finished execution data has to be to get deleted',
+			doc: 'How old (hours) the finished execution data has to be to get soft-deleted',
 			format: Number,
 			default: 336,
 			env: 'EXECUTIONS_DATA_MAX_AGE',
+		},
+		pruneDataHardDeleteBuffer: {
+			doc: 'How old (hours) the finished execution data has to be to get hard-deleted. By default, this buffer excludes recent executions as the user may need them while building a workflow.',
+			format: Number,
+			default: 1,
+			env: 'EXECUTIONS_DATA_HARD_DELETE_BUFFER',
+		},
+		pruneDataIntervals: {
+			hardDelete: {
+				doc: 'How often (minutes) execution data should be hard-deleted',
+				format: Number,
+				default: 15,
+				env: 'EXECUTIONS_DATA_PRUNE_HARD_DELETE_INTERVAL',
+			},
+			softDelete: {
+				doc: 'How often (minutes) execution data should be soft-deleted',
+				format: Number,
+				default: 60,
+				env: 'EXECUTIONS_DATA_PRUNE_SOFT_DELETE_INTERVAL',
+			},
 		},
 
 		// Additional pruning option to delete executions if total count exceeds the configured max.
@@ -747,6 +768,18 @@ export const schema = {
 						default: '',
 						env: 'N8N_SMTP_PASS',
 					},
+					serviceClient: {
+						doc: 'SMTP OAuth Service Client',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_SERVICE_CLIENT',
+					},
+					privateKey: {
+						doc: 'SMTP OAuth Private Key',
+						format: String,
+						default: '',
+						env: 'N8N_SMTP_OAUTH_PRIVATE_KEY',
+					},
 				},
 				sender: {
 					doc: 'How to display sender name',
@@ -823,7 +856,7 @@ export const schema = {
 	logs: {
 		level: {
 			doc: 'Log output level',
-			format: ['error', 'warn', 'info', 'verbose', 'debug', 'silent'] as const,
+			format: LOG_LEVELS,
 			default: 'info',
 			env: 'N8N_LOG_LEVEL',
 		},
@@ -849,7 +882,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(Container.get(InstanceSettings).n8nFolder, 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -915,7 +948,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(Container.get(InstanceSettings).n8nFolder, 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},

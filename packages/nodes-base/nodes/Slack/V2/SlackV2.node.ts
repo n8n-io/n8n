@@ -323,7 +323,7 @@ export class SlackV2 implements INodeType {
 		const operation = this.getNodeParameter('operation', 0);
 
 		const nodeVersion = this.getNode().typeVersion;
-		const instanceId = await this.getInstanceId();
+		const instanceId = this.getInstanceId();
 
 		for (let i = 0; i < length; i++) {
 			try {

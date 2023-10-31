@@ -21,12 +21,9 @@ if (inE2ETests) {
 		N8N_AI_ENABLED: 'true',
 	};
 } else if (inTest) {
-	const testsDir = join(tmpdir(), 'n8n-tests/');
-	mkdirSync(testsDir, { recursive: true });
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
-	process.env.N8N_USER_FOLDER = mkdtempSync(testsDir);
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
 	dotenv.config();

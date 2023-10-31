@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { pipeline } from 'stream/promises';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -33,7 +32,7 @@ import {
 	optionsProperties,
 	fromFileV2Properties,
 } from '../description';
-import { flattenObject } from '@utils/utilities';
+import { flattenObject, generatePairedItemData } from '@utils/utilities';
 
 export class SpreadsheetFileV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -85,17 +84,36 @@ export class SpreadsheetFileV2 implements INodeType {
 					}
 
 					if (fileFormat === 'csv') {
+						const maxRowCount = options.maxRowCount as number;
 						const parser = createCSVParser({
+							delimiter: options.delimiter as string,
+							fromLine: options.fromLine as number,
+							bom: options.enableBOM as boolean,
+							to: maxRowCount > -1 ? maxRowCount : undefined,
 							columns: options.headerRow !== false,
 							onRecord: (record) => {
+								if (!options.includeEmptyCells) {
+									record = Object.fromEntries(
+										Object.entries(record).filter(([_key, value]) => value !== ''),
+									);
+								}
 								rows.push(record);
 							},
 						});
 						if (binaryData.id) {
 							const stream = await this.helpers.getBinaryStream(binaryData.id);
-							await pipeline(stream, parser);
+							await new Promise<void>(async (resolve, reject) => {
+								parser.on('error', reject);
+								parser.on('readable', () => {
+									stream.unpipe(parser);
+									stream.destroy();
+									resolve();
+								});
+								stream.pipe(parser);
+							});
 						} else {
 							parser.write(binaryData.data, BINARY_ENCODING);
+							parser.end();
 						}
 					} else {
 						let workbook: WorkBook;
@@ -202,6 +220,7 @@ export class SpreadsheetFileV2 implements INodeType {
 
 			return [newItems];
 		} else if (operation === 'toFile') {
+			const pairedItem = generatePairedItemData(items.length);
 			try {
 				// Write the workflow data to spreadsheet file
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
@@ -260,9 +279,7 @@ export class SpreadsheetFileV2 implements INodeType {
 				const newItem: INodeExecutionData = {
 					json: {},
 					binary: {},
-					pairedItem: {
-						item: 0,
-					},
+					pairedItem,
 				};
 
 				let fileName = `spreadsheet.${fileFormat}`;
@@ -279,9 +296,7 @@ export class SpreadsheetFileV2 implements INodeType {
 						json: {
 							error: error.message,
 						},
-						pairedItem: {
-							item: 0,
-						},
+						pairedItem,
 					});
 				} else {
 					throw error;

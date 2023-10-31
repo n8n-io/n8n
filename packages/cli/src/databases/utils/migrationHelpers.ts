@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { readFileSync, rmSync } from 'fs';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import type { ObjectLiteral } from 'typeorm';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
 import { jsonParse } from 'n8n-workflow';
@@ -8,17 +8,16 @@ import config from '@/config';
 import { inTest } from '@/constants';
 import type { BaseMigration, Migration, MigrationContext, MigrationFn } from '@db/types';
 import { createSchemaBuilder } from '@db/dsl';
-import { getLogger } from '@/Logger';
 import { NodeTypes } from '@/NodeTypes';
-
-const logger = getLogger();
+import { Logger } from '@/Logger';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
 function loadSurveyFromDisk(): string | null {
-	const userSettingsPath = UserSettings.getUserN8nFolderPath();
 	try {
-		const filename = `${userSettingsPath}/${PERSONALIZATION_SURVEY_FILENAME}`;
+		const filename = `${
+			Container.get(InstanceSettings).n8nFolder
+		}/${PERSONALIZATION_SURVEY_FILENAME}`;
 		const surveyFile = readFileSync(filename, 'utf-8');
 		rmSync(filename);
 		const personalizationSurvey = JSON.parse(surveyFile) as object;
@@ -47,6 +46,7 @@ let runningMigrations = false;
 function logMigrationStart(migrationName: string): void {
 	if (inTest) return;
 
+	const logger = Container.get(Logger);
 	if (!runningMigrations) {
 		logger.warn('Migrations in progress, please do NOT stop the process.');
 		runningMigrations = true;
@@ -58,6 +58,7 @@ function logMigrationStart(migrationName: string): void {
 function logMigrationEnd(migrationName: string): void {
 	if (inTest) return;
 
+	const logger = Container.get(Logger);
 	logger.debug(`Finished migration ${migrationName}`);
 }
 
@@ -93,7 +94,7 @@ const dbName = config.getEnv(`database.${dbType === 'mariadb' ? 'mysqldb' : dbTy
 const tablePrefix = config.getEnv('database.tablePrefix');
 
 const createContext = (queryRunner: QueryRunner, migration: Migration): MigrationContext => ({
-	logger,
+	logger: Container.get(Logger),
 	tablePrefix,
 	dbType,
 	isMysql,

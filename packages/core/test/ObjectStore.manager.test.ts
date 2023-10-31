@@ -2,15 +2,12 @@ import fs from 'node:fs/promises';
 import { ObjectStoreManager } from '@/BinaryData/ObjectStore.manager';
 import { ObjectStoreService } from '@/ObjectStore/ObjectStore.service.ee';
 import { isStream } from '@/ObjectStore/utils';
-import { mockInstance, toStream } from './utils';
+import { mockInstance, toFileId, toStream } from './utils';
 
 jest.mock('fs/promises');
 
 const objectStoreService = mockInstance(ObjectStoreService);
 const objectStoreManager = new ObjectStoreManager(objectStoreService);
-
-const toFileId = (workflowId: string, executionId: string, fileUuid: string) =>
-	`workflows/${workflowId}/executions/${executionId}/binary_data/${fileUuid}`;
 
 const workflowId = 'ObogjVbqpNOQpiyV';
 const executionId = '999';
@@ -116,21 +113,6 @@ describe('copyByFilePath()', () => {
 		expect(result.fileId.startsWith(prefix)).toBe(true);
 		expect(fs.readFile).toHaveBeenCalledWith(sourceFilePath);
 		expect(result.fileSize).toBe(mockBuffer.length);
-	});
-});
-
-describe('deleteMany()', () => {
-	it('should delete many files by prefix', async () => {
-		const ids = [
-			{ workflowId, executionId },
-			{ workflowId: otherWorkflowId, executionId: otherExecutionId },
-		];
-
-		const promise = objectStoreManager.deleteMany(ids);
-
-		await expect(promise).resolves.not.toThrow();
-
-		expect(objectStoreService.deleteMany).toHaveBeenCalledTimes(2);
 	});
 });
 

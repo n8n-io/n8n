@@ -1,13 +1,13 @@
 {
   "name": "n8n",
-  "version": "1.10.0",
+  "version": "1.14.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=18.10",
-    "pnpm": ">=8.7"
+    "pnpm": ">=8.9"
   },
-  "packageManager": "pnpm@8.7.0",
+  "packageManager": "pnpm@8.9.0",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",

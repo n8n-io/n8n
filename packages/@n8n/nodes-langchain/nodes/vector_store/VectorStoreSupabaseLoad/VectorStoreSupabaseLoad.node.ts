@@ -2,14 +2,16 @@ import {
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
-	type IDataObject,
 	type SupplyData,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { createClient } from '@supabase/supabase-js';
+import type { SupabaseLibArgs } from 'langchain/vectorstores/supabase';
 import { SupabaseVectorStore } from 'langchain/vectorstores/supabase';
 import { logWrapper } from '../../../utils/logWrapper';
+import { metadataFilterField } from '../../../utils/sharedFields';
+import { getMetadataFiltersValues } from '../../../utils/helpers';
 
 export class VectorStoreSupabaseLoad implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,18 +76,7 @@ export class VectorStoreSupabaseLoad implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
-				options: [
-					{
-						displayName: 'Metadata Filter',
-						name: 'filter',
-						type: 'string',
-						typeOptions: {
-							editor: 'json',
-							editorLanguage: 'json',
-						},
-						default: '',
-					},
-				],
+				options: [metadataFilterField],
 			},
 		],
 	};
@@ -95,9 +86,6 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 		const tableName = this.getNodeParameter('tableName', itemIndex) as string;
 		const queryName = this.getNodeParameter('queryName', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			filter?: IDataObject;
-		};
 
 		const credentials = await this.getCredentials('supabaseApi');
 		const embeddings = (await this.getInputConnectionData(
@@ -107,13 +95,14 @@ export class VectorStoreSupabaseLoad implements INodeType {
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
-
-		const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, {
+		const config: SupabaseLibArgs = {
 			client,
 			tableName,
 			queryName,
-			filter: options.filter,
-		});
+			filter: getMetadataFiltersValues(this, itemIndex),
+		};
+
+		const vectorStore = await SupabaseVectorStore.fromExistingIndex(embeddings, config);
 
 		return {
 			response: logWrapper(vectorStore, this),

@@ -18,7 +18,6 @@ import type {
 	IGetNodeParameterOptions,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
-	ILogger,
 	INode,
 	INodeCredentials,
 	INodeCredentialsDetails,
@@ -33,7 +32,7 @@ import type {
 	NodeLoadingDetails,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { ICredentialsHelper, LoggerProxy, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
+import { ICredentialsHelper, NodeHelpers, WorkflowHooks } from 'n8n-workflow';
 import { executeWorkflow } from './ExecuteWorkflow';
 
 import { FAKE_CREDENTIALS_DATA } from './FakeCredentialsMap';
@@ -175,9 +174,8 @@ export function WorkflowExecuteAdditionalData(
 		credentialsHelper: new CredentialsHelper(credentialTypes),
 		hooks: new WorkflowHooks(hookFunctions, 'trigger', '1', workflowData),
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo): Promise<any> => {},
-		sendMessageToUI: (message: string) => {},
+		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		encryptionKey: 'test',
 		timezone: workflowTestData?.input.workflowData.settings?.timezone || 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
@@ -266,15 +264,6 @@ export function setup(testData: WorkflowTestData[] | WorkflowTestData) {
 		nodeTypes.addNode(nodeName, node);
 	}
 
-	const fakeLogger = {
-		log: () => {},
-		debug: () => {},
-		verbose: () => {},
-		info: () => {},
-		warn: () => {},
-		error: () => {},
-	} as ILogger;
-	LoggerProxy.init(fakeLogger);
 	return nodeTypes;
 }
 

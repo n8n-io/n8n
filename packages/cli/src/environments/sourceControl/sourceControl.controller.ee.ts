@@ -1,3 +1,6 @@
+import { Container, Service } from 'typedi';
+import type { PullResult } from 'simple-git';
+import express from 'express';
 import { Authorized, Get, Post, Patch, RestController } from '@/decorators';
 import {
 	sourceControlLicensedMiddleware,
@@ -10,10 +13,7 @@ import type { SourceControlPreferences } from './types/sourceControlPreferences'
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import { BadRequestError } from '@/ResponseHelper';
-import type { PullResult } from 'simple-git';
-import express from 'express';
 import type { ImportResult } from './types/importResult';
-import Container, { Service } from 'typedi';
 import { InternalHooks } from '../../InternalHooks';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
