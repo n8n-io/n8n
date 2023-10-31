@@ -23,6 +23,11 @@ export class Credentials extends ICredentials {
 	 * Sets new credential object
 	 */
 	setData(data: ICredentialDataDecryptedObject): void {
+		// when this function is being called via the object prototype, cipher is undefined
+		if (!this.cipher) {
+			this.data = Container.get(Cipher).encrypt(data);
+			return;
+		}
 		this.data = this.cipher.encrypt(data);
 	}
 
