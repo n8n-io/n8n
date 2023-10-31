@@ -23,6 +23,9 @@ export class PruningService {
 
 	public hardDeletionTimeout: NodeJS.Timeout | undefined;
 
+	private isMultiMainScenario =
+		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -38,7 +41,7 @@ export class PruningService {
 			return false;
 		}
 
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled')) {
+		if (this.isMultiMainScenario) {
 			const { MultiMainInstancePublisher } = await import(
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
@@ -54,8 +57,18 @@ export class PruningService {
 		this.scheduleHardDeletion();
 	}
 
-	clearTimers() {
-		if (!this.isPruningEnabled) return;
+	async stopPruning() {
+		const isPruningEnabled = await this.isPruningEnabled();
+
+		if (!isPruningEnabled) return;
+
+		if (this.isMultiMainScenario) {
+			const { MultiMainInstancePublisher } = await import(
+				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+			);
+
+			if (Container.get(MultiMainInstancePublisher).isFollower) return;
+		}
 
 		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');
 

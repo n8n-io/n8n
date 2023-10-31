@@ -110,7 +110,7 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			Container.get(PruningService).clearTimers();
+			await Container.get(PruningService).stopPruning();
 
 			if (config.getEnv('leaderSelection.enabled')) {
 				const { MultiMainInstancePublisher } = await import(
