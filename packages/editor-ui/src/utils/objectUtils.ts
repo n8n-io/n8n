@@ -8,7 +8,7 @@ export function isObjectOrArray(maybeObject: unknown): maybeObject is ObjectOrAr
 	return typeof maybeObject === 'object' && maybeObject !== null && !isDateObject(maybeObject);
 }
 
-export function isObject(maybeObject: unknown): maybeObject is ObjectOrArray {
+export function isObject(maybeObject: unknown): maybeObject is Record<string, unknown> {
 	return isObjectOrArray(maybeObject) && !Array.isArray(maybeObject);
 }
 
