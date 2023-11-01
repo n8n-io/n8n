@@ -104,7 +104,7 @@
 						icon="thumbtack"
 						:disabled="
 							editMode.enabled ||
-							(inputData.length === 0 && !hasPinData) ||
+							(rawInputData.length === 0 && !hasPinData) ||
 							isReadOnlyRoute ||
 							readOnlyEnv
 						"
@@ -457,7 +457,8 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView
+				!isSchemaView &&
+				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
 		>
@@ -752,7 +753,7 @@ export default defineComponent({
 			);
 		},
 		isArtificialRecoveredEventItem(): boolean {
-			return this.inputData?.[0]?.json?.isArtificialRecoveredEventItem !== undefined ?? false;
+			return !!this.rawInputData?.[0]?.json?.isArtificialRecoveredEventItem;
 		},
 		subworkflowExecutionError(): Error | null {
 			return this.workflowsStore.subWorkflowExecutionError;
@@ -777,7 +778,7 @@ export default defineComponent({
 			return null;
 		},
 		dataCount(): number {
-			return this.getDataCount(this.runIndex, this.currentOutputIndex);
+			return this.getDataCount(this.runIndex);
 		},
 		dataSizeInMB(): string {
 			return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -845,7 +846,7 @@ export default defineComponent({
 
 			return inputData;
 		},
-		inputData(): INodeExecutionData[] {
+		inputDataAll(): INodeExecutionData[] {
 			let inputData = this.rawInputData;
 
 			if (this.node && this.pinData && !this.isProductionExecutionPreview) {
@@ -860,15 +861,16 @@ export default defineComponent({
 					  ];
 			}
 
+			return inputData;
+		},
+		inputData(): INodeExecutionData[] {
 			// We don't want to paginate the schema view
 			if (this.isSchemaView) {
-				return inputData;
+				return this.inputDataAll;
 			}
 
 			const offset = this.pageSize * (this.currentPage - 1);
-			inputData = inputData.slice(offset, offset + this.pageSize);
-
-			return inputData;
+			return this.inputDataAll.slice(offset, offset + this.pageSize);
 		},
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
@@ -1253,47 +1255,17 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
-		getDataCount(
-			runIndex: number,
-			outputIndex: number,
-			connectionType: ConnectionTypes = NodeConnectionType.Main,
-		) {
-			if (this.pinData) {
-				return this.pinData.length;
-			}
-
+		getDataCount(runIndex: number) {
 			if (this.node === null) {
 				return 0;
 			}
 
 			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return 0;
-			}
-
-			if (runData[this.node.name].length <= runIndex) {
-				return 0;
-			}
-
-			if (runData[this.node.name][runIndex].hasOwnProperty('error')) {
+			if (runData?.[this.node.name]?.[runIndex]?.hasOwnProperty('error')) {
 				return 1;
 			}
 
-			if (
-				!runData[this.node.name][runIndex].hasOwnProperty('data') ||
-				runData[this.node.name][runIndex].data === undefined
-			) {
-				return 0;
-			}
-
-			const inputData = this.getInputData(
-				runData[this.node.name][runIndex].data!,
-				outputIndex,
-				connectionType,
-			);
-
-			return inputData.length;
+			return this.inputDataAll.length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
