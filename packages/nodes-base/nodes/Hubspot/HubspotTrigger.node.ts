@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -11,8 +12,6 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { hubspotApiRequest, propertyEvents } from './V1/GenericFunctions';
-
-import { createHash } from 'crypto';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {

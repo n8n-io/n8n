@@ -23,7 +23,7 @@ export const initErrorHandling = async () => {
 	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
 	const { init, captureException, addGlobalEventProcessor } = await import('@sentry/node');
-	// eslint-disable-next-line @typescript-eslint/naming-convention
+
 	const { RewriteFrames } = await import('@sentry/integrations');
 
 	init({

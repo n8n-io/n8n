@@ -1,6 +1,7 @@
 import { restoreBinaryDataId } from '@/executionLifecycleHooks/restoreBinaryDataId';
 import { BinaryDataService } from 'n8n-core';
 import { mockInstance } from '../integration/shared/utils/mocking';
+import { toSaveSettings } from '@/executionLifecycleHooks/toSaveSettings';
 import type { IRun } from 'n8n-workflow';
 import config from '@/config';
 
@@ -129,4 +130,58 @@ for (const mode of ['filesystem-v2', 's3'] as const) {
 			});
 		});
 	});
+
+	it('should do nothing on itemless case', async () => {
+		const executionId = '999';
+
+		const promise = restoreBinaryDataId(toIRun(), executionId);
+
+		await expect(promise).resolves.not.toThrow();
+
+		expect(binaryDataService.rename).not.toHaveBeenCalled();
+	});
 }
+
+describe('toSaveSettings()', () => {
+	afterEach(() => {
+		jest.restoreAllMocks();
+	});
+
+	it('should set `error` based on workflow settings', () => {
+		const saveSettings = toSaveSettings({ saveDataErrorExecution: 'all' });
+
+		expect(saveSettings.error).toBe(true);
+
+		const _saveSettings = toSaveSettings({ saveDataErrorExecution: 'none' });
+
+		expect(_saveSettings.error).toBe(false);
+	});
+
+	it('should set `success` based on workflow settings', () => {
+		const saveSettings = toSaveSettings({ saveDataSuccessExecution: 'all' });
+
+		expect(saveSettings.success).toBe(true);
+
+		const _saveSettings = toSaveSettings({ saveDataSuccessExecution: 'none' });
+
+		expect(_saveSettings.success).toBe(false);
+	});
+
+	it('should set `manual` based on workflow settings', () => {
+		const saveSettings = toSaveSettings({ saveManualExecutions: true });
+
+		expect(saveSettings.manual).toBe(true);
+
+		const _saveSettings = toSaveSettings({ saveManualExecutions: false });
+
+		expect(_saveSettings.manual).toBe(false);
+	});
+
+	it('should return defaults if no workflow settings', async () => {
+		const saveSettings = toSaveSettings();
+
+		expect(saveSettings.error).toBe(true);
+		expect(saveSettings.success).toBe(true);
+		expect(saveSettings.manual).toBe(true);
+	});
+});

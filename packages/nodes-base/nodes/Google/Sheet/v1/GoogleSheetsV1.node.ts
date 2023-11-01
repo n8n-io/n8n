@@ -13,6 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { getGoogleAccessToken } from '../../GenericFunctions';
+import { generatePairedItemData } from '../../../../utils/utilities';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -25,8 +27,6 @@ import { GoogleSheet } from './GoogleSheet';
 import { googleApiRequest, hexToRgb } from './GenericFunctions';
 
 import { versionDescription } from './versionDescription';
-import { getGoogleAccessToken } from '../../GenericFunctions';
-import { generatePairedItemData } from '../../../../utils/utilities';
 
 export class GoogleSheetsV1 implements INodeType {
 	description: INodeTypeDescription;

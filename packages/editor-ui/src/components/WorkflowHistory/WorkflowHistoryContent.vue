@@ -17,6 +17,7 @@ const props = defineProps<{
 	workflowVersion: WorkflowVersion | null;
 	actions: UserAction[];
 	isListLoading?: boolean;
+	isFirstItemShown?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -41,6 +42,12 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 		connections: props.workflowVersion.connections,
 	};
 });
+
+const actions = computed(() =>
+	props.isFirstItemShown
+		? props.actions.filter((action) => action.value !== 'restore')
+		: props.actions,
+);
 
 const onAction = ({
 	action,
@@ -67,11 +74,10 @@ const onAction = ({
 			<workflow-history-list-item
 				:class="$style.card"
 				v-if="props.workflowVersion"
-				:full="true"
 				:index="-1"
 				:item="props.workflowVersion"
 				:isActive="false"
-				:actions="props.actions"
+				:actions="actions"
 				@action="onAction"
 			>
 				<template #default="{ formattedCreatedAt }">
@@ -99,7 +105,7 @@ const onAction = ({
 					</section>
 				</template>
 				<template #action-toggle-button>
-					<n8n-button type="tertiary" size="small" data-test-id="action-toggle-button">
+					<n8n-button type="tertiary" size="large" data-test-id="action-toggle-button">
 						{{ i18n.baseText('workflowHistory.content.actions') }}
 						<n8n-icon class="ml-3xs" icon="chevron-down" size="small" />
 					</n8n-button>
@@ -146,8 +152,9 @@ const onAction = ({
 
 			&:first-child {
 				padding-top: var(--spacing-3xs);
-				padding-bottom: var(--spacing-3xs);
+				padding-bottom: var(--spacing-4xs);
 				* {
+					margin-top: auto;
 					font-size: var(--font-size-m);
 				}
 			}
@@ -161,6 +168,7 @@ const onAction = ({
 			}
 
 			.label {
+				color: var(--color-text-light);
 				padding-right: var(--spacing-4xs);
 			}
 

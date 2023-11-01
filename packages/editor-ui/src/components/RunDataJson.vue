@@ -210,7 +210,6 @@ export default defineComponent({
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
-	background-color: var(--color-background-base);
 
 	&:hover {
 		/* Shows .actionsGroup element from <run-data-json-actions /> child component */

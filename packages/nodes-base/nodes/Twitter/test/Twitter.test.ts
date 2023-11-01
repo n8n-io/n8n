@@ -1,6 +1,5 @@
-import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
-
 import nock from 'nock';
+import { getWorkflowFilenames, testWorkflows } from '@test/nodes/Helpers';
 
 const searchResult = {
 	data: [

@@ -1,8 +1,8 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
+import mssql from 'mssql';
 import type { ITables, OperationInputData } from './interfaces';
 import { chunk, flatten } from '@utils/utilities';
-import mssql from 'mssql';
 
 /**
  * Returns a copy of the item which only contains the json data and
