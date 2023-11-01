@@ -199,7 +199,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -488,31 +488,31 @@ export default defineComponent({
 				[key: string]: string;
 			} = {};
 
-			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+			let borderColor = '--color-foreground-xdark';
 
 			if (this.isConfigurableNode || this.isConfigNode) {
-				borderColor = getStyleTokenValue('--color-foreground-dark');
+				borderColor = '--color-foreground-dark';
 			}
 
 			if (this.data.disabled) {
-				borderColor = getStyleTokenValue('--color-foreground-base');
+				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = getStyleTokenValue('--color-danger');
+					borderColor = '--color-danger';
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = getStyleTokenValue('--color-secondary');
+					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
-					borderColor = getStyleTokenValue('--color-foreground-xdark');
+					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
-					borderColor = getStyleTokenValue('--color-success');
+					borderColor = '--color-success';
 				}
 			}
 
-			returnStyles['border-color'] = borderColor;
+			returnStyles['border-color'] = `var(${borderColor})`;
 
 			return returnStyles;
 		},
@@ -781,7 +781,7 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: $node-background-default;
+			background-color: var(--color-canvas-node-background);
 			&.executing {
 				background-color: $node-background-executing !important;
 
@@ -1045,12 +1045,7 @@ export default defineComponent({
 	--node--selected--box-shadow-radius: 8px;
 
 	display: block;
-	background-color: hsla(
-		var(--color-foreground-base-h),
-		var(--color-foreground-base-s),
-		var(--color-foreground-base-l),
-		60%
-	);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;

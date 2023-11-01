@@ -388,12 +388,7 @@ export default defineComponent({
 .select-sticky-background {
 	display: block;
 	position: absolute;
-	background-color: hsla(
-		var(--color-foreground-base-h),
-		var(--color-foreground-base-s),
-		var(--color-foreground-base-l),
-		60%
-	);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	height: calc(100% + 16px);
