@@ -206,10 +206,6 @@ const goToSourceControlSetup = async () => {
 		display: none;
 	}
 
-	span {
-		color: var(--color-text-base);
-	}
-
 	button {
 		font-size: var(--font-size-3xs);
 	}

@@ -264,8 +264,8 @@ function focusFirstInput() {
 
 .usageSyntax {
 	cursor: pointer;
-	background: var(--color-success-tint-2);
-	color: var(--color-success);
+	background: var(--color-variables-usage-syntax-bg);
+	color: var(--color-variables-usage-font);
 	font-family: var(--font-family-monospace);
 	font-size: var(--font-size-s);
 }
