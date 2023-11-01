@@ -253,10 +253,9 @@ describe('WorkflowDataProxy', () => {
 			0,
 			0,
 			nameLastNode,
-			lastNodeConnectionInputData || [],
+			lastNodeConnectionInputData ?? [],
 			{},
 			'manual',
-			'America/New_York',
 			{},
 			executeData,
 		);

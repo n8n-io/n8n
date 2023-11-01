@@ -9,8 +9,8 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import { placeholder } from './placeholder';
 import { getValue } from './utils';
-import { getResolvables } from '@utils/utilities';
 import type { IValueData } from './types';
+import { getResolvables } from '@utils/utilities';
 
 export const capitalizeHeader = (header: string, capitalize?: boolean) => {
 	if (!capitalize) return header;

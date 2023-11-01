@@ -164,6 +164,10 @@ export default defineComponent({
 .expression-parameter-input {
 	position: relative;
 
+	:global(.cm-editor) {
+		background-color: var(--color-code-background);
+	}
+
 	.all-sections {
 		height: 30px;
 		display: flex;
@@ -188,7 +192,7 @@ export default defineComponent({
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	background-color: white;
+	background-color: var(--color-code-background);
 	padding: 3px;
 	line-height: 9px;
 	border: var(--border-base);
@@ -219,6 +223,6 @@ export default defineComponent({
 .focused > .expression-editor-modal-opener {
 	border-color: var(--color-secondary);
 	border-bottom-right-radius: 0;
-	background-color: white;
+	background-color: var(--color-code-background);
 }
 </style>

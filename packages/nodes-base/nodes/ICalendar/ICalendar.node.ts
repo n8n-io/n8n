@@ -1,4 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
+import { promisify } from 'util';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -6,8 +7,6 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-
-import { promisify } from 'util';
 
 import moment from 'moment-timezone';
 

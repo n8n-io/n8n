@@ -1,6 +1,7 @@
 import { statSync } from 'fs';
 import path from 'path';
-import { UserSettings } from 'n8n-core';
+import { Container } from 'typedi';
+import { InstanceSettings } from 'n8n-core';
 import type { MigrationContext, IrreversibleMigration } from '@db/types';
 import config from '@/config';
 
@@ -191,7 +192,7 @@ const migrationsPruningEnabled = process.env.MIGRATIONS_PRUNING_ENABLED === 'tru
 
 function getSqliteDbFileSize(): number {
 	const filename = path.resolve(
-		UserSettings.getUserN8nFolderPath(),
+		Container.get(InstanceSettings).n8nFolder,
 		config.getEnv('database.sqlite.database'),
 	);
 	const { size } = statSync(filename);

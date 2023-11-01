@@ -5,6 +5,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { setSeed, array as mfArray } from 'minifaker';
 import {
 	generateCreditCard,
 	generateIPv4,
@@ -19,7 +20,6 @@ import {
 	generateUUID,
 	generateVersion,
 } from './randomData';
-import { setSeed, array as mfArray } from 'minifaker';
 import { generateGarbageMemory, runGarbageCollector } from './functions';
 
 export class DebugHelper implements INodeType {

@@ -495,6 +495,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import type {
 	ConnectionTypes,
@@ -502,6 +503,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeOutputConfiguration,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
@@ -543,6 +545,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -702,14 +705,9 @@ export default defineComponent({
 			const workflow = this.workflowsStore.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(this.node.name);
 			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+			const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-			const nonMainInputs = !!inputs.find((input) => {
-				if (typeof input === 'string') {
-					return input !== NodeConnectionType.Main;
-				}
-
-				return input.type !== NodeConnectionType.Main;
-			});
+			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
 
 			return (
 				!nonMainInputs &&
@@ -896,9 +894,8 @@ export default defineComponent({
 			return this.outputIndex;
 		},
 		branches(): ITab[] {
-			function capitalize(name: string) {
-				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
-			}
+			const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
+
 			const branches: ITab[] = [];
 
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
@@ -908,6 +905,7 @@ export default defineComponent({
 				const itemsCount = this.getDataCount(this.runIndex, i);
 				const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
 				let outputName = this.getOutputName(i);
+
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
@@ -941,6 +939,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getResolvedNodeOutputs() {
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+
+				if (workflowNode) {
+					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+					return outputs;
+				}
+			}
+			return [];
+		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -966,12 +976,12 @@ export default defineComponent({
 				return;
 			}
 
-			if (
-				value &&
-				value.length > 0 &&
-				!this.isReadOnlyRoute &&
-				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
-			) {
+			const pinDataDiscoveryFlag = useStorage(
+				LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
+				undefined,
+			).value;
+
+			if (value && value.length > 0 && !this.isReadOnlyRoute && !pinDataDiscoveryFlag) {
 				this.pinDataDiscoveryComplete();
 
 				setTimeout(() => {
@@ -1292,9 +1302,7 @@ export default defineComponent({
 			this.closeBinaryDataDisplay();
 			let outputTypes: ConnectionTypes[] = [];
 			if (this.nodeType !== null && this.node !== null) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
-				const workflowNode = workflow.getNode(this.node.name);
-				const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+				const outputs = this.getResolvedNodeOutputs();
 				outputTypes = NodeHelpers.getConnectionTypes(outputs);
 			}
 			this.connectionType = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
@@ -1372,6 +1380,12 @@ export default defineComponent({
 			}
 
 			const nodeType = this.nodeType;
+			const outputs = this.getResolvedNodeOutputs();
+			const outputConfiguration = outputs?.[outputIndex] as INodeOutputConfiguration;
+
+			if (outputConfiguration && isObject(outputConfiguration)) {
+				return outputConfiguration?.displayName;
+			}
 			if (!nodeType?.outputNames || nodeType.outputNames.length <= outputIndex) {
 				return outputIndex + 1;
 			}
@@ -1495,7 +1509,7 @@ export default defineComponent({
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-base);
+	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 }

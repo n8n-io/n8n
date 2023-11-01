@@ -11,6 +11,9 @@ import { v4 as uuid } from 'uuid';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { ListQuery } from '@/requests';
+import { License } from '@/License';
+import { WorkflowHistoryRepository } from '@/databases/repositories';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -20,13 +23,22 @@ const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 
 const { objectContaining, arrayContaining, any } = expect;
 
+const licenseLike = utils.mockInstance(License, {
+	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
+	isWithinUsersLimit: jest.fn().mockReturnValue(true),
+});
+
+const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
+
 beforeAll(async () => {
 	owner = await testDb.createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag']);
+	jest.resetAllMocks();
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', WorkflowHistoryRepository]);
+	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 
 describe('POST /workflows', () => {
@@ -45,6 +57,96 @@ describe('POST /workflows', () => {
 	test('should set pin data to null if no pin data', async () => {
 		const pinData = await testWithPinData(false);
 		expect(pinData).toBeNull();
+	});
+
+	test('should create workflow history version when licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		const payload = {
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id },
+		} = response.body;
+
+		expect(id).toBeDefined();
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should not create workflow history version when not licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const payload = {
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+			active: false,
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const {
+			data: { id },
+		} = response.body;
+
+		expect(id).toBeDefined();
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(0);
 	});
 });
 
@@ -109,7 +211,7 @@ describe('GET /workflows', () => {
 					createdAt: any(String),
 					updatedAt: any(String),
 					tags: [{ id: any(String), name: 'A' }],
-					versionId: null,
+					versionId: any(String),
 					ownedBy: { id: owner.id },
 				}),
 				objectContaining({
@@ -119,7 +221,7 @@ describe('GET /workflows', () => {
 					createdAt: any(String),
 					updatedAt: any(String),
 					tags: [],
-					versionId: null,
+					versionId: any(String),
 					ownedBy: { id: owner.id },
 				}),
 			]),
@@ -316,5 +418,160 @@ describe('GET /workflows', () => {
 				]),
 			});
 		});
+	});
+});
+
+describe('PATCH /workflows/:id', () => {
+	test('should create workflow history version when licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		const workflow = await testDb.createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: '{"id":1}',
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		const {
+			data: { id },
+		} = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(id).toBe(workflow.id);
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should not create workflow history version when not licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const workflow = await testDb.createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: '{"id":1}',
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		const {
+			data: { id },
+		} = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(id).toBe(workflow.id);
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(0);
+	});
+
+	test('should activate workflow without changing version ID', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const workflow = await testDb.createWorkflow({}, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			active: true,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowRunnerLike.add).toBeCalled();
+
+		const {
+			data: { id, versionId, active },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(versionId).toBe(workflow.versionId);
+		expect(active).toBe(true);
+	});
+
+	test('should deactivate workflow without changing version ID', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const payload = {
+			versionId: workflow.versionId,
+			active: false,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(activeWorkflowRunnerLike.add).not.toBeCalled();
+		expect(activeWorkflowRunnerLike.remove).toBeCalled();
+
+		const {
+			data: { id, versionId, active },
+		} = response.body;
+
+		expect(id).toBe(workflow.id);
+		expect(versionId).toBe(workflow.versionId);
+		expect(active).toBe(false);
 	});
 });

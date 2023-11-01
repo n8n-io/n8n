@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import ISO6391 from 'iso-639-1';
 import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
@@ -17,8 +18,6 @@ import type {
 } from './types';
 
 import { googleApiRequest } from './GenericFunctions';
-
-import ISO6391 from 'iso-639-1';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {

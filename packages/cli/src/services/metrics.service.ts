@@ -6,7 +6,6 @@ import promClient, { type Counter } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 import { Service } from 'typedi';
 import EventEmitter from 'events';
-import { LoggerProxy } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache.service';
 import type { EventMessageTypes } from '@/eventbus/EventMessageClasses';
@@ -15,10 +14,14 @@ import {
 	getLabelsForEvent,
 } from '@/eventbus/MessageEventBusDestination/Helpers.ee';
 import { eventBus } from '@/eventbus';
+import { Logger } from '@/Logger';
 
 @Service()
 export class MetricsService extends EventEmitter {
-	constructor(private readonly cacheService: CacheService) {
+	constructor(
+		private readonly logger: Logger,
+		private readonly cacheService: CacheService,
+	) {
 		super();
 	}
 
@@ -130,7 +133,7 @@ export class MetricsService extends EventEmitter {
 				prefix + event.eventName.replace('n8n.', '').replace(/\./g, '_') + '_total';
 
 			if (!promClient.validateMetricName(metricName)) {
-				LoggerProxy.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
+				this.logger.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
 				this.counters[event.eventName] = null;
 				return null;
 			}
