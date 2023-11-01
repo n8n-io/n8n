@@ -77,7 +77,7 @@ import {
 	isJsonKeyObject,
 	getPairedItemsMapping,
 	stringSizeInBytes,
-	isObjectLiteral,
+	isObject,
 	isEmpty,
 	makeRestApiRequest,
 	unflattenExecutionData,
@@ -1065,7 +1065,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			const newParameters =
-				!!append && isObjectLiteral(updateInformation.value)
+				!!append && isObject(updateInformation.value)
 					? { ...node.parameters, ...updateInformation.value }
 					: updateInformation.value;
 
