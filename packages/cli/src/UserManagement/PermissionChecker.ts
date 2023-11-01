@@ -129,7 +129,7 @@ export class PermissionChecker {
 		}
 
 		if (policy === 'workflowsFromSameOwner') {
-			if (!subworkflowOwner || subworkflowOwner.id !== userId) {
+			if (subworkflowOwner?.id !== userId) {
 				throw errorToThrow;
 			}
 		}
