@@ -17,7 +17,7 @@ import type {
 	SelectQueryBuilder,
 } from 'typeorm';
 import { parse, stringify } from 'flatted';
-import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
+import type { ExecutionStatus, IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
 import type {
 	ExecutionPayload,
@@ -298,11 +298,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
 	}
 
+	async updateStatus(executionId: string, status: ExecutionStatus) {
+		await this.update({ id: executionId }, { status });
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
 		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowData, startedAt, ...executionInformation } = execution;
+		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
