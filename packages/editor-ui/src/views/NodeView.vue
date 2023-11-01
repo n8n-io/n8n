@@ -256,7 +256,6 @@ import type {
 	INode,
 	INodeConnections,
 	INodeCredentialsDetails,
-	INodeExecutionData,
 	INodeInputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
