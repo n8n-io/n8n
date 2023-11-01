@@ -342,13 +342,13 @@ export function logWrapper(
 				}
 			}
 
-			// ========== N8nJsonLoader ==========
+			// ========== N8n Loaders Process All ==========
 			if (
 				originalInstance instanceof N8nJsonLoader ||
 				originalInstance instanceof N8nBinaryLoader
 			) {
-				// JSON Input -> Documents
-				if (prop === 'process' && 'process' in target) {
+				// JSON Input -> Documents Process All
+				if (prop === 'processAll' && 'processAll' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
 						connectionType = NodeConnectionType.AiDocument;
 						const { index } = executeFunctions.addInputData(connectionType, [items]);
@@ -362,6 +362,32 @@ export function logWrapper(
 						})) as number[];
 
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
+						return response;
+					};
+				}
+			}
+			// ========== N8n Loaders Process Each ==========
+			if (
+				originalInstance instanceof N8nJsonLoader ||
+				originalInstance instanceof N8nBinaryLoader
+			) {
+				// JSON Input -> Documents Process All
+				if (prop === 'processItem' && 'processItem' in target) {
+					return async (item: INodeExecutionData, itemIndex: number): Promise<number[]> => {
+						connectionType = NodeConnectionType.AiDocument;
+						const { index } = executeFunctions.addInputData(connectionType, [[item]]);
+
+						const response = (await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [item, itemIndex],
+						})) as number[];
+
+						executeFunctions.addOutputData(connectionType, index, [
+							[{ json: { response }, pairedItem: { item: itemIndex } }],
+						]);
 						return response;
 					};
 				}

@@ -80,10 +80,10 @@ export const VectorStorePinecone = createVectorStoreNode({
 
 		return PineconeStore.fromExistingIndex(embeddings, config);
 	},
-	async populateVectorStore(context, embeddings, documents) {
-		const namespace = context.getNodeParameter('pineconeNamespace', 0) as string;
-		const index = context.getNodeParameter('pineconeIndex', 0) as string;
-		const clearNamespace = context.getNodeParameter('clearNamespace', 0) as boolean;
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const namespace = context.getNodeParameter('pineconeNamespace', itemIndex) as string;
+		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const clearNamespace = context.getNodeParameter('clearNamespace', itemIndex) as boolean;
 
 		const credentials = await context.getCredentials('pineconeApi');
 

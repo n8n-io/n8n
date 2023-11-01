@@ -94,10 +94,10 @@ export const VectorStoreZep = createVectorStoreNode({
 
 		return new ZepVectorStore(embeddings, zepConfig);
 	},
-	async populateVectorStore(context, embeddings, documents) {
-		const collectionName = context.getNodeParameter('collectionName', 0) as string;
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const collectionName = context.getNodeParameter('collectionName', itemIndex) as string;
 		const options =
-			(context.getNodeParameter('options', 0) as {
+			(context.getNodeParameter('options', itemIndex) as {
 				isAutoEmbedded?: boolean;
 				embeddingDimensions?: number;
 			}) || {};

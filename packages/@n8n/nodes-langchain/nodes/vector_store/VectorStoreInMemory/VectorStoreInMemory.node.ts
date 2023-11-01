@@ -48,9 +48,9 @@ export const VectorStoreInMemory = createVectorStoreNode({
 
 		return vectorStoreSingleton.getVectorStore(`${workflowId}__${memoryKey}`);
 	},
-	async populateVectorStore(context, embeddings, documents) {
-		const memoryKey = context.getNodeParameter('memoryKey', 0) as string;
-		const clearStore = context.getNodeParameter('clearStore', 0) as boolean;
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const memoryKey = context.getNodeParameter('memoryKey', itemIndex) as string;
+		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
 		const workflowId = context.getWorkflow().id;
 		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings);
 

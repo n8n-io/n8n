@@ -63,9 +63,9 @@ export const VectorStoreSupabase = createVectorStoreNode({
 			filter,
 		});
 	},
-	async populateVectorStore(context, embeddings, documents) {
-		const tableName = context.getNodeParameter('tableName', 0) as string;
-		const queryName = context.getNodeParameter('queryName', 0) as string;
+	async populateVectorStore(context, embeddings, documents, itemIndex) {
+		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
+		const queryName = context.getNodeParameter('queryName', itemIndex) as string;
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 

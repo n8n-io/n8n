@@ -17,7 +17,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
-import { processDocuments } from './processDocuments';
+import { processDocument } from './processDocuments';
 
 interface NodeMeta {
 	displayName: string;
@@ -37,6 +37,7 @@ interface VectorStoreNodeConstructorArgs {
 		context: IExecuteFunctions,
 		embeddings: Embeddings,
 		documents: Array<Document<Record<string, unknown>>>,
+		itemIndex: number,
 	) => Promise<void>;
 	getVectorStoreClient: (
 		context: IExecuteFunctions,
@@ -136,14 +137,15 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				},
 				...args.sharedFields,
 				...transformDescriptionForOperationMode(args.insertFields ?? [], 'insert'),
-				// Query and topK are always used for the load operation
+				// Prompt and topK are always used for the load operation
 				{
-					displayName: 'Query',
-					name: 'query',
+					displayName: 'Prompt',
+					name: 'prompt',
 					type: 'string',
 					default: '',
 					required: true,
-					description: 'Query to search for documents',
+					description:
+						'Search prompt to retrieve matching documents from the vector store using similarity-based ranking',
 					displayOptions: {
 						show: {
 							mode: ['load'],
@@ -179,7 +181,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 				const items = this.getInputData(0);
 
 				const resultData = [];
-
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					const filter = getMetadataFiltersValues(this, itemIndex);
 					const vectorStore = await args.getVectorStoreClient(
@@ -189,12 +190,12 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						embeddings,
 						itemIndex,
 					);
-					const query = this.getNodeParameter('query', itemIndex) as string;
+					const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 					const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
-					const embeddedQuery = await embeddings.embedQuery(query);
+					const embeddedPrompt = await embeddings.embedQuery(prompt);
 					const docs = await vectorStore.similaritySearchVectorWithScore(
-						embeddedQuery,
+						embeddedPrompt,
 						topK,
 						filter,
 					);
@@ -205,8 +206,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 							pageContent: doc.pageContent,
 						};
 
-						return { json: { document, score } };
+						return {
+							json: { document, score },
+							pairedItem: {
+								item: itemIndex,
+							},
+						};
 					});
+
 					resultData.push(...serializedDocs);
 				}
 
@@ -214,21 +221,27 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 			}
 
 			if (mode === 'insert') {
-				const items = this.getInputData(0);
+				const items = this.getInputData();
 
 				const documentInput = (await this.getInputConnectionData(
 					NodeConnectionType.AiDocument,
 					0,
 				)) as N8nJsonLoader | N8nBinaryLoader | Array<Document<Record<string, unknown>>>;
 
-				const { processedDocuments, serializedDocuments } = await processDocuments(
-					documentInput,
-					items,
-				);
+				const resultData = [];
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					const itemData = items[itemIndex];
+					const { processedDocuments, serializedDocuments } = await processDocument(
+						documentInput,
+						itemData,
+						itemIndex,
+					);
+					resultData.push(...serializedDocuments);
 
-				await args.populateVectorStore(this, embeddings, processedDocuments);
+					await args.populateVectorStore(this, embeddings, processedDocuments, itemIndex);
+				}
 
-				return this.prepareOutputData(serializedDocuments);
+				return this.prepareOutputData(resultData);
 			}
 
 			throw new NodeOperationError(
