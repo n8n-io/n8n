@@ -57,6 +57,21 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[1].email).should('exist');
 	});
 
+	it('should be able to change theme', () => {
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+
+		personalSettingsPage.actions.changeTheme('Dark');
+		cy.get('body').should('have.attr', 'data-theme', 'dark');
+		settingsSidebar.actions.back();
+		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo-dark-mode.svg');
+
+		cy.visit(personalSettingsPage.url);
+		personalSettingsPage.actions.changeTheme('Light');
+		cy.get('body').should('have.attr', 'data-theme', 'light');
+		settingsSidebar.actions.back();
+		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo.svg');
+	});
+
 	it('should delete user and their data', () => {
 		usersSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password, true);
 		usersSettingsPage.actions.opedDeleteDialog(INSTANCE_MEMBERS[0].email);
@@ -142,20 +157,5 @@ describe('User Management', { disableAutoLogin: true }, () => {
 			updatedPersonalData.newEmail,
 			updatedPersonalData.newPassword,
 		);
-	});
-
-	it('should be able to change theme', () => {
-		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
-
-		personalSettingsPage.actions.changeTheme('Dark');
-		cy.get('body').should('have.attr', 'data-theme', 'dark');
-		settingsSidebar.actions.back();
-		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo-dark-mode.svg');
-
-		cy.visit(personalSettingsPage.url);
-		personalSettingsPage.actions.changeTheme('Light');
-		cy.get('body').should('have.attr', 'data-theme', 'light');
-		settingsSidebar.actions.back();
-		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo.svg');
 	});
 });
