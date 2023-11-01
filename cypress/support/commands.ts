@@ -33,8 +33,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// we can't set them up here because at this point it would be too late
 	// and the requests would already have been made
 	if (waitForIntercepts) {
-		cy.wait(['@loadSettings']);
-		cy.wait(['@loadNodeTypes']);
+		cy.wait(['@loadSettings', '@loadNodeTypes']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
