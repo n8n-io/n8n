@@ -145,7 +145,9 @@
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);
 	--color-info-tint-2: var(--prim-gray-740);
+
 	--node-type-supplemental-label-color-l: 100%;
+	--color-configurable-node-name: var(--color-text-lighter);
 }
 
 body[data-theme='dark'] {
