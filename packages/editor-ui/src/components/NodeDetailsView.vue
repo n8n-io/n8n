@@ -771,6 +771,10 @@ $main-panel-width: 360px;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
 
+	span {
+		color: var(--color-ndv-back-font);
+	}
+
 	&:hover {
 		cursor: pointer;
 	}
