@@ -112,7 +112,7 @@ export default defineComponent({
 
 .dangerMessage {
 	composes: message;
-	color: var(--color-danger);
+	color: var(--color-callout-danger-font);
 }
 
 .banner {

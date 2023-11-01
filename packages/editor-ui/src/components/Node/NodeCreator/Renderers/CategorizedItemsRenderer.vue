@@ -133,6 +133,7 @@ registerKeyHook(`CategoryLeft_${props.category}`, {
 .mouseOverTooltip {
 	opacity: 0;
 	margin-left: var(--spacing-3xs);
+	color: var(--color-foreground-xdark);
 	&:hover {
 		color: var(--color-primary);
 	}

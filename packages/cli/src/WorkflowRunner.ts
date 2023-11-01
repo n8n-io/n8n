@@ -306,13 +306,9 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
+		await Container.get(ExecutionRepository).updateStatus(executionId, 'running');
 
 		try {
-			this.logger.verbose(
-				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
-				{ executionId },
-			);
-
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
@@ -701,6 +697,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
+		await Container.get(ExecutionRepository).updateStatus(executionId, 'running');
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

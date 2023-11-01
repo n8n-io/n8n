@@ -61,6 +61,7 @@ export const codeNodeEditorTheme = ({
 		},
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
+			borderColor: 'var(--border-color-base)',
 		},
 		'&.cm-editor.cm-focused': {
 			outline: 'none',
@@ -78,6 +79,7 @@ export const codeNodeEditorTheme = ({
 				: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 			borderRadius: 'var(--border-radius-base)',
+			borderRightColor: 'var(--border-color-base)',
 		},
 		'.cm-tooltip': {
 			maxWidth: BASE_STYLING.tooltip.maxWidth,
