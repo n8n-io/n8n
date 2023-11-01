@@ -13,9 +13,12 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 
+// This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pinecone: Load',
+		// Vector Store nodes got merged into a single node
+		hidden: true,
 		name: 'vectorStorePineconeLoad',
 		icon: 'file:pinecone.svg',
 		group: ['transform'],

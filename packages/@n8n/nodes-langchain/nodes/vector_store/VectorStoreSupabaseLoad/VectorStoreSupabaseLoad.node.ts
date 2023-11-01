@@ -13,11 +13,14 @@ import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
 
+// This node is deprecated. Use VectorStoreSupabase instead.
 export class VectorStoreSupabaseLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Supabase: Load',
 		name: 'vectorStoreSupabaseLoad',
 		icon: 'file:supabase.svg',
+		// Vector Store nodes got merged into a single node
+		hidden: true,
 		group: ['transform'],
 		version: 1,
 		description: 'Load data from Supabase Vector Store index',

@@ -12,9 +12,11 @@ import type { Document } from 'langchain/document';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 
+// This node is deprecated. Use VectorStorePinecone instead.
 export class VectorStorePineconeInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Pinecone: Insert',
+		hidden: true,
 		name: 'vectorStorePineconeInsert',
 		icon: 'file:pinecone.svg',
 		group: ['transform'],
