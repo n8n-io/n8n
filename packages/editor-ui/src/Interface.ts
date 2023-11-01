@@ -539,7 +539,6 @@ export interface WorkerJobStatusSummary {
 
 export interface IPushDataWorkerStatusPayload {
 	workerId: string;
-	runningJobs: string[];
 	runningJobsSummary: WorkerJobStatusSummary[];
 	freeMem: number;
 	totalMem: number;
@@ -549,7 +548,11 @@ export interface IPushDataWorkerStatusPayload {
 	arch: string;
 	platform: NodeJS.Platform;
 	hostname: string;
-	net: string[];
+	interfaces: Array<{
+		family: 'IPv4' | 'IPv6';
+		address: string;
+		internal: boolean;
+	}>;
 }
 
 export interface IPushDataWorkerStatusMessage {

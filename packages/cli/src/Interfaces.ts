@@ -629,20 +629,25 @@ export interface IPushDataConsoleMessage {
 
 export interface IPushDataWorkerStatusMessage {
 	workerId: string;
-	status: {
-		workerId: string;
-		runningJobs: string[];
-		runningJobsSummary: WorkerJobStatusSummary[];
-		freeMem: number;
-		totalMem: number;
-		uptime: number;
-		loadAvg: number[];
-		cpus: string;
-		arch: string;
-		platform: NodeJS.Platform;
-		hostname: string;
-		net: string[];
-	};
+	status: IPushDataWorkerStatusPayload;
+}
+
+export interface IPushDataWorkerStatusPayload {
+	workerId: string;
+	runningJobsSummary: WorkerJobStatusSummary[];
+	freeMem: number;
+	totalMem: number;
+	uptime: number;
+	loadAvg: number[];
+	cpus: string;
+	arch: string;
+	platform: NodeJS.Platform;
+	hostname: string;
+	interfaces: Array<{
+		family: 'IPv4' | 'IPv6';
+		address: string;
+		internal: boolean;
+	}>;
 }
 
 export interface IResponseCallbackData {

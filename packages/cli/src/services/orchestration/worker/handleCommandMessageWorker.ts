@@ -36,10 +36,9 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
-							command: message.command,
+							command: 'getStatus',
 							payload: {
 								workerId: options.queueModeId,
-								runningJobs: options.getRunningJobIds(),
 								runningJobsSummary: options.getRunningJobsSummary(),
 								freeMem: os.freemem(),
 								totalMem: os.totalmem(),
@@ -49,9 +48,13 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 								arch: os.arch(),
 								platform: os.platform(),
 								hostname: os.hostname(),
-								net: Object.values(os.networkInterfaces()).flatMap(
+								interfaces: Object.values(os.networkInterfaces()).flatMap(
 									(interfaces) =>
-										interfaces?.map((net) => `${net.family} - address: ${net.address}`) ?? '',
+										(interfaces ?? [])?.map((net) => ({
+											family: net.family,
+											address: net.address,
+											internal: net.internal,
+										})),
 								),
 							},
 						});
@@ -60,7 +63,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						if (!debounceMessageReceiver(message, 500)) return;
 						await options.redisPublisher.publishToWorkerChannel({
 							workerId: options.queueModeId,
-							command: message.command,
+							command: 'getId',
 						});
 						break;
 					case 'restartEventBus':
@@ -69,7 +72,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 							await Container.get(MessageEventBus).restart();
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'restartEventBus',
 								payload: {
 									result: 'success',
 								},
@@ -77,7 +80,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						} catch (error) {
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'restartEventBus',
 								payload: {
 									result: 'error',
 									error: (error as Error).message,
@@ -91,7 +94,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 							await Container.get(ExternalSecretsManager).reloadAllProviders();
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'reloadExternalSecretsProviders',
 								payload: {
 									result: 'success',
 								},
@@ -99,7 +102,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						} catch (error) {
 							await options.redisPublisher.publishToWorkerChannel({
 								workerId: options.queueModeId,
-								command: message.command,
+								command: 'reloadExternalSecretsProviders',
 								payload: {
 									result: 'error',
 									error: (error as Error).message,

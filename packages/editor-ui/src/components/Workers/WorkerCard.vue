@@ -8,7 +8,7 @@
 				data-test-id="workflow-card-name"
 			>
 				{{ worker.workerId }} ({{ worker.hostname }}) | Average Load:
-				{{ averageLoadAvg(worker.loadAvg ?? [0]) }} | Memory:
+				{{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Memory:
 				{{ (worker.freeMem / 1024 / 1024 / 1024).toFixed(2) }}GB /
 				{{ (worker.totalMem / 1024 / 1024 / 1024).toFixed(2) }}GB {{ stale ? ' (stale)' : '' }}
 			</n8n-heading>
@@ -21,6 +21,10 @@
 					{{ upTime(worker.uptime) }}</span
 				>
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
+				<WorkerNetAccordion
+					:items="worker.interfaces.sort((a, b) => a.family.localeCompare(b.family))"
+				/>
+				<WorkerChartsAccordion :worker-id="worker.workerId" />
 			</n8n-text>
 		</div>
 		<template #append>
@@ -32,10 +36,13 @@
 </template>
 
 <script setup lang="ts">
-import { useOrchestrationStore } from '../stores/orchestration.store';
-import type { IPushDataWorkerStatusPayload } from '../Interface';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
+import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { averageWorkerLoadFromLoadsAsString } from './helpers';
 import WorkerJobAccordion from './WorkerJobAccordion.vue';
+import WorkerNetAccordion from './WorkerNetAccordion.vue';
+import WorkerChartsAccordion from './WorkerChartsAccordion.vue';
 
 let interval: NodeJS.Timer;
 
@@ -51,10 +58,6 @@ const stale = ref<boolean>(false);
 const worker = computed((): IPushDataWorkerStatusPayload | undefined => {
 	return orchestrationStore.getWorkerStatus(props.workerId);
 });
-
-function averageLoadAvg(loads: number[]) {
-	return (loads.reduce((prev, curr) => prev + curr, 0) / loads.length).toFixed(2);
-}
 
 function upTime(seconds: number): string {
 	const days = Math.floor(seconds / (3600 * 24));

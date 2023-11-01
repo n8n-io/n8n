@@ -1,20 +1,14 @@
 <template>
-	<div :class="['accordion', $style.container]">
-		<div :class="{ [$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
-			<n8n-icon :icon="'tasks'" :color="'black'" size="small" class="mr-2xs" />
-			<n8n-text :class="$style.headerText" color="text-base" size="small" align="left" bold
-				>{{ $locale.baseText('workerList.item.listTitle') }} ({{ items.length }})</n8n-text
-			>
-			<n8n-icon :icon="expanded ? 'chevron-up' : 'chevron-down'" bold />
-		</div>
-		<div v-if="expanded" :class="{ [$style.description]: true, [$style.collapsed]: !expanded }">
-			<!-- Info accordion can display list of items with icons or just a HTML description -->
+	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
+		<template #title>
+			{{ $locale.baseText('workerList.item.jobListTitle') }} ({{ items.length }})
+		</template>
+		<template #content>
 			<div v-if="props.items.length > 0" :class="$style.accordionItems">
 				<div v-for="item in props.items" :key="item.executionId" :class="$style.accordionItem">
 					<a :href="'/workflow/' + item.workflowId + '/executions/' + item.executionId">
 						Execution {{ item.executionId }} - {{ item.workflowName }}</a
 					>
-
 					<n8n-text color="text-base" size="small" align="left">
 						| Started at:
 						{{ new Date(item.startedAt)?.toLocaleTimeString() }} | Running for
@@ -24,24 +18,22 @@
 					<a target="_blank" :href="'/workflow/' + item.workflowId"> (Open workflow)</a>
 				</div>
 			</div>
-			<slot name="customContent"></slot>
-		</div>
-	</div>
+			<div v-else :class="$style.accordionItems">
+				<span :class="$style.empty">
+					{{ $locale.baseText('workerList.item.jobList.empty') }}
+				</span>
+			</div>
+		</template>
+	</WorkerAccordion>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { WorkerJobStatusSummary } from '../Interface';
+import type { WorkerJobStatusSummary } from '@/Interface';
+import WorkerAccordion from './WorkerAccordion.vue';
 
 const props = defineProps<{
 	items: WorkerJobStatusSummary[];
 }>();
-
-const expanded = ref<boolean>(true);
-
-function toggle() {
-	expanded.value = !expanded.value;
-}
 
 function runningSince(started: Date): string {
 	let seconds = Math.floor((new Date().getTime() - started.getTime()) / 1000);
@@ -54,25 +46,6 @@ function runningSince(started: Date): string {
 </script>
 
 <style lang="scss" module>
-.container {
-	width: 100%;
-}
-
-.header {
-	cursor: pointer;
-	display: flex;
-	padding-top: var(--spacing-s);
-	align-items: center;
-
-	.headerText {
-		flex-grow: 1;
-	}
-}
-
-.expanded {
-	padding: var(--spacing-s) 0 var(--spacing-2xs) 0;
-}
-
 .accordionItems {
 	display: flex;
 	flex-direction: column !important;
@@ -86,12 +59,10 @@ function runningSince(started: Date): string {
 	margin-bottom: var(--spacing-4xs);
 }
 
-.description {
-	display: flex;
-	padding: 0 var(--spacing-s) var(--spacing-s) var(--spacing-s);
-
-	b {
-		font-weight: var(--font-weight-bold);
-	}
+.empty {
+	display: block !important;
+	text-align: left;
+	margin-top: var(--spacing-2xs);
+	margin-left: var(--spacing-4xs);
 }
 </style>
