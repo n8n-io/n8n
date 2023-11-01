@@ -970,7 +970,7 @@ export class HttpRequestV3 implements INodeType {
 										},
 										{
 											displayName:
-												'Use the variables $response.body, $response.header and $response.statusCode to access the data of the previous response (e.g. {{$response.body.nextCursor}}). <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+												'Use the $response variables to access the data of the previous response.. <a href="https://docs.n8n.io/code/builtin/http-node-variables//?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">More info</a>',
 											name: 'webhookNotice',
 											displayOptions: {
 												hide: {
