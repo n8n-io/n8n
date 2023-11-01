@@ -163,7 +163,7 @@ export default defineComponent({
 
 .could-not-be-started {
 	display: inline-block;
-	color: #ff4949;
+	color: var(--color-text-danger);
 	margin-left: 0.5em;
 }
 </style>
