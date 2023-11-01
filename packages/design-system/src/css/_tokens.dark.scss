@@ -141,6 +141,10 @@
 	--border-color-light: var(--color-foreground-light);
 
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
+	// Various
+	--color-info-tint-1: var(--prim-gray-420);
+	--color-info-tint-2: var(--prim-gray-740);
 }
 
 body[data-theme='dark'] {
