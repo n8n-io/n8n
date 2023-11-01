@@ -25,7 +25,7 @@
 								"parameters": [
 									{
 										"name": "skip",
-										"value": "={{ $count * 3 }}"
+										"value": "={{ $pageCount * 3 }}"
 									}
 								]
 							},
@@ -66,7 +66,7 @@
 								"parameters": [
 									{
 										"name": "skip",
-										"value": "={{ $count * 3 }}"
+										"value": "={{ $pageCount * 3 }}"
 									}
 								]
 							}
@@ -104,7 +104,7 @@
 								"parameters": [
 									{
 										"name": "skip",
-										"value": "={{ $count * 3 }}"
+										"value": "={{ $pageCount * 3 }}"
 									}
 								]
 							},
@@ -146,7 +146,7 @@
 								"parameters": [
 									{
 										"name": "skip",
-										"value": "={{ $count * 3 }}"
+										"value": "={{ $pageCount * 3 }}"
 									}
 								]
 							},
@@ -292,7 +292,7 @@
 								"parameters": [
 									{
 										"name": "skip",
-										"value": "={{ $count * 3 }}"
+										"value": "={{ $pageCount * 3 }}"
 									}
 								]
 							},
