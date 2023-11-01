@@ -99,6 +99,12 @@ export const codeNodeEditorTheme = ({
 			marginLeft: BASE_STYLING.diagnosticButton.marginLeft,
 			cursor: BASE_STYLING.diagnosticButton.cursor,
 		},
+		'.cm-diagnostic-error': {
+			backgroundColor: 'var(--color-background-base)',
+		},
+		'.cm-diagnosticText': {
+			color: 'var(--color-text-base)',
+		},
 	}),
 	syntaxHighlighting(
 		HighlightStyle.define([
