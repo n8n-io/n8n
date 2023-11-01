@@ -40,7 +40,7 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
