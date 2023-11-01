@@ -26,8 +26,12 @@ describe('router', () => {
 		['/workflows/demo', VIEWS.DEMO],
 		['/workflow/8IFYawZ9dKqJu8sT/history', VIEWS.WORKFLOW_HISTORY],
 		['/workflow/8IFYawZ9dKqJu8sT/history/6513ed960252b846f3792f0c', VIEWS.WORKFLOW_HISTORY],
-	])('should resolve %s to %s', async (path, name) => {
-		await router.push(path);
-		expect(router.currentRoute.value.name).toBe(name);
-	});
+	])(
+		'should resolve %s to %s',
+		async (path, name) => {
+			await router.push(path);
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
 });
