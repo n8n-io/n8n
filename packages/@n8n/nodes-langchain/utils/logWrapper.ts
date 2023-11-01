@@ -347,7 +347,7 @@ export function logWrapper(
 				originalInstance instanceof N8nJsonLoader ||
 				originalInstance instanceof N8nBinaryLoader
 			) {
-				// JSON Input -> Documents Process All
+				// Process All
 				if (prop === 'processAll' && 'processAll' in target) {
 					return async (items: INodeExecutionData[]): Promise<number[]> => {
 						connectionType = NodeConnectionType.AiDocument;
@@ -365,13 +365,7 @@ export function logWrapper(
 						return response;
 					};
 				}
-			}
-			// ========== N8n Loaders Process Each ==========
-			if (
-				originalInstance instanceof N8nJsonLoader ||
-				originalInstance instanceof N8nBinaryLoader
-			) {
-				// JSON Input -> Documents Process All
+				// Process Each
 				if (prop === 'processItem' && 'processItem' in target) {
 					return async (item: INodeExecutionData, itemIndex: number): Promise<number[]> => {
 						connectionType = NodeConnectionType.AiDocument;
