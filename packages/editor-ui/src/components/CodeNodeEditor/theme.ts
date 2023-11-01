@@ -27,8 +27,6 @@ const BASE_STYLING = {
 	},
 };
 
-const cssStyleDeclaration = getComputedStyle(document.documentElement);
-
 interface ThemeSettings {
 	isReadOnly?: boolean;
 	customMaxHeight?: string;
@@ -43,8 +41,8 @@ export const codeNodeEditorTheme = ({
 	EditorView.theme({
 		'&': {
 			'font-size': BASE_STYLING.fontSize,
-			border: cssStyleDeclaration.getPropertyValue('--border-base'),
-			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
+			border: 'var(--border-base)',
+			borderRadius: 'var(--border-radius-base)',
 			backgroundColor: 'var(--color-code-background)',
 			color: 'var(--color-code-foreground)',
 			height: '100%',
@@ -95,7 +93,7 @@ export const codeNodeEditorTheme = ({
 		},
 		'.cm-diagnosticAction': {
 			backgroundColor: BASE_STYLING.diagnosticButton.backgroundColor,
-			color: cssStyleDeclaration.getPropertyValue('--color-primary'),
+			color: 'var(--color-primary)',
 			lineHeight: BASE_STYLING.diagnosticButton.lineHeight,
 			textDecoration: BASE_STYLING.diagnosticButton.textDecoration,
 			marginLeft: BASE_STYLING.diagnosticButton.marginLeft,
