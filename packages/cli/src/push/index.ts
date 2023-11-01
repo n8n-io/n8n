@@ -7,6 +7,7 @@ import { Server as WSServer } from 'ws';
 import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
 import config from '@/config';
+import { Logger } from '@/Logger';
 import { resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { SSEPush } from './sse.push';
@@ -27,6 +28,16 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
 @Service()
 export class Push extends EventEmitter {
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
+
+	constructor(private readonly logger: Logger) {
+		super();
+
+		if (!useWebSockets) {
+			this.logger.warn(
+				'Using SSE as the push backend. Bidirectional communication is not available',
+			);
+		}
+	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		if (req.ws) {
