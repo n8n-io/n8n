@@ -1,4 +1,4 @@
-import type { IDataObject } from 'n8n-workflow';
+import { jsonParse, type IDataObject, type IWebhookFunctions } from 'n8n-workflow';
 import type { FormField, FormTriggerData, FormTriggerInput } from './interfaces';
 
 export const prepareFormData = (
@@ -62,3 +62,63 @@ export const prepareFormData = (
 
 	return formData;
 };
+
+export async function formWebhook(context: IWebhookFunctions) {
+	const webhookName = context.getWebhookName();
+	const mode = context.getMode() === 'manual' ? 'test' : 'production';
+	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
+
+	//Show the form on GET request
+	if (webhookName === 'setup') {
+		const formTitle = context.getNodeParameter('formTitle', '') as string;
+		const formDescription = context.getNodeParameter('formDescription', '') as string;
+		const instanceId = context.getInstanceId();
+		const { formSubmittedText } = context.getNodeParameter('options', {}) as IDataObject;
+
+		const data = prepareFormData(
+			formTitle,
+			formDescription,
+			formSubmittedText as string,
+			formFields,
+			mode === 'test',
+			instanceId,
+		);
+
+		const res = context.getResponseObject();
+		res.render('form-trigger', data);
+		return {
+			noWebhookResponse: true,
+		};
+	}
+
+	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
+
+	const returnData: IDataObject = {};
+	for (const [index, field] of formFields.entries()) {
+		const key = `field-${index}`;
+		let value = bodyData[key] ?? null;
+
+		if (value === null) returnData[field.fieldLabel] = null;
+
+		if (field.fieldType === 'number') {
+			value = Number(value);
+		}
+		if (field.fieldType === 'text') {
+			value = String(value).trim();
+		}
+		if (field.multiselect && typeof value === 'string') {
+			value = jsonParse(value);
+		}
+
+		returnData[field.fieldLabel] = value;
+	}
+	returnData.submittedAt = new Date().toISOString();
+	returnData.formMode = mode;
+
+	const webhookResponse: IDataObject = { status: 200 };
+
+	return {
+		webhookResponse,
+		workflowData: [context.helpers.returnJsonArray(returnData)],
+	};
+}

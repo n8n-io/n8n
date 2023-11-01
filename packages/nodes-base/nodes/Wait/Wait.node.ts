@@ -4,6 +4,7 @@ import type {
 	INodeTypeDescription,
 	INodeProperties,
 	IDisplayOptions,
+	IWebhookFunctions,
 } from 'n8n-workflow';
 import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
@@ -18,13 +19,29 @@ import {
 	responseDataProperty,
 	responseModeProperty,
 } from '../Webhook/description';
+
+import { formNodeDescription } from '../Form/description';
+import { updateDisplayOptions } from '../../utils/utilities';
+
 import { Webhook } from '../Webhook/Webhook.node';
+import { formWebhook } from '../Form/utils';
 
 const displayOnWebhook: IDisplayOptions = {
 	show: {
 		resume: ['webhook'],
 	},
 };
+
+const displayOnFormSubmission = {
+	show: {
+		resume: ['form'],
+	},
+};
+
+const formDescription = updateDisplayOptions(
+	displayOnFormSubmission,
+	formNodeDescription.filter((property) => property.name !== 'path'),
+);
 
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
@@ -50,6 +67,20 @@ export class Wait extends Webhook {
 				path: '={{$parameter["options"]["webhookSuffix"] || ""}}',
 				restartWebhook: true,
 			},
+			// {
+			// 	name: 'formGet',
+			// 	httpMethod: 'GET',
+			// 	responseMode: 'onReceived',
+			// 	path: FORM_TRIGGER_PATH_IDENTIFIER,
+			// 	ndvHideUrl: true,
+			// },
+			// {
+			// 	name: 'formPost',
+			// 	httpMethod: 'POST',
+			// 	responseMode: '={{$parameter["responseMode"]}}',
+			// 	path: FORM_TRIGGER_PATH_IDENTIFIER,
+			// 	ndvHideMethod: true,
+			// },
 		],
 		properties: [
 			{
@@ -71,6 +102,11 @@ export class Wait extends Webhook {
 						name: 'On Webhook Call',
 						value: 'webhook',
 						description: 'Waits for a webhook call before continuing',
+					},
+					{
+						name: 'On Form Submited',
+						value: 'form',
+						description: 'Waits for a form submission before continuing',
 					},
 				],
 				default: 'timeInterval',
@@ -307,8 +343,15 @@ export class Wait extends Webhook {
 					},
 				],
 			},
+			...formDescription,
 		],
 	};
+
+	async webhook(context: IWebhookFunctions) {
+		const resume = context.getNodeParameter('resume', 0) as string;
+		if (resume === 'form') return formWebhook(context);
+		return super.webhook(context);
+	}
 
 	async execute(context: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const resume = context.getNodeParameter('resume', 0) as string;
