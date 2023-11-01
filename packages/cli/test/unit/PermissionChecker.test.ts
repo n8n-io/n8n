@@ -244,9 +244,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 	});
 
 	test('if sharing is disabled, ensures that workflows are owned by same user and reject running workflows belonging to another user even if setting allows execution', async () => {
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockResolvedValue(nonOwnerUser)
+		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockResolvedValue(nonOwnerUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
 
 		const subworkflow = new Workflow({
