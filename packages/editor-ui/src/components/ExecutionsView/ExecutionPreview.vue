@@ -296,19 +296,7 @@ export default defineComponent({
 }
 
 .debugLink {
-	padding: 0;
+	height: 42px;
 	margin-right: var(--spacing-xs);
-
-	&.secondary {
-		a span {
-			color: var(--color-primary-shade-1);
-		}
-	}
-
-	a span {
-		display: block;
-		padding: var(--spacing-xs) var(--spacing-m);
-		color: var(--color-text-xlight);
-	}
 }
 </style>

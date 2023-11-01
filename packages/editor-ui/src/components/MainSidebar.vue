@@ -18,7 +18,7 @@
 		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
-					<img :src="logoPath" :class="$style.icon" alt="n8n" />
+					<img :src="logoPath" data-test-id="n8n-logo" :class="$style.icon" alt="n8n" />
 				</div>
 			</template>
 
