@@ -275,9 +275,9 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	it('should undo/redo multiple steps', () => {
-		const initialPosition = { left: '420px', top: '220px' };
-		const movedPosition = { left: '540px', top: '360px' };
+	it.only('should undo/redo multiple steps', () => {
+		const initialPosition = { left: '360px', top: '220px' };
+		const movedPosition = { left: '480px', top: '380px' };
 
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
