@@ -40,11 +40,10 @@
 		var(--prim-color-primary-s),
 		var(--prim-color-primary-l)
 	);
-	--prim-color-primary-alpha-04: hsla(
+	--prim-color-primary-disabled: hsl(
 		var(--prim-color-primary-h),
-		var(--prim-color-primary-s),
-		var(--prim-color-primary-l),
-		0.4
+		calc(var(--prim-color-primary-s) - 60%),
+		calc(var(--prim-color-primary-l) - 30%)
 	);
 	--prim-color-primary-tint-100: hsl(
 		var(--prim-color-primary-h),
