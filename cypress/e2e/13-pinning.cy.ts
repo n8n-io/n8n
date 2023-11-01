@@ -102,7 +102,6 @@ describe('Data pinning', () => {
 		]);
 		workflowPage.getters
 			.errorToast()
-			.parent()
 			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
 	});
 
