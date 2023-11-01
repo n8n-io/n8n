@@ -17,7 +17,6 @@ export * from './Expression';
 export * from './ExpressionError';
 export * from './NodeErrors';
 export * from './NodeHelpers';
-export * from './NodeVariants';
 export * from './RoutingNode';
 export * from './Workflow';
 export * from './WorkflowActivationError';

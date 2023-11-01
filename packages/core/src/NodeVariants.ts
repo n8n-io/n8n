@@ -1,6 +1,6 @@
 import cloneDeep from 'lodash/cloneDeep';
-import type { CredentialLoadingDetails, ICredentialType, INodeTypeDescription } from './Interfaces';
-import { isNodeOfVersion } from './NodeHelpers';
+import type { CredentialLoadingDetails, ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { isNodeOfVersion } from 'n8n-workflow';
 
 const HTTP_NODE_VARIANT_VERSION = 4.1;
 
