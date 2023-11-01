@@ -1,5 +1,5 @@
 import { INSTANCE_MEMBERS, INSTANCE_OWNER } from '../constants';
-import { SettingsUsersPage, WorkflowPage } from '../pages';
+import { MainSidebar, SettingsSidebar, SettingsUsersPage, WorkflowPage } from '../pages';
 import { PersonalSettingsPage } from '../pages/settings-personal';
 
 /**
@@ -25,6 +25,8 @@ const updatedPersonalData = {
 const usersSettingsPage = new SettingsUsersPage();
 const workflowPage = new WorkflowPage();
 const personalSettingsPage = new PersonalSettingsPage();
+const settingsSidebar = new SettingsSidebar();
+const mainSidebar = new MainSidebar();
 
 describe('User Management', { disableAutoLogin: true }, () => {
 	before(() => cy.enableFeature('sharing'));
@@ -53,6 +55,21 @@ describe('User Management', { disableAutoLogin: true }, () => {
 		// Other users list items should contain action pop-up list
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[0].email).should('exist');
 		usersSettingsPage.getters.userActionsToggle(INSTANCE_MEMBERS[1].email).should('exist');
+	});
+
+	it('should be able to change theme', () => {
+		personalSettingsPage.actions.loginAndVisit(INSTANCE_OWNER.email, INSTANCE_OWNER.password);
+
+		personalSettingsPage.actions.changeTheme('Dark');
+		cy.get('body').should('have.attr', 'data-theme', 'dark');
+		settingsSidebar.actions.back();
+		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo-dark-mode.svg');
+
+		cy.visit(personalSettingsPage.url);
+		personalSettingsPage.actions.changeTheme('Light');
+		cy.get('body').should('have.attr', 'data-theme', 'light');
+		settingsSidebar.actions.back();
+		mainSidebar.getters.logo().should('have.attr', 'src', '/n8n-dev-logo.svg');
 	});
 
 	it('should delete user and their data', () => {

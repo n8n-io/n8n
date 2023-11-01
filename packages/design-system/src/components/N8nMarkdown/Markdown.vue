@@ -261,7 +261,16 @@ export default defineComponent({
 }
 
 .sticky {
-	color: var(--color-text-dark);
+	color: var(--color-sticky-font);
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		color: var(--color-sticky-font);
+	}
 
 	h1,
 	h2,
@@ -327,6 +336,8 @@ export default defineComponent({
 
 	img {
 		object-fit: contain;
+		margin-top: var(--spacing-xs);
+		margin-bottom: var(--spacing-2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;
