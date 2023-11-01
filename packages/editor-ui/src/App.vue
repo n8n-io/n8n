@@ -238,18 +238,19 @@ export default defineComponent({
 	},
 	async mounted() {
 		await this.initialize();
+		await Promise.all(
+			[this.checkForCloudData()].concat(
+				this.defaultLocale !== 'en' ? [this.nodeTypesStore.getNodeTranslationHeaders()] : [],
+			),
+		);
+
 		void this.checkForNewVersions();
-		void this.checkForCloudData();
 		void this.postAuthenticate();
 
 		this.loading = false;
 
-		this.trackPage();
 		void this.externalHooks.run('app.mount');
-
-		if (this.defaultLocale !== 'en') {
-			void this.nodeTypesStore.getNodeTranslationHeaders();
-		}
+		this.trackPage();
 	},
 	watch: {
 		'usersStore.currentUser'(currentValue, previousValue) {

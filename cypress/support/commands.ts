@@ -34,9 +34,11 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// and the requests would already have been made
 	if (waitForIntercepts) {
 		cy.wait(['@loadSettings']);
+		cy.wait(['@loadNodeTypes']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
+	cy.getByTestId('execute-workflow-button').should('be.visible');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
