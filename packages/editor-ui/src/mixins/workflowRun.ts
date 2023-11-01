@@ -281,7 +281,7 @@ export const workflowRun = defineComponent({
 						}
 
 						if (node.name === options.destinationNode || !node.disabled) {
-							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.webhookId}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
+							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.parameters.path}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 							openPopUpWindow(testUrl);
 						}
 					}
