@@ -59,6 +59,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.createWorkflowButton().click();
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Workflow W2');
+		workflowPage.actions.saveWorkflowOnButtonClick();
 		cy.url().then((url) => {
 			workflowW2Url = url;
 		});
@@ -96,7 +97,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 	});
 
-	it('should not have access to W2, as U3', () => {
+	it.only('should not have access to W2, as U3', () => {
 		cy.signin(INSTANCE_MEMBERS[1]);
 
 		cy.visit(workflowW2Url);

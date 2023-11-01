@@ -34,10 +34,10 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true, true);
 
 		for (let i = 0; i < desiredOutputs; i++) {
-			cy.contains('Add Routing Rule').click()
+			cy.contains('Add Routing Rule').click();
 		}
 
-		NDVDialog.actions.close()
+		NDVDialog.actions.close();
 		for (let i = 0; i < desiredOutputs; i++) {
 			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true });
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
@@ -51,7 +51,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.reload();
 		cy.waitForLoad();
 		// Make sure outputless switch was connected correctly
-		cy.get(`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`).should('be.visible');
+		cy.get(
+			`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`,
+		).should('be.visible');
 		// Make sure all connections are there after reload
 		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
@@ -174,12 +176,20 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], { clickToFinish: true });
-		WorkflowPage.getters
-			.canvasNodes()
-			.last()
-			.should('have.css', 'left', '740px')
-			.should('have.css', 'top', '320px')
+		const css = WorkflowPage.getters.canvasNodes().last().invoke('attr', 'style');
+
+		WorkflowPage.actions
+			.getNodePosition(WorkflowPage.getters.canvasNodes().last())
+			.then((position) => {
+				cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
+					clickToFinish: true,
+				});
+				WorkflowPage.getters
+					.canvasNodes()
+					.last()
+					.should('have.css', 'left', `${position.left + 100}px`)
+					.should('have.css', 'top', `${position.top + 100}px`);
+			});
 	});
 
 	it('should zoom in', () => {
@@ -350,5 +360,5 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.waitForLoad();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 1);
-	})
+	});
 });

@@ -16,8 +16,8 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 
 	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
-
 	workflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.actions.zoomToFit();
 });
 
 Cypress.Commands.add(

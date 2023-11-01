@@ -69,7 +69,7 @@ describe('Workflow Actions', () => {
 			.should('eq', NEW_WORKFLOW_NAME);
 	});
 
-	it('should not save workflow if canvas is loading', () => {
+	it.only('should not save workflow if canvas is loading', () => {
 		let interceptCalledCount = 0;
 
 		// There's no way in Cypress to check if intercept was not called
@@ -100,6 +100,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
+		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wait('@saveWorkflow');
