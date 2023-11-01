@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { jsonStringify } from 'n8n-workflow';
+import { assert, jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
 import { Logger } from '@/Logger';
 import type { User } from '@/databases/entities/User';
@@ -54,6 +54,21 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		}
 	}
 
+	private sendToSessions<D>(type: IPushDataType, data: D, sessionIds: string[]) {
+		this.logger.debug(`Send data of type "${type}" to editor-UI`, {
+			dataType: type,
+			sessionIds: sessionIds.join(', '),
+		});
+
+		const sendData = jsonStringify({ type, data }, { replaceCircularRefs: true });
+
+		for (const sessionId of sessionIds) {
+			const connection = this.connections[sessionId];
+			assert(connection);
+			this.sendToOne(connection, sendData);
+		}
+	}
+
 	send<D>(type: IPushDataType, data: D, sessionId: string | undefined) {
 		const { connections } = this;
 		if (sessionId !== undefined && connections[sessionId] === undefined) {
@@ -61,16 +76,20 @@ export abstract class AbstractPush<T> extends EventEmitter {
 			return;
 		}
 
-		this.logger.debug(`Send data of type "${type}" to editor-UI`, { dataType: type, sessionId });
+		const connectionsToSend = sessionId === undefined ? Object.keys(connections) : [sessionId];
 
-		const sendData = jsonStringify({ type, data }, { replaceCircularRefs: true });
+		this.sendToSessions(type, data, connectionsToSend);
+	}
 
-		if (sessionId === undefined) {
-			// Send to all connected clients
-			Object.values(connections).forEach((connection) => this.sendToOne(connection, sendData));
-		} else {
-			// Send only to a specific client
-			this.sendToOne(connections[sessionId], sendData);
-		}
+	/**
+	 * Sends the given data to given users' connections
+	 */
+	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
+		const { connections } = this;
+		const userSessionIds = Object.keys(connections).filter((sessionId) =>
+			userIds.includes(this.userIdBySessionId[sessionId]),
+		);
+
+		this.sendToSessions(type, data, userSessionIds);
 	}
 }

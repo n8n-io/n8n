@@ -13,6 +13,7 @@ import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
+import type { User } from '@/databases/entities/User';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
@@ -43,6 +44,10 @@ export class Push extends EventEmitter {
 
 	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
 		this.backend.send(type, data, sessionId);
+	}
+
+	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(type, data, userIds);
 	}
 }
 

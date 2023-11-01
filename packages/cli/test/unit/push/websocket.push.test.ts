@@ -117,6 +117,31 @@ describe('WebSocketPush', () => {
 		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
 	});
 
+	it('sends data to all users connections', () => {
+		webSocketPush.add(sessionId1, userId, mockWebSocket1);
+		webSocketPush.add(sessionId2, userId, mockWebSocket2);
+		const data: PushDataExecutionRecovered = {
+			type: 'executionRecovered',
+			data: {
+				executionId: 'test-execution-id',
+			},
+		};
+
+		webSocketPush.sendToUsers('executionRecovered', data, [userId]);
+
+		const expectedMsg = JSON.stringify({
+			type: 'executionRecovered',
+			data: {
+				type: 'executionRecovered',
+				data: {
+					executionId: 'test-execution-id',
+				},
+			},
+		});
+		expect(mockWebSocket1.send).toHaveBeenCalledWith(expectedMsg);
+		expect(mockWebSocket2.send).toHaveBeenCalledWith(expectedMsg);
+	});
+
 	it('pings all connections', () => {
 		webSocketPush.add(sessionId1, userId, mockWebSocket1);
 		webSocketPush.add(sessionId2, userId, mockWebSocket2);
