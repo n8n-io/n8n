@@ -97,7 +97,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		ndv.actions.close();
 	});
 
-	it.only('should not have access to W2, as U3', () => {
+	it('should not have access to W2, as U3', () => {
 		cy.signin(INSTANCE_MEMBERS[1]);
 
 		cy.visit(workflowW2Url);
