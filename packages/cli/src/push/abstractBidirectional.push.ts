@@ -10,7 +10,7 @@ import type { User } from '@/databases/entities/User';
  *
  * @emits message when a message is received from a client
  */
-export abstract class AbstractPush<T> extends EventEmitter {
+export abstract class AbstractBidirectionalPush<T> extends EventEmitter {
 	protected connections: Record<string, T> = {};
 
 	protected userIdBySessionId: Record<string, string> = {};

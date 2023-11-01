@@ -1,7 +1,7 @@
 import type WebSocket from 'ws';
 import { Service } from 'typedi';
 import { Logger } from '@/Logger';
-import { AbstractPush } from './abstract.push';
+import { AbstractBidirectionalPush } from './abstractBidirectional.push';
 import type { User } from '@/databases/entities/User';
 
 function heartbeat(this: WebSocket) {
@@ -9,7 +9,7 @@ function heartbeat(this: WebSocket) {
 }
 
 @Service()
-export class WebSocketPush extends AbstractPush<WebSocket> {
+export class WebSocketPush extends AbstractBidirectionalPush<WebSocket> {
 	constructor(logger: Logger) {
 		super(logger);
 
