@@ -56,8 +56,6 @@ beforeAll(async () => {
 	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
 		defaultLdapConfig.bindingAdminPassword,
 	);
-
-	await setCurrentAuthenticationMethod('ldap');
 });
 
 beforeEach(async () => {
@@ -75,6 +73,8 @@ beforeEach(async () => {
 	jest.mock('@/telemetry');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
+
+	await setCurrentAuthenticationMethod('email');
 });
 
 const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
@@ -201,7 +201,6 @@ describe('POST /ldap/test-connection', () => {
 		jest.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
 
 		await authOwnerAgent.post('/ldap/test-connection').expect(200);
-		expect(getCurrentAuthenticationMethod()).toBe('ldap');
 	});
 
 	test('route should fail', async () => {
@@ -484,6 +483,8 @@ describe('POST /login', () => {
 	const runTest = async (ldapUser: LdapUser) => {
 		const ldapConfig = await createLdapConfig();
 		LdapManager.updateConfig(ldapConfig);
+
+		await setCurrentAuthenticationMethod('ldap');
 
 		jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
 

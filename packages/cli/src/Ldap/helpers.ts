@@ -157,8 +157,6 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 
 	if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
 		throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
-	} else {
-		await setCurrentAuthenticationMethod('ldap');
 	}
 
 	LdapManager.updateConfig({ ...ldapConfig });
