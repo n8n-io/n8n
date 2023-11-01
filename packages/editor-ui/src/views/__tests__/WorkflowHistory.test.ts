@@ -1,6 +1,6 @@
 import type { SpyInstance } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -9,12 +9,14 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import WorkflowHistoryPage from '@/views/WorkflowHistory.vue';
 import { useWorkflowHistoryStore } from '@/stores/workflowHistory.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 import { STORES, VIEWS } from '@/constants';
 import {
 	workflowHistoryDataFactory,
 	workflowVersionDataFactory,
 } from '@/stores/__tests__/utils/workflowHistoryTestUtils';
 import type { WorkflowVersion } from '@/types/workflowHistory';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('vue-router', () => {
 	const params = {};
@@ -52,8 +54,10 @@ const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 						default: versionId,
 					},
 				},
-				template:
-					'<div><button data-test-id="stub-preview-button" @click="event => $emit(`preview`, {id, event})">Preview</button>button></div>',
+				template: `<div>
+						<button data-test-id="stub-preview-button" @click="event => $emit('preview', {id, event})" />
+						<button data-test-id="stub-clone-button" @click="() => $emit('action', { action: 'clone', id })" />
+					</div>`,
 			}),
 		},
 	},
@@ -63,6 +67,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let router: ReturnType<typeof useRouter>;
 let route: ReturnType<typeof useRoute>;
 let workflowHistoryStore: ReturnType<typeof useWorkflowHistoryStore>;
+let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 let windowOpenSpy: SpyInstance;
 
 describe('WorkflowHistory', () => {
@@ -73,9 +78,11 @@ describe('WorkflowHistory', () => {
 			},
 		});
 		workflowHistoryStore = useWorkflowHistoryStore();
+		workflowsStore = useWorkflowsStore();
 		route = useRoute();
 		router = useRouter();
 
+		vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({} as IWorkflowDb);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowHistory').mockResolvedValue(historyData);
 		vi.spyOn(workflowHistoryStore, 'getWorkflowVersion').mockResolvedValue(versionData);
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
@@ -141,5 +148,25 @@ describe('WorkflowHistory', () => {
 			}),
 		);
 		expect(windowOpenSpy).toHaveBeenCalled();
+	});
+
+	it('should clone workflow from version data', async () => {
+		route.params.workflowId = workflowId;
+		const newWorkflowId = faker.string.nanoid();
+		vi.spyOn(workflowHistoryStore, 'cloneIntoNewWorkflow').mockResolvedValue({
+			id: newWorkflowId,
+		} as IWorkflowDb);
+
+		const { getByTestId, getByRole } = renderComponent({ pinia });
+		await userEvent.click(getByTestId('stub-clone-button'));
+
+		await waitFor(() =>
+			expect(router.resolve).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: { name: newWorkflowId },
+			}),
+		);
+
+		expect(within(getByRole('alert')).getByRole('link')).toBeInTheDocument();
 	});
 });

@@ -1,3 +1,4 @@
+import { useStorage } from '@vueuse/core';
 import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
 import type {
 	INodeUi,
@@ -48,7 +49,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			canDrop: false,
 			stickyPosition: null,
 		},
-		isMappingOnboarded: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_IS_ONBOARDED) === 'true',
+		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, undefined).value === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {

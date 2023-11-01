@@ -109,7 +109,7 @@ export default defineComponent({
 		filtersLength(): number {
 			let length = 0;
 
-			(this.keys as string[]).forEach((key) => {
+			this.keys.forEach((key) => {
 				if (key === 'search') {
 					return;
 				}
@@ -144,7 +144,7 @@ export default defineComponent({
 			} else {
 				const filters = { ...this.modelValue };
 
-				(this.keys as string[]).forEach((key) => {
+				this.keys.forEach((key) => {
 					filters[key] = Array.isArray(this.modelValue[key]) ? [] : '';
 				});
 

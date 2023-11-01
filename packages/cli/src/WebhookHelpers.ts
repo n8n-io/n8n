@@ -38,7 +38,7 @@ import {
 	BINARY_ENCODING,
 	createDeferredPromise,
 	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
+	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -63,6 +63,7 @@ import { EventsService } from '@/services/events.service';
 import { OwnershipService } from './services/ownership.service';
 import { parseBody } from './middlewares';
 import { WorkflowsService } from './workflows/workflows.services';
+import { Logger } from './Logger';
 
 const pipeline = promisify(stream.pipeline);
 
@@ -109,7 +110,16 @@ export const webhookRequestHandler =
 		try {
 			response = await webhookManager.executeWebhook(req, res);
 		} catch (error) {
-			return ResponseHelper.sendErrorResponse(res, error as Error);
+			if (
+				error.errorCode === 404 &&
+				(error.message as string).includes(FORM_TRIGGER_PATH_IDENTIFIER)
+			) {
+				const isTestWebhook = req.originalUrl.includes('webhook-test');
+				res.status(404);
+				return res.render('form-trigger-404', { isTestWebhook });
+			} else {
+				return ResponseHelper.sendErrorResponse(res, error as Error);
+			}
 		}
 
 		// Don't respond, if already responded
@@ -160,23 +170,6 @@ export function getWorkflowWebhooks(
 	return returnData;
 }
 
-export function decodeWebhookResponse(
-	response: IExecuteResponsePromiseData,
-): IExecuteResponsePromiseData {
-	if (
-		typeof response === 'object' &&
-		typeof response.body === 'object' &&
-		(response.body as IDataObject)['__@N8nEncodedBuffer@__']
-	) {
-		response.body = Buffer.from(
-			(response.body as IDataObject)['__@N8nEncodedBuffer@__'] as string,
-			BINARY_ENCODING,
-		);
-	}
-
-	return response;
-}
-
 export function encodeWebhookResponse(
 	response: IExecuteResponsePromiseData,
 ): IExecuteResponsePromiseData {
@@ -189,6 +182,15 @@ export function encodeWebhookResponse(
 
 	return response;
 }
+
+const normalizeFormData = <T>(values: Record<string, T | T[]>) => {
+	for (const key in values) {
+		const value = values[key];
+		if (Array.isArray(value) && value.length === 1) {
+			values[key] = value[0];
+		}
+	}
+};
 
 /**
  * Executes a webhook
@@ -244,7 +246,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseMode,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		'onReceived',
@@ -253,7 +254,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseCode,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		200,
@@ -263,7 +263,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		webhookData.webhookDescription.responseData,
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		'firstEntryJson',
@@ -286,7 +285,6 @@ export async function executeWebhook(
 		workflowStartNode,
 		'={{$parameter["options"]["binaryData"]}}',
 		executionMode,
-		additionalData.timezone,
 		additionalKeys,
 		undefined,
 		false,
@@ -310,11 +308,8 @@ export async function executeWebhook(
 				});
 				req.body = await new Promise((resolve) => {
 					form.parse(req, async (err, data, files) => {
-						for (const key in data) {
-							if (Array.isArray(data[key]) && data[key].length === 1) {
-								data[key] = data[key][0];
-							}
-						}
+						normalizeFormData(data);
+						normalizeFormData(files);
 						resolve({ data, files });
 					});
 				});
@@ -371,7 +366,6 @@ export async function executeWebhook(
 				workflowStartNode,
 				webhookData.webhookDescription.responseHeaders,
 				executionMode,
-				additionalData.timezone,
 				additionalKeys,
 				undefined,
 				undefined,
@@ -535,7 +529,7 @@ export async function executeWebhook(
 				})
 				.catch(async (error) => {
 					ErrorReporter.error(error);
-					Logger.error(
+					Container.get(Logger).error(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },
 					);
@@ -552,7 +546,7 @@ export async function executeWebhook(
 			responsePromise,
 		);
 
-		Logger.verbose(
+		Container.get(Logger).verbose(
 			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 			{ executionId },
 		);
@@ -645,7 +639,6 @@ export async function executeWebhook(
 								workflowStartNode,
 								webhookData.webhookDescription.responsePropertyName,
 								executionMode,
-								additionalData.timezone,
 								additionalKeys,
 								undefined,
 								undefined,
@@ -659,7 +652,6 @@ export async function executeWebhook(
 								workflowStartNode,
 								webhookData.webhookDescription.responseContentType,
 								executionMode,
-								additionalData.timezone,
 								additionalKeys,
 								undefined,
 								undefined,
@@ -705,7 +697,6 @@ export async function executeWebhook(
 								workflowStartNode,
 								webhookData.webhookDescription.responseBinaryPropertyName,
 								executionMode,
-								additionalData.timezone,
 								additionalKeys,
 								undefined,
 								'data',

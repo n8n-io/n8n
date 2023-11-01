@@ -3,7 +3,12 @@ import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 
 import type { IRunData, IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
-import { NodeHelpers, NodeConnectionType, TelemetryHelpers } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	NodeConnectionType,
+	TelemetryHelpers,
+	FORM_TRIGGER_PATH_IDENTIFIER,
+} from 'n8n-workflow';
 
 import { useToast } from '@/composables';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -13,7 +18,12 @@ import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { CREDENTIAL_ONLY_NODE_PREFIX, HTTP_REQUEST_NODE_TYPE } from '../constants';
+import {
+	CREDENTIAL_ONLY_NODE_PREFIX,
+	FORM_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+} from '../constants';
+import { openPopUpWindow } from '@/utils/executionUtils';
 
 export const workflowRun = defineComponent({
 	mixins: [externalHooks, workflowHelpers],
@@ -267,6 +277,27 @@ export const workflowRun = defineComponent({
 				this.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
+
+				if (runWorkflowApiResponse.waitingForWebhook) {
+					for (const node of workflowData.nodes) {
+						if (node.type !== FORM_TRIGGER_NODE_TYPE) {
+							continue;
+						}
+
+						if (
+							options.destinationNode &&
+							options.destinationNode !== node.name &&
+							!directParentNodes.includes(node.name)
+						) {
+							continue;
+						}
+
+						if (node.name === options.destinationNode || !node.disabled) {
+							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.webhookId}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
+							openPopUpWindow(testUrl);
+						}
+					}
+				}
 
 				await this.$externalHooks().run('workflowRun.runWorkflow', {
 					nodeName: options.destinationNode,

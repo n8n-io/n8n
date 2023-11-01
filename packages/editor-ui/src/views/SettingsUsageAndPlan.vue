@@ -188,14 +188,14 @@ const openPricingPage = () => {
 					type="tertiary"
 					size="large"
 				>
-					<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
 				</n8n-button>
 				<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
 					<a :href="managePlanUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.manage')
 					}}</a>
 				</n8n-button>
-				<n8n-button v-else @click="onViewPlans" size="large">
+				<n8n-button v-else @click.prevent="onViewPlans" size="large">
 					<a :href="viewPlansUrl" target="_blank">{{
 						locale.baseText('settings.usageAndPlan.button.plans')
 					}}</a>
@@ -318,13 +318,6 @@ const openPricingPage = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
-}
-
-.buttonTertiary {
-	&,
-	&:hover {
-		background: transparent;
-	}
 }
 </style>
 

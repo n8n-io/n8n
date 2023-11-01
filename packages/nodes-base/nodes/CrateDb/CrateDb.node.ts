@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import pgPromise from 'pg-promise';
 import {
 	generateReturning,
 	getItemCopy,
@@ -14,8 +15,6 @@ import {
 	pgQueryV2,
 	pgUpdate,
 } from '../Postgres/v1/genericFunctions';
-
-import pgPromise from 'pg-promise';
 
 export class CrateDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -378,15 +377,15 @@ export class CrateDb implements INodeType {
 				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {
-			pgp.end();
+			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
 
-		// Close the connection
-		pgp.end();
+		// shuts down the connection pool associated with the db object to allow the process to finish
+		await db.$pool.end();
 
 		return [returnItems];
 	}

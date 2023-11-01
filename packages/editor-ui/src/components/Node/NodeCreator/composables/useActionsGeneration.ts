@@ -70,7 +70,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): ActionTy
 		(property) => property.name?.toLowerCase() === 'operation',
 	);
 
-	if (!matchedProperty || !matchedProperty.options) return [];
+	if (!matchedProperty?.options) return [];
 
 	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
@@ -104,7 +104,7 @@ function triggersCategory(nodeTypeDescription: INodeTypeDescription): ActionType
 
 	// Inject placeholder action if no events are available
 	// so user is able to add node to the canvas from the actions panel
-	if (!matchedProperty || !matchedProperty.options) {
+	if (!matchedProperty?.options) {
 		return [
 			{
 				...getNodeTypeBase(nodeTypeDescription),
@@ -191,7 +191,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): ActionTy
 						// We need to manually populate displayOptions as they are not present in the node description
 						// if the resource has only one option
 						const displayOptions = isSingleResource
-							? { show: { resource: [(options as INodePropertyOptions[])[0]?.value] } }
+							? { show: { resource: [options[0]?.value] } }
 							: operations?.displayOptions;
 
 						return {

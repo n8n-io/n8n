@@ -13,7 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -22,7 +22,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
-import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
+import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
@@ -61,7 +61,7 @@ export class Worker extends BaseCommand {
 		[jobId: string]: WorkerJobStatusSummary;
 	} = {};
 
-	static jobQueue: JobQueue;
+	static jobQueue: Queue;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -71,7 +71,7 @@ export class Worker extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		LoggerProxy.info('Stopping n8n...');
+		this.logger.info('Stopping n8n...');
 
 		// Stop accepting new jobs
 		await Worker.jobQueue.pause(true);
@@ -94,7 +94,7 @@ export class Worker extends BaseCommand {
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					LoggerProxy.info(
+					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
@@ -121,7 +121,7 @@ export class Worker extends BaseCommand {
 		);
 
 		if (!fullExecutionData) {
-			LoggerProxy.error(
+			this.logger.error(
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
 			);
@@ -130,7 +130,7 @@ export class Worker extends BaseCommand {
 			);
 		}
 		const workflowId = fullExecutionData.workflowData.id!;
-		LoggerProxy.info(
+		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
 
@@ -145,7 +145,7 @@ export class Worker extends BaseCommand {
 				},
 			});
 			if (workflowData === null) {
-				LoggerProxy.error(
+				this.logger.error(
 					'Worker execution failed because workflow could not be found in database.',
 					{ workflowId, executionId },
 				);
@@ -217,7 +217,7 @@ export class Worker extends BaseCommand {
 
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
-			LoggerProxy.debug(`Queued worker execution status for ${executionId} is "${status}"`);
+			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
 		};
 
 		let workflowExecute: WorkflowExecute;
@@ -318,7 +318,6 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			instanceId: this.instanceId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
 			getRunningJobIds: () => Object.keys(Worker.runningJobs),
 			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
@@ -335,15 +334,14 @@ export class Worker extends BaseCommand {
 			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
 		);
 
-		const queue = Container.get(Queue);
-		await queue.init();
+		Worker.jobQueue = Container.get(Queue);
+		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
-		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),
 		);
 
-		Worker.jobQueue.on('global:progress', (jobId: JobId, progress) => {
+		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used
 			// to communicate that a job got canceled.
 
@@ -359,7 +357,7 @@ export class Worker extends BaseCommand {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		Worker.jobQueue.on('error', (error: Error) => {
+		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
 			if (error.toString().includes('ECONNREFUSED')) {
 				const now = Date.now();
 				if (now - lastTimer > 30000) {
@@ -402,7 +400,7 @@ export class Worker extends BaseCommand {
 			'/healthz',
 
 			async (req: express.Request, res: express.Response) => {
-				LoggerProxy.debug('Health check started!');
+				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
 
@@ -414,7 +412,7 @@ export class Worker extends BaseCommand {
 					// DB ping
 					await connection.query('SELECT 1');
 				} catch (e) {
-					LoggerProxy.error('No Database connection!', e as Error);
+					this.logger.error('No Database connection!', e as Error);
 					const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
@@ -423,9 +421,9 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await Worker.jobQueue.client.ping();
+					await Worker.jobQueue.ping();
 				} catch (e) {
-					LoggerProxy.error('No Redis connection!', e as Error);
+					this.logger.error('No Redis connection!', e as Error);
 					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
@@ -435,7 +433,7 @@ export class Worker extends BaseCommand {
 					status: 'ok',
 				};
 
-				LoggerProxy.debug('Health check completed successfully!');
+				this.logger.debug('Health check completed successfully!');
 
 				ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 			},

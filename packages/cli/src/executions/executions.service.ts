@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
-import { LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
+import { jsonParse, Workflow } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -23,6 +23,7 @@ import * as GenericHelpers from '@/GenericHelpers';
 import { Container } from 'typedi';
 import { getStatusUsingPreviousExecutionStatusMethod } from './executionHelpers';
 import { ExecutionRepository } from '@db/repositories';
+import { Logger } from '@/Logger';
 
 export interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string> | string;
@@ -110,7 +111,7 @@ export class ExecutionsService {
 					}
 				}
 			} catch (error) {
-				LoggerProxy.error('Failed to parse filter', {
+				Container.get(Logger).error('Failed to parse filter', {
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
@@ -123,7 +124,7 @@ export class ExecutionsService {
 		// safeguard against querying workflowIds not shared with the user
 		const workflowId = filter?.workflowId?.toString();
 		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
-			LoggerProxy.verbose(
+			Container.get(Logger).verbose(
 				`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
 			);
 			return {
@@ -193,10 +194,13 @@ export class ExecutionsService {
 		});
 
 		if (!execution) {
-			LoggerProxy.info('Attempt to read execution was blocked due to insufficient permissions', {
-				userId: req.user.id,
-				executionId,
-			});
+			Container.get(Logger).info(
+				'Attempt to read execution was blocked due to insufficient permissions',
+				{
+					userId: req.user.id,
+					executionId,
+				},
+			);
 			return undefined;
 		}
 
@@ -221,7 +225,7 @@ export class ExecutionsService {
 		});
 
 		if (!execution) {
-			LoggerProxy.info(
+			Container.get(Logger).info(
 				'Attempt to retry an execution was blocked due to insufficient permissions',
 				{
 					userId: req.user.id,
@@ -299,11 +303,14 @@ export class ExecutionsService {
 				// Find the data of the last executed node in the new workflow
 				const node = workflowInstance.getNode(stack.node.name);
 				if (node === null) {
-					LoggerProxy.error('Failed to retry an execution because a node could not be found', {
-						userId: req.user.id,
-						executionId,
-						nodeName: stack.node.name,
-					});
+					Container.get(Logger).error(
+						'Failed to retry an execution because a node could not be found',
+						{
+							userId: req.user.id,
+							executionId,
+							nodeName: stack.node.name,
+						},
+					);
 					throw new Error(
 						`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`,
 					);

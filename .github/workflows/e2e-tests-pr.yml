@@ -12,7 +12,7 @@ jobs:
     uses: ./.github/workflows/e2e-reusable.yml
     if: ${{ github.event.review.state == 'approved' && !contains(github.event.pull_request.labels.*.name, 'community') }}
     with:
-      branch: ${{ github.event.pull_request.head.ref }}
+      pr_number: ${{ github.event.pull_request.number }}
       user: ${{ github.event.pull_request.user.login || 'PR User' }}
       spec: 'e2e/*'
     secrets:

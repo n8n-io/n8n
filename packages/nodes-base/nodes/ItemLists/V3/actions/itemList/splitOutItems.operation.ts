@@ -1,4 +1,5 @@
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -6,12 +7,11 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, NodeOperationError } from 'n8n-workflow';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import get from 'lodash/get';
 import unset from 'lodash/unset';
 import { disableDotNotationBoolean } from '../common.descriptions';
 import { prepareFieldsArray } from '../../helpers/utils';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -20,7 +20,9 @@ const properties: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		required: true,
-		description: 'The name of the input fields to break out into separate items',
+		placeholder: 'Drag fields from the left or type their names',
+		description:
+			'The name of the input fields to break out into separate items. Separate multiple field names by commas. For binary data, use $binary.',
 		requiresDataPath: 'multiple',
 	},
 	{
@@ -74,6 +76,13 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The field in the output under which to put the split field contents',
 			},
+			{
+				displayName: 'Include Binary',
+				name: 'includeBinary',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include the binary data in the new items',
+			},
 		],
 	},
 ];
@@ -96,16 +105,13 @@ export async function execute(
 	for (let i = 0; i < items.length; i++) {
 		const fieldsToSplitOut = (this.getNodeParameter('fieldToSplitOut', i) as string)
 			.split(',')
-			.map((field) => field.trim());
-		const disableDotNotation = this.getNodeParameter(
-			'options.disableDotNotation',
-			0,
-			false,
-		) as boolean;
+			.map((field) => field.trim().replace(/^\$json\./, ''));
 
-		const destinationFields = (
-			this.getNodeParameter('options.destinationFieldName', i, '') as string
-		)
+		const options = this.getNodeParameter('options', i, {});
+
+		const disableDotNotation = options.disableDotNotation as boolean;
+
+		const destinationFields = ((options.destinationFieldName as string) || '')
 			.split(',')
 			.filter((field) => field.trim() !== '')
 			.map((field) => field.trim());
@@ -125,54 +131,71 @@ export async function execute(
 		const multiSplit = fieldsToSplitOut.length > 1;
 
 		const item = { ...items[i].json };
-		const splited: IDataObject[] = [];
+		const splited: INodeExecutionData[] = [];
 		for (const [entryIndex, fieldToSplitOut] of fieldsToSplitOut.entries()) {
 			const destinationFieldName = destinationFields[entryIndex] || '';
 
-			let arrayToSplit;
-			if (!disableDotNotation) {
-				arrayToSplit = get(item, fieldToSplitOut);
+			let entityToSplit: IDataObject[] = [];
+
+			if (fieldToSplitOut === '$binary') {
+				entityToSplit = Object.entries(items[i].binary || {}).map(([key, value]) => ({
+					[key]: value,
+				}));
 			} else {
-				arrayToSplit = item[fieldToSplitOut];
+				if (!disableDotNotation) {
+					entityToSplit = get(item, fieldToSplitOut) as IDataObject[];
+				} else {
+					entityToSplit = item[fieldToSplitOut] as IDataObject[];
+				}
+
+				if (entityToSplit === undefined) {
+					entityToSplit = [];
+				}
+
+				if (typeof entityToSplit !== 'object' || entityToSplit === null) {
+					entityToSplit = [entityToSplit];
+				}
+
+				if (!Array.isArray(entityToSplit)) {
+					entityToSplit = Object.values(entityToSplit);
+				}
 			}
 
-			if (arrayToSplit === undefined) {
-				arrayToSplit = [];
-			}
-
-			if (typeof arrayToSplit !== 'object' || arrayToSplit === null) {
-				arrayToSplit = [arrayToSplit];
-			}
-
-			if (!Array.isArray(arrayToSplit)) {
-				arrayToSplit = Object.values(arrayToSplit);
-			}
-
-			for (const [elementIndex, element] of arrayToSplit.entries()) {
+			for (const [elementIndex, element] of entityToSplit.entries()) {
 				if (splited[elementIndex] === undefined) {
-					splited[elementIndex] = {};
+					splited[elementIndex] = { json: {}, pairedItem: { item: i } };
 				}
 
 				const fieldName = destinationFieldName || fieldToSplitOut;
 
+				if (fieldToSplitOut === '$binary') {
+					if (splited[elementIndex].binary === undefined) {
+						splited[elementIndex].binary = {};
+					}
+					splited[elementIndex].binary![Object.keys(element)[0]] = Object.values(
+						element,
+					)[0] as IBinaryData;
+
+					continue;
+				}
+
 				if (typeof element === 'object' && element !== null && include === 'noOtherFields') {
 					if (destinationFieldName === '' && !multiSplit) {
-						splited[elementIndex] = { ...splited[elementIndex], ...element };
+						splited[elementIndex] = {
+							json: { ...splited[elementIndex].json, ...element },
+							pairedItem: { item: i },
+						};
 					} else {
-						splited[elementIndex][fieldName] = element;
+						splited[elementIndex].json[fieldName] = element;
 					}
 				} else {
-					splited[elementIndex][fieldName] = element;
+					splited[elementIndex].json[fieldName] = element;
 				}
 			}
 		}
 
 		for (const splitEntry of splited) {
-			let newItem: IDataObject = {};
-
-			if (include === 'noOtherFields') {
-				newItem = splitEntry;
-			}
+			let newItem: INodeExecutionData = splitEntry;
 
 			if (include === 'allOtherFields') {
 				const itemCopy = deepCopy(item);
@@ -183,7 +206,7 @@ export async function execute(
 						delete itemCopy[fieldToSplitOut];
 					}
 				}
-				newItem = { ...itemCopy, ...splitEntry };
+				newItem.json = { ...itemCopy, ...splitEntry.json };
 			}
 
 			if (include === 'selectedOtherFields') {
@@ -200,21 +223,24 @@ export async function execute(
 
 				for (const field of fieldsToInclude) {
 					if (!disableDotNotation) {
-						splitEntry[field] = get(item, field);
+						splitEntry.json[field] = get(item, field);
 					} else {
-						splitEntry[field] = item[field];
+						splitEntry.json[field] = item[field];
 					}
 				}
 
 				newItem = splitEntry;
 			}
 
-			returnData.push({
-				json: newItem,
-				pairedItem: {
-					item: i,
-				},
-			});
+			const includeBinary = options.includeBinary as boolean;
+
+			if (includeBinary) {
+				if (items[i].binary && !newItem.binary) {
+					newItem.binary = items[i].binary;
+				}
+			}
+
+			returnData.push(newItem);
 		}
 	}
 

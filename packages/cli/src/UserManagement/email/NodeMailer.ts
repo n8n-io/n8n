@@ -1,13 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Transporter } from 'nodemailer';
 import { createTransport } from 'nodemailer';
-import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
+import type SMTPConnection from 'nodemailer/lib/smtp-connection';
+import { Service } from 'typedi';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import config from '@/config';
 import type { MailData, SendEmailResult } from './Interfaces';
-import type SMTPConnection from 'nodemailer/lib/smtp-connection';
+import { Logger } from '@/Logger';
 
+@Service()
 export class NodeMailer {
 	private transport?: Transporter;
+
+	constructor(private readonly logger: Logger) {}
 
 	async init(): Promise<void> {
 		const transportConfig: SMTPConnection.Options = {
@@ -23,6 +28,20 @@ export class NodeMailer {
 			transportConfig.auth = {
 				user: config.getEnv('userManagement.emails.smtp.auth.user'),
 				pass: config.getEnv('userManagement.emails.smtp.auth.pass'),
+			};
+		}
+
+		if (
+			config.getEnv('userManagement.emails.smtp.auth.serviceClient') &&
+			config.getEnv('userManagement.emails.smtp.auth.privateKey')
+		) {
+			transportConfig.auth = {
+				type: 'OAuth2',
+				user: config.getEnv('userManagement.emails.smtp.auth.user'),
+				serviceClient: config.getEnv('userManagement.emails.smtp.auth.serviceClient'),
+				privateKey: config
+					.getEnv('userManagement.emails.smtp.auth.privateKey')
+					.replace(/\\n/g, '\n'),
 			};
 		}
 
@@ -67,12 +86,12 @@ export class NodeMailer {
 				text: mailData.textOnly,
 				html: mailData.body,
 			});
-			Logger.verbose(
+			this.logger.verbose(
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {
 			ErrorReporter.error(error);
-			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
+			this.logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
 			throw error;
 		}
 

@@ -1,3 +1,4 @@
+import { URL } from 'url';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -8,7 +9,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import Parser from 'rss-parser';
-import { URL } from 'url';
+import { generatePairedItemData } from '../../utils/utilities';
 
 // Utility function
 
@@ -64,6 +65,8 @@ export class RssFeedRead implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const pairedItem = generatePairedItemData(this.getInputData().length);
+
 		try {
 			const url = this.getNodeParameter('url', 0) as string;
 			const options = this.getNodeParameter('options', 0);
@@ -97,19 +100,22 @@ export class RssFeedRead implements INodeType {
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
-			const returnData: IDataObject[] = [];
+			const returnData: INodeExecutionData[] = [];
 
 			// For now we just take the items and ignore everything else
 			if (feed.items) {
 				feed.items.forEach((item) => {
-					returnData.push(item);
+					returnData.push({
+						json: item,
+						pairedItem,
+					});
 				});
 			}
 
-			return [this.helpers.returnJsonArray(returnData)];
+			return [returnData];
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return [[{ json: { error: error.message } }]];
+				return [[{ json: { error: error.message }, pairedItem }]];
 			}
 			throw error;
 		}

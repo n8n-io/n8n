@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
@@ -151,7 +149,7 @@ export class BinaryDataService {
 
 		if (!manager) return;
 
-		await manager.deleteMany(ids);
+		if (manager.deleteMany) await manager.deleteMany(ids);
 	}
 
 	@LogCatch((error) =>

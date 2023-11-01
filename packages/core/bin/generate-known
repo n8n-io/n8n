@@ -7,10 +7,7 @@ const { LoggerProxy, getCredentialsForNode } = require('n8n-workflow');
 const { packageDir, writeJSON } = require('./common');
 const { loadClassInIsolation } = require('../dist/ClassLoader');
 
-LoggerProxy.init({
-	log: console.log.bind(console),
-	warn: console.warn.bind(console),
-});
+LoggerProxy.init(console);
 
 const loadClass = (sourcePath) => {
 	try {

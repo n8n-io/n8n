@@ -1,7 +1,7 @@
 import validator from 'validator';
 import type { FindManyOptions } from 'typeorm';
 import { In, Not } from 'typeorm';
-import { ILogger, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -10,7 +10,6 @@ import {
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
-	isEmailSetUp,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
@@ -39,13 +38,14 @@ import { JwtService } from '@/services/jwt.service';
 import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { listQueryMiddleware } from '@/middlewares';
+import { Logger } from '@/Logger';
 
 @Authorized(['global', 'owner'])
 @RestController('/users')
 export class UsersController {
 	constructor(
 		private readonly config: Config,
-		private readonly logger: ILogger,
+		private readonly logger: Logger,
 		private readonly externalHooks: IExternalHooksClass,
 		private readonly internalHooks: IInternalHooksClass,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -184,7 +184,7 @@ export class UsersController {
 				}
 				const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
 				const resp: {
-					user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
+					user: { id: string | null; email: string; inviteAcceptUrl?: string; emailSent: boolean };
 					error?: string;
 				} = {
 					user: {
@@ -202,6 +202,7 @@ export class UsersController {
 					});
 					if (result.emailSent) {
 						resp.user.emailSent = true;
+						delete resp.user.inviteAcceptUrl;
 						void this.internalHooks.onUserTransactionalEmail({
 							user_id: id,
 							message_type: 'New user invite',
@@ -619,7 +620,7 @@ export class UsersController {
 			throw new UnauthorizedError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!isEmailSetUp()) {
+		if (!this.mailer.isEmailSetUp) {
 			this.logger.error('Request to reinvite a user failed because email sending was not set up');
 			throw new InternalServerError('Email sending must be set up in order to invite other users');
 		}

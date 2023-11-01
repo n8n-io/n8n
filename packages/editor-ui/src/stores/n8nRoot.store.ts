@@ -1,6 +1,6 @@
 import { CLOUD_BASE_URL_PRODUCTION, CLOUD_BASE_URL_STAGING, STORES } from '@/constants';
 import type { IRestApiContext, RootState } from '@/Interface';
-import type { IDataObject } from 'n8n-workflow';
+import { setGlobalState, type IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
@@ -79,6 +79,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		},
 		setTimezone(timezone: string): void {
 			this.timezone = timezone;
+			setGlobalState({ defaultTimezone: timezone });
 		},
 		setExecutionTimeout(executionTimeout: number): void {
 			this.executionTimeout = executionTimeout;

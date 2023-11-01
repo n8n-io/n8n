@@ -1,13 +1,6 @@
 :root {
 	--node-type-background-l: 95%;
-	--node-type-main-color-h: var(--color-foreground-xdark-h);
-	--node-type-main-color-s: var(--color-foreground-xdark-s);
-	--node-type-main-color-l: var(--color-foreground-xdark-l);
-	--node-type-main-color: hsl(
-		var(--node-type-main-color-h),
-		var(--node-type-main-color-s),
-		var(--node-type-main-color-l)
-	);
+
 	--node-type-supplemental-label-color-h: 235;
 	--node-type-supplemental-label-color-s: 28%;
 	--node-type-supplemental-label-color-l: 40%;
@@ -174,6 +167,7 @@
 		var(--node-type-ai_vectorStore-color-s),
 		var(--node-type-background-l)
 	);
+	--node-error-output-color: #991818;
 }
 
 .clickable {
@@ -185,6 +179,12 @@
 .text-light {
 	color: $custom-font-light;
 	font-weight: 400;
+}
+
+// Dialog
+.el-overlay {
+	background-color: var(--color-dialog-overlay-background-dark);
+	backdrop-filter: blur(2px);
 }
 
 .el-dialog {
@@ -277,20 +277,6 @@
 	}
 	.tr {
 		color: var(--color-text-dark);
-	}
-}
-.el-table--striped {
-	.el-table__body {
-		tr.el-table__row--striped {
-			background-color: var(--color-background-light);
-			td {
-				background: none;
-			}
-		}
-		tr.el-table__row:hover,
-		tr.el-table__row:hover > td {
-			background-color: var(--color-primary-tint-3);
-		}
 	}
 }
 
@@ -415,6 +401,7 @@
 		&,
 		&:hover,
 		&:focus {
+			padding-left: 35px;
 			border-radius: var(--border-radius-base);
 			color: var(--color-text-dark);
 			background-color: var(--color-background-base);

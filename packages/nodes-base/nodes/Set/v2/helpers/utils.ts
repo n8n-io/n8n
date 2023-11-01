@@ -11,9 +11,9 @@ import set from 'lodash/set';
 import get from 'lodash/get';
 import unset from 'lodash/unset';
 
+import { getResolvables } from '../../../../utils/utilities';
 import type { SetNodeOptions, SetField } from './interfaces';
 import { INCLUDE } from './interfaces';
-import { getResolvables } from '../../../../utils/utilities';
 
 const configureFieldHelper = (dotNotation?: boolean) => {
 	if (dotNotation !== false) {
@@ -52,7 +52,7 @@ export function composeReturnItem(
 ) {
 	const newItem: INodeExecutionData = {
 		json: {},
-		pairedItem: inputItem.pairedItem,
+		pairedItem: { item: itemIndex },
 	};
 
 	if (options.includeBinary && inputItem.binary !== undefined) {
@@ -163,6 +163,11 @@ export const validateEntry = (
 ) => {
 	let entryValue = entry[entry.type];
 	const name = entry.name;
+
+	if (nodeVersion && nodeVersion >= 3.2 && (entryValue === undefined || entryValue === null)) {
+		return { name, value: null };
+	}
+
 	const entryType = entry.type.replace('Value', '') as FieldType;
 
 	const description = `To fix the error try to change the type for the field "${name}" or activate the option “Ignore Type Conversion Errors” to apply a less strict type validation`;
