@@ -596,7 +596,7 @@ export const getBackgroundStyles = (
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};
 	if (squareSize > 10.5) {
-		const dotColor = getStyleTokenValue('--color-canvas-dot');
+		const dotColor = getStyleTokenValue('--color-canvas-dot', true);
 		return {
 			...styles,
 			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
