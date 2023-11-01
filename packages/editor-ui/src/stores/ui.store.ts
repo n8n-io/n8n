@@ -90,7 +90,8 @@ function updateTheme(theme: ThemeOption) {
 }
 
 function getPreferredTheme(): AppliedThemeOption {
-	const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+	const isDarkMode =
+		!!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')?.matches;
 
 	return isDarkMode ? 'dark' : 'light';
 }
