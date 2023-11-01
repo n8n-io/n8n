@@ -2567,7 +2567,7 @@ const getRequestHelperFunctions = (
 				$request: requestOptions,
 				$response: {} as IN8nHttpFullResponse,
 				$version: node.typeVersion,
-				$count: 0,
+				$pageCount: 0,
 			};
 
 			const executeData: IExecuteData = {
@@ -2686,11 +2686,11 @@ const getRequestHelperFunctions = (
 				responseData.push(tempResponseData);
 
 				additionalKeys.$response = newResponse;
-				additionalKeys.$count = additionalKeys.$count + 1;
+				additionalKeys.$pageCount = additionalKeys.$pageCount + 1;
 
 				if (
 					paginationOptions.maxRequests &&
-					additionalKeys.$count >= paginationOptions.maxRequests
+					additionalKeys.$pageCount >= paginationOptions.maxRequests
 				) {
 					break;
 				}
