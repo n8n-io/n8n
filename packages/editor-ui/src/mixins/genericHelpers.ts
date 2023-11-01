@@ -71,7 +71,7 @@ export const genericHelpers = defineComponent({
 				lock: true,
 				text: text || this.$locale.baseText('genericHelpers.loading'),
 				spinner: 'el-icon-loading',
-				background: 'rgba(255, 255, 255, 0.8)',
+				background: 'var(--color-dialog-overlay-background)',
 			});
 		},
 		setLoadingText(text: string) {

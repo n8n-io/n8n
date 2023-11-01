@@ -52,6 +52,8 @@ export const prepareFormData = (
 			input.isSelect = true;
 			const fieldOptions = field.fieldOptions?.values ?? [];
 			input.selectOptions = fieldOptions.map((e) => e.option);
+		} else if (fieldType === 'textarea') {
+			input.isTextarea = true;
 		} else {
 			input.isInput = true;
 			input.type = fieldType as 'text' | 'number' | 'date';
