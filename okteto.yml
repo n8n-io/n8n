@@ -1,0 +1,2 @@
+deploy:
+  compose: docker-compose.yml
