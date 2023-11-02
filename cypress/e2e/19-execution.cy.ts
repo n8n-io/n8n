@@ -10,7 +10,6 @@ describe('Execution', () => {
 	});
 
 	it('should test manual workflow', () => {
-		workflowPage.actions.visit();
 		cy.createFixtureWorkflow('Manual_wait_set.json', `Manual wait set ${uuid()}`);
 
 		// Check workflow buttons

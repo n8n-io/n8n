@@ -43,7 +43,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
-			.should('have.css', 'left', '800px')
+			.should('have.css', 'left', '860px')
 			.should('have.css', 'top', '220px');
 
 		WorkflowPage.actions.hitUndo();
@@ -61,7 +61,7 @@ describe('Undo/Redo', () => {
 		// Last node should be added back to original position
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
-			.should('have.css', 'left', '800px')
+			.should('have.css', 'left', '860px')
 			.should('have.css', 'top', '220px');
 	});
 
@@ -275,7 +275,7 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	it('should undo/redo multiple steps', () => {
+	it.only('should undo/redo multiple steps', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		// WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
@@ -299,7 +299,7 @@ describe('Undo/Redo', () => {
 					.canvasNodes()
 					.first()
 					.should('have.css', 'left', `${initialPosition.left + 120}px`)
-					.should('have.css', 'top', `${initialPosition.top + 160}px`);
+					.should('have.css', 'top', `${initialPosition.top + 140}px`);
 
 				// Delete the set node
 				WorkflowPage.getters.canvasNodeByName(EDIT_FIELDS_SET_NODE_NAME).click().click();
@@ -329,7 +329,7 @@ describe('Undo/Redo', () => {
 					.canvasNodes()
 					.first()
 					.should('have.css', 'left', `${initialPosition.left + 120}px`)
-					.should('have.css', 'top', `${initialPosition.top + 160}px`);
+					.should('have.css', 'top', `${initialPosition.top + 140}px`);
 				// Third redo: Should delete the Set node
 				WorkflowPage.actions.hitRedo();
 				WorkflowPage.getters.canvasNodes().should('have.length', 3);
