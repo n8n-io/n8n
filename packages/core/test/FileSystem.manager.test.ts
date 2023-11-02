@@ -125,6 +125,7 @@ describe('copyByFilePath()', () => {
 		const targetPath = toFullFilePath(otherFileId);
 
 		fsp.cp = jest.fn().mockResolvedValue(undefined);
+		fsp.access = jest.fn().mockImplementation(async () => {});
 
 		const result = await fsManager.copyByFilePath(
 			workflowId,
