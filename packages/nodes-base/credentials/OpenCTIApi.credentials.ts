@@ -9,7 +9,7 @@ export class OpenCTIApi implements ICredentialType {
 
 	icon = 'file:icons/OpenCTI.png';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'OpenCTI',
 		docsUrl: 'https://docs.opencti.io/latest/deployment/integrations/?h=api#graphql-api',
 		apiBaseUrl: '',

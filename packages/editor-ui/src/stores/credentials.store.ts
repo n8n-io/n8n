@@ -191,6 +191,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return this.getCredentialOwnerName(credential);
 			};
 		},
+		httpOnlyCredentialTypes(): ICredentialType[] {
+			console.log(
+				this.allCredentialTypes,
+				this.allCredentialTypes.filter((credentialType) => credentialType.httpRequestNode),
+			);
+			return this.allCredentialTypes.filter((credentialType) => credentialType.httpRequestNode);
+		},
 	},
 	actions: {
 		setCredentialTypes(credentialTypes: ICredentialType[]): void {

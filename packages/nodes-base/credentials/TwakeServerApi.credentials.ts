@@ -9,7 +9,7 @@ export class TwakeServerApi implements ICredentialType {
 
 	documentationUrl = 'twake';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'Twake Server',
 		docsUrl: 'https://doc.twake.app/developers-api/home',
 		apiBaseUrl: '',

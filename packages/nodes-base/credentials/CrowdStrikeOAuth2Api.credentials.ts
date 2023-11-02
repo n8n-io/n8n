@@ -16,7 +16,7 @@ export class CrowdStrikeOAuth2Api implements ICredentialType {
 
 	icon = 'file:icons/CrowdStrike.svg';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'CrowdStrike',
 		docsUrl: 'https://developer.crowdstrike.com/',
 		apiBaseUrl: '',

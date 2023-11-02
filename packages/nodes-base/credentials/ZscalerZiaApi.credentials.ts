@@ -16,7 +16,7 @@ export class ZscalerZiaApi implements ICredentialType {
 
 	icon = 'file:icons/Zscaler.svg';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'Zscaler ZIA',
 		docsUrl: 'https://help.zscaler.com/zia/getting-started-zia-api',
 		apiBaseUrl: '',

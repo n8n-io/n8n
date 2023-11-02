@@ -9,7 +9,7 @@ export class F5BigIpApi implements ICredentialType {
 
 	icon = 'file:icons/F5.svg';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'F5 Big-IP',
 		docsUrl: 'https://clouddocs.f5.com/api/',
 		apiBaseUrl: '',

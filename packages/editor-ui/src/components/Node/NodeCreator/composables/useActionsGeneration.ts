@@ -1,7 +1,8 @@
 import type { ActionTypeDescription, ActionsRecord, SimplifiedNodeType } from '@/Interface';
-import { CUSTOM_API_CALL_KEY } from '@/constants';
+import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 import { memoize, startCase } from 'lodash-es';
 import type {
+	ICredentialType,
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
@@ -9,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 
 import { i18n } from '@/plugins/i18n';
+
+import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
@@ -268,7 +271,10 @@ export function useActionsGenerator() {
 		};
 	}
 
-	function generateMergedNodesAndActions(nodeTypes: INodeTypeDescription[]) {
+	function generateMergedNodesAndActions(
+		nodeTypes: INodeTypeDescription[],
+		httpOnlyCredentials: ICredentialType[],
+	) {
 		const visibleNodeTypes = [...nodeTypes];
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
@@ -278,6 +284,14 @@ export function useActionsGenerator() {
 			.forEach((app) => {
 				const appActions = generateNodeActions(app);
 				actions[app.name] = appActions;
+
+				if (app.name === HTTP_REQUEST_NODE_TYPE) {
+					const credentialOnlyNodes = httpOnlyCredentials.map((credentialType) =>
+						getSimplifiedNodeType(getCredentialOnlyNodeType(app, credentialType)),
+					);
+					console.log(httpOnlyCredentials, credentialOnlyNodes);
+					mergedNodes.push(...credentialOnlyNodes);
+				}
 
 				mergedNodes.push(getSimplifiedNodeType(app));
 			});

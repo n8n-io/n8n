@@ -40,6 +40,7 @@ import {
 	RoutingNode,
 	VersionedNodeType,
 	Workflow,
+	Logger,
 } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/CredentialTypes';

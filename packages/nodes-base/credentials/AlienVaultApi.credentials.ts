@@ -14,7 +14,7 @@ export class AlienVaultApi implements ICredentialType {
 
 	icon = 'file:icons/AlienVault.png';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'AlienVault',
 		docsUrl: 'https://otx.alienvault.com/api',
 		apiBaseUrl: 'https://otx.alienvault.com/api/v1/',

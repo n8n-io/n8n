@@ -9,7 +9,7 @@ export class QualysApi implements ICredentialType {
 
 	documentationUrl = 'qualys';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'Qualys',
 		docsUrl: 'https://qualysguard.qg2.apps.qualys.com/qwebhelp/fo_portal/api_doc/index.htm',
 		apiBaseUrl: 'https://qualysapi.qualys.com/api/',

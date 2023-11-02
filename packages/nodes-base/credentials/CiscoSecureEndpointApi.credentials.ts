@@ -17,7 +17,7 @@ export class CiscoSecureEndpointApi implements ICredentialType {
 
 	icon = 'file:icons/Cisco.svg';
 
-	httpRequestNodeVariant = {
+	httpRequestNode = {
 		name: 'Cisco Secure Endpoint',
 		docsUrl: 'https://developer.cisco.com/docs/secure-endpoint/',
 		apiBaseUrl: '',
