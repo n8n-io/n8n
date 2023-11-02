@@ -121,15 +121,15 @@ const optionsMemory: Partial<ChartOptions<'line'>> = {
 		},
 	},
 };
-const dataJobs = ref<ChartData>(blankDataSet('Job Count', '#f87979'));
-const dataCPU = ref<ChartData>(blankDataSet('Processor Usage', '#f87979'));
-const dataMemory = ref<ChartData>(blankDataSet('Memory Usage', '#f87979'));
+const dataJobs = ref<ChartData>(blankDataSet('Job Count'));
+const dataCPU = ref<ChartData>(blankDataSet('Processor Usage'));
+const dataMemory = ref<ChartData>(blankDataSet('Memory Usage'));
 
 orchestrationStore.$onAction(({ name, store }) => {
 	if (name === 'updateWorkerStatus') {
-		const newDataJobs: ChartData = blankDataSet('Job Count', '#f87979');
-		const newDataCPU: ChartData = blankDataSet('Processor Usage', '#38a979');
-		const newDataMemory: ChartData = blankDataSet('Memory Usage', '#337979');
+		const newDataJobs: ChartData = blankDataSet('Job Count', 'rgb(255, 111, 92)');
+		const newDataCPU: ChartData = blankDataSet('Processor Usage', 'rgb(19, 205, 103)');
+		const newDataMemory: ChartData = blankDataSet('Memory Usage', 'rgb(244, 216, 174)');
 		store.workersHistory[props.workerId]?.forEach((item) => {
 			newDataJobs.datasets[0].data.push(item.data.runningJobsSummary.length);
 			newDataJobs.labels?.push(new Date(item.timestamp).toLocaleTimeString());

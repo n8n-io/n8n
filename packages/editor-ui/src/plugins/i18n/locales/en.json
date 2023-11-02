@@ -615,6 +615,7 @@
 	"workerList.item.jobListTitle": "Current Jobs",
 	"workerList.item.netListTitle": "Network Interfaces",
 	"workerList.item.chartsTitle": "Performance Monitoring",
+	"workerList.item.copyAddressToClipboard": "Address copied to clipboard",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",

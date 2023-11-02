@@ -1,17 +1,19 @@
 <template>
 	<div :class="$style.execListWrapper">
 		<div :class="$style.execList">
+			<PushConnectionTracker class="actions"></PushConnectionTracker>
 			<div :class="$style.execListHeader">
 				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
 			</div>
-			<PushConnectionTracker class="actions"></PushConnectionTracker>
 			<div v-if="isMounting">
 				<n8n-loading :class="$style.tableLoader" variant="custom" />
 			</div>
-			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
 			<div v-else>
-				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :workerId="workerId" />
+				<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
+				<div v-else>
+					<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+						<WorkerCard :workerId="workerId" />
+					</div>
 				</div>
 			</div>
 		</div>
