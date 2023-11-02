@@ -15,7 +15,7 @@
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style.sidebar">
+			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
@@ -44,7 +44,7 @@ import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useTitleChange, useToast, useExternalHooks } from '@/composables';
+import { useGlobalLinkActions, useToast, useExternalHooks } from '@/composables';
 import {
 	useUIStore,
 	useSettingsStore,
@@ -59,7 +59,6 @@ import {
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
-import { ExpressionEvaluatorProxy } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'App',
@@ -101,116 +100,39 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			postAuthenticateDone: false,
-			settingsInitialized: false,
+			onAfterAuthenticateInitialized: false,
 			loading: true,
 		};
 	},
 	methods: {
-		async initSettings(): Promise<void> {
-			// The settings should only be initialized once
-			if (this.settingsInitialized) return;
-
-			try {
-				await this.settingsStore.getSettings();
-				this.settingsInitialized = true;
-				// Re-compute title since settings are now available
-				useTitleChange().titleReset();
-			} catch (e) {
-				this.showToast({
-					title: this.$locale.baseText('startupError'),
-					message: this.$locale.baseText('startupError.message'),
-					type: 'error',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
-
-				throw e;
-			}
-		},
-		async loginWithCookie(): Promise<void> {
-			try {
-				await this.usersStore.loginWithCookie();
-			} catch (e) {}
-		},
-		async initTemplates(): Promise<void> {
-			if (!this.settingsStore.isTemplatesEnabled) {
-				return;
-			}
-			try {
-				await this.settingsStore.testTemplatesEndpoint();
-			} catch (e) {}
-		},
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
 				console.log(HIRING_BANNER);
 			}
 		},
-		async checkForCloudData() {
+		async initializeCloudData() {
 			await this.cloudPlanStore.checkForCloudPlanData();
 			await this.cloudPlanStore.fetchUserCloudAccount();
 		},
-		async initialize(): Promise<void> {
-			await this.initSettings();
-			ExpressionEvaluatorProxy.setEvaluator(useSettingsStore().settings.expressions.evaluator);
-			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
+		async initializeTemplates() {
+			if (this.settingsStore.isTemplatesEnabled) {
+				try {
+					await this.settingsStore.testTemplatesEndpoint();
+				} catch (e) {}
+			}
 		},
-		trackPage(): void {
-			this.uiStore.currentView = this.$route.name || '';
-			if (this.$route?.meta?.templatesEnabled) {
-				this.templatesStore.setSessionId();
-			} else {
-				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+		async initializeSourceControl() {
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
 			}
-
-			this.$telemetry.page(this.$route);
 		},
-		async checkRouteAccess() {
-			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.showSetupPage) {
-				if (this.$route.name === VIEWS.SETUP) {
-					return;
-				}
-
-				return this.$router.replace({ name: VIEWS.SETUP });
+		async initializeNodeTranslationHeaders() {
+			if (this.defaultLocale !== 'en') {
+				await this.nodeTypesStore.getNodeTranslationHeaders();
 			}
-
-			if (this.canUserAccessCurrentRoute()) {
-				return;
-			}
-
-			// if cannot access page and not logged in, ask to sign in
-			const user = this.usersStore.currentUser;
-			if (!user) {
-				const redirect =
-					this.$route.query.redirect ||
-					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				return this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-			}
-
-			// if cannot access page and is logged in, respect signin redirect
-			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
-				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) {
-					// protect against phishing
-					return this.$router.replace(redirect);
-				}
-			}
-
-			// if redirect is set in meta, redirect to that
-			const redirect =
-				this.$route.meta &&
-				typeof this.$route.meta.getRedirect === 'function' &&
-				this.$route.meta.getRedirect();
-			if (redirect) {
-				return this.$router.replace(redirect);
-			}
-
-			// if cannot access page and is logged in
-			return this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
-		async postAuthenticate() {
-			if (this.postAuthenticateDone) {
+		async onAfterAuthenticate() {
+			if (this.onAfterAuthenticateInitialized) {
 				return;
 			}
 
@@ -218,43 +140,31 @@ export default defineComponent({
 				return;
 			}
 
-			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
-				await this.sourceControlStore.getPreferences();
-			}
+			await Promise.all([
+				this.initializeSourceControl(),
+				this.initializeTemplates(),
+				this.initializeNodeTranslationHeaders(),
+			]);
 
-			this.postAuthenticateDone = true;
+			this.onAfterAuthenticateInitialized = true;
 		},
 	},
-	created() {
+	async created() {
 		this.logHiringBanner();
 	},
 	async mounted() {
-		await this.initialize();
-		await Promise.all(
-			[this.checkForCloudData()].concat(
-				this.defaultLocale !== 'en' ? [this.nodeTypesStore.getNodeTranslationHeaders()] : [],
-			),
-		);
-
+		await this.initializeCloudData();
 		void this.checkForNewVersions();
-		void this.postAuthenticate();
-
-		this.loading = false;
+		void this.onAfterAuthenticate();
 
 		void this.externalHooks.run('app.mount');
-		this.trackPage();
+		this.loading = false;
 	},
 	watch: {
-		'usersStore.currentUser'(currentValue, previousValue) {
+		async 'usersStore.currentUser'(currentValue, previousValue) {
 			if (currentValue && !previousValue) {
-				void this.postAuthenticate();
+				void this.onAfterAuthenticate();
 			}
-		},
-		async $route() {
-			await this.initSettings();
-			await this.checkRouteAccess();
-
-			this.trackPage();
 		},
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);

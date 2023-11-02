@@ -42,10 +42,6 @@ app.use(i18nInstance);
 
 app.mount('#app');
 
-router.afterEach((to, from) => {
-	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
-});
-
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode

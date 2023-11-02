@@ -52,6 +52,7 @@ const isInstanceOwner = (user: IUserResponse | null) =>
 
 export const useUsersStore = defineStore(STORES.USERS, {
 	state: (): IUsersState => ({
+		initialized: false,
 		currentUserId: null,
 		users: {},
 		currentUserCloudInfo: null,
@@ -122,6 +123,16 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			try {
+				await this.loginWithCookie();
+				this.initialized = true;
+			} catch (e) {}
+		},
 		addUsers(users: IUserResponse[]) {
 			users.forEach((userResponse: IUserResponse) => {
 				const prevUser = this.users[userResponse.id] || {};

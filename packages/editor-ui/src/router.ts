@@ -2,11 +2,14 @@ import { useStorage } from '@vueuse/core';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { IPermissions } from './Interface';
-import { LOGIN_STATUS, ROLE } from '@/utils';
-import { useSettingsStore } from './stores/settings.store';
+import { isAuthorized, LOGIN_STATUS, ROLE, runExternalHook } from '@/utils';
+import { useSettingsStore, useUsersStore } from './stores/settings.store';
 import { useTemplatesStore } from './stores/templates.store';
 import { useSSOStore } from './stores/sso.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { useWebhooksStore } from '@/stores/webhooks.store';
+import { useUIStore } from '@/stores';
+import { useTelemetry } from '@/composables';
 
 interface IRouteConfig {
 	meta: {
@@ -112,7 +115,7 @@ export const routes = [
 			// Templates view remembers it's scroll position on back
 			scrollOffset: 0,
 			telemetry: {
-				getProperties(route: RouteLocation) {
+				getProperties() {
 					const templatesStore = useTemplatesStore();
 					return {
 						wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -490,7 +493,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'usage',
 							};
@@ -521,7 +524,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'personal',
 							};
@@ -546,7 +549,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'users',
 							};
@@ -568,7 +571,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'api',
 							};
@@ -596,7 +599,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'environments',
 							};
@@ -618,7 +621,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: Route) {
+						getProperties() {
 							return {
 								feature: 'external-secrets',
 							};
@@ -640,7 +643,7 @@ export const routes = [
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties(route: RouteLocation) {
+						getProperties() {
 							return {
 								feature: 'sso',
 							};
@@ -831,6 +834,92 @@ const router = createRouter({
 		}
 	},
 	routes,
+});
+
+router.beforeEach(async (to, from, next) => {
+	/**
+	 * Initialize stores before routing
+	 */
+
+	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
+	await Promise.all([settingsStore.initialize(), usersStore.initialize()]);
+
+	/**
+	 * Redirect to setup page. User should be redirected to this only once
+	 */
+
+	if (settingsStore.showSetupPage) {
+		if (to.name === VIEWS.SETUP) {
+			return next();
+		}
+
+		return next({ name: VIEWS.SETUP });
+	}
+
+	/**
+	 * Verify user permissions for current route
+	 */
+
+	const currentUser = usersStore.currentUser;
+	const permissions = to.meta?.permissions as IPermissions;
+	const canUserAccessCurrentRoute = permissions && isAuthorized(permissions, currentUser);
+	if (canUserAccessCurrentRoute) {
+		return next();
+	}
+
+	/**
+	 * If user cannot access the page and is not logged in, redirect to sign in
+	 */
+
+	if (!currentUser) {
+		const redirect =
+			to.query.redirect ||
+			encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+		return next({ name: VIEWS.SIGNIN, query: { redirect } });
+	}
+
+	/**
+	 * If user cannot access page but is logged in, respect sign in redirect
+	 */
+
+	if (to.name === VIEWS.SIGNIN && typeof to.query.redirect === 'string') {
+		const redirect = decodeURIComponent(to.query.redirect);
+		if (redirect.startsWith('/')) {
+			// protect against phishing
+			return next(redirect);
+		}
+	}
+
+	/**
+	 * Otherwise, redirect to home page
+	 */
+
+	return next({ name: VIEWS.HOMEPAGE });
+});
+
+router.afterEach((to, from) => {
+	const telemetry = useTelemetry();
+	const uiStore = useUIStore();
+	const templatesStore = useTemplatesStore();
+
+	/**
+	 * Run external hooks
+	 */
+
+	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+
+	/**
+	 * Track current view for telemetry
+	 */
+
+	uiStore.currentView = (to.name as string) ?? '';
+	if (to.meta?.templatesEnabled) {
+		templatesStore.setSessionId();
+	} else {
+		templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+	}
+	telemetry.page(to);
 });
 
 export default router;
