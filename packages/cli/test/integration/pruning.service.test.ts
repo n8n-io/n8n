@@ -1,24 +1,31 @@
 import config from '@/config';
 import * as Db from '@/Db';
 
-import * as testDb from '../shared/testDb';
+import * as testDb from './shared/testDb';
 import type { ExecutionStatus } from 'n8n-workflow';
-import type { ExecutionRepository } from '@/databases/repositories';
 import type { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
 import { TIME } from '@/constants';
+import { PruningService } from '@/services/pruning.service';
+import { BinaryDataService } from 'n8n-core';
+import { Logger } from '@/Logger';
+import { mockInstance } from './shared/utils';
 
 describe('softDeleteOnPruningCycle()', () => {
+	let pruningService: PruningService;
+
 	const now = new Date();
 	const yesterday = new Date(Date.now() - TIME.DAY);
-	let executionRepository: ExecutionRepository;
 	let workflow: Awaited<ReturnType<typeof testDb.createWorkflow>>;
 
 	beforeAll(async () => {
 		await testDb.init();
 
-		const { Execution } = Db.collections;
+		pruningService = new PruningService(
+			mockInstance(Logger),
+			Db.collections.Execution,
+			mockInstance(BinaryDataService),
+		);
 
-		executionRepository = Execution;
 		workflow = await testDb.createWorkflow();
 	});
 
@@ -54,7 +61,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -73,7 +80,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -95,7 +102,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -114,7 +121,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -142,7 +149,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -166,7 +173,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -185,7 +192,7 @@ describe('softDeleteOnPruningCycle()', () => {
 		])('should prune %s executions', async (status, attributes) => {
 			const execution = await testDb.createExecution({ status, ...attributes }, workflow);
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
@@ -203,7 +210,7 @@ describe('softDeleteOnPruningCycle()', () => {
 				await testDb.createSuccessfulExecution(workflow),
 			];
 
-			await executionRepository.softDeleteOnPruningCycle();
+			await pruningService.softDeleteOnPruningCycle();
 
 			const result = await findAllExecutions();
 			expect(result).toEqual([
