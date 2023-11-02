@@ -117,7 +117,7 @@ export class LmChatAwsBedrock implements INodeType {
 					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokensToSample',
-						default: 32768,
+						default: 2000,
 						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 					},
