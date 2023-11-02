@@ -64,36 +64,23 @@ import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import {
+	addThemeToBody,
+	getPreferredTheme,
+	getQueryParam,
+	isValidTheme,
+	updateTheme,
+} from './ui.utils';
 
 let savedTheme: ThemeOption = 'system';
 try {
-	const value = localStorage.getItem(LOCAL_STORAGE_THEME) as AppliedThemeOption;
-	if (['light', 'dark'].includes(value)) {
+	// query param allows overriding theme for demo view in preview iframe without flickering
+	const value = getQueryParam('theme') || localStorage.getItem(LOCAL_STORAGE_THEME);
+	if (isValidTheme(value)) {
 		savedTheme = value;
 		addThemeToBody(value);
 	}
 } catch (e) {}
-
-function addThemeToBody(theme: AppliedThemeOption) {
-	window.document.body.setAttribute('data-theme', theme);
-}
-
-function updateTheme(theme: ThemeOption) {
-	if (theme === 'system') {
-		window.document.body.removeAttribute('data-theme');
-		localStorage.removeItem(LOCAL_STORAGE_THEME);
-	} else {
-		addThemeToBody(theme);
-		localStorage.setItem(LOCAL_STORAGE_THEME, theme);
-	}
-}
-
-function getPreferredTheme(): AppliedThemeOption {
-	const isDarkMode =
-		!!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')?.matches;
-
-	return isDarkMode ? 'dark' : 'light';
-}
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
