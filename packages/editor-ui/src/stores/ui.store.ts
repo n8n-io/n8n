@@ -37,7 +37,6 @@ import {
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
-	LOCAL_STORAGE_THEME,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -67,15 +66,14 @@ import type { BannerName } from 'n8n-workflow';
 import {
 	addThemeToBody,
 	getPreferredTheme,
-	getQueryParam,
+	getThemeOverride,
 	isValidTheme,
 	updateTheme,
 } from './ui.utils';
 
 let savedTheme: ThemeOption = 'system';
 try {
-	// query param allows overriding theme for demo view in preview iframe without flickering
-	const value = getQueryParam('theme') || localStorage.getItem(LOCAL_STORAGE_THEME);
+	const value = getThemeOverride();
 	if (isValidTheme(value)) {
 		savedTheme = value;
 		addThemeToBody(value);

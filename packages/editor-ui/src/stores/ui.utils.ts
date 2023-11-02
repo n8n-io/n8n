@@ -9,7 +9,12 @@ export function isValidTheme(theme: string | null): theme is AppliedThemeOption 
 	return !!theme && ['light', 'dark'].includes(theme);
 }
 
-export function getQueryParam(paramName: string): string | null {
+// query param allows overriding theme for demo view in preview iframe without flickering
+export function getThemeOverride() {
+	return getQueryParam('theme') || localStorage.getItem(LOCAL_STORAGE_THEME);
+}
+
+function getQueryParam(paramName: string): string | null {
 	return new URLSearchParams(window.location.search).get(paramName);
 }
 
