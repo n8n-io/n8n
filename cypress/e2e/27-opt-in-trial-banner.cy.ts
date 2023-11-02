@@ -13,7 +13,7 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 		planData.expirationDate = fiveDaysFromNow.toJSON();
 	});
 
-	it.only('should render trial banner for opt-in cloud user', () => {
+	it('should render trial banner for opt-in cloud user', () => {
 		cy.intercept('GET', '/rest/admin/cloud-plan', {
 			body: planData,
 		}).as('getPlanData');

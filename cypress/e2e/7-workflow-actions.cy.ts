@@ -69,7 +69,7 @@ describe('Workflow Actions', () => {
 			.should('eq', NEW_WORKFLOW_NAME);
 	});
 
-	it.only('should not save workflow if canvas is loading', () => {
+	it('should not save workflow if canvas is loading', () => {
 		let interceptCalledCount = 0;
 
 		// There's no way in Cypress to check if intercept was not called
