@@ -7,7 +7,7 @@ import {
 } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import { logWrapper } from '../../../utils/logWrapper';
 import { metadataFilterField } from '../../../utils/sharedFields';
@@ -93,8 +93,7 @@ export class VectorStorePineconeLoad implements INodeType {
 			itemIndex,
 		)) as Embeddings;
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});

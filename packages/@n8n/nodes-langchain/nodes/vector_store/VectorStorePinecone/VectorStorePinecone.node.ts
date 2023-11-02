@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 
@@ -88,8 +88,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
@@ -111,8 +110,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
@@ -120,7 +118,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 		const pineconeIndex = client.Index(index);
 
 		if (options.pineconeNamespace && options.clearNamespace) {
-			await pineconeIndex.delete1({ deleteAll: true, namespace: options.pineconeNamespace });
+			await pineconeIndex.namespace(options.pineconeNamespace).deleteAll();
 		}
 
 		await PineconeStore.fromDocuments(documents, embeddings, {
