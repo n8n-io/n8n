@@ -71,7 +71,7 @@ export async function formWebhook(context: IWebhookFunctions) {
 	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
 
 	//Show the form on GET request
-	if (webhookName === 'setup') {
+	if (webhookName === 'formGet') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = context.getNodeParameter('formDescription', '') as string;
 		const instanceId = context.getInstanceId();

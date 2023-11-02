@@ -1,7 +1,14 @@
 import type { INodeType, INodeTypeDescription, IWebhookFunctions } from 'n8n-workflow';
 import { FORM_TRIGGER_PATH_IDENTIFIER } from 'n8n-workflow';
 import { formWebhook } from './utils';
-import { formNodeDescription } from './description';
+import {
+	formDescription,
+	formFields,
+	formOptions,
+	formRespondMode,
+	formTitle,
+	webhookPath,
+} from './description';
 
 export class FormTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -18,7 +25,7 @@ export class FormTrigger implements INodeType {
 		outputs: ['main'],
 		webhooks: [
 			{
-				name: 'setup',
+				name: 'formGet',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				isFullPath: true,
@@ -26,7 +33,7 @@ export class FormTrigger implements INodeType {
 				ndvHideUrl: true,
 			},
 			{
-				name: 'default',
+				name: 'formPost',
 				httpMethod: 'POST',
 				responseMode: '={{$parameter["responseMode"]}}',
 				isFullPath: true,
@@ -52,7 +59,7 @@ export class FormTrigger implements INodeType {
 			},
 		},
 
-		properties: formNodeDescription,
+		properties: [webhookPath, formTitle, formDescription, formFields, formRespondMode, formOptions],
 	};
 
 	async webhook(this: IWebhookFunctions) {
