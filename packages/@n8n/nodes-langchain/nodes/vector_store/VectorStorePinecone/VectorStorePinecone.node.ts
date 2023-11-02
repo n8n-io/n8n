@@ -45,19 +45,19 @@ const insertFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'Clear Namespace',
+				name: 'clearNamespace',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to clear the namespace before inserting new data',
+			},
+			{
 				displayName: 'Pinecone Namespace',
 				name: 'pineconeNamespace',
 				type: 'string',
 				description:
 					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
 				default: '',
-			},
-			{
-				displayName: 'Clear Namespace',
-				name: 'clearNamespace',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to clear the namespace before inserting new data',
 			},
 		],
 	},
