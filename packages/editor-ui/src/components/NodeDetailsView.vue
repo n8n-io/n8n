@@ -660,24 +660,12 @@ export default defineComponent({
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 
-					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.emit('data-pinning-error', {
-							errorType: 'data-too-large',
-							source: 'on-ndv-close-modal',
-						});
-						return;
-					}
-
-					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.emit('data-pinning-error', {
-							errorType: 'invalid-json',
-							source: 'on-ndv-close-modal',
-						});
-						return;
-					}
-
 					if (this.activeNode) {
-						this.workflowsStore.pinData({ node: this.activeNode, data: jsonParse(value) });
+						try {
+							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						} catch (error) {
+							console.error(error);
+						}
 					}
 				}
 
@@ -782,6 +770,10 @@ $main-panel-width: 360px;
 	position: fixed;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
+
+	span {
+		color: var(--color-ndv-back-font);
+	}
 
 	&:hover {
 		cursor: pointer;
