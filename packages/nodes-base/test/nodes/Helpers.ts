@@ -1,9 +1,10 @@
-import { mkdtempSync, readFileSync, readdirSync } from 'fs';
-import { tmpdir } from 'os';
+import { readFileSync, readdirSync, mkdtempSync } from 'fs';
 import path from 'path';
-import { get, isEmpty } from 'lodash';
-import { Container } from 'typedi';
+import { tmpdir } from 'os';
+import { isEmpty } from 'lodash';
+import { get } from 'lodash';
 import { BinaryDataService, Credentials, constructExecutionMetaData } from 'n8n-core';
+import { Container } from 'typedi';
 import type {
 	CredentialLoadingDetails,
 	ICredentialDataDecryptedObject,

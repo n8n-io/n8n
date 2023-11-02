@@ -1764,8 +1764,3 @@ export function getCredentialsForNode(
 
 	return object.description.credentials ?? [];
 }
-
-export function isNodeOfVersion(node: INodeTypeDescription, version: number): boolean {
-	const nodeVersion = node.version;
-	return Array.isArray(nodeVersion) ? nodeVersion.includes(version) : nodeVersion === version;
-}

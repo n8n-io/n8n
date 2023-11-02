@@ -4,53 +4,52 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Service } from 'typedi';
-import get from 'lodash/get';
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
+import get from 'lodash/get';
 
 import type {
 	ICredentialDataDecryptedObject,
-	ICredentialTestFunction,
-	ICredentialTestFunctions,
-	ICredentialTestRequestData,
 	ICredentialsDecrypted,
 	ICredentialsExpressionResolveValues,
-	IHttpRequestHelper,
+	ICredentialTestFunction,
+	ICredentialTestRequestData,
 	IHttpRequestOptions,
 	INode,
-	INodeCredentialTestResult,
 	INodeCredentialsDetails,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeParameters,
 	INodeProperties,
 	INodeType,
-	INodeTypeData,
-	INodeTypes,
+	IVersionedNodeType,
 	IRequestOptionsSimplified,
 	IRunExecutionData,
-	ITaskDataConnections,
-	IVersionedNodeType,
 	IWorkflowDataProxyAdditionalKeys,
-	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
+	ITaskDataConnections,
+	IHttpRequestHelper,
+	INodeTypeData,
+	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+	ICredentialTestFunctions,
 } from 'n8n-workflow';
 import {
-	ErrorReporterProxy as ErrorReporter,
 	ICredentialsHelper,
+	VersionedNodeType,
 	NodeHelpers,
 	RoutingNode,
-	VersionedNodeType,
 	Workflow,
-	Logger,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
-import { NodeTypes } from '@/NodeTypes';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { NodeTypes } from '@/NodeTypes';
+import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { isObjectLiteral } from './utils';

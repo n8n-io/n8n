@@ -1,31 +1,31 @@
 import glob from 'fast-glob';
-import fsPromises from 'fs/promises';
-import path from 'path';
 import { Container, Service } from 'typedi';
+import path from 'path';
+import fsPromises from 'fs/promises';
 
 import type { DirectoryLoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	InstanceSettings,
 	CustomDirectoryLoader,
-	LazyPackageDirectoryLoader,
 	PackageDirectoryLoader,
+	LazyPackageDirectoryLoader,
 } from 'n8n-core';
 import type {
-	ICredentialTypeData,
-	INodeTypeData,
-	INodeTypeDescription,
 	KnownNodesAndCredentials,
+	INodeTypeDescription,
+	INodeTypeData,
+	ICredentialTypeData,
 } from 'n8n-workflow';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import config from '@/config';
 import {
-	CLI_DIR,
 	CUSTOM_API_CALL_KEY,
 	CUSTOM_API_CALL_NAME,
-	inE2ETests,
 	inTest,
+	CLI_DIR,
+	inE2ETests,
 } from '@/constants';
 import { Logger } from '@/Logger';
 

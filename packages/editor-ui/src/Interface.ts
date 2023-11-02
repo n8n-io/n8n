@@ -1,54 +1,53 @@
 import type {
 	AI_NODE_CREATOR_VIEW,
-	AI_OTHERS_NODE_CREATOR_VIEW,
 	CREDENTIAL_EDIT_MODAL_KEY,
-	FAKE_DOOR_FEATURES,
-	REGULAR_NODE_CREATOR_VIEW,
 	SignInType,
+	FAKE_DOOR_FEATURES,
 	TRIGGER_NODE_CREATOR_VIEW,
+	REGULAR_NODE_CREATOR_VIEW,
+	AI_OTHERS_NODE_CREATOR_VIEW,
 } from './constants';
 
-import type { BulkCommand, Undoable } from '@/models/history';
-import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { IMenuItem } from 'n8n-design-system';
 import type {
-	BannerName,
-	ExecutionStatus,
-	FeatureFlags,
 	GenericValue,
 	IConnections,
-	ICredentialType,
 	ICredentialsDecrypted,
 	ICredentialsEncrypted,
+	ICredentialType,
 	IDataObject,
-	IDisplayOptions,
-	IExecutionsSummary,
-	ILoadOptions,
-	IN8nUISettings,
 	INode,
-	INodeCredentials,
-	INodeExecutionData,
 	INodeIssues,
-	INodeListSearchItems,
 	INodeParameters,
-	INodeProperties,
 	INodeTypeDescription,
-	INodeTypeNameVersion,
 	IPinData,
+	IRunExecutionData,
 	IRun,
 	IRunData,
-	IRunExecutionData,
 	ITaskData,
+	IWorkflowSettings as IWorkflowSettingsWorkflow,
+	WorkflowExecuteMode,
+	PublicInstalledPackage,
+	INodeTypeNameVersion,
+	ILoadOptions,
+	INodeCredentials,
+	INodeListSearchItems,
+	NodeParameterValueType,
+	IDisplayOptions,
+	IExecutionsSummary,
+	FeatureFlags,
+	ExecutionStatus,
 	ITelemetryTrackProperties,
 	IUserManagementSettings,
-	IUserSettings,
-	IWorkflowSettings as IWorkflowSettingsWorkflow,
-	NodeConnectionType,
-	NodeParameterValueType,
-	PublicInstalledPackage,
-	WorkflowExecuteMode,
 	WorkflowSettings,
+	IUserSettings,
+	IN8nUISettings,
+	BannerName,
+	INodeExecutionData,
+	INodeProperties,
 } from 'n8n-workflow';
+import type { BulkCommand, Undoable } from '@/models/history';
+import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
 
 export * from 'n8n-design-system/types';
@@ -771,7 +770,6 @@ export type SimplifiedNodeType = Pick<
 	| 'defaults'
 	| 'outputs'
 >;
-
 export interface SubcategoryItemProps {
 	description?: string;
 	iconType?: string;
