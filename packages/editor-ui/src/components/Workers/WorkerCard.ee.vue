@@ -40,9 +40,9 @@ import { useOrchestrationStore } from '@/stores/orchestration.store';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 import { averageWorkerLoadFromLoadsAsString, memAsGb } from './helpers';
-import WorkerJobAccordion from './WorkerJobAccordion.vue';
-import WorkerNetAccordion from './WorkerNetAccordion.vue';
-import WorkerChartsAccordion from './WorkerChartsAccordion.vue';
+import WorkerJobAccordion from './WorkerJobAccordion.ee.vue';
+import WorkerNetAccordion from './WorkerNetAccordion.ee.vue';
+import WorkerChartsAccordion from './WorkerChartsAccordion.ee.vue';
 
 let interval: NodeJS.Timer;
 

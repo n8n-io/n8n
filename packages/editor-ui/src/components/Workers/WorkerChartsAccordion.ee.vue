@@ -32,8 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import WorkerAccordion from './WorkerAccordion.vue';
-import { useOrchestrationStore } from '../../stores/orchestration.store';
+import WorkerAccordion from './WorkerAccordion.ee.vue';
+import { useOrchestrationStore } from '@/stores/orchestration.store';
 import { ref } from 'vue';
 import type { ChartData, ChartOptions } from 'chart.js';
 import {

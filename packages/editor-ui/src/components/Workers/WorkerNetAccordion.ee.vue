@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
-import WorkerAccordion from './WorkerAccordion.vue';
+import WorkerAccordion from './WorkerAccordion.ee.vue';
 import { useCopyToClipboard, useToast, useI18n } from '@/composables';
 
 const props = defineProps<{

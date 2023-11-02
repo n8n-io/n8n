@@ -29,7 +29,7 @@
 
 <script setup lang="ts">
 import type { WorkerJobStatusSummary } from '@/Interface';
-import WorkerAccordion from './WorkerAccordion.vue';
+import WorkerAccordion from './WorkerAccordion.ee.vue';
 
 const props = defineProps<{
 	items: WorkerJobStatusSummary[];
