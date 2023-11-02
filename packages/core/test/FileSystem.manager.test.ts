@@ -53,6 +53,7 @@ describe('getPath()', () => {
 describe('getAsBuffer()', () => {
 	it('should return a buffer', async () => {
 		fsp.readFile = jest.fn().mockResolvedValue(mockBuffer);
+		fsp.access = jest.fn().mockImplementation(async () => {});
 
 		const result = await fsManager.getAsBuffer(fileId);
 
@@ -64,6 +65,7 @@ describe('getAsBuffer()', () => {
 describe('getAsStream()', () => {
 	it('should return a stream', async () => {
 		fs.createReadStream = jest.fn().mockReturnValue(mockStream);
+		fsp.access = jest.fn().mockImplementation(async () => {});
 
 		const stream = await fsManager.getAsStream(fileId);
 
