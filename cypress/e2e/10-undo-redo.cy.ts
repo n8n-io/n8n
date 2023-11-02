@@ -43,7 +43,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
-			.should('have.css', 'left', '860px')
+			.should('have.css', 'left', '800px')
 			.should('have.css', 'top', '220px');
 
 		WorkflowPage.actions.hitUndo();
@@ -61,7 +61,7 @@ describe('Undo/Redo', () => {
 		// Last node should be added back to original position
 		WorkflowPage.getters
 			.canvasNodeByName('Code')
-			.should('have.css', 'left', '860px')
+			.should('have.css', 'left', '800px')
 			.should('have.css', 'top', '220px');
 	});
 
