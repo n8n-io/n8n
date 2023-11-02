@@ -4,7 +4,7 @@
 
 export function vistDemoPage(theme?: 'dark' | 'light') {
 	const query = theme ? `?theme=${theme}` : '';
-	cy.visit(this.url + query);
+	cy.visit('/workflows/demo' + query);
 	cy.waitForLoad();
 	cy.window().then((win) => {
 		// @ts-ignore
