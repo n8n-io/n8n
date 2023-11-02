@@ -195,8 +195,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.8.0
-        version: 2.8.0
+        specifier: ~2.7.1
+        version: 2.7.2
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
@@ -4696,8 +4696,8 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.8.0:
-    resolution: {integrity: sha512-kUE1ATS/Ru1FC70hzWFUf6K7t9gcSndutzV5XMM9Qdh3mMadsgP7kpZ8gFcA49nTAZYPr5oHOE5naal5kHME1w==}
+  /@n8n_io/license-sdk@2.7.2:
+    resolution: {integrity: sha512-GalBo+2YxbFUR1I7cx3JDEiippqKw8ml3FdFK9hRRB9NfpP+H0QYnWf/sGOmKcb4nZ2lqU38nU7ZdIF96jBkXg==}
     engines: {node: '>=18.12.1', npm: '>=8.19.2'}
     dependencies:
       crypto-js: 4.2.0
