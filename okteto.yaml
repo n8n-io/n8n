@@ -1,2 +1,9 @@
-deploy:
-  compose: docker-compose.yml
+dev:
+  n8n:
+    command: ["bash"]
+    forward:
+      - 5678:5678
+    sync:
+      - n8n:/usr/src/app
+  frontend:
+    command: n8n start
