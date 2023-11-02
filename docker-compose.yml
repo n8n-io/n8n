@@ -52,4 +52,4 @@ services:
       - N8N_PATH
       - WEBHOOK_URL=https://${DOMAIN_NAME}${N8N_PATH}
     volumes:
-      - dev/.n8n:/home/node/.n8n
+      - n8n:/home/node/.n8n
