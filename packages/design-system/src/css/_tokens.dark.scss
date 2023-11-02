@@ -36,6 +36,9 @@
 	--color-canvas-selected: var(--prim-gray-0-alpha-025);
 	--node-type-main-color: var(--prim-gray-420);
 
+	// Sticky
+	--color-sticky-code-background: var(--prim-gray-40);
+
 	// Expressions
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a-tint-300);
 	--color-valid-resolvable-background: var(--prim-color-alt-a-alpha-025);
@@ -78,7 +81,7 @@
 	// Button primary
 	--color-button-primary-disabled-font: var(--prim-gray-0-alpha-025);
 	--color-button-primary-disabled-border: transparent;
-	--color-button-primary-disabled-background: var(--prim-color-primary-alpha-04);
+	--color-button-primary-disabled-background: var(--prim-color-primary-shade-300);
 
 	// Button secondary
 	--color-button-secondary-border: var(--prim-gray-420);
@@ -138,6 +141,13 @@
 	--border-color-light: var(--color-foreground-light);
 
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
+
+	// Various
+	--color-info-tint-1: var(--prim-gray-420);
+	--color-info-tint-2: var(--prim-gray-740);
+
+	--node-type-supplemental-label-color-l: 100%;
+	--color-configurable-node-name: var(--color-text-lighter);
 }
 
 body[data-theme='dark'] {
