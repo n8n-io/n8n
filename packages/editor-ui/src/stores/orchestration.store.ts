@@ -5,6 +5,7 @@ import { useRootStore } from './n8nRoot.store';
 
 const GET_STATUS_ENDPOINT = '/orchestration//worker/status';
 const HISTORY_LENGTH = 100;
+const STALE_SECONDS = 120 * 1000;
 
 export interface IOrchestrationStoreState {
 	workers: { [id: string]: IPushDataWorkerStatusPayload };
@@ -41,7 +42,7 @@ export const useOrchestrationStore = defineStore('orchestrationManager', {
 		},
 		removeStaleWorkers() {
 			for (const id in this.workersLastUpdated) {
-				if (this.workersLastUpdated[id] + 20000 < Date.now()) {
+				if (this.workersLastUpdated[id] + STALE_SECONDS < Date.now()) {
 					delete this.workers[id];
 					delete this.workersHistory[id];
 					delete this.workersLastUpdated[id];

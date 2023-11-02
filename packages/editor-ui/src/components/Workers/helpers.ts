@@ -5,3 +5,7 @@ export function averageWorkerLoadFromLoads(loads: number[]): number {
 export function averageWorkerLoadFromLoadsAsString(loads: number[]): string {
 	return averageWorkerLoadFromLoads(loads).toFixed(2);
 }
+
+export function memAsGb(mem: number): number {
+	return mem / 1024 / 1024 / 1024;
+}

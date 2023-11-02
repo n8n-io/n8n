@@ -8,16 +8,16 @@
 				data-test-id="workflow-card-name"
 			>
 				{{ worker.workerId }} ({{ worker.hostname }}) | Average Load:
-				{{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Memory:
-				{{ (worker.freeMem / 1024 / 1024 / 1024).toFixed(2) }}GB /
-				{{ (worker.totalMem / 1024 / 1024 / 1024).toFixed(2) }}GB {{ stale ? ' (stale)' : '' }}
+				{{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free Memory:
+				{{ memAsGb(worker.freeMem).toFixed(2) }}GB / {{ memAsGb(worker.totalMem).toFixed(2) }}GB
+				{{ stale ? ' (stale)' : '' }}
 			</n8n-heading>
 		</template>
 		<div :class="$style.cardDescription">
 			<n8n-text color="text-light" size="small" :class="$style.container">
 				<span
 					>{{ $locale.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdateString }}s
-					ago | Architecture: {{ worker.arch }} | Platform: {{ worker.platform }} | Up since:
+					ago | Architecture: {{ worker.arch }} | Platform: {{ worker.platform }} | Uptime:
 					{{ upTime(worker.uptime) }}</span
 				>
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
@@ -39,7 +39,7 @@
 import { useOrchestrationStore } from '@/stores/orchestration.store';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
-import { averageWorkerLoadFromLoadsAsString } from './helpers';
+import { averageWorkerLoadFromLoadsAsString, memAsGb } from './helpers';
 import WorkerJobAccordion from './WorkerJobAccordion.vue';
 import WorkerNetAccordion from './WorkerNetAccordion.vue';
 import WorkerChartsAccordion from './WorkerChartsAccordion.vue';

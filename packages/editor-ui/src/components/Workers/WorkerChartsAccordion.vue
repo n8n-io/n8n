@@ -1,5 +1,5 @@
 <template>
-	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="true">
+	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
 		<template #title>
 			{{ $locale.baseText('workerList.item.chartsTitle') }}
 		</template>
@@ -49,7 +49,7 @@ import {
 } from 'chart.js';
 import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
-import { averageWorkerLoadFromLoads } from './helpers';
+import { averageWorkerLoadFromLoads, memAsGb } from './helpers';
 
 ChartJS.register(
 	CategoryScale,
@@ -107,7 +107,7 @@ const optionsCPU: Partial<ChartOptions<'line'>> = {
 		},
 	},
 };
-const maxMemory = orchestrationStore.workers[props.workerId]?.totalMem / 1024 / 1024 / 1024 ?? 1;
+const maxMemory = memAsGb(orchestrationStore.workers[props.workerId]?.totalMem) ?? 1;
 const optionsMemory: Partial<ChartOptions<'line'>> = {
 	responsive: true,
 	maintainAspectRatio: true,
@@ -135,7 +135,7 @@ orchestrationStore.$onAction(({ name, store }) => {
 			newDataJobs.labels?.push(new Date(item.timestamp).toLocaleTimeString());
 			newDataCPU.datasets[0].data.push(averageWorkerLoadFromLoads(item.data.loadAvg));
 			newDataCPU.labels = newDataJobs.labels;
-			newDataMemory.datasets[0].data.push(item.data.freeMem / 1024 / 1024 / 1024);
+			newDataMemory.datasets[0].data.push(maxMemory - memAsGb(item.data.freeMem));
 			newDataMemory.labels = newDataJobs.labels;
 		});
 		dataJobs.value = newDataJobs;
