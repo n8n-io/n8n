@@ -147,6 +147,11 @@
 	--color-info-tint-2: var(--prim-gray-740);
 
 	--node-type-supplemental-label-color-l: 100%;
+	--node-type-supplemental-label-color: hsl(
+		var(--node-type-supplemental-label-color-h),
+		var(--node-type-supplemental-label-color-s),
+		var(--node-type-supplemental-label-color-l)
+	);
 	--color-configurable-node-name: var(--color-text-lighter);
 }
 
