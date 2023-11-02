@@ -442,7 +442,10 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
+			return (
+				!this.isConfigurableNode &&
+				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+			);
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
