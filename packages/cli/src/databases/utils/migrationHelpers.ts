@@ -52,14 +52,14 @@ function logMigrationStart(migrationName: string): void {
 		runningMigrations = true;
 	}
 
-	logger.debug(`Starting migration ${migrationName}`);
+	logger.info(`Starting migration ${migrationName}`);
 }
 
 function logMigrationEnd(migrationName: string): void {
 	if (inTest) return;
 
 	const logger = Container.get(Logger);
-	logger.debug(`Finished migration ${migrationName}`);
+	logger.info(`Finished migration ${migrationName}`);
 }
 
 const runDisablingForeignKeys = async (
