@@ -1,3 +1,7 @@
+deploy:
+  remote: true
+  commands:
+    - npx n8n
 dev:
   n8n:
     command: ["bash"]
