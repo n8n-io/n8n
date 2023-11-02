@@ -34,10 +34,10 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true, true);
 
 		for (let i = 0; i < desiredOutputs; i++) {
-			cy.contains('Add Routing Rule').click()
+			cy.contains('Add Routing Rule').click();
 		}
 
-		NDVDialog.actions.close()
+		NDVDialog.actions.close();
 		for (let i = 0; i < desiredOutputs; i++) {
 			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true });
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
@@ -51,7 +51,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.reload();
 		cy.waitForLoad();
 		// Make sure outputless switch was connected correctly
-		cy.get(`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`).should('be.visible');
+		cy.get(
+			`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`,
+		).should('be.visible');
 		// Make sure all connections are there after reload
 		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
@@ -179,7 +181,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			.canvasNodes()
 			.last()
 			.should('have.css', 'left', '740px')
-			.should('have.css', 'top', '320px')
+			.should('have.css', 'top', '320px');
 	});
 
 	it('should zoom in', () => {
@@ -350,5 +352,17 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.waitForLoad();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 1);
-	})
+	});
+
+	it('should remove unknown credentials on pasting workflow', () => {
+		cy.fixture('workflow-with-unknown-credentials.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+
+			WorkflowPage.actions.openNode('n8n');
+			cy.get('[class*=hasIssues]').should('have.length', 1);
+			NDVDialog.actions.close();
+		});
+	});
 });
