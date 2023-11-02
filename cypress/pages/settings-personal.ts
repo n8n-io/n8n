@@ -20,8 +20,15 @@ export class PersonalSettingsPage extends BasePage {
 		saveSettingsButton: () => cy.getByTestId('save-settings-button'),
 		enableMfaButton: () => cy.getByTestId('enable-mfa-button'),
 		disableMfaButton: () => cy.getByTestId('disable-mfa-button'),
+		themeSelector: () => cy.getByTestId('theme-select'),
+		selectOptionsVisible: () => cy.get('.el-select-dropdown:visible .el-select-dropdown__item'),
 	};
 	actions = {
+		changeTheme: (theme: 'System default' | 'Dark' | 'Light') => {
+			this.getters.themeSelector().click();
+			this.getters.selectOptionsVisible().should('have.length', 3);
+			this.getters.selectOptionsVisible().contains(theme).click();
+		},
 		loginAndVisit: (email: string, password: string) => {
 			cy.signin({ email, password });
 			cy.visit(this.url);

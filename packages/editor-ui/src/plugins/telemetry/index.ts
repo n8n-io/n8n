@@ -14,7 +14,7 @@ import {
 	TELEGRAM_NODE_TYPE,
 } from '@/constants';
 import { usePostHog } from '@/stores/posthog.store';
-import { useNDVStore } from '@/stores';
+import { useNDVStore, useUIStore } from '@/stores';
 
 export class Telemetry {
 	private pageEventQueue: Array<{ route: RouteLocation }>;
@@ -127,6 +127,8 @@ export class Telemetry {
 			if (route.meta?.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
+
+			properties.theme = useUIStore().appliedTheme;
 
 			const category = route.meta?.telemetry?.pageCategory || 'Editor';
 			this.rudderStack.page(category, pageName, properties);
