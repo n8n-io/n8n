@@ -120,7 +120,6 @@ export default defineComponent({
 }
 
 .iconWrapper {
-	--node-badge-bg-color: var(--color-background-base);
 	display: inline-flex;
 	margin-right: var(--spacing-2xs);
 }

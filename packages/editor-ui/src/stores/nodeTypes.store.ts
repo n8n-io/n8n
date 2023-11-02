@@ -11,6 +11,7 @@ import {
 	DEFAULT_NODETYPE_VERSION,
 	HTTP_REQUEST_NODE_TYPE,
 	STORES,
+	CREDENTIAL_ONLY_HTTP_NODE_VERSION,
 } from '@/constants';
 import type {
 	INodeTypesState,
@@ -76,7 +77,10 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
 				if (nodeTypeName.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)) {
 					const credentialName = nodeTypeName.split('.')[1];
-					const httpNode = this.getNodeType(HTTP_REQUEST_NODE_TYPE, version ?? 4.1);
+					const httpNode = this.getNodeType(
+						HTTP_REQUEST_NODE_TYPE,
+						version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+					);
 					const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
 					return getCredentialOnlyNodeType(httpNode, credential);
 				}

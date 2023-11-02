@@ -782,6 +782,7 @@ export default defineComponent({
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
 			background-color: var(--color-canvas-node-background);
+			--color-background-node-icon-badge: var(--color-canvas-node-background);
 			&.executing {
 				background-color: $node-background-executing !important;
 
