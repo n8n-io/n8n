@@ -112,8 +112,11 @@ describe('copyByFileId()', () => {
 });
 
 describe('copyByFilePath()', () => {
-	test('should copy by file path and return the file ID and size', async () => {
+	test.only('should copy by file path and return the file ID and size', async () => {
 		const sourceFilePath = tmpdir();
+
+		console.log('sourceFilePath', sourceFilePath);
+
 		const metadata = { mimeType: 'text/plain' };
 
 		// @ts-expect-error - private method
@@ -125,7 +128,7 @@ describe('copyByFilePath()', () => {
 		const targetPath = toFullFilePath(otherFileId);
 
 		fsp.cp = jest.fn().mockResolvedValue(undefined);
-		fsp.access = jest.fn().mockImplementation(async () => {});
+		console.log('targetPath', targetPath);
 
 		const result = await fsManager.copyByFilePath(
 			workflowId,
@@ -133,6 +136,8 @@ describe('copyByFilePath()', () => {
 			sourceFilePath,
 			metadata,
 		);
+
+		console.log('result', result);
 
 		expect(fsp.cp).toHaveBeenCalledWith(sourceFilePath, targetPath);
 		expect(result.fileSize).toBe(mockBuffer.length);
