@@ -15,6 +15,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
+import { WaitingForms } from './WaitingForms';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
@@ -39,6 +40,8 @@ export abstract class AbstractServer {
 
 	protected restEndpoint: string;
 
+	protected endpointFormWaiting: string;
+
 	protected endpointWebhook: string;
 
 	protected endpointWebhookTest: string;
@@ -58,6 +61,8 @@ export abstract class AbstractServer {
 		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
+
+		this.endpointFormWaiting = config.getEnv('endpoints.formWaiting');
 
 		this.restEndpoint = config.getEnv('endpoints.rest');
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
@@ -166,6 +171,12 @@ export abstract class AbstractServer {
 			this.app.all(
 				`/${this.endpointWebhook}/:path(*)`,
 				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+			);
+
+			// Register a handler for waiting forms
+			this.app.all(
+				`/${this.endpointFormWaiting}/:path/:suffix?`,
+				webhookRequestHandler(Container.get(WaitingForms)),
 			);
 
 			// Register a handler for waiting webhooks

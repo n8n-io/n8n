@@ -662,6 +662,12 @@ export const schema = {
 			env: 'N8N_ENDPOINT_REST',
 			doc: 'Path for rest endpoint',
 		},
+		formWaiting: {
+			format: String,
+			default: 'form-waiting',
+			env: 'N8N_ENDPOINT_FORM_WAIT',
+			doc: 'Path for waiting form endpoint',
+		},
 		webhook: {
 			format: String,
 			default: 'webhook',

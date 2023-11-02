@@ -499,6 +499,7 @@ export default defineComponent({
 					id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					mode: 'test',
 					resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				},
 
 				// deprecated

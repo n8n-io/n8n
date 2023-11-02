@@ -185,6 +185,7 @@ export function resolveParameter(
 			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: useEnvironmentsStore().variablesAsObject,
 
@@ -768,6 +769,9 @@ export const workflowHelpers = defineComponent({
 
 		getWebhookUrl(webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
 			if (webhookData.restartWebhook === true) {
+				if (webhookData.isForm) {
+					return '$execution.resumeFormUrl';
+				}
 				return '$execution.resumeUrl';
 			}
 			let baseUrl = this.rootStore.getWebhookUrl;

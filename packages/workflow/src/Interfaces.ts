@@ -1886,6 +1886,7 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	formWaitingBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;

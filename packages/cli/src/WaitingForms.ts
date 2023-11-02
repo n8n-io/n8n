@@ -17,7 +17,7 @@ import { OwnershipService } from './services/ownership.service';
 import { Logger } from '@/Logger';
 
 @Service()
-export class WaitingWebhooks implements IWebhookManager {
+export class WaitingForms implements IWebhookManager {
 	constructor(
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
@@ -25,14 +25,12 @@ export class WaitingWebhooks implements IWebhookManager {
 		private readonly ownershipService: OwnershipService,
 	) {}
 
-	// TODO: implement `getWebhookMethods` for CORS support
-
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
-		this.logger.debug(`Received waiting-webhook "${req.method}" for execution "${executionId}"`);
+		const { path: executionId } = req.params;
+		this.logger.debug(`Received waiting-form "${req.method}" for execution "${executionId}"`);
 
 		// Reset request parameters
 		req.params = {} as WaitingWebhookRequest['params'];
@@ -54,7 +52,9 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		// Set the node as disabled so that the data does not get executed again as it would result
 		// in starting the wait all over again
-		execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+		if (req.method === 'POST') {
+			execution.data.executionData!.nodeExecutionStack[0].node.disabled = true;
+		}
 
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
@@ -88,16 +88,13 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
-		const webhookData = NodeHelpers.getNodeWebhooks(
-			workflow,
-			workflowStartNode,
-			additionalData,
-		).find(
+		const webhooks = NodeHelpers.getNodeWebhooks(workflow, workflowStartNode, additionalData);
+		const webhookData = webhooks.find(
 			(webhook) =>
 				webhook.httpMethod === req.method &&
-				webhook.path === (suffix ?? '') &&
+				// webhook.path === (suffix ?? '') &&
 				webhook.webhookDescription.restartWebhook === true &&
-				!webhook.webhookDescription.isForm,
+				webhook.webhookDescription.isForm,
 		);
 
 		if (webhookData === undefined) {

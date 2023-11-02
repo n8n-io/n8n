@@ -5,7 +5,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 export const executionCompletions = defineComponent({
 	methods: {
 		/**
-		 * Complete `$execution.` to `.id .mode .resumeUrl`
+		 * Complete `$execution.` to `.id .mode .resumeUrl .resumeFormUrl`
 		 */
 		executionCompletions(
 			context: CompletionContext,
@@ -38,6 +38,10 @@ export const executionCompletions = defineComponent({
 				{
 					label: `${matcher}.resumeUrl`,
 					info: this.$locale.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+				},
+				{
+					label: `${matcher}.resumeFormUrl`,
+					info: this.$locale.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
 				},
 				{
 					label: `${matcher}.customData.set("key", "value")`,

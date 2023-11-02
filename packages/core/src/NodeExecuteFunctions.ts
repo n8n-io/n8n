@@ -1797,11 +1797,13 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId || PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
 	return {
 		$execution: {
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
+			resumeFormUrl,
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {

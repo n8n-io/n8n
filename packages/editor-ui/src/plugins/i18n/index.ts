@@ -365,6 +365,7 @@ export class I18nClass {
 		'$execution.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
 		'$execution.mode': this.baseText('codeNodeEditor.completer.$execution.mode'),
 		'$execution.resumeUrl': this.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+		'$execution.resumeFormUrl': this.baseText('codeNodeEditor.completer.$execution.resumeFormUrl'),
 
 		'$workflow.active': this.baseText('codeNodeEditor.completer.$workflow.active'),
 		'$workflow.id': this.baseText('codeNodeEditor.completer.$workflow.id'),

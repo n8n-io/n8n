@@ -6,7 +6,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import { FORM_TRIGGER_PATH_IDENTIFIER, WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -192,20 +192,24 @@ export class Wait extends Webhook {
 				path: '={{$parameter["options"]["webhookSuffix"] || ""}}',
 				restartWebhook: true,
 			},
-			// {
-			// 	name: 'formGet',
-			// 	httpMethod: 'GET',
-			// 	responseMode: 'onReceived',
-			// 	path: FORM_TRIGGER_PATH_IDENTIFIER,
-			// 	ndvHideUrl: true,
-			// },
-			// {
-			// 	name: 'formPost',
-			// 	httpMethod: 'POST',
-			// 	responseMode: '={{$parameter["responseMode"]}}',
-			// 	path: FORM_TRIGGER_PATH_IDENTIFIER,
-			// 	ndvHideMethod: true,
-			// },
+			{
+				name: 'formGet',
+				httpMethod: '={{$parameter["resume"] === "form" ? "GET" : ""}}',
+				responseMode: 'onReceived',
+				path: FORM_TRIGGER_PATH_IDENTIFIER,
+				restartWebhook: true,
+				isFullPath: true,
+				isForm: true,
+			},
+			{
+				name: 'formPost',
+				httpMethod: '={{$parameter["resume"] === "form" ? "POST" : ""}}',
+				responseMode: '={{$parameter["responseMode"]}}',
+				path: FORM_TRIGGER_PATH_IDENTIFIER,
+				restartWebhook: true,
+				isFullPath: true,
+				isForm: true,
+			},
 		],
 		properties: [
 			{
@@ -323,7 +327,7 @@ export class Wait extends Webhook {
 			},
 			{
 				displayName:
-					'The form url will be generated at run time. It can be referenced with the <strong>$execution.formUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
+					'The form url will be generated at run time. It can be referenced with the <strong>$execution.resumeFormUrl</strong> variable. Send it somewhere before getting to this node. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.wait" target="_blank">More info</a>',
 				name: 'formNotice',
 				type: 'notice',
 				displayOptions: displayOnFormSubmission,

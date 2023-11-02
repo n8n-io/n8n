@@ -1014,9 +1014,11 @@ export async function getBase(
 ): Promise<IWorkflowExecuteAdditionalData> {
 	const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 
+	const formWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.formWaiting');
+
 	const webhookBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhook');
-	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 	const webhookTestBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookTest');
+	const webhookWaitingBaseUrl = urlBaseWebhook + config.getEnv('endpoints.webhookWaiting');
 
 	const variables = await WorkflowHelpers.getVariables();
 
@@ -1025,6 +1027,7 @@ export async function getBase(
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + config.getEnv('endpoints.rest'),
 		instanceBaseUrl: urlBaseWebhook,
+		formWaitingBaseUrl,
 		webhookBaseUrl,
 		webhookWaitingBaseUrl,
 		webhookTestBaseUrl,
