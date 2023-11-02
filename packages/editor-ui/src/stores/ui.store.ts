@@ -62,7 +62,6 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
 
@@ -412,7 +411,8 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		headerHeight() {
-			return Number(getStyleTokenValue('--header-height'));
+			const style = getComputedStyle(document.body);
+			return Number(style.getPropertyValue('--header-height'));
 		},
 	},
 	actions: {
