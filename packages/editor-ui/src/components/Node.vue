@@ -1004,6 +1004,9 @@ export default defineComponent({
 						--configurable-node-icon-size
 					) - 2 * var(--spacing-s)
 			);
+			.node-name > p {
+				color: var(--color-configurable-node-name);
+			}
 		}
 
 		.node-default {
