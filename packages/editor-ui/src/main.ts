@@ -20,9 +20,7 @@ import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
 
-import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
-import { useWebhooksStore } from '@/stores';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 
 const pinia = createPinia();
