@@ -843,7 +843,8 @@ router.beforeEach(async (to, from, next) => {
 
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	await Promise.all([settingsStore.initialize(), usersStore.initialize()]);
+	await settingsStore.initialize();
+	await usersStore.initialize();
 
 	/**
 	 * Redirect to setup page. User should be redirected to this only once

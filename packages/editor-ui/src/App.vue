@@ -141,6 +141,7 @@ export default defineComponent({
 			}
 
 			await Promise.all([
+				this.initializeCloudData(),
 				this.initializeSourceControl(),
 				this.initializeTemplates(),
 				this.initializeNodeTranslationHeaders(),
@@ -152,7 +153,6 @@ export default defineComponent({
 	async mounted() {
 		this.logHiringBanner();
 
-		await this.initializeCloudData();
 		void this.checkForNewVersions();
 		void this.onAfterAuthenticate();
 
