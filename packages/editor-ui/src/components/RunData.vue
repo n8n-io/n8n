@@ -319,7 +319,7 @@
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
 				<run-data-table
 					:node="node"
-					:inputData="inputData"
+					:inputData="inputDataPage"
 					:mappingEnabled="mappingEnabled"
 					:distanceFromActive="distanceFromActive"
 					:runIndex="runIndex"
@@ -338,7 +338,7 @@
 					:editMode="editMode"
 					:sessioId="sessionId"
 					:node="node"
-					:inputData="inputData"
+					:inputData="inputDataPage"
 					:mappingEnabled="mappingEnabled"
 					:distanceFromActive="distanceFromActive"
 					:runIndex="runIndex"
@@ -347,7 +347,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputHtml="inputData[0].json.html" />
+				<run-data-html :inputHtml="inputDataPage[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -846,10 +846,10 @@ export default defineComponent({
 
 			return inputData;
 		},
-		inputDataAll(): INodeExecutionData[] {
+		inputData(): INodeExecutionData[] {
 			let inputData = this.rawInputData;
 
-			if (this.node && this.pinData && !this.isProductionExecutionPreview) {
+			if (this.pinData && !this.isProductionExecutionPreview) {
 				inputData = Array.isArray(this.pinData)
 					? this.pinData.map((value) => ({
 							json: value,
@@ -863,17 +863,17 @@ export default defineComponent({
 
 			return inputData;
 		},
-		inputData(): INodeExecutionData[] {
+		inputDataPage(): INodeExecutionData[] {
 			// We don't want to paginate the schema view
 			if (this.isSchemaView) {
-				return this.inputDataAll;
+				return this.inputData;
 			}
 
 			const offset = this.pageSize * (this.currentPage - 1);
-			return this.inputDataAll.slice(offset, offset + this.pageSize);
+			return this.inputData.slice(offset, offset + this.pageSize);
 		},
 		jsonData(): IDataObject[] {
-			return executionDataToJson(this.inputData);
+			return executionDataToJson(this.inputDataPage);
 		},
 		binaryData(): IBinaryKeyData[] {
 			if (!this.node) {
@@ -1260,12 +1260,12 @@ export default defineComponent({
 				return 0;
 			}
 
-			const runData: IRunData | null = this.workflowRunData;
+			const runData = this.workflowRunData;
 			if (runData?.[this.node.name]?.[runIndex]?.hasOwnProperty('error')) {
 				return 1;
 			}
 
-			return this.inputDataAll.length;
+			return this.inputData.length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
@@ -1424,7 +1424,7 @@ export default defineComponent({
 		hasNodeRun() {
 			if (this.paneType === 'output') this.setDisplayMode();
 		},
-		inputData: {
+		inputDataPage: {
 			handler(data: INodeExecutionData[]) {
 				if (this.paneType && data) {
 					this.ndvStore.setNDVPanelDataIsEmpty({
