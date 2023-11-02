@@ -13,13 +13,23 @@ const sharedFields: INodeProperties[] = [
 		required: true,
 		description: 'Name of the table to load from',
 	},
+];
+const insertFields: INodeProperties[] = [
 	{
-		displayName: 'Query Name',
-		name: 'queryName',
-		type: 'string',
-		default: 'match_documents',
-		required: true,
-		description: 'Name of the query to use for matching documents',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Query Name',
+				name: 'queryName',
+				type: 'string',
+				default: 'match_documents',
+				description: 'Name of the query to use for matching documents',
+			},
+		],
 	},
 ];
 const retrieveFields: INodeProperties[] = [
@@ -29,7 +39,16 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [metadataFilterField],
+		options: [
+			{
+				displayName: 'Query Name',
+				name: 'queryName',
+				type: 'string',
+				default: 'match_documents',
+				description: 'Name of the query to use for matching documents',
+			},
+			metadataFilterField,
+		],
 	},
 ];
 export const VectorStoreSupabase = createVectorStoreNode({
@@ -48,31 +67,36 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		],
 	},
 	sharedFields,
+	insertFields,
 	loadFields: retrieveFields,
 	retrieveFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
-		const queryName = context.getNodeParameter('queryName', itemIndex) as string;
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			queryName: string;
+		};
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
 		return SupabaseVectorStore.fromExistingIndex(embeddings, {
 			client,
 			tableName,
-			queryName,
+			queryName: options.queryName ?? 'match_documents',
 			filter,
 		});
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const tableName = context.getNodeParameter('tableName', itemIndex) as string;
-		const queryName = context.getNodeParameter('queryName', itemIndex) as string;
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			queryName: string;
+		};
 		const credentials = await context.getCredentials('supabaseApi');
 		const client = createClient(credentials.host as string, credentials.serviceRole as string);
 
 		void SupabaseVectorStore.fromDocuments(documents, embeddings, {
 			client,
 			tableName,
-			queryName,
+			queryName: options.queryName ?? 'match_documents',
 		});
 	},
 });
