@@ -192,6 +192,7 @@ import type {
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	ITaskData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
@@ -498,9 +499,15 @@ export default defineComponent({
 				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = '--color-danger';
-					returnStyles['border-width'] = '2px';
-					returnStyles['border-style'] = 'solid';
+					// Do not set red border if there is an issue with the configuration node
+					if (
+						(this.nodeRunData[0].error as NodeOperationError)?.functionality !==
+						'configuration-node'
+					) {
+						borderColor = '--color-danger';
+						returnStyles['border-width'] = '2px';
+						returnStyles['border-style'] = 'solid';
+					}
 				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {

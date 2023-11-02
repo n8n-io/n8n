@@ -4479,6 +4479,12 @@ export default defineComponent({
 
 		sourceControlEventBus.on('pull', this.onSourceControlPull);
 
+		this.registerCustomAction({
+			key: 'openNodeDetail',
+			action: ({ node }: { node: string }) => {
+				this.nodeSelectedByName(node, true);
+			},
+		});
 		this.readOnlyEnvRouteCheck();
 	},
 	activated() {
@@ -4541,6 +4547,7 @@ export default defineComponent({
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
+		this.unregisterCustomAction('openNodeDetail');
 
 		this.resetWorkspace();
 		this.instance.unbind();

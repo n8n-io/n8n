@@ -19,6 +19,7 @@ import type {
 	IWorkflowBase,
 	SubworkflowOperationError,
 	IExecuteContextData,
+	NodeOperationError,
 } from 'n8n-workflow';
 import { TelemetryHelpers } from 'n8n-workflow';
 
@@ -422,6 +423,29 @@ export const pushConnection = defineComponent({
 							message: error.description,
 							type: 'error',
 							duration: 0,
+						});
+					} else if (
+						runDataExecuted.data.resultData.error?.name === 'NodeOperationError' &&
+						(runDataExecuted.data.resultData.error as NodeOperationError).functionality ===
+							'configuration-node'
+					) {
+						// If the error is a configuration error of the node itself doesn't get executed so we can't use lastNodeExecuted for the title
+						let title: string;
+						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
+						if (nodeError.node.name) {
+							title = `Problem in node ‘${nodeError.node.name}‘`;
+						} else {
+							title = 'Problem executing workflow';
+						}
+
+						this.showMessage({
+							title,
+							message:
+								runDataExecutedErrorMessage +
+								` Open <a data-action='openNodeDetail' data-action-parameter-node='${nodeError.node.name}'>node</a>`,
+							type: 'error',
+							duration: 0,
+							dangerouslyUseHTMLString: true,
 						});
 					} else {
 						let title: string;
