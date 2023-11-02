@@ -25,7 +25,6 @@ import {
 import type { OptionsWithUri } from 'request-promise-native';
 
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
-
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
@@ -52,7 +51,7 @@ export class HttpRequestV3 implements INodeType {
 			version: [3, 4, 4.1],
 			defaults: {
 				name: 'HTTP Request',
-				color: '#2200DD',
+				color: '#0004F5',
 			},
 			inputs: ['main'],
 			outputs: ['main'],

@@ -317,7 +317,7 @@ export default defineComponent({
 	}
 
 	code {
-		background-color: var(--color-background-base);
+		background-color: var(--color-sticky-code-background);
 		padding: 0 var(--spacing-4xs);
 		color: var(--color-secondary);
 	}
