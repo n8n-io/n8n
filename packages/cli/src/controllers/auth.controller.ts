@@ -66,7 +66,13 @@ export class AuthController {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
 		} else if (isLdapCurrentAuthenticationMethod()) {
-			user = await handleLdapLogin(email, password);
+			const preliminaryUser = await handleEmailLogin(email, password);
+			if (preliminaryUser?.globalRole?.name === 'owner') {
+				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
+			} else {
+				user = await handleLdapLogin(email, password);
+			}
 		} else {
 			user = await handleEmailLogin(email, password);
 		}
