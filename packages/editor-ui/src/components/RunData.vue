@@ -1282,7 +1282,9 @@ export default defineComponent({
 		},
 		async downloadJsonData() {
 			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
-			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], { type: 'application/json' });
+			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], {
+				type: 'application/json',
+			});
 
 			saveAs(blob, `${fileName}.json`);
 		},
