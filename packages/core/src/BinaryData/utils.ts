@@ -23,6 +23,15 @@ export async function assertDir(dir: string) {
 	}
 }
 
+export async function doesNotExist(dir: string) {
+	try {
+		await fs.access(dir);
+		return false;
+	} catch {
+		return true;
+	}
+}
+
 export async function toBuffer(body: Buffer | Readable) {
 	return new Promise<Buffer>((resolve) => {
 		if (Buffer.isBuffer(body)) resolve(body);
