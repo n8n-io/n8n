@@ -1,4 +1,3 @@
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber, closestNumberDivisibleBy } from '@/utils';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
@@ -88,7 +87,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 };
 
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark', true),
+	stroke: 'var(--color-foreground-dark)',
 	strokeWidth: 2,
 	outlineWidth: 12,
 	outlineStroke: 'transparent',
@@ -96,12 +95,12 @@ export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 
 export const CONNECTOR_PAINT_STYLE_PULL: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-foreground-xdark', true),
+	stroke: 'var(--color-foreground-xdark)',
 };
 
 export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-primary', true),
+	stroke: 'var(--color-primary)',
 };
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
@@ -109,7 +108,7 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	...{
 		dashstyle: '5 3',
 	},
-	stroke: getStyleTokenValue('--color-foreground-dark', true),
+	stroke: 'var(--color-foreground-dark)',
 };
 
 export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
@@ -135,7 +134,7 @@ export const getConnectorPaintStylePull = (connection: Connection): PaintStyle =
 	}
 	return {
 		...CONNECTOR_PAINT_STYLE_PULL,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 		...additionalStyles,
 	};
 };
@@ -147,7 +146,7 @@ export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyl
 	);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 	};
 };
 
@@ -158,7 +157,7 @@ export const getConnectorPaintStyleData = (
 	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 	};
 };
 
@@ -261,8 +260,8 @@ export const getInputEndpointStyle = (
 	return {
 		width,
 		height,
-		fill: getStyleTokenValue(color),
-		stroke: getStyleTokenValue(color),
+		fill: `var(${color})`,
+		stroke: `var(${color})`,
 		lineWidth: 0,
 	};
 };
@@ -298,7 +297,7 @@ export const getOutputEndpointStyle = (
 	color: string,
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-	fill: getStyleTokenValue(color, true),
+	fill: `var(${color})`,
 	outlineStroke: 'none',
 });
 
@@ -585,7 +584,7 @@ export const getBackgroundStyles = (
 	if (executionPreview) {
 		return {
 			'background-image':
-				'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
+				'linear-gradient(135deg, var(--color-canvas-read-only-line) 25%, var(--color-canvas-background) 25%, var(--color-canvas-background) 50%, var(--color-canvas-read-only-line) 50%, var(--color-canvas-read-only-line) 75%, var(--color-canvas-background) 75%, var(--color-canvas-background) 100%)',
 			'background-size': `${squareSize}px ${squareSize}px`,
 			'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 		};
@@ -596,10 +595,9 @@ export const getBackgroundStyles = (
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};
 	if (squareSize > 10.5) {
-		const dotColor = getStyleTokenValue('--color-canvas-dot');
 		return {
 			...styles,
-			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
+			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, var(--color-canvas-dot) ${dotSize}px, transparent 0)`,
 		};
 	}
 
