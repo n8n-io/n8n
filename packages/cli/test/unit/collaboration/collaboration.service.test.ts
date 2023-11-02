@@ -16,10 +16,11 @@ describe('CollaborationService', () => {
 	let state: CollaborationState;
 	let push: Push;
 
-	const sessionId = 'test-session';
-
 	beforeEach(() => {
-		mockLogger = {} as Logger;
+		mockLogger = {
+			warn: jest.fn(),
+			error: jest.fn(),
+		} as unknown as jest.Mocked<Logger>;
 		mockUserService = {
 			getByIds: jest.fn(),
 			getManager: jest.fn(),

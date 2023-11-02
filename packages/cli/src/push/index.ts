@@ -7,7 +7,6 @@ import { Server as WSServer } from 'ws';
 import { parse as parseUrl } from 'url';
 import { Container, Service } from 'typedi';
 import config from '@/config';
-import { Logger } from '@/Logger';
 import { resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { SSEPush } from './sse.push';
@@ -27,21 +26,14 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
  */
 @Service()
 export class Push extends EventEmitter {
+	public isBidirectional = useWebSockets;
+
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
-
-	constructor(private readonly logger: Logger) {
-		super();
-
-		if (!useWebSockets) {
-			this.logger.warn(
-				'Using SSE as the push backend. Bidirectional communication is not available',
-			);
-		}
-	}
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		if (req.ws) {
 			(this.backend as WebSocketPush).add(req.query.sessionId, req.userId, req.ws);
+			this.backend.on('message', (msg) => this.emit('message', msg));
 		} else if (!useWebSockets) {
 			(this.backend as SSEPush).add(req.query.sessionId, req.userId, { req, res });
 		} else {
@@ -49,7 +41,6 @@ export class Push extends EventEmitter {
 			return;
 		}
 
-		this.backend.on('message', (msg) => this.emit('message', msg));
 		this.emit('editorUiConnected', req.query.sessionId);
 	}
 

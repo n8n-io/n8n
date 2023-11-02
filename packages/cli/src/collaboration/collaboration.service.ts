@@ -21,6 +21,13 @@ export class CollaborationService {
 		private readonly state: CollaborationState,
 		private readonly userService: UserService,
 	) {
+		if (!push.isBidirectional) {
+			logger.warn(
+				'Collaboration features are disabled because push is configured unidirectional. Use N8N_PUSH_BACKEND=websocket environment variable to enable them.',
+			);
+			return;
+		}
+
 		this.push.on('message', async (event: OnPushMessageEvent) => {
 			try {
 				await this.handleUserMessage(event.userId, event.msg);
