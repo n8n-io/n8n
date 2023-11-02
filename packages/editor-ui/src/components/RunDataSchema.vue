@@ -109,7 +109,6 @@ const onDragEnd = (el: HTMLElement) => {
 	word-break: normal;
 	height: 100%;
 	width: 100%;
-	background-color: var(--color-background-base);
 
 	> div[class*='info'] {
 		padding: 0 var(--spacing-s);

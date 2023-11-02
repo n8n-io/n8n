@@ -160,7 +160,12 @@ export class Code implements INodeType {
 				result = await sandbox.runCodeEachItem();
 			} catch (error) {
 				if (!this.continueOnFail()) throw error;
-				returnData.push({ json: { error: error.message } });
+				returnData.push({
+					json: { error: error.message },
+					pairedItem: {
+						item: index,
+					},
+				});
 			}
 
 			if (result) {
