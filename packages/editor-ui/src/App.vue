@@ -149,10 +149,9 @@ export default defineComponent({
 			this.onAfterAuthenticateInitialized = true;
 		},
 	},
-	async created() {
-		this.logHiringBanner();
-	},
 	async mounted() {
+		this.logHiringBanner();
+
 		await this.initializeCloudData();
 		void this.checkForNewVersions();
 		void this.onAfterAuthenticate();
@@ -163,7 +162,7 @@ export default defineComponent({
 	watch: {
 		async 'usersStore.currentUser'(currentValue, previousValue) {
 			if (currentValue && !previousValue) {
-				void this.onAfterAuthenticate();
+				await this.onAfterAuthenticate();
 			}
 		},
 		defaultLocale(newLocale) {
