@@ -35,13 +35,12 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useStorage } from '@vueuse/core';
 
 import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
@@ -212,12 +211,6 @@ export default defineComponent({
 			}
 			return;
 		},
-		setTheme() {
-			const theme = useStorage(LOCAL_STORAGE_THEME, undefined).value;
-			if (theme) {
-				window.document.body.classList.add(`theme-${theme}`);
-			}
-		},
 		async postAuthenticate() {
 			if (this.postAuthenticateDone) {
 				return;
@@ -235,7 +228,6 @@ export default defineComponent({
 		},
 	},
 	async created() {
-		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
 		await this.authenticate();
