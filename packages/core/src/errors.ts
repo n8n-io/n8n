@@ -4,13 +4,9 @@ export class FileNotFoundError extends Error {
 	}
 }
 
-export class BinaryFileNotFound extends FileNotFoundError {
-	severity = 'warning';
-}
+export class BinaryFileNotFound extends FileNotFoundError {}
 
 export class InvalidPathError extends Error {
-	severity = 'warning';
-
 	constructor(readonly filePath: string) {
 		super(`Invalid path detected: ${filePath}`);
 	}
