@@ -275,7 +275,7 @@ describe('Undo/Redo', () => {
 		});
 	});
 
-	it.only('should undo/redo multiple steps', () => {
+	it('should undo/redo multiple steps', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		// WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
