@@ -114,7 +114,6 @@ describe('copyByFileId()', () => {
 describe('copyByFilePath()', () => {
 	test('should copy by file path and return the file ID and size', async () => {
 		const sourceFilePath = tmpdir();
-
 		const metadata = { mimeType: 'text/plain' };
 
 		// @ts-expect-error - private method
