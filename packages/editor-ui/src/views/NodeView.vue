@@ -241,6 +241,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
+import { pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
@@ -367,6 +368,7 @@ export default defineComponent({
 		workflowHelpers,
 		workflowRun,
 		debounceHelper,
+		pinData,
 	],
 	components: {
 		NodeDetailsView,
@@ -1719,10 +1721,6 @@ export default defineComponent({
 					});
 				});
 
-				if (workflowData.pinData) {
-					this.workflowsStore.setWorkflowPinData(workflowData.pinData);
-				}
-
 				const tagsEnabled = this.settingsStore.areTagsEnabled;
 				if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
 					const allTags = await this.tagsStore.fetchAll();
@@ -1978,21 +1976,25 @@ export default defineComponent({
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
+
 						if (sourceNodeType) {
 							const offsets = [
 								[-100, 100],
 								[-140, 0, 140],
 								[-240, -100, 100, 240],
 							];
+
 							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
 								workflow,
 								lastSelectedNode,
 								sourceNodeType,
 							);
 							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+
 							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
 								(output) => output === NodeConnectionType.Main,
 							);
+
 							if (sourceNodeOutputMainOutputs.length > 1) {
 								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
 								const sourceOutputIndex = lastSelectedConnection.__meta
@@ -2005,9 +2007,9 @@ export default defineComponent({
 
 					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
 					try {
-						// It fails when the outputs are an expression. As those node have
+						// It fails when the outputs are an expression. As those nodes have
 						// normally no outputs by default and the only reason we need the
-						// outputs here is to calculate the position it is fine to assume
+						// outputs here is to calculate the position, it is fine to assume
 						// that they have no outputs and are so treated as a regular node
 						// with only "main" outputs.
 						outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeData);
@@ -2571,7 +2573,9 @@ export default defineComponent({
 					);
 					if (sourceInfo.type !== NodeConnectionType.Main) {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
+						info.connection.setPaintStyle(
+							getConnectorPaintStyleData(info.connection, info.sourceEndpoint.parameters.category),
+						);
 						endpointArrow?.setVisible(false);
 					}
 				}
@@ -3228,12 +3232,13 @@ export default defineComponent({
 
 				await this.addNodes([newNodeData], [], true);
 
-				const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
-				if (pinData) {
-					this.workflowsStore.pinData({
-						node: newNodeData,
-						data: pinData,
-					});
+				const pinDataForNode = this.workflowsStore.pinDataByNodeName(nodeName);
+				if (pinDataForNode?.length) {
+					try {
+						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
+					} catch (error) {
+						console.error(error);
+					}
 				}
 
 				this.uiStore.stateIsDirty = true;
@@ -3955,6 +3960,29 @@ export default defineComponent({
 					continue;
 				}
 				tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+			}
+
+			if (data.pinData) {
+				let pinDataSuccess = true;
+				for (const nodeName of Object.keys(data.pinData)) {
+					// Pin data limit reached
+					if (!pinDataSuccess) {
+						this.showError(
+							new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
+							this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+						);
+						continue;
+					}
+
+					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
+					try {
+						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+						pinDataSuccess = true;
+					} catch (error) {
+						pinDataSuccess = false;
+						console.error(error);
+					}
+				}
 			}
 
 			// Add the nodes with the changed node names, expressions and connections

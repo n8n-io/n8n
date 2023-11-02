@@ -344,6 +344,7 @@ export const routes = [
 		},
 		meta: {
 			templatesEnabled: true,
+			keepWorkflowAlive: true,
 			getRedirect: getTemplatesRedirect,
 			permissions: {
 				allow: {
@@ -362,6 +363,7 @@ export const routes = [
 		},
 		meta: {
 			templatesEnabled: true,
+			keepWorkflowAlive: true,
 			getRedirect: () => getTemplatesRedirect(VIEWS.NEW_WORKFLOW),
 			permissions: {
 				allow: {

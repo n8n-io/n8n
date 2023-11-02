@@ -8,6 +8,7 @@ const commonThemeProps = {
 	'.cm-content': {
 		fontFamily: 'var(--font-family-monospace)',
 		color: 'var(--input-font-color, var(--color-text-dark))',
+		caretColor: 'var(--color-code-caret)',
 	},
 	'.cm-line': {
 		padding: '0',

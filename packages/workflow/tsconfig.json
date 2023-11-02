@@ -7,9 +7,7 @@
 		"paths": {
 			"@/*": ["./*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		// TODO: remove all options below this line
-		"useUnknownInCatchVariables": false
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

@@ -29,11 +29,7 @@ export default defineComponent({
 	transition: background-color 0.3s ease;
 
 	&:hover {
-		background-color: hsl(
-			var(--color-background-base-h),
-			var(--color-background-base-s),
-			calc(var(--color-background-base-l) - 4%)
-		);
+		background-color: var(--color-background-medium);
 	}
 }
 </style>
