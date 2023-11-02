@@ -576,6 +576,7 @@ export default defineComponent({
 		},
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -774,7 +775,7 @@ export default defineComponent({
 			return null;
 		},
 		dataCount(): number {
-			return this.getDataCount(this.runIndex);
+			return this.getDataCount(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
 		dataSizeInMB(): string {
 			return (this.dataSize / 1024 / 1000).toLocaleString();
@@ -824,40 +825,10 @@ export default defineComponent({
 			return 0;
 		},
 		rawInputData(): INodeExecutionData[] {
-			let inputData: INodeExecutionData[] = [];
-
-			if (this.node) {
-				inputData = this.getNodeInputData(
-					this.node,
-					this.runIndex,
-					this.currentOutputIndex,
-					this.paneType,
-					this.connectionType,
-				);
-			}
-
-			if (inputData.length === 0 || !Array.isArray(inputData)) {
-				return [];
-			}
-
-			return inputData;
+			return this.getData(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
 		inputData(): INodeExecutionData[] {
-			let inputData = this.rawInputData;
-
-			if (this.pinData && !this.isProductionExecutionPreview) {
-				inputData = Array.isArray(this.pinData)
-					? this.pinData.map((value) => ({
-							json: value,
-					  }))
-					: [
-							{
-								json: this.pinData,
-							},
-					  ];
-			}
-
-			return inputData;
+			return this.getPinDataOrInputData(this.rawInputData);
 		},
 		inputDataPage(): INodeExecutionData[] {
 			// We don't want to paginate the schema view
@@ -1201,17 +1172,59 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
-		getDataCount(runIndex: number) {
-			if (this.node === null) {
+		getData(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		): INodeExecutionData[] {
+			let inputData: INodeExecutionData[] = [];
+
+			if (this.node) {
+				inputData = this.getNodeInputData(
+					this.node,
+					runIndex,
+					outputIndex,
+					this.paneType,
+					connectionType,
+				);
+			}
+
+			if (inputData.length === 0 || !Array.isArray(inputData)) {
+				return [];
+			}
+
+			return inputData;
+		},
+		getPinDataOrInputData(inputData: INodeExecutionData[]): INodeExecutionData[] {
+			if (this.pinData && !this.isProductionExecutionPreview) {
+				return Array.isArray(this.pinData)
+					? this.pinData.map((value) => ({
+							json: value,
+					  }))
+					: [
+							{
+								json: this.pinData,
+							},
+					  ];
+			}
+			return inputData;
+		},
+		getDataCount(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		) {
+			if (!this.node) {
 				return 0;
 			}
 
-			const runData = this.workflowRunData;
-			if (runData?.[this.node.name]?.[runIndex]?.hasOwnProperty('error')) {
+			const runData: IRunData | null = this.workflowRunData;
+			if (runData?.[this.node.name][runIndex].hasOwnProperty('error')) {
 				return 1;
 			}
 
-			return this.inputData.length;
+			const inputData = this.getData(runIndex, outputIndex, connectionType);
+			return this.getPinDataOrInputData(inputData).length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
@@ -1268,16 +1281,8 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const inputData = this.getNodeInputData(
-				this.node,
-				this.runIndex,
-				this.currentOutputIndex,
-				this.paneType,
-				this.connectionType,
-			);
-
 			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
-			const blob = new Blob([JSON.stringify(inputData, null, 2)], { type: 'application/json' });
+			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], { type: 'application/json' });
 
 			saveAs(blob, `${fileName}.json`);
 		},
@@ -1313,21 +1318,8 @@ export default defineComponent({
 		refreshDataSize() {
 			// Hide by default the data from being displayed
 			this.showData = false;
-
-			// Check how much data there is to display
-			const inputData = this.getNodeInputData(
-				this.node,
-				this.runIndex,
-				this.currentOutputIndex,
-				this.paneType,
-				this.connectionType,
-			);
-
-			const offset = this.pageSize * (this.currentPage - 1);
-			const jsonItems = inputData.slice(offset, offset + this.pageSize).map((item) => item.json);
-
+			const jsonItems = this.inputDataPage.map((item) => item.json);
 			this.dataSize = JSON.stringify(jsonItems).length;
-
 			if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
 				// Data is reasonable small (< 200kb) so display it directly
 				this.showData = true;
