@@ -236,6 +236,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.API_DISABLED);
 	}
 
+	isWorkerViewLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.WORKER_VIEW);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}

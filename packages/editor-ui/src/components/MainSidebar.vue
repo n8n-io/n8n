@@ -268,7 +268,8 @@ export default defineComponent({
 					icon: 'truck-monster',
 					label: this.$locale.baseText('mainSidebar.workersView'),
 					position: 'top',
-					available: this.settingsStore.isQueueModeEnabled,
+					available:
+						this.settingsStore.isQueueModeEnabled && this.settingsStore.isWorkerViewAvailable,
 					activateOnRouteNames: [VIEWS.WORKER_VIEW],
 				},
 				{

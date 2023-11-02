@@ -2307,6 +2307,7 @@ export interface IN8nUISettings {
 		debugInEditor: boolean;
 		binaryDataS3: boolean;
 		workflowHistory: boolean;
+		workerView: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {

@@ -195,8 +195,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
       '@n8n_io/license-sdk':
-        specifier: ~2.7.1
-        version: 2.7.1
+        specifier: ~2.8.0
+        version: 2.8.0
       '@oclif/command':
         specifier: ^1.8.16
         version: 1.8.18(@oclif/config@1.18.17)(supports-color@8.1.1)
@@ -4696,11 +4696,11 @@ packages:
       acorn-walk: 8.2.0
     dev: false
 
-  /@n8n_io/license-sdk@2.7.1:
-    resolution: {integrity: sha512-SiPKI/wN2coLPB8Tyb28UlLgAszU2SkSR8PWNioTWAd8PnUhTYg8KN9jfUOZipVF+YMOAHc/hQUq6kJA1PF0xg==}
+  /@n8n_io/license-sdk@2.8.0:
+    resolution: {integrity: sha512-kUE1ATS/Ru1FC70hzWFUf6K7t9gcSndutzV5XMM9Qdh3mMadsgP7kpZ8gFcA49nTAZYPr5oHOE5naal5kHME1w==}
     engines: {node: '>=18.12.1', npm: '>=8.19.2'}
     dependencies:
-      crypto-js: 4.1.1
+      crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
       undici: 5.26.4
@@ -9134,7 +9134,7 @@ packages:
   /axios@0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
@@ -9163,12 +9163,11 @@ packages:
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
-    dev: true
 
   /axios@1.4.0:
     resolution: {integrity: sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==}
     dependencies:
-      follow-redirects: 1.15.2(debug@3.2.7)
+      follow-redirects: 1.15.2(debug@4.3.4)
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -12749,7 +12748,6 @@ packages:
         optional: true
     dependencies:
       debug: 4.3.4(supports-color@8.1.1)
-    dev: true
 
   /for-each@0.3.3:
     resolution: {integrity: sha512-jqYfLp7mo9vIyQf8ykW2v7A+2N4QjeCeI5+Dz9XraiO1ign81wjiH7Fb9vSOWvQfNtmSa4H2RoQTrrXivdUZmw==}
@@ -18092,7 +18090,7 @@ packages:
     resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
     engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.27.2(debug@3.2.7)
+      axios: 0.27.2(debug@4.3.4)
     transitivePeerDependencies:
       - debug
     dev: false
