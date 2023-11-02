@@ -583,7 +583,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 				// Remove the workflow as "active"
 
-				void this.activeWorkflows.remove(workflowData.id);
+				void this.activeWorkflows.deactivate(workflowData.id);
 				this.activationErrors[workflowData.id] = {
 					time: new Date().getTime(),
 					error: {
@@ -679,6 +679,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		}
 
 		this.logger.verbose('Finished activating workflows (startup)');
+	}
+
+	async activateAllTriggerAndPollerBasedWorkflows() {
+		await this.addActiveWorkflows('leadershipChange');
+	}
+
+	async deactivateAllTriggerAndPollerBasedWorkflows() {
+		await this.activeWorkflows.deactivateAllTriggerAndPollerBasedWorkflows();
 	}
 
 	/**
@@ -896,7 +904,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		if (this.activeWorkflows.isActive(workflowId)) {
-			const removalSuccess = await this.activeWorkflows.remove(workflowId);
+			const removalSuccess = await this.activeWorkflows.deactivate(workflowId);
 			if (removalSuccess) {
 				this.logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
 			}

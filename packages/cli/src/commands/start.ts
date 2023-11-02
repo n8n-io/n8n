@@ -245,10 +245,9 @@ export class Start extends BaseCommand {
 
 		multiMainPublisher.on('leadershipChange', async () => {
 			if (multiMainPublisher.isLeader) {
-				await this.activeWorkflowRunner.addActiveWorkflows('leadershipChange');
+				await this.activeWorkflowRunner.activateAllTriggerAndPollerBasedWorkflows();
 			} else {
-				// @TODO
-				// await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+				await this.activeWorkflowRunner.deactivateAllTriggerAndPollerBasedWorkflows();
 			}
 		});
 
