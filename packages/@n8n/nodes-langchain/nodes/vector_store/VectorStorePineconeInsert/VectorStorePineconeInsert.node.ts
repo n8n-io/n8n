@@ -6,7 +6,7 @@ import {
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 import type { Embeddings } from 'langchain/embeddings/base';
 import type { Document } from 'langchain/document';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
@@ -111,8 +111,7 @@ export class VectorStorePineconeInsert implements INodeType {
 			0,
 		)) as Embeddings;
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
@@ -120,7 +119,7 @@ export class VectorStorePineconeInsert implements INodeType {
 		const pineconeIndex = client.Index(index);
 
 		if (namespace && clearNamespace) {
-			await pineconeIndex.delete1({ deleteAll: true, namespace });
+			await pineconeIndex.namespace(namespace).deleteAll();
 		}
 
 		const { processedDocuments, serializedDocuments } = await processDocuments(
