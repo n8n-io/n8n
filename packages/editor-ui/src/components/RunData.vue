@@ -775,7 +775,7 @@ export default defineComponent({
 			return null;
 		},
 		dataCount(): number {
-			return this.getDataCount(this.runIndex, this.currentOutputIndex, this.connectionType);
+			return this.getDataCount(this.runIndex, this.currentOutputIndex);
 		},
 		dataSizeInMB(): string {
 			return (this.dataSize / 1024 / 1000).toLocaleString();
