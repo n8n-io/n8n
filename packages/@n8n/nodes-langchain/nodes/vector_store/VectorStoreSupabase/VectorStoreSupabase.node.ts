@@ -57,7 +57,7 @@ export const VectorStoreSupabase = createVectorStoreNode({
 		icon: 'file:supabase.svg',
 		displayName: 'Supabase Vector Store',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstoresupabaseload/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/',
 		name: 'vectorStoreSupabase',
 		credentials: [
 			{

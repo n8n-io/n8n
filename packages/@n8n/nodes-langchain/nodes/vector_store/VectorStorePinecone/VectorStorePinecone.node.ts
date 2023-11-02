@@ -69,7 +69,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 		description: 'Work with your data in Pinecone Vector Store',
 		icon: 'file:pinecone.svg',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorepineconeload/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
 		credentials: [
 			{
 				name: 'pineconeApi',
