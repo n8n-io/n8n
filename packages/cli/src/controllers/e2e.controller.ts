@@ -68,6 +68,7 @@ export class E2EController {
 		[LICENSE_FEATURES.DEBUG_IN_EDITOR]: false,
 		[LICENSE_FEATURES.BINARY_DATA_S3]: false,
 		[LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES]: false,
+		[LICENSE_FEATURES.NODE_IO_FILTERS]: false,
 	};
 
 	constructor(

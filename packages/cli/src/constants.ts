@@ -86,6 +86,7 @@ export const LICENSE_FEATURES = {
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
+	NODE_IO_FILTERS: 'feat:nodeIOFilters',
 } as const;
 
 export const LICENSE_QUOTAS = {
