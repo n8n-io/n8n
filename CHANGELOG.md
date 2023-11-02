@@ -4,7 +4,7 @@
 ### Bug Fixes
 
 * **core:** Ensure execution deletion in worker lifecycle hook ([#7481](https://github.com/n8n-io/n8n/issues/7481)) ([742c8a8](https://github.com/n8n-io/n8n/commit/742c8a8534098522fe103fad09fa95f70c460b3d))
-* **core:** Fix data decryption on credentials import ([#7560](https://github.com/n8n-io/n8n/issues/7560)) ([b350568](https://github.com/n8n-io/n8n/commit/b350568505d48ec880fe98d2b62ef090d5399c5f))
+* **core:** Fix data encryption on credentials import ([#7560](https://github.com/n8n-io/n8n/issues/7560)) ([b350568](https://github.com/n8n-io/n8n/commit/b350568505d48ec880fe98d2b62ef090d5399c5f))
 * **core:** Fix issue that prevents owner logging in when using ldap ([#7408](https://github.com/n8n-io/n8n/issues/7408)) ([479f902](https://github.com/n8n-io/n8n/commit/479f90231d0a03c69b17189384812b5a1d81ef3d))
 * **core:** Handle missing resultData in runData  ([#7523](https://github.com/n8n-io/n8n/issues/7523)) ([1055bd3](https://github.com/n8n-io/n8n/commit/1055bd3762b90b013a300bd87e3fa902e902cb9e))
 * **core:** Permission check for subworkflow properly checking for workflow settings ([#7576](https://github.com/n8n-io/n8n/issues/7576)) ([437c95e](https://github.com/n8n-io/n8n/commit/437c95e84e144cc77f2866a74d6b670c415895cd))
@@ -30,6 +30,7 @@
 * **HTTP Request Node:** Add pagination support ([#5993](https://github.com/n8n-io/n8n/issues/5993)) ([cc2bd2e](https://github.com/n8n-io/n8n/commit/cc2bd2e19c8b75320b236de215d389220fbe24ae))
 * **HTTP Request Node:** Update icon and default color ([#7572](https://github.com/n8n-io/n8n/issues/7572)) ([ff279ab](https://github.com/n8n-io/n8n/commit/ff279ab4112435c341b84081d68b976ff03bf261))
 * **n8n Form Trigger Node:** Add text area and password input types ([#7474](https://github.com/n8n-io/n8n/issues/7474)) ([b72040a](https://github.com/n8n-io/n8n/commit/b72040aa5423aa6cb16dea2e7c6ea6439376b653))
+* **editor:** Dark mode is here! You can change it under personal settings.([#6980](https://github.com/n8n-io/n8n/pull/6980)) ([0746783](https://github.com/n8n-io/n8n/commit/0746783e027ebe6715588a68db399a34e0211a96))
 
 
 
