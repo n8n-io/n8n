@@ -66,12 +66,12 @@ export const prepareFormData = (
 };
 
 export async function formWebhook(context: IWebhookFunctions) {
-	const webhookName = context.getWebhookName();
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormField[];
+	const method = context.getRequestObject().method;
 
 	//Show the form on GET request
-	if (webhookName === 'formGet') {
+	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = context.getNodeParameter('formDescription', '') as string;
 		const instanceId = context.getInstanceId();

@@ -25,7 +25,7 @@ export class FormTrigger implements INodeType {
 		outputs: ['main'],
 		webhooks: [
 			{
-				name: 'formGet',
+				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
 				isFullPath: true,
@@ -33,7 +33,7 @@ export class FormTrigger implements INodeType {
 				ndvHideUrl: true,
 			},
 			{
-				name: 'formPost',
+				name: 'default',
 				httpMethod: 'POST',
 				responseMode: '={{$parameter["responseMode"]}}',
 				isFullPath: true,

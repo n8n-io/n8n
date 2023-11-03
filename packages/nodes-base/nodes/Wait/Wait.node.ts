@@ -6,7 +6,7 @@ import type {
 	IDisplayOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { FORM_TRIGGER_PATH_IDENTIFIER, WAIT_TIME_UNLIMITED } from 'n8n-workflow';
+import { WAIT_TIME_UNLIMITED } from 'n8n-workflow';
 
 import {
 	authenticationProperty,
@@ -138,6 +138,17 @@ const waitTimeProperties: INodeProperties[] = [
 	},
 ];
 
+const webhookSuffix: INodeProperties = {
+	displayName: 'Webhook Suffix',
+	name: 'webhookSuffix',
+	type: 'string',
+	default: '',
+	placeholder: 'webhook',
+	noDataExpression: true,
+	description:
+		'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes.',
+};
+
 const displayOnWebhook: IDisplayOptions = {
 	show: {
 		resume: ['webhook'],
@@ -168,6 +179,8 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 	responseBinaryPropertyNameProperty,
 ]);
 
+const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
+
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
 
@@ -189,23 +202,23 @@ export class Wait extends Webhook {
 			{
 				...defaultWebhookDescription,
 				responseData: '={{$parameter["responseData"]}}',
-				path: '={{$parameter["options"]["webhookSuffix"] || ""}}',
+				path: webhookPath,
 				restartWebhook: true,
 			},
 			{
-				name: 'formGet',
+				name: 'default',
 				httpMethod: '={{$parameter["resume"] === "form" ? "GET" : ""}}',
 				responseMode: 'onReceived',
-				path: FORM_TRIGGER_PATH_IDENTIFIER,
+				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
 				isForm: true,
 			},
 			{
-				name: 'formPost',
+				name: 'default',
 				httpMethod: '={{$parameter["resume"] === "form" ? "POST" : ""}}',
 				responseMode: '={{$parameter["responseMode"]}}',
-				path: FORM_TRIGGER_PATH_IDENTIFIER,
+				path: webhookPath,
 				restartWebhook: true,
 				isFullPath: true,
 				isForm: true,
@@ -339,22 +352,12 @@ export class Wait extends Webhook {
 			{
 				...optionsProperty,
 				displayOptions: displayOnWebhook,
-				options: [
-					...(optionsProperty.options as INodeProperties[]),
-					{
-						displayName: 'Webhook Suffix',
-						name: 'webhookSuffix',
-						type: 'string',
-						default: '',
-						placeholder: 'webhook',
-						description:
-							'This suffix path will be appended to the restart URL. Helpful when using multiple wait nodes. Note: Does not support expressions.',
-					},
-				],
+				options: [...(optionsProperty.options as INodeProperties[]), webhookSuffix],
 			},
 			{
 				...formOptions,
 				displayOptions: displayOnFormSubmission,
+				options: [...(formOptions.options as INodeProperties[]), webhookSuffix],
 			},
 		],
 	};
