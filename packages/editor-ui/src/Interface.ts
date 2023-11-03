@@ -44,11 +44,12 @@ import type {
 	BannerName,
 	INodeExecutionData,
 	INodeProperties,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import type { BulkCommand, Undoable } from '@/models/history';
-import type { ExternalHooks } from '@/mixins/externalHooks';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
+import type { ExternalHooks } from '@/types';
 
 export * from 'n8n-design-system/types';
 

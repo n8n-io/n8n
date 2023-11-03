@@ -1,6 +1,7 @@
 import { useUIStore } from '@/stores/ui.store';
 import type { IMenuItem } from 'n8n-design-system/types';
 import { useUsersStore } from '@/stores/users.store';
+import { addAutoLoginToAdminPanelButton } from '@/hooks/utils/hooksAddAutoLoginToAdminPanelButton';
 
 let adminIconAdded = false;
 
@@ -29,6 +30,9 @@ export const hooksAddAdminIcon = () => {
 			},
 		},
 	];
-	uiStore.sidebarMenuItems = [...uiStore.sidebarMenuItems, ...menuItems];
+
+	addAutoLoginToAdminPanelButton();
+
+	uiStore.sidebarMenuItems = [...uiStore.sidebarMenuItems, ...menuItems] as IMenuItem[];
 	adminIconAdded = true;
 };

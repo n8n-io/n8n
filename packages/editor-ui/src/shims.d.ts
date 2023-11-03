@@ -1,6 +1,6 @@
 import { VNode, ComponentPublicInstance } from 'vue';
-import type { Store } from 'pinia';
-import type { IDataObject } from 'n8n-workflow';
+import { PartialDeep } from 'type-fest';
+import { ExternalHooks } from '@/types/externalHooks';
 
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';
@@ -21,10 +21,7 @@ declare global {
 		BASE_PATH: string;
 		REST_ENDPOINT: string;
 		n8nHooksNext: boolean;
-		n8nExternalHooks?: Record<
-			string,
-			Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>
-		>;
+		n8nExternalHooks?: PartialDeep<ExternalHooks>;
 	}
 
 	namespace JSX {

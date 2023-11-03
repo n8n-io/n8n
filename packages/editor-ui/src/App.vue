@@ -140,14 +140,6 @@ export default defineComponent({
 				);
 			}
 
-			if (this.settingsStore.isTelemetryEnabled) {
-				hooksImports.push(
-					import('./hooks/posthog').then(({ n8nPosthogHooks }) => {
-						extendExternalHooks(n8nPosthogHooks);
-					}),
-				);
-			}
-
 			await Promise.allSettled(hooksImports);
 		},
 		async loginWithCookie(): Promise<void> {
