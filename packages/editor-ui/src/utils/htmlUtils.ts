@@ -63,3 +63,8 @@ export const getBannerRowHeight = async (): Promise<number> => {
 		}, 0);
 	});
 };
+
+export const highlightText = (text: string, search: string): string => {
+	const regex = new RegExp(`(${search})`, 'g');
+	return text.replace(regex, '<mark>$1</mark>');
+};

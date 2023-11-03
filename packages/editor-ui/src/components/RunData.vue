@@ -348,6 +348,7 @@
 					:pageOffset="currentPageOffset"
 					:totalRuns="maxRunIndex"
 					:hasDefaultHoverState="paneType === 'input'"
+					:search="search"
 					@mounted="$emit('tableMounted', $event)"
 					@activeRowChanged="onItemHover"
 					@displayModeChange="onDisplayModeChange"
@@ -365,6 +366,7 @@
 					:distanceFromActive="distanceFromActive"
 					:runIndex="runIndex"
 					:totalRuns="maxRunIndex"
+					:search="search"
 				/>
 			</Suspense>
 
@@ -381,6 +383,7 @@
 					:paneType="paneType"
 					:runIndex="runIndex"
 					:totalRuns="maxRunIndex"
+					:search="search"
 				/>
 			</Suspense>
 

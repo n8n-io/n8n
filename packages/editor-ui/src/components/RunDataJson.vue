@@ -43,11 +43,11 @@
 							[$style.mappable]: mappingEnabled,
 							[$style.dragged]: draggingPath === node.path,
 						}"
-						>"{{ node.key }}"</span
-					>
+						v-html="highlightSearchTerm(node.key)"
+					/>
 				</template>
 				<template #renderNodeValue="{ node }">
-					<span v-if="isNaN(node.index)" v-html="getContent(node.content)" />
+					<span v-if="isNaN(node.index)" v-html="highlightSearchTerm(node.content)" />
 					<span
 						v-else
 						data-target="mappable"
@@ -60,7 +60,7 @@
 							[$style.dragged]: draggingPath === node.path,
 						}"
 						class="ph-no-capture"
-						v-html="getContent(node.content)"
+						v-html="highlightSearchTerm(node.content)"
 					/>
 				</template>
 			</vue-json-pretty>
@@ -74,7 +74,7 @@ import type { PropType } from 'vue';
 import VueJsonPretty from 'vue-json-pretty';
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
-import { executionDataToJson, isString, shorten } from '@/utils';
+import { executionDataToJson, highlightText, isString, shorten } from '@/utils';
 import type { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
@@ -124,6 +124,9 @@ export default defineComponent({
 		},
 		totalRuns: {
 			type: Number,
+		},
+		search: {
+			type: String,
 		},
 	},
 	setup() {
@@ -193,6 +196,9 @@ export default defineComponent({
 		},
 		getListItemName(path: string): string {
 			return path.replace(/^(\["?\d"?]\.?)/g, '');
+		},
+		highlightSearchTerm(value: string): string {
+			return highlightText(this.getContent(value), this.search);
 		},
 	},
 });
