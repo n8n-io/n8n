@@ -30,6 +30,7 @@ import type { JwtPayload } from '@/services/jwt.service';
 import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
+import { rateLimit } from 'express-rate-limit';
 
 @RestController()
 export class PasswordResetController {
@@ -46,7 +47,14 @@ export class PasswordResetController {
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password')
+	@Post('/forgot-password', {
+		middlewares: [
+			rateLimit({
+				windowMs: 15 * 60 * 1000, // 15 minutes
+				limit: 10, // Limit each IP to 10 requests per `window` (here, per 15 minutes).
+			}),
+		],
+	})
 	async forgotPassword(req: PasswordResetRequest.Email) {
 		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
