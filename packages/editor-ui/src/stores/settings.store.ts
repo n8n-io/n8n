@@ -33,6 +33,7 @@ import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils';
 import { useTitleChange, useToast } from '@/composables';
 import { ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -210,8 +211,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.initialized = true;
 			} catch (e) {
 				showToast({
-					title: this.$locale.baseText('startupError'),
-					message: this.$locale.baseText('startupError.message'),
+					title: i18n.baseText('startupError'),
+					message: i18n.baseText('startupError.message'),
 					type: 'error',
 					duration: 0,
 					dangerouslyUseHTMLString: true,
