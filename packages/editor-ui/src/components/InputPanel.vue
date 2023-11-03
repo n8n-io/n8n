@@ -196,6 +196,7 @@ export default defineComponent({
 		},
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		linkedRuns: {
 			type: Boolean,
