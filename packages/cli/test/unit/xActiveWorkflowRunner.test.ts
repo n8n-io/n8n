@@ -112,7 +112,7 @@ describe('removeAll()', () => {
 		/**
 		 * We do not assert using `ActiveWorkflowRunner.getActiveWorkflows()` because
 		 * this method is for workflows stored as `active` in the DB, i.e. workflows that
-		 * should be activated whenever n8n is running).
+		 * must be activated on startup and deactivated on shutdown.
 		 *
 		 * Workflows stored as `active` are **not** the same as actually active workflows.
 		 */
