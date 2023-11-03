@@ -852,8 +852,8 @@ export default defineComponent({
 			return this.getRawInputData(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
 		inputData(): INodeExecutionData[] {
-      const pinOrLiveData = this.getPinDataOrLiveData(this.rawInputData);
-      return this.getFilteredData(pinOrLiveData);
+			const pinOrLiveData = this.getPinDataOrLiveData(this.rawInputData);
+			return this.getFilteredData(pinOrLiveData);
 		},
 		inputDataPage(): INodeExecutionData[] {
 			const offset = this.pageSize * (this.currentPage - 1);
@@ -1229,15 +1229,15 @@ export default defineComponent({
 			}
 			return inputData;
 		},
-    getFilteredData(inputData: INodeExecutionData[]): INodeExecutionData[] {
-      if (!this.search) {
-        return inputData;
-      }
+		getFilteredData(inputData: INodeExecutionData[]): INodeExecutionData[] {
+			if (!this.search) {
+				return inputData;
+			}
 
-      this.currentPage = 1;
-      const filteredData = inputData.filter(({ json }) => searchInObject(json, this.search));
-      return filteredData.length ? filteredData : inputData;
-    },
+			this.currentPage = 1;
+			const filteredData = inputData.filter(({ json }) => searchInObject(json, this.search));
+			return filteredData.length ? filteredData : inputData;
+		},
 		getDataCount(
 			runIndex: number,
 			outputIndex: number,
@@ -1252,8 +1252,8 @@ export default defineComponent({
 			}
 
 			const rawInputData = this.getRawInputData(runIndex, outputIndex, connectionType);
-      const pinOrLiveData = this.getPinDataOrLiveData(rawInputData);
-      return this.getFilteredData(pinOrLiveData).length;
+			const pinOrLiveData = this.getPinDataOrLiveData(rawInputData);
+			return this.getFilteredData(pinOrLiveData).length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
