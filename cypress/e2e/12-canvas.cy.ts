@@ -16,11 +16,11 @@ const NDVDialog = new NDV();
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
 const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
-const ZOOM_OUT_X1_FACTOR = 0.75;
-const ZOOM_OUT_X2_FACTOR = 0.5625;
+const ZOOM_OUT_X1_FACTOR = 0.8;
+const ZOOM_OUT_X2_FACTOR = 0.64;
 
-const PINCH_ZOOM_IN_FACTOR = 1.32;
-const PINCH_ZOOM_OUT_FACTOR = 0.4752;
+const PINCH_ZOOM_IN_FACTOR = 1.05702;
+const PINCH_ZOOM_OUT_FACTOR = 0.946058;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {
@@ -34,10 +34,10 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.actions.addNodeToCanvas(SWITCH_NODE_NAME, true, true);
 
 		for (let i = 0; i < desiredOutputs; i++) {
-			cy.contains('Add Routing Rule').click()
+			cy.contains('Add Routing Rule').click();
 		}
 
-		NDVDialog.actions.close()
+		NDVDialog.actions.close();
 		for (let i = 0; i < desiredOutputs; i++) {
 			WorkflowPage.getters.canvasNodePlusEndpointByName(SWITCH_NODE_NAME, i).click({ force: true });
 			WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
@@ -51,7 +51,9 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.reload();
 		cy.waitForLoad();
 		// Make sure outputless switch was connected correctly
-		cy.get(`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`).should('be.visible');
+		cy.get(
+			`[data-target-node="${SWITCH_NODE_NAME}1"][data-source-node="${EDIT_FIELDS_SET_NODE_NAME}3"]`,
+		).should('be.visible');
 		// Make sure all connections are there after reload
 		for (let i = 0; i < desiredOutputs; i++) {
 			const setName = `${EDIT_FIELDS_SET_NODE_NAME}${i > 0 ? i : ''}`;
@@ -179,7 +181,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			.canvasNodes()
 			.last()
 			.should('have.css', 'left', '740px')
-			.should('have.css', 'top', '320px')
+			.should('have.css', 'top', '320px');
 	});
 
 	it('should zoom in', () => {
@@ -220,8 +222,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			);
 	});
 
-	it('should zoom using pinch to zoom', () => {
-		WorkflowPage.actions.pinchToZoom(2, 'zoomIn');
+	it('should zoom using scroll or pinch gesture', () => {
+		WorkflowPage.actions.pinchToZoom(1, 'zoomIn');
 		WorkflowPage.getters
 			.nodeView()
 			.should(
@@ -230,7 +232,11 @@ describe('Canvas Node Manipulation and Navigation', () => {
 				`matrix(${PINCH_ZOOM_IN_FACTOR}, 0, 0, ${PINCH_ZOOM_IN_FACTOR}, 0, 0)`,
 			);
 
-		WorkflowPage.actions.pinchToZoom(4, 'zoomOut');
+		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
+		// Zoom in 1x + Zoom out 1x should reset to default (=1)
+		WorkflowPage.getters.nodeView().should('have.css', 'transform', `matrix(1, 0, 0, 1, 0, 0)`);
+
+		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
 		WorkflowPage.getters
 			.nodeView()
 			.should(
@@ -350,5 +356,17 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.waitForLoad();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 1);
-	})
+	});
+
+	it('should remove unknown credentials on pasting workflow', () => {
+		cy.fixture('workflow-with-unknown-credentials.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+
+			WorkflowPage.actions.openNode('n8n');
+			cy.get('[class*=hasIssues]').should('have.length', 1);
+			NDVDialog.actions.close();
+		});
+	});
 });
