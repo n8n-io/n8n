@@ -104,7 +104,7 @@
 						icon="thumbtack"
 						:disabled="
 							editMode.enabled ||
-							(inputData.length === 0 && !hasPinData) ||
+							(rawInputData.length === 0 && !hasPinData) ||
 							isReadOnlyRoute ||
 							readOnlyEnv
 						"
@@ -319,7 +319,7 @@
 			<Suspense v-else-if="hasNodeRun && displayMode === 'table'">
 				<run-data-table
 					:node="node"
-					:inputData="inputData"
+					:inputData="inputDataPage"
 					:mappingEnabled="mappingEnabled"
 					:distanceFromActive="distanceFromActive"
 					:runIndex="runIndex"
@@ -338,7 +338,7 @@
 					:editMode="editMode"
 					:sessioId="sessionId"
 					:node="node"
-					:inputData="inputData"
+					:inputData="inputDataPage"
 					:mappingEnabled="mappingEnabled"
 					:distanceFromActive="distanceFromActive"
 					:runIndex="runIndex"
@@ -347,7 +347,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputHtml="inputData[0].json.html" />
+				<run-data-html :inputHtml="inputDataPage[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -457,7 +457,8 @@
 				!hasRunError &&
 				binaryData.length === 0 &&
 				dataCount > pageSize &&
-				!isSchemaView
+				!isSchemaView &&
+				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
 		>
@@ -538,9 +539,10 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
+import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -574,6 +576,7 @@ export default defineComponent({
 		},
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -646,9 +649,6 @@ export default defineComponent({
 		this.init();
 
 		if (!this.isPaneTypeInput) {
-			dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
-			dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
-
 			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
 		this.ndvStore.setNDVBranchIndex({
@@ -660,8 +660,6 @@ export default defineComponent({
 	},
 	beforeUnmount() {
 		this.hidePinDataDiscoveryTooltip();
-		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
-		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -752,7 +750,7 @@ export default defineComponent({
 			);
 		},
 		isArtificialRecoveredEventItem(): boolean {
-			return this.inputData?.[0]?.json?.isArtificialRecoveredEventItem !== undefined ?? false;
+			return !!this.rawInputData?.[0]?.json?.isArtificialRecoveredEventItem;
 		},
 		subworkflowExecutionError(): Error | null {
 			return this.workflowsStore.subWorkflowExecutionError;
@@ -827,48 +825,14 @@ export default defineComponent({
 			return 0;
 		},
 		rawInputData(): INodeExecutionData[] {
-			let inputData: INodeExecutionData[] = [];
-
-			if (this.node) {
-				inputData = this.getNodeInputData(
-					this.node,
-					this.runIndex,
-					this.currentOutputIndex,
-					this.paneType,
-					this.connectionType,
-				);
-			}
-
-			if (inputData.length === 0 || !Array.isArray(inputData)) {
-				return [];
-			}
-
-			return inputData;
+			return this.getRawInputData(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
 		inputData(): INodeExecutionData[] {
-			let inputData = this.rawInputData;
-
-			if (this.node && this.pinData && !this.isProductionExecutionPreview) {
-				inputData = Array.isArray(this.pinData)
-					? this.pinData.map((value) => ({
-							json: value,
-					  }))
-					: [
-							{
-								json: this.pinData,
-							},
-					  ];
-			}
-
-			// We don't want to paginate the schema view
-			if (this.isSchemaView) {
-				return inputData;
-			}
-
+			return this.getPinDataOrLiveData(this.rawInputData);
+		},
+		inputDataPage(): INodeExecutionData[] {
 			const offset = this.pageSize * (this.currentPage - 1);
-			inputData = inputData.slice(offset, offset + this.pageSize);
-
-			return inputData;
+			return this.inputData.slice(offset, offset + this.pageSize);
 		},
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
@@ -1028,27 +992,22 @@ export default defineComponent({
 			this.onExitEditMode({ type: 'cancel' });
 		},
 		onClickSaveEdit() {
+			if (!this.node) {
+				return;
+			}
+
 			const { value } = this.editMode;
 
 			this.clearAllStickyNotifications();
 
-			if (!this.isValidPinDataSize(value)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
-				return;
-			}
-
-			if (!this.isValidPinDataJSON(value)) {
-				this.onDataPinningError({ errorType: 'invalid-json', source: 'save-edit' });
+			try {
+				this.setPinData(this.node, clearJsonKey(value) as INodeExecutionData[], 'save-edit');
+			} catch (error) {
+				console.error(error);
 				return;
 			}
 
 			this.ndvStore.setOutputPanelEditModeEnabled(false);
-			this.workflowsStore.pinData({
-				node: this.node,
-				data: clearJsonKey(value) as INodeExecutionData[],
-			});
-
-			this.onDataPinningSuccess({ source: 'save-edit' });
 
 			this.onExitEditMode({ type: 'save' });
 		},
@@ -1061,53 +1020,11 @@ export default defineComponent({
 				type,
 			});
 		},
-		onDataUnpinning({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
-			this.$telemetry.track('User unpinned ndv data', {
-				node_type: this.activeNode?.type,
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				source,
-				data_size: stringSizeInBytes(this.pinData),
-			});
-		},
-		onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-			const telemetryPayload = {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-			};
-			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
-			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
-		},
-		onDataPinningError({
-			errorType,
-			source,
-		}: {
-			errorType: 'data-too-large' | 'invalid-json';
-			source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit';
-		}) {
-			this.$telemetry.track('Ndv data pinning failure', {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-				error_type: errorType,
-			});
-		},
-		async onTogglePinData({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
+		async onTogglePinData({ source }: { source: PinDataSource }) {
+			if (!this.node) {
+				return;
+			}
+
 			if (source === 'pin-icon-click') {
 				const telemetryPayload = {
 					node_type: this.activeNode.type,
@@ -1123,19 +1040,16 @@ export default defineComponent({
 			this.updateNodeParameterIssues(this.node);
 
 			if (this.hasPinData) {
-				this.onDataUnpinning({ source });
-				this.workflowsStore.unpinData({ node: this.node });
+				this.unsetPinData(this.node, source);
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.rawInputData)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
+			try {
+				this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
+			} catch (error) {
+				console.error(error);
 				return;
 			}
-
-			this.onDataPinningSuccess({ source: 'pin-icon-click' });
-
-			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({
@@ -1253,47 +1167,58 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
+		getRawInputData(
+			runIndex: number,
+			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		): INodeExecutionData[] {
+			let inputData: INodeExecutionData[] = [];
+
+			if (this.node) {
+				inputData = this.getNodeInputData(
+					this.node,
+					runIndex,
+					outputIndex,
+					this.paneType,
+					connectionType,
+				);
+			}
+
+			if (inputData.length === 0 || !Array.isArray(inputData)) {
+				return [];
+			}
+
+			return inputData;
+		},
+		getPinDataOrLiveData(inputData: INodeExecutionData[]): INodeExecutionData[] {
+			if (this.pinData && !this.isProductionExecutionPreview) {
+				return Array.isArray(this.pinData)
+					? this.pinData.map((value) => ({
+							json: value,
+					  }))
+					: [
+							{
+								json: this.pinData,
+							},
+					  ];
+			}
+			return inputData;
+		},
 		getDataCount(
 			runIndex: number,
 			outputIndex: number,
 			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		) {
-			if (this.pinData) {
-				return this.pinData.length;
-			}
-
-			if (this.node === null) {
+			if (!this.node) {
 				return 0;
 			}
 
-			const runData: IRunData | null = this.workflowRunData;
-
-			if (runData === null || !runData.hasOwnProperty(this.node.name)) {
-				return 0;
-			}
-
-			if (runData[this.node.name].length <= runIndex) {
-				return 0;
-			}
-
-			if (runData[this.node.name][runIndex].hasOwnProperty('error')) {
+			if (this.workflowRunData?.[this.node.name][runIndex].hasOwnProperty('error')) {
 				return 1;
 			}
 
-			if (
-				!runData[this.node.name][runIndex].hasOwnProperty('data') ||
-				runData[this.node.name][runIndex].data === undefined
-			) {
-				return 0;
-			}
-
-			const inputData = this.getInputData(
-				runData[this.node.name][runIndex].data!,
-				outputIndex,
-				connectionType,
-			);
-
-			return inputData.length;
+			const rawInputData = this.getRawInputData(runIndex, outputIndex, connectionType);
+			return this.getPinDataOrLiveData(rawInputData).length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
@@ -1350,16 +1275,10 @@ export default defineComponent({
 			}
 		},
 		async downloadJsonData() {
-			const inputData = this.getNodeInputData(
-				this.node,
-				this.runIndex,
-				this.currentOutputIndex,
-				this.paneType,
-				this.connectionType,
-			);
-
 			const fileName = this.node!.name.replace(/[^\w\d]/g, '_');
-			const blob = new Blob([JSON.stringify(inputData, null, 2)], { type: 'application/json' });
+			const blob = new Blob([JSON.stringify(this.rawInputData, null, 2)], {
+				type: 'application/json',
+			});
 
 			saveAs(blob, `${fileName}.json`);
 		},
@@ -1395,21 +1314,8 @@ export default defineComponent({
 		refreshDataSize() {
 			// Hide by default the data from being displayed
 			this.showData = false;
-
-			// Check how much data there is to display
-			const inputData = this.getNodeInputData(
-				this.node,
-				this.runIndex,
-				this.currentOutputIndex,
-				this.paneType,
-				this.connectionType,
-			);
-
-			const offset = this.pageSize * (this.currentPage - 1);
-			const jsonItems = inputData.slice(offset, offset + this.pageSize).map((item) => item.json);
-
+			const jsonItems = this.inputDataPage.map((item) => item.json);
 			this.dataSize = JSON.stringify(jsonItems).length;
-
 			if (this.dataSize < this.MAX_DISPLAY_DATA_SIZE) {
 				// Data is reasonable small (< 200kb) so display it directly
 				this.showData = true;
@@ -1452,7 +1358,7 @@ export default defineComponent({
 		hasNodeRun() {
 			if (this.paneType === 'output') this.setDisplayMode();
 		},
-		inputData: {
+		inputDataPage: {
 			handler(data: INodeExecutionData[]) {
 				if (this.paneType && data) {
 					this.ndvStore.setNDVPanelDataIsEmpty({

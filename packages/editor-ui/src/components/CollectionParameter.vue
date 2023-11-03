@@ -208,6 +208,7 @@ export default defineComponent({
 		margin-top: var(--spacing-xs);
 
 		.button {
+			color: var(--color-text-dark);
 			font-weight: var(--font-weight-normal);
 			--button-border-color: var(--color-foreground-base);
 			--button-background-color: var(--color-background-base);

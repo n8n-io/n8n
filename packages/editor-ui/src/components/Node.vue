@@ -199,7 +199,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -488,31 +488,31 @@ export default defineComponent({
 				[key: string]: string;
 			} = {};
 
-			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+			let borderColor = '--color-foreground-xdark';
 
 			if (this.isConfigurableNode || this.isConfigNode) {
-				borderColor = getStyleTokenValue('--color-foreground-dark');
+				borderColor = '--color-foreground-dark';
 			}
 
 			if (this.data.disabled) {
-				borderColor = getStyleTokenValue('--color-foreground-base');
+				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = getStyleTokenValue('--color-danger');
+					borderColor = '--color-danger';
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = getStyleTokenValue('--color-canvas-node-pinned-border');
+					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
-					borderColor = getStyleTokenValue('--color-foreground-xdark');
+					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
-					borderColor = getStyleTokenValue('--color-success');
+					borderColor = '--color-success';
 				}
 			}
 
-			returnStyles['border-color'] = borderColor;
+			returnStyles['border-color'] = `var(${borderColor})`;
 
 			return returnStyles;
 		},
@@ -1004,6 +1004,9 @@ export default defineComponent({
 						--configurable-node-icon-size
 					) - 2 * var(--spacing-s)
 			);
+			.node-name > p {
+				color: var(--color-configurable-node-name);
+			}
 		}
 
 		.node-default {

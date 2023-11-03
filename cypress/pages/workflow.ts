@@ -2,6 +2,7 @@ import { META_KEY } from '../constants';
 import { BasePage } from './base';
 import { getVisibleSelect } from '../utils';
 import { NodeCreator } from './features/node-creator';
+import Chainable = Cypress.Chainable;
 
 const nodeCreator = new NodeCreator();
 export class WorkflowPage extends BasePage {
@@ -46,8 +47,8 @@ export class WorkflowPage extends BasePage {
 		canvasNodePlusEndpointByName: (nodeName: string, index = 0) => {
 			return cy.get(this.getters.getEndpointSelector('plus', nodeName, index));
 		},
-		successToast: () => cy.get('.el-notification .el-notification--success').parent(),
-		errorToast: () => cy.get('.el-notification .el-notification--error'),
+		successToast: () => cy.get('.el-notification:has(.el-notification--success)'),
+		errorToast: () => cy.get('.el-notification:has(.el-notification--error)'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -186,6 +187,9 @@ export class WorkflowPage extends BasePage {
 		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).first().dblclick();
 		},
+		duplicateNode: (node: Chainable<JQuery<HTMLElement>>) => {
+			node.find('[data-test-id="duplicate-node-button"]').click({ force: true });
+		},
 		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
 			cy.getByTestId('expander').invoke('show').click();
@@ -261,7 +265,8 @@ export class WorkflowPage extends BasePage {
 				ctrlKey: true,
 				pageX: cy.window().innerWidth / 2,
 				pageY: cy.window().innerHeight / 2,
-				deltaY: mode === 'zoomOut' ? 16 * steps : -16 * steps,
+				deltaMode: 1,
+				deltaY: mode === 'zoomOut' ? steps : -steps,
 			});
 		},
 		hitUndo: () => {

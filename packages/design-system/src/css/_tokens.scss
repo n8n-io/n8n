@@ -77,6 +77,7 @@
 	--color-sticky-default-background: var(--prim-color-alt-d);
 	--color-sticky-default-border: var(--prim-color-alt-d-shade-150);
 	--color-sticky-font: var(--prim-gray-740);
+	--color-sticky-code-background: var(--color-background-base);
 
 	// Expressions
 	--color-valid-resolvable-foreground: var(--prim-color-alt-a);
@@ -228,6 +229,7 @@
 	--color-light-grey: var(--prim-gray-120);
 	--color-neutral: var(--prim-gray-490);
 	--color-switch: var(--prim-color-alt-i);
+	--color-configurable-node-name: var(--color-text-dark);
 
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system

@@ -41,6 +41,7 @@ import {
 	WorkflowStatisticsRepository,
 	WorkflowTagMappingRepository,
 } from '@db/repositories';
+import { PruningService } from '@/services/pruning.service';
 
 export const collections = {} as IDatabaseCollections;
 
@@ -191,6 +192,10 @@ export async function init(testConnectionOptions?: ConnectionOptions): Promise<v
 	collections.Settings = Container.get(SettingsRepository);
 	collections.Credentials = Container.get(CredentialsRepository);
 	collections.Workflow = Container.get(WorkflowRepository);
+
+	const pruningService = Container.get(PruningService);
+
+	if (await pruningService.isPruningEnabled()) pruningService.startPruning();
 }
 
 export async function migrate() {

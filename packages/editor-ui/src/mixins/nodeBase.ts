@@ -27,7 +27,6 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history.store';
 import { useCanvasStore } from '@/stores/canvas.store';
 import type { EndpointSpec } from '@jsplumb/common';
-import { getStyleTokenValue } from '@/utils';
 
 const createAddInputEndpointSpec = (
 	connectionName: NodeConnectionType,
@@ -591,7 +590,7 @@ export const nodeBase = defineComponent({
 								nodeTypeData,
 								this.__getEndpointColor(NodeConnectionType.Main),
 							),
-							fill: getStyleTokenValue('--node-error-output-color', true),
+							fill: 'var(--node-error-output-color)',
 						},
 						cssClass: `dot-${type}-endpoint`,
 					};
