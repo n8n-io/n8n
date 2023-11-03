@@ -176,7 +176,6 @@ export default defineComponent({
 .app {
 	height: 100vh;
 	overflow: hidden;
-	background: var(--color-background-light);
 }
 
 .container {
