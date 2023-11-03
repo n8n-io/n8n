@@ -41,7 +41,6 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
-import { useStorage } from '@vueuse/core';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
@@ -50,6 +49,7 @@ import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '
 import { debounceHelper } from '@/mixins/debounce';
 import { useNDVStore } from '@/stores/ndv.store';
 import { ndvEventBus } from '@/event-bus';
+import { getLocalStorageValue, setLocalStorageValue } from '@/utils/localStorageUtils';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -346,10 +346,9 @@ export default defineComponent({
 			);
 		},
 		restorePositionData() {
-			const storedPanelWidthData = useStorage(
+			const storedPanelWidthData = getLocalStorageValue(
 				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-				undefined,
-			).value;
+			);
 
 			if (storedPanelWidthData) {
 				const parsedWidth = parseFloat(storedPanelWidthData);
@@ -362,7 +361,7 @@ export default defineComponent({
 			return false;
 		},
 		storePositionData() {
-			window.localStorage.setItem(
+			setLocalStorageValue(
 				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
 				this.mainPanelDimensions.relativeWidth.toString(),
 			);

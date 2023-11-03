@@ -50,6 +50,7 @@ import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { setLocalStorageValue } from '@/utils/localStorageUtils';
 
 export default defineComponent({
 	name: 'ActivationModal',
@@ -88,7 +89,7 @@ export default defineComponent({
 		},
 		handleCheckboxChange(checkboxValue: boolean) {
 			this.checked = checkboxValue;
-			window.localStorage.setItem(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
+			setLocalStorageValue(LOCAL_STORAGE_ACTIVATION_FLAG, checkboxValue.toString());
 		},
 	},
 	computed: {

@@ -1,4 +1,3 @@
-import { useStorage } from '@vueuse/core';
 import ChangePasswordView from './views/ChangePasswordView.vue';
 import ErrorView from './views/ErrorView.vue';
 import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
@@ -44,6 +43,7 @@ import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
 import WorkflowHistory from '@/views/WorkflowHistory.vue';
 import WorkflowOnboardingView from '@/views/WorkflowOnboardingView.vue';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { getLocalStorageValue } from './utils/localStorageUtils';
 
 interface IRouteConfig {
 	meta: {
@@ -797,7 +797,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !useStorage('audit-logs', undefined).value,
+							shouldDeny: () => !getLocalStorageValue('audit-logs'),
 						},
 					},
 				},

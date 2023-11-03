@@ -496,7 +496,6 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
-import { useStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import type {
 	ConnectionTypes,
@@ -548,6 +547,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
 import { isObject } from 'lodash-es';
+import { getLocalStorageValue } from '@/utils/localStorageUtils';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -940,10 +940,9 @@ export default defineComponent({
 				return;
 			}
 
-			const pinDataDiscoveryFlag = useStorage(
+			const pinDataDiscoveryFlag = getLocalStorageValue(
 				LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
-				undefined,
-			).value;
+			);
 
 			if (value && value.length > 0 && !this.isReadOnlyRoute && !pinDataDiscoveryFlag) {
 				this.pinDataDiscoveryComplete();
@@ -963,8 +962,8 @@ export default defineComponent({
 			}
 		},
 		pinDataDiscoveryComplete() {
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+			setLocalStorageValue(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG, 'true');
+			setLocalStorageValue(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 		},
 		enterEditMode({ origin }: EnterEditModeArgs) {
 			const inputData = this.pinData

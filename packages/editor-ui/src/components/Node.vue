@@ -170,7 +170,6 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useStorage } from '@vueuse/core';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
@@ -208,6 +207,7 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { getLocalStorageValue } from '@/utils/localStorageUtils';
 
 export default defineComponent({
 	name: 'Node',
@@ -580,10 +580,9 @@ export default defineComponent({
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = useStorage(
+		const hasSeenPinDataTooltip = getLocalStorageValue(
 			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-			undefined,
-		).value;
+		);
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
@@ -624,7 +623,7 @@ export default defineComponent({
 			)
 				return;
 
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+			setLocalStorageValue(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
 			this.pinDataDiscoveryTooltipVisible = true;
 			this.unwatchWorkflowDataItems();

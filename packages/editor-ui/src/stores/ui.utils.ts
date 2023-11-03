@@ -1,5 +1,6 @@
 import type { AppliedThemeOption, ThemeOption } from '@/Interface';
 import { LOCAL_STORAGE_THEME } from '@/constants';
+import { getLocalStorageValue, removeLocalStorageValue, setLocalStorageValue } from '@/utils/localStorageUtils';
 
 export function addThemeToBody(theme: AppliedThemeOption) {
 	window.document.body.setAttribute('data-theme', theme);
@@ -11,7 +12,7 @@ export function isValidTheme(theme: string | null): theme is AppliedThemeOption 
 
 // query param allows overriding theme for demo view in preview iframe without flickering
 export function getThemeOverride() {
-	return getQueryParam('theme') || localStorage.getItem(LOCAL_STORAGE_THEME);
+	return getQueryParam('theme') || getLocalStorageValue(LOCAL_STORAGE_THEME);
 }
 
 function getQueryParam(paramName: string): string | null {
@@ -21,10 +22,10 @@ function getQueryParam(paramName: string): string | null {
 export function updateTheme(theme: ThemeOption) {
 	if (theme === 'system') {
 		window.document.body.removeAttribute('data-theme');
-		localStorage.removeItem(LOCAL_STORAGE_THEME);
+		removeLocalStorageValue(LOCAL_STORAGE_THEME);
 	} else {
 		addThemeToBody(theme);
-		localStorage.setItem(LOCAL_STORAGE_THEME, theme);
+		setLocalStorageValue(LOCAL_STORAGE_THEME, theme);
 	}
 }
 
