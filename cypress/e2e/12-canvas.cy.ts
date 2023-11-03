@@ -365,4 +365,40 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			NDVDialog.actions.close();
 		});
 	});
+
+	it('should render connections correctly if unkown nodes are present', () => {
+		const unknownNodeName = 'Unknown node';
+		cy.createFixtureWorkflow('workflow-with-unknown-nodes.json', 'Unknown nodes');
+
+		WorkflowPage.getters.canvasNodeByName(`${unknownNodeName} 1`).should('exist');
+		WorkflowPage.getters.canvasNodeByName(`${unknownNodeName} 2`).should('exist');
+		WorkflowPage.actions.zoomToFit();
+
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('plus', `${unknownNodeName} 1`),
+			WorkflowPage.getters.getEndpointSelector('input', EDIT_FIELDS_SET_NODE_NAME),
+		);
+
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('plus', `${unknownNodeName} 2`),
+			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
+		);
+
+		WorkflowPage.actions.executeWorkflow();
+		cy.contains('Node not found').should('be.visible');
+
+		WorkflowPage.getters
+			.canvasNodeByName(`${unknownNodeName} 1`)
+			.find('[data-test-id=delete-node-button]')
+			.click({ force: true });
+
+			WorkflowPage.getters
+			.canvasNodeByName(`${unknownNodeName} 2`)
+			.find('[data-test-id=delete-node-button]')
+			.click({ force: true });
+
+		WorkflowPage.actions.executeWorkflow();
+
+		cy.contains('Node not found').should('not.exist');
+	});
 });
