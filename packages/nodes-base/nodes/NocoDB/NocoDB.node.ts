@@ -84,6 +84,63 @@ export class NocoDB implements INodeType {
 						value: 3,
 					},
 				],
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+				default: 1,
+			},
+			{
+				displayName: 'API Version',
+				name: 'version',
+				type: 'options',
+				isNodeSetting: true,
+				options: [
+					{
+						name: 'Before v0.90.0',
+						value: 1,
+					},
+					{
+						name: 'v0.90.0 Onwards',
+						value: 2,
+					},
+					{
+						name: 'v0.200.0 Onwards',
+						value: 3,
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
+				default: 2,
+			},
+			{
+				displayName: 'API Version',
+				name: 'version',
+				type: 'options',
+				isNodeSetting: true,
+				options: [
+					{
+						name: 'Before v0.90.0',
+						value: 1,
+					},
+					{
+						name: 'v0.90.0 Onwards',
+						value: 2,
+					},
+					{
+						name: 'v0.200.0 Onwards',
+						value: 3,
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [3],
+					},
+				},
 				default: 3,
 			},
 			{
@@ -186,7 +243,7 @@ export class NocoDB implements INodeType {
 			// This only supports using the Base ID
 			async getTables(this: ILoadOptionsFunctions) {
 				const version = this.getNodeParameter('version', 0) as number;
-				const baseId = this.getNodeParameter('baseId', 0) as string;
+				const baseId = this.getNodeParameter('projectId', 0) as string;
 				if (baseId) {
 					try {
 						const requestMethod = 'GET';
@@ -228,7 +285,7 @@ export class NocoDB implements INodeType {
 
 		let endPoint = '';
 
-		const baseId = this.getNodeParameter('baseId', 0) as string;
+		const baseId = this.getNodeParameter('projectId', 0) as string;
 		const table = this.getNodeParameter('table', 0) as string;
 
 		if (resource === 'row') {
