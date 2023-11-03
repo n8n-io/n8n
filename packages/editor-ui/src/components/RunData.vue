@@ -179,16 +179,7 @@
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<n8n-input
-				:class="$style.ioSearchNextToTabs"
-				size="small"
-				:modelValue="search"
-				@update:modelValue="onSearchUpdate"
-			>
-				<template #prefix>
-					<n8n-icon icon="search" />
-				</template>
-			</n8n-input>
+			<run-data-search :class="$style.ioSearchNextToTabs" v-model="search" />
 		</div>
 
 		<div
@@ -201,16 +192,7 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
-			<n8n-input
-				:class="$style.ioSearch"
-				size="small"
-				:modelValue="search"
-				@update:modelValue="onSearchUpdate"
-			>
-				<template #prefix>
-					<n8n-icon icon="search" />
-				</template>
-			</n8n-input>
+			<run-data-search :class="$style.ioSearch" v-model="search" />
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
@@ -576,6 +558,7 @@ const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDa
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
 const RunDataSchema = defineAsyncComponent(async () => import('@/components/RunDataSchema.vue'));
 const RunDataHtml = defineAsyncComponent(async () => import('@/components/RunDataHtml.vue'));
+const RunDataSearch = defineAsyncComponent(async () => import('@/components/RunDataSearch.vue'));
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -592,6 +575,7 @@ export default defineComponent({
 		RunDataJson,
 		RunDataSchema,
 		RunDataHtml,
+		RunDataSearch,
 	},
 	props: {
 		nodeUi: {
@@ -1385,9 +1369,6 @@ export default defineComponent({
 				});
 			}
 		},
-		onSearchUpdate(search: string) {
-			this.search = search;
-		},
 	},
 	watch: {
 		node() {
@@ -1518,15 +1499,6 @@ export default defineComponent({
 	align-items: center;
 	margin-left: var(--spacing-s);
 	margin-bottom: var(--spacing-s);
-}
-
-.ioSearch {
-	max-width: 33%;
-	padding-right: var(--spacing-s);
-}
-
-.ioSearchNextToTabs {
-	padding-right: var(--spacing-s);
 }
 
 .runSelector {
