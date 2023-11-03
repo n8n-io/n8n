@@ -634,7 +634,7 @@
 
 		tr:not(:last-child) {
 			td {
-				border-bottom: 1px solid var.$table-border-color;
+				border-bottom: 1px solid var.$table-inner-border-color;
 			}
 		}
 

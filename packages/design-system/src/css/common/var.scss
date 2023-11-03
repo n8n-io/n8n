@@ -661,9 +661,9 @@ $dialog-close-top: var(--dialog-close-top, var(--spacing-l));
 
 /* Table
 -------------------------- */
-$table-border-radius: var(--border-radius-large);
-$table-font-size: $font-size-small;
-$table-header-font-size: $font-size-small;
+$table-border-radius: var(--border-radius-base);
+$table-font-size: var(--font-size-xs);
+$table-header-font-size: var(--font-size-s);
 $table-header-font-weight: var(--font-weight-bold);
 $table-row-odd-background: var(--color-background-xlight);
 $table-row-even-background: var(--color-background-light);
@@ -671,6 +671,7 @@ $table-row-min-height: 52px;
 
 /// color||Color|0
 $table-border-color: var(--color-foreground-base);
+$table-inner-border-color: var(--color-foreground-light);
 $table-border: 1px solid $table-border-color;
 /// color||Color|0
 $table-font-color: var(--color-text-dark);
@@ -681,7 +682,7 @@ $table-row-hover-background-color: var(--color-table-row-hover-background);
 $table-current-row-background-color: $color-primary-light-9;
 $table-row-striped-background-color: var(--color-table-row-even-background);
 /// color||Color|0
-$table-header-background-color: var(--color-background-light);
+$table-header-background-color: var(--color-background-base);
 $table-fixed-box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
 
 /* Pagination
