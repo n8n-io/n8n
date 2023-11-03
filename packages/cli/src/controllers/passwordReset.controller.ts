@@ -50,8 +50,8 @@ export class PasswordResetController {
 	@Post('/forgot-password', {
 		middlewares: [
 			rateLimit({
-				windowMs: 15 * 60 * 1000, // 15 minutes
-				limit: 10, // Limit each IP to 10 requests per `window` (here, per 15 minutes).
+				windowMs: 5 * 60 * 1000, // 5 minutes
+				limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
 			}),
 		],
 	})
