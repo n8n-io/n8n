@@ -852,7 +852,8 @@ export default defineComponent({
 			return this.getData(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
 		inputData(): INodeExecutionData[] {
-			return this.getPinDataOrInputData(this.rawInputData);
+			const pinOrInputData = this.getPinDataOrInputData(this.rawInputData);
+			return this.getFilteredData(pinOrInputData);
 		},
 		inputDataPage(): INodeExecutionData[] {
 			const offset = this.pageSize * (this.currentPage - 1);
@@ -1215,26 +1216,27 @@ export default defineComponent({
 			return inputData;
 		},
 		getPinDataOrInputData(inputData: INodeExecutionData[]): INodeExecutionData[] {
-			if (this.pinData && !this.isProductionExecutionPreview) {
-				inputData = Array.isArray(this.pinData)
-					? this.pinData.map((value) => ({
-							json: value,
-					  }))
-					: [
-							{
-								json: this.pinData,
-							},
-					  ];
+			if (!this.pinData || this.isProductionExecutionPreview) {
+				return inputData;
+			}
+			return Array.isArray(this.pinData)
+				? this.pinData.map((value) => ({
+						json: value,
+				  }))
+				: [
+						{
+							json: this.pinData,
+						},
+				  ];
+		},
+		getFilteredData(inputData: INodeExecutionData[]): INodeExecutionData[] {
+			if (!this.search) {
+				return inputData;
 			}
 
-			if (this.search) {
-				const filteredData = inputData.filter(({ json }) => searchInObject(json, this.search));
-				if (filteredData.length) {
-					inputData = filteredData;
-				}
-			}
-
-			return inputData;
+			this.currentPage = 1;
+			const filteredData = inputData.filter(({ json }) => searchInObject(json, this.search));
+			return filteredData.length ? filteredData : inputData;
 		},
 		getDataCount(
 			runIndex: number,
@@ -1251,7 +1253,8 @@ export default defineComponent({
 			}
 
 			const inputData = this.getData(runIndex, outputIndex, connectionType);
-			return this.getPinDataOrInputData(inputData).length;
+			const pinOrInputData = this.getPinDataOrInputData(inputData);
+			return this.getFilteredData(pinOrInputData).length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
