@@ -179,6 +179,7 @@
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
+			<n8n-input size="small" :modelValue="search" @update:modelValue="onSearchUpdate" />
 		</div>
 
 		<div
@@ -191,6 +192,7 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
+			<n8n-input size="small" :modelValue="search" @update:modelValue="onSearchUpdate" />
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
@@ -643,6 +645,7 @@ export default defineComponent({
 
 			pinDataDiscoveryTooltipVisible: false,
 			isControlledPinDataTooltip: false,
+			search: '',
 		};
 	},
 	mounted() {
@@ -1355,6 +1358,9 @@ export default defineComponent({
 					mode: 'html',
 				});
 			}
+		},
+		onSearchUpdate(search: string) {
+			this.search = search;
 		},
 	},
 	watch: {
