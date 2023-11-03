@@ -661,12 +661,13 @@ $dialog-close-top: var(--dialog-close-top, var(--spacing-l));
 
 /* Table
 -------------------------- */
-$table-border-radius: 0;
+$table-border-radius: var(--border-radius-large);
 $table-font-size: $font-size-small;
 $table-header-font-size: $font-size-small;
 $table-header-font-weight: var(--font-weight-bold);
 $table-row-odd-background: var(--color-background-xlight);
 $table-row-even-background: var(--color-background-light);
+$table-row-min-height: 52px;
 
 /// color||Color|0
 $table-border-color: var(--color-foreground-base);

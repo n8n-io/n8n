@@ -183,33 +183,6 @@ export default defineComponent({
 
 .datatable {
 	width: 100%;
-
-	tbody {
-		tr {
-			td {
-				vertical-align: top;
-				color: var(--color-text-base);
-				padding: var(--spacing-s) var(--spacing-2xs);
-			}
-
-			&:nth-of-type(even) {
-				background: var(--color-background-xlight);
-			}
-
-			&:nth-of-type(odd) {
-				background: var(--color-background-light);
-			}
-		}
-	}
-}
-
-.datatableHeader {
-	background: var(--color-background-base);
-
-	th {
-		text-align: left;
-		padding: var(--spacing-s) var(--spacing-2xs);
-	}
 }
 
 .pagination {

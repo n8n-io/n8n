@@ -222,21 +222,21 @@ export default defineComponent({
 }
 
 .name {
-	min-height: 45px;
+	min-height: 40px;
 	display: flex;
 	align-items: center;
 }
 
 .ops {
-	min-height: 45px;
+	min-height: 40px;
 	justify-content: flex-end;
 	align-items: center;
 	display: flex;
 	flex-wrap: nowrap;
 	float: right;
 
-	> * {
-		margin: 2px;
+	> *:not(:last-child) {
+		margin-right: var(--spacing-3xs);
 	}
 }
 
