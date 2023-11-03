@@ -11,6 +11,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	apiTemplateIoApiRequest,
+	apiTemplateIoApiRequestV2,
 	downloadImage,
 	loadResource,
 	validateJSON,
@@ -516,7 +517,7 @@ export class ApiTemplateIo implements INodeType {
 							}
 						}
 
-						responseData = await apiTemplateIoApiRequest.call(
+						responseData = await apiTemplateIoApiRequestV2.call(
 							this,
 							'POST',
 							'/create',
