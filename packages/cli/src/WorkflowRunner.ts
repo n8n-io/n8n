@@ -37,7 +37,7 @@ import type {
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import type { Job, JobData, JobResponse } from '@/Queue';
-// eslint-disable-next-line import/no-cycle
+
 import { Queue } from '@/Queue';
 import { decodeWebhookResponse } from '@/helpers/decodeWebhookResponse';
 // eslint-disable-next-line import/no-cycle
@@ -73,8 +73,8 @@ export class WorkflowRunner {
 	/**
 	 * The process did send a hook message so execute the appropriate hook
 	 */
-	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
-		void workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
+	async processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
+		await workflowHooks.executeHookFunctions(hookData.hook, hookData.parameters);
 	}
 
 	/**
@@ -306,13 +306,9 @@ export class WorkflowRunner {
 			{ executionId },
 		);
 		let workflowExecution: PCancelable<IRun>;
+		await Container.get(ExecutionRepository).updateStatus(executionId, 'running');
 
 		try {
-			this.logger.verbose(
-				`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
-				{ executionId },
-			);
-
 			additionalData.hooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(
 				data,
 				executionId,
@@ -701,6 +697,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
+		await Container.get(ExecutionRepository).updateStatus(executionId, 'running');
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 
@@ -777,7 +774,7 @@ export class WorkflowRunner {
 					workflowHooks,
 				);
 			} else if (message.type === 'processHook') {
-				this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
+				await this.processHookMessage(workflowHooks, message.data as IProcessMessageDataHook);
 			} else if (message.type === 'timeout') {
 				// Execution timed out and its process has been terminated
 				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');

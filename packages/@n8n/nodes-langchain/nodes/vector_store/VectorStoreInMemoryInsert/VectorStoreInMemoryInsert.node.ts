@@ -12,6 +12,7 @@ import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { processDocuments } from '../shared/processDocuments';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 
+// This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryInsert implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'In Memory Vector Store Insert',
@@ -19,6 +20,7 @@ export class VectorStoreInMemoryInsert implements INodeType {
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		description: 'Insert data into an in-memory vector store',
 		defaults: {
 			name: 'In Memory Vector Store Insert',
@@ -62,19 +64,19 @@ export class VectorStoreInMemoryInsert implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Clear Store',
+				name: 'clearStore',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to clear the store before inserting new data',
+			},
+			{
 				displayName: 'Memory Key',
 				name: 'memoryKey',
 				type: 'string',
 				default: 'vector_store_key',
 				description:
 					'The key to use to store the vector memory in the workflow data. The key will be prefixed with the workflow ID to avoid collisions.',
-			},
-			{
-				displayName: 'Clear Store',
-				name: 'clearStore',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to clear the store before inserting new data',
 			},
 		],
 	};

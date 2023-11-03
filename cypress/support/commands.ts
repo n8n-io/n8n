@@ -171,3 +171,10 @@ Cypress.Commands.add('push', (type, data) => {
 		data,
 	});
 });
+
+Cypress.Commands.add('shouldNotHaveConsoleErrors', () => {
+	cy.window().then((win) => {
+		const spy = cy.spy(win.console, 'error');
+		cy.wrap(spy).should('not.have.been.called');
+	});
+});

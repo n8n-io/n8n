@@ -52,7 +52,7 @@ const canConnect = computed(() => {
 });
 
 const formattedDate = computed((provider: ExternalSecretsProvider) => {
-	return DateTime.fromISO(props.provider.connectedAt!).toFormat('dd LLL yyyy');
+	return DateTime.fromISO(props.provider.connectedAt).toFormat('dd LLL yyyy');
 });
 
 onMounted(() => {

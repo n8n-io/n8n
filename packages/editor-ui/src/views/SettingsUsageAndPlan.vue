@@ -188,7 +188,7 @@ const openPricingPage = () => {
 					type="tertiary"
 					size="large"
 				>
-					<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+					<span>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</span>
 				</n8n-button>
 				<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
 					<a :href="managePlanUrl" target="_blank">{{
@@ -318,13 +318,6 @@ const openPricingPage = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
-}
-
-.buttonTertiary {
-	&,
-	&:hover {
-		background: transparent;
-	}
 }
 </style>
 

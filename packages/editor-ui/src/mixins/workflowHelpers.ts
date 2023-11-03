@@ -1,5 +1,6 @@
 import {
 	EnterpriseEditionFeature,
+	HTTP_REQUEST_NODE_TYPE,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -49,7 +50,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
-import { isEqual } from 'lodash-es';
+import { get, isEqual } from 'lodash-es';
 
 import type { IPermissions } from '@/permissions';
 import { getWorkflowPermissions } from '@/permissions';
@@ -194,6 +195,16 @@ export function resolveParameter(
 		...opts.additionalKeys,
 	};
 
+	if (activeNode?.type === HTTP_REQUEST_NODE_TYPE) {
+		// Add $response for HTTP Request-Nodes as it is used
+		// in pagination expressions
+		additionalKeys.$response = get(
+			executionData,
+			`data.executionData.contextData['node:${activeNode!.name}'].response`,
+			{},
+		);
+	}
+
 	let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
 	if (
 		opts?.targetItem === undefined &&
@@ -216,7 +227,6 @@ export function resolveParameter(
 		activeNode!.name,
 		_connectionInputData,
 		'manual',
-		useRootStore().timezone,
 		additionalKeys,
 		_executeData,
 		false,
@@ -650,6 +660,7 @@ export const workflowHelpers = defineComponent({
 				'credentials',
 				'disabled',
 				'issues',
+				'onError',
 				'notes',
 				'parameters',
 				'status',
@@ -726,14 +737,16 @@ export const workflowHelpers = defineComponent({
 				}
 			}
 
-			// Save the disabled property and continueOnFail only when is set
+			// Save the disabled property, continueOnFail and onError only when is set
 			if (node.disabled === true) {
 				nodeData.disabled = true;
 			}
 			if (node.continueOnFail === true) {
 				nodeData.continueOnFail = true;
 			}
-
+			if (node.onError !== 'stopWorkflow') {
+				nodeData.onError = node.onError;
+			}
 			// Save the notes only if when they contain data
 			if (![undefined, ''].includes(node.notes)) {
 				nodeData.notes = node.notes;

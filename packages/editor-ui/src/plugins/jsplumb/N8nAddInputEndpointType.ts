@@ -30,18 +30,22 @@ export class N8nAddInputEndpoint extends EndpointRepresentation<ComputedN8nAddIn
 	}
 
 	static type = N8nAddInputEndpointType;
+
 	type = N8nAddInputEndpoint.type;
 
 	setupOverlays() {
 		this.endpoint.instance.setSuspendDrawing(true);
 		this.endpoint.instance.setSuspendDrawing(false);
 	}
+
 	bindEvents() {
 		this.instance.bind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 	}
+
 	unbindEvents() {
 		this.instance.unbind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 	}
+
 	fireClickEvent = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint) {
 			this.instance.fire(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.endpoint);

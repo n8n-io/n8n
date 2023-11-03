@@ -32,7 +32,7 @@ import { Container, Service } from 'typedi';
 import { ExecutionRepository, WorkflowRepository } from '@/databases/repositories';
 import type { AbstractEventMessageOptions } from '../EventMessageClasses/AbstractEventMessageOptions';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { Logger } from '@/Logger';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
@@ -207,7 +207,7 @@ export class MessageEventBus extends EventEmitter {
 		this.destinations[destination.getId()].startListening();
 		if (notifyWorkers) {
 			await Container.get(
-				OrchestrationMainService,
+				SingleMainInstancePublisher,
 			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return destination;
@@ -235,7 +235,7 @@ export class MessageEventBus extends EventEmitter {
 		}
 		if (notifyWorkers) {
 			await Container.get(
-				OrchestrationMainService,
+				SingleMainInstancePublisher,
 			).broadcastRestartEventbusAfterDestinationUpdate();
 		}
 		return result;

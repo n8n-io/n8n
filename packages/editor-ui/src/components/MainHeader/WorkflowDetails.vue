@@ -108,6 +108,7 @@
 			>
 				<n8n-icon-button
 					:disabled="isWorkflowHistoryButtonDisabled"
+					data-test-id="workflow-history-button"
 					type="tertiary"
 					icon="history"
 					size="medium"
@@ -347,9 +348,8 @@ export default defineComponent({
 			return actions;
 		},
 		isWorkflowHistoryFeatureEnabled(): boolean {
-			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory) &&
-				this.settingsStore.isDevRelease
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.WorkflowHistory,
 			);
 		},
 		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {

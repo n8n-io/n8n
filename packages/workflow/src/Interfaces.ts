@@ -196,7 +196,6 @@ export abstract class ICredentialsHelper {
 		requestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): Promise<IHttpRequestOptions>;
 
 	abstract preAuthentication(
@@ -217,7 +216,6 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject>;
@@ -513,10 +511,18 @@ export interface IHttpRequestOptions {
 	json?: boolean;
 }
 
+export interface PaginationOptions {
+	binaryResult?: boolean;
+	continue: boolean | string;
+	request: IRequestOptionsSimplifiedAuth;
+	maxRequests?: number;
+}
+
 export type IN8nHttpResponse = IDataObject | Buffer | GenericValue | GenericValue[] | null;
 
 export interface IN8nHttpFullResponse {
 	body: IN8nHttpResponse | Readable;
+	__bodyResolved?: boolean;
 	headers: IDataObject;
 	statusCode: number;
 	statusMessage?: string;
@@ -710,6 +716,14 @@ export interface RequestHelperFunctions {
 		requestOptions: IHttpRequestOptions,
 		additionalCredentialOptions?: IAdditionalCredentialOptions,
 	): Promise<any>;
+	requestWithAuthenticationPaginated(
+		this: IAllExecuteFunctions,
+		requestOptions: OptionsWithUri,
+		itemIndex: number,
+		paginationOptions: PaginationOptions,
+		credentialsType?: string,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any[]>;
 
 	requestOAuth1(
 		this: IAllExecuteFunctions,
@@ -747,10 +761,12 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 	[K in Keys]: NonNullable<FunctionsBase[K]>;
 };
 
+export type ContextType = 'flow' | 'node';
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
-	getContext(type: string): IContextObject;
+	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
@@ -922,6 +938,7 @@ export interface INodeCredentials {
 	[key: string]: INodeCredentialsDetails;
 }
 
+export type OnError = 'continueErrorOutput' | 'continueRegularOutput' | 'stopWorkflow';
 export interface INode {
 	id: string;
 	name: string;
@@ -936,6 +953,7 @@ export interface INode {
 	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	executeOnce?: boolean;
+	onError?: OnError;
 	continueOnFail?: boolean;
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
@@ -1548,6 +1566,7 @@ export interface INodeInputConfiguration {
 }
 
 export interface INodeOutputConfiguration {
+	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: ConnectionTypes;
@@ -1655,6 +1674,11 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
+	$getPairedItem: (
+		destinationNodeName: string,
+		incomingSourceData: ISourceData | null,
+		pairedItem: IPairedItemData,
+	) => INodeExecutionData | null;
 	constructor: any;
 }
 
@@ -1862,7 +1886,6 @@ export interface IWorkflowExecuteAdditionalData {
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
 	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
-	timezone: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;
 	webhookTestBaseUrl: string;
@@ -2007,6 +2030,7 @@ export interface INoteGraphItem {
 export interface INodeGraphItem {
 	id: string;
 	type: string;
+	version?: number;
 	resource?: string;
 	operation?: string;
 	domain?: string; // HTTP Request node v1

@@ -170,6 +170,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
@@ -198,7 +199,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -441,7 +442,10 @@ export default defineComponent({
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1);
+			return (
+				!this.isConfigurableNode &&
+				!!(this.data.disabled && this.inputs.length === 1 && this.outputs.length === 1)
+			);
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
@@ -487,31 +491,31 @@ export default defineComponent({
 				[key: string]: string;
 			} = {};
 
-			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+			let borderColor = '--color-foreground-xdark';
 
 			if (this.isConfigurableNode || this.isConfigNode) {
-				borderColor = getStyleTokenValue('--color-foreground-dark');
+				borderColor = '--color-foreground-dark';
 			}
 
 			if (this.data.disabled) {
-				borderColor = getStyleTokenValue('--color-foreground-base');
+				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = getStyleTokenValue('--color-danger');
+					borderColor = '--color-danger';
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = getStyleTokenValue('--color-secondary');
+					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
-					borderColor = getStyleTokenValue('--color-foreground-xdark');
+					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
-					borderColor = getStyleTokenValue('--color-success');
+					borderColor = '--color-success';
 				}
 			}
 
-			returnStyles['border-color'] = borderColor;
+			returnStyles['border-color'] = `var(${borderColor})`;
 
 			return returnStyles;
 		},
@@ -579,9 +583,10 @@ export default defineComponent({
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = localStorage.getItem(
+		const hasSeenPinDataTooltip = useStorage(
 			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-		);
+			undefined,
+		).value;
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
@@ -780,7 +785,7 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: $node-background-default;
+			background-color: var(--color-canvas-node-background);
 			&.executing {
 				background-color: $node-background-executing !important;
 
@@ -1003,6 +1008,9 @@ export default defineComponent({
 						--configurable-node-icon-size
 					) - 2 * var(--spacing-s)
 			);
+			.node-name > p {
+				color: var(--color-configurable-node-name);
+			}
 		}
 
 		.node-default {
@@ -1044,12 +1052,7 @@ export default defineComponent({
 	--node--selected--box-shadow-radius: 8px;
 
 	display: block;
-	background-color: hsla(
-		var(--color-foreground-base-h),
-		var(--color-foreground-base-s),
-		var(--color-foreground-base-l),
-		60%
-	);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
@@ -1296,6 +1299,15 @@ export default defineComponent({
 		stroke: var(--color-foreground-xdark);
 	}
 
+	&.error {
+		path {
+			fill: var(--node-error-output-color);
+		}
+		rect {
+			stroke: var(--node-error-output-color);
+		}
+	}
+
 	&.small {
 		margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size-small) / 2));
 		g {
@@ -1426,6 +1438,10 @@ export default defineComponent({
 	}
 }
 
+.node-output-endpoint-label.node-connection-category-error {
+	color: var(--node-error-output-color);
+}
+
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
 
@@ -1435,9 +1451,9 @@ export default defineComponent({
 		margin-left: 0;
 	}
 
-	// Switch node allows for dynamic connection labels
+	// Some nodes allow for dynamic connection labels
 	// so we need to make sure the label does not overflow
-	&[data-endpoint-node-type='n8n-nodes-base.switch'] {
+	&[data-endpoint-label-length='medium'] {
 		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1494,7 +1510,8 @@ export default defineComponent({
 .ep-success--without-label {
 	--stalk-size: var(--stalk-success-size-without-label);
 }
-[data-endpoint-node-type='n8n-nodes-base.switch'] {
+
+[data-endpoint-label-length='medium'] {
 	--stalk-size: var(--stalk-switch-size);
 }
 </style>

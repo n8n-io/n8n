@@ -129,7 +129,7 @@ export default defineComponent({
 }
 
 .danger {
-	color: var(--color-danger);
+	color: var(--color-text-danger);
 }
 
 .success {

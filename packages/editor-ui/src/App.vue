@@ -20,9 +20,10 @@
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
+					<component v-else :is="Component" />
 				</router-view>
 			</div>
 			<Modals />
@@ -39,7 +40,7 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
@@ -208,12 +209,6 @@ export default defineComponent({
 			}
 			return;
 		},
-		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
-			if (theme) {
-				window.document.body.classList.add(`theme-${theme}`);
-			}
-		},
 		async postAuthenticate() {
 			if (this.postAuthenticateDone) {
 				return;
@@ -231,7 +226,6 @@ export default defineComponent({
 		},
 	},
 	async created() {
-		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
 		await this.authenticate();
@@ -255,7 +249,7 @@ export default defineComponent({
 				void this.postAuthenticate();
 			}
 		},
-		async $route(route) {
+		async $route() {
 			await this.initSettings();
 			await this.redirectIfNecessary();
 

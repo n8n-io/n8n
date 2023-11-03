@@ -14,7 +14,7 @@ interface N8nPlusEndpointParams extends EndpointRepresentationParams {
 	dimensions: number;
 	connectedEndpoint: Endpoint;
 	hoverMessage: string;
-	nodeType: string;
+	endpointLabelLength: 'small' | 'medium';
 	size: 'small' | 'medium';
 	showOutputLabel: boolean;
 }
@@ -55,7 +55,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			options: {
 				id: PlusStalkOverlay,
 				attributes: {
-					'data-endpoint-node-type': this.params.nodeType,
+					'data-endpoint-label-length': this.params.endpointLabelLength,
 				},
 				create: () => {
 					const stalk = createElement('div', {}, `${PlusStalkOverlay} ${this.params.size}`);
@@ -69,7 +69,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 				id: HoverMessageOverlay,
 				location: 0.5,
 				attributes: {
-					'data-endpoint-node-type': this.params.nodeType,
+					'data-endpoint-label-length': this.params.endpointLabelLength,
 				},
 				create: () => {
 					const hoverMessage = createElement('p', {}, `${HoverMessageOverlay} ${this.params.size}`);
@@ -199,7 +199,8 @@ export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8
 		ep.w = w;
 		ep.h = h;
 
-		ep.canvas?.setAttribute('data-endpoint-node-type', ep.params.nodeType);
+		ep.canvas?.setAttribute('data-endpoint-label-length', ep.params.endpointLabelLength);
+
 		ep.addClass('plus-endpoint');
 		return [x, y, w, h, ep.params.dimensions];
 	},

@@ -1,9 +1,12 @@
 import type { NodeCreatorOpenSource } from './Interface';
 import { NodeConnectionType } from 'n8n-workflow';
 
-export const MAX_WORKFLOW_SIZE = 16777216; // Workflow size limit in bytes
-export const MAX_WORKFLOW_PINNED_DATA_SIZE = 12582912; // Workflow pinned data size limit in bytes
-export const MAX_DISPLAY_DATA_SIZE = 204800;
+export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16; // Workflow size limit in bytes
+export const MAX_EXPECTED_REQUEST_SIZE = 2048; // Expected maximum workflow request metadata (i.e. headers) size in bytes
+export const MAX_PINNED_DATA_SIZE = import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE
+	? parseInt(import.meta.env.VUE_APP_MAX_PINNED_DATA_SIZE, 10)
+	: 1024 * 1024 * 12; // Workflow pinned data size limit in bytes
+export const MAX_DISPLAY_DATA_SIZE = 1024 * 200;
 export const MAX_DISPLAY_ITEMS_AUTO_ALL = 250;
 
 export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]';
@@ -220,9 +223,8 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 // Node Connection Types
 export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	NodeConnectionType.AiTool,
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 	NodeConnectionType.Main,
 ];
 

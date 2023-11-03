@@ -112,11 +112,9 @@ export default defineComponent({
 		},
 		// Returns all the options which did not get added already
 		parameterOptions(): Array<INodePropertyOptions | INodeProperties> {
-			return (this.filteredOptions as Array<INodePropertyOptions | INodeProperties>).filter(
-				(option) => {
-					return !this.propertyNames.includes(option.name);
-				},
-			);
+			return this.filteredOptions.filter((option) => {
+				return !this.propertyNames.includes(option.name);
+			});
 		},
 		propertyNames(): string[] {
 			if (this.values) {
@@ -210,7 +208,28 @@ export default defineComponent({
 		margin-top: var(--spacing-xs);
 
 		.button {
+			color: var(--color-text-dark);
+			font-weight: var(--font-weight-normal);
+			--button-border-color: var(--color-foreground-base);
 			--button-background-color: var(--color-background-base);
+
+			--button-hover-font-color: var(--color-button-secondary-font);
+			--button-hover-border-color: var(--color-foreground-base);
+			--button-hover-background-color: var(--color-background-base);
+
+			--button-active-font-color: var(--color-button-secondary-font);
+			--button-active-border-color: var(--color-foreground-base);
+			--button-active-background-color: var(--color-background-base);
+
+			--button-focus-font-color: var(--color-button-secondary-font);
+			--button-focus-border-color: var(--color-foreground-base);
+			--button-focus-background-color: var(--color-background-base);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
 		}
 	}
 

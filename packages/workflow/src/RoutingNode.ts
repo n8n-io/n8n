@@ -35,7 +35,9 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 	PostReceiveAction,
+	JsonObject,
 } from './Interfaces';
+import type { NodeError } from './NodeErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as NodeHelpers from './NodeHelpers';
 
@@ -121,8 +123,9 @@ export class RoutingNode {
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
+			let thisArgs: IExecuteSingleFunctions | undefined;
 			try {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+				thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
 					this.workflow,
 					this.runExecutionData,
 					runIndex,
@@ -209,17 +212,30 @@ export class RoutingNode {
 
 				returnData.push(...responseData);
 			} catch (error) {
-				if (get(this.node, 'continueOnFail', false)) {
-					returnData.push({ json: {}, error: error.message });
+				if (thisArgs !== undefined && thisArgs.continueOnFail()) {
+					returnData.push({ json: {}, error: error as NodeError });
 					continue;
 				}
-				if (error instanceof NodeApiError) error = error.cause;
-				throw new NodeApiError(this.node, error, {
+
+				interface AxiosError extends NodeError {
+					isAxiosError: boolean;
+					description: string | undefined;
+					response?: { status: number };
+				}
+
+				let routingError = error as AxiosError;
+
+				if (error instanceof NodeApiError) routingError = error.cause as AxiosError;
+
+				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
 					itemIndex: i,
-					message: error?.message,
-					description: error?.description,
-					httpCode: error.isAxiosError && error.response && String(error.response?.status),
+					message: routingError?.message,
+					description: routingError?.description,
+					httpCode:
+						routingError.isAxiosError && routingError.response
+							? String(routingError.response?.status)
+							: 'none',
 				});
 			}
 		}
@@ -275,7 +291,7 @@ export class RoutingNode {
 					});
 				});
 			} catch (error) {
-				throw new NodeOperationError(this.node, error, {
+				throw new NodeOperationError(this.node, error as Error, {
 					runIndex,
 					itemIndex,
 					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
@@ -701,7 +717,6 @@ export class RoutingNode {
 				this.node.name,
 				this.connectionInputData,
 				this.mode,
-				this.additionalData.timezone,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,

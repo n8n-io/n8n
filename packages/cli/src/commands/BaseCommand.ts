@@ -74,6 +74,12 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
+		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
+			this.logger.warn(
+				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
+			);
+		}
+
 		await Container.get(PostHogClient).init();
 		await Container.get(InternalHooks).init();
 	}
@@ -237,6 +243,17 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled')) {
+			const { MultiMainInstancePublisher } = await import(
+				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+			);
+
+			if (Container.get(MultiMainInstancePublisher).isFollower) {
+				this.logger.debug('Instance is follower, skipping license initialization...');
+				return;
+			}
+		}
+
 		const license = Container.get(License);
 		await license.init(this.instanceType ?? 'main');
 

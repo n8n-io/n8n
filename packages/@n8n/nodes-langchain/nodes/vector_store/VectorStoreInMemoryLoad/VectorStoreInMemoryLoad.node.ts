@@ -10,6 +10,7 @@ import type { Embeddings } from 'langchain/embeddings/base';
 import { MemoryVectorStoreManager } from '../shared/MemoryVectorStoreManager';
 import { logWrapper } from '../../../utils/logWrapper';
 
+// This node is deprecated. Use VectorStoreInMemory instead.
 export class VectorStoreInMemoryLoad implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'In Memory Vector Store Load',
@@ -17,6 +18,7 @@ export class VectorStoreInMemoryLoad implements INodeType {
 		icon: 'fa:database',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		description: 'Load embedded data from an in-memory vector store',
 		defaults: {
 			name: 'In Memory Vector Store Load',

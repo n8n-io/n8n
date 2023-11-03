@@ -122,7 +122,7 @@ export default defineComponent({
 		},
 		focusOnNameInput() {
 			const inputRef = this.$refs.nameInput as HTMLElement | undefined;
-			if (inputRef && inputRef.focus) {
+			if (inputRef?.focus) {
 				inputRef.focus();
 			}
 		},

@@ -51,6 +51,8 @@ import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
+	ThemeOption,
+	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
@@ -59,14 +61,30 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import {
+	addThemeToBody,
+	getPreferredTheme,
+	getThemeOverride,
+	isValidTheme,
+	updateTheme,
+} from './ui.utils';
+
+let savedTheme: ThemeOption = 'system';
+try {
+	const value = getThemeOverride();
+	if (isValidTheme(value)) {
+		savedTheme = value;
+		addThemeToBody(value);
+	}
+} catch (e) {}
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
+		theme: savedTheme,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
 				open: false,
@@ -199,11 +217,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannerStack: [],
 	}),
 	getters: {
-		logo() {
+		appliedTheme(): AppliedThemeOption {
+			return this.theme === 'system' ? getPreferredTheme() : this.theme;
+		},
+		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
+			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
+
 			return releaseChannel === 'stable'
-				? 'n8n-logo-expanded.svg'
-				: `n8n-${releaseChannel}-logo.svg`;
+				? `n8n-logo-expanded${type}`
+				: `n8n-${releaseChannel}-logo${type}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
@@ -373,10 +396,15 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		headerHeight() {
-			return Number(getStyleTokenValue('--header-height'));
+			const style = getComputedStyle(document.body);
+			return Number(style.getPropertyValue('--header-height'));
 		},
 	},
 	actions: {
+		setTheme(theme: ThemeOption): void {
+			this.theme = theme;
+			updateTheme(theme);
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],

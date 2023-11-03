@@ -246,7 +246,7 @@ export class ChainSummarization implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			let processedDocuments: Document[];
 			if (documentInput instanceof N8nJsonLoader || documentInput instanceof N8nBinaryLoader) {
-				processedDocuments = await documentInput.process([items[itemIndex]]);
+				processedDocuments = await documentInput.processItem(items[itemIndex], itemIndex);
 			} else {
 				processedDocuments = documentInput;
 			}
