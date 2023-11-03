@@ -34,7 +34,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useOrchestrationStore } from '../stores/orchestration.store';
 import { setPageTitle } from '@/utils';
 import { pushConnection } from '../mixins/pushConnection';
-import WorkerCard from './Workers/WorkerCard.vue';
+import WorkerCard from './Workers/WorkerCard.ee.vue';
 
 // eslint-disable-next-line import/no-default-export
 export default defineComponent({
