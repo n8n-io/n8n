@@ -173,6 +173,18 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Thumbnail Binary Property',
+				name: 'thumbnailBinaryPropertyName',
+				type: 'string',
+				default: 'data',
+				description: 'Object property name which holds binary data for the article thumbnail',
+				displayOptions: {
+					show: {
+						'/shareMediaCategory': ['ARTICLE'],
+					},
+				},
+			},
+			{
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
