@@ -176,20 +176,13 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
-		const css = WorkflowPage.getters.canvasNodes().last().invoke('attr', 'style');
 
-		WorkflowPage.actions
-			.getNodePosition(WorkflowPage.getters.canvasNodes().last())
-			.then((position) => {
-				cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], {
-					clickToFinish: true,
-				});
-				WorkflowPage.getters
-					.canvasNodes()
-					.last()
-					.should('have.css', 'left', `${position.left + 100}px`)
-					.should('have.css', 'top', `${position.top + 100}px`);
-			});
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], { clickToFinish: true });
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.should('have.css', 'left', '740px')
+			.should('have.css', 'top', '320px');
 	});
 
 	it('should zoom in', () => {
@@ -360,5 +353,17 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		cy.waitForLoad();
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		cy.get('.rect-input-endpoint.jtk-endpoint-connected').should('have.length', 1);
+	});
+
+	it('should remove unknown credentials on pasting workflow', () => {
+		cy.fixture('workflow-with-unknown-credentials.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+
+			WorkflowPage.actions.openNode('n8n');
+			cy.get('[class*=hasIssues]').should('have.length', 1);
+			NDVDialog.actions.close();
+		});
 	});
 });
