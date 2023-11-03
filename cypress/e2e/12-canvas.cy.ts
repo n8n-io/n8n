@@ -16,11 +16,11 @@ const NDVDialog = new NDV();
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
 const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
-const ZOOM_OUT_X1_FACTOR = 0.75;
-const ZOOM_OUT_X2_FACTOR = 0.5625;
+const ZOOM_OUT_X1_FACTOR = 0.8;
+const ZOOM_OUT_X2_FACTOR = 0.64;
 
-const PINCH_ZOOM_IN_FACTOR = 1.32;
-const PINCH_ZOOM_OUT_FACTOR = 0.4752;
+const PINCH_ZOOM_IN_FACTOR = 1.05702;
+const PINCH_ZOOM_OUT_FACTOR = 0.946058;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {
@@ -222,8 +222,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			);
 	});
 
-	it('should zoom using pinch to zoom', () => {
-		WorkflowPage.actions.pinchToZoom(2, 'zoomIn');
+	it('should zoom using scroll or pinch gesture', () => {
+		WorkflowPage.actions.pinchToZoom(1, 'zoomIn');
 		WorkflowPage.getters
 			.nodeView()
 			.should(
@@ -232,7 +232,11 @@ describe('Canvas Node Manipulation and Navigation', () => {
 				`matrix(${PINCH_ZOOM_IN_FACTOR}, 0, 0, ${PINCH_ZOOM_IN_FACTOR}, 0, 0)`,
 			);
 
-		WorkflowPage.actions.pinchToZoom(4, 'zoomOut');
+		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
+		// Zoom in 1x + Zoom out 1x should reset to default (=1)
+		WorkflowPage.getters.nodeView().should('have.css', 'transform', `matrix(1, 0, 0, 1, 0, 0)`);
+
+		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
 		WorkflowPage.getters
 			.nodeView()
 			.should(
