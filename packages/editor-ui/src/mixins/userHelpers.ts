@@ -13,8 +13,6 @@ export const userHelpers = defineComponent({
 		},
 
 		canUserAccessCurrentRoute(): boolean {
-			console.log(this.$route.name, this.canUserAccessRoute(this.$route));
-
 			return this.canUserAccessRoute(this.$route);
 		},
 
