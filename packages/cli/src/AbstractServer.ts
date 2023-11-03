@@ -40,6 +40,10 @@ export abstract class AbstractServer {
 
 	protected restEndpoint: string;
 
+	protected endpointForm: string;
+
+	protected endpointFormTest: string;
+
 	protected endpointFormWaiting: string;
 
 	protected endpointWebhook: string;
@@ -62,9 +66,12 @@ export abstract class AbstractServer {
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
 
+		this.restEndpoint = config.getEnv('endpoints.rest');
+
+		this.endpointForm = config.getEnv('endpoints.form');
+		this.endpointFormTest = config.getEnv('endpoints.formTest');
 		this.endpointFormWaiting = config.getEnv('endpoints.formWaiting');
 
-		this.restEndpoint = config.getEnv('endpoints.rest');
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -167,6 +174,12 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
+			// Register a handler for active forms
+			this.app.all(
+				`/${this.endpointForm}/:path(*)`,
+				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+			);
+
 			// Register a handler for active webhooks
 			this.app.all(
 				`/${this.endpointWebhook}/:path(*)`,
@@ -189,9 +202,18 @@ export abstract class AbstractServer {
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
 
+			// Register a handler for test forms
+			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
+
 			// Register a handler for test webhooks
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 
+			// Removes a test form
+			// TODO UM: check if this needs validation with user management.
+			this.app.delete(
+				`/${this.restEndpoint}/test-form/:id`,
+				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
+			);
 			// Removes a test webhook
 			// TODO UM: check if this needs validation with user management.
 			this.app.delete(

@@ -81,6 +81,8 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			endpointForm: config.getEnv('endpoints.form'),
+			endpointFormTest: config.getEnv('endpoints.formTest'),
 			endpointFormWaiting: config.getEnv('endpoints.formWaiting'),
 			endpointWebhook: config.getEnv('endpoints.webhook'),
 			endpointWebhookTest: config.getEnv('endpoints.webhookTest'),

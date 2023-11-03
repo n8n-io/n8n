@@ -768,15 +768,17 @@ export const workflowHelpers = defineComponent({
 		},
 
 		getWebhookUrl(webhookData: IWebhookDescription, node: INode, showUrlFor?: string): string {
-			if (webhookData.restartWebhook === true) {
-				if (webhookData.isForm) {
-					return '$execution.resumeFormUrl';
-				}
-				return '$execution.resumeUrl';
+			const { isForm, restartWebhook } = webhookData;
+			if (restartWebhook === true) {
+				return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
 			}
-			let baseUrl = this.rootStore.getWebhookUrl;
+
+			// let baseUrl = this.rootStore.getWebhookUrl;
+			let baseUrl;
 			if (showUrlFor === 'test') {
-				baseUrl = this.rootStore.getWebhookTestUrl;
+				baseUrl = isForm ? this.rootStore.getFormTestUrl : this.rootStore.getWebhookTestUrl;
+			} else {
+				baseUrl = isForm ? this.rootStore.getFormUrl : this.rootStore.getWebhookUrl;
 			}
 
 			const workflowId = this.workflowsStore.workflowId;

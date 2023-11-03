@@ -26,6 +26,8 @@ export const SETTINGS_STORE_DEFAULT_STATE: ISettingsState = {
 		allowedModules: {},
 		communityNodesEnabled: false,
 		defaultLocale: '',
+		endpointForm: '',
+		endpointFormTest: '',
 		endpointFormWaiting: '',
 		endpointWebhook: '',
 		endpointWebhookTest: '',

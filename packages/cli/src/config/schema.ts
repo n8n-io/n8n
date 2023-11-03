@@ -662,6 +662,18 @@ export const schema = {
 			env: 'N8N_ENDPOINT_REST',
 			doc: 'Path for rest endpoint',
 		},
+		form: {
+			format: String,
+			default: 'form',
+			env: 'N8N_ENDPOINT_FORM',
+			doc: 'Path for form endpoint',
+		},
+		formTest: {
+			format: String,
+			default: 'form-test',
+			env: 'N8N_ENDPOINT_FORM_TEST',
+			doc: 'Path for test form endpoint',
+		},
 		formWaiting: {
 			format: String,
 			default: 'form-waiting',

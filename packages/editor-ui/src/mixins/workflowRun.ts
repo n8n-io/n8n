@@ -2,7 +2,13 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
-import type { IRunData, IRunExecutionData, ITaskData, IWorkflowBase } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IRunData,
+	IRunExecutionData,
+	ITaskData,
+	IWorkflowBase,
+} from 'n8n-workflow';
 import {
 	NodeHelpers,
 	NodeConnectionType,
@@ -287,10 +293,14 @@ export const workflowRun = defineComponent({
 							testUrl = `${this.rootStore.getWebhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 						}
 
+						if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion > 1) {
+							const webhookPath = (node.parameters.path as string) || node.webhookId;
+							testUrl = `${this.rootStore.getFormTestUrl}/${webhookPath}`;
+						}
+
 						if (node.type === WAIT_NODE_TYPE && runWorkflowApiResponse.executionId) {
-							const suffix = node.parameters.options.webhookSuffix
-								? `/${node.parameters.options.webhookSuffix}`
-								: '';
+							const { webhookSuffix } = node.parameters.options as IDataObject;
+							const suffix = webhookSuffix ? `/${webhookSuffix}` : '';
 							testUrl = `${this.rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 						}
 

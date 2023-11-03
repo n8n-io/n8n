@@ -939,6 +939,8 @@ export interface RootState {
 	baseUrl: string;
 	restEndpoint: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -968,6 +970,8 @@ export interface IRootState {
 	activeCredentialType: string | null;
 	baseUrl: string;
 	defaultLocale: string;
+	endpointForm: string;
+	endpointFormTest: string;
 	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
