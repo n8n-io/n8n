@@ -13,10 +13,10 @@ import type { Route } from 'vue-router';
 	'@/utils'.
 */
 
-const SCALE_INCREASE_FACTOR = 1.25;
-const SCALE_DECREASE_FACTOR = 0.75;
+const SCALE_CHANGE_FACTOR = 1.25;
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 5;
+const SCROLL_ZOOM_SPEED = 0.05;
 
 const clamp = (min: number, max: number) => (num: number) => {
 	return Math.max(min, Math.min(max, num));
@@ -43,9 +43,9 @@ export const applyScale =
 		};
 	};
 
-export const scaleBigger = applyScale(SCALE_INCREASE_FACTOR);
+export const scaleBigger = applyScale(SCALE_CHANGE_FACTOR);
 
-export const scaleSmaller = applyScale(SCALE_DECREASE_FACTOR);
+export const scaleSmaller = applyScale(1 / SCALE_CHANGE_FACTOR);
 
 export const scaleReset = (config: IZoomConfig): IZoomConfig => {
 	return applyScale(1 / config.scale)(config);
@@ -121,5 +121,5 @@ export const normalizeWheelEventDelta = (event: WheelEvent): { deltaX: number; d
 };
 
 export const getScaleFromWheelEventDelta = (delta: number): number => {
-	return 1 - delta / 100;
+	return Math.pow(2, -delta * SCROLL_ZOOM_SPEED);
 };
