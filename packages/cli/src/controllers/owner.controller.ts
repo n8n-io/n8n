@@ -12,6 +12,7 @@ import { SettingsRepository } from '@db/repositories';
 import { PostHogClient } from '@/posthog';
 import { UserService } from '@/services/user.service';
 import { Logger } from '@/Logger';
+import { isValidName } from 'n8n-workflow';
 
 @Authorized(['global', 'owner'])
 @RestController('/owner')
@@ -54,9 +55,9 @@ export class OwnerController {
 
 		const validPassword = validatePassword(password);
 
-		if (!firstName || !lastName) {
+		if (!firstName || !lastName || !isValidName(firstName) || !isValidName(lastName)) {
 			this.logger.debug(
-				'Request to claim instance ownership failed because of missing first name or last name in payload',
+				'Request to claim instance ownership failed because of invalid first name or last name in payload',
 				{ userId, payload: req.body },
 			);
 			throw new BadRequestError('First and last names are mandatory');

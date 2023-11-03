@@ -262,5 +262,6 @@ describe('Name validation tests', () => {
 		expect(isValidName('https://www.google.com')).toBe(false);
 		expect(isValidName('www.google.com')).toBe(false);
 		expect(isValidName('<a href="https://www.google.com">Mike</a>')).toBe(false);
+		expect(isValidName('')).toBe(false);
 	});
 });
