@@ -1,4 +1,4 @@
-import SetupView from "@/views/SetupView.vue";
+import SetupView from '@/views/SetupView.vue';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
