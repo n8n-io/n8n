@@ -1,13 +1,9 @@
 import type { RequestHandler } from 'express';
 import { CONTROLLER_ROUTES } from './constants';
 import type { Method, RouteMetadata } from './types';
-import type { Options } from 'express-rate-limit';
-import { rateLimit } from 'express-rate-limit';
-import { inTest } from '@/constants';
 
 interface RouteOptions {
 	middlewares?: RequestHandler[];
-	throttle?: Partial<Options>;
 }
 
 const RouteFactory =
@@ -17,13 +13,10 @@ const RouteFactory =
 		const controllerClass = target.constructor;
 		const routes = (Reflect.getMetadata(CONTROLLER_ROUTES, controllerClass) ??
 			[]) as RouteMetadata[];
-		const middlewares = options.middlewares ?? [];
-		if (options.throttle && !inTest) middlewares.unshift(rateLimit(options.throttle));
-
 		routes.push({
 			method,
 			path,
-			middlewares,
+			middlewares: options.middlewares ?? [],
 			handlerName: String(handlerName),
 		});
 		Reflect.defineMetadata(CONTROLLER_ROUTES, routes, controllerClass);
