@@ -1,3 +1,4 @@
+import { promisify } from 'util';
 import type {
 	IBinaryKeyData,
 	IExecuteFunctions,
@@ -7,8 +8,6 @@ import type {
 } from 'n8n-workflow';
 
 import * as fflate from 'fflate';
-
-import { promisify } from 'util';
 
 const gunzip = promisify(fflate.gunzip);
 const gzip = promisify(fflate.gzip);

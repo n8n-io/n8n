@@ -16,7 +16,6 @@ const licenseLike = {
 const testServer = utils.setupTestServer({ endpointGroups: ['variables'] });
 
 beforeAll(async () => {
-	await utils.initEncryptionKey();
 	utils.mockInstance(License, licenseLike);
 
 	const owner = await testDb.createOwner();

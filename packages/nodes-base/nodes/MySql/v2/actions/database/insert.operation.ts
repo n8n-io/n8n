@@ -14,11 +14,10 @@ import type {
 
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
 
-import { updateDisplayOptions } from '@utils/utilities';
-
 import { replaceEmptyStringsByNulls } from '../../helpers/utils';
 
 import { optionsCollection } from '../common.descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{

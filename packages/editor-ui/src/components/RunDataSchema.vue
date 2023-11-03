@@ -35,7 +35,7 @@ const schema = computed(() => getSchemaForExecutionData(props.data));
 const isDataEmpty = computed(() => isEmpty(props.data));
 
 const onDragStart = (el: HTMLElement) => {
-	if (el && el.dataset?.path) {
+	if (el?.dataset?.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
@@ -111,7 +111,6 @@ const onDragEnd = (el: HTMLElement) => {
 	word-break: normal;
 	height: 100%;
 	width: 100%;
-	background-color: var(--color-background-base);
 
 	> div[class*='info'] {
 		padding: 0 var(--spacing-s);

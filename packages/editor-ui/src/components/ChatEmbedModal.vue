@@ -69,9 +69,9 @@ import { createChat } from '@n8n/chat';`,
 }));
 
 const cdnCode = computed(
-	() => `<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" type="text/css" />
+	() => `<link href="https://cdn.jsdelivr.net/npm/@n8n/chat/style.css" rel="stylesheet" />
 <script type="module">
-import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.js';
+import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/chat.bundle.es.js';
 
 ${commonCode.value.createChat}
 </${'script'}>`,

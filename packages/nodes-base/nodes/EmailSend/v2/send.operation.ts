@@ -226,7 +226,7 @@ function configureTransport(credentials: IDataObject, options: EmailSendOptions)
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const nodeVersion = this.getNode().typeVersion;
-	const instanceId = await this.getInstanceId();
+	const instanceId = this.getInstanceId();
 
 	const returnData: INodeExecutionData[] = [];
 	let item: INodeExecutionData;

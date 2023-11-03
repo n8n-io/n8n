@@ -23,7 +23,7 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	}
 
 	const item = taskData?.data?.main?.[target.outputIndex]?.[target.itemIndex];
-	if (!item || item.pairedItem === undefined) {
+	if (item?.pairedItem === undefined) {
 		return [];
 	}
 

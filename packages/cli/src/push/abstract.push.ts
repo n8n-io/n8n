@@ -1,5 +1,6 @@
-import { jsonStringify, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
 import type { IPushDataType } from '@/Interfaces';
+import { Logger } from '@/Logger';
 
 export abstract class AbstractPush<T> {
 	protected connections: Record<string, T> = {};
@@ -7,9 +8,11 @@ export abstract class AbstractPush<T> {
 	protected abstract close(connection: T): void;
 	protected abstract sendToOne(connection: T, data: string): void;
 
+	constructor(private readonly logger: Logger) {}
+
 	protected add(sessionId: string, connection: T): void {
 		const { connections } = this;
-		Logger.debug('Add editor-UI session', { sessionId });
+		this.logger.debug('Add editor-UI session', { sessionId });
 
 		const existingConnection = connections[sessionId];
 		if (existingConnection) {
@@ -22,7 +25,7 @@ export abstract class AbstractPush<T> {
 
 	protected remove(sessionId?: string): void {
 		if (sessionId !== undefined) {
-			Logger.debug('Remove editor-UI session', { sessionId });
+			this.logger.debug('Remove editor-UI session', { sessionId });
 			delete this.connections[sessionId];
 		}
 	}
@@ -30,11 +33,11 @@ export abstract class AbstractPush<T> {
 	send<D>(type: IPushDataType, data: D, sessionId: string | undefined) {
 		const { connections } = this;
 		if (sessionId !== undefined && connections[sessionId] === undefined) {
-			Logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
+			this.logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
 			return;
 		}
 
-		Logger.debug(`Send data of type "${type}" to editor-UI`, { dataType: type, sessionId });
+		this.logger.debug(`Send data of type "${type}" to editor-UI`, { dataType: type, sessionId });
 
 		const sendData = jsonStringify({ type, data }, { replaceCircularRefs: true });
 

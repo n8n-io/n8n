@@ -1,20 +1,17 @@
 import { Container } from 'typedi';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
 import config from '@/config';
-import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { workflowsController } from '@/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
 import type { User } from '@db/entities/User';
-import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
 import { issueJWT } from '@/auth/jwt';
 import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
@@ -50,8 +47,6 @@ import type { EndpointGroup, SetupProps, TestServer } from '../types';
 import { mockInstance } from './mocking';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { MfaService } from '@/Mfa/mfa.service';
-import { TOTPService } from '@/Mfa/totp.service';
-import { UserSettings } from 'n8n-core';
 import { MetricsService } from '@/services/metrics.service';
 import {
 	SettingsRepository,
@@ -64,6 +59,7 @@ import { UserService } from '@/services/user.service';
 import { executionsController } from '@/executions/executions.controller';
 import { WorkflowHistoryController } from '@/workflows/workflowHistory/workflowHistory.controller.ee';
 import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { Logger } from '@/Logger';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -140,8 +136,10 @@ export const setupTestServer = ({
 	app.use(rawBodyReader);
 	app.use(cookieParser());
 
-	const logger = getLogger();
-	LoggerProxy.init(logger);
+	// Mock all telemetry and logging
+	const logger = mockInstance(Logger);
+	mockInstance(InternalHooks);
+	mockInstance(PostHogClient);
 
 	const testServer: TestServer = {
 		app,
@@ -153,10 +151,6 @@ export const setupTestServer = ({
 
 	beforeAll(async () => {
 		await testDb.init();
-
-		// Mock all telemetry.
-		mockInstance(InternalHooks);
-		mockInstance(PostHogClient);
 
 		config.set('userManagement.jwtSecret', 'My JWT secret');
 		config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -200,12 +194,10 @@ export const setupTestServer = ({
 		}
 
 		if (functionEndpoints.length) {
-			const encryptionKey = await UserSettings.getEncryptionKey();
-			const repositories = Db.collections;
 			const externalHooks = Container.get(ExternalHooks);
 			const internalHooks = Container.get(InternalHooks);
 			const mailer = Container.get(UserManagementMailer);
-			const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+			const mfaService = Container.get(MfaService);
 			const userService = Container.get(UserService);
 
 			for (const group of functionEndpoints) {
@@ -218,11 +210,7 @@ export const setupTestServer = ({
 						registerController(app, config, new EventBusControllerEE());
 						break;
 					case 'auth':
-						registerController(
-							app,
-							config,
-							new AuthController(config, logger, internalHooks, mfaService, userService),
-						);
+						registerController(app, config, Container.get(AuthController));
 						break;
 					case 'mfa':
 						registerController(app, config, new MFAController(mfaService));
@@ -245,18 +233,13 @@ export const setupTestServer = ({
 						);
 						registerController(app, config, Container.get(CommunityPackagesController));
 					case 'me':
-						registerController(
-							app,
-							config,
-							new MeController(logger, externalHooks, internalHooks, userService),
-						);
+						registerController(app, config, Container.get(MeController));
 						break;
 					case 'passwordReset':
 						registerController(
 							app,
 							config,
 							new PasswordResetController(
-								config,
 								logger,
 								externalHooks,
 								internalHooks,

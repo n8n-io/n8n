@@ -4,10 +4,7 @@ const { LoggerProxy, NodeHelpers } = require('n8n-workflow');
 const { PackageDirectoryLoader } = require('../dist/DirectoryLoader');
 const { packageDir, writeJSON } = require('./common');
 
-LoggerProxy.init({
-	log: console.log.bind(console),
-	warn: console.warn.bind(console),
-});
+LoggerProxy.init(console);
 
 function findReferencedMethods(obj, refs = {}, latestName = '') {
 	for (const key in obj) {
@@ -27,6 +24,21 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 	}
 
 	return refs;
+}
+
+function addWebhookLifecycle(nodeType) {
+	if (nodeType.description.webhooks) {
+		nodeType.description.webhooks = nodeType.description.webhooks.map((webhook) => {
+			const webhookMethods =
+				nodeType?.webhookMethods?.[webhook.name] ?? nodeType?.webhookMethods?.default;
+			webhook.hasLifecycleMethods = Boolean(
+				webhookMethods?.checkExists && webhookMethods?.create && webhookMethods?.delete,
+			);
+			return webhook;
+		});
+	}
+
+	return nodeType;
 }
 
 (async () => {
@@ -60,6 +72,7 @@ function findReferencedMethods(obj, refs = {}, latestName = '') {
 		.map((data) => {
 			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
 			NodeHelpers.applySpecialNodeParameters(nodeType);
+			addWebhookLifecycle(nodeType);
 			return data.type;
 		})
 		.flatMap((nodeData) => {

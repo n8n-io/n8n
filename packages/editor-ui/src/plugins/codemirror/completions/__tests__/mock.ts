@@ -291,7 +291,7 @@ const executeData: IExecuteData = {
 	data: runExecutionData.resultData.runData[lastNodeName][0].data!,
 	node: nodes.find((node) => node.name === lastNodeName) as INode,
 	source: {
-		main: runExecutionData.resultData.runData[lastNodeName][0].source!,
+		main: runExecutionData.resultData.runData[lastNodeName][0].source,
 	},
 };
 
@@ -304,7 +304,6 @@ const dataProxy = new WorkflowDataProxy(
 	lastNodeConnectionInputData || [],
 	{},
 	'manual',
-	'America/New_York',
 	{},
 	executeData,
 );

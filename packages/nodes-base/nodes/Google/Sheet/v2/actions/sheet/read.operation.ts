@@ -5,7 +5,6 @@ import {
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import type {
 	ILookupValues,
 	RangeDetectionOptions,
@@ -14,6 +13,7 @@ import type {
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
 import { generatePairedItemData } from '../../../../../../utils/utilities';
+import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -80,8 +80,8 @@ export const description: SheetProperties = [
 			},
 		},
 		options: [
-			...dataLocationOnSheet,
-			...outputFormatting,
+			dataLocationOnSheet,
+			outputFormatting,
 			{
 				displayName: 'When Filter Has Multiple Matches',
 				name: 'returnAllMatches',

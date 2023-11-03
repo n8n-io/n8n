@@ -55,7 +55,10 @@ export namespace BinaryData {
 		getAsStream(fileId: string, chunkSize?: number): Promise<Readable>;
 		getMetadata(fileId: string): Promise<Metadata>;
 
-		deleteMany(ids: IdsForDeletion): Promise<void>;
+		/**
+		 * Present for `FileSystem`, absent for `ObjectStore` (delegated to S3 lifecycle config)
+		 */
+		deleteMany?(ids: IdsForDeletion): Promise<void>;
 
 		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
 		copyByFilePath(

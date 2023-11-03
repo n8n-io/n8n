@@ -4,10 +4,10 @@ import * as utils from '../integration/shared/utils/';
 import { createWorkflow, createExecution } from '../integration/shared/testDb';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
-import { Push } from '../../src/push';
+import { Push } from '@/push';
 import { mockInstance } from '../integration/shared/utils';
 import Container from 'typedi';
-import config from '../../src/config';
+import config from '@/config';
 
 let owner: User;
 let runner: WorkflowRunner;

@@ -207,7 +207,6 @@ describe('Test MySql V2, operations', () => {
 
 		fakeConnectionCopy.query = jest.fn(async (query?: string) => {
 			const result = [];
-			console.log(query);
 			if (query?.toLowerCase().includes('select')) {
 				result.push([{ id: 1, name: 'test 1' }]);
 			} else {

@@ -1,15 +1,16 @@
+import { createHmac } from 'crypto';
 import type {
-	IHookFunctions,
-	IWebhookFunctions,
 	IDataObject,
+	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	IWebhookFunctions,
 	IWebhookResponseData,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { v4 as uuid } from 'uuid';
 
@@ -17,7 +18,7 @@ import { snakeCase } from 'change-case';
 
 import { facebookApiRequest, getAllFields, getFields } from './GenericFunctions';
 
-import { createHmac } from 'crypto';
+import type { FacebookWebhookSubscription } from './types';
 
 export class FacebookTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -177,18 +178,27 @@ export class FacebookTrigger implements INodeType {
 				const object = this.getNodeParameter('object') as string;
 				const appId = this.getNodeParameter('appId') as string;
 
-				const { data } = await facebookApiRequest.call(this, 'GET', `/${appId}/subscriptions`, {});
+				const { data } = (await facebookApiRequest.call(
+					this,
+					'GET',
+					`/${appId}/subscriptions`,
+					{},
+				)) as { data: FacebookWebhookSubscription[] };
 
-				for (const webhook of data) {
-					if (
-						webhook.target === webhookUrl &&
-						webhook.object === object &&
-						webhook.status === true
-					) {
-						return true;
-					}
+				const subscription = data.find((webhook) => webhook.object === object && webhook.status);
+
+				if (!subscription) {
+					return false;
 				}
-				return false;
+
+				if (subscription.callback_url !== webhookUrl) {
+					throw new NodeOperationError(
+						this.getNode(),
+						`The Facebook App ID ${appId} already has a webhook subscription. Delete it or use another App before executing the trigger. Due to Facebook API limitations, you can have just one trigger per App.`,
+					);
+				}
+
+				return true;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');

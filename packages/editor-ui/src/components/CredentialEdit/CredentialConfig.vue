@@ -288,7 +288,7 @@ export default defineComponent({
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
-			const documentationUrl = type && type.documentationUrl;
+			const documentationUrl = type?.documentationUrl;
 
 			if (!documentationUrl) {
 				return '';

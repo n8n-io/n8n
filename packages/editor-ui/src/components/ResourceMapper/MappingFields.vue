@@ -65,7 +65,7 @@ function markAsReadOnly(field: ResourceMapperField): boolean {
 
 const fieldsUi = computed<Array<Partial<INodeProperties> & { readOnly?: boolean }>>(() => {
 	return props.fieldsToMap
-		.filter((field) => field.display !== false && field.removed !== true)
+		.filter((field) => field.display && field.removed !== true)
 		.map((field) => {
 			return {
 				displayName: getFieldLabel(field),
@@ -98,7 +98,7 @@ const orderedFields = computed<Array<Partial<INodeProperties> & { readOnly?: boo
 });
 
 const removedFields = computed<ResourceMapperField[]>(() => {
-	return props.fieldsToMap.filter((field) => field.removed === true && field.display !== false);
+	return props.fieldsToMap.filter((field) => field.removed === true && field.display);
 });
 
 const addFieldOptions = computed<Array<{ name: string; value: string; disabled?: boolean }>>(() => {
@@ -132,7 +132,7 @@ const parameterActions = computed<Array<{ label: string; value: string; disabled
 					interpolate: { fieldWord: pluralFieldWordCapitalized.value },
 				}),
 				value: 'removeAllFields',
-				disabled: isRemoveAllAvailable.value === false,
+				disabled: !isRemoveAllAvailable.value,
 			},
 		];
 	},
@@ -229,8 +229,8 @@ function getFieldIssues(field: INodeProperties): string[] {
 
 	let fieldIssues: string[] = [];
 	const key = `${props.parameter.name}.${fieldName}`;
-	if (nodeIssues['parameters'] && key in nodeIssues['parameters']) {
-		fieldIssues = fieldIssues.concat(nodeIssues['parameters'][key]);
+	if (nodeIssues.parameters && key in nodeIssues.parameters) {
+		fieldIssues = fieldIssues.concat(nodeIssues.parameters[key]);
 	}
 	return fieldIssues;
 }

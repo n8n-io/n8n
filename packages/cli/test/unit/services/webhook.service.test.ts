@@ -150,30 +150,6 @@ describe('WebhookService', () => {
 		});
 	});
 
-	describe('deleteInstanceWebhooks()', () => {
-		test('should delete all webhooks of the instance', async () => {
-			const mockInstanceWebhooks = [
-				createWebhook('PUT', 'users'),
-				createWebhook('GET', 'user/:id'),
-				createWebhook('POST', ':var'),
-			];
-
-			webhookRepository.find.mockResolvedValue(mockInstanceWebhooks);
-
-			await webhookService.deleteInstanceWebhooks();
-
-			expect(webhookRepository.remove).toHaveBeenCalledWith(mockInstanceWebhooks);
-		});
-
-		test('should not delete any webhooks if none found', async () => {
-			webhookRepository.find.mockResolvedValue([]);
-
-			await webhookService.deleteInstanceWebhooks();
-
-			expect(webhookRepository.remove).toHaveBeenCalledWith([]);
-		});
-	});
-
 	describe('deleteWorkflowWebhooks()', () => {
 		test('should delete all webhooks of the workflow', async () => {
 			const mockWorkflowWebhooks = [

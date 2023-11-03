@@ -108,6 +108,7 @@
 			>
 				<n8n-icon-button
 					:disabled="isWorkflowHistoryButtonDisabled"
+					data-test-id="workflow-history-button"
 					type="tertiary"
 					icon="history"
 					size="medium"
@@ -349,9 +350,8 @@ export default defineComponent({
 			return actions;
 		},
 		isWorkflowHistoryFeatureEnabled(): boolean {
-			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowHistory) &&
-				this.settingsStore.isDevRelease
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.WorkflowHistory,
 			);
 		},
 		workflowHistoryRoute(): { name: string; params: { workflowId: string } } {
@@ -475,27 +475,27 @@ export default defineComponent({
 			cb(saved);
 		},
 		async handleFileImport(): Promise<void> {
-			const reader = new FileReader();
-			reader.onload = (event: ProgressEvent) => {
-				const data = (event.target as FileReader).result;
-
-				let workflowData: IWorkflowDataUpdate;
-				try {
-					workflowData = JSON.parse(data as string);
-				} catch (error) {
-					this.showMessage({
-						title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
-						message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
-						type: 'error',
-					});
-					return;
-				}
-
-				nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
-			};
-
 			const inputRef = this.$refs.importFile as HTMLInputElement | undefined;
 			if (inputRef?.files && inputRef.files.length !== 0) {
+				const reader = new FileReader();
+				reader.onload = () => {
+					let workflowData: IWorkflowDataUpdate;
+					try {
+						workflowData = JSON.parse(reader.result as string);
+					} catch (error) {
+						this.showMessage({
+							title: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.title'),
+							message: this.$locale.baseText('mainSidebar.showMessage.handleFileImport.message'),
+							type: 'error',
+						});
+						return;
+					} finally {
+						reader.onload = undefined;
+						inputRef.value = null;
+					}
+
+					nodeViewEventBus.emit('importWorkflowData', { data: workflowData });
+				};
 				reader.readAsText(inputRef.files[0]);
 			}
 		},

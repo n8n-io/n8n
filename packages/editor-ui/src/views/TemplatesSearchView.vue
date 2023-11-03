@@ -363,8 +363,7 @@ export default defineComponent({
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
 			if (
-				this.$route.meta &&
-				this.$route.meta.setScrollPosition &&
+				this.$route.meta?.setScrollPosition &&
 				typeof this.$route.meta.setScrollPosition === 'function'
 			) {
 				this.$route.meta.setScrollPosition(contentArea.scrollTop);

@@ -1,3 +1,4 @@
+import util from 'util';
 import type {
 	IExecuteFunctions,
 	GenericValue,
@@ -14,8 +15,6 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import set from 'lodash/set';
 import redis from 'redis';
-
-import util from 'util';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -665,6 +664,10 @@ export class Redis implements INodeType {
 				for (let index = 0; index < (value as string[]).length; index++) {
 					await clientLset(keyName, index, (value as IDataObject)[index]!.toString());
 				}
+			} else if (type === 'sets') {
+				const clientSadd = util.promisify(client.sadd).bind(client);
+				//@ts-ignore
+				await clientSadd(keyName, value);
 			}
 
 			if (expire) {

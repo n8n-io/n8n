@@ -2,9 +2,7 @@ import { mockInstance } from '../shared/utils/';
 import { Worker } from '@/commands/worker';
 import * as Config from '@oclif/config';
 import config from '@/config';
-import { LoggerProxy } from 'n8n-workflow';
 import { Telemetry } from '@/telemetry';
-import { getLogger } from '@/Logger';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { BinaryDataService } from 'n8n-core';
 import { CacheService } from '@/services/cache.service';
@@ -23,7 +21,6 @@ import { OrchestrationWorkerService } from '@/services/orchestration/worker/orch
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
 beforeAll(async () => {
-	LoggerProxy.init(getLogger());
 	config.set('executions.mode', 'queue');
 	config.set('binaryDataManager.availableModes', 'filesystem');
 	mockInstance(Telemetry);

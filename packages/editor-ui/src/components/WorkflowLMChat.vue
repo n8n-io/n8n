@@ -133,13 +133,8 @@ import { get, last } from 'lodash-es';
 
 import { useUIStore, useWorkflowsStore } from '@/stores';
 import { createEventBus } from 'n8n-design-system/utils';
-import {
-	type INode,
-	type INodeType,
-	type ITaskData,
-	NodeHelpers,
-	NodeConnectionType,
-} from 'n8n-workflow';
+import type { IDataObject, INodeType, INode, ITaskData } from 'n8n-workflow';
+import { NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 const RunDataAi = defineAsyncComponent(async () => import('@/components/RunDataAi/RunDataAi.vue'));
@@ -433,6 +428,17 @@ export default defineComponent({
 
 			this.waitForExecution(response.executionId);
 		},
+		extractResponseMessage(responseData?: IDataObject) {
+			if (!responseData) return '<NO RESPONSE FOUND>';
+
+			// Paths where the response message might be located
+			const paths = ['output', 'text', 'response.text'];
+			const matchedPath = paths.find((path) => get(responseData, path));
+
+			if (!matchedPath) return JSON.stringify(responseData, null, 2);
+
+			return get(responseData, matchedPath) as string;
+		},
 		waitForExecution(executionId?: string) {
 			const that = this;
 			const waitInterval = setInterval(() => {
@@ -455,18 +461,7 @@ export default defineComponent({
 						responseMessage = '[ERROR: ' + get(nodeResponseData, ['error', 'message']) + ']';
 					} else {
 						const responseData = get(nodeResponseData, 'data.main[0][0].json');
-						if (responseData) {
-							const responseObj = responseData as object & { output?: string };
-							if (responseObj.output !== undefined) {
-								responseMessage = responseObj.output;
-							} else if (Object.keys(responseObj).length === 0) {
-								responseMessage = '<NO RESPONSE FOUND>';
-							} else {
-								responseMessage = JSON.stringify(responseObj, null, 2);
-							}
-						} else {
-							responseMessage = '<NO RESPONSE FOUND>';
-						}
+						responseMessage = this.extractResponseMessage(responseData);
 					}
 
 					this.messages.push({

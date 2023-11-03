@@ -145,7 +145,7 @@ export const useActions = () => {
 
 		return {
 			name: actionItem.displayName,
-			key: actionItem.name as string,
+			key: actionItem.name,
 			value: { ...actionItem.values, ...displayConditions } as INodeParameters,
 		};
 	}

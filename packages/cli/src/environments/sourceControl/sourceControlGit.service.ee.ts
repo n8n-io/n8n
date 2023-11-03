@@ -1,6 +1,5 @@
 import { Service } from 'typedi';
 import { execSync } from 'child_process';
-import { LoggerProxy } from 'n8n-workflow';
 import path from 'path';
 import type {
 	CommitResult,
@@ -20,8 +19,9 @@ import {
 	SOURCE_CONTROL_ORIGIN,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './sourceControlHelper.ee';
-import type { User } from '../../databases/entities/User';
+import type { User } from '@db/entities/User';
 import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
+import { Logger } from '@/Logger';
 
 @Service()
 export class SourceControlGitService {
@@ -29,17 +29,19 @@ export class SourceControlGitService {
 
 	private gitOptions: Partial<SimpleGitOptions> = {};
 
+	constructor(private readonly logger: Logger) {}
+
 	/**
 	 * Run pre-checks before initialising git
 	 * Checks for existence of required binaries (git and ssh)
 	 */
 	private preInitCheck(): boolean {
-		LoggerProxy.debug('GitService.preCheck');
+		this.logger.debug('GitService.preCheck');
 		try {
 			const gitResult = execSync('git --version', {
 				stdio: ['pipe', 'pipe', 'pipe'],
 			});
-			LoggerProxy.debug(`Git binary found: ${gitResult.toString()}`);
+			this.logger.debug(`Git binary found: ${gitResult.toString()}`);
 		} catch (error) {
 			throw new Error(`Git binary not found: ${(error as Error).message}`);
 		}
@@ -47,7 +49,7 @@ export class SourceControlGitService {
 			const sshResult = execSync('ssh -V', {
 				stdio: ['pipe', 'pipe', 'pipe'],
 			});
-			LoggerProxy.debug(`SSH binary found: ${sshResult.toString()}`);
+			this.logger.debug(`SSH binary found: ${sshResult.toString()}`);
 		} catch (error) {
 			throw new Error(`SSH binary not found: ${(error as Error).message}`);
 		}
@@ -66,13 +68,13 @@ export class SourceControlGitService {
 			sshKeyName,
 			sshFolder,
 		} = options;
-		LoggerProxy.debug('GitService.init');
+		this.logger.debug('GitService.init');
 		if (this.git !== null) {
 			return;
 		}
 
 		this.preInitCheck();
-		LoggerProxy.debug('Git pre-check passed');
+		this.logger.debug('Git pre-check passed');
 
 		sourceControlFoldersExistCheck([gitFolder, sshFolder]);
 
@@ -135,13 +137,13 @@ export class SourceControlGitService {
 				(e) => e.name === SOURCE_CONTROL_ORIGIN && e.refs.push === remote,
 			);
 			if (foundRemote) {
-				LoggerProxy.debug(`Git remote found: ${foundRemote.name}: ${foundRemote.refs.push}`);
+				this.logger.debug(`Git remote found: ${foundRemote.name}: ${foundRemote.refs.push}`);
 				return true;
 			}
 		} catch (error) {
 			throw new Error(`Git is not initialized ${(error as Error).message}`);
 		}
-		LoggerProxy.debug(`Git remote not found: ${remote}`);
+		this.logger.debug(`Git remote not found: ${remote}`);
 		return false;
 	}
 
@@ -159,14 +161,14 @@ export class SourceControlGitService {
 			try {
 				await this.git.init();
 			} catch (error) {
-				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
+				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
 		}
 		try {
 			await this.git.addRemote(SOURCE_CONTROL_ORIGIN, sourceControlPreferences.repositoryUrl);
 		} catch (error) {
 			if ((error as Error).message.includes('remote origin already exists')) {
-				LoggerProxy.debug(`Git remote already exists: ${(error as Error).message}`);
+				this.logger.debug(`Git remote already exists: ${(error as Error).message}`);
 			} else {
 				throw error;
 			}
@@ -182,7 +184,7 @@ export class SourceControlGitService {
 					await this.git.raw(['branch', '-M', sourceControlPreferences.branchName]);
 				}
 			} catch (error) {
-				LoggerProxy.debug(`Git init: ${(error as Error).message}`);
+				this.logger.debug(`Git init: ${(error as Error).message}`);
 			}
 		}
 	}
@@ -305,7 +307,7 @@ export class SourceControlGitService {
 			try {
 				await this.git.rm(Array.from(deletedFiles));
 			} catch (error) {
-				LoggerProxy.debug(`Git rm: ${(error as Error).message}`);
+				this.logger.debug(`Git rm: ${(error as Error).message}`);
 			}
 		}
 		return this.git.add(Array.from(files));

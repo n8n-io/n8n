@@ -1,16 +1,13 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import Container, { Service } from 'typedi';
-import { BINARY_ENCODING, LoggerProxy as Logger, IBinaryData } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
 import { UnknownManagerError, InvalidModeError } from './errors';
 import { areConfigModes, toBuffer } from './utils';
-import { LogCatch } from '../decorators/LogCatch.decorator';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
-import type { INodeExecutionData } from 'n8n-workflow';
+import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 
 @Service()
 export class BinaryDataService {
@@ -42,7 +39,6 @@ export class BinaryDataService {
 		}
 	}
 
-	@LogCatch((error) => Logger.error('Failed to copy binary data file', { error }))
 	async copyBinaryFile(
 		workflowId: string,
 		executionId: string,
@@ -78,7 +74,6 @@ export class BinaryDataService {
 		return binaryData;
 	}
 
-	@LogCatch((error) => Logger.error('Failed to write binary data file', { error }))
 	async store(
 		workflowId: string,
 		executionId: string,
@@ -151,12 +146,9 @@ export class BinaryDataService {
 
 		if (!manager) return;
 
-		await manager.deleteMany(ids);
+		if (manager.deleteMany) await manager.deleteMany(ids);
 	}
 
-	@LogCatch((error) =>
-		Logger.error('Failed to copy all binary data files for execution', { error }),
-	)
 	async duplicateBinaryData(
 		workflowId: string,
 		executionId: string,

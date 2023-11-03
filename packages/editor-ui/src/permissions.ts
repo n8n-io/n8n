@@ -61,17 +61,11 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 		{
 			name: UserRole.ResourceOwner,
 			test: () =>
-				!!(credential && credential.ownedBy && credential.ownedBy.id === user?.id) ||
-				!isSharingEnabled,
+				!!(credential?.ownedBy && credential.ownedBy.id === user?.id) || !isSharingEnabled,
 		},
 		{
 			name: UserRole.ResourceSharee,
-			test: () =>
-				!!(
-					credential &&
-					credential.sharedWith &&
-					credential.sharedWith.find((sharee) => sharee.id === user?.id)
-				),
+			test: () => !!credential?.sharedWith?.find((sharee) => sharee.id === user?.id),
 		},
 		{
 			name: 'read',
@@ -100,17 +94,12 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		{
 			name: UserRole.ResourceOwner,
 			test: () =>
-				!!(isNewWorkflow || (workflow && workflow.ownedBy && workflow.ownedBy.id === user?.id)) ||
+				!!(isNewWorkflow || (workflow?.ownedBy && workflow.ownedBy.id === user?.id)) ||
 				!isSharingEnabled,
 		},
 		{
 			name: UserRole.ResourceSharee,
-			test: () =>
-				!!(
-					workflow &&
-					workflow.sharedWith &&
-					workflow.sharedWith.find((sharee) => sharee.id === user?.id)
-				),
+			test: () => !!workflow?.sharedWith?.find((sharee) => sharee.id === user?.id),
 		},
 		{
 			name: 'read',

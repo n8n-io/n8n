@@ -1708,7 +1708,7 @@ export class Telegram implements INodeType {
 		const binaryData = this.getNodeParameter('binaryData', 0, false);
 
 		const nodeVersion = this.getNode().typeVersion;
-		const instanceId = await this.getInstanceId();
+		const instanceId = this.getInstanceId();
 
 		for (let i = 0; i < items.length; i++) {
 			try {

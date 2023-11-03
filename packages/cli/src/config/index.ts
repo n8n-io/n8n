@@ -1,18 +1,14 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
-import { tmpdir } from 'os';
-import { mkdirSync, mkdtempSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'fs';
+import { setGlobalState } from 'n8n-workflow';
 import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
-	const testsDir = join(tmpdir(), 'n8n-e2e/');
-	mkdirSync(testsDir, { recursive: true });
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
 		E2E_TESTS: 'true',
-		N8N_USER_FOLDER: mkdtempSync(testsDir),
 		EXECUTIONS_PROCESS: 'main',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_PUBLIC_API_DISABLED: 'true',
@@ -21,12 +17,9 @@ if (inE2ETests) {
 		N8N_AI_ENABLED: 'true',
 	};
 } else if (inTest) {
-	const testsDir = join(tmpdir(), 'n8n-tests/');
-	mkdirSync(testsDir, { recursive: true });
 	process.env.N8N_LOG_LEVEL = 'silent';
 	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
-	process.env.N8N_USER_FOLDER = mkdtempSync(testsDir);
 	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
 	dotenv.config();
@@ -74,6 +67,10 @@ if (!inE2ETests && !inTest) {
 
 config.validate({
 	allowed: 'strict',
+});
+
+setGlobalState({
+	defaultTimezone: config.getEnv('generic.timezone'),
 });
 
 // eslint-disable-next-line import/no-default-export

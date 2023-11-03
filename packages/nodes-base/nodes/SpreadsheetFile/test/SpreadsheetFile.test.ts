@@ -1,24 +1,28 @@
+import path from 'path';
+import type { IWorkflowBase } from 'n8n-workflow';
 import * as Helpers from '@test/nodes/Helpers';
 import type { WorkflowTestData } from '@test/nodes/types';
-
 import { executeWorkflow } from '@test/nodes/ExecuteWorkflow';
-import path from 'path';
 
 describe('Execute Spreadsheet File Node', () => {
 	beforeEach(async () => {
 		await Helpers.initBinaryDataService();
 	});
 
-	// replace workflow json 'Read Binary File' node's filePath to local file
-	const workflow = Helpers.readJsonFileSync('nodes/SpreadsheetFile/test/workflow.json');
-	const node = workflow.nodes.find((n: any) => n.name === 'Read Binary File');
-	node.parameters.filePath = path.join(__dirname, 'spreadsheet.csv');
+	const loadWorkflow = (fileName: string, csvName: string) => {
+		const workflow = Helpers.readJsonFileSync<IWorkflowBase>(
+			`nodes/SpreadsheetFile/test/${fileName}`,
+		);
+		const node = workflow.nodes.find((n) => n.name === 'Read Binary File');
+		node!.parameters.fileSelector = path.join(__dirname, csvName);
+		return workflow;
+	};
 
 	const tests: WorkflowTestData[] = [
 		{
 			description: 'execute workflow.json',
 			input: {
-				workflowData: workflow,
+				workflowData: loadWorkflow('workflow.json', 'spreadsheet.csv'),
 			},
 			output: {
 				nodeData: {
@@ -78,6 +82,7 @@ describe('Execute Spreadsheet File Node', () => {
 							},
 						],
 					],
+					'Read CSV with Row Limit': [[{ json: { A: '1', B: '2', C: '3' } }]],
 					'Write To File CSV': [
 						[
 							{
@@ -146,6 +151,30 @@ describe('Execute Spreadsheet File Node', () => {
 							},
 						],
 					],
+				},
+			},
+		},
+		{
+			description: 'execute workflow.bom.json',
+			input: {
+				workflowData: loadWorkflow('workflow.bom.json', 'bom.csv'),
+			},
+			output: {
+				nodeData: {
+					'Edit with BOM included': [[{ json: { X: null } }]],
+					'Edit with BOM excluded': [[{ json: { X: '1' } }]],
+				},
+			},
+		},
+		{
+			description: 'execute includeempty.json',
+			input: {
+				workflowData: loadWorkflow('workflow.empty.json', 'includeempty.csv'),
+			},
+			output: {
+				nodeData: {
+					'Include Empty': [[{ json: { A: '1', B: '', C: '3' } }]],
+					'Ignore Empty': [[{ json: { A: '1', C: '3' } }]],
 				},
 			},
 		},

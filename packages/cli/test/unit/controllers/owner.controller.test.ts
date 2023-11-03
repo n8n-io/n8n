@@ -1,6 +1,5 @@
 import type { CookieOptions, Response } from 'express';
 import { anyObject, captor, mock } from 'jest-mock-extended';
-import type { ILogger } from 'n8n-workflow';
 import jwt from 'jsonwebtoken';
 import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
@@ -16,13 +15,12 @@ import { mockInstance } from '../../integration/shared/utils';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();
-	const logger = mock<ILogger>();
 	const internalHooks = mock<IInternalHooksClass>();
 	const userService = mockInstance(UserService);
 	const settingsRepository = mock<SettingsRepository>();
 	const controller = new OwnerController(
 		config,
-		logger,
+		mock(),
 		internalHooks,
 		settingsRepository,
 		userService,

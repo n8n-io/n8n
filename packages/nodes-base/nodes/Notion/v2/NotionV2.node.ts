@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import type { SortData, FileRecord } from '../GenericFunctions';
 import {
 	downloadFiles,
@@ -29,10 +30,8 @@ import {
 	validateJSON,
 } from '../GenericFunctions';
 
-import moment from 'moment-timezone';
-
-import { versionDescription } from './VersionDescription';
 import { getDatabases } from '../SearchFunctions';
+import { versionDescription } from './VersionDescription';
 
 export class NotionV2 implements INodeType {
 	description: INodeTypeDescription;

@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -8,8 +9,6 @@ import type {
 } from 'n8n-workflow';
 
 import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
-
-import { createHmac } from 'crypto';
 
 export class HelpScoutTrigger implements INodeType {
 	description: INodeTypeDescription = {

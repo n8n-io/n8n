@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { Plugin } from 'vue';
 import {
 	N8nActionBox,
@@ -53,6 +52,7 @@ import {
 	N8nUserSelect,
 	N8nUsersList,
 	N8nKeyboardShortcut,
+	N8nUserStack,
 } from './components';
 
 export const N8nPlugin: Plugin<{}> = {
@@ -105,6 +105,7 @@ export const N8nPlugin: Plugin<{}> = {
 		app.component('n8n-text', N8nText);
 		app.component('n8n-tooltip', N8nTooltip);
 		app.component('n8n-tree', N8nTree);
+		app.component('n8n-user-stack', N8nUserStack);
 		app.component('n8n-user-info', N8nUserInfo);
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);

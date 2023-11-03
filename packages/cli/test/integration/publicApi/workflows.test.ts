@@ -10,6 +10,9 @@ import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
+import { License } from '@/License';
+import { WorkflowHistoryRepository } from '@/databases/repositories';
+import Container from 'typedi';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -19,6 +22,11 @@ let authMemberAgent: SuperAgentTest;
 let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+
+const licenseLike = utils.mockInstance(License, {
+	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
+	isWithinUsersLimit: jest.fn().mockReturnValue(true),
+});
 
 beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await testDb.getAllRoles();
@@ -35,16 +43,23 @@ beforeAll(async () => {
 		apiKey: randomApiKey(),
 	});
 
-	await utils.initEncryptionKey();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Tag', 'Workflow', 'Credentials']);
+	await testDb.truncate([
+		'SharedCredentials',
+		'SharedWorkflow',
+		'Tag',
+		'Workflow',
+		'Credentials',
+		WorkflowHistoryRepository,
+	]);
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
+	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 
 afterEach(async () => {
@@ -679,6 +694,90 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
 	});
 
+	test('should create workflow history version when licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		const payload = {
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id } = response.body;
+
+		expect(id).toBeDefined();
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should not create workflow history version when not licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const payload = {
+			name: 'testing',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			staticData: null,
+			settings: {
+				saveExecutionProgress: true,
+				saveManualExecutions: true,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const { id } = response.body;
+
+		expect(id).toBeDefined();
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(0);
+	});
+
 	test('should not add a starting node if the payload has no starting nodes', async () => {
 		const response = await authMemberAgent.post('/workflows').send({
 			name: 'testing',
@@ -833,6 +932,108 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
+	});
+
+	test('should create workflow history version when licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
+		const workflow = await testDb.createWorkflow({}, member);
+		const payload = {
+			name: 'name updated',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: '{"id":1}',
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		const { id } = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(id).toBe(workflow.id);
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(1);
+		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: id,
+			},
+		});
+		expect(historyVersion).not.toBeNull();
+		expect(historyVersion!.connections).toEqual(payload.connections);
+		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should not create workflow history when not licensed', async () => {
+		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
+		const workflow = await testDb.createWorkflow({}, member);
+		const payload = {
+			name: 'name updated',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [400, 300],
+				},
+			],
+			connections: {},
+			staticData: '{"id":1}',
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		const { id } = response.body;
+
+		expect(response.statusCode).toBe(200);
+
+		expect(id).toBe(workflow.id);
+		expect(
+			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
+		).toBe(0);
 	});
 
 	test('should update non-owned workflow if owner', async () => {

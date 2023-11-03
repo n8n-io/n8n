@@ -57,8 +57,8 @@ const shuffleArray = (array: any[]) => {
 	}
 };
 
-import * as summarize from './summarize.operation';
 import { sortByCode } from '../V3/helpers/utils';
+import * as summarize from './summarize.operation';
 
 export class ItemListsV1 implements INodeType {
 	description: INodeTypeDescription;

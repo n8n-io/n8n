@@ -1,32 +1,35 @@
 import validator from 'validator';
 import { plainToInstance } from 'class-transformer';
+import { Response } from 'express';
+import { Service } from 'typedi';
+import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { BadRequestError } from '@/ResponseHelper';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';
-import { Response } from 'express';
-import { ILogger } from 'n8n-workflow';
 import {
 	AuthenticatedRequest,
 	MeRequest,
 	UserSettingsUpdatePayload,
 	UserUpdatePayload,
 } from '@/requests';
-import { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import type { PublicUser } from '@/Interfaces';
-import { randomBytes } from 'crypto';
 import { isSamlLicensedAndEnabled } from '../sso/saml/samlHelpers';
 import { UserService } from '@/services/user.service';
+import { Logger } from '@/Logger';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 
+@Service()
 @Authorized()
 @RestController('/me')
 export class MeController {
 	constructor(
-		private readonly logger: ILogger,
-		private readonly externalHooks: IExternalHooksClass,
-		private readonly internalHooks: IInternalHooksClass,
+		private readonly logger: Logger,
+		private readonly externalHooks: ExternalHooks,
+		private readonly internalHooks: InternalHooks,
 		private readonly userService: UserService,
 	) {}
 

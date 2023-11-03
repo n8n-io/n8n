@@ -10,6 +10,7 @@
 			<div
 				class="node-view-wrapper"
 				:class="workflowClasses"
+				data-test-id="node-view-wrapper"
 				@touchstart="mouseDown"
 				@touchend="mouseUp"
 				@touchmove="mouseMoveNodeWorkflow"
@@ -228,6 +229,7 @@ import {
 	WORKFLOW_LM_CHAT_MODAL_KEY,
 	AI_NODE_CREATOR_VIEW,
 	DRAG_EVENT_DATA_KEY,
+	UPDATE_WEBHOOK_ID_NODE_TYPES,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -246,6 +248,7 @@ import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
+import { pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
@@ -271,6 +274,7 @@ import type {
 	IWorkflowBase,
 	Workflow,
 	ConnectionTypes,
+	INodeOutputConfiguration,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -373,6 +377,7 @@ export default defineComponent({
 		workflowRun,
 		debounceHelper,
 		nodeHelpers,
+		pinData,
 	],
 	components: {
 		NodeDetailsView,
@@ -1707,8 +1712,18 @@ export default defineComponent({
 			try {
 				const nodeIdMap: { [prev: string]: string } = {};
 				if (workflowData.nodes) {
-					// set all new ids when pasting/importing workflows
 					workflowData.nodes.forEach((node: INode) => {
+						//generate new webhookId if workflow already contains a node with the same webhookId
+						if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
+							const isDuplicate = Object.values(this.getCurrentWorkflow().nodes).some(
+								(n) => n.webhookId === node.webhookId,
+							);
+							if (isDuplicate) {
+								node.webhookId = uuid();
+							}
+						}
+
+						// set all new ids when pasting/importing workflows
 						if (node.id) {
 							const newId = uuid();
 							nodeIdMap[newId] = node.id;
@@ -1718,6 +1733,8 @@ export default defineComponent({
 						}
 					});
 				}
+
+				this.removeUnknownCredentials(workflowData);
 
 				const currInstanceId = this.rootStore.instanceId;
 
@@ -1763,10 +1780,6 @@ export default defineComponent({
 					});
 				});
 
-				if (workflowData.pinData) {
-					this.workflowsStore.setWorkflowPinData(workflowData.pinData);
-				}
-
 				const tagsEnabled = this.settingsStore.areTagsEnabled;
 				if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
 					const allTags = await this.tagsStore.fetchAll();
@@ -1802,6 +1815,23 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
+
+		removeUnknownCredentials(workflow: IWorkflowToShare) {
+			if (!workflow?.nodes) return;
+
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+
+				for (const [name, credential] of Object.entries(node.credentials)) {
+					if (credential.id === null) continue;
+
+					if (!this.credentialsStore.getCredentialById(credential.id)) {
+						delete node.credentials[name];
+					}
+				}
+			}
+		},
+
 		onDragOver(event: DragEvent) {
 			event.preventDefault();
 		},
@@ -2015,29 +2045,51 @@ export default defineComponent({
 					this.canvasStore.newNodeInsertPosition = null;
 				} else {
 					let yOffset = 0;
+					const workflow = this.getCurrentWorkflow();
 
 					if (lastSelectedConnection) {
 						const sourceNodeType = this.nodeTypesStore.getNodeType(
 							lastSelectedNode.type,
 							lastSelectedNode.typeVersion,
 						);
-						const offsets = [
-							[-100, 100],
-							[-140, 0, 140],
-							[-240, -100, 100, 240],
-						];
-						if (sourceNodeType && sourceNodeType.outputs.length > 1) {
-							const offset = offsets[sourceNodeType.outputs.length - 2];
-							const sourceOutputIndex = lastSelectedConnection.__meta
-								? lastSelectedConnection.__meta.sourceOutputIndex
-								: 0;
-							yOffset = offset[sourceOutputIndex];
+
+						if (sourceNodeType) {
+							const offsets = [
+								[-100, 100],
+								[-140, 0, 140],
+								[-240, -100, 100, 240],
+							];
+
+							const sourceNodeOutputs = NodeHelpers.getNodeOutputs(
+								workflow,
+								lastSelectedNode,
+								sourceNodeType,
+							);
+							const sourceNodeOutputTypes = NodeHelpers.getConnectionTypes(sourceNodeOutputs);
+
+							const sourceNodeOutputMainOutputs = sourceNodeOutputTypes.filter(
+								(output) => output === NodeConnectionType.Main,
+							);
+
+							if (sourceNodeOutputMainOutputs.length > 1) {
+								const offset = offsets[sourceNodeOutputMainOutputs.length - 2];
+								const sourceOutputIndex = lastSelectedConnection.__meta
+									? lastSelectedConnection.__meta.sourceOutputIndex
+									: 0;
+								yOffset = offset[sourceOutputIndex];
+							}
 						}
 					}
 
-					const workflow = this.getCurrentWorkflow();
-					const workflowNode = workflow.getNode(newNodeData.name);
-					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode!, nodeTypeData);
+					let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+					try {
+						// It fails when the outputs are an expression. As those nodes have
+						// normally no outputs by default and the only reason we need the
+						// outputs here is to calculate the position, it is fine to assume
+						// that they have no outputs and are so treated as a regular node
+						// with only "main" outputs.
+						outputs = NodeHelpers.getNodeOutputs(workflow, newNodeData, nodeTypeData);
+					} catch (e) {}
 					const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 					const lastSelectedNodeType = this.nodeTypesStore.getNodeType(
 						lastSelectedNode.type,
@@ -2045,7 +2097,10 @@ export default defineComponent({
 					);
 
 					// If node has only scoped outputs, position it below the last selected node
-					if (outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)) {
+					if (
+						outputTypes.length > 0 &&
+						outputTypes.every((outputName) => outputName !== NodeConnectionType.Main)
+					) {
 						const lastSelectedNodeWorkflow = workflow.getNode(lastSelectedNode.name);
 						const lastSelectedInputs = NodeHelpers.getNodeInputs(
 							workflow,
@@ -2070,6 +2125,7 @@ export default defineComponent({
 							[100, 0],
 						);
 					} else {
+						// Has only main outputs or no outputs at all
 						const inputs = NodeHelpers.getNodeInputs(
 							workflow,
 							lastSelectedNode,
@@ -2256,6 +2312,7 @@ export default defineComponent({
 			if (lastSelectedNodeEndpointUuid && !isAutoAdd) {
 				const lastSelectedEndpoint = this.instance.getEndpoint(lastSelectedNodeEndpointUuid);
 				if (
+					lastSelectedEndpoint &&
 					this.checkNodeConnectionAllowed(
 						lastSelectedNode!,
 						newNodeData,
@@ -2427,7 +2484,14 @@ export default defineComponent({
 			);
 
 			if (targetNodeType?.inputs?.length) {
-				for (const input of targetNodeType?.inputs || []) {
+				const workflow = this.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(targetNode.name);
+				let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+				if (targetNodeType) {
+					inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, targetNodeType);
+				}
+
+				for (const input of inputs || []) {
 					if (typeof input === 'string' || input.type !== targetInfoType || !input.filter) {
 						// No filters defined or wrong connection type
 						continue;
@@ -2585,7 +2649,9 @@ export default defineComponent({
 					);
 					if (sourceInfo.type !== NodeConnectionType.Main) {
 						// Not "main" connections get a different connection style
-						info.connection.setPaintStyle(getConnectorPaintStyleData(info.connection));
+						info.connection.setPaintStyle(
+							getConnectorPaintStyleData(info.connection, info.sourceEndpoint.parameters.category),
+						);
 						endpointArrow?.setVisible(false);
 					}
 				}
@@ -2931,6 +2997,7 @@ export default defineComponent({
 			this.instance.unbind(EVENT_CONNECTION_DETACHED, this.onConnectionDragAbortDetached);
 			this.instance.unbind(EVENT_PLUS_ENDPOINT_CLICK, this.onPlusEndpointClick);
 			this.instance.unbind(EVENT_ADD_INPUT_ENDPOINT_CLICK, this.onAddInputEndpointClick);
+			this.eventsAttached = false;
 		},
 		unbindEndpointEventListeners(bind = true) {
 			if (this.instance) {
@@ -3043,6 +3110,9 @@ export default defineComponent({
 								`User opened workflow from onboarding template with ID ${workflow.meta.onboardingId}`,
 								{
 									workflow_id: workflow.id,
+								},
+								{
+									withPostHog: true,
 								},
 							);
 						}
@@ -3238,12 +3308,13 @@ export default defineComponent({
 
 				await this.addNodes([newNodeData], [], true);
 
-				const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
-				if (pinData) {
-					this.workflowsStore.pinData({
-						node: newNodeData,
-						data: pinData,
-					});
+				const pinDataForNode = this.workflowsStore.pinDataByNodeName(nodeName);
+				if (pinDataForNode?.length) {
+					try {
+						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
+					} catch (error) {
+						console.error(error);
+					}
 				}
 
 				this.uiStore.stateIsDirty = true;
@@ -3401,7 +3472,6 @@ export default defineComponent({
 				nodeConnections || [],
 				(connectionType as ConnectionTypes) ?? NodeConnectionType.Main,
 			);
-
 			Object.keys(outputMap).forEach((sourceOutputIndex: string) => {
 				Object.keys(outputMap[sourceOutputIndex]).forEach((targetNodeName: string) => {
 					Object.keys(outputMap[sourceOutputIndex][targetNodeName]).forEach(
@@ -3966,6 +4036,29 @@ export default defineComponent({
 					continue;
 				}
 				tempWorkflow.renameNode(oldName, nodeNameTable[oldName]);
+			}
+
+			if (data.pinData) {
+				let pinDataSuccess = true;
+				for (const nodeName of Object.keys(data.pinData)) {
+					// Pin data limit reached
+					if (!pinDataSuccess) {
+						this.showError(
+							new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
+							this.$locale.baseText('ndv.pinData.error.tooLarge.title'),
+						);
+						continue;
+					}
+
+					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
+					try {
+						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+						pinDataSuccess = true;
+					} catch (error) {
+						pinDataSuccess = false;
+						console.error(error);
+					}
+				}
 			}
 
 			// Add the nodes with the changed node names, expressions and connections

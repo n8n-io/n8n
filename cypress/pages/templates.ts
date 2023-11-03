@@ -1,7 +1,5 @@
 import { BasePage } from './base';
-import { WorkflowPage } from './workflow';
 
-const workflowPage = new WorkflowPage();
 export class TemplatesPage extends BasePage {
 	url = '/templates';
 

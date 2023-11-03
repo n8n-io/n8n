@@ -1,29 +1,31 @@
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import Container from 'typedi';
 import type { RedisServiceCommandObject } from '@/services/redis/RedisServiceCommands';
 import { COMMAND_REDIS_CHANNEL } from '@/services/redis/RedisServiceHelper';
 import * as os from 'os';
-import Container from 'typedi';
 import { License } from '@/License';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
+import { Logger } from '@/Logger';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
 		if (channel === COMMAND_REDIS_CHANNEL) {
 			if (!messageString) return;
+			const logger = Container.get(Logger);
 			let message: RedisServiceCommandObject;
 			try {
 				message = jsonParse<RedisServiceCommandObject>(messageString);
 			} catch {
-				LoggerProxy.debug(
+				logger.debug(
 					`Received invalid message via channel ${COMMAND_REDIS_CHANNEL}: "${messageString}"`,
 				);
 				return;
 			}
 			if (message) {
-				LoggerProxy.debug(
+				logger.debug(
 					`RedisCommandHandler(worker): Received command message ${message.command} from ${message.senderId}`,
 				);
 				if (message.targets && !message.targets.includes(options.queueModeId)) {
@@ -115,7 +117,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 						// await this.stopProcess();
 						break;
 					default:
-						LoggerProxy.debug(
+						logger.debug(
 							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received unknown command via channel ${COMMAND_REDIS_CHANNEL}: "${message.command}"`,
 						);

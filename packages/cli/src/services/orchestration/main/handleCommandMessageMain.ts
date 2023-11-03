@@ -1,18 +1,19 @@
-import { LoggerProxy } from 'n8n-workflow';
+import { Container } from 'typedi';
 import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 import config from '@/config';
 import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
-import Container from 'typedi';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
+import { Logger } from '@/Logger';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.get('redis.queueModeId');
 	const isMainInstance = config.get('generic.instanceType') === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
+	const logger = Container.get(Logger);
 
 	if (message) {
-		LoggerProxy.debug(
+		logger.debug(
 			`RedisCommandHandler(main): Received command message ${message.command} from ${message.senderId}`,
 		);
 		if (
@@ -20,7 +21,7 @@ export async function handleCommandMessageMain(messageString: string) {
 			(message.targets && !message.targets.includes(queueModeId))
 		) {
 			// Skipping command message because it's not for this instance
-			LoggerProxy.debug(
+			logger.debug(
 				`Skipping command message ${message.command} because it's not for this instance.`,
 			);
 			return message;
@@ -33,9 +34,10 @@ export async function handleCommandMessageMain(messageString: string) {
 					};
 					return message;
 				}
-				if (isMainInstance) {
+
+				if (isMainInstance && !config.getEnv('leaderSelection.enabled')) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
-					LoggerProxy.error(
+					logger.error(
 						'Received command to reload license via Redis, but this should not have happened and is not supported on the main instance yet.',
 					);
 					return message;

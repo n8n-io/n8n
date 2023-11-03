@@ -15,12 +15,6 @@ export interface IResponseError extends Error {
 	statusCode?: number;
 }
 
-export interface IUserSettings {
-	encryptionKey?: string;
-	tunnelSubdomain?: string;
-	instanceId?: string;
-}
-
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
 	timezone?: string;

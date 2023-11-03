@@ -1,5 +1,4 @@
 import type { Entry as LdapUser } from 'ldapts';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 import type { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
@@ -17,6 +16,7 @@ import type { Role } from '@db/entities/Role';
 import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { Logger } from '@/Logger';
 
 export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -24,6 +24,12 @@ export class LdapSync {
 	private _config: LdapConfig;
 
 	private _ldapService: LdapService;
+
+	private readonly logger: Logger;
+
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
 
 	/**
 	 * Updates the LDAP configuration
@@ -71,7 +77,7 @@ export class LdapSync {
 	 * else the users are not modified
 	 */
 	async run(mode: RunningMode): Promise<void> {
-		Logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
+		this.logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
 
 		let adUsers: LdapUser[] = [];
 
@@ -80,14 +86,14 @@ export class LdapSync {
 				createFilter(`(${this._config.loginIdAttribute}=*)`, this._config.userFilter),
 			);
 
-			Logger.debug('LDAP - Users return by the query', {
+			this.logger.debug('LDAP - Users return by the query', {
 				users: adUsers,
 			});
 
 			resolveBinaryAttributes(adUsers);
 		} catch (e) {
 			if (e instanceof Error) {
-				Logger.error(`LDAP - ${e.message}`);
+				this.logger.error(`LDAP - ${e.message}`);
 				throw e;
 			}
 		}
@@ -104,7 +110,7 @@ export class LdapSync {
 			role,
 		);
 
-		Logger.debug('LDAP - Users processed', {
+		this.logger.debug('LDAP - Users processed', {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,
 			disabled: usersToDisable.length,
@@ -144,7 +150,7 @@ export class LdapSync {
 			error: errorMessage,
 		});
 
-		Logger.debug('LDAP - Synchronization finished successfully');
+		this.logger.debug('LDAP - Synchronization finished successfully');
 	}
 
 	/**

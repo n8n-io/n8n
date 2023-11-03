@@ -9,11 +9,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { IRecord } from './GenericFunctions';
-import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
 import { oldVersionNotice } from '../../../utils/descriptions';
 import { generatePairedItemData } from '../../../utils/utilities';
+import type { IRecord } from './GenericFunctions';
+import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Airtable',

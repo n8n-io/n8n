@@ -16,11 +16,10 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
 
-import { filters } from './Filters';
-
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+import { filters } from './Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;

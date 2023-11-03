@@ -1,4 +1,5 @@
 import { v4 as uuid } from 'uuid';
+import { Container } from 'typedi';
 import * as Db from '@/Db';
 import { audit } from '@/audit';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
@@ -9,12 +10,6 @@ import { mockInstance } from '../shared/utils/';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
-import Container from 'typedi';
-
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
-LoggerProxy.init(getLogger());
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);

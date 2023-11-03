@@ -6,7 +6,7 @@ import type { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	const responseData = await sheet.spreadsheetGetSheets();
@@ -34,7 +34,7 @@ export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
 	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const sheet = new GoogleSheet(spreadsheetId, this);
 	let sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {

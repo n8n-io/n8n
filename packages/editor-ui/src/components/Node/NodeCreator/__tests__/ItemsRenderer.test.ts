@@ -5,10 +5,10 @@ import {
 	mockSubcategoryCreateElement,
 	mockLabelCreateElement,
 	mockNodeCreateElement,
+	mockActionCreateElement,
+	mockViewCreateElement,
 } from './utils';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
-import { mockActionCreateElement } from './utils';
-import { mockViewCreateElement } from './utils';
 import { createComponentRenderer } from '@/__tests__/render';
 
 const renderComponent = createComponentRenderer(ItemsRenderer);

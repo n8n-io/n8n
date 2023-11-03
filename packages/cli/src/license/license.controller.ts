@@ -1,13 +1,12 @@
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
+import { Container } from 'typedi';
 
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
 import { License } from '@/License';
 import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
-import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
 
 export const licenseController = express.Router();
@@ -15,24 +14,12 @@ export const licenseController = express.Router();
 const OWNER_ROUTES = ['/activate', '/renew'];
 
 /**
- * Initialize Logger if needed
- */
-licenseController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-	next();
-});
-
-/**
  * Owner checking
  */
 licenseController.use((req: AuthenticatedRequest, res, next) => {
 	if (OWNER_ROUTES.includes(req.path) && req.user) {
 		if (!req.user.isOwner) {
-			LoggerProxy.info('Non-owner attempted to activate or renew a license', {
+			Container.get(Logger).info('Non-owner attempted to activate or renew a license', {
 				userId: req.user.id,
 			});
 			ResponseHelper.sendErrorResponse(
@@ -95,7 +82,7 @@ licenseController.post(
 					break;
 				default:
 					message += `: ${error.message}`;
-					getLogger().error(message, { stack: error.stack ?? 'n/a' });
+					Container.get(Logger).error(message, { stack: error.stack ?? 'n/a' });
 			}
 
 			throw new ResponseHelper.BadRequestError(message);

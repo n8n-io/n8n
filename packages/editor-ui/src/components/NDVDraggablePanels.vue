@@ -41,6 +41,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
+import { useStorage } from '@vueuse/core';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
@@ -345,9 +346,10 @@ export default defineComponent({
 			);
 		},
 		restorePositionData() {
-			const storedPanelWidthData = window.localStorage.getItem(
+			const storedPanelWidthData = useStorage(
 				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-			);
+				undefined,
+			).value;
 
 			if (storedPanelWidthData) {
 				const parsedWidth = parseFloat(storedPanelWidthData);

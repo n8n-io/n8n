@@ -78,7 +78,9 @@ export async function getColumns(this: ILoadOptionsFunctions): Promise<ResourceM
 	});
 
 	if (!tableData) {
-		throw new NodeOperationError(this.getNode(), 'Table information could not be found!');
+		throw new NodeOperationError(this.getNode(), 'Table information could not be found!', {
+			severity: 'warning',
+		});
 	}
 
 	const fields: ResourceMapperField[] = [];
