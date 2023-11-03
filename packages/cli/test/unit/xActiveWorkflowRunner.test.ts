@@ -1,4 +1,4 @@
-import { Workflow } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import { Container } from 'typedi';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -11,7 +11,9 @@ import * as testDb from '../integration/shared/testDb';
 import { ActiveWorkflows } from 'n8n-core';
 import { WorkflowRepository } from '@/databases/repositories';
 import { setSchedulerAsLoadedNode } from './Helpers';
+import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
 import type { User } from '@/databases/entities/User';
+import { WorkflowRunner } from '@/WorkflowRunner';
 
 mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
@@ -108,9 +110,11 @@ describe('removeAll()', () => {
 		expect(removeSpy).toHaveBeenCalledTimes(2);
 
 		/**
-		 * `ActiveWorkflowRunner.getActiveWorkflows()` is for workflows stored as
-		 * `active` in the DB (i.e., workflows that should be active whenever n8n is up).
-		 * Workflows stored as `active` are not the same as actually active workflows.
+		 * We do not assert using `ActiveWorkflowRunner.getActiveWorkflows()` because
+		 * this method is for workflows stored as `active` in the DB, i.e. workflows that
+		 * should be activated whenever n8n is running).
+		 *
+		 * Workflows stored as `active` are **not** the same as actually active workflows.
 		 */
 	});
 });
@@ -125,5 +129,81 @@ describe('remove()', () => {
 		await activeWorkflowRunner.remove(workflow.id);
 
 		expect(removeWebhooksSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('isActive()', () => {
+	test('should return true for workflow stored as active', async () => {
+		const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+		await activeWorkflowRunner.init();
+
+		const isActive = activeWorkflowRunner.isActive(workflow.id);
+		await expect(isActive).resolves.toBe(true);
+	});
+
+	test('should return true for workflow stored as active', async () => {
+		const workflow = await testDb.createWorkflow({ active: false }, owner);
+
+		await activeWorkflowRunner.init();
+
+		const isActive = activeWorkflowRunner.isActive(workflow.id);
+		await expect(isActive).resolves.toBe(false);
+	});
+});
+
+describe('runWorkflow()', () => {
+	test('should call WorkflowRunner.run()', async () => {
+		const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+		await activeWorkflowRunner.init();
+
+		const additionalData = await AdditionalData.getBase('fake-user-id');
+
+		const runSpy = jest
+			.spyOn(WorkflowRunner.prototype, 'run')
+			.mockResolvedValue('fake-execution-id');
+
+		const [node] = workflow.nodes;
+
+		await activeWorkflowRunner.runWorkflow(workflow, node, [[]], additionalData, 'trigger');
+
+		expect(runSpy).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('executeErrorWorkflow()', () => {
+	test('should call WorkflowExecuteAdditionalData.executeErrorWorkflow()', async () => {
+		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const [node] = workflow.nodes;
+		const error = new NodeOperationError(node, 'Fake error message');
+		const executeErrorWorkflowSpy = jest.spyOn(AdditionalData, 'executeErrorWorkflow');
+
+		await activeWorkflowRunner.init();
+
+		activeWorkflowRunner.executeErrorWorkflow(error, workflow, 'trigger');
+
+		expect(executeErrorWorkflowSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should be called on failure to activate due to 401', async () => {
+		const storedWorkflow = await testDb.createWorkflow({ active: true }, owner);
+		const [node] = storedWorkflow.nodes;
+
+		jest.spyOn(activeWorkflowRunner, 'add').mockImplementation(() => {
+			throw new NodeApiError(node, {
+				httpCode: '401',
+				message: 'Authorization failed - please check your credentials',
+			});
+		});
+
+		const executeErrorWorkflowSpy = jest.spyOn(activeWorkflowRunner, 'executeErrorWorkflow');
+
+		await activeWorkflowRunner.init();
+
+		const [error, workflow] = executeErrorWorkflowSpy.mock.calls[0];
+
+		expect(error.message).toContain('Authorization');
+		expect(workflow.id).toBe(storedWorkflow.id);
 	});
 });
