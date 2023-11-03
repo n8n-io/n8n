@@ -233,13 +233,17 @@ export default defineComponent({
 			return this.readOnly || this.hasForeignCredential;
 		},
 		isExecutable(): boolean {
-			if (
-				this.nodeType &&
-				!this.isTriggerNode &&
-				!this.nodeType.inputs.includes(NodeConnectionType.Main)
-			) {
-				return false;
+			if (this.nodeType && this.node) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType);
+				const inputNames = NodeHelpers.getConnectionTypes(inputs);
+
+				if (!inputNames.includes(NodeConnectionType.Main) && !this.isTriggerNode) {
+					return false;
+				}
 			}
+
 			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
@@ -367,7 +371,7 @@ export default defineComponent({
 				alwaysOutputData: false,
 				executeOnce: false,
 				notesInFlow: false,
-				continueOnFail: false,
+				onError: 'stopWorkflow',
 				retryOnFail: false,
 				maxTries: 3,
 				waitBetweenTries: 1000,
@@ -436,12 +440,39 @@ export default defineComponent({
 					description: this.$locale.baseText('nodeSettings.waitBetweenTries.description'),
 				},
 				{
-					displayName: this.$locale.baseText('nodeSettings.continueOnFail.displayName'),
-					name: 'continueOnFail',
-					type: 'boolean',
-					default: false,
+					displayName: this.$locale.baseText('nodeSettings.onError.displayName'),
+					name: 'onError',
+					type: 'options',
+					options: [
+						{
+							name: this.$locale.baseText('nodeSettings.onError.options.stopWorkflow.displayName'),
+							value: 'stopWorkflow',
+							description: this.$locale.baseText(
+								'nodeSettings.onError.options.stopWorkflow.description',
+							),
+						},
+						{
+							name: this.$locale.baseText(
+								'nodeSettings.onError.options.continueRegularOutput.displayName',
+							),
+							value: 'continueRegularOutput',
+							description: this.$locale.baseText(
+								'nodeSettings.onError.options.continueRegularOutput.description',
+							),
+						},
+						{
+							name: this.$locale.baseText(
+								'nodeSettings.onError.options.continueErrorOutput.displayName',
+							),
+							value: 'continueErrorOutput',
+							description: this.$locale.baseText(
+								'nodeSettings.onError.options.continueErrorOutput.description',
+							),
+						},
+					],
+					default: 'stopWorkflow',
 					noDataExpression: true,
-					description: this.$locale.baseText('nodeSettings.continueOnFail.description'),
+					description: this.$locale.baseText('nodeSettings.onError.description'),
 				},
 				{
 					displayName: this.$locale.baseText('nodeSettings.notes.displayName'),
@@ -627,6 +658,11 @@ export default defineComponent({
 
 			if (node === null) {
 				return;
+			}
+
+			if (parameterData.name === 'onError') {
+				// If that parameter changes, we need to redraw the connections, as the error output may need to be added or removed
+				this.$emit('redrawRequired');
 			}
 
 			if (parameterData.name === 'name') {
@@ -876,10 +912,18 @@ export default defineComponent({
 				}
 
 				if (this.node.continueOnFail) {
-					foundNodeSettings.push('continueOnFail');
+					foundNodeSettings.push('onError');
 					this.nodeValues = {
 						...this.nodeValues,
-						continueOnFail: this.node.continueOnFail,
+						onError: 'continueRegularOutput',
+					};
+				}
+
+				if (this.node.onError) {
+					foundNodeSettings.push('onError');
+					this.nodeValues = {
+						...this.nodeValues,
+						onError: this.node.onError,
 					};
 				}
 

@@ -13,7 +13,7 @@ import type {
 	INodeTypes,
 	IRun,
 } from 'n8n-workflow';
-import { Workflow, NodeOperationError, LoggerProxy, sleep } from 'n8n-workflow';
+import { Workflow, NodeOperationError, sleep } from 'n8n-workflow';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -22,7 +22,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
-import type { Job, JobId, JobQueue, JobResponse, WebhookResponse } from '@/Queue';
+import type { Job, JobId, JobResponse, WebhookResponse } from '@/Queue';
 import { Queue } from '@/Queue';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
@@ -38,6 +38,7 @@ import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessage
 import { IConfig } from '@oclif/config';
 import { OrchestrationHandlerWorkerService } from '@/services/orchestration/worker/orchestration.handler.worker.service';
 import { OrchestrationWorkerService } from '@/services/orchestration/worker/orchestration.worker.service';
+import type { WorkerJobStatusSummary } from '../services/orchestration/worker/types';
 
 export class Worker extends BaseCommand {
 	static description = '\nStarts a n8n worker';
@@ -56,7 +57,11 @@ export class Worker extends BaseCommand {
 		[key: string]: PCancelable<IRun>;
 	} = {};
 
-	static jobQueue: JobQueue;
+	static runningJobsSummary: {
+		[jobId: string]: WorkerJobStatusSummary;
+	} = {};
+
+	static jobQueue: Queue;
 
 	redisSubscriber: RedisServicePubSubSubscriber;
 
@@ -66,7 +71,7 @@ export class Worker extends BaseCommand {
 	 * get removed.
 	 */
 	async stopProcess() {
-		LoggerProxy.info('Stopping n8n...');
+		this.logger.info('Stopping n8n...');
 
 		// Stop accepting new jobs
 		await Worker.jobQueue.pause(true);
@@ -89,7 +94,7 @@ export class Worker extends BaseCommand {
 			while (Object.keys(Worker.runningJobs).length !== 0) {
 				if (count++ % 4 === 0) {
 					const waitLeft = Math.ceil((stopTime - new Date().getTime()) / 1000);
-					LoggerProxy.info(
+					this.logger.info(
 						`Waiting for ${
 							Object.keys(Worker.runningJobs).length
 						} active executions to finish... (wait ${waitLeft} more seconds)`,
@@ -107,16 +112,14 @@ export class Worker extends BaseCommand {
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-			executionId,
-			{
-				includeData: true,
-				unflattenData: true,
-			},
-		);
+		const executionRepository = Container.get(ExecutionRepository);
+		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
 		if (!fullExecutionData) {
-			LoggerProxy.error(
+			this.logger.error(
 				`Worker failed to find data of execution "${executionId}" in database. Cannot continue.`,
 				{ executionId },
 			);
@@ -125,9 +128,10 @@ export class Worker extends BaseCommand {
 			);
 		}
 		const workflowId = fullExecutionData.workflowData.id!;
-		LoggerProxy.info(
+		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
+		await executionRepository.updateStatus(executionId, 'running');
 
 		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 
@@ -140,7 +144,7 @@ export class Worker extends BaseCommand {
 				},
 			});
 			if (workflowData === null) {
-				LoggerProxy.error(
+				this.logger.error(
 					'Worker execution failed because workflow could not be found in database.',
 					{ workflowId, executionId },
 				);
@@ -212,7 +216,7 @@ export class Worker extends BaseCommand {
 
 		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
 			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
-			LoggerProxy.debug(`Queued worker execution status for ${executionId} is "${status}"`);
+			this.logger.debug(`Queued worker execution status for ${executionId} is "${status}"`);
 		};
 
 		let workflowExecute: WorkflowExecute;
@@ -232,11 +236,22 @@ export class Worker extends BaseCommand {
 		}
 
 		Worker.runningJobs[job.id] = workflowRun;
+		Worker.runningJobsSummary[job.id] = {
+			jobId: job.id.toString(),
+			executionId,
+			workflowId: fullExecutionData.workflowId ?? '',
+			workflowName: fullExecutionData.workflowData.name,
+			mode: fullExecutionData.mode,
+			startedAt: fullExecutionData.startedAt,
+			retryOf: fullExecutionData.retryOf ?? '',
+			status: fullExecutionData.status,
+		};
 
 		// Wait till the execution is finished
 		await workflowRun;
 
 		delete Worker.runningJobs[job.id];
+		delete Worker.runningJobsSummary[job.id];
 
 		// do NOT call workflowExecuteAfter hook here, since it is being called from processSuccessExecution()
 		// already!
@@ -302,9 +317,9 @@ export class Worker extends BaseCommand {
 		await Container.get(OrchestrationWorkerService).init();
 		await Container.get(OrchestrationHandlerWorkerService).initWithOptions({
 			queueModeId: this.queueModeId,
-			instanceId: this.instanceId,
 			redisPublisher: Container.get(OrchestrationWorkerService).redisPublisher,
 			getRunningJobIds: () => Object.keys(Worker.runningJobs),
+			getRunningJobsSummary: () => Object.values(Worker.runningJobsSummary),
 		});
 	}
 
@@ -318,15 +333,14 @@ export class Worker extends BaseCommand {
 			`Opening Redis connection to listen to messages with timeout ${redisConnectionTimeoutLimit}`,
 		);
 
-		const queue = Container.get(Queue);
-		await queue.init();
+		Worker.jobQueue = Container.get(Queue);
+		await Worker.jobQueue.init();
 		this.logger.debug('Queue singleton ready');
-		Worker.jobQueue = queue.getBullObjectInstance();
 		void Worker.jobQueue.process(flags.concurrency, async (job) =>
 			this.runJob(job, this.nodeTypes),
 		);
 
-		Worker.jobQueue.on('global:progress', (jobId: JobId, progress) => {
+		Worker.jobQueue.getBullObjectInstance().on('global:progress', (jobId: JobId, progress) => {
 			// Progress of a job got updated which does get used
 			// to communicate that a job got canceled.
 
@@ -342,7 +356,7 @@ export class Worker extends BaseCommand {
 
 		let lastTimer = 0;
 		let cumulativeTimeout = 0;
-		Worker.jobQueue.on('error', (error: Error) => {
+		Worker.jobQueue.getBullObjectInstance().on('error', (error: Error) => {
 			if (error.toString().includes('ECONNREFUSED')) {
 				const now = Date.now();
 				if (now - lastTimer > 30000) {
@@ -385,7 +399,7 @@ export class Worker extends BaseCommand {
 			'/healthz',
 
 			async (req: express.Request, res: express.Response) => {
-				LoggerProxy.debug('Health check started!');
+				this.logger.debug('Health check started!');
 
 				const connection = Db.getConnection();
 
@@ -397,7 +411,7 @@ export class Worker extends BaseCommand {
 					// DB ping
 					await connection.query('SELECT 1');
 				} catch (e) {
-					LoggerProxy.error('No Database connection!', e as Error);
+					this.logger.error('No Database connection!', e as Error);
 					const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
@@ -406,9 +420,9 @@ export class Worker extends BaseCommand {
 				// if it loses the connection to redis
 				try {
 					// Redis ping
-					await Worker.jobQueue.client.ping();
+					await Worker.jobQueue.ping();
 				} catch (e) {
-					LoggerProxy.error('No Redis connection!', e as Error);
+					this.logger.error('No Redis connection!', e as Error);
 					const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
 					return ResponseHelper.sendErrorResponse(res, error);
 				}
@@ -418,7 +432,7 @@ export class Worker extends BaseCommand {
 					status: 'ok',
 				};
 
-				LoggerProxy.debug('Health check completed successfully!');
+				this.logger.debug('Health check completed successfully!');
 
 				ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 			},
@@ -446,7 +460,7 @@ export class Worker extends BaseCommand {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 						presetCredentialsLoaded = true;
 						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
 					} else {

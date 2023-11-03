@@ -1,8 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import { mocked } from 'jest-mock';
+import { Container } from 'typedi';
 
-import type { ICredentialTypes, INode, INodesAndCredentials } from 'n8n-workflow';
-import { LoggerProxy, NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
@@ -10,23 +11,19 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
-import { getLogger } from '@/Logger';
-import { randomEmail, randomName } from '../integration/shared/random';
-import * as Helpers from './Helpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { mock } from 'jest-mock-extended';
-import type { ExternalHooks } from '@/ExternalHooks';
-import { Container } from 'typedi';
+import { ExternalHooks } from '@/ExternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from '../integration/shared/utils/';
 import { Push } from '@/push';
 import { ActiveExecutions } from '@/ActiveExecutions';
-import { NodeTypes } from '@/NodeTypes';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { WebhookService } from '@/services/webhook.service';
-import { VariablesService } from '../../src/environments/variables/variables.service';
+import { VariablesService } from '@/environments/variables/variables.service';
+
+import { mockInstance } from '../integration/shared/utils/';
+import { randomEmail, randomName } from '../integration/shared/random';
+import * as Helpers from './Helpers';
 
 /**
  * TODO:
@@ -114,13 +111,6 @@ jest.mock('@/Db', () => {
 					return fakeQueryBuilder;
 				}),
 			},
-			Webhook: {
-				clear: jest.fn(),
-				delete: jest.fn(),
-			},
-			Variables: {
-				find: jest.fn(() => []),
-			},
 		},
 	};
 });
@@ -140,37 +130,23 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 );
 
 describe('ActiveWorkflowRunner', () => {
-	let externalHooks: ExternalHooks;
-	let activeWorkflowRunner: ActiveWorkflowRunner;
+	mockInstance(ActiveExecutions);
+	const externalHooks = mockInstance(ExternalHooks);
 	const webhookService = mockInstance(WebhookService);
-
-	beforeAll(async () => {
-		LoggerProxy.init(getLogger());
-		const nodesAndCredentials: INodesAndCredentials = {
-			loaded: {
-				nodes: MOCK_NODE_TYPES_DATA,
-				credentials: {},
-			},
-			known: { nodes: {}, credentials: {} },
-			credentialTypes: {} as ICredentialTypes,
-		};
-		const mockVariablesService = {
-			getAllCached: jest.fn(() => []),
-		};
-		Container.set(LoadNodesAndCredentials, nodesAndCredentials);
-		Container.set(VariablesService, mockVariablesService);
-		mockInstance(Push);
-		mockInstance(SecretsHelper);
+	mockInstance(Push);
+	mockInstance(SecretsHelper);
+	const variablesService = mockInstance(VariablesService);
+	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+	Object.assign(nodesAndCredentials, {
+		loadedNodes: MOCK_NODE_TYPES_DATA,
+		known: { nodes: {}, credentials: {} },
+		types: { nodes: [], credentials: [] },
 	});
 
-	beforeEach(() => {
-		externalHooks = mock();
-		activeWorkflowRunner = new ActiveWorkflowRunner(
-			new ActiveExecutions(),
-			externalHooks,
-			Container.get(NodeTypes),
-			webhookService,
-		);
+	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+	beforeAll(async () => {
+		variablesService.getAllCached.mockResolvedValue([]);
 	});
 
 	afterEach(async () => {
@@ -184,7 +160,6 @@ describe('ActiveWorkflowRunner', () => {
 		await activeWorkflowRunner.init();
 		expect(await activeWorkflowRunner.getActiveWorkflows()).toHaveLength(0);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(webhookService.deleteInstanceWebhooks).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalledTimes(1);
 	});
 
@@ -195,7 +170,6 @@ describe('ActiveWorkflowRunner', () => {
 			databaseActiveWorkflowsCount,
 		);
 		expect(mocked(Db.collections.Workflow.find)).toHaveBeenCalled();
-		expect(webhookService.deleteInstanceWebhooks).toHaveBeenCalled();
 		expect(externalHooks.run).toHaveBeenCalled();
 	});
 

@@ -2,6 +2,7 @@ import type { SuperAgentTest } from 'supertest';
 import type { Entry as LdapUser } from 'ldapts';
 import { Not } from 'typeorm';
 import { jsonParse } from 'n8n-workflow';
+
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
@@ -9,25 +10,21 @@ import type { User } from '@db/entities/User';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
-import { encryptPassword, saveLdapSynchronization } from '@/Ldap/helpers';
+import { saveLdapSynchronization } from '@/Ldap/helpers';
 import type { LdapConfig } from '@/Ldap/types';
 import { getCurrentAuthenticationMethod, setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import * as utils from '../shared/utils/';
-
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
+import Container from 'typedi';
+import { Cipher } from 'n8n-core';
 
 jest.mock('@/telemetry');
-jest.mock('@/UserManagement/email/NodeMailer');
 
 let globalMemberRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-
-LoggerProxy.init(getLogger());
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
@@ -53,16 +50,12 @@ beforeAll(async () => {
 
 	globalMemberRole = fetchedGlobalMemberRole;
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	owner = await testDb.createUser({ globalRole: globalOwnerRole, password: 'password' });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
+	defaultLdapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(
 		defaultLdapConfig.bindingAdminPassword,
 	);
-
-	await utils.initEncryptionKey();
-
-	await setCurrentAuthenticationMethod('email');
 });
 
 beforeEach(async () => {
@@ -80,7 +73,8 @@ beforeEach(async () => {
 	jest.mock('@/telemetry');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
+
+	await setCurrentAuthenticationMethod('email');
 });
 
 const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<LdapConfig> => {
@@ -149,6 +143,19 @@ describe('PUT /ldap/config', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.loginEnabled).toBe(true);
 		expect(response.body.data.loginLabel).toBe('');
+	});
+
+	test('route should fail due to trying to enable LDAP login with SSO as current authentication method', async () => {
+		const validPayload = {
+			...LDAP_DEFAULT_CONFIGURATION,
+			loginEnabled: true,
+		};
+
+		config.set('userManagement.authenticationMethod', 'saml');
+
+		const response = await authOwnerAgent.put('/ldap/config').send(validPayload);
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should apply "Convert all LDAP users to email users" strategy when LDAP login disabled', async () => {
@@ -477,6 +484,8 @@ describe('POST /login', () => {
 		const ldapConfig = await createLdapConfig();
 		LdapManager.updateConfig(ldapConfig);
 
+		await setCurrentAuthenticationMethod('ldap');
+
 		jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockResolvedValue([ldapUser]);
 
 		jest.spyOn(LdapService.prototype, 'validUser').mockResolvedValue();
@@ -532,6 +541,19 @@ describe('POST /login', () => {
 		);
 
 		await runTest(ldapUser);
+	});
+
+	test('should allow instance owner to sign in with email/password when LDAP is enabled', async () => {
+		const ldapConfig = await createLdapConfig();
+		LdapManager.updateConfig(ldapConfig);
+
+		const response = await testServer.authlessAgent
+			.post('/login')
+			.send({ email: owner.email, password: 'password' });
+
+		expect(response.status).toBe(200);
+		expect(response.body.data?.signInType).toBeDefined();
+		expect(response.body.data?.signInType).toBe('email');
 	});
 
 	test('should transform email user into LDAP user when match found', async () => {

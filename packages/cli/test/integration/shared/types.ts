@@ -8,7 +8,6 @@ import type { User } from '@db/entities/User';
 import type { BooleanLicenseFeature, ICredentialsDb, IDatabaseCollections } from '@/Interfaces';
 import type { DataSource, Repository } from 'typeorm';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type CollectionName =
 	| keyof IDatabaseCollections
 	| { new (dataSource: DataSource): Repository<any> };
@@ -22,7 +21,7 @@ export type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes'
+	| 'community-packages'
 	| 'ldap'
 	| 'saml'
 	| 'sourceControl'

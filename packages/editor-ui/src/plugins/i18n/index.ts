@@ -51,10 +51,10 @@ export class I18nClass {
 		options?: { adjustToNumber?: number; interpolate?: { [key: string]: string } },
 	): string {
 		if (options?.adjustToNumber !== undefined) {
-			return this.i18n.tc(key, options.adjustToNumber, options && options.interpolate).toString();
+			return this.i18n.tc(key, options.adjustToNumber, options?.interpolate).toString();
 		}
 
-		return this.i18n.t(key, options && options.interpolate).toString();
+		return this.i18n.t(key, options?.interpolate).toString();
 	}
 
 	/**
@@ -164,7 +164,7 @@ export class I18nClass {
 	nodeText() {
 		const ndvStore = useNDVStore();
 		const activeNode = ndvStore.activeNode;
-		const nodeType = activeNode ? this.shortNodeType(activeNode.type as string) : ''; // unused in eventTriggerDescription
+		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 

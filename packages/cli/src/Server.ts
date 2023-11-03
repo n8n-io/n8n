@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
+
 /* eslint-disable @typescript-eslint/no-unnecessary-type-assertion */
 /* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -11,7 +11,7 @@ import assert from 'assert';
 import { exec as callbackExec } from 'child_process';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { join as pathJoin, resolve as pathResolve, relative as pathRelative } from 'path';
+import { join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -30,7 +30,6 @@ import {
 	LoadMappingOptions,
 	LoadNodeParameterOptions,
 	LoadNodeListSearch,
-	UserSettings,
 } from 'n8n-core';
 
 import type {
@@ -40,7 +39,6 @@ import type {
 	INodeParameters,
 	INodePropertyOptions,
 	INodeTypeNameVersion,
-	ITelemetrySettings,
 	WorkflowExecuteMode,
 	ICredentialTypes,
 	ExecutionStatus,
@@ -48,7 +46,7 @@ import type {
 	ResourceMapperFields,
 	IN8nUISettings,
 } from 'n8n-workflow';
-import { LoggerProxy, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 // @ts-ignore
 import timezones from 'google-timezones-json';
@@ -64,7 +62,6 @@ import {
 	GENERATED_STATIC_DIR,
 	inDevelopment,
 	inE2ETests,
-	LICENSE_FEATURES,
 	N8N_VERSION,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -86,7 +83,6 @@ import {
 	LdapController,
 	MeController,
 	MFAController,
-	NodesController,
 	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
@@ -100,12 +96,7 @@ import { BinaryDataController } from './controllers/binaryData.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';
-import {
-	getInstanceBaseUrl,
-	isEmailSetUp,
-	isSharingEnabled,
-	whereClause,
-} from '@/UserManagement/UserManagementHelper';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import type {
@@ -131,80 +122,58 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { EventBusController } from '@/eventbus/eventBus.controller';
 import { EventBusControllerEE } from '@/eventbus/eventBus.controller.ee';
-import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { licenseController } from './license/license.controller';
-import { Push, setupPushServer, setupPushHandler } from '@/push';
+import { setupPushServer, setupPushHandler } from '@/push';
 import { setupAuthMiddlewares } from './middlewares';
-import {
-	getLdapLoginLabel,
-	handleLdapInit,
-	isLdapEnabled,
-	isLdapLoginEnabled,
-} from './Ldap/helpers';
+import { handleLdapInit, isLdapEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { PostHogClient } from './posthog';
 import { eventBus } from './eventbus';
 import { Container } from 'typedi';
 import { InternalHooks } from './InternalHooks';
 import { License } from './License';
-import {
-	getStatusUsingPreviousExecutionStatusMethod,
-	isAdvancedExecutionFiltersEnabled,
-	isDebugInEditorLicensed,
-} from './executions/executionHelpers';
-import { getSamlLoginLabel, isSamlLoginEnabled, isSamlLicensed } from './sso/saml/samlHelpers';
+import { getStatusUsingPreviousExecutionStatusMethod } from './executions/executionHelpers';
 import { SamlController } from './sso/saml/routes/saml.controller.ee';
 import { SamlService } from './sso/saml/saml.service.ee';
 import { variablesController } from './environments/variables/variables.controller';
 import { LdapManager } from './Ldap/LdapManager.ee';
-import { getVariablesLimit, isVariablesEnabled } from '@/environments/variables/enviromentHelpers';
 import {
-	getCurrentAuthenticationMethod,
 	isLdapCurrentAuthenticationMethod,
 	isSamlCurrentAuthenticationMethod,
 } from './sso/ssoHelpers';
-import { isExternalSecretsEnabled } from './ExternalSecrets/externalSecretsHelper.ee';
-import { isSourceControlLicensed } from '@/environments/sourceControl/sourceControlHelper.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import { SourceControlController } from '@/environments/sourceControl/sourceControl.controller.ee';
 import { ExecutionRepository, SettingsRepository } from '@db/repositories';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import { TOTPService } from './Mfa/totp.service';
 import { MfaService } from './Mfa/mfa.service';
 import { handleMfaDisable, isMfaFeatureEnabled } from './Mfa/helpers';
+import type { FrontendService } from './services/frontend.service';
 import { JwtService } from './services/jwt.service';
 import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
-import {
-	getWorkflowHistoryLicensePruneTime,
-	getWorkflowHistoryPruneTime,
-	isWorkflowHistoryEnabled,
-} from './workflows/workflowHistory/workflowHistoryHelper.ee';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
 
 const exec = promisify(callbackExec);
 
 export class Server extends AbstractServer {
-	endpointPresetCredentials: string;
+	private endpointPresetCredentials: string;
 
-	waitTracker: WaitTracker;
+	private waitTracker: WaitTracker;
 
-	activeExecutionsInstance: ActiveExecutions;
+	private activeExecutionsInstance: ActiveExecutions;
 
-	frontendSettings: IN8nUISettings;
+	private presetCredentialsLoaded: boolean;
 
-	presetCredentialsLoaded: boolean;
+	private loadNodesAndCredentials: LoadNodesAndCredentials;
 
-	loadNodesAndCredentials: LoadNodesAndCredentials;
+	private nodeTypes: NodeTypes;
 
-	nodeTypes: NodeTypes;
+	private credentialTypes: ICredentialTypes;
 
-	credentialTypes: ICredentialTypes;
+	private frontendService?: FrontendService;
 
-	postHog: PostHogClient;
-
-	push: Push;
+	private postHog: PostHogClient;
 
 	constructor() {
 		super('main');
@@ -215,152 +184,17 @@ export class Server extends AbstractServer {
 
 		this.testWebhooksEnabled = true;
 		this.webhooksEnabled = !config.getEnv('endpoints.disableProductionWebhooksOnMainProcess');
-
-		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-		const telemetrySettings: ITelemetrySettings = {
-			enabled: config.getEnv('diagnostics.enabled'),
-		};
-
-		if (telemetrySettings.enabled) {
-			const conf = config.getEnv('diagnostics.config.frontend');
-			const [key, url] = conf.split(';');
-
-			if (!key || !url) {
-				LoggerProxy.warn('Diagnostics frontend config is invalid');
-				telemetrySettings.enabled = false;
-			}
-
-			telemetrySettings.config = { key, url };
-		}
-
-		// Define it here to avoid calling the function multiple times
-		const instanceBaseUrl = getInstanceBaseUrl();
-
-		this.frontendSettings = {
-			endpointWebhook: this.endpointWebhook,
-			endpointWebhookTest: this.endpointWebhookTest,
-			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
-			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
-			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
-			executionTimeout: config.getEnv('executions.timeout'),
-			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
-			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
-			timezone: this.timezone,
-			urlBaseWebhook,
-			urlBaseEditor: instanceBaseUrl,
-			versionCli: '',
-			releaseChannel: config.getEnv('generic.releaseChannel'),
-			oauthCallbackUrls: {
-				oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
-				oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
-			},
-			versionNotifications: {
-				enabled: config.getEnv('versionNotifications.enabled'),
-				endpoint: config.getEnv('versionNotifications.endpoint'),
-				infoUrl: config.getEnv('versionNotifications.infoUrl'),
-			},
-			instanceId: '',
-			telemetry: telemetrySettings,
-			posthog: {
-				enabled: config.getEnv('diagnostics.enabled'),
-				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-				autocapture: false,
-				disableSessionRecording: config.getEnv(
-					'diagnostics.config.posthog.disableSessionRecording',
-				),
-				debug: config.getEnv('logs.level') === 'debug',
-			},
-			personalizationSurveyEnabled:
-				config.getEnv('personalization.enabled') && config.getEnv('diagnostics.enabled'),
-			defaultLocale: config.getEnv('defaultLocale'),
-			userManagement: {
-				quota: Container.get(License).getUsersLimit(),
-				showSetupOnFirstLoad: config.getEnv('userManagement.isInstanceOwnerSetUp') === false,
-				smtpSetup: isEmailSetUp(),
-				authenticationMethod: getCurrentAuthenticationMethod(),
-			},
-			sso: {
-				saml: {
-					loginEnabled: false,
-					loginLabel: '',
-				},
-				ldap: {
-					loginEnabled: false,
-					loginLabel: '',
-				},
-			},
-			publicApi: {
-				enabled: isApiEnabled(),
-				latestVersion: 1,
-				path: config.getEnv('publicApi.path'),
-				swaggerUi: {
-					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
-				},
-			},
-			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
-			logLevel: config.getEnv('logs.level'),
-			hiringBannerEnabled: config.getEnv('hiringBanner.enabled'),
-			templates: {
-				enabled: config.getEnv('templates.enabled'),
-				host: config.getEnv('templates.host'),
-			},
-			onboardingCallPromptEnabled: config.getEnv('onboardingCallPrompt.enabled'),
-			executionMode: config.getEnv('executions.mode'),
-			pushBackend: config.getEnv('push.backend'),
-			communityNodesEnabled: config.getEnv('nodes.communityPackages.enabled'),
-			deployment: {
-				type: config.getEnv('deployment.type'),
-			},
-			isNpmAvailable: false,
-			allowedModules: {
-				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN?.split(',') ?? undefined,
-				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL?.split(',') ?? undefined,
-			},
-			enterprise: {
-				sharing: false,
-				ldap: false,
-				saml: false,
-				logStreaming: false,
-				advancedExecutionFilters: false,
-				variables: false,
-				sourceControl: false,
-				auditLogs: false,
-				externalSecrets: false,
-				showNonProdBanner: false,
-				debugInEditor: false,
-				workflowHistory: false,
-			},
-			mfa: {
-				enabled: false,
-			},
-			hideUsagePage: config.getEnv('hideUsagePage'),
-			license: {
-				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
-			},
-			variables: {
-				limit: 0,
-			},
-			expressions: {
-				evaluator: config.getEnv('expression.evaluator'),
-			},
-			banners: {
-				dismissed: [],
-			},
-			ai: {
-				enabled: config.getEnv('ai.enabled'),
-			},
-			workflowHistory: {
-				pruneTime: -1,
-				licensePruneTime: -1,
-			},
-		};
 	}
 
 	async start() {
 		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		this.credentialTypes = Container.get(CredentialTypes);
 		this.nodeTypes = Container.get(NodeTypes);
+
+		if (!config.getEnv('endpoints.disableUi')) {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			this.frontendService = Container.get(require('@/services/frontend.service').FrontendService);
+		}
 
 		this.activeExecutionsInstance = Container.get(ActiveExecutions);
 		this.waitTracker = Container.get(WaitTracker);
@@ -369,13 +203,16 @@ export class Server extends AbstractServer {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		this.push = Container.get(Push);
-
 		await super.start();
-		LoggerProxy.debug(`Server ID: ${this.uniqueInstanceId}`);
+		this.logger.debug(`Server ID: ${this.uniqueInstanceId}`);
 
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
+
+		const isS3Selected = config.getEnv('binaryDataManager.mode') === 's3';
+		const isS3Available = config.getEnv('binaryDataManager.availableModes').includes('s3');
+		const isS3Licensed = Container.get(License).isBinaryDataS3Licensed();
+
 		const diagnosticInfo: IDiagnosticInfo = {
 			databaseType: config.getEnv('database.type'),
 			disableProductionWebhooksOnMainProcess: config.getEnv(
@@ -414,13 +251,13 @@ export class Server extends AbstractServer {
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 			ldap_allowed: isLdapCurrentAuthenticationMethod(),
 			saml_enabled: isSamlCurrentAuthenticationMethod(),
+			binary_data_s3: isS3Available && isS3Selected && isS3Licensed,
 			licensePlanName: Container.get(License).getPlanName(),
 			licenseTenantId: config.getEnv('license.tenantId'),
 		};
 
 		if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
-			const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
-			await reloadNodesAndCredentials(this.loadNodesAndCredentials, this.nodeTypes, this.push);
+			void this.loadNodesAndCredentials.setupHotReload();
 		}
 
 		void Db.collections.Workflow.findOne({
@@ -432,108 +269,22 @@ export class Server extends AbstractServer {
 		);
 	}
 
-	/**
-	 * Returns the current settings for the frontend
-	 */
-	getSettingsForFrontend(): IN8nUISettings {
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
-		const instanceBaseUrl = getInstanceBaseUrl();
-		this.frontendSettings.urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
-		this.frontendSettings.urlBaseEditor = instanceBaseUrl;
-		this.frontendSettings.oauthCallbackUrls = {
-			oauth1: `${instanceBaseUrl}/${this.restEndpoint}/oauth1-credential/callback`,
-			oauth2: `${instanceBaseUrl}/${this.restEndpoint}/oauth2-credential/callback`,
-		};
-
-		// refresh user management status
-		Object.assign(this.frontendSettings.userManagement, {
-			quota: Container.get(License).getUsersLimit(),
-			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad:
-				config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
-				config.getEnv('deployment.type').startsWith('desktop_') === false,
-		});
-
-		let dismissedBanners: string[] = [];
-
-		try {
-			dismissedBanners = config.getEnv('ui.banners.dismissed') ?? [];
-		} catch {
-			// not yet in DB
-		}
-
-		this.frontendSettings.banners.dismissed = dismissedBanners;
-
-		// refresh enterprise status
-		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isSharingEnabled(),
-			logStreaming: isLogStreamingEnabled(),
-			ldap: isLdapEnabled(),
-			saml: isSamlLicensed(),
-			advancedExecutionFilters: isAdvancedExecutionFiltersEnabled(),
-			variables: isVariablesEnabled(),
-			sourceControl: isSourceControlLicensed(),
-			externalSecrets: isExternalSecretsEnabled(),
-			showNonProdBanner: Container.get(License).isFeatureEnabled(
-				LICENSE_FEATURES.SHOW_NON_PROD_BANNER,
-			),
-			debugInEditor: isDebugInEditorLicensed(),
-			workflowHistory: isWorkflowHistoryEnabled(),
-		});
-
-		if (isLdapEnabled()) {
-			Object.assign(this.frontendSettings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
-				loginEnabled: isLdapLoginEnabled(),
-			});
-		}
-
-		if (isSamlLicensed()) {
-			Object.assign(this.frontendSettings.sso.saml, {
-				loginLabel: getSamlLoginLabel(),
-				loginEnabled: isSamlLoginEnabled(),
-			});
-		}
-
-		if (isVariablesEnabled()) {
-			this.frontendSettings.variables.limit = getVariablesLimit();
-		}
-
-		if (isWorkflowHistoryEnabled()) {
-			Object.assign(this.frontendSettings.workflowHistory, {
-				pruneTime: getWorkflowHistoryPruneTime(),
-				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
-			});
-		}
-
-		if (config.get('nodes.packagesMissing').length > 0) {
-			this.frontendSettings.missingPackages = true;
-		}
-
-		this.frontendSettings.mfa.enabled = isMfaFeatureEnabled();
-
-		return this.frontendSettings;
-	}
-
 	private async registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes, logger } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint);
 
-		const encryptionKey = await UserSettings.getEncryptionKey();
-
-		const logger = LoggerProxy;
 		const internalHooks = Container.get(InternalHooks);
 		const mailer = Container.get(UserManagementMailer);
 		const userService = Container.get(UserService);
 		const jwtService = Container.get(JwtService);
 		const postHog = this.postHog;
-		const mfaService = new MfaService(repositories.User, new TOTPService(), encryptionKey);
+		const mfaService = Container.get(MfaService);
 
 		const controllers: object[] = [
 			new EventBusController(),
 			new EventBusControllerEE(),
-			new AuthController(config, logger, internalHooks, mfaService, userService, postHog),
+			Container.get(AuthController),
 			new OwnerController(
 				config,
 				logger,
@@ -542,10 +293,9 @@ export class Server extends AbstractServer {
 				userService,
 				postHog,
 			),
-			new MeController(logger, externalHooks, internalHooks, userService),
+			Container.get(MeController),
 			new NodeTypesController(config, nodeTypes),
 			new PasswordResetController(
-				config,
 				logger,
 				externalHooks,
 				internalHooks,
@@ -585,13 +335,13 @@ export class Server extends AbstractServer {
 		}
 
 		if (config.getEnv('nodes.communityPackages.enabled')) {
-			controllers.push(
-				new NodesController(config, this.loadNodesAndCredentials, this.push, internalHooks),
+			const { CommunityPackagesController } = await import(
+				'@/controllers/communityPackages.controller'
 			);
+			controllers.push(Container.get(CommunityPackagesController));
 		}
 
 		if (inE2ETests) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { E2EController } = await import('./controllers/e2e.controller');
 			controllers.push(Container.get(E2EController));
 		}
@@ -605,24 +355,23 @@ export class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		if (config.getEnv('endpoints.metrics.enable')) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
 			const { MetricsService } = await import('@/services/metrics.service');
 			await Container.get(MetricsService).configureMetrics(this.app);
 		}
 
-		this.instanceId = await UserSettings.getInstanceId();
+		const { frontendService } = this;
+		if (frontendService) {
+			frontendService.addToSettings({
+				isNpmAvailable: await exec('npm --version')
+					.then(() => true)
+					.catch(() => false),
+				versionCli: N8N_VERSION,
+			});
 
-		this.frontendSettings.isNpmAvailable = await exec('npm --version')
-			.then(() => true)
-			.catch(() => false);
+			await this.externalHooks.run('frontend.settings', [frontendService.getSettings()]);
+		}
 
-		this.frontendSettings.versionCli = N8N_VERSION;
-
-		this.frontendSettings.instanceId = this.instanceId;
-
-		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
-
-		await this.postHog.init(this.frontendSettings.instanceId);
+		await this.postHog.init();
 
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
@@ -649,7 +398,9 @@ export class Server extends AbstractServer {
 		if (isApiEnabled()) {
 			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
-			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
+			if (frontendService) {
+				frontendService.settings.publicApi.latestVersion = apiLatestVersion;
+			}
 		}
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
@@ -702,7 +453,7 @@ export class Server extends AbstractServer {
 		try {
 			await Container.get(SamlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`SAML initialization failed: ${error.message}`);
+			this.logger.warn(`SAML initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
@@ -717,7 +468,7 @@ export class Server extends AbstractServer {
 		try {
 			await Container.get(SourceControlService).init();
 		} catch (error) {
-			LoggerProxy.warn(`Source Control initialization failed: ${error.message}`);
+			this.logger.warn(`Source Control initialization failed: ${error.message}`);
 		}
 
 		// ----------------------------------------
@@ -912,7 +663,7 @@ export class Server extends AbstractServer {
 				});
 
 				if (!shared) {
-					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
+					this.logger.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -959,38 +710,29 @@ export class Server extends AbstractServer {
 				const { id: credentialId } = req.query;
 
 				if (!credentialId) {
-					LoggerProxy.error('OAuth1 credential authorization failed due to missing credential ID');
+					this.logger.error('OAuth1 credential authorization failed due to missing credential ID');
 					throw new ResponseHelper.BadRequestError('Required credential ID is missing');
 				}
 
 				const credential = await getCredentialForUser(credentialId, req.user);
 
 				if (!credential) {
-					LoggerProxy.error(
+					this.logger.error(
 						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
 						{ userId: req.user.id },
 					);
 					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 				}
 
-				let encryptionKey: string;
-				try {
-					encryptionKey = await UserSettings.getEncryptionKey();
-				} catch (error) {
-					throw new ResponseHelper.InternalServerError(error.message);
-				}
-
 				const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
 				const mode: WorkflowExecuteMode = 'internal';
-				const timezone = config.getEnv('generic.timezone');
-				const credentialsHelper = new CredentialsHelper(encryptionKey);
+				const credentialsHelper = Container.get(CredentialsHelper);
 				const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 					additionalData,
 					credential as INodeCredentialsDetails,
 					credential.type,
 					mode,
-					timezone,
 					true,
 				);
 
@@ -999,7 +741,6 @@ export class Server extends AbstractServer {
 					decryptedDataOriginal,
 					credential.type,
 					mode,
-					timezone,
 				);
 
 				const signatureMethod = oauthCredentials.signatureMethod as string;
@@ -1069,7 +810,7 @@ export class Server extends AbstractServer {
 					credential.nodesAccess,
 				);
 
-				credentials.setData(decryptedDataOriginal, encryptionKey);
+				credentials.setData(decryptedDataOriginal);
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 				// Add special database related data
@@ -1078,7 +819,7 @@ export class Server extends AbstractServer {
 				// Update the credentials in DB
 				await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
-				LoggerProxy.verbose('OAuth1 authorization successful for new credential', {
+				this.logger.verbose('OAuth1 authorization successful for new credential', {
 					userId: req.user.id,
 					credentialId,
 				});
@@ -1100,7 +841,7 @@ export class Server extends AbstractServer {
 								req.query,
 							)}`,
 						);
-						LoggerProxy.error(
+						this.logger.error(
 							'OAuth1 callback failed because of insufficient parameters received',
 							{
 								userId: req.user?.id,
@@ -1113,7 +854,7 @@ export class Server extends AbstractServer {
 					const credential = await getCredentialWithoutUser(credentialId);
 
 					if (!credential) {
-						LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
+						this.logger.error('OAuth1 callback failed because of insufficient user permissions', {
 							userId: req.user?.id,
 							credentialId,
 						});
@@ -1123,24 +864,15 @@ export class Server extends AbstractServer {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					let encryptionKey: string;
-					try {
-						encryptionKey = await UserSettings.getEncryptionKey();
-					} catch (error) {
-						throw new ResponseHelper.InternalServerError(error.message);
-					}
-
 					const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
 
 					const mode: WorkflowExecuteMode = 'internal';
-					const timezone = config.getEnv('generic.timezone');
-					const credentialsHelper = new CredentialsHelper(encryptionKey);
+					const credentialsHelper = Container.get(CredentialsHelper);
 					const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 						additionalData,
 						credential as INodeCredentialsDetails,
 						credential.type,
 						mode,
-						timezone,
 						true,
 					);
 					const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
@@ -1148,7 +880,6 @@ export class Server extends AbstractServer {
 						decryptedDataOriginal,
 						credential.type,
 						mode,
-						timezone,
 					);
 
 					const options: AxiosRequestConfig = {
@@ -1165,7 +896,7 @@ export class Server extends AbstractServer {
 					try {
 						oauthToken = await axios.request(options);
 					} catch (error) {
-						LoggerProxy.error('Unable to fetch tokens for OAuth1 callback', {
+						this.logger.error('Unable to fetch tokens for OAuth1 callback', {
 							userId: req.user?.id,
 							credentialId,
 						});
@@ -1186,20 +917,20 @@ export class Server extends AbstractServer {
 						credential.type,
 						credential.nodesAccess,
 					);
-					credentials.setData(decryptedDataOriginal, encryptionKey);
+					credentials.setData(decryptedDataOriginal);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
 					newCredentialsData.updatedAt = new Date();
 					// Save the credentials in DB
 					await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
-					LoggerProxy.verbose('OAuth1 callback successful for new credential', {
+					this.logger.verbose('OAuth1 callback successful for new credential', {
 						userId: req.user?.id,
 						credentialId,
 					});
 					res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 				} catch (error) {
-					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
+					this.logger.error('OAuth1 callback failed because of insufficient user permissions', {
 						userId: req.user?.id,
 						credentialId: req.query.cid,
 					});
@@ -1442,17 +1173,21 @@ export class Server extends AbstractServer {
 		// Settings
 		// ----------------------------------------
 
-		// Returns the current settings for the UI
-		this.app.get(
-			`/${this.restEndpoint}/settings`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void Container.get(InternalHooks).onFrontendSettingsAPI(req.headers.sessionid as string);
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				ResponseHelper.send(
+					async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
+						void Container.get(InternalHooks).onFrontendSettingsAPI(
+							req.headers.sessionid as string,
+						);
 
-					return this.getSettingsForFrontend();
-				},
-			),
-		);
+						return frontendService.getSettings();
+					},
+				),
+			);
+		}
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -1480,9 +1215,9 @@ export class Server extends AbstractServer {
 							return;
 						}
 
-						CredentialsOverwrites().setData(body);
+						Container.get(CredentialsOverwrites).setData(body);
 
-						await this.loadNodesAndCredentials.generateTypesForFrontend();
+						await frontendService?.generateTypes();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1494,7 +1229,7 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (!config.getEnv('endpoints.disableUi')) {
+		if (frontendService) {
 			const staticOptions: ServeStaticOptions = {
 				cacheControl: false,
 				setHeaders: (res: express.Response, path: string) => {
@@ -1509,22 +1244,13 @@ export class Server extends AbstractServer {
 			const serveIcons: express.RequestHandler = async (req, res) => {
 				let { scope, packageName } = req.params;
 				if (scope) packageName = `@${scope}/${packageName}`;
-				const loader = this.loadNodesAndCredentials.loaders[packageName];
-				if (loader) {
-					const pathPrefix = `/icons/${packageName}/`;
-					const filePath = pathResolve(
-						loader.directory,
-						req.originalUrl.substring(pathPrefix.length),
-					);
-					if (pathRelative(loader.directory, filePath).includes('..')) {
-						return res.status(404).end();
-					}
+				const filePath = this.loadNodesAndCredentials.resolveIcon(packageName, req.originalUrl);
+				if (filePath) {
 					try {
 						await fsAccess(filePath);
 						return res.sendFile(filePath);
 					} catch {}
 				}
-
 				res.sendStatus(404);
 			};
 

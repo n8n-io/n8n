@@ -284,12 +284,4 @@ export class TestWebhooks implements IWebhookManager {
 
 		return foundWebhook;
 	}
-
-	/**
-	 * Removes all the currently active test webhooks
-	 */
-	async removeAll(): Promise<void> {
-		const workflows = Object.values(this.testWebhookData).map(({ workflow }) => workflow);
-		return this.activeWebhooks.removeAll(workflows);
-	}
 }

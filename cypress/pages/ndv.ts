@@ -104,7 +104,12 @@ export class NDV extends BasePage {
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`);
+				.type(
+					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
+					{
+						delay: 0,
+					},
+				);
 
 			this.actions.savePinnedData();
 		},
@@ -114,7 +119,7 @@ export class NDV extends BasePage {
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean },
+			opts?: { parseSpecialCharSequences: boolean, delay?: number },
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
@@ -199,10 +204,11 @@ export class NDV extends BasePage {
 			getVisiblePopper().find('li').last().click();
 		},
 
-		setInvalidExpression: (fieldName: string, invalidExpression?: string) => {
+		setInvalidExpression: ({ fieldName, invalidExpression, delay }: { fieldName: string, invalidExpression?: string, delay?: number }) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
+				delay,
 			});
 			this.actions.validateExpressionPreview(fieldName, `node doesn't exist`);
 		},

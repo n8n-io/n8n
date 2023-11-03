@@ -1,4 +1,3 @@
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber, closestNumberDivisibleBy } from '@/utils';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE } from '@/constants';
 import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
@@ -88,7 +87,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 };
 
 export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
-	stroke: getStyleTokenValue('--color-foreground-dark', true),
+	stroke: 'var(--color-foreground-dark)',
 	strokeWidth: 2,
 	outlineWidth: 12,
 	outlineStroke: 'transparent',
@@ -96,12 +95,12 @@ export const CONNECTOR_PAINT_STYLE_DEFAULT: PaintStyle = {
 
 export const CONNECTOR_PAINT_STYLE_PULL: PaintStyle = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-foreground-xdark', true),
+	stroke: 'var(--color-foreground-xdark)',
 };
 
 export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-primary', true),
+	stroke: 'var(--color-primary)',
 };
 
 export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
@@ -109,10 +108,14 @@ export const CONNECTOR_PAINT_STYLE_DATA: PaintStyle = {
 	...{
 		dashstyle: '5 3',
 	},
-	stroke: getStyleTokenValue('--color-foreground-dark', true),
+	stroke: 'var(--color-foreground-dark)',
 };
 
-export const getConnectorColor = (type: ConnectionTypes): string => {
+export const getConnectorColor = (type: ConnectionTypes, category?: string): string => {
+	if (category === 'error') {
+		return '--node-error-output-color';
+	}
+
 	if (type === NodeConnectionType.Main) {
 		return '--node-type-main-color';
 	}
@@ -121,31 +124,40 @@ export const getConnectorColor = (type: ConnectionTypes): string => {
 };
 
 export const getConnectorPaintStylePull = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	const additionalStyles: PaintStyle = {};
 	if (connection.parameters.type !== NodeConnectionType.Main) {
 		additionalStyles.dashstyle = '5 3';
 	}
 	return {
 		...CONNECTOR_PAINT_STYLE_PULL,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 		...additionalStyles,
 	};
 };
 
 export const getConnectorPaintStyleDefault = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+	const connectorColor = getConnectorColor(
+		connection.parameters.type as ConnectionTypes,
+		connection.parameters.category,
+	);
 	return {
 		...CONNECTOR_PAINT_STYLE_DEFAULT,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 	};
 };
 
-export const getConnectorPaintStyleData = (connection: Connection): PaintStyle => {
-	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes);
+export const getConnectorPaintStyleData = (
+	connection: Connection,
+	category?: string,
+): PaintStyle => {
+	const connectorColor = getConnectorColor(connection.parameters.type as ConnectionTypes, category);
 	return {
 		...CONNECTOR_PAINT_STYLE_DATA,
-		...(connectorColor ? { stroke: getStyleTokenValue(connectorColor, true) } : {}),
+		...(connectorColor ? { stroke: `var(${connectorColor})` } : {}),
 	};
 };
 
@@ -181,46 +193,18 @@ export const getAnchorPosition = (
 	spacerIndexes: number[] = [],
 ): ArrayAnchorSpec[] => {
 	if (connectionType === NodeConnectionType.Main) {
-		const positions = {
-			input: {
-				1: [[0.01, 0.5, -1, 0]],
-				2: [
-					[0.01, 0.3, -1, 0],
-					[0.01, 0.7, -1, 0],
-				],
-				3: [
-					[0.01, 0.25, -1, 0],
-					[0.01, 0.5, -1, 0],
-					[0.01, 0.75, -1, 0],
-				],
-				4: [
-					[0.01, 0.2, -1, 0],
-					[0.01, 0.4, -1, 0],
-					[0.01, 0.6, -1, 0],
-					[0.01, 0.8, -1, 0],
-				],
-			},
-			output: {
-				1: [[0.99, 0.5, 1, 0]],
-				2: [
-					[0.99, 0.3, 1, 0],
-					[0.99, 0.7, 1, 0],
-				],
-				3: [
-					[0.99, 0.25, 1, 0],
-					[0.99, 0.5, 1, 0],
-					[0.99, 0.75, 1, 0],
-				],
-				4: [
-					[0.99, 0.2, 1, 0],
-					[0.99, 0.4, 1, 0],
-					[0.99, 0.6, 1, 0],
-					[0.99, 0.8, 1, 0],
-				],
-			},
-		};
+		const anchors: ArrayAnchorSpec[] = [];
+		const x = type === 'input' ? 0.01 : 0.99;
+		const ox = type === 'input' ? -1 : 1;
+		const oy = 0;
+		const stepSize = 1 / (amount + 1); // +1 to not touch the node boundaries
 
-		return positions[type][amount] as ArrayAnchorSpec[];
+		for (let i = 1; i <= amount; i++) {
+			const y = stepSize * i; // Multiply by index to set position
+			anchors.push([x, y, ox, oy]);
+		}
+
+		return anchors;
 	}
 
 	const y = type === 'input' ? 0.99 : 0.01;
@@ -276,8 +260,8 @@ export const getInputEndpointStyle = (
 	return {
 		width,
 		height,
-		fill: getStyleTokenValue(color),
-		stroke: getStyleTokenValue(color),
+		fill: `var(${color})`,
+		stroke: `var(${color})`,
 		lineWidth: 0,
 	};
 };
@@ -313,22 +297,33 @@ export const getOutputEndpointStyle = (
 	color: string,
 ): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
-	fill: getStyleTokenValue(color, true),
+	fill: `var(${color})`,
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (labelText: string, outputName: string): OverlaySpec => ({
+export const getOutputNameOverlay = (
+	labelText: string,
+	outputName: ConnectionTypes,
+	category?: string,
+): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
 		visible: true,
-		create: (component: Endpoint) => {
+		create: (ep: Endpoint) => {
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-output-endpoint-label');
+
+			if (ep?.__meta?.endpointLabelLength) {
+				label.setAttribute('data-endpoint-label-length', ep?.__meta?.endpointLabelLength);
+			}
 			if (outputName !== NodeConnectionType.Main) {
 				label.classList.add('node-output-endpoint-label--data');
 				label.classList.add(`node-connection-type-${getScope(outputName)}`);
+			}
+			if (category) {
+				label.classList.add(`node-connection-category-${category}`);
 			}
 			return label;
 		},
@@ -348,7 +343,7 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 		}
 
 		return node;
-	});
+	}, nodes[0]);
 };
 
 export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
@@ -589,7 +584,7 @@ export const getBackgroundStyles = (
 	if (executionPreview) {
 		return {
 			'background-image':
-				'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
+				'linear-gradient(135deg, var(--color-canvas-read-only-line) 25%, var(--color-canvas-background) 25%, var(--color-canvas-background) 50%, var(--color-canvas-read-only-line) 50%, var(--color-canvas-read-only-line) 75%, var(--color-canvas-background) 75%, var(--color-canvas-background) 100%)',
 			'background-size': `${squareSize}px ${squareSize}px`,
 			'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 		};
@@ -600,10 +595,9 @@ export const getBackgroundStyles = (
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 	};
 	if (squareSize > 10.5) {
-		const dotColor = getStyleTokenValue('--color-canvas-dot');
 		return {
 			...styles,
-			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
+			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, var(--color-canvas-dot) ${dotSize}px, transparent 0)`,
 		};
 	}
 
@@ -972,15 +966,17 @@ export const getInputEndpointUUID = (
 export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const nodes = [...workflowNodes];
 
-	const leftmostTop = getLeftmostTopNode(nodes);
+	if (nodes.length) {
+		const leftmostTop = getLeftmostTopNode(nodes);
 
-	const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
-	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
+		const diffX = DEFAULT_START_POSITION_X - leftmostTop.position[0];
+		const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
-	nodes.map((node) => {
-		node.position[0] += diffX + NODE_SIZE * 2;
-		node.position[1] += diffY;
-	});
+		nodes.forEach((node) => {
+			node.position[0] += diffX + NODE_SIZE * 2;
+			node.position[1] += diffY;
+		});
+	}
 
 	return nodes;
 };

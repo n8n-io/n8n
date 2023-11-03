@@ -6,7 +6,6 @@ import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
-import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
@@ -22,17 +21,15 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { TestWebhooks } from '@/TestWebhooks';
-import { CommunityPackageService } from '@/services/communityPackage.service';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { License, FeatureNotLicensedError } from '@/License';
 import { IConfig } from '@oclif/config';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { PruningService } from '@/services/pruning.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -113,24 +110,19 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			Container.get(ExecutionRepository).clearTimers();
+			const pruningService = Container.get(PruningService);
 
-			await Container.get(InternalHooks).onN8nStop();
+			if (await pruningService.isPruningEnabled()) await pruningService.stopPruning();
 
-			const skipWebhookDeregistration = config.getEnv(
-				'endpoints.skipWebhooksDeregistrationOnShutdown',
-			);
+			if (config.getEnv('leaderSelection.enabled')) {
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
 
-			const removePromises = [];
-			if (!skipWebhookDeregistration) {
-				removePromises.push(this.activeWorkflowRunner.removeAll());
+				await Container.get(MultiMainInstancePublisher).destroy();
 			}
 
-			// Remove all test webhooks
-			const testWebhooks = Container.get(TestWebhooks);
-			removePromises.push(testWebhooks.removeAll());
-
-			await Promise.all(removePromises);
+			await Container.get(InternalHooks).onN8nStop();
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -233,10 +225,24 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') === 'queue') {
-			await Container.get(OrchestrationMainService).init();
+		if (config.get('executions.mode') !== 'queue') return;
+
+		if (!config.get('leaderSelection.enabled')) {
+			await Container.get(SingleMainInstancePublisher).init();
 			await Container.get(OrchestrationHandlerMainService).init();
+			return;
 		}
+
+		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		const { MultiMainInstancePublisher } = await import(
+			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		);
+
+		await Container.get(MultiMainInstancePublisher).init();
+		await Container.get(OrchestrationHandlerMainService).init();
 	}
 
 	async run() {
@@ -246,7 +252,7 @@ export class Start extends BaseCommand {
 		if (!config.getEnv('userManagement.jwtSecret')) {
 			// If we don't have a JWT secret set, generate
 			// one based and save to config.
-			const encryptionKey = await UserSettings.getEncryptionKey();
+			const { encryptionKey } = this.instanceSettings;
 
 			// For a key off every other letter from encryption key
 			// CAREFUL: do not change this or it breaks all existing tokens.
@@ -257,10 +263,6 @@ export class Start extends BaseCommand {
 			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
 		}
 
-		await this.loadNodesAndCredentials.generateTypesForFrontend();
-
-		await UserSettings.getEncryptionKey();
-
 		// Load settings from database and set them to config.
 		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
 		databaseSettings.forEach((setting) => {
@@ -270,12 +272,10 @@ export class Start extends BaseCommand {
 		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
 		if (areCommunityPackagesEnabled) {
-			await Container.get(CommunityPackageService).setMissingPackages(
-				this.loadNodesAndCredentials,
-				{
-					reinstallMissingPackages: flags.reinstallMissingPackages,
-				},
-			);
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			await Container.get(CommunityPackagesService).setMissingPackages({
+				reinstallMissingPackages: flags.reinstallMissingPackages,
+			});
 		}
 
 		const dbType = config.getEnv('database.type');
@@ -289,28 +289,19 @@ export class Start extends BaseCommand {
 		if (flags.tunnel) {
 			this.log('\nWaiting for tunnel ...');
 
-			let tunnelSubdomain;
-			if (
-				process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
-				process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
-			) {
-				tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
-			} else if (this.userSettings.tunnelSubdomain !== undefined) {
-				tunnelSubdomain = this.userSettings.tunnelSubdomain;
-			}
+			let tunnelSubdomain =
+				process.env.N8N_TUNNEL_SUBDOMAIN ?? this.instanceSettings.tunnelSubdomain ?? '';
 
-			if (tunnelSubdomain === undefined) {
+			if (tunnelSubdomain === '') {
 				// When no tunnel subdomain did exist yet create a new random one
 				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-				this.userSettings.tunnelSubdomain = Array.from({ length: 24 })
-					.map(() => {
-						return availableCharacters.charAt(
-							Math.floor(Math.random() * availableCharacters.length),
-						);
-					})
+				tunnelSubdomain = Array.from({ length: 24 })
+					.map(() =>
+						availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length)),
+					)
 					.join('');
 
-				await UserSettings.writeUserSettings(this.userSettings);
+				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
 			const tunnelSettings: localtunnel.TunnelConfig = {

@@ -95,7 +95,7 @@ export default defineComponent({
 .notice {
 	font-size: var(--font-size-2xs);
 	display: flex;
-	color: var(--custom-font-black);
+	color: var(--color-notice-font);
 	margin: var(--notice-margin, var(--spacing-s) 0);
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
@@ -111,8 +111,8 @@ export default defineComponent({
 }
 
 .warning {
-	--border-color: var(--color-warning-tint-1);
-	--background-color: var(--color-warning-tint-2);
+	--border-color: var(--color-notice-warning-border);
+	--background-color: var(--color-notice-warning-background);
 }
 
 .danger {

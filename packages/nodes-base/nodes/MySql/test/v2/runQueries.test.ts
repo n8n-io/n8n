@@ -1,12 +1,10 @@
-import { createMockExecuteFunction } from '@test/nodes/Helpers';
-
+import type { IDataObject, INode } from 'n8n-workflow';
+import mysql2 from 'mysql2/promise';
 import { configureQueryRunner } from '../../v2/helpers/utils';
 import type { Mysql2Pool, QueryRunner } from '../../v2/helpers/interfaces';
 import { BATCH_MODE } from '../../v2/helpers/interfaces';
 
-import type { IDataObject, INode } from 'n8n-workflow';
-
-import mysql2 from 'mysql2/promise';
+import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 const mySqlMockNode: INode = {
 	id: '1',
@@ -67,7 +65,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: [{ item: 0 }] }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 
@@ -108,7 +106,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 
@@ -155,7 +153,7 @@ describe('Test MySql V2, runQueries', () => {
 
 		expect(result).toBeDefined();
 		expect(result).toHaveLength(1);
-		expect(result).toEqual([{ json: { success: true } }]);
+		expect(result).toEqual([{ json: { success: true }, pairedItem: { item: 0 } }]);
 
 		expect(poolGetConnectionSpy).toBeCalledTimes(1);
 

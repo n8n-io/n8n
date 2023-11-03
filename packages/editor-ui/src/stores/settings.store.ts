@@ -20,7 +20,7 @@ import type {
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
-	ILogLevel,
+	LogLevel,
 	IN8nUISettings,
 	ITelemetrySettings,
 	WorkflowSettings,
@@ -129,7 +129,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},
-		logLevel(): ILogLevel {
+		logLevel(): LogLevel {
 			return this.settings.logLevel;
 		},
 		isTelemetryEnabled(): boolean {
@@ -184,6 +184,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			return (
 				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
 			);
+		},
+		isDevRelease(): boolean {
+			return this.settings.releaseChannel === 'dev';
 		},
 	},
 	actions: {

@@ -1,17 +1,15 @@
+import 'reflect-metadata';
 import { Command } from '@oclif/command';
 import { ExitError } from '@oclif/errors';
 import { Container } from 'typedi';
-import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
-import type { IUserSettings } from 'n8n-core';
-import { BinaryDataService, ObjectStoreService, UserSettings } from 'n8n-core';
+import { ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
+import { BinaryDataService, InstanceSettings, ObjectStoreService } from 'n8n-core';
 import type { AbstractServer } from '@/AbstractServer';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 import config from '@/config';
 import * as Db from '@/Db';
 import * as CrashJournal from '@/CrashJournal';
 import { LICENSE_FEATURES, inTest } from '@/constants';
-import { CredentialTypes } from '@/CredentialTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { initErrorHandling } from '@/ErrorReporting';
 import { ExternalHooks } from '@/ExternalHooks';
 import { NodeTypes } from '@/NodeTypes';
@@ -26,19 +24,15 @@ import { generateHostInstanceId } from '../databases/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
 export abstract class BaseCommand extends Command {
-	protected logger = LoggerProxy.init(getLogger());
+	protected logger = Container.get(Logger);
 
 	protected externalHooks: IExternalHooksClass;
 
-	protected loadNodesAndCredentials: LoadNodesAndCredentials;
-
 	protected nodeTypes: NodeTypes;
 
-	protected userSettings: IUserSettings;
+	protected instanceSettings: InstanceSettings;
 
-	protected instanceId: string;
-
-	instanceType: N8nInstanceType = 'main';
+	private instanceType: N8nInstanceType = 'main';
 
 	queueModeId: string;
 
@@ -52,14 +46,10 @@ export abstract class BaseCommand extends Command {
 		process.once('SIGINT', async () => this.stopProcess());
 
 		// Make sure the settings exist
-		this.userSettings = await UserSettings.prepareUserSettings();
+		this.instanceSettings = Container.get(InstanceSettings);
 
-		this.loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		await this.loadNodesAndCredentials.init();
 		this.nodeTypes = Container.get(NodeTypes);
-		this.nodeTypes.init();
-		const credentialTypes = Container.get(CredentialTypes);
-		CredentialsOverwrites(credentialTypes);
+		await Container.get(LoadNodesAndCredentials).init();
 
 		await Db.init().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error initializing DB', error),
@@ -74,19 +64,24 @@ export abstract class BaseCommand extends Command {
 		const dbType = config.getEnv('database.type');
 
 		if (['mysqldb', 'mariadb'].includes(dbType)) {
-			LoggerProxy.warn(
+			this.logger.warn(
 				'Support for MySQL/MariaDB has been deprecated and will be removed with an upcoming version of n8n. Please migrate to PostgreSQL.',
 			);
 		}
 		if (process.env.EXECUTIONS_PROCESS === 'own') {
-			LoggerProxy.warn(
+			this.logger.warn(
 				'Own mode has been deprecated and will be removed in a future version of n8n. If you need the isolation and performance gains, please consider using queue mode.',
 			);
 		}
 
-		this.instanceId = this.userSettings.instanceId ?? '';
-		await Container.get(PostHogClient).init(this.instanceId);
-		await Container.get(InternalHooks).init(this.instanceId);
+		if (process.env.N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN) {
+			this.logger.warn(
+				'The flag to skip webhook deregistration N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN has been removed. n8n no longer deregisters webhooks at startup and shutdown, in main and queue mode.',
+			);
+		}
+
+		await Container.get(PostHogClient).init();
+		await Container.get(InternalHooks).init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {
@@ -140,7 +135,7 @@ export abstract class BaseCommand extends Command {
 		const isLicensed = Container.get(License).isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
 
 		if (isSelected && isAvailable && isLicensed) {
-			LoggerProxy.debug(
+			this.logger.debug(
 				'License found for external storage - object store to init in read-write mode',
 			);
 
@@ -150,7 +145,7 @@ export abstract class BaseCommand extends Command {
 		}
 
 		if (isSelected && isAvailable && !isLicensed) {
-			LoggerProxy.debug(
+			this.logger.debug(
 				'No license found for external storage - object store to init with writes blocked. To enable writes, please upgrade to a license that supports this feature.',
 			);
 
@@ -160,7 +155,7 @@ export abstract class BaseCommand extends Command {
 		}
 
 		if (!isSelected && isAvailable) {
-			LoggerProxy.debug(
+			this.logger.debug(
 				'External storage unselected but available - object store to init with writes unused',
 			);
 
@@ -215,17 +210,17 @@ export abstract class BaseCommand extends Command {
 			);
 		}
 
-		LoggerProxy.debug('Initializing object store service');
+		this.logger.debug('Initializing object store service');
 
 		try {
 			await objectStoreService.init(host, bucket, credentials);
 			objectStoreService.setReadonly(options.isReadOnly);
 
-			LoggerProxy.debug('Object store init completed');
+			this.logger.debug('Object store init completed');
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 
-			LoggerProxy.debug('Object store init failed', { error });
+			this.logger.debug('Object store init failed', { error });
 		}
 	}
 
@@ -234,7 +229,7 @@ export abstract class BaseCommand extends Command {
 			await this.initObjectStoreService();
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-			LoggerProxy.error(`Failed to init object store: ${error.message}`, { error });
+			this.logger.error(`Failed to init object store: ${error.message}`, { error });
 			process.exit(1);
 		}
 
@@ -248,8 +243,19 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled')) {
+			const { MultiMainInstancePublisher } = await import(
+				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+			);
+
+			if (Container.get(MultiMainInstancePublisher).isFollower) {
+				this.logger.debug('Instance is follower, skipping license initialization...');
+				return;
+			}
+		}
+
 		const license = Container.get(License);
-		await license.init(this.instanceId, this.instanceType ?? 'main');
+		await license.init(this.instanceType ?? 'main');
 
 		const activationKey = config.getEnv('license.activationKey');
 
@@ -257,14 +263,14 @@ export abstract class BaseCommand extends Command {
 			const hasCert = (await license.loadCertStr()).length > 0;
 
 			if (hasCert) {
-				return LoggerProxy.debug('Skipping license activation');
+				return this.logger.debug('Skipping license activation');
 			}
 
 			try {
-				LoggerProxy.debug('Attempting license activation');
+				this.logger.debug('Attempting license activation');
 				await license.activate(activationKey);
 			} catch (e) {
-				LoggerProxy.error('Could not activate license', e as Error);
+				this.logger.error('Could not activate license', e as Error);
 			}
 		}
 	}

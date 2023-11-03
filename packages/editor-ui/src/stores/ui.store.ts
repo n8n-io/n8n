@@ -36,6 +36,7 @@ import {
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
 	N8N_PRICING_PAGE_URL,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -50,22 +51,40 @@ import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
+	ThemeOption,
+	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import {
+	addThemeToBody,
+	getPreferredTheme,
+	getThemeOverride,
+	isValidTheme,
+	updateTheme,
+} from './ui.utils';
+
+let savedTheme: ThemeOption = 'system';
+try {
+	const value = getThemeOverride();
+	if (isValidTheme(value)) {
+		savedTheme = value;
+		addThemeToBody(value);
+	}
+} catch (e) {}
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
+		theme: savedTheme,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
 				open: false,
@@ -157,6 +176,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[DEBUG_PAYWALL_MODAL_KEY]: {
 				open: false,
 			},
+			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -195,11 +217,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		bannerStack: [],
 	}),
 	getters: {
-		logo() {
+		appliedTheme(): AppliedThemeOption {
+			return this.theme === 'system' ? getPreferredTheme() : this.theme;
+		},
+		logo(): string {
 			const { releaseChannel } = useSettingsStore().settings;
+			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
+
 			return releaseChannel === 'stable'
-				? 'n8n-logo-expanded.svg'
-				: `n8n-${releaseChannel}-logo.svg`;
+				? `n8n-logo-expanded${type}`
+				: `n8n-${releaseChannel}-logo${type}`;
 		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
@@ -346,9 +373,11 @@ export const useUIStore = defineStore(STORES.UI, {
 
 				const searchParams = new URLSearchParams();
 
-				if (deploymentType === 'cloud') {
-					const { code } = await useCloudPlanStore().getAutoLoginCode();
+				const isOwner = useUsersStore().isInstanceOwner;
+
+				if (deploymentType === 'cloud' && isOwner) {
 					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
 					linkUrl = `https://${adminPanelHost}/login`;
 					searchParams.set('code', code);
 					searchParams.set('returnPath', '/account/change-plan');
@@ -367,10 +396,15 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		headerHeight() {
-			return Number(getStyleTokenValue('--header-height'));
+			const style = getComputedStyle(document.body);
+			return Number(style.getPropertyValue('--header-height'));
 		},
 	},
 	actions: {
+		setTheme(theme: ThemeOption): void {
+			this.theme = theme;
+			updateTheme(theme);
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],

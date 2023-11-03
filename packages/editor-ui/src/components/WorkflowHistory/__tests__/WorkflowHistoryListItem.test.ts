@@ -36,10 +36,10 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		await userEvent.hover(container.querySelector('.el-tooltip__trigger'));
+		await userEvent.hover(container.querySelector('.el-tooltip__trigger')!);
 		expect(queryByRole('tooltip')).not.toBeInTheDocument();
 
-		await userEvent.click(container.querySelector('p'));
+		await userEvent.click(container.querySelector('p')!);
 		expect(emitted().preview).toEqual([
 			[expect.objectContaining({ id: item.versionId, event: expect.any(MouseEvent) })],
 		]);
@@ -61,7 +61,7 @@ describe('WorkflowHistoryListItem', () => {
 			},
 		});
 
-		const authorsTag = container.querySelector('.el-tooltip__trigger');
+		const authorsTag = container.querySelector('.el-tooltip__trigger')!;
 		expect(authorsTag).toHaveTextContent(`${authors[0]} + ${authors.length - 1}`);
 		await userEvent.hover(authorsTag);
 		expect(getByRole('tooltip')).toBeInTheDocument();
@@ -70,7 +70,9 @@ describe('WorkflowHistoryListItem', () => {
 		expect(getByTestId('action-toggle-dropdown')).toBeInTheDocument();
 
 		await userEvent.click(getByTestId(`action-${action}`));
-		expect(emitted().action).toEqual([[{ action, id: item.versionId }]]);
+		expect(emitted().action).toEqual([
+			[{ action, id: item.versionId, data: { formattedCreatedAt: expect.any(String) } }],
+		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
 		expect(emitted().mounted).toEqual([[{ index: 2, isActive: true, offsetTop: 0 }]]);

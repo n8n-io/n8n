@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import type { ICredentialTypes, INodeTypes } from 'n8n-workflow';
+import type { INodeTypes } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
 import config from '@/config';
@@ -10,39 +10,26 @@ import { User } from '@db/entities/User';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
-import { UserService } from '@/services/user.service';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
-import { WorkflowsService } from '@/workflows/workflows.services';
+import { OwnershipService } from '@/services/ownership.service';
 
+import { mockInstance } from '../integration/shared/utils/';
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
 } from '../integration/shared/random';
 import * as testDb from '../integration/shared/testDb';
-import { mockNodeTypesData } from './Helpers';
 import type { SaveCredentialFunction } from '../integration/shared/types';
-import { mockInstance } from '../integration/shared/utils/';
-import { OwnershipService } from '@/services/ownership.service';
-
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-
-LoggerProxy.init(getLogger());
+import { mockNodeTypesData } from './Helpers';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
-const MOCK_NODE_TYPES_DATA = mockNodeTypesData(['start', 'actionNetwork']);
 mockInstance(LoadNodesAndCredentials, {
-	loaded: {
-		nodes: MOCK_NODE_TYPES_DATA,
-		credentials: {},
-	},
-	known: { nodes: {}, credentials: {} },
-	credentialTypes: {} as ICredentialTypes,
+	loadedNodes: mockNodeTypesData(['start', 'actionNetwork']),
 });
 
 beforeAll(async () => {
@@ -236,18 +223,12 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 
 	const nonOwnerMockRole = new Role();
 	nonOwnerMockRole.name = 'editor';
-	const sharedWorkflowNotOwner = new SharedWorkflow();
-	sharedWorkflowNotOwner.role = nonOwnerMockRole;
-
-	const userService = mockInstance(UserService);
+	const nonOwnerUser = new User();
+	nonOwnerUser.id = uuid();
 
 	test('sets default policy from environment when subworkflow has none', async () => {
 		config.set('workflows.callerPolicyDefaultOption', 'none');
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => {
-				return fakeUser;
-			});
+		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockResolvedValue(fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
 
 		const subworkflow = new Workflow({
@@ -262,15 +243,9 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 	});
 
-	test('if sharing is disabled, ensures that workflows are owner by same user', async () => {
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
+	test('if sharing is disabled, ensures that workflows are owned by same user and reject running workflows belonging to another user even if setting allows execution', async () => {
+		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockResolvedValue(nonOwnerUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
-		jest.spyOn(userService, 'findOne').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
 
 		const subworkflow = new Workflow({
 			nodes: [],
@@ -278,6 +253,9 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			active: false,
 			nodeTypes: mockNodeTypes,
 			id: '2',
+			settings: {
+				callerPolicy: 'any',
+			},
 		});
 		await expect(
 			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
@@ -295,16 +273,12 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		}
 	});
 
-	test('list of ids must include the parent workflow id', async () => {
+	test('should throw if allowed list does not contain parent workflow id', async () => {
 		const invalidParentWorkflowId = uuid();
 		jest
 			.spyOn(ownershipService, 'getWorkflowOwnerCached')
 			.mockImplementation(async (workflowId) => fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
-		jest.spyOn(userService, 'findOne').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
 
 		const subworkflow = new Workflow({
 			nodes: [],
@@ -323,14 +297,8 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 	});
 
 	test('sameOwner passes when both workflows are owned by the same user', async () => {
-		jest
-			.spyOn(ownershipService, 'getWorkflowOwnerCached')
-			.mockImplementation(async (workflowId) => fakeUser);
+		jest.spyOn(ownershipService, 'getWorkflowOwnerCached').mockImplementation(async () => fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(false);
-		jest.spyOn(userService, 'findOne').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowOwner;
-		});
 
 		const subworkflow = new Workflow({
 			nodes: [],
@@ -350,10 +318,6 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			.spyOn(ownershipService, 'getWorkflowOwnerCached')
 			.mockImplementation(async (workflowId) => fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
-		jest.spyOn(userService, 'findOne').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
 
 		const subworkflow = new Workflow({
 			nodes: [],
@@ -376,10 +340,6 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			.spyOn(ownershipService, 'getWorkflowOwnerCached')
 			.mockImplementation(async (workflowId) => fakeUser);
 		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
-		jest.spyOn(userService, 'findOne').mockImplementation(async () => fakeUser);
-		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
-			return sharedWorkflowNotOwner;
-		});
 
 		const subworkflow = new Workflow({
 			nodes: [],

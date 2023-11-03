@@ -170,11 +170,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS,
+	NOT_DUPLICATABE_NODE_TYPES,
 	WAIT_TIME_UNLIMITED,
 } from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -183,14 +185,21 @@ import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import type { IExecutionsSummary, INodeTypeDescription, ITaskData } from 'n8n-workflow';
+import type {
+	ConnectionTypes,
+	IExecutionsSummary,
+	INodeInputConfiguration,
+	INodeOutputConfiguration,
+	INodeTypeDescription,
+	ITaskData,
+} from 'n8n-workflow';
 import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
 
 import { get } from 'lodash-es';
-import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
+import { getTriggerNodeServiceName } from '@/utils';
 import type { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui.store';
@@ -221,6 +230,7 @@ export default defineComponent({
 		},
 		isDuplicatable(): boolean {
 			if (!this.nodeType) return true;
+			if (NOT_DUPLICATABE_NODE_TYPES.includes(this.nodeType.name)) return false;
 			return (
 				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
 			);
@@ -355,9 +365,15 @@ export default defineComponent({
 				top: this.position[1] + 'px',
 			};
 
-			const nonMainInputs = this.inputs.filter((input) => input !== NodeConnectionType.Main);
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+			const inputs =
+				NodeHelpers.getNodeInputs(workflow, this.node, this.nodeType) ||
+				([] as Array<ConnectionTypes | INodeInputConfiguration>);
+			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+
+			const nonMainInputs = inputTypes.filter((input) => input !== NodeConnectionType.Main);
 			if (nonMainInputs.length) {
-				const requiredNonMainInputs = this.inputs.filter(
+				const requiredNonMainInputs = inputs.filter(
 					(input) => typeof input !== 'string' && input.required,
 				);
 
@@ -370,6 +386,15 @@ export default defineComponent({
 
 				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 			}
+
+			const outputs =
+				NodeHelpers.getNodeOutputs(workflow, this.node, this.nodeType) ||
+				([] as Array<ConnectionTypes | INodeOutputConfiguration>);
+
+			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+			const mainOutputs = outputTypes.filter((output) => output === NodeConnectionType.Main);
+			styles['--node-main-output-count'] = mainOutputs.length;
 
 			return styles;
 		},
@@ -463,31 +488,31 @@ export default defineComponent({
 				[key: string]: string;
 			} = {};
 
-			let borderColor = getStyleTokenValue('--color-foreground-xdark');
+			let borderColor = '--color-foreground-xdark';
 
 			if (this.isConfigurableNode || this.isConfigNode) {
-				borderColor = getStyleTokenValue('--color-foreground-dark');
+				borderColor = '--color-foreground-dark';
 			}
 
 			if (this.data.disabled) {
-				borderColor = getStyleTokenValue('--color-foreground-base');
+				borderColor = '--color-foreground-base';
 			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
-					borderColor = getStyleTokenValue('--color-danger');
+					borderColor = '--color-danger';
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
 				} else if (this.waiting || this.showPinnedDataInfo) {
-					borderColor = getStyleTokenValue('--color-secondary');
+					borderColor = '--color-canvas-node-pinned-border';
 				} else if (this.nodeExecutionStatus === 'unknown') {
-					borderColor = getStyleTokenValue('--color-foreground-xdark');
+					borderColor = '--color-foreground-xdark';
 				} else if (this.workflowDataItems) {
 					returnStyles['border-width'] = '2px';
 					returnStyles['border-style'] = 'solid';
-					borderColor = getStyleTokenValue('--color-success');
+					borderColor = '--color-success';
 				}
 			}
 
-			returnStyles['border-color'] = borderColor;
+			returnStyles['border-color'] = `var(${borderColor})`;
 
 			return returnStyles;
 		},
@@ -555,9 +580,10 @@ export default defineComponent({
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = localStorage.getItem(
+		const hasSeenPinDataTooltip = useStorage(
 			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-		);
+			undefined,
+		).value;
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
@@ -696,7 +722,12 @@ export default defineComponent({
 <style lang="scss" scoped>
 .node-wrapper {
 	--node-width: 100px;
-	--node-height: 100px;
+	/*
+		Set the node height to 100px as a base.
+		Increase height by 20px for each output beyond the 4th one.
+		max(0, var(--node-main-output-count, 1) - 4) ensures that we only start counting after the 4th output.
+	*/
+	--node-height: calc(100px + max(0, var(--node-main-output-count, 1) - 4) * 20px);
 
 	--configurable-node-min-input-count: 4;
 	--configurable-node-input-width: 65px;
@@ -750,7 +781,7 @@ export default defineComponent({
 			height: 100%;
 			border: 2px solid var(--color-foreground-xdark);
 			border-radius: var(--border-radius-large);
-			background-color: $node-background-default;
+			background-color: var(--color-canvas-node-background);
 			&.executing {
 				background-color: $node-background-executing !important;
 
@@ -973,6 +1004,9 @@ export default defineComponent({
 						--configurable-node-icon-size
 					) - 2 * var(--spacing-s)
 			);
+			.node-name > p {
+				color: var(--color-configurable-node-name);
+			}
 		}
 
 		.node-default {
@@ -1014,12 +1048,7 @@ export default defineComponent({
 	--node--selected--box-shadow-radius: 8px;
 
 	display: block;
-	background-color: hsla(
-		var(--color-foreground-base-h),
-		var(--color-foreground-base-s),
-		var(--color-foreground-base-l),
-		60%
-	);
+	background-color: var(--color-canvas-selected);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
@@ -1156,6 +1185,7 @@ export default defineComponent({
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
+	--stalk-switch-size: 60px;
 	--stalk-success-size: 87px;
 	--stalk-success-size-without-label: 40px;
 	--stalk-long-size: 127px;
@@ -1263,6 +1293,15 @@ export default defineComponent({
 	}
 	rect {
 		stroke: var(--color-foreground-xdark);
+	}
+
+	&.error {
+		path {
+			fill: var(--node-error-output-color);
+		}
+		rect {
+			stroke: var(--node-error-output-color);
+		}
 	}
 
 	&.small {
@@ -1395,6 +1434,10 @@ export default defineComponent({
 	}
 }
 
+.node-output-endpoint-label.node-connection-category-error {
+	color: var(--node-error-output-color);
+}
+
 .node-output-endpoint-label {
 	margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs));
 
@@ -1402,6 +1445,15 @@ export default defineComponent({
 		text-align: center;
 		margin-top: calc(var(--spacing-l) * -1);
 		margin-left: 0;
+	}
+
+	// Some nodes allow for dynamic connection labels
+	// so we need to make sure the label does not overflow
+	&[data-endpoint-label-length='medium'] {
+		max-width: calc(var(--stalk-size) - (var(--endpoint-size-small)));
+		overflow: hidden;
+		text-overflow: ellipsis;
+		margin-left: calc(var(--endpoint-size-small) + var(--spacing-2xs) + 10px);
 	}
 }
 
@@ -1444,6 +1496,7 @@ export default defineComponent({
 		opacity: 1;
 	}
 }
+
 .long-stalk {
 	--stalk-size: var(--stalk-long-size);
 }
@@ -1452,5 +1505,9 @@ export default defineComponent({
 }
 .ep-success--without-label {
 	--stalk-size: var(--stalk-success-size-without-label);
+}
+
+[data-endpoint-label-length='medium'] {
+	--stalk-size: var(--stalk-switch-size);
 }
 </style>

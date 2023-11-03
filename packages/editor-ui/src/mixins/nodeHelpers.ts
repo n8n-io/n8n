@@ -34,7 +34,7 @@ import type {
 
 import { get } from 'lodash-es';
 
-import { isObjectLiteral } from '@/utils';
+import { isObject } from '@/utils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -65,7 +65,7 @@ export const nodeHelpers = defineComponent({
 		isCustomApiCallSelected(nodeValues: INodeParameters): boolean {
 			const { parameters } = nodeValues;
 
-			if (!isObjectLiteral(parameters)) return false;
+			if (!isObject(parameters)) return false;
 
 			return (
 				(parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY)) ||
@@ -646,7 +646,6 @@ export const nodeHelpers = defineComponent({
 						data as INode,
 						nodeType.subtitle,
 						'internal',
-						this.rootStore.timezone,
 						{},
 						undefined,
 						PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

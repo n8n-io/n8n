@@ -170,7 +170,7 @@ export default defineComponent({
 				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
 		getErrorDescription(): string {
-			if (!this.error.context || !this.error.context.descriptionTemplate) {
+			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
 
@@ -182,7 +182,7 @@ export default defineComponent({
 		getErrorMessage(): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
 
-			if (!this.error.context || !this.error.context.messageTemplate) {
+			if (!this.error.context?.messageTemplate) {
 				return baseErrorMessage + this.error.message;
 			}
 
@@ -200,7 +200,7 @@ export default defineComponent({
 					throw new Error();
 				}
 
-				if (fullPath === false) {
+				if (!fullPath) {
 					return parameters.pop()!.displayName;
 				}
 				return parameters.map((parameter) => parameter.displayName).join(' > ');
@@ -271,7 +271,7 @@ export default defineComponent({
 }
 
 .error-message {
-	color: #ff0000;
+	color: var(--color-ndv-ouptut-error-font);
 	font-weight: bold;
 	font-size: 1.1rem;
 }

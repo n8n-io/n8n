@@ -1,5 +1,5 @@
 import { flags } from '@oclif/command';
-import { Credentials } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import fs from 'fs';
 import glob from 'fast-glob';
 import { Container } from 'typedi';
@@ -69,10 +69,9 @@ export class ImportCredentialsCommand extends BaseCommand {
 
 		let totalImported = 0;
 
+		const cipher = Container.get(Cipher);
 		await this.initOwnerCredentialRole();
 		const user = flags.userId ? await this.getAssignee(flags.userId) : await this.getOwner();
-
-		const encryptionKey = this.userSettings.encryptionKey;
 
 		if (flags.separate) {
 			let { input: inputPath } = flags;
@@ -94,12 +93,10 @@ export class ImportCredentialsCommand extends BaseCommand {
 					const credential = jsonParse<ICredentialsEncrypted>(
 						fs.readFileSync(file, { encoding: 'utf8' }),
 					);
-
 					if (typeof credential.data === 'object') {
 						// plain data / decrypted input. Should be encrypted first.
-						Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
+						credential.data = cipher.encrypt(credential.data);
 					}
-
 					await this.storeCredential(credential, user);
 				}
 			});
@@ -125,7 +122,7 @@ export class ImportCredentialsCommand extends BaseCommand {
 			for (const credential of credentials) {
 				if (typeof credential.data === 'object') {
 					// plain data / decrypted input. Should be encrypted first.
-					Credentials.prototype.setData.call(credential, credential.data, encryptionKey);
+					credential.data = cipher.encrypt(credential.data);
 				}
 				await this.storeCredential(credential, user);
 			}
@@ -157,7 +154,10 @@ export class ImportCredentialsCommand extends BaseCommand {
 		this.ownerCredentialRole = ownerCredentialRole;
 	}
 
-	private async storeCredential(credential: object, user: User) {
+	private async storeCredential(credential: Partial<CredentialsEntity>, user: User) {
+		if (!credential.nodesAccess) {
+			credential.nodesAccess = [];
+		}
 		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
 		await this.transactionManager.upsert(
 			SharedCredentials,

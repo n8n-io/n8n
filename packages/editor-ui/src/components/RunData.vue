@@ -347,7 +347,7 @@
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<run-data-html :inputData="inputData" />
+				<run-data-html :inputHtml="inputData[0].json.html" />
 			</Suspense>
 
 			<Suspense v-else-if="hasNodeRun && isSchemaView">
@@ -382,7 +382,7 @@
 							v-for="(binaryData, key) in binaryDataEntry"
 							:key="index + '_' + key"
 						>
-							<div>
+							<div :data-test-id="'ndv-binary-data_' + index">
 								<div :class="$style.binaryHeader">
 									{{ key }}
 								</div>
@@ -432,7 +432,7 @@
 										v-if="isViewable(index, key)"
 										size="small"
 										:label="$locale.baseText('runData.showBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-view-binary-data"
 										@click="displayBinaryData(index, key)"
 									/>
 									<n8n-button
@@ -440,7 +440,7 @@
 										size="small"
 										type="secondary"
 										:label="$locale.baseText('runData.downloadBinaryData')"
-										class="binary-data-show-data-button"
+										data-test-id="ndv-download-binary-data"
 										@click="downloadBinaryData(index, key)"
 									/>
 								</div>
@@ -495,6 +495,7 @@
 import { defineAsyncComponent, defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
+import { useStorage } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import type {
 	ConnectionTypes,
@@ -502,6 +503,7 @@ import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	INodeOutputConfiguration,
 	INodeTypeDescription,
 	IRunData,
 	IRunExecutionData,
@@ -536,13 +538,15 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { pinData } from '@/mixins/pinData';
+import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes, isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, isEmpty } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useToast } from '@/composables';
+import { isObject } from 'lodash-es';
 
 const RunDataTable = defineAsyncComponent(async () => import('@/components/RunDataTable.vue'));
 const RunDataJson = defineAsyncComponent(async () => import('@/components/RunDataJson.vue'));
@@ -643,9 +647,6 @@ export default defineComponent({
 		this.init();
 
 		if (!this.isPaneTypeInput) {
-			dataPinningEventBus.on('data-pinning-error', this.onDataPinningError);
-			dataPinningEventBus.on('data-unpinning', this.onDataUnpinning);
-
 			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
 		this.ndvStore.setNDVBranchIndex({
@@ -657,8 +658,6 @@ export default defineComponent({
 	},
 	beforeUnmount() {
 		this.hidePinDataDiscoveryTooltip();
-		dataPinningEventBus.off('data-pinning-error', this.onDataPinningError);
-		dataPinningEventBus.off('data-unpinning', this.onDataUnpinning);
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
@@ -702,14 +701,9 @@ export default defineComponent({
 			const workflow = this.workflowsStore.getCurrentWorkflow();
 			const workflowNode = workflow.getNode(this.node.name);
 			const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, this.nodeType!);
+			const inputNames = NodeHelpers.getConnectionTypes(inputs);
 
-			const nonMainInputs = !!inputs.find((input) => {
-				if (typeof input === 'string') {
-					return input !== NodeConnectionType.Main;
-				}
-
-				return input.type !== NodeConnectionType.Main;
-			});
+			const nonMainInputs = !!inputNames.find((inputName) => inputName !== NodeConnectionType.Main);
 
 			return (
 				!nonMainInputs &&
@@ -896,9 +890,8 @@ export default defineComponent({
 			return this.outputIndex;
 		},
 		branches(): ITab[] {
-			function capitalize(name: string) {
-				return name.charAt(0).toLocaleUpperCase() + name.slice(1);
-			}
+			const capitalize = (name: string) => name.charAt(0).toLocaleUpperCase() + name.slice(1);
+
 			const branches: ITab[] = [];
 
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
@@ -908,6 +901,7 @@ export default defineComponent({
 				const itemsCount = this.getDataCount(this.runIndex, i);
 				const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
 				let outputName = this.getOutputName(i);
+
 				if (`${outputName}` === `${i}`) {
 					outputName = `${this.$locale.baseText('ndv.output')} ${outputName}`;
 				} else {
@@ -941,6 +935,18 @@ export default defineComponent({
 		},
 	},
 	methods: {
+		getResolvedNodeOutputs() {
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const workflowNode = workflow.getNode(this.node.name);
+
+				if (workflowNode) {
+					const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+					return outputs;
+				}
+			}
+			return [];
+		},
 		onItemHover(itemIndex: number | null) {
 			if (itemIndex === null) {
 				this.$emit('itemHover', null);
@@ -966,12 +972,12 @@ export default defineComponent({
 				return;
 			}
 
-			if (
-				value &&
-				value.length > 0 &&
-				!this.isReadOnlyRoute &&
-				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
-			) {
+			const pinDataDiscoveryFlag = useStorage(
+				LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG,
+				undefined,
+			).value;
+
+			if (value && value.length > 0 && !this.isReadOnlyRoute && !pinDataDiscoveryFlag) {
 				this.pinDataDiscoveryComplete();
 
 				setTimeout(() => {
@@ -1018,27 +1024,22 @@ export default defineComponent({
 			this.onExitEditMode({ type: 'cancel' });
 		},
 		onClickSaveEdit() {
+			if (!this.node) {
+				return;
+			}
+
 			const { value } = this.editMode;
 
 			this.clearAllStickyNotifications();
 
-			if (!this.isValidPinDataSize(value)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'save-edit' });
-				return;
-			}
-
-			if (!this.isValidPinDataJSON(value)) {
-				this.onDataPinningError({ errorType: 'invalid-json', source: 'save-edit' });
+			try {
+				this.setPinData(this.node, clearJsonKey(value) as INodeExecutionData[], 'save-edit');
+			} catch (error) {
+				console.error(error);
 				return;
 			}
 
 			this.ndvStore.setOutputPanelEditModeEnabled(false);
-			this.workflowsStore.pinData({
-				node: this.node,
-				data: clearJsonKey(value) as INodeExecutionData[],
-			});
-
-			this.onDataPinningSuccess({ source: 'save-edit' });
 
 			this.onExitEditMode({ type: 'save' });
 		},
@@ -1051,53 +1052,11 @@ export default defineComponent({
 				type,
 			});
 		},
-		onDataUnpinning({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
-			this.$telemetry.track('User unpinned ndv data', {
-				node_type: this.activeNode?.type,
-				session_id: this.sessionId,
-				run_index: this.runIndex,
-				source,
-				data_size: stringSizeInBytes(this.pinData),
-			});
-		},
-		onDataPinningSuccess({ source }: { source: 'pin-icon-click' | 'save-edit' }) {
-			const telemetryPayload = {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-			};
-			void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
-			this.$telemetry.track('Ndv data pinning success', telemetryPayload);
-		},
-		onDataPinningError({
-			errorType,
-			source,
-		}: {
-			errorType: 'data-too-large' | 'invalid-json';
-			source: 'on-ndv-close-modal' | 'pin-icon-click' | 'save-edit';
-		}) {
-			this.$telemetry.track('Ndv data pinning failure', {
-				pinning_source: source,
-				node_type: this.activeNode.type,
-				session_id: this.sessionId,
-				data_size: stringSizeInBytes(this.pinData),
-				view: this.displayMode,
-				run_index: this.runIndex,
-				error_type: errorType,
-			});
-		},
-		async onTogglePinData({
-			source,
-		}: {
-			source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal';
-		}) {
+		async onTogglePinData({ source }: { source: PinDataSource }) {
+			if (!this.node) {
+				return;
+			}
+
 			if (source === 'pin-icon-click') {
 				const telemetryPayload = {
 					node_type: this.activeNode.type,
@@ -1113,19 +1072,16 @@ export default defineComponent({
 			this.updateNodeParameterIssues(this.node);
 
 			if (this.hasPinData) {
-				this.onDataUnpinning({ source });
-				this.workflowsStore.unpinData({ node: this.node });
+				this.unsetPinData(this.node, source);
 				return;
 			}
 
-			if (!this.isValidPinDataSize(this.rawInputData)) {
-				this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
+			try {
+				this.setPinData(this.node, this.rawInputData, 'pin-icon-click');
+			} catch (error) {
+				console.error(error);
 				return;
 			}
-
-			this.onDataPinningSuccess({ source: 'pin-icon-click' });
-
-			this.workflowsStore.pinData({ node: this.node, data: this.rawInputData });
 
 			if (this.maxRunIndex > 0) {
 				this.showToast({
@@ -1292,9 +1248,7 @@ export default defineComponent({
 			this.closeBinaryDataDisplay();
 			let outputTypes: ConnectionTypes[] = [];
 			if (this.nodeType !== null && this.node !== null) {
-				const workflow = this.workflowsStore.getCurrentWorkflow();
-				const workflowNode = workflow.getNode(this.node.name);
-				const outputs = NodeHelpers.getNodeOutputs(workflow, workflowNode, this.nodeType);
+				const outputs = this.getResolvedNodeOutputs();
 				outputTypes = NodeHelpers.getConnectionTypes(outputs);
 			}
 			this.connectionType = outputTypes.length === 0 ? NodeConnectionType.Main : outputTypes[0];
@@ -1320,7 +1274,9 @@ export default defineComponent({
 		},
 		isViewable(index: number, key: string): boolean {
 			const { fileType } = this.binaryData[index][key];
-			return !!fileType && ['image', 'video', 'text', 'json'].includes(fileType);
+			return (
+				!!fileType && ['image', 'audio', 'video', 'text', 'json', 'pdf', 'html'].includes(fileType)
+			);
 		},
 		isDownloadable(index: number, key: string): boolean {
 			const { mimeType, fileName } = this.binaryData[index][key];
@@ -1370,6 +1326,12 @@ export default defineComponent({
 			}
 
 			const nodeType = this.nodeType;
+			const outputs = this.getResolvedNodeOutputs();
+			const outputConfiguration = outputs?.[outputIndex] as INodeOutputConfiguration;
+
+			if (outputConfiguration && isObject(outputConfiguration)) {
+				return outputConfiguration?.displayName;
+			}
 			if (!nodeType?.outputNames || nodeType.outputNames.length <= outputIndex) {
 				return outputIndex + 1;
 			}
@@ -1493,7 +1455,7 @@ export default defineComponent({
 	position: relative;
 	width: 100%;
 	height: 100%;
-	background-color: var(--color-background-base);
+	background-color: var(--color-run-data-background);
 	display: flex;
 	flex-direction: column;
 }
@@ -1672,7 +1634,6 @@ export default defineComponent({
 
 .editMode {
 	height: 100%;
-	max-height: calc(100% - var(--spacing-3xl));
 	display: flex;
 	flex-direction: column;
 	justify-content: stretch;

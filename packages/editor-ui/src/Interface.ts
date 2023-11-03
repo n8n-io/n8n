@@ -1121,6 +1121,7 @@ export interface UIState {
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
+	theme: ThemeOption;
 }
 
 export type IFakeDoor = {
@@ -1258,6 +1259,7 @@ export interface IRestApiContext {
 export interface IZoomConfig {
 	scale: number;
 	offset: XYPosition;
+	origin?: XYPosition;
 }
 
 export interface IBounds {
@@ -1676,3 +1678,6 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: string;
 };
+
+export type AppliedThemeOption = 'light' | 'dark';
+export type ThemeOption = AppliedThemeOption | 'system';

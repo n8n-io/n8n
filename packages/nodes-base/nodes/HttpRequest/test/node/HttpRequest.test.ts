@@ -1,3 +1,4 @@
+import nock from 'nock';
 import {
 	initBinaryDataService,
 	setup,
@@ -5,8 +6,7 @@ import {
 	workflowToTests,
 	getWorkflowFilenames,
 } from '@test/nodes/Helpers';
-
-import nock from 'nock';
+import { parse as parseUrl } from 'url';
 
 describe('Test HTTP Request Node', () => {
 	const workflows = getWorkflowFilenames(__dirname);
@@ -118,6 +118,48 @@ describe('Test HTTP Request Node', () => {
 			isDeleted: true,
 			deletedOn: '2023-02-09T05:37:31.720Z',
 		});
+
+		// Pagination - Data not identical to dummyjson.com
+		nock(baseUrl)
+			.persist()
+			.get('/users')
+			.query(true)
+			.reply(function (uri) {
+				const data = parseUrl(uri, true);
+				const skip = parseInt((data.query.skip as string) || '0', 10);
+				const limit = parseInt((data.query.limit as string) || '10', 10);
+				const nextUrl = `${baseUrl}/users?skip=${skip + limit}&limit=${limit}`;
+
+				const response = [];
+				for (let i = skip; i < skip + limit; i++) {
+					if (i > 14) {
+						break;
+					}
+					response.push({
+						id: i,
+					});
+				}
+
+				if (!response.length) {
+					return [
+						404,
+						response,
+						{
+							'next-url': nextUrl,
+							'content-type': this.req.headers['content-type'] || 'application/json',
+						},
+					];
+				}
+
+				return [
+					200,
+					response,
+					{
+						'next-url': nextUrl,
+						'content-type': this.req.headers['content-type'] || 'application/json',
+					},
+				];
+			});
 	});
 
 	afterAll(() => {
