@@ -565,7 +565,7 @@ import { pinData } from '@/mixins/pinData';
 import type { PinDataSource } from '@/mixins/pinData';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { dataPinningEventBus } from '@/event-bus';
-import { clearJsonKey, executionDataToJson, isEmpty } from '@/utils';
+import { clearJsonKey, executionDataToJson, isEmpty, searchInObject } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -1216,7 +1216,7 @@ export default defineComponent({
 		},
 		getPinDataOrInputData(inputData: INodeExecutionData[]): INodeExecutionData[] {
 			if (this.pinData && !this.isProductionExecutionPreview) {
-				return Array.isArray(this.pinData)
+				inputData = Array.isArray(this.pinData)
 					? this.pinData.map((value) => ({
 							json: value,
 					  }))
@@ -1226,6 +1226,14 @@ export default defineComponent({
 							},
 					  ];
 			}
+
+			if (this.search) {
+				const filteredData = inputData.filter(({ json }) => searchInObject(json, this.search));
+				if (filteredData.length) {
+					inputData = filteredData;
+				}
+			}
+
 			return inputData;
 		},
 		getDataCount(
