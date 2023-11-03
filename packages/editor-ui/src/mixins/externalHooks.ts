@@ -1,7 +1,7 @@
 import type { IExternalHooks } from '@/Interface';
 import type { IDataObject } from 'n8n-workflow';
 import type { PartialDeep } from 'type-fest';
-import type { ExternalHooks, GenericExternalHooksContext } from '@/types';
+import type { ExternalHooks, ExternalHooksGenericContext } from '@/types';
 import { defineComponent } from 'vue';
 import { runExternalHook } from '@/utils';
 
@@ -15,7 +15,7 @@ export function extendExternalHooks(hooks: PartialDeep<ExternalHooks>) {
 			window.n8nExternalHooks[resource] = {};
 		}
 
-		const context = hooks[resource] as GenericExternalHooksContext;
+		const context = hooks[resource] as ExternalHooksGenericContext;
 		for (const operator of Object.keys(context)) {
 			if (typeof context[operator] === 'undefined') {
 				context[operator] = [];

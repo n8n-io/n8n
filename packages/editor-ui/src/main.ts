@@ -22,7 +22,6 @@ import { GlobalComponentsPlugin } from './plugins/components';
 import { GlobalDirectivesPlugin } from './plugins/directives';
 import { FontAwesomePlugin } from './plugins/icons';
 
-import { runExternalHook } from '@/utils';
 import { createPinia, PiniaVuePlugin } from 'pinia';
 import { JsPlumbPlugin } from '@/plugins/jsplumb';
 
@@ -43,10 +42,13 @@ app.use(i18nInstance);
 
 app.mount('#app');
 
+<<<<<<< HEAD
 router.afterEach((to, from) => {
 	void runExternalHook('main.routeChange', { from, to });
 });
 
+=======
+>>>>>>> origin/master
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode

@@ -20,11 +20,11 @@ import {
 	hooksResetNodesPanelSession,
 	nodesPanelSession,
 } from '@/hooks/utils/hooksNodesPanel';
-import type { ExternalHooks } from '@/mixins/externalHooks';
 import { useSegment } from '@/stores/segment.store';
 import type { PartialDeep } from 'type-fest';
 import type { IDataObject } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
+import type { ExternalHooks } from '@/types';
 
 export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	app: {
@@ -48,7 +48,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		createNodeActiveChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					source: meta.source,
@@ -61,7 +61,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		addNodeButton: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User added node to workflow canvas',
@@ -77,7 +77,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	main: {
 		routeChange: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const splitPath = meta.to.path.split('/');
 				if (meta.from.path !== '/' && splitPath[1] === 'workflow') {
@@ -92,7 +92,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	credential: {
 		saved: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getUserSavedCredentialsEventData(meta);
 
@@ -102,7 +102,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	credentialsEdit: {
 		credentialTypeChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				if (meta.newValue) {
 					const eventData = {
@@ -120,7 +120,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		credentialModalOpened: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User opened Credentials modal',
@@ -149,7 +149,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		dialogVisibleChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				if (meta.dialogVisible) {
 					const eventData = {
@@ -164,7 +164,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	workflowSettings: {
 		dialogVisibleChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				if (meta.dialogVisible) {
 					const eventData = getOpenWorkflowSettingsEventData();
@@ -173,7 +173,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		saveSettings: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getUpdatedWorkflowSettingsEventData(meta);
 				segmentStore.track(eventData.eventName, eventData.properties);
@@ -182,7 +182,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	dataDisplay: {
 		onDocumentationUrlClick: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User clicked node modal docs link',
@@ -196,14 +196,14 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		nodeTypeChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
-				const store = useNDVStore();
+				const ndvStore = useNDVStore();
 				const eventData = getNodeTypeChangedEventData(meta);
 
 				segmentStore.track(eventData.eventName, eventData.properties);
 				segmentStore.page('Cloud instance', 'Node modal', {
-					node: store.activeNode?.name,
+					node: ndvStore.activeNode?.name,
 				});
 			},
 		],
@@ -239,7 +239,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	showMessage: {
 		showError: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'Instance FE emitted error',
@@ -256,7 +256,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	expressionEdit: {
 		itemSelected: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getInsertedItemFromExpEditorEventData(meta);
 
@@ -272,7 +272,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		dialogVisibleChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const currentValue = meta.value.slice(1);
 				let isValueDefault = false;
@@ -299,7 +299,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	nodeSettings: {
 		valueChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				if (meta.parameterPath !== 'authentication') {
 					return;
@@ -311,7 +311,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		credentialSelected: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const creds = Object.keys(meta.updateInformation.properties.credentials || {});
 				if (creds.length < 1) {
@@ -334,7 +334,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	workflowRun: {
 		runWorkflow: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getExecutionStartedEventData(meta);
 
@@ -342,7 +342,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		runError: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: meta.nodeName
@@ -363,7 +363,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	runData: {
 		displayModeChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getOutputModeChangedEventData(meta);
 
@@ -373,7 +373,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	pushConnection: {
 		executionFinished: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getExecutionFinishedEventData(meta);
 
@@ -383,7 +383,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	node: {
 		deleteNode: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = getNodeRemovedEventData(meta);
 
@@ -393,7 +393,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	workflow: {
 		activeChange: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: (meta.active && 'User activated workflow') || 'User deactivated workflow',
@@ -407,17 +407,17 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		activeChangeCurrent: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
-				const store = useWorkflowsStore();
+				const workflowsStore = useWorkflowsStore();
 
 				const eventData = {
 					eventName: (meta.active && 'User activated workflow') || 'User deactivated workflow',
 					properties: {
 						source: 'main nav',
 						workflow_id: meta.workflowId,
-						workflow_name: store.workflowName,
-						workflow_nodes: store.allNodes.map((n) => n.type.split('.')[1]),
+						workflow_name: workflowsStore.workflowName,
+						workflow_nodes: workflowsStore.allNodes.map((n) => n.type.split('.')[1]),
 					},
 				};
 
@@ -425,7 +425,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		afterUpdate: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User saved workflow',
@@ -442,7 +442,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 	},
 	execution: {
 		open: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User opened read-only execution',
@@ -472,7 +472,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		selectedTypeChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				const eventData = {
 					eventName: 'User changed nodes panel filter',
@@ -488,7 +488,7 @@ export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
 			},
 		],
 		nodeFilterChanged: [
-			(meta) => {
+			(_, meta) => {
 				const segmentStore = useSegment();
 				if (meta.newValue.length === 0 && nodesPanelSession.data.nodeFilter.length > 0) {
 					const eventData = hooksGenerateNodesPanelEvent();

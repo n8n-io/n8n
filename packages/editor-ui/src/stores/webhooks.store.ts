@@ -1,5 +1,5 @@
 import { STORES } from '@/constants';
-import type { IFakeDoor, INodeUi, IRootState, NestedRecord } from '@/Interface';
+import type { IFakeDoor, INodeUi, IRootState } from '@/Interface';
 import type { IMenuItem } from 'n8n-design-system';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -61,9 +61,6 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		},
 		setFakeDoorFeatures(fakeDoors: IFakeDoor[]): void {
 			useUIStore().fakeDoorFeatures = fakeDoors;
-		},
-		setContextBasedTranslationKeys(translations: NestedRecord<string>): void {
-			useUIStore().contextBasedTranslationKeys = translations;
 		},
 	},
 });

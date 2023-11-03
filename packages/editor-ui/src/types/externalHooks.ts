@@ -1,7 +1,6 @@
 import type { N8nInput } from 'n8n-design-system';
 import type {
 	IConnections,
-	IDataObject,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
@@ -29,202 +28,240 @@ import type {
 	NodeFilterType,
 } from '@/Interface';
 import type { ComponentPublicInstance } from 'vue/dist/vue';
+import type { useWebhooksStore } from '@/stores';
+import type { IDataObject } from 'n8n-workflow';
 
-export type GenericExternalHooksContext = Record<string, Array<(metadata: IDataObject) => unknown>>;
+export type ExternalHooksMethod<T = IDataObject, R = void> = (
+	store: ReturnType<typeof useWebhooksStore>,
+	metadata: T,
+) => R | Promise<R>;
+
+export interface ExternalHooksGenericContext {
+	[key: string]: ExternalHooksMethod[];
+}
+
+export interface ExternalHooksGeneric {
+	[key: string]: ExternalHooksGenericContext;
+}
 
 export interface ExternalHooks {
 	parameterInput: {
 		mount: Array<
-			(meta: { inputFieldRef?: InstanceType<typeof N8nInput>; parameter?: INodeProperties }) => void
+			ExternalHooksMethod<{
+				inputFieldRef?: InstanceType<typeof N8nInput>;
+				parameter?: INodeProperties;
+			}>
 		>;
-		modeSwitch: Array<(meta: ITelemetryTrackProperties) => void>;
-		updated: Array<(meta: { remoteParameterOptions: NodeListOf<Element> }) => void>;
+		modeSwitch: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
+		updated: Array<ExternalHooksMethod<{ remoteParameterOptions: NodeListOf<Element> }>>;
 	};
 	nodeCreatorSearchBar: {
-		mount: Array<(meta: { inputRef: HTMLElement | null }) => void>;
+		mount: Array<ExternalHooksMethod<{ inputRef: HTMLElement | null }>>;
 	};
 	app: {
-		mount: Array<(meta: {}) => void>;
+		mount: Array<ExternalHooksMethod<{}>>;
 	};
 	nodeView: {
-		mount: Array<(meta: {}) => void>;
+		mount: Array<ExternalHooksMethod<{}>>;
 		createNodeActiveChanged: Array<
-			(meta: { source?: string; mode: string; createNodeActive: boolean }) => void
+			ExternalHooksMethod<{
+				source?: string;
+				mode: string;
+				createNodeActive: boolean;
+			}>
 		>;
-		addNodeButton: Array<(meta: { nodeTypeName: string }) => void>;
-		onRunNode: Array<(meta: ITelemetryTrackProperties) => void>;
-		onRunWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
+		addNodeButton: Array<ExternalHooksMethod<{ nodeTypeName: string }>>;
+		onRunNode: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
+		onRunWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	main: {
-		routeChange: Array<(meta: { to: RouteLocation; from: RouteLocation }) => void>;
+		routeChange: Array<ExternalHooksMethod<{ to: RouteLocation; from: RouteLocation }>>;
 	};
 	credential: {
-		saved: Array<(meta: UserSavedCredentialsEventData) => void>;
+		saved: Array<ExternalHooksMethod<UserSavedCredentialsEventData>>;
 	};
 	copyInput: {
-		mounted: Array<(meta: { copyInputValueRef: HTMLElement }) => void>;
+		mounted: Array<ExternalHooksMethod<{ copyInputValueRef: HTMLElement }>>;
 	};
 	credentialsEdit: {
 		credentialTypeChanged: Array<
-			(meta: {
+			ExternalHooksMethod<{
 				newValue: string;
 				setCredentialType: string;
 				credentialType: string;
 				editCredentials: string;
-			}) => void
+			}>
 		>;
 		credentialModalOpened: Array<
-			(meta: {
+			ExternalHooksMethod<{
 				activeNode: INodeUi | null;
 				isEditingCredential: boolean;
 				credentialType: string | null;
-			}) => void
+			}>
 		>;
 	};
 	credentialsList: {
-		mounted: Array<(meta: { tableRef: ComponentPublicInstance }) => void>;
-		dialogVisibleChanged: Array<(meta: { dialogVisible: boolean }) => void>;
+		mounted: Array<ExternalHooksMethod<{ tableRef: ComponentPublicInstance }>>;
+		dialogVisibleChanged: Array<ExternalHooksMethod<{ dialogVisible: boolean }>>;
 	};
 	credentialsSelectModal: {
-		openCredentialType: Array<(meta: ITelemetryTrackProperties) => void>;
+		openCredentialType: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	credentialEdit: {
-		saveCredential: Array<(meta: ITelemetryTrackProperties) => void>;
+		saveCredential: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	workflowSettings: {
-		dialogVisibleChanged: Array<(meta: { dialogVisible: boolean }) => void>;
-		saveSettings: Array<(meta: UpdatedWorkflowSettingsEventData) => void>;
+		dialogVisibleChanged: Array<ExternalHooksMethod<{ dialogVisible: boolean }>>;
+		saveSettings: Array<ExternalHooksMethod<UpdatedWorkflowSettingsEventData>>;
 	};
 	dataDisplay: {
 		onDocumentationUrlClick: Array<
-			(meta: { nodeType: INodeTypeDescription; documentationUrl: string }) => void
+			ExternalHooksMethod<{
+				nodeType: INodeTypeDescription;
+				documentationUrl: string;
+			}>
 		>;
-		nodeTypeChanged: Array<(meta: NodeTypeChangedEventData) => void>;
-		nodeEditingFinished: Array<(meta: {}) => void>;
+		nodeTypeChanged: Array<ExternalHooksMethod<NodeTypeChangedEventData>>;
+		nodeEditingFinished: Array<ExternalHooksMethod<{}>>;
 	};
 	executionsList: {
-		created: Array<(meta: { filtersRef: HTMLElement; tableRef: ComponentPublicInstance }) => void>;
-		openDialog: Array<(meta: {}) => void>;
+		created: Array<
+			ExternalHooksMethod<{ filtersRef: HTMLElement; tableRef: ComponentPublicInstance }>
+		>;
+		openDialog: Array<ExternalHooksMethod<{}>>;
 	};
 	showMessage: {
-		showError: Array<(meta: { title: string; message?: string; errorMessage: string }) => void>;
+		showError: Array<
+			ExternalHooksMethod<{ title: string; message?: string; errorMessage: string }>
+		>;
 	};
 	expressionEdit: {
-		itemSelected: Array<(meta: InsertedItemFromExpEditorEventData) => void>;
-		dialogVisibleChanged: Array<(meta: ExpressionEditorEventsData) => void>;
-		closeDialog: Array<(meta: ITelemetryTrackProperties) => void>;
+		itemSelected: Array<ExternalHooksMethod<InsertedItemFromExpEditorEventData>>;
+		dialogVisibleChanged: Array<ExternalHooksMethod<ExpressionEditorEventsData>>;
+		closeDialog: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 		mounted: Array<
-			(meta: { expressionInputRef: HTMLElement; expressionOutputRef: HTMLElement }) => void
+			ExternalHooksMethod<{
+				expressionInputRef: HTMLElement;
+				expressionOutputRef: HTMLElement;
+			}>
 		>;
 	};
 	nodeSettings: {
-		valueChanged: Array<(meta: AuthenticationModalEventData) => void>;
+		valueChanged: Array<ExternalHooksMethod<AuthenticationModalEventData>>;
 		credentialSelected: Array<
-			(meta: { updateInformation: INodeUpdatePropertiesInformation }) => void
+			ExternalHooksMethod<{
+				updateInformation: INodeUpdatePropertiesInformation;
+			}>
 		>;
 	};
 	workflowRun: {
-		runWorkflow: Array<(meta: ExecutionStartedEventData) => void>;
-		runError: Array<(meta: { errorMessages: string[]; nodeName: string | undefined }) => void>;
+		runWorkflow: Array<ExternalHooksMethod<ExecutionStartedEventData>>;
+		runError: Array<ExternalHooksMethod<{ errorMessages: string[]; nodeName: string | undefined }>>;
 	};
 	runData: {
-		updated: Array<(meta: { elements: HTMLElement[] }) => void>;
-		onTogglePinData: Array<(meta: ITelemetryTrackProperties) => void>;
-		onDataPinningSuccess: Array<(meta: ITelemetryTrackProperties) => void>;
-		displayModeChanged: Array<(meta: OutputModeChangedEventData) => void>;
+		updated: Array<ExternalHooksMethod<{ elements: HTMLElement[] }>>;
+		onTogglePinData: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
+		onDataPinningSuccess: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
+		displayModeChanged: Array<ExternalHooksMethod<OutputModeChangedEventData>>;
 	};
 	pushConnection: {
-		executionFinished: Array<(meta: ExecutionFinishedEventData) => void>;
+		executionFinished: Array<ExternalHooksMethod<ExecutionFinishedEventData>>;
 	};
 	node: {
-		deleteNode: Array<(meta: NodeRemovedEventData) => void>;
+		deleteNode: Array<ExternalHooksMethod<NodeRemovedEventData>>;
 	};
 	nodeExecuteButton: {
-		onClick: Array<(meta: ITelemetryTrackProperties) => void>;
+		onClick: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	workflow: {
-		activeChange: Array<(meta: { active: boolean; workflowId: string }) => void>;
-		activeChangeCurrent: Array<(meta: { workflowId: string; active: boolean }) => void>;
-		afterUpdate: Array<(meta: { workflowData: IWorkflowDb }) => void>;
-		open: Array<(meta: { workflowId: string; workflowName: string }) => void>;
+		activeChange: Array<ExternalHooksMethod<{ active: boolean; workflowId: string }>>;
+		activeChangeCurrent: Array<ExternalHooksMethod<{ workflowId: string; active: boolean }>>;
+		afterUpdate: Array<ExternalHooksMethod<{ workflowData: IWorkflowDb }>>;
+		open: Array<ExternalHooksMethod<{ workflowId: string; workflowName: string }>>;
 	};
 	execution: {
-		open: Array<(meta: { workflowId: string; workflowName: string; executionId: string }) => void>;
+		open: Array<
+			ExternalHooksMethod<{ workflowId: string; workflowName: string; executionId: string }>
+		>;
 	};
 	userInfo: {
-		mounted: Array<(meta: { userInfoRef: HTMLElement }) => void>;
+		mounted: Array<ExternalHooksMethod<{ userInfoRef: HTMLElement }>>;
 	};
 	variableSelectorItem: {
-		mounted: Array<(meta: { variableSelectorItemRef: HTMLElement }) => void>;
+		mounted: Array<ExternalHooksMethod<{ variableSelectorItemRef: HTMLElement }>>;
 	};
 	mainSidebar: {
-		mounted: Array<(meta: { userRef: Element }) => void>;
+		mounted: Array<ExternalHooksMethod<{ userRef: Element }>>;
 	};
 	nodeCreateList: {
-		destroyed: Array<(meta: {}) => void>;
+		destroyed: Array<ExternalHooksMethod<{}>>;
 		addAction: Array<
-			(meta: { node_type?: string; action: string; resource: INodeParameters['resource'] }) => void
+			ExternalHooksMethod<{
+				node_type?: string;
+				action: string;
+				resource: INodeParameters['resource'];
+			}>
 		>;
-		selectedTypeChanged: Array<(meta: { oldValue: string; newValue: string }) => void>;
+		selectedTypeChanged: Array<ExternalHooksMethod<{ oldValue: string; newValue: string }>>;
 		filteredNodeTypesComputed: Array<
-			(meta: {
+			ExternalHooksMethod<{
 				nodeFilter: string;
 				result: INodeCreateElement[];
 				selectedType: NodeFilterType;
-			}) => void
+			}>
 		>;
 		nodeFilterChanged: Array<
-			(meta: {
+			ExternalHooksMethod<{
 				oldValue: string;
 				newValue: string;
 				selectedType: NodeFilterType;
 				filteredNodes: INodeCreateElement[];
-			}) => void
+			}>
 		>;
-		onActionsCustmAPIClicked: Array<(meta: { app_identifier?: string }) => void>;
-		onViewActions: Array<(meta: ITelemetryTrackProperties) => void>;
+		onActionsCustmAPIClicked: Array<ExternalHooksMethod<{ app_identifier?: string }>>;
+		onViewActions: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	personalizationModal: {
-		onSubmit: Array<(meta: IPersonalizationLatestVersion) => void>;
+		onSubmit: Array<ExternalHooksMethod<IPersonalizationLatestVersion>>;
 	};
 	settingsPersonalView: {
-		mounted: Array<(meta: { userRef: HTMLElement }) => void>;
+		mounted: Array<ExternalHooksMethod<{ userRef: HTMLElement }>>;
 	};
 	workflowOpen: {
-		mounted: Array<(meta: { tableRef: ComponentPublicInstance }) => void>;
+		mounted: Array<ExternalHooksMethod<{ tableRef: ComponentPublicInstance }>>;
 	};
 	workflowActivate: {
-		updateWorkflowActivation: Array<(meta: ITelemetryTrackProperties) => void>;
+		updateWorkflowActivation: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	runDataTable: {
-		onDragEnd: Array<(meta: ITelemetryTrackProperties) => void>;
+		onDragEnd: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	runDataJson: {
-		onDragEnd: Array<(meta: ITelemetryTrackProperties) => void>;
+		onDragEnd: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	sticky: {
-		mounted: Array<(meta: { stickyRef: HTMLElement }) => void>;
+		mounted: Array<ExternalHooksMethod<{ stickyRef: HTMLElement }>>;
 	};
 	telemetry: {
-		currentUserIdChanged: Array<() => void>;
+		currentUserIdChanged: Array<ExternalHooksMethod<{}>>;
 	};
 	settingsCommunityNodesView: {
-		openInstallModal: Array<(meta: ITelemetryTrackProperties) => void>;
+		openInstallModal: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	templatesWorkflowView: {
-		openWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
+		openWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	templatesCollectionView: {
-		onUseWorkflow: Array<(meta: ITelemetryTrackProperties) => void>;
+		onUseWorkflow: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	template: {
-		requested: Array<(meta: { templateId: string }) => void>;
+		requested: Array<ExternalHooksMethod<{ templateId: string }>>;
 		open: Array<
-			(meta: {
+			ExternalHooksMethod<{
 				templateId: string;
 				templateName: string;
 				workflow: { nodes: INodeUi[]; connections: IConnections };
-			}) => void
+			}>
 		>;
 	};
 }

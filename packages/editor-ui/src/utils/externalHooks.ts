@@ -1,5 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
-import type { ExternalHooks, GenericExternalHooksContext } from '@/types/externalHooks';
+import type { ExternalHooks, ExternalHooksGenericContext } from '@/types/externalHooks';
 import { useWebhooksStore } from '@/stores/webhooks.store';
 
 export async function runExternalHook(eventName: string, metadata?: IDataObject) {
@@ -14,7 +14,7 @@ export async function runExternalHook(eventName: string, metadata?: IDataObject)
 		keyof ExternalHooks[keyof ExternalHooks],
 	];
 
-	const context = window.n8nExternalHooks[resource] as GenericExternalHooksContext;
+	const context = window.n8nExternalHooks[resource] as ExternalHooksGenericContext;
 	if (context?.[operator]) {
 		const hookMethods = context[operator];
 

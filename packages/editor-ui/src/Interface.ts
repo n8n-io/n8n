@@ -1177,6 +1177,7 @@ export interface INodeCreatorState {
 }
 
 export interface ISettingsState {
+	initialized: boolean;
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementSettings;
@@ -1241,6 +1242,7 @@ export interface IVersionsState {
 }
 
 export interface IUsersState {
+	initialized: boolean;
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
 	currentUserCloudInfo: Cloud.UserAccount | null;
