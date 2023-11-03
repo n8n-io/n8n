@@ -125,6 +125,7 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { mapStores } from 'pinia';
 import { defineComponent } from 'vue';
 import { createEventBus } from 'n8n-design-system/utils';
+import { isValidName } from 'n8n-workflow';
 
 export default defineComponent({
 	name: 'SettingsPersonalView',
@@ -171,6 +172,12 @@ export default defineComponent({
 					autocomplete: 'given-name',
 					capitalize: true,
 					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					validators: {
+						IS_VALID_FIRST_NAME: {
+							validate: this.isValidFirstName,
+						},
+					},
+					validationRules: [{ name: 'IS_VALID_FIRST_NAME' }],
 				},
 			},
 			{
@@ -183,6 +190,12 @@ export default defineComponent({
 					autocomplete: 'family-name',
 					capitalize: true,
 					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
+					validators: {
+						IS_VALID_LAST_NAME: {
+							validate: this.isValidLastName,
+						},
+					},
+					validationRules: [{ name: 'IS_VALID_LAST_NAME' }],
 				},
 			},
 			{
@@ -265,6 +278,24 @@ export default defineComponent({
 		},
 		onMfaEnableClick() {
 			this.uiStore.openModal(MFA_SETUP_MODAL_KEY);
+		},
+		isValidFirstName(value: string | number | boolean | null | undefined) {
+			if (!isValidName(String(value))) {
+				return {
+					messageKey: 'settings.personal.invalid.field',
+					options: { interpolate: { fieldName: this.$locale.baseText('auth.firstName') } },
+				};
+			}
+			return false;
+		},
+		isValidLastName(value: string | number | boolean | null | undefined) {
+			if (!isValidName(String(value))) {
+				return {
+					messageKey: 'settings.personal.invalid.field',
+					options: { interpolate: { fieldName: this.$locale.baseText('auth.lastName') } },
+				};
+			}
+			return false;
 		},
 		async onMfaDisableClick() {
 			try {
