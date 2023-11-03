@@ -142,6 +142,10 @@
 
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 
+	// Switch (Activation, boolean)
+	--color-switch-background: var(--prim-gray-820);
+	--color-switch-toggle: var(--prim-gray-40);
+
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);
 	--color-info-tint-2: var(--prim-gray-740);

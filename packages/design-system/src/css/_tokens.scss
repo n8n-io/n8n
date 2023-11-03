@@ -219,6 +219,11 @@
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
 
+	// Switch (Activation, boolean)
+	--color-switch-background: var(--prim-gray-420);
+	--color-switch-active-background: var(--prim-color-alt-i);
+	--color-switch-toggle: var(--prim-gray-0);
+
 	// Various
 	--color-avatar-accent-1: var(--prim-gray-120);
 	--color-avatar-accent-2: var(--prim-color-alt-e-shade-100);
@@ -228,7 +233,6 @@
 	--color-grey: var(--prim-gray-200);
 	--color-light-grey: var(--prim-gray-120);
 	--color-neutral: var(--prim-gray-490);
-	--color-switch: var(--prim-color-alt-i);
 	--color-configurable-node-name: var(--color-text-dark);
 
 	// Generated Color Shades from 50 to 950
