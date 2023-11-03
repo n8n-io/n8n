@@ -1,6 +1,7 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -8,7 +9,6 @@ import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
-import { getLocalStorageValue, setLocalStorageValue } from '@/utils/localStorageUtils';
 
 const EVENTS = {
 	IS_PART_OF_EXPERIMENT: 'User is part of experiment',
@@ -41,7 +41,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	if (!window.featureFlags) {
 		// for testing
-		const cachedOverrides = getLocalStorageValue(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
+		const cachedOverrides = useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value;
 		if (cachedOverrides) {
 			try {
 				console.log('Overriding feature flags', cachedOverrides);
@@ -60,7 +60,7 @@ export const usePostHog = defineStore('posthog', () => {
 					[name]: value,
 				};
 				try {
-					setLocalStorageValue(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
+					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
 			},
 

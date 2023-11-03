@@ -1,3 +1,4 @@
+import { useStorage } from '@/composables/useStorage';
 import { LOCAL_STORAGE_MAPPING_IS_ONBOARDED, STORES } from '@/constants';
 import type {
 	INodeUi,
@@ -12,7 +13,6 @@ import { NodeConnectionType } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from './workflows.store';
-import { getLocalStorageValue, setLocalStorageValue } from '@/utils/localStorageUtils';
 
 export const useNDVStore = defineStore(STORES.NDV, {
 	state: (): NDVState => ({
@@ -49,7 +49,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 			canDrop: false,
 			stickyPosition: null,
 		},
-		isMappingOnboarded: getLocalStorageValue(LOCAL_STORAGE_MAPPING_IS_ONBOARDED) === 'true',
+		isMappingOnboarded: useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value === 'true',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -228,7 +228,7 @@ export const useNDVStore = defineStore(STORES.NDV, {
 		disableMappingHint(store = true) {
 			this.isMappingOnboarded = true;
 			if (store) {
-				setLocalStorageValue(LOCAL_STORAGE_MAPPING_IS_ONBOARDED, 'true');
+				useStorage(LOCAL_STORAGE_MAPPING_IS_ONBOARDED).value = 'true';
 			}
 		},
 		updateNodeParameterIssues(issues: INodeIssues): void {
