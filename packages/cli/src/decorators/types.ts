@@ -15,6 +15,7 @@ export interface RouteMetadata {
 	path: string;
 	handlerName: string;
 	middlewares: RequestHandler[];
+	usesTemplates: boolean;
 }
 
 export type Controller = Record<
