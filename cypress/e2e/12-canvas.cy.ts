@@ -19,8 +19,8 @@ const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
 const ZOOM_OUT_X1_FACTOR = 0.8;
 const ZOOM_OUT_X2_FACTOR = 0.64;
 
-const PINCH_ZOOM_IN_FACTOR = 1.31951;
-const PINCH_ZOOM_OUT_FACTOR = 0.757858;
+const PINCH_ZOOM_IN_FACTOR = 1.05702;
+const PINCH_ZOOM_OUT_FACTOR = 0.946058;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {

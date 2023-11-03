@@ -16,7 +16,8 @@ import type { Route } from 'vue-router';
 const SCALE_CHANGE_FACTOR = 1.25;
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 5;
-const SCROLL_ZOOM_SPEED = 0.05;
+const SCROLL_ZOOM_SPEED = 0.01;
+const MAX_WHEEL_DELTA = 32;
 
 const clamp = (min: number, max: number) => (num: number) => {
 	return Math.max(min, Math.min(max, num));
@@ -108,6 +109,8 @@ export const getConnectionInfo = (
 	return null;
 };
 
+const clampWheelDelta = clamp(-MAX_WHEEL_DELTA, MAX_WHEEL_DELTA);
+
 export const normalizeWheelEventDelta = (event: WheelEvent): { deltaX: number; deltaY: number } => {
 	const factorByMode: Record<number, number> = {
 		[WheelEvent.DOM_DELTA_PIXEL]: 1,
@@ -117,7 +120,10 @@ export const normalizeWheelEventDelta = (event: WheelEvent): { deltaX: number; d
 
 	const factor = factorByMode[event.deltaMode] ?? 1;
 
-	return { deltaX: event.deltaX * factor, deltaY: event.deltaY * factor };
+	return {
+		deltaX: clampWheelDelta(event.deltaX * factor),
+		deltaY: clampWheelDelta(event.deltaY * factor),
+	};
 };
 
 export const getScaleFromWheelEventDelta = (delta: number): number => {
