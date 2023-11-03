@@ -2228,6 +2228,7 @@ export interface IPublicApiSettings {
 export type ExpressionEvaluatorType = 'tmpl' | 'tournament';
 
 export interface IN8nUISettings {
+	endpointFormWaiting: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: WorkflowSettings.SaveDataExecution;

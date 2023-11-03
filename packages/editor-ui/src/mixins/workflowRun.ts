@@ -18,7 +18,7 @@ import { useTitleChange } from '@/composables/useTitleChange';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
-import { FORM_TRIGGER_NODE_TYPE } from '../constants';
+import { FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from '../constants';
 import { openPopUpWindow } from '@/utils/executionUtils';
 
 export const workflowRun = defineComponent({
@@ -266,24 +266,35 @@ export const workflowRun = defineComponent({
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				if (runWorkflowApiResponse.waitingForWebhook) {
-					for (const node of workflowData.nodes) {
-						if (node.type !== FORM_TRIGGER_NODE_TYPE) {
-							continue;
+				for (const node of workflowData.nodes) {
+					if (![FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE].includes(node.type)) {
+						continue;
+					}
+
+					if (
+						options.destinationNode &&
+						options.destinationNode !== node.name &&
+						!directParentNodes.includes(node.name)
+					) {
+						continue;
+					}
+
+					if (node.name === options.destinationNode || !node.disabled) {
+						let testUrl = '';
+
+						if (node.type === FORM_TRIGGER_NODE_TYPE && node.typeVersion === 1) {
+							const webhookPath = (node.parameters.path as string) || node.webhookId;
+							testUrl = `${this.rootStore.getWebhookTestUrl}/${webhookPath}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
 						}
 
-						if (
-							options.destinationNode &&
-							options.destinationNode !== node.name &&
-							!directParentNodes.includes(node.name)
-						) {
-							continue;
+						if (node.type === WAIT_NODE_TYPE && runWorkflowApiResponse.executionId) {
+							const suffix = node.parameters.options.webhookSuffix
+								? `/${node.parameters.options.webhookSuffix}`
+								: '';
+							testUrl = `${this.rootStore.getFormWaitingUrl}/${runWorkflowApiResponse.executionId}${suffix}`;
 						}
 
-						if (node.name === options.destinationNode || !node.disabled) {
-							const testUrl = `${this.rootStore.getWebhookTestUrl}/${node.parameters.path}/${FORM_TRIGGER_PATH_IDENTIFIER}`;
-							openPopUpWindow(testUrl);
-						}
+						if (testUrl) openPopUpWindow(testUrl);
 					}
 				}
 

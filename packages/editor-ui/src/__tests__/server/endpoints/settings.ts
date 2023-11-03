@@ -7,6 +7,7 @@ const defaultSettings: IN8nUISettings = {
 	allowedModules: {},
 	communityNodesEnabled: false,
 	defaultLocale: '',
+	endpointFormWaiting: '',
 	endpointWebhook: '',
 	endpointWebhookTest: '',
 	enterprise: {

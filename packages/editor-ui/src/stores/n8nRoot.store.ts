@@ -14,6 +14,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 				? 'rest'
 				: window.REST_ENDPOINT,
 		defaultLocale: 'en',
+		endpointFormWaiting: 'form-waiting',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
 		pushConnectionActive: true,
@@ -32,6 +33,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 	getters: {
 		getBaseUrl(): string {
 			return this.baseUrl;
+		},
+
+		getFormWaitingUrl(): string {
+			return `${this.baseUrl}${this.endpointFormWaiting}`;
 		},
 
 		getWebhookUrl(): string {
@@ -70,6 +75,9 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		setUrlBaseEditor(urlBaseEditor: string): void {
 			const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
 			this.urlBaseEditor = url;
+		},
+		setEndpointFormWaiting(endpointFormWaiting: string): void {
+			this.endpointFormWaiting = endpointFormWaiting;
 		},
 		setEndpointWebhook(endpointWebhook: string): void {
 			this.endpointWebhook = endpointWebhook;

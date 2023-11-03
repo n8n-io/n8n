@@ -231,6 +231,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 
 			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
 			rootStore.setUrlBaseEditor(settings.urlBaseEditor);
+			rootStore.setEndpointFormWaiting(settings.endpointFormWaiting);
 			rootStore.setEndpointWebhook(settings.endpointWebhook);
 			rootStore.setEndpointWebhookTest(settings.endpointWebhookTest);
 			rootStore.setTimezone(settings.timezone);
