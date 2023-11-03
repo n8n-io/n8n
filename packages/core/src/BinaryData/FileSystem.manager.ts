@@ -4,7 +4,7 @@ import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 import { jsonParse } from 'n8n-workflow';
 import { assertDir, doesNotExist } from './utils';
-import { BinaryFileNotFound, InvalidPathError } from '../errors';
+import { BinaryFileNotFoundError, InvalidPathError } from '../errors';
 
 import type { Readable } from 'stream';
 import type { BinaryData } from './types';
@@ -47,7 +47,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(fileId);
 
 		if (await doesNotExist(filePath)) {
-			throw new BinaryFileNotFound(filePath);
+			throw new BinaryFileNotFoundError(filePath);
 		}
 
 		return createReadStream(filePath, { highWaterMark: chunkSize });
@@ -57,7 +57,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		const filePath = this.resolvePath(fileId);
 
 		if (await doesNotExist(filePath)) {
-			throw new BinaryFileNotFound(filePath);
+			throw new BinaryFileNotFoundError(filePath);
 		}
 
 		return fs.readFile(filePath);
@@ -190,7 +190,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			const stats = await fs.stat(filePath);
 			return stats.size;
 		} catch (error) {
-			throw new BinaryFileNotFound(filePath);
+			throw new BinaryFileNotFoundError(filePath);
 		}
 	}
 }

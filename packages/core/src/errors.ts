@@ -4,7 +4,7 @@ export class FileNotFoundError extends Error {
 	}
 }
 
-export class BinaryFileNotFound extends FileNotFoundError {}
+export class BinaryFileNotFoundError extends FileNotFoundError {}
 
 export class InvalidPathError extends Error {
 	constructor(readonly filePath: string) {
