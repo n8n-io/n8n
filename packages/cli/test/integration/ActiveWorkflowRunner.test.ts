@@ -142,7 +142,7 @@ describe('isActive()', () => {
 		await expect(isActive).resolves.toBe(true);
 	});
 
-	test('should return true for workflow stored as active', async () => {
+	test('should return false for workflow stored as inactive', async () => {
 		const workflow = await testDb.createWorkflow({ active: false }, owner);
 
 		await activeWorkflowRunner.init();
