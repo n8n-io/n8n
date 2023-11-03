@@ -825,10 +825,10 @@ export default defineComponent({
 			return 0;
 		},
 		rawInputData(): INodeExecutionData[] {
-			return this.getData(this.runIndex, this.currentOutputIndex, this.connectionType);
+			return this.getRawInputData(this.runIndex, this.currentOutputIndex, this.connectionType);
 		},
 		inputData(): INodeExecutionData[] {
-			return this.getPinDataOrInputData(this.rawInputData);
+			return this.getPinDataOrLiveData(this.rawInputData);
 		},
 		inputDataPage(): INodeExecutionData[] {
 			const offset = this.pageSize * (this.currentPage - 1);
@@ -1167,7 +1167,7 @@ export default defineComponent({
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
 			return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex + 1) + itemsLabel;
 		},
-		getData(
+		getRawInputData(
 			runIndex: number,
 			outputIndex: number,
 			connectionType: ConnectionTypes = NodeConnectionType.Main,
@@ -1190,7 +1190,7 @@ export default defineComponent({
 
 			return inputData;
 		},
-		getPinDataOrInputData(inputData: INodeExecutionData[]): INodeExecutionData[] {
+		getPinDataOrLiveData(inputData: INodeExecutionData[]): INodeExecutionData[] {
 			if (this.pinData && !this.isProductionExecutionPreview) {
 				return Array.isArray(this.pinData)
 					? this.pinData.map((value) => ({
@@ -1213,13 +1213,12 @@ export default defineComponent({
 				return 0;
 			}
 
-			const runData: IRunData | null = this.workflowRunData;
-			if (runData?.[this.node.name][runIndex].hasOwnProperty('error')) {
+			if (this.workflowRunData?.[this.node.name][runIndex].hasOwnProperty('error')) {
 				return 1;
 			}
 
-			const inputData = this.getData(runIndex, outputIndex, connectionType);
-			return this.getPinDataOrInputData(inputData).length;
+			const rawInputData = this.getRawInputData(runIndex, outputIndex, connectionType);
+			return this.getPinDataOrLiveData(rawInputData).length;
 		},
 		init() {
 			// Reset the selected output index every time another node gets selected
