@@ -11,8 +11,9 @@ import { License } from '@/License';
 import { LICENSE_FEATURES, inE2ETests } from '@/constants';
 import { NoAuthRequired, Patch, Post, RestController } from '@/decorators';
 import type { UserSetupPayload } from '@/requests';
-import type { BooleanLicenseFeature } from '@/Interfaces';
+import type { BooleanLicenseFeature, IPushDataType } from '@/Interfaces';
 import { MfaService } from '@/Mfa/mfa.service';
+import { Push } from '@/push';
 
 if (!inE2ETests) {
 	console.error('E2E endpoints only allowed during E2E tests');
