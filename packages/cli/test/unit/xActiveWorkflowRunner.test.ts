@@ -1,3 +1,4 @@
+import { Workflow } from 'n8n-workflow';
 import { Container } from 'typedi';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
@@ -80,17 +81,34 @@ describe('init()', () => {
 		await expect(activated).resolves.toHaveLength(2);
 	});
 
-	// test.only('should check that every workflow can be activated', async () => {
-	// 	const spy = jest
-	// 		.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated')
-	// 		.mockReturnValue(true);
+	test('should pre-check that every workflow can be activated', async () => {
+		await testDb.createWorkflow({ active: true }, owner);
+		await testDb.createWorkflow({ active: true }, owner);
 
-	// 	const workflows = generateWorkflows(2);
-	// 	workflowRepository.getAllActive.mockResolvedValue(workflows);
-	// 	workflowRepository.find.mockResolvedValue(workflows); // @TODO: Remove?
+		const precheckSpy = jest
+			.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated')
+			.mockReturnValue(true);
 
-	// 	await activeWorkflowRunner.init();
+		await activeWorkflowRunner.init();
 
-	// 	expect(spy).toHaveBeenCalledTimes(2);
-	// });
+		expect(precheckSpy).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('removeAll()', () => {
+	test('should deactivate all workflows', async () => {
+		await testDb.createWorkflow({ active: true }, owner);
+		await testDb.createWorkflow({ active: true }, owner);
+
+		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
+
+		await activeWorkflowRunner.init();
+		await activeWorkflowRunner.removeAll();
+
+		expect(removeSpy).toHaveBeenCalledTimes(2);
+
+		// @TODO: Why is DB not updated when removing active workflows?
+		// const active = activeWorkflowRunner.getActiveWorkflows();
+		// await expect(active).resolves.toHaveLength(0);
+	});
 });
