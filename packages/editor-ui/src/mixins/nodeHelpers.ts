@@ -509,7 +509,6 @@ export const nodeHelpers = defineComponent({
 			outputIndex = 0,
 			paneType: NodePanelType = 'output',
 			connectionType: ConnectionTypes = NodeConnectionType.Main,
-			filter: string = '',
 		): INodeExecutionData[] {
 			if (node === null) {
 				return [];
@@ -539,7 +538,7 @@ export const nodeHelpers = defineComponent({
 				return [];
 			}
 
-			return this.getInputData(data, outputIndex, connectionType, filter);
+			return this.getInputData(data, outputIndex, connectionType);
 		},
 
 		// Returns the data of the main input
@@ -547,7 +546,6 @@ export const nodeHelpers = defineComponent({
 			connectionsData: ITaskDataConnections,
 			outputIndex: number,
 			connectionType: ConnectionTypes = NodeConnectionType.Main,
-			filter: string = '',
 		): INodeExecutionData[] {
 			if (
 				!connectionsData ||
@@ -558,9 +556,7 @@ export const nodeHelpers = defineComponent({
 			) {
 				return [];
 			}
-			const data = connectionsData[connectionType][outputIndex] as INodeExecutionData[];
-
-			return filter ? data.filter(({ json }) => searchInObject(json, filter)) : data;
+			return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
 		},
 
 		// Returns all the binary data of all the entries
