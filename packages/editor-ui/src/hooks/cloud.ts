@@ -27,36 +27,6 @@ import type { IDataObject } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 export const n8nCloudHooks: PartialDeep<ExternalHooks> = {
-	parameterInput: {
-		mount: [
-			(meta) => {
-				if (!meta.parameter || !meta.inputFieldRef) {
-					return;
-				}
-
-				if (
-					meta.inputFieldRef.$el &&
-					(meta.parameter.name === 'resource' || meta.parameter.name === 'operation')
-				) {
-					const inputField = meta.inputFieldRef.$el.querySelector('input');
-					if (inputField?.classList?.value) {
-						inputField.classList.value = inputField.classList.value + ' data-hj-allow';
-					}
-				}
-			},
-		],
-	},
-	nodeCreatorSearchBar: {
-		mount: [
-			(meta) => {
-				if (!meta.inputRef) {
-					return;
-				}
-
-				meta.inputRef.classList.value = meta.inputRef.classList.value + ' data-hj-allow';
-			},
-		],
-	},
 	app: {
 		mount: [
 			() => {

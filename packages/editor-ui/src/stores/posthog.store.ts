@@ -143,19 +143,6 @@ export const usePostHog = defineStore('posthog', () => {
 		}
 	};
 
-	const track = (event: string, properties?: ITelemetryTrackProperties) => {
-		if (!window.posthog) {
-			return;
-		}
-
-		const config = settingsStore.settings.posthog;
-		if (!config.enabled) {
-			return;
-		}
-
-		window.posthog.capture?.(event, properties);
-	};
-
 	const trackExperiments = (featureFlags: FeatureFlags) => {
 		EXPERIMENTS_TO_TRACK.forEach((name) => trackExperiment(featureFlags, name));
 	};
@@ -197,7 +184,6 @@ export const usePostHog = defineStore('posthog', () => {
 		isVariantEnabled,
 		getVariant,
 		reset,
-		track,
 		identify,
 		capture,
 		setMetadata,
