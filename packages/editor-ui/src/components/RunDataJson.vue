@@ -60,8 +60,8 @@
 							[$style.dragged]: draggingPath === node.path,
 						}"
 						class="ph-no-capture"
-						>{{ getContent(node.content) }}</span
-					>
+						v-html="getContent(node.content)"
+					/>
 				</template>
 			</vue-json-pretty>
 		</draggable>

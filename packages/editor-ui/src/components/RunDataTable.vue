@@ -120,8 +120,8 @@
 						<span
 							v-if="isSimple(data)"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-							>{{ getValueToRender(data) }}</span
-						>
+							v-html="getValueToRender(data)"
+						/>
 						<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 							<template #label="{ label, path }">
 								<span
@@ -141,9 +141,10 @@
 								>
 							</template>
 							<template #value="{ value }">
-								<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">
-									{{ getValueToRender(value) }}
-								</span>
+								<span
+									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
+									v-html="getValueToRender(value)"
+								/>
 							</template>
 						</n8n-tree>
 					</td>
@@ -698,5 +699,11 @@ export default defineComponent({
 
 .warningTooltip {
 	color: var(--color-warning);
+}
+</style>
+
+<style lang="scss" global>
+.highlight {
+  background: orange;
 }
 </style>
