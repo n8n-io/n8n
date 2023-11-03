@@ -24,13 +24,7 @@ import { VariablesService } from '@/environments/variables/variables.service';
 import { mockInstance } from '../integration/shared/utils/';
 import { randomEmail, randomName } from '../integration/shared/random';
 import * as Helpers from './Helpers';
-
-/**
- * TODO:
- * - test workflow webhooks activation (that trigger `executeWebhook`and other webhook methods)
- * - test activation error catching and getters such as `getActivationError` (requires building a workflow that fails to activate)
- * - test queued workflow activation functions (might need to create a non-working workflow to test this)
- */
+import { WorkflowRepository } from '@/databases/repositories';
 
 let databaseActiveWorkflowsCount = 0;
 let databaseActiveWorkflowsList: WorkflowEntity[] = [];
@@ -131,6 +125,10 @@ const workflowExecuteAdditionalDataExecuteErrorWorkflowSpy = jest.spyOn(
 
 describe('ActiveWorkflowRunner', () => {
 	mockInstance(ActiveExecutions);
+	const workflowRepository = mockInstance(WorkflowRepository);
+	workflowRepository.getAllActive.mockResolvedValue(
+		generateWorkflows(databaseActiveWorkflowsCount),
+	);
 	const externalHooks = mockInstance(ExternalHooks);
 	const webhookService = mockInstance(WebhookService);
 	mockInstance(Push);
@@ -175,6 +173,9 @@ describe('ActiveWorkflowRunner', () => {
 
 	test('Should make sure function checkIfWorkflowCanBeActivated was called for every workflow', async () => {
 		databaseActiveWorkflowsCount = 2;
+		workflowRepository.getAllActive.mockResolvedValue(
+			generateWorkflows(databaseActiveWorkflowsCount),
+		);
 		await activeWorkflowRunner.init();
 		expect(workflowCheckIfCanBeActivated).toHaveBeenCalledTimes(databaseActiveWorkflowsCount);
 	});
@@ -201,6 +202,9 @@ describe('ActiveWorkflowRunner', () => {
 
 	test('Call to isActive should return true for valid workflow', async () => {
 		databaseActiveWorkflowsCount = 1;
+		workflowRepository.getAllActive.mockResolvedValue(
+			generateWorkflows(databaseActiveWorkflowsCount),
+		);
 		await activeWorkflowRunner.init();
 		expect(await activeWorkflowRunner.isActive('1')).toBe(true);
 	});
@@ -214,7 +218,8 @@ describe('ActiveWorkflowRunner', () => {
 	test('Calling add should call checkIfWorkflowCanBeActivated', async () => {
 		// Initialize with default (0) workflows
 		await activeWorkflowRunner.init();
-		generateWorkflows(1);
+		const [wf] = generateWorkflows(1);
+		workflowRepository.findById.mockResolvedValue(wf);
 		await activeWorkflowRunner.add('1', 'activate');
 		expect(workflowCheckIfCanBeActivated).toHaveBeenCalledTimes(1);
 	});
