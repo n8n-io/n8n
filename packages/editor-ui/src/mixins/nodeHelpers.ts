@@ -44,7 +44,7 @@ import { useRootStore } from '@/stores';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { defineComponent } from 'vue';
-import { filterAndHighlightDeep } from '@/utils/ndvUtils';
+import { searchInObject } from '@/utils/objectUtils';
 
 export const nodeHelpers = defineComponent({
 	computed: {
@@ -560,7 +560,7 @@ export const nodeHelpers = defineComponent({
 			}
 			const data = connectionsData[connectionType][outputIndex] as INodeExecutionData[];
 
-			return filter ? filterAndHighlightDeep(filter, data) : data;
+			return filter ? data.filter(({ json }) => searchInObject(json, filter)) : data;
 		},
 
 		// Returns all the binary data of all the entries
