@@ -18,7 +18,6 @@ import type {
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { Agent as HTTPSAgent } from 'https';
-import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
@@ -107,13 +106,11 @@ export class MessageEventBusDestinationWebhook
 	async matchDecryptedCredentialType(credentialType: string) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
-			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
 				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
-				timezone,
 				true,
 			);
 			return credentialsDecrypted;

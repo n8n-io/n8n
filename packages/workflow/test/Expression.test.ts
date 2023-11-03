@@ -3,7 +3,6 @@
  */
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { Expression } from '@/Expression';
 import { Workflow } from '@/Workflow';
 import * as Helpers from './Helpers';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
@@ -21,6 +20,7 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 		describe('getParameterValue()', () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
+				id: '1',
 				nodes: [
 					{
 						name: 'node',
@@ -35,10 +35,10 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				active: false,
 				nodeTypes,
 			});
-			const expression = new Expression(workflow);
+			const expression = workflow.expression;
 
 			const evaluate = (value: string) =>
-				expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', '', {});
+				expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
 
 			it('should not be able to use global built-ins from denylist', () => {
 				expect(evaluate('={{document}}')).toEqual({});
@@ -84,9 +84,13 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				expect(evaluate('={{DateTime.now().toLocaleString()}}')).toEqual(
 					DateTime.now().toLocaleString(),
 				);
+
+				jest.useFakeTimers({ now: new Date() });
 				expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
 					Interval.after(new Date(), 100),
 				);
+				jest.useRealTimers();
+
 				expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
 
 				expect(evaluate('={{new Object()}}')).toEqual(new Object());
@@ -170,6 +174,7 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 		describe('Test all expression value fixtures', () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
+				id: '1',
 				nodes: [
 					{
 						name: 'node',
@@ -185,21 +190,11 @@ for (const evaluator of ['tmpl', 'tournament'] as const) {
 				nodeTypes,
 			});
 
-			const expression = new Expression(workflow);
+			const expression = workflow.expression;
 
 			const evaluate = (value: string, data: INodeExecutionData[]) => {
 				const itemIndex = data.length === 0 ? -1 : 0;
-				return expression.getParameterValue(
-					value,
-					null,
-					0,
-					itemIndex,
-					'node',
-					data,
-					'manual',
-					'',
-					{},
-				);
+				return expression.getParameterValue(value, null, 0, itemIndex, 'node', data, 'manual', {});
 			};
 
 			for (const t of baseFixtures) {

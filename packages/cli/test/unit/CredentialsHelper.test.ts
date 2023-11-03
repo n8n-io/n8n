@@ -267,8 +267,6 @@ describe('CredentialsHelper', () => {
 			nodeTypes,
 		});
 
-		const timezone = 'America/New_York';
-
 		for (const testData of tests) {
 			test(testData.description, async () => {
 				mockNodesAndCredentials.loadedCredentials = {
@@ -286,7 +284,6 @@ describe('CredentialsHelper', () => {
 					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
-					timezone,
 				);
 
 				expect(result).toEqual(testData.output);

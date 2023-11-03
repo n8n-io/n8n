@@ -135,7 +135,6 @@ export function WorkflowExecuteAdditionalData(
 		executeWorkflow: async (workflowInfo: IExecuteWorkflowInfo) => {},
 		sendDataToUI: (message: string) => {},
 		restApiUrl: '',
-		timezone: 'America/New_York',
 		webhookBaseUrl: 'webhook',
 		webhookWaitingBaseUrl: 'webhook-waiting',
 		webhookTestBaseUrl: 'webhook-test',

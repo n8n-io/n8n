@@ -16,7 +16,7 @@ type Props = {
 	createNodeActive?: boolean;
 };
 
-// eslint-disable-next-line @typescript-eslint/naming-convention, @typescript-eslint/no-unsafe-assignment
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const NodeCreator = defineAsyncComponent(
 	async () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 );
@@ -170,13 +170,13 @@ function nodeTypeSelected(nodeTypes: string[]) {
 	pointer-events: all !important;
 
 	button {
-		border-color: var(--color-foreground-xdark);
-		color: var(--color-foreground-xdark);
+		border-color: var(--color-button-node-creator-border-font);
+		color: var(--color-button-node-creator-border-font);
 
 		&:hover {
-			border-color: var(--color-primary);
-			color: var(--color-primary);
-			background: var(--color-background-xlight);
+			border-color: var(--color-button-node-creator-hover-border-font);
+			color: var(--color-button-node-creator-hover-border-font);
+			background: var(--color-button-node-creator-background);
 		}
 	}
 }

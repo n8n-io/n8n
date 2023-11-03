@@ -107,20 +107,28 @@ export class FormTrigger implements INodeType {
 								description: 'The type of field to add to the form',
 								options: [
 									{
-										name: 'Text',
-										value: 'text',
-									},
-									{
-										name: 'Number',
-										value: 'number',
-									},
-									{
 										name: 'Date',
 										value: 'date',
 									},
 									{
 										name: 'Dropdown List',
 										value: 'dropdown',
+									},
+									{
+										name: 'Number',
+										value: 'number',
+									},
+									{
+										name: 'Password',
+										value: 'password',
+									},
+									{
+										name: 'Text',
+										value: 'text',
+									},
+									{
+										name: 'Textarea',
+										value: 'textarea',
 									},
 								],
 								required: true,

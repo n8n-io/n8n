@@ -250,8 +250,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 							}
 
 							newNodePosition = [
-								parseInt(element.style.left!.slice(0, -2), 10),
-								parseInt(element.style.top!.slice(0, -2), 10),
+								parseInt(element.style.left.slice(0, -2), 10),
+								parseInt(element.style.top.slice(0, -2), 10),
 							];
 
 							const updateInformation = {

@@ -20,7 +20,7 @@ export function useLoadingService() {
 			lock: true,
 			text: text || i18n.baseText('genericHelpers.loading'),
 			spinner: 'el-icon-loading',
-			background: 'rgba(255, 255, 255, 0.8)',
+			background: 'var(--color-dialog-overlay-background)',
 		}) as unknown as LoadingService;
 	}
 

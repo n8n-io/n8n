@@ -62,7 +62,7 @@ import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
-import type { IUser, IUserListAction } from '@/Interface';
+import type { IUserListAction } from '@/Interface';
 import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
 import { useUIStore } from '@/stores/ui.store';
@@ -137,13 +137,13 @@ export default defineComponent({
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
 		},
 		async onDelete(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				this.uiStore.openDeleteUserModal(userId);
 			}
 		},
 		async onReinvite(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				try {
 					await this.usersStore.reinviteUser({ id: user.id });
@@ -161,7 +161,7 @@ export default defineComponent({
 			}
 		},
 		async onCopyInviteLink(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user?.inviteAcceptUrl) {
 				this.copyToClipboard(user.inviteAcceptUrl);
 
@@ -173,7 +173,7 @@ export default defineComponent({
 			}
 		},
 		async onCopyPasswordResetLink(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				const url = await this.usersStore.getUserPasswordResetLink(user);
 				this.copyToClipboard(url.link);
@@ -186,7 +186,7 @@ export default defineComponent({
 			}
 		},
 		async onAllowSSOManualLogin(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user) {
 				if (!user.settings) {
 					user.settings = {};
@@ -202,7 +202,7 @@ export default defineComponent({
 			}
 		},
 		async onDisallowSSOManualLogin(userId: string) {
-			const user = this.usersStore.getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId);
 			if (user?.settings) {
 				user.settings.allowSSOManualLogin = false;
 				await this.usersStore.updateOtherUserSettings(userId, user.settings);

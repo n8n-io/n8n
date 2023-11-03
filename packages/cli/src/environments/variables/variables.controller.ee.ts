@@ -11,7 +11,6 @@ import {
 import { isVariablesEnabled } from './enviromentHelpers';
 import { Logger } from '@/Logger';
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEVariablesController = express.Router();
 
 EEVariablesController.use((req, res, next) => {

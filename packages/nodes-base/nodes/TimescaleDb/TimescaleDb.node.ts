@@ -6,9 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
-
 import pgPromise from 'pg-promise';
+import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
 
 export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {

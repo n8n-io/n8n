@@ -62,11 +62,47 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		cy.reload();
 		workflowPage.actions.openNode('Schedule Trigger');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
+	});
+
+	it('Should be duplicating pin data when duplicating node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData([{ test: 1 }]);
+		ndv.actions.close();
+
+		workflowPage.actions.duplicateNode(workflowPage.getters.canvasNodes().last());
+
+		workflowPage.actions.saveWorkflowOnButtonClick();
+
+		workflowPage.actions.openNode('Edit Fields1');
+
+		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
+		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
+	});
+
+	it('Should show an error when maximum pin data size is exceeded', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData([
+			{
+				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
+			},
+		]);
+		workflowPage.getters
+			.errorToast()
+			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
 	});
 
 	it('Should be able to reference paired items in a node located before pinned data', () => {

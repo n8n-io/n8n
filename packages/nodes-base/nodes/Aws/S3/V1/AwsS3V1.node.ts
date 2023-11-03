@@ -1,7 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { paramCase, snakeCase } from 'change-case';
-
 import { createHash } from 'crypto';
+import { paramCase, snakeCase } from 'change-case';
 
 import { Builder } from 'xml2js';
 

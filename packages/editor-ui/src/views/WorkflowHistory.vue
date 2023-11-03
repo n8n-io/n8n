@@ -67,6 +67,10 @@ const actions = computed<UserAction[]>(() =>
 	})),
 );
 
+const isFirstItemShown = computed(
+	() => workflowHistory.value[0]?.versionId === route.params.versionId,
+);
+
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
 		route.params.workflowId,
@@ -294,14 +298,14 @@ watchEffect(async () => {
 </script>
 <template>
 	<div :class="$style.view">
-		<n8n-heading :class="$style.header" tag="h2" size="medium" bold>
+		<n8n-heading :class="$style.header" tag="h2" size="medium">
 			{{ activeWorkflow?.name }}
 		</n8n-heading>
 		<div :class="$style.corner">
 			<n8n-heading tag="h2" size="medium" bold>
 				{{ i18n.baseText('workflowHistory.title') }}
 			</n8n-heading>
-			<router-link :to="editorRoute">
+			<router-link :to="editorRoute" data-test-id="workflow-history-close-button">
 				<n8n-button type="tertiary" icon="times" size="small" text square />
 			</router-link>
 		</div>
@@ -326,9 +330,10 @@ watchEffect(async () => {
 			<workflow-history-content
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
+				:workflowVersion="activeWorkflowVersion"
 				:actions="actions"
 				:isListLoading="isListLoading"
+				:isFirstItemShown="isFirstItemShown"
 				@action="onAction"
 			/>
 		</div>

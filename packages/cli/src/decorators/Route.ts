@@ -6,7 +6,6 @@ interface RouteOptions {
 	middlewares?: RequestHandler[];
 }
 
-/* eslint-disable @typescript-eslint/naming-convention */
 const RouteFactory =
 	(method: Method) =>
 	(path: `/${string}`, options: RouteOptions = {}): MethodDecorator =>

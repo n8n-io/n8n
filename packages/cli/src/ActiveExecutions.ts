@@ -7,7 +7,7 @@ import type {
 	IRun,
 	ExecutionStatus,
 } from 'n8n-workflow';
-import { createDeferredPromise } from 'n8n-workflow';
+import { WorkflowOperationError, createDeferredPromise } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
 import type PCancelable from 'p-cancelable';
@@ -190,12 +190,12 @@ export class ActiveExecutions {
 	 * @param {string} executionId The id of the execution to wait for
 	 */
 	async getPostExecutePromise(executionId: string): Promise<IRun | undefined> {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new WorkflowOperationError(`There is no active execution with id "${executionId}".`);
+		}
+
 		// Create the promise which will be resolved when the execution finished
 		const waitPromise = await createDeferredPromise<IRun | undefined>();
-
-		if (this.activeExecutions[executionId] === undefined) {
-			throw new Error(`There is no active execution with id "${executionId}".`);
-		}
 
 		this.activeExecutions[executionId].postExecutePromises.push(waitPromise);
 

@@ -303,7 +303,7 @@ export default defineComponent({
 			if (!node) {
 				return false;
 			}
-			return !!(node && node.credentials && Object.keys(node.credentials).length === 1);
+			return !!(node?.credentials && Object.keys(node.credentials).length === 1);
 		},
 		credentialsNotSet(): boolean {
 			const nodeType = this.nodeTypesStore.getNodeType(this.node?.type);
@@ -350,7 +350,7 @@ export default defineComponent({
 		},
 		urlValue(): string | null {
 			if (this.isListMode && typeof this.modelValue === 'object') {
-				return (this.modelValue && this.modelValue.cachedResultUrl) || null;
+				return this.modelValue?.cachedResultUrl || null;
 			}
 
 			if (this.selectedMode === 'url') {
@@ -394,7 +394,7 @@ export default defineComponent({
 			const cacheKeys = { ...this.currentRequestParams };
 			cacheKeys.parameters = Object.keys(this.node ? this.node.parameters : {}).reduce(
 				(accu: INodeParameters, param) => {
-					if (param !== this.parameter.name && this.node && this.node.parameters) {
+					if (param !== this.parameter.name && this.node?.parameters) {
 						accu[param] = this.node.parameters[param];
 					}
 
@@ -418,7 +418,7 @@ export default defineComponent({
 			);
 		},
 		currentQueryHasMore(): boolean {
-			return !!(this.currentResponse && this.currentResponse.nextPageToken);
+			return !!this.currentResponse?.nextPageToken;
 		},
 		currentQueryLoading(): boolean {
 			if (this.requiresSearchFilter && this.searchFilter === '') {
@@ -449,14 +449,13 @@ export default defineComponent({
 			}
 		},
 		isValueExpression(newValue: boolean) {
-			if (newValue === true) {
+			if (newValue) {
 				this.switchFromListMode();
 			}
 		},
 		currentMode(mode: INodePropertyMode) {
 			if (
-				mode.extractValue &&
-				mode.extractValue.regex &&
+				mode.extractValue?.regex &&
 				isResourceLocatorValue(this.modelValue) &&
 				this.modelValue.__regex !== mode.extractValue.regex
 			) {
@@ -546,7 +545,7 @@ export default defineComponent({
 		},
 		openCredential(): void {
 			const node = this.ndvStore.activeNode;
-			if (!node || !node.credentials) {
+			if (!node?.credentials) {
 				return;
 			}
 			const credentialKey = Object.keys(node.credentials)[0];
@@ -585,11 +584,11 @@ export default defineComponent({
 			const params: INodeParameterResourceLocator = { __rl: true, value, mode: this.selectedMode };
 			if (this.isListMode) {
 				const resource = this.currentQueryResults.find((resource) => resource.value === value);
-				if (resource && resource.name) {
+				if (resource?.name) {
 					params.cachedResultName = resource.name;
 				}
 
-				if (resource && resource.url) {
+				if (resource?.url) {
 					params.cachedResultUrl = resource.url;
 				}
 			}
@@ -598,7 +597,7 @@ export default defineComponent({
 		onModeSelected(value: string): void {
 			if (typeof this.modelValue !== 'object') {
 				this.$emit('update:modelValue', { __rl: true, value: this.modelValue, mode: value });
-			} else if (value === 'url' && this.modelValue && this.modelValue.cachedResultUrl) {
+			} else if (value === 'url' && this.modelValue?.cachedResultUrl) {
 				this.$emit('update:modelValue', {
 					__rl: true,
 					mode: value,
@@ -621,9 +620,9 @@ export default defineComponent({
 			this.$telemetry.track(event, {
 				instance_id: this.rootStore.instanceId,
 				workflow_id: this.workflowsStore.workflowId,
-				node_type: this.node && this.node.type,
-				resource: this.node && this.node.parameters && this.node.parameters.resource,
-				operation: this.node && this.node.parameters && this.node.parameters.operation,
+				node_type: this.node?.type,
+				resource: this.node?.parameters && this.node.parameters.resource,
+				operation: this.node?.parameters && this.node.parameters.operation,
 				field_name: this.parameter.name,
 				...params,
 			});

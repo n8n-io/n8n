@@ -1,11 +1,11 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type {
 	ISheetUpdateData,
 	SheetProperties,
 	ValueInputOption,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
-import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from '../../helpers/GoogleSheet';
 import { cellFormatDefault, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
@@ -244,7 +244,7 @@ export async function execute(
 
 	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
 
-	if (sheetData === undefined || sheetData[headerRow] === undefined) {
+	if (sheetData?.[headerRow] === undefined) {
 		throw new NodeOperationError(
 			this.getNode(),
 			`Could not retrieve the column names from row ${headerRow + 1}`,

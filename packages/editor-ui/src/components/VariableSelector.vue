@@ -135,7 +135,7 @@ export default defineComponent({
 				return newItems;
 			}
 
-			if (inputData && inputData.options) {
+			if (inputData?.options) {
 				const newOptions = this.removeEmptyEntries(inputData.options);
 				if (Array.isArray(newOptions) && newOptions.length) {
 					// Has still options left so return
@@ -391,7 +391,7 @@ export default defineComponent({
 
 			// Get json data
 			if (outputData.hasOwnProperty('json')) {
-				const jsonPropertyPrefix = useShort === true ? '$json' : `$('${nodeName}').item.json`;
+				const jsonPropertyPrefix = useShort ? '$json' : `$('${nodeName}').item.json`;
 
 				const jsonDataOptions: IVariableSelectorOption[] = [];
 				for (const propertyName of Object.keys(outputData.json)) {
@@ -416,7 +416,7 @@ export default defineComponent({
 
 			// Get binary data
 			if (outputData.hasOwnProperty('binary')) {
-				const binaryPropertyPrefix = useShort === true ? '$binary' : `$('${nodeName}').item.binary`;
+				const binaryPropertyPrefix = useShort ? '$binary' : `$('${nodeName}').item.binary`;
 
 				const binaryData = [];
 				let binaryPropertyData = [];
@@ -515,7 +515,6 @@ export default defineComponent({
 				connectionInputData,
 				{},
 				'manual',
-				this.rootStore.timezone,
 				additionalKeys,
 			);
 			const proxy = dataProxy.getDataProxy();
@@ -610,7 +609,7 @@ export default defineComponent({
 
 			let tempOptions: IVariableSelectorOption[];
 
-			if (executionData !== null && executionData.data !== undefined) {
+			if (executionData?.data !== undefined) {
 				const runExecutionData: IRunExecutionData = executionData.data;
 
 				tempOptions = this.getNodeContext(
@@ -791,7 +790,7 @@ export default defineComponent({
 					} as IVariableSelectorOption,
 				];
 
-				if (executionData !== null && executionData.data !== undefined) {
+				if (executionData?.data !== undefined) {
 					const runExecutionData: IRunExecutionData = executionData.data;
 
 					parentNode = this.workflow.getParentNodes(nodeName, inputName, 1);

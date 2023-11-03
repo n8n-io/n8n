@@ -150,7 +150,7 @@ export default defineComponent({
 	async mounted() {
 		this.scrollToTop();
 
-		if (this.collection && (this.collection as ITemplatesCollectionFull).full) {
+		if (this.collection && this.collection.full) {
 			this.loading = false;
 			return;
 		}

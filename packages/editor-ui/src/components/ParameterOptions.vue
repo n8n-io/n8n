@@ -100,7 +100,7 @@ export default defineComponent({
 			return this.parameter.noDataExpression !== true && this.showExpressionSelector;
 		},
 		shouldShowOptions(): boolean {
-			if (this.isReadOnly === true) {
+			if (this.isReadOnly) {
 				return false;
 			}
 
@@ -112,7 +112,7 @@ export default defineComponent({
 				return false;
 			}
 
-			if (this.showOptions === true) {
+			if (this.showOptions) {
 				return true;
 			}
 

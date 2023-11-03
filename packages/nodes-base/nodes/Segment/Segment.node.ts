@@ -6,6 +6,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
 import { segmentApiRequest } from './GenericFunctions';
 
 import { groupFields, groupOperations } from './GroupDescription';
@@ -17,8 +18,6 @@ import type { IIdentify } from './IdentifyInterface';
 import { trackFields, trackOperations } from './TrackDescription';
 
 import type { IGroup, ITrack } from './TrackInterface';
-
-import { v4 as uuid } from 'uuid';
 
 export class Segment implements INodeType {
 	description: INodeTypeDescription = {

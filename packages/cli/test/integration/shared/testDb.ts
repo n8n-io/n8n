@@ -181,6 +181,10 @@ export function affixRoleToSaveCredential(role: Role) {
 		saveCredential(credentialPayload, { user, role });
 }
 
+export async function getAllCredentials() {
+	return Db.collections.Credentials.find();
+}
+
 // ----------------------------------
 //           user creation
 // ----------------------------------

@@ -1,6 +1,5 @@
 import type { IDataObject, DocMetadata, NativeDoc } from 'n8n-workflow';
-import { Expression } from 'n8n-workflow';
-import { ExpressionExtensions, NativeMethods } from 'n8n-workflow';
+import { Expression, ExpressionExtensions, NativeMethods } from 'n8n-workflow';
 import { DateTime } from 'luxon';
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
@@ -196,7 +195,7 @@ const createCompletionOption = (
 				const descriptionLink = document.createElement('a');
 				descriptionLink.setAttribute('target', '_blank');
 				descriptionLink.setAttribute('href', docInfo.doc.docURL);
-				descriptionLink.innerText = i18n.autocompleteUIValues['docLinkLabel'] || 'Learn more';
+				descriptionLink.innerText = i18n.autocompleteUIValues.docLinkLabel || 'Learn more';
 				descriptionLink.addEventListener('mousedown', (event: MouseEvent) => {
 					// This will prevent documentation popup closing before click
 					// event gets to links

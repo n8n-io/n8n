@@ -34,9 +34,9 @@ properties:
     type: number
   waitBetweenTries:
     type: number
-  continueOnFail:
-    type: boolean
-    example: false
+  onError:
+    type: string
+    example: 'stopWorkflow'
   position:
     type: array
     items:

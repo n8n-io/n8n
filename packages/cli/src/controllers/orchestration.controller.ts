@@ -1,13 +1,13 @@
 import { Authorized, Get, RestController } from '@/decorators';
 import { OrchestrationRequest } from '@/requests';
 import { Service } from 'typedi';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 
 @Authorized(['global', 'owner'])
 @RestController('/orchestration')
 @Service()
 export class OrchestrationController {
-	constructor(private readonly orchestrationService: OrchestrationMainService) {}
+	constructor(private readonly orchestrationService: SingleMainInstancePublisher) {}
 
 	/**
 	 * These endpoint currently do not return anything, they just trigger the messsage to

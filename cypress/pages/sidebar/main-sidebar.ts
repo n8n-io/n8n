@@ -13,6 +13,7 @@ export class MainSidebar extends BasePage {
 		credentials: () => this.getters.menuItem('Credentials'),
 		executions: () => this.getters.menuItem('Executions'),
 		userMenu: () => cy.get('div[class="action-dropdown-container"]'),
+		logo: () => cy.getByTestId('n8n-logo'),
 	};
 	actions = {
 		goToSettings: () => {

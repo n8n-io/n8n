@@ -178,7 +178,7 @@ class WorkflowRunnerProcess {
 		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
 			executionId: inputData.executionId,
 		});
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 		additionalData.sendDataToUI = async (type: string, data: IDataObject | IDataObject[]) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
 				return;

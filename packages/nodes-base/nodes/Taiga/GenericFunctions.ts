@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type { OptionsWithUri } from 'request';
 
 import type {
@@ -10,8 +11,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { createHash } from 'crypto';
 
 export async function getAuthorization(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,

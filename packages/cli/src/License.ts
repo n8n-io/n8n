@@ -23,6 +23,14 @@ type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
+export class FeatureNotLicensedError extends Error {
+	constructor(feature: (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES]) {
+		super(
+			`Your license does not allow for ${feature}. To enable ${feature}, please upgrade to a license that supports this feature.`,
+		);
+	}
+}
+
 @Service()
 export class License {
 	private manager: LicenseManager | undefined;
@@ -105,6 +113,17 @@ export class License {
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
 		if (config.getEnv('executions.mode') === 'queue') {
+			if (config.getEnv('leaderSelection.enabled')) {
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
+
+				if (Container.get(MultiMainInstancePublisher).isFollower) {
+					this.logger.debug('Instance is follower, skipping sending of reloadLicense command...');
+					return;
+				}
+			}
+
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');
 				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
@@ -202,6 +221,10 @@ export class License {
 
 	isBinaryDataS3Licensed() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.BINARY_DATA_S3);
+	}
+
+	isMultipleMainInstancesLicensed() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
 	isVariablesEnabled() {

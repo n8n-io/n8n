@@ -5,9 +5,9 @@ import type {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
+import { Client } from 'ssh2';
 import { configurePostgres } from '../transport';
 
-import { Client } from 'ssh2';
 import type { PgpClient } from '../helpers/interfaces';
 
 export async function postgresConnectionTest(

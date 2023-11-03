@@ -1,14 +1,13 @@
-import type { IDataObject } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
-
+import type { Server } from 'net';
+import { createServer } from 'net';
 import { Client } from 'ssh2';
 import type { ConnectConfig } from 'ssh2';
 
-import type { Server } from 'net';
-import { createServer } from 'net';
+import type { IDataObject } from 'n8n-workflow';
 
 import pgPromise from 'pg-promise';
 import type { PgpDatabase } from '../helpers/interfaces';
+import { formatPrivateKey } from '@utils/utilities';
 
 async function createSshConnectConfig(credentials: IDataObject) {
 	if (credentials.sshAuthenticateWith === 'password') {
@@ -45,7 +44,7 @@ export async function configurePostgres(
 		noWarnings: true,
 	});
 
-	if (typeof options.nodeVersion == 'number' && options.nodeVersion >= 2.1) {
+	if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
 		// Always return dates as ISO strings
 		[pgp.pg.types.builtins.TIMESTAMP, pgp.pg.types.builtins.TIMESTAMPTZ].forEach((type) => {
 			pgp.pg.types.setTypeParser(type, (value: string) => {

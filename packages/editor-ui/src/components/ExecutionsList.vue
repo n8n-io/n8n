@@ -1074,7 +1074,7 @@ export default defineComponent({
 		top: calc(var(--spacing-3xl) * -1);
 		z-index: 2;
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-background-base);
+		background: var(--color-table-header-background);
 
 		&:first-child {
 			padding-left: var(--spacing-s);
@@ -1085,7 +1085,7 @@ export default defineComponent({
 	td {
 		height: 100%;
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
-		background: var(--color-background-xlight);
+		background: var(--color-table-row-background);
 
 		&:not(:first-child, :nth-last-child(-n + 3)) {
 			width: 100%;
@@ -1127,33 +1127,33 @@ export default defineComponent({
 		}
 
 		&:nth-child(even) td {
-			background: var(--color-background-light);
+			background: var(--color-table-row-even-background);
 		}
 
 		&:hover td {
-			background: var(--color-primary-tint-3);
+			background: var(--color-table-row-hover-background);
 		}
 
 		&.crashed td:first-child::before,
 		&.failed td:first-child::before {
-			background: hsl(var(--color-danger-h), 94%, 80%);
+			background: var(--execution-card-border-error);
 		}
 
 		&.success td:first-child::before {
-			background: hsl(var(--color-success-h), 60%, 70%);
+			background: var(--execution-card-border-success);
 		}
 
 		&.new td:first-child::before,
 		&.running td:first-child::before {
-			background: hsl(var(--color-warning-h), 94%, 80%);
+			background: var(--execution-card-border-running);
 		}
 
 		&.waiting td:first-child::before {
-			background: hsl(var(--color-secondary-h), 94%, 80%);
+			background: var(--execution-card-border-waiting);
 		}
 
 		&.unknown td:first-child::before {
-			background: var(--color-text-light);
+			background: var(--execution-card-border-unknown);
 		}
 	}
 }
@@ -1167,6 +1167,7 @@ export default defineComponent({
 .loadedAll {
 	text-align: center;
 	font-size: var(--font-size-s);
+	color: var(--color-text-light);
 	margin: var(--spacing-l) 0;
 }
 
