@@ -1678,6 +1678,8 @@ export default defineComponent({
 					});
 				}
 
+				this.removeUnknownCredentials(workflowData);
+
 				const currInstanceId = this.rootStore.instanceId;
 
 				const nodeGraph = JSON.stringify(
@@ -1757,6 +1759,23 @@ export default defineComponent({
 				this.showError(error, this.$locale.baseText('nodeView.showError.importWorkflowData.title'));
 			}
 		},
+
+		removeUnknownCredentials(workflow: IWorkflowToShare) {
+			if (!workflow?.nodes) return;
+
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+
+				for (const [name, credential] of Object.entries(node.credentials)) {
+					if (credential.id === null) continue;
+
+					if (!this.credentialsStore.getCredentialById(credential.id)) {
+						delete node.credentials[name];
+					}
+				}
+			}
+		},
+
 		onDragOver(event: DragEvent) {
 			event.preventDefault();
 		},

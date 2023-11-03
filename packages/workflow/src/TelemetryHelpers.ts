@@ -154,6 +154,7 @@ export function generateNodesGraph(
 			const nodeItem: INodeGraphItem = {
 				id: node.id,
 				type: node.type,
+				version: node.typeVersion,
 				position: node.position,
 			};
 

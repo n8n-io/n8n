@@ -2031,6 +2031,7 @@ export interface INoteGraphItem {
 export interface INodeGraphItem {
 	id: string;
 	type: string;
+	version?: number;
 	resource?: string;
 	operation?: string;
 	domain?: string; // HTTP Request node v1
