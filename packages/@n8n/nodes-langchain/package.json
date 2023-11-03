@@ -34,6 +34,7 @@
       "dist/credentials/OllamaApi.credentials.js",
       "dist/credentials/PineconeApi.credentials.js",
       "dist/credentials/SerpApi.credentials.js",
+      "dist/credentials/QdrantApi.credentials.js",
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js"
@@ -95,6 +96,7 @@
       "dist/nodes/vector_store/VectorStoreSupabase/VectorStoreSupabase.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseInsert/VectorStoreSupabaseInsert.node.js",
       "dist/nodes/vector_store/VectorStoreSupabaseLoad/VectorStoreSupabaseLoad.node.js",
+      "dist/nodes/vector_store/VectorStoreQdrant/VectorStoreQdrant.node.js",
       "dist/nodes/vector_store/VectorStoreZep/VectorStoreZep.node.js",
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js"
@@ -116,10 +118,11 @@
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.422.0",
     "@getzep/zep-js": "^0.7.1",
-    "@huggingface/inference": "^2.6.4",
     "@google-ai/generativelanguage": "^0.2.1",
     "@gxl/epub-parser": "^2.0.4",
+    "@huggingface/inference": "^2.6.4",
     "@pinecone-database/pinecone": "^1.1.0",
+    "@qdrant/js-client-rest": "^1.6.0",
     "@supabase/supabase-js": "^2.33.2",
     "@tensorflow-models/universal-sentence-encoder": "1.3.3",
     "@tensorflow/tfjs-backend-cpu": "^4.11.0",

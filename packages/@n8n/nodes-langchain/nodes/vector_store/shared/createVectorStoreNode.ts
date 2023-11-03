@@ -33,6 +33,7 @@ interface VectorStoreNodeConstructorArgs {
 	insertFields?: INodeProperties[];
 	loadFields?: INodeProperties[];
 	retrieveFields?: INodeProperties[];
+	filtersTransform?: (filters: Record<string, never> | undefined) => any;
 	populateVectorStore: (
 		context: IExecuteFunctions,
 		embeddings: Embeddings,
@@ -194,10 +195,15 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					const topK = this.getNodeParameter('topK', itemIndex, 4) as number;
 
 					const embeddedPrompt = await embeddings.embedQuery(prompt);
+					const transformedFilter = args.filtersTransform ? args.filtersTransform(filter) : filter;
+					console.log(
+						'🚀 ~ file: createVectorStoreNode.ts:204 ~ VectorStoreNodeType ~ execute ~ args.filtersTransform ? args.filtersTransform(filter) : filter:',
+						JSON.stringify(transformedFilter),
+					);
 					const docs = await vectorStore.similaritySearchVectorWithScore(
 						embeddedPrompt,
 						topK,
-						filter,
+						transformedFilter,
 					);
 
 					const serializedDocs = docs.map(([doc, score]) => {
