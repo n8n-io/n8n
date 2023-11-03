@@ -94,6 +94,7 @@ const onDragEnd = (el: HTMLElement) => {
 					:draggingPath="draggingPath"
 					:distanceFromActive="distanceFromActive"
 					:node="node"
+					:search="search"
 				/>
 			</div>
 		</draggable>

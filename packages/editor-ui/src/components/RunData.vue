@@ -180,7 +180,6 @@
 				@update:modelValue="onBranchChange"
 			/>
 			<n8n-input
-				v-if="displayMode !== 'schema'"
 				:class="$style.ioSearchNextToTabs"
 				size="small"
 				:modelValue="search"
@@ -203,7 +202,6 @@
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
 			<n8n-input
-				v-if="displayMode !== 'schema'"
 				:class="$style.ioSearch"
 				size="small"
 				:modelValue="search"
