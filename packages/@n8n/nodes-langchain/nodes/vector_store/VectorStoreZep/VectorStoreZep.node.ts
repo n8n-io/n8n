@@ -57,7 +57,7 @@ export const VectorStoreZep = createVectorStoreNode({
 		],
 		icon: 'file:zep.png',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorezep/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorezep/',
 	},
 	sharedFields: [
 		{

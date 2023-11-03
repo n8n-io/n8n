@@ -6,8 +6,8 @@ import {
 	type INodeTypeDescription,
 	type SupplyData,
 } from 'n8n-workflow';
+import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
 import { logWrapper } from '../../../utils/logWrapper';
-import { HuggingFaceInferenceEmbeddings } from './HuggingFaceEmbeddings';
 
 export class EmbeddingsHuggingFaceInference implements INodeType {
 	description: INodeTypeDescription = {

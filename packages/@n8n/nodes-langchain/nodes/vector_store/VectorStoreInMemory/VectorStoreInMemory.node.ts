@@ -26,7 +26,7 @@ export const VectorStoreInMemory = createVectorStoreNode({
 		description: 'Work with your data in In-Memory Vector Store',
 		icon: 'fa:database',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstoreinmemoryload/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/',
 	},
 	sharedFields: [
 		{

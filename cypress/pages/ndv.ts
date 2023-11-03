@@ -104,7 +104,12 @@ export class NDV extends BasePage {
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`);
+				.type(
+					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
+					{
+						delay: 0,
+					},
+				);
 
 			this.actions.savePinnedData();
 		},

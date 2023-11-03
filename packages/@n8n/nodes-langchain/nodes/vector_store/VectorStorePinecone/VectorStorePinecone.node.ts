@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 import type { PineconeLibArgs } from 'langchain/vectorstores/pinecone';
 import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { PineconeClient } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
 import { metadataFilterField } from '../../../utils/sharedFields';
 
@@ -13,12 +13,6 @@ const sharedFields: INodeProperties[] = [
 		default: '',
 		required: true,
 	},
-	{
-		displayName: 'Pinecone Namespace',
-		name: 'pineconeNamespace',
-		type: 'string',
-		default: '',
-	},
 ];
 
 const retrieveFields: INodeProperties[] = [
@@ -28,17 +22,44 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [metadataFilterField],
+		options: [
+			{
+				displayName: 'Pinecone Namespace',
+				name: 'pineconeNamespace',
+				type: 'string',
+				description:
+					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
+				default: '',
+			},
+			metadataFilterField,
+		],
 	},
 ];
 
 const insertFields: INodeProperties[] = [
 	{
-		displayName: 'Clear Namespace',
-		name: 'clearNamespace',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to clear the namespace before inserting new data',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Clear Namespace',
+				name: 'clearNamespace',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to clear the namespace before inserting new data',
+			},
+			{
+				displayName: 'Pinecone Namespace',
+				name: 'pineconeNamespace',
+				type: 'string',
+				description:
+					'Partition the records in an index into namespaces. Queries and other operations are then limited to one namespace, so different requests can search different subsets of your index.',
+				default: '',
+			},
+		],
 	},
 ];
 export const VectorStorePinecone = createVectorStoreNode({
@@ -48,7 +69,7 @@ export const VectorStorePinecone = createVectorStoreNode({
 		description: 'Work with your data in Pinecone Vector Store',
 		icon: 'file:pinecone.svg',
 		docsUrl:
-			'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.vectorstorepineconeload/',
+			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorepinecone/',
 		credentials: [
 			{
 				name: 'pineconeApi',
@@ -61,19 +82,20 @@ export const VectorStorePinecone = createVectorStoreNode({
 	insertFields,
 	sharedFields,
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
-		const namespace = context.getNodeParameter('pineconeNamespace', itemIndex) as string;
 		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			pineconeNamespace?: string;
+		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
 
 		const pineconeIndex = client.Index(index);
 		const config: PineconeLibArgs = {
-			namespace: namespace || undefined,
+			namespace: options.pineconeNamespace ?? undefined,
 			pineconeIndex,
 			filter,
 		};
@@ -81,26 +103,26 @@ export const VectorStorePinecone = createVectorStoreNode({
 		return PineconeStore.fromExistingIndex(embeddings, config);
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
-		const namespace = context.getNodeParameter('pineconeNamespace', itemIndex) as string;
 		const index = context.getNodeParameter('pineconeIndex', itemIndex) as string;
-		const clearNamespace = context.getNodeParameter('clearNamespace', itemIndex) as boolean;
-
+		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			pineconeNamespace?: string;
+			clearNamespace?: boolean;
+		};
 		const credentials = await context.getCredentials('pineconeApi');
 
-		const client = new PineconeClient();
-		await client.init({
+		const client = new Pinecone({
 			apiKey: credentials.apiKey as string,
 			environment: credentials.environment as string,
 		});
 
 		const pineconeIndex = client.Index(index);
 
-		if (namespace && clearNamespace) {
-			await pineconeIndex.delete1({ deleteAll: true, namespace });
+		if (options.pineconeNamespace && options.clearNamespace) {
+			await pineconeIndex.namespace(options.pineconeNamespace).deleteAll();
 		}
 
 		await PineconeStore.fromDocuments(documents, embeddings, {
-			namespace: namespace || undefined,
+			namespace: options.pineconeNamespace ?? undefined,
 			pineconeIndex,
 		});
 	},
