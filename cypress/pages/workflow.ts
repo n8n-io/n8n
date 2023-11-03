@@ -265,7 +265,8 @@ export class WorkflowPage extends BasePage {
 				ctrlKey: true,
 				pageX: cy.window().innerWidth / 2,
 				pageY: cy.window().innerHeight / 2,
-				deltaY: mode === 'zoomOut' ? 16 * steps : -16 * steps,
+				deltaMode: 1,
+				deltaY: mode === 'zoomOut' ? steps : -steps,
 			});
 		},
 		hitUndo: () => {
