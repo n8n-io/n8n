@@ -18,6 +18,7 @@ beforeEach(() => {
 	}
 
 	cy.intercept('GET', '/rest/settings').as('loadSettings');
+	cy.intercept('GET', '/types/nodes.json').as('loadNodeTypes');
 
 	// Always intercept the request to test credentials and return a success
 	cy.intercept('POST', '/rest/credentials/test', {
