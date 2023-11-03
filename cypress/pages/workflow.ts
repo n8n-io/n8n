@@ -214,6 +214,7 @@ export class WorkflowPage extends BasePage {
 			this.getters.saveButton().should('contain', 'Save');
 			this.getters.saveButton().click();
 			this.getters.saveButton().should('contain', 'Saved');
+			cy.url().should('not.have.string', '/new');
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.intercept('POST', '/rest/workflows').as('createWorkflow');
@@ -339,6 +340,12 @@ export class WorkflowPage extends BasePage {
 			cy.get('#select-box').should('be.visible');
 			cy.getByTestId('node-view-wrapper').trigger('mouseup', to[0], to[1], { force: true });
 			cy.get('#select-box').should('not.be.visible');
+		},
+		getNodePosition: (node: Cypress.Chainable<JQuery<HTMLElement>>) => {
+			return node.then(($el) => ({
+				left: +$el[0].style.left.replace('px', ''),
+				top: +$el[0].style.top.replace('px', ''),
+			}));
 		},
 	};
 }
