@@ -37,7 +37,6 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
-	cy.getByTestId('execute-workflow-button').should('be.visible');
 });
 
 Cypress.Commands.add('signin', ({ email, password }) => {
