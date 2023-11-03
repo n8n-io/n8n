@@ -6,6 +6,7 @@ import { useSettingsStore } from '@/stores';
 import { useUsersStore } from '@/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
+import userEvent from '@testing-library/user-event';
 
 let pinia: ReturnType<typeof createPinia>;
 let settingsStore: ReturnType<typeof useSettingsStore>;
@@ -68,5 +69,24 @@ describe('SettingsPersonalView', () => {
 			getAllByRole('textbox').find((el) => el.getAttribute('type') === 'email'),
 		).toBeDisabled();
 		expect(queryByTestId('change-password-link')).not.toBeInTheDocument();
+	});
+
+	it('should validate first and last name', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, getByText } = renderComponent({ pinia });
+		await waitAllPromises();
+
+		const firstNameInput =
+			getByTestId('personal-data-form').querySelector('input[name="firstName"]');
+		const lastNameInput = getByTestId('personal-data-form').querySelector('input[name="lastName"]');
+		if (!firstNameInput || !lastNameInput) {
+			throw new Error('First Name or Last Name input not found');
+		}
+		await user.type(firstNameInput, 'https://n8n.io');
+		await user.click(getByTestId('personal-data-form'));
+		expect(getByText('Invalid First Name')).toBeInTheDocument();
+		await user.type(lastNameInput, 'https://n8n.io');
+		await user.click(getByTestId('personal-data-form'));
+		expect(getByText('Invalid Last Name')).toBeInTheDocument();
 	});
 });
