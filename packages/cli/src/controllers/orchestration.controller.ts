@@ -14,7 +14,7 @@ export class OrchestrationController {
 	) {}
 
 	/**
-	 * These endpoint do not return anything, they just trigger the messsage to
+	 * These endpoints do not return anything, they just trigger the messsage to
 	 * the workers to respond on Redis with their status.
 	 */
 	@Post('/worker/status/:id')
