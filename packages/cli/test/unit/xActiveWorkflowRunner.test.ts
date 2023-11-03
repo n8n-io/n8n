@@ -96,7 +96,7 @@ describe('init()', () => {
 });
 
 describe('removeAll()', () => {
-	test('should deactivate all workflows', async () => {
+	test('should remove all active workflows', async () => {
 		await testDb.createWorkflow({ active: true }, owner);
 		await testDb.createWorkflow({ active: true }, owner);
 
@@ -107,8 +107,23 @@ describe('removeAll()', () => {
 
 		expect(removeSpy).toHaveBeenCalledTimes(2);
 
-		// @TODO: Why is DB not updated when removing active workflows?
-		// const active = activeWorkflowRunner.getActiveWorkflows();
-		// await expect(active).resolves.toHaveLength(0);
+		/**
+		 * `ActiveWorkflowRunner.getActiveWorkflows()` is for workflows stored as
+		 * `active` in the DB (i.e., workflows that should be active whenever n8n is up).
+		 * Workflows stored as `active` are not the same as actually active workflows.
+		 */
+	});
+});
+
+describe('remove()', () => {
+	test('should remove workflow webhooks', async () => {
+		const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+		const removeWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'removeWorkflowWebhooks');
+
+		await activeWorkflowRunner.init();
+		await activeWorkflowRunner.remove(workflow.id);
+
+		expect(removeWebhooksSpy).toHaveBeenCalledTimes(1);
 	});
 });
