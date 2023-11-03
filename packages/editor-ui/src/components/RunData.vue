@@ -179,7 +179,7 @@
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<run-data-search :class="$style.ioSearchNextToTabs" v-model="search" />
+			<run-data-search v-model="search" />
 		</div>
 
 		<div
@@ -192,7 +192,7 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
-			<run-data-search :class="$style.ioSearch" v-model="search" />
+			<run-data-search v-model="search" />
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
