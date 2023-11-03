@@ -3,13 +3,52 @@ import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { IPermissions } from './Interface';
 import { isAuthorized, LOGIN_STATUS, ROLE, runExternalHook } from '@/utils';
-import { useSettingsStore, useUsersStore } from './stores/settings.store';
+import { useSettingsStore } from './stores/settings.store';
+import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useWebhooksStore } from '@/stores/webhooks.store';
-import { useUIStore } from '@/stores';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 import { useTelemetry } from '@/composables';
+
+const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
+const ErrorView = async () => import('./views/ErrorView.vue');
+const ForgotMyPasswordView = async () => import('./views/ForgotMyPasswordView.vue');
+const MainHeader = async () => import('@/components/MainHeader/MainHeader.vue');
+const MainSidebar = async () => import('@/components/MainSidebar.vue');
+const NodeView = async () => import('@/views/NodeView.vue');
+const WorkflowExecutionsList = async () => import('@/components/ExecutionsView/ExecutionsList.vue');
+const ExecutionsLandingPage = async () =>
+	import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
+const ExecutionPreview = async () => import('@/components/ExecutionsView/ExecutionPreview.vue');
+const SettingsView = async () => import('./views/SettingsView.vue');
+const SettingsLdapView = async () => import('./views/SettingsLdapView.vue');
+const SettingsPersonalView = async () => import('./views/SettingsPersonalView.vue');
+const SettingsUsersView = async () => import('./views/SettingsUsersView.vue');
+const SettingsCommunityNodesView = async () => import('./views/SettingsCommunityNodesView.vue');
+const SettingsApiView = async () => import('./views/SettingsApiView.vue');
+const SettingsLogStreamingView = async () => import('./views/SettingsLogStreamingView.vue');
+const SettingsFakeDoorView = async () => import('./views/SettingsFakeDoorView.vue');
+const SetupView = async () => import('./views/SetupView.vue');
+const SigninView = async () => import('./views/SigninView.vue');
+const SignupView = async () => import('./views/SignupView.vue');
+const TemplatesCollectionView = async () => import('@/views/TemplatesCollectionView.vue');
+const TemplatesWorkflowView = async () => import('@/views/TemplatesWorkflowView.vue');
+const TemplatesSearchView = async () => import('@/views/TemplatesSearchView.vue');
+const CredentialsView = async () => import('@/views/CredentialsView.vue');
+const ExecutionsView = async () => import('@/views/ExecutionsView.vue');
+const WorkflowsView = async () => import('@/views/WorkflowsView.vue');
+const VariablesView = async () => import('@/views/VariablesView.vue');
+const SettingsUsageAndPlan = async () => import('./views/SettingsUsageAndPlan.vue');
+const SettingsSso = async () => import('./views/SettingsSso.vue');
+const SignoutView = async () => import('@/views/SignoutView.vue');
+const SamlOnboarding = async () => import('@/views/SamlOnboarding.vue');
+const SettingsSourceControl = async () => import('./views/SettingsSourceControl.vue');
+const SettingsExternalSecrets = async () => import('./views/SettingsExternalSecrets.vue');
+const SettingsAuditLogs = async () => import('./views/SettingsAuditLogs.vue');
+const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
+const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
 
 interface IRouteConfig {
 	meta: {
@@ -39,7 +78,7 @@ export const routes = [
 	{
 		path: '/',
 		name: VIEWS.HOMEPAGE,
-		redirect: () => {
+		redirect: (to) => {
 			return { name: VIEWS.WORKFLOWS };
 		},
 		meta: {
@@ -54,8 +93,8 @@ export const routes = [
 		path: '/collections/:id',
 		name: VIEWS.COLLECTION,
 		components: {
-			default: async () => import('./views/TemplatesCollectionView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: TemplatesCollectionView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			templatesEnabled: true,
@@ -80,8 +119,8 @@ export const routes = [
 		path: '/templates/:id',
 		name: VIEWS.TEMPLATE,
 		components: {
-			default: async () => import('./views/TemplatesWorkflowView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: TemplatesWorkflowView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			templatesEnabled: true,
@@ -106,8 +145,8 @@ export const routes = [
 		path: '/templates/',
 		name: VIEWS.TEMPLATES,
 		components: {
-			default: async () => import('./views/TemplatesSearchView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: TemplatesSearchView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			templatesEnabled: true,
@@ -115,7 +154,7 @@ export const routes = [
 			// Templates view remembers it's scroll position on back
 			scrollOffset: 0,
 			telemetry: {
-				getProperties() {
+				getProperties(route: RouteLocation) {
 					const templatesStore = useTemplatesStore();
 					return {
 						wf_template_repo_session_id: templatesStore.currentSessionId,
@@ -136,8 +175,8 @@ export const routes = [
 		path: '/credentials',
 		name: VIEWS.CREDENTIALS,
 		components: {
-			default: async () => import('./views/CredentialsView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: CredentialsView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			permissions: {
@@ -151,8 +190,8 @@ export const routes = [
 		path: '/variables',
 		name: VIEWS.VARIABLES,
 		components: {
-			default: async () => import('./views/VariablesView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: VariablesView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			permissions: {
@@ -166,8 +205,8 @@ export const routes = [
 		path: '/executions',
 		name: VIEWS.EXECUTIONS,
 		components: {
-			default: async () => import('./views/ExecutionsView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: ExecutionsView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			permissions: {
@@ -181,8 +220,8 @@ export const routes = [
 		path: '/workflows',
 		name: VIEWS.WORKFLOWS,
 		components: {
-			default: async () => import('./views/WorkflowsView.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: WorkflowsView,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			permissions: {
@@ -196,9 +235,9 @@ export const routes = [
 		path: '/workflow/:name/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
 		components: {
-			default: async () => import('./views/NodeView.vue'),
-			header: async () => import('./components/MainHeader/MainHeader.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			nodeView: true,
@@ -218,9 +257,9 @@ export const routes = [
 		path: '/workflow/:name/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		components: {
-			default: async () => import('./components/ExecutionsView/ExecutionsList.vue'),
-			header: async () => import('./components/MainHeader/MainHeader.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: WorkflowExecutionsList,
+			header: MainHeader,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			keepWorkflowAlive: true,
@@ -235,8 +274,7 @@ export const routes = [
 				path: '',
 				name: VIEWS.EXECUTION_HOME,
 				components: {
-					executionPreview: async () =>
-						import('./components/ExecutionsView/ExecutionsLandingPage.vue'),
+					executionPreview: ExecutionsLandingPage,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -251,7 +289,7 @@ export const routes = [
 				path: ':executionId',
 				name: VIEWS.EXECUTION_PREVIEW,
 				components: {
-					executionPreview: async () => import('./components/ExecutionsView/ExecutionPreview.vue'),
+					executionPreview: ExecutionPreview,
 				},
 				meta: {
 					keepWorkflowAlive: true,
@@ -268,8 +306,8 @@ export const routes = [
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
 		components: {
-			default: async () => import('./views/WorkflowHistory.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: WorkflowHistory,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			permissions: {
@@ -289,9 +327,9 @@ export const routes = [
 		path: '/workflows/templates/:id',
 		name: VIEWS.TEMPLATE_IMPORT,
 		components: {
-			default: async () => import('./views/NodeView.vue'),
-			header: async () => import('./components/MainHeader/MainHeader.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			templatesEnabled: true,
@@ -308,9 +346,9 @@ export const routes = [
 		path: '/workflows/onboarding/:id',
 		name: VIEWS.WORKFLOW_ONBOARDING,
 		components: {
-			default: async () => import('./views/WorkflowOnboardingView.vue'),
-			header: async () => import('./components/MainHeader/MainHeader.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: WorkflowOnboardingView,
+			header: MainHeader,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			templatesEnabled: true,
@@ -327,9 +365,9 @@ export const routes = [
 		path: '/workflow/new',
 		name: VIEWS.NEW_WORKFLOW,
 		components: {
-			default: async () => import('./views/NodeView.vue'),
-			header: async () => import('./components/MainHeader/MainHeader.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			nodeView: true,
@@ -345,7 +383,7 @@ export const routes = [
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
 		components: {
-			default: async () => import('./views/NodeView.vue'),
+			default: NodeView,
 		},
 		meta: {
 			permissions: {
@@ -359,9 +397,9 @@ export const routes = [
 		path: '/workflow/:name',
 		name: VIEWS.WORKFLOW,
 		components: {
-			default: async () => import('./views/NodeView.vue'),
-			header: async () => import('./components/MainHeader/MainHeader.vue'),
-			sidebar: async () => import('./components/MainSidebar.vue'),
+			default: NodeView,
+			header: MainHeader,
+			sidebar: MainSidebar,
 		},
 		meta: {
 			nodeView: true,
@@ -381,7 +419,7 @@ export const routes = [
 		path: '/signin',
 		name: VIEWS.SIGNIN,
 		components: {
-			default: async () => import('./views/SigninView.vue'),
+			default: SigninView,
 		},
 		meta: {
 			telemetry: {
@@ -398,7 +436,7 @@ export const routes = [
 		path: '/signup',
 		name: VIEWS.SIGNUP,
 		components: {
-			default: async () => import('./views/SignupView.vue'),
+			default: SignupView,
 		},
 		meta: {
 			telemetry: {
@@ -415,7 +453,7 @@ export const routes = [
 		path: '/signout',
 		name: VIEWS.SIGNOUT,
 		components: {
-			default: async () => import('./views/SignoutView.vue'),
+			default: SignoutView,
 		},
 		meta: {
 			telemetry: {
@@ -432,7 +470,7 @@ export const routes = [
 		path: '/setup',
 		name: VIEWS.SETUP,
 		components: {
-			default: async () => import('./views/SetupView.vue'),
+			default: SetupView,
 		},
 		meta: {
 			telemetry: {
@@ -449,7 +487,7 @@ export const routes = [
 		path: '/forgot-password',
 		name: VIEWS.FORGOT_PASSWORD,
 		components: {
-			default: async () => import('./views/ForgotMyPasswordView.vue'),
+			default: ForgotMyPasswordView,
 		},
 		meta: {
 			telemetry: {
@@ -466,7 +504,7 @@ export const routes = [
 		path: '/change-password',
 		name: VIEWS.CHANGE_PASSWORD,
 		components: {
-			default: async () => import('./views/ChangePasswordView.vue'),
+			default: ChangePasswordView,
 		},
 		meta: {
 			telemetry: {
@@ -481,19 +519,19 @@ export const routes = [
 	},
 	{
 		path: '/settings',
-		component: async () => import('./views/SettingsView.vue'),
+		component: SettingsView,
 		props: true,
 		children: [
 			{
 				path: 'usage',
 				name: VIEWS.USAGE,
 				components: {
-					settingsView: async () => import('./views/SettingsUsageAndPlan.vue'),
+					settingsView: SettingsUsageAndPlan,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'usage',
 							};
@@ -519,12 +557,12 @@ export const routes = [
 				path: 'personal',
 				name: VIEWS.PERSONAL_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsPersonalView.vue'),
+					settingsView: SettingsPersonalView,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'personal',
 							};
@@ -544,12 +582,12 @@ export const routes = [
 				path: 'users',
 				name: VIEWS.USERS_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsUsersView.vue'),
+					settingsView: SettingsUsersView,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'users',
 							};
@@ -566,12 +604,12 @@ export const routes = [
 				path: 'api',
 				name: VIEWS.API_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsApiView.vue'),
+					settingsView: SettingsApiView,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'api',
 							};
@@ -594,12 +632,12 @@ export const routes = [
 				path: 'environments',
 				name: VIEWS.SOURCE_CONTROL,
 				components: {
-					settingsView: async () => import('./views/SettingsSourceControl.vue'),
+					settingsView: SettingsSourceControl,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'environments',
 							};
@@ -616,12 +654,12 @@ export const routes = [
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsExternalSecrets.vue'),
+					settingsView: SettingsExternalSecrets,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: Route) {
 							return {
 								feature: 'external-secrets',
 							};
@@ -638,12 +676,12 @@ export const routes = [
 				path: 'sso',
 				name: VIEWS.SSO_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsSso.vue'),
+					settingsView: SettingsSso,
 				},
 				meta: {
 					telemetry: {
 						pageCategory: 'settings',
-						getProperties() {
+						getProperties(route: RouteLocation) {
 							return {
 								feature: 'sso',
 							};
@@ -666,7 +704,7 @@ export const routes = [
 				path: 'log-streaming',
 				name: VIEWS.LOG_STREAMING_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsLogStreamingView.vue'),
+					settingsView: SettingsLogStreamingView,
 				},
 				meta: {
 					telemetry: {
@@ -686,7 +724,7 @@ export const routes = [
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
 				components: {
-					settingsView: async () => import('./views/SettingsCommunityNodesView.vue'),
+					settingsView: SettingsCommunityNodesView,
 				},
 				meta: {
 					telemetry: {
@@ -709,7 +747,7 @@ export const routes = [
 				path: 'coming-soon/:featureId',
 				name: VIEWS.FAKE_DOOR,
 				components: {
-					settingsView: async () => import('./views/SettingsFakeDoorView.vue'),
+					settingsView: SettingsFakeDoorView,
 				},
 				meta: {
 					telemetry: {
@@ -731,7 +769,7 @@ export const routes = [
 				path: 'ldap',
 				name: VIEWS.LDAP_SETTINGS,
 				components: {
-					settingsView: async () => import('./views/SettingsLdapView.vue'),
+					settingsView: SettingsLdapView,
 				},
 				meta: {
 					permissions: {
@@ -748,7 +786,7 @@ export const routes = [
 				path: 'audit-logs',
 				name: VIEWS.AUDIT_LOGS,
 				components: {
-					settingsView: async () => import('./views/SettingsAuditLogs.vue'),
+					settingsView: SettingsAuditLogs,
 				},
 				meta: {
 					telemetry: {
@@ -775,7 +813,7 @@ export const routes = [
 		path: '/saml/onboarding',
 		name: VIEWS.SAML_ONBOARDING,
 		components: {
-			default: async () => import('./views/SamlOnboarding.vue'),
+			default: SamlOnboarding,
 		},
 		meta: {
 			telemetry: {
@@ -802,7 +840,7 @@ export const routes = [
 	{
 		path: '/:pathMatch(.*)*',
 		name: VIEWS.NOT_FOUND,
-		component: async () => import('./views/ErrorView.vue'),
+		component: ErrorView,
 		props: {
 			messageKey: 'error.pageNotFound',
 			errorCode: 404,
