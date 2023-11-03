@@ -262,7 +262,7 @@ const openPricingPage = () => {
 	margin: 0 0 var(--spacing-xs);
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
-	border: 1px solid var(--color-light-grey);
+	border: 1px solid var(--color-foreground-base);
 	white-space: nowrap;
 
 	.count {
