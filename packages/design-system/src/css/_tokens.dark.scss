@@ -137,11 +137,6 @@
 	--color-value-survey-background: var(--prim-gray-740);
 	--color-value-survey-font: var(--prim-gray-0);
 
-	--border-color-base: var(--color-foreground-base);
-	--border-color-light: var(--color-foreground-light);
-
-	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
-
 	// Switch (Activation, boolean)
 	--color-switch-background: var(--prim-gray-820);
 	--color-switch-toggle: var(--prim-gray-40);
@@ -150,6 +145,9 @@
 	--color-info-tint-1: var(--prim-gray-420);
 	--color-info-tint-2: var(--prim-gray-740);
 
+	--border-color-base: var(--color-foreground-base);
+	--border-color-light: var(--color-foreground-light);
+	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	--node-type-supplemental-label-color-l: 100%;
 	--color-configurable-node-name: var(--color-text-lighter);
 }
