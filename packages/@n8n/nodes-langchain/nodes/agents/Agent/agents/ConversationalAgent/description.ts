@@ -1,7 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { getTemplateNoticeField } from '../../../../../utils/sharedFields';
 import { SYSTEM_MESSAGE, HUMAN_MESSAGE } from './prompt';
 
 export const conversationalAgentProperties: INodeProperties[] = [
+	getTemplateNoticeField(1954),
 	{
 		displayName: 'Text',
 		name: 'text',

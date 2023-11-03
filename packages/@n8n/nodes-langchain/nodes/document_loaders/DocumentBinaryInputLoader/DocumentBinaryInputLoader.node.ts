@@ -9,7 +9,7 @@ import {
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
 
 // Dependencies needed underneath the hood for the loaders. We add them
 // here only to track where what dependency is sued
@@ -55,6 +55,7 @@ export class DocumentBinaryInputLoader implements INodeType {
 		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Loader Type',
 				name: 'loader',

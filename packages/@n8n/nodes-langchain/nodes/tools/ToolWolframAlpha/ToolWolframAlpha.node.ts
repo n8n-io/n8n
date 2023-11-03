@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { WolframAlphaTool } from 'langchain/tools';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWolframAlpha implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,7 +45,7 @@ export class ToolWolframAlpha implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
-		properties: [],
+		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {

@@ -10,6 +10,7 @@ import {
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseRetriever } from 'langchain/schema/retriever';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +57,7 @@ export class ChainRetrievalQa implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
+			getTemplateNoticeField(1960),
 			{
 				displayName: 'Query',
 				name: 'query',

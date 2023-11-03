@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { NodeConnectionType, type INodeProperties } from 'n8n-workflow';
 
 export const metadataFilterField: INodeProperties = {
 	displayName: 'Metadata Filter',
@@ -32,3 +32,64 @@ export const metadataFilterField: INodeProperties = {
 		},
 	],
 };
+
+export function getTemplateNoticeField(templateId: number): INodeProperties {
+	return {
+		displayName: `Save time with an <a href="/templates/${templateId}" target="_blank">example</a> of how this node works`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+	};
+}
+
+const connectionsString = {
+	[NodeConnectionType.AiAgent]: {
+		// Root AI view
+		connection: '',
+		locale: 'AI Agent',
+	},
+	[NodeConnectionType.AiChain]: {
+		// Root AI view
+		connection: '',
+		locale: 'AI Chain',
+	},
+	[NodeConnectionType.AiDocument]: {
+		connection: NodeConnectionType.AiDocument,
+		locale: 'Document Loader',
+	},
+	[NodeConnectionType.AiVectorStore]: {
+		connection: NodeConnectionType.AiVectorStore,
+		locale: 'Vector Store',
+	},
+	[NodeConnectionType.AiRetriever]: {
+		connection: NodeConnectionType.AiRetriever,
+		locale: 'Vector Store Retriever',
+	},
+};
+
+type AllowedConnectionTypes =
+	| NodeConnectionType.AiAgent
+	| NodeConnectionType.AiChain
+	| NodeConnectionType.AiDocument
+	| NodeConnectionType.AiVectorStore
+	| NodeConnectionType.AiRetriever;
+
+const getAhref = (connectionType: { connection: string; locale: string }) =>
+	`<a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${connectionType.connection}'>${connectionType.locale}</a>`;
+
+export function getConnectionHintNoticeField(
+	connectionTypes: AllowedConnectionTypes[],
+): INodeProperties {
+	const ahrefs = connectionTypes.map((connectionType) =>
+		getAhref(connectionsString[connectionType]),
+	);
+	return {
+		displayName: `This node needs to be connected to ${ahrefs.join(' or ')}.`,
+		name: 'notice',
+		type: 'notice',
+		default: '',
+		typeOptions: {
+			containerClass: 'ndv-connection-hint-notice',
+		},
+	};
+}

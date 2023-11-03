@@ -9,7 +9,7 @@ import {
 
 import { logWrapper } from '../../../utils/logWrapper';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
-import { metadataFilterField } from '../../../utils/sharedFields';
+import { getConnectionHintNoticeField, metadataFilterField } from '../../../utils/sharedFields';
 
 export class DocumentJsonInputLoader implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,6 +48,7 @@ export class DocumentJsonInputLoader implements INodeType {
 		outputs: [NodeConnectionType.AiDocument],
 		outputNames: ['Document'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Pointers',
 				name: 'pointers',

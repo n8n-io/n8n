@@ -13,6 +13,7 @@ import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSand
 import { PythonSandbox } from 'n8n-nodes-base/dist/nodes/Code/PythonSandbox';
 
 import { DynamicTool } from 'langchain/tools';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,6 +45,7 @@ export class ToolCode implements INodeType {
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Name',
 				name: 'name',

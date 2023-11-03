@@ -9,6 +9,7 @@ import {
 
 import { Ollama } from 'langchain/llms/ollama';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmOllama implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,6 +52,7 @@ export class LmOllama implements INodeType {
 			baseURL: '={{ $credentials.baseUrl.replace(new RegExp("/$"), "") }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',

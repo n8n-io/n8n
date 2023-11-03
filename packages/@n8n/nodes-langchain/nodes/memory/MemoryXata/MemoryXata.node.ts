@@ -5,6 +5,7 @@ import { XataChatMessageHistory } from 'langchain/stores/message/xata';
 import { BufferMemory } from 'langchain/memory';
 import { BaseClient } from '@xata.io/client';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 export class MemoryXata implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Xata',
@@ -43,6 +44,7 @@ export class MemoryXata implements INodeType {
 			},
 		],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',

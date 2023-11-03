@@ -504,7 +504,7 @@ export default defineComponent({
 				if (this.hasIssues) {
 					// Do not set red border if there is an issue with the configuration node
 					if (
-						(this.nodeRunData[0].error as NodeOperationError)?.functionality !==
+						(this.nodeRunData?.[0]?.error as NodeOperationError)?.functionality !==
 						'configuration-node'
 					) {
 						borderColor = '--color-danger';

@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 import { WikipediaQueryRun } from 'langchain/tools';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWikipedia implements INodeType {
 	description: INodeTypeDescription = {
@@ -38,7 +39,7 @@ export class ToolWikipedia implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
-		properties: [],
+		properties: [getConnectionHintNoticeField([NodeConnectionType.AiAgent])],
 	};
 
 	async supplyData(this: IExecuteFunctions): Promise<SupplyData> {

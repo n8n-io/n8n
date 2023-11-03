@@ -10,6 +10,7 @@ import { OutputFixingParser } from 'langchain/output_parsers';
 import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import type { BaseLanguageModel } from 'langchain/base_language';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class OutputParserAutofixing implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,7 +55,9 @@ export class OutputParserAutofixing implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: [NodeConnectionType.AiOutputParser],
 		outputNames: ['Output Parser'],
-		properties: [],
+		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
+		],
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {

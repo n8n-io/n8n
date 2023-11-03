@@ -13,6 +13,7 @@ import type { Document } from 'langchain/document';
 import { PromptTemplate } from 'langchain/prompts';
 import { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 import { REFINE_PROMPT_TEMPLATE, DEFAULT_PROMPT_TEMPLATE } from './prompt';
 
 export class ChainSummarization implements INodeType {
@@ -61,12 +62,7 @@ export class ChainSummarization implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
-			{
-				displayName: 'Specify the document to load in the document loader sub-node',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
+			getTemplateNoticeField(1951),
 			{
 				displayName: 'Type',
 				name: 'type',

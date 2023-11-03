@@ -20,6 +20,7 @@ import type { BaseOutputParser } from 'langchain/schema/output_parser';
 import { CombiningOutputParser } from 'langchain/output_parsers';
 import { LLMChain } from 'langchain/chains';
 import { BaseChatModel } from 'langchain/chat_models/base';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 
 interface MessagesTemplate {
 	type: string;
@@ -156,6 +157,7 @@ export class ChainLlm implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
+			getTemplateNoticeField(1951),
 			{
 				displayName: 'Prompt',
 				name: 'prompt',

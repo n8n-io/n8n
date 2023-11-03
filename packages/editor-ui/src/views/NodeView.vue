@@ -3995,7 +3995,7 @@ export default defineComponent({
 
 					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
 					try {
-						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+						this.setPinData(node, data.pinData[nodeName], 'add-nodes');
 						pinDataSuccess = true;
 					} catch (error) {
 						pinDataSuccess = false;
@@ -4524,6 +4524,22 @@ export default defineComponent({
 			key: 'openNodeDetail',
 			action: ({ node }: { node: string }) => {
 				this.nodeSelectedByName(node, true);
+			},
+		});
+
+		this.registerCustomAction({
+			key: 'openSelectiveNodeCreator',
+			action: ({ connectiontype }: { connectiontype?: ConnectionTypes }) => {
+				this.onToggleNodeCreator({
+					source: 'NDV',
+					createNodeActive: true,
+					nodeCreatorView: AI_NODE_CREATOR_VIEW,
+				});
+
+				this.ndvStore.activeNodeName = null;
+				if (connectiontype) {
+					void useViewStacks().gotoCompatibleConnectionView(connectiontype);
+				}
 			},
 		});
 		this.readOnlyEnvRouteCheck();

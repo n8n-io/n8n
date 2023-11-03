@@ -16,6 +16,7 @@ import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
 import { DynamicTool } from 'langchain/tools';
 import get from 'lodash/get';
 import isObject from 'lodash/isObject';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,6 +48,7 @@ export class ToolWorkflow implements INodeType {
 		outputs: [NodeConnectionType.AiTool],
 		outputNames: ['Tool'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Name',
 				name: 'name',

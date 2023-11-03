@@ -17,6 +17,7 @@ import { logWrapper } from '../../../utils/logWrapper';
 import type { N8nJsonLoader } from '../../../utils/N8nJsonLoader';
 import type { N8nBinaryLoader } from '../../../utils/N8nBinaryLoader';
 import { getMetadataFiltersValues } from '../../../utils/helpers';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { processDocument } from './processDocuments';
 
 interface NodeMeta {
@@ -135,6 +136,14 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 						},
 					],
 				},
+				{
+					...getConnectionHintNoticeField([NodeConnectionType.AiRetriever]),
+					displayOptions: {
+						show: {
+							mode: ['retrieve'],
+						},
+					},
+				},
 				...args.sharedFields,
 				...transformDescriptionForOperationMode(args.insertFields ?? [], 'insert'),
 				// Prompt and topK are always used for the load operation
@@ -165,6 +174,18 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					},
 				},
 				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
+				{
+					displayName: 'Limit',
+					name: 'topK',
+					type: 'number',
+					default: 4,
+					description: 'Number of top results to fetch from vector store',
+					displayOptions: {
+						show: {
+							mode: ['load'],
+						},
+					},
+				},
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 			],
 		};
