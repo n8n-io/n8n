@@ -120,7 +120,7 @@ export class PasswordResetController {
 		const resetPasswordToken = this.jwtService.signData(
 			{ sub: id },
 			{
-				expiresIn: '1d',
+				expiresIn: '20m',
 			},
 		);
 
