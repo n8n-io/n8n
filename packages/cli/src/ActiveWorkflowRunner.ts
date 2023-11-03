@@ -73,7 +73,7 @@ const WEBHOOK_PROD_UNREGISTERED_HINT =
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
-	private activeWorkflows = new ActiveWorkflows();
+	public activeWorkflows = new ActiveWorkflows();
 
 	private activationErrors: {
 		[key: string]: IActivationError;
@@ -240,7 +240,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	async getActiveWorkflows(user?: User): Promise<string[]> {
 		let activeWorkflows: WorkflowEntity[] = [];
 		if (!user || user.globalRole.name === 'owner') {
-			activeWorkflows = await Db.collections.Workflow.find({
+			activeWorkflows = await this.workflowRepository.find({
 				select: ['id'],
 				where: { active: true },
 			});
@@ -248,7 +248,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				.map((workflow) => workflow.id)
 				.filter((workflowId) => !this.activationErrors[workflowId]);
 		} else {
-			const active = await Db.collections.Workflow.find({
+			const active = await this.workflowRepository.find({
 				select: ['id'],
 				where: { active: true },
 			});
