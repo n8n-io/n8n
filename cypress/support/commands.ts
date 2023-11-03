@@ -1,9 +1,6 @@
 import 'cypress-real-events';
 import { WorkflowPage } from '../pages';
 import { BACKEND_BASE_URL, INSTANCE_MEMBERS, INSTANCE_OWNER, N8N_AUTH_COOKIE } from '../constants';
-import { addStreamCommands } from '@lensesio/cypress-websocket-testing';
-
-addStreamCommands();
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args);
