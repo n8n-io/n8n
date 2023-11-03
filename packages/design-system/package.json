@@ -47,7 +47,6 @@
     "@storybook/addon-essentials": "^7.5.2",
     "@storybook/addon-links": "^7.5.2",
     "@storybook/addon-postcss": "3.0.0-alpha.1",
-    "@storybook/addon-styling": "^1.3.7",
     "@storybook/vue3": "^7.5.2",
     "@storybook/vue3-vite": "^7.5.2",
     "@testing-library/jest-dom": "^5.17.0",

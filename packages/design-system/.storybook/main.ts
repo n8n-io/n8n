@@ -2,13 +2,12 @@ import { dirname, join } from 'path';
 import type { StorybookConfig } from '@storybook/vue3-vite';
 
 function getAbsolutePath(value: string): string {
-	return dirname(require.resolve(join(value, 'package.json')));
+	return dirname(require.resolve(join(value, 'package.json'))).toString();
 }
 
 const config: StorybookConfig = {
 	stories: ['../src/**/*.stories.@(js|jsx|ts|tsx|mdx)'],
 	addons: [
-		getAbsolutePath('@storybook/addon-styling'),
 		getAbsolutePath('@storybook/addon-links'),
 		getAbsolutePath('@storybook/addon-essentials'),
 		getAbsolutePath('@storybook/addon-a11y'),
