@@ -831,16 +831,11 @@ export default defineComponent({
 			return this.getPinDataOrInputData(this.rawInputData);
 		},
 		inputDataPage(): INodeExecutionData[] {
-			// We don't want to paginate the schema view
-			if (this.isSchemaView) {
-				return this.inputData;
-			}
-
 			const offset = this.pageSize * (this.currentPage - 1);
 			return this.inputData.slice(offset, offset + this.pageSize);
 		},
 		jsonData(): IDataObject[] {
-			return executionDataToJson(this.inputDataPage);
+			return executionDataToJson(this.inputData);
 		},
 		binaryData(): IBinaryKeyData[] {
 			if (!this.node) {
