@@ -179,7 +179,7 @@
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<run-data-search v-model="search" />
+			<run-data-search v-if="showIOSearch" :paneType="paneType" v-model="search" />
 		</div>
 
 		<div
@@ -192,7 +192,7 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
-			<run-data-search v-model="search" />
+			<run-data-search v-if="showIOSearch" :paneType="paneType" v-model="search" />
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
@@ -909,6 +909,9 @@ export default defineComponent({
 		},
 		readOnlyEnv(): boolean {
 			return this.sourceControlStore.preferences.branchReadOnly;
+		},
+		showIOSearch(): boolean {
+			return this.hasNodeRun && this.dataCount > 0 && !this.hasRunError;
 		},
 	},
 	methods: {
