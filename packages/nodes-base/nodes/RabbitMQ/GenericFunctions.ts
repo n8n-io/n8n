@@ -69,8 +69,6 @@ export async function rabbitmqConnect(
 export async function rabbitmqConnectQueue(
 	this: IExecuteFunctions | ITriggerFunctions,
 	queue: string,
-	exchange: string,
-	routingKey: string,
 	options: IDataObject,
 ): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
@@ -78,8 +76,16 @@ export async function rabbitmqConnectQueue(
 	return new Promise(async (resolve, reject) => {
 		try {
 			await channel.assertQueue(queue, options);
-			if (exchange) {
-				await channel.bindQueue(queue, exchange, routingKey);
+
+			if (
+				options.binding &&
+				((options.binding as IDataObject).bindings! as IDataObject[]).length
+			) {
+				((options.binding as IDataObject).bindings as IDataObject[]).forEach(
+					async (binding: IDataObject) => {
+						await channel.bindQueue(queue, binding.exchange as string, binding.routingKey as string);
+					},
+				);
 			}
 
 			resolve(channel);

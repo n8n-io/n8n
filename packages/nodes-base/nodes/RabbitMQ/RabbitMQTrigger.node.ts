@@ -59,22 +59,6 @@ export class RabbitMQTrigger implements INodeType {
 				description: 'The name of the queue to read from',
 			},
 			{
-				displayName: 'Exchange',
-				name: 'exchange',
-				type: 'string',
-				default: '',
-				placeholder: 'exchange-name',
-				description: 'The name of the exchange to queue bind',
-			},
-			{
-				displayName: 'Routing Key',
-				name: 'routingKey',
-				type: 'string',
-				default: '',
-				placeholder: 'routing-key',
-				description: 'The name of the routing key to queue bind',
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -155,6 +139,39 @@ export class RabbitMQTrigger implements INodeType {
 						},
 						description: 'Max number of executions at a time. Use -1 for no limit.',
 					},
+					{
+						displayName: 'Binding',
+						name: 'binding',
+						placeholder: 'Add Binding',
+						description: 'Add binding to queu',
+						type: 'fixedCollection',
+						typeOptions: {
+							multipleValues: true,
+						},
+						default: {},
+						options: [
+							{
+								name: 'bindings',
+								displayName: 'Binding',
+								values: [
+									{
+										displayName: 'Exchange',
+										name: 'exchange',
+										type: 'string',
+										default: '',
+										placeholder: "exchange"
+									},
+									{
+										displayName: 'RoutingKey',
+										name: 'routingKey',
+										type: 'string',
+										default: '',
+										placeholder: "routing-key"
+									},
+								],
+							},
+						],
+					},
 					...rabbitDefaultOptions,
 				].sort((a, b) => {
 					if (
@@ -189,11 +206,9 @@ export class RabbitMQTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const queue = this.getNodeParameter('queue') as string;
-		const exchange = this.getNodeParameter('exchange') as string;
-		const routingKey = this.getNodeParameter('routingKey') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		const channel = await rabbitmqConnectQueue.call(this, queue, exchange, routingKey, options);
+		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
 		let parallelMessages =
 			options.parallelMessages !== undefined && options.parallelMessages !== -1
