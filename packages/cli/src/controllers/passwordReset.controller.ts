@@ -24,12 +24,18 @@ import { isSamlCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
 import { Container } from 'typedi';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, inTest } from '@/constants';
 import { TokenExpiredError } from 'jsonwebtoken';
 import type { JwtPayload } from '@/services/jwt.service';
 import { JwtService } from '@/services/jwt.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import { Logger } from '@/Logger';
+import { rateLimit } from 'express-rate-limit';
+
+const throttle = rateLimit({
+	windowMs: 5 * 60 * 1000, // 5 minutes
+	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
+});
 
 @RestController()
 export class PasswordResetController {
@@ -46,7 +52,9 @@ export class PasswordResetController {
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password')
+	@Post('/forgot-password', {
+		middlewares: !inTest ? [throttle] : [],
+	})
 	async forgotPassword(req: PasswordResetRequest.Email) {
 		if (!this.mailer.isEmailSetUp) {
 			this.logger.debug(
