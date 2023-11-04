@@ -6,6 +6,8 @@ import config from '@/config';
 export abstract class OrchestrationService {
 	protected initialized = false;
 
+	protected queueModeId: string;
+
 	redisPublisher: RedisServicePubSubPublisher;
 
 	readonly redisService: RedisService;
@@ -28,6 +30,7 @@ export abstract class OrchestrationService {
 
 	constructor() {
 		this.redisService = Container.get(RedisService);
+		this.queueModeId = config.getEnv('redis.queueModeId');
 	}
 
 	sanityCheck(): boolean {
@@ -44,7 +47,7 @@ export abstract class OrchestrationService {
 		this.initialized = false;
 	}
 
-	private async initPublisher() {
+	protected async initPublisher() {
 		this.redisPublisher = await this.redisService.getPubSubPublisher();
 	}
 }

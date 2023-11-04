@@ -28,7 +28,7 @@
 					teleported
 					size="small"
 					:modelValue="currentNodeName"
-					@update:modelValue="onSelect"
+					@update:modelValue="onInputNodeChange"
 					:no-data-text="$locale.baseText('ndv.input.noNodesFound')"
 					:placeholder="$locale.baseText('ndv.input.parentNodes')"
 					filterable
@@ -190,6 +190,7 @@ export default defineComponent({
 		},
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -432,9 +433,9 @@ export default defineComponent({
 		onUnlinkRun() {
 			this.$emit('unlinkRun');
 		},
-		onSelect(value: string) {
+		onInputNodeChange(value: string) {
 			const index = this.parentNodes.findIndex((node) => node.name === value) + 1;
-			this.$emit('select', value, index);
+			this.$emit('changeInputNode', value, index);
 		},
 		onConnectionHelpClick() {
 			if (this.activeNode) {

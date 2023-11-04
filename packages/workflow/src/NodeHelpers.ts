@@ -1045,21 +1045,48 @@ export function getNodeOutputs(
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
 ): Array<ConnectionTypes | INodeOutputConfiguration> {
+	let outputs: Array<ConnectionTypes | INodeOutputConfiguration> = [];
+
 	if (Array.isArray(nodeTypeData.outputs)) {
-		return nodeTypeData.outputs;
+		outputs = nodeTypeData.outputs;
+	} else {
+		// Calculate the outputs dynamically
+		try {
+			outputs = (workflow.expression.getSimpleParameterValue(
+				node,
+				nodeTypeData.outputs,
+				'internal',
+				{},
+			) || []) as ConnectionTypes[];
+		} catch (e) {
+			throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+		}
 	}
 
-	// Calculate the outputs dynamically
-	try {
-		return (workflow.expression.getSimpleParameterValue(
-			node,
-			nodeTypeData.outputs,
-			'internal',
-			{},
-		) || []) as ConnectionTypes[];
-	} catch (e) {
-		throw new Error(`Could not calculate outputs dynamically for node "${node.name}"`);
+	if (node.onError === 'continueErrorOutput') {
+		// Copy the data to make sure that we do not change the data of the
+		// node type and so change the displayNames for all nodes in the flow
+		outputs = deepCopy(outputs);
+		if (outputs.length === 1) {
+			// Set the displayName to "Success"
+			if (typeof outputs[0] === 'string') {
+				outputs[0] = {
+					type: outputs[0],
+				};
+			}
+			outputs[0].displayName = 'Success';
+		}
+		return [
+			...outputs,
+			{
+				category: 'error',
+				type: 'main',
+				displayName: 'Error',
+			},
+		];
 	}
+
+	return outputs;
 }
 
 /**

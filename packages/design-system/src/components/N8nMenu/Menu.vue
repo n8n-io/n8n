@@ -4,6 +4,7 @@
 			['menu-container']: true,
 			[$style.container]: true,
 			[$style.menuCollapsed]: collapsed,
+			[$style.transparentBackground]: transparentBackground,
 		}"
 	>
 		<div v-if="$slots.header" :class="$style.menuHeader">
@@ -80,6 +81,10 @@ export default defineComponent({
 			type: String,
 		},
 		collapsed: {
+			type: Boolean,
+			default: false,
+		},
+		transparentBackground: {
 			type: Boolean,
 			default: false,
 		},
@@ -201,5 +206,9 @@ export default defineComponent({
 	:global(.hideme) {
 		display: none !important;
 	}
+}
+
+.transparentBackground {
+	background-color: transparent;
 }
 </style>

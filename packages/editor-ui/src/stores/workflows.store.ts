@@ -61,7 +61,7 @@ import type {
 import { deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import { findLast } from 'lodash-es';
 
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
@@ -71,19 +71,19 @@ import {
 	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
-import { useUIStore } from './ui.store';
+import { useUIStore } from '@/stores/ui.store';
 import { dataPinningEventBus } from '@/event-bus';
 import {
 	isJsonKeyObject,
 	getPairedItemsMapping,
 	stringSizeInBytes,
-	isObjectLiteral,
+	isObject,
 	isEmpty,
 	makeRestApiRequest,
 	unflattenExecutionData,
 } from '@/utils';
-import { useNDVStore } from './ndv.store';
-import { useNodeTypesStore } from './nodeTypes.store';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { useUsersStore } from '@/stores/users.store';
 import { useSettingsStore } from '@/stores/settings.store';
 
@@ -237,17 +237,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		getPinData(): IPinData | undefined {
 			return this.workflow.pinData;
 		},
-		pinDataSize(): number {
-			const ndvStore = useNDVStore();
-			const activeNode = ndvStore.activeNodeName;
-			return this.workflow.nodes.reduce((acc, node) => {
-				if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {
-					acc += stringSizeInBytes(node.pinData);
-				}
-
-				return acc;
-			}, 0);
-		},
 		shouldReplaceInputDataWithPinData(): boolean {
 			return !this.activeWorkflowExecution || this.activeWorkflowExecution?.mode === 'manual';
 		},
@@ -283,6 +272,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 	},
 	actions: {
+		getPinDataSize(pinData: Record<string, string | INodeExecutionData[]> = {}): number {
+			return Object.values(pinData).reduce<number>((acc, value) => {
+				return acc + stringSizeInBytes(value);
+			}, 0);
+		},
 		getNodeTypes(): INodeTypes {
 			const nodeTypes: INodeTypes = {
 				nodeTypes: {},
@@ -1065,7 +1059,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			const newParameters =
-				!!append && isObjectLiteral(updateInformation.value)
+				!!append && isObject(updateInformation.value)
 					? { ...node.parameters, ...updateInformation.value }
 					: updateInformation.value;
 

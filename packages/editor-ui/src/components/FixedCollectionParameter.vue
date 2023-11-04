@@ -347,8 +347,28 @@ export default defineComponent({
 	padding-left: var(--spacing-s);
 
 	:deep(.button) {
-		--button-background-color: var(--color-background-base);
+		font-weight: var(--font-weight-normal);
+		--button-font-color: var(--color-text-dark);
 		--button-border-color: var(--color-foreground-base);
+		--button-background-color: var(--color-background-base);
+
+		--button-hover-font-color: var(--color-text-dark);
+		--button-hover-border-color: var(--color-foreground-base);
+		--button-hover-background-color: var(--color-background-base);
+
+		--button-active-font-color: var(--color-text-dark);
+		--button-active-border-color: var(--color-foreground-base);
+		--button-active-background-color: var(--color-background-base);
+
+		--button-focus-font-color: var(--color-text-dark);
+		--button-focus-border-color: var(--color-foreground-base);
+		--button-focus-background-color: var(--color-background-base);
+
+		&:active,
+		&.active,
+		&:focus {
+			outline: none;
+		}
 	}
 }
 

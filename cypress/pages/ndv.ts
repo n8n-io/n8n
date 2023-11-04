@@ -72,15 +72,17 @@ export class NDV extends BasePage {
 			this.getters.resourceLocator(paramName).find('[data-test-id="rlc-mode-selector"]'),
 		resourceMapperFieldsContainer: () => cy.getByTestId('mapping-fields-container'),
 		resourceMapperSelectColumn: () => cy.getByTestId('matching-column-select'),
-		resourceMapperRemoveFieldButton: (fieldName: string) => cy.getByTestId(`remove-field-button-${fieldName}`),
-		resourceMapperColumnsOptionsButton: () => cy.getByTestId('columns-parameter-input-options-container'),
+		resourceMapperRemoveFieldButton: (fieldName: string) =>
+			cy.getByTestId(`remove-field-button-${fieldName}`),
+		resourceMapperColumnsOptionsButton: () =>
+			cy.getByTestId('columns-parameter-input-options-container'),
 		resourceMapperRemoveAllFieldsOption: () => cy.getByTestId('action-removeAllFields'),
 		sqlEditorContainer: () => cy.getByTestId('sql-editor-container'),
 	};
 
 	actions = {
 		pinData: () => {
-			this.getters.pinDataButton().click();
+			this.getters.pinDataButton().click({ force: true });
 		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
@@ -104,7 +106,12 @@ export class NDV extends BasePage {
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`);
+				.type(
+					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
+					{
+						delay: 0,
+					},
+				);
 
 			this.actions.savePinnedData();
 		},
@@ -114,7 +121,7 @@ export class NDV extends BasePage {
 		typeIntoParameterInput: (
 			parameterName: string,
 			content: string,
-			opts?: { parseSpecialCharSequences: boolean, delay?: number },
+			opts?: { parseSpecialCharSequences: boolean; delay?: number },
 		) => {
 			this.getters.parameterInput(parameterName).type(content, opts);
 		},
@@ -199,7 +206,15 @@ export class NDV extends BasePage {
 			getVisiblePopper().find('li').last().click();
 		},
 
-		setInvalidExpression: ({ fieldName, invalidExpression, delay }: { fieldName: string, invalidExpression?: string, delay?: number }) => {
+		setInvalidExpression: ({
+			fieldName,
+			invalidExpression,
+			delay,
+		}: {
+			fieldName: string;
+			invalidExpression?: string;
+			delay?: number;
+		}) => {
 			this.actions.typeIntoParameterInput(fieldName, '=');
 			this.actions.typeIntoParameterInput(fieldName, invalidExpression ?? "{{ $('unknown')", {
 				parseSpecialCharSequences: false,
