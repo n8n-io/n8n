@@ -179,7 +179,7 @@ export default defineComponent({
 				MFA_AUTHENTICATION_RECOVERY_CODE_INPUT_MAX_LENGTH,
 			);
 		},
-		formField(name: string, label: string, placeholder: string, maxlength: number) {
+		formField(name: string, label: string, placeholder: string, maxlength: number, focus = true) {
 			return {
 				name,
 				initialValue: '',
@@ -189,6 +189,7 @@ export default defineComponent({
 					maxlength,
 					capitalize: true,
 					validateOnBlur: false,
+					focusInitially: focus,
 				},
 			};
 		},
