@@ -1,5 +1,5 @@
 <template>
-	<div :class="['run-data', $style.container]">
+	<div :class="['run-data', $style.container]" @click="activatePane" @mouseover="activatePane">
 		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
@@ -179,7 +179,12 @@
 				:options="branches"
 				@update:modelValue="onBranchChange"
 			/>
-			<run-data-search v-if="showIOSearch" :paneType="paneType" v-model="search" />
+			<run-data-search
+				v-if="showIOSearch"
+				:paneType="paneType"
+				:isPaneActive="isPaneActive"
+				v-model="search"
+			/>
 		</div>
 
 		<div
@@ -192,7 +197,12 @@
 			<n8n-text>
 				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
 			</n8n-text>
-			<run-data-search v-if="showIOSearch" :paneType="paneType" v-model="search" />
+			<run-data-search
+				v-if="showIOSearch"
+				:paneType="paneType"
+				:isPaneActive="isPaneActive"
+				v-model="search"
+			/>
 		</div>
 
 		<div :class="$style.dataContainer" ref="dataContainer" data-test-id="ndv-data-container">
@@ -626,6 +636,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		isPaneActive: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	setup() {
 		return {
@@ -664,7 +678,10 @@ export default defineComponent({
 			branchIndex: this.currentOutputIndex,
 		});
 
-		if (this.paneType === 'output') this.setDisplayMode();
+		if (this.paneType === 'output') {
+			this.setDisplayMode();
+			this.activatePane();
+		}
 	},
 	beforeUnmount() {
 		this.hidePinDataDiscoveryTooltip();
@@ -1371,6 +1388,9 @@ export default defineComponent({
 					mode: 'html',
 				});
 			}
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 	watch: {

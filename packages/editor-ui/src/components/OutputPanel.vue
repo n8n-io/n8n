@@ -11,6 +11,8 @@
 		:sessionId="sessionId"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
+		:isPaneActive="isPaneActive"
+		@activatePane="activatePane"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -163,6 +165,10 @@ export default defineComponent({
 			default: false,
 		},
 		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+		isPaneActive: {
 			type: Boolean,
 			default: false,
 		},
@@ -319,6 +325,9 @@ export default defineComponent({
 			} else {
 				ndvEventBus.emit('setPositionByName', 'initial');
 			}
+		},
+		activatePane() {
+			this.$emit('activatePane');
 		},
 	},
 });

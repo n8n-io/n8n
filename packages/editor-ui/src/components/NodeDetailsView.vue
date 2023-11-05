@@ -65,6 +65,8 @@
 						:sessionId="sessionId"
 						:readOnly="readOnly || hasForeignCredential"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:isPaneActive="isInputPaneActive"
+						@activatePane="activateInputPane"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -85,6 +87,8 @@
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
+						:isPaneActive="isOutputPaneActive"
+						@activatePane="activateOutputPane"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -211,6 +215,8 @@ export default defineComponent({
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
+			isInputPaneActive: false,
+			isOutputPaneActive: false,
 		};
 	},
 	mounted() {
@@ -716,6 +722,14 @@ export default defineComponent({
 		},
 		onStopExecution() {
 			this.$emit('stopExecution');
+		},
+		activateInputPane() {
+			this.isInputPaneActive = true;
+			this.isOutputPaneActive = false;
+		},
+		activateOutputPane() {
+			this.isInputPaneActive = false;
+			this.isOutputPaneActive = true;
 		},
 	},
 });

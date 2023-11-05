@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { useSettingsStore } from '@/stores/settings.store';
 import { useI18n } from '@/composables';
@@ -9,6 +9,7 @@ import type { NodePanelType } from '@/Interface';
 type Props = {
 	modelValue: string;
 	paneType: NodePanelType;
+	isPaneActive: boolean;
 };
 
 const INITIAL_WIDTH = '34px';
@@ -23,8 +24,10 @@ const locale = useI18n();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 
+const inputRef = ref<HTMLInputElement | null>(null);
 const maxWidth = ref(INITIAL_WIDTH);
 const opened = ref(false);
+const focused = ref(false);
 const disabled = computed(
 	() => !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.NodeIOFilters),
 );
@@ -39,9 +42,12 @@ const onSearchUpdate = (value: string) => {
 };
 const onFocus = () => {
 	opened.value = true;
+	focused.value = true;
 	maxWidth.value = '40%';
+	inputRef.value?.select();
 };
 const onBlur = () => {
+	focused.value = false;
 	if (!props.modelValue) {
 		opened.value = false;
 		maxWidth.value = INITIAL_WIDTH;
@@ -50,6 +56,18 @@ const onBlur = () => {
 const goToUpgrade = () => {
 	void uiStore.goToUpgrade('ndv-filter', 'upgrade-ndv-filter');
 };
+const documentKeyHandler = (event: KeyboardEvent) => {
+	if (event.key === '/' && !focused.value && props.isPaneActive) {
+		inputRef.value?.focus();
+		inputRef.value?.select();
+	}
+};
+onMounted(() => {
+	document.addEventListener('keyup', documentKeyHandler);
+});
+onUnmounted(() => {
+	document.removeEventListener('keyup', documentKeyHandler);
+});
 </script>
 
 <template>
@@ -64,6 +82,7 @@ const goToUpgrade = () => {
 			</i18n-t>
 		</template>
 		<n8n-input
+			ref="inputRef"
 			:class="{
 				[$style.ioSearch]: true,
 				[$style.ioSearchOpened]: opened,
