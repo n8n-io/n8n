@@ -13,6 +13,7 @@ type Props = {
 };
 
 const INITIAL_WIDTH = '34px';
+const TOOLTIP_AUTO_CLOSE = 3000;
 
 const emit = defineEmits<{
 	(event: 'update:modelValue', value: Props['modelValue']): void;
@@ -31,6 +32,8 @@ const inputRef = ref<HTMLInputElement | null>(null);
 const maxWidth = ref(INITIAL_WIDTH);
 const opened = ref(false);
 const focused = ref(false);
+const showTooltip = ref<boolean | null>(null);
+const autoCloseTooltip = ref<number | null>(null);
 const disabled = computed(
 	() => !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.NodeIOFilters),
 );
@@ -39,6 +42,31 @@ const placeholder = computed(() =>
 		? locale.baseText('ndv.search.placeholder.input')
 		: locale.baseText('ndv.search.placeholder.output'),
 );
+
+const goToUpgrade = () => {
+	void uiStore.goToUpgrade('ndv-filter', 'upgrade-ndv-filter');
+};
+const documentKeyHandler = (event: KeyboardEvent) => {
+	const isTargetAnyFormElement =
+		event.target instanceof HTMLInputElement ||
+		event.target instanceof HTMLTextAreaElement ||
+		event.target instanceof HTMLSelectElement;
+	if (event.key === '/' && !focused.value && props.isPaneActive && !isTargetAnyFormElement) {
+		if (disabled.value) {
+			if (autoCloseTooltip.value) {
+				window.clearTimeout(autoCloseTooltip.value);
+				autoCloseTooltip.value = null;
+			}
+			autoCloseTooltip.value = window.setTimeout(() => {
+				showTooltip.value = false;
+			}, TOOLTIP_AUTO_CLOSE);
+			showTooltip.value = true;
+		} else {
+			inputRef.value?.focus();
+			inputRef.value?.select();
+		}
+	}
+};
 
 const onSearchUpdate = (value: string) => {
 	emit('update:modelValue', value);
@@ -57,18 +85,9 @@ const onBlur = () => {
 		maxWidth.value = INITIAL_WIDTH;
 	}
 };
-const goToUpgrade = () => {
-	void uiStore.goToUpgrade('ndv-filter', 'upgrade-ndv-filter');
-};
-const documentKeyHandler = (event: KeyboardEvent) => {
-	const isTargetAnyFormElement =
-		event.target instanceof HTMLInputElement ||
-		event.target instanceof HTMLTextAreaElement ||
-		event.target instanceof HTMLSelectElement;
-	if (event.key === '/' && !focused.value && props.isPaneActive && !isTargetAnyFormElement) {
-		inputRef.value?.focus();
-		inputRef.value?.select();
-	}
+const onHideTooltip = () => {
+	// Need to set it to null so it keeps opening on hover
+	showTooltip.value = null;
 };
 onMounted(() => {
 	document.addEventListener('keyup', documentKeyHandler);
@@ -79,7 +98,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<n8n-tooltip :disabled="!disabled" placement="bottom-end">
+	<n8n-tooltip
+		:disabled="!disabled"
+		:visible="showTooltip"
+		@hide="onHideTooltip"
+		placement="bottom-end"
+	>
 		<template #content>
 			<i18n-t keypath="ndv.search.upgrade.tooltip" tag="span">
 				<template #link>
