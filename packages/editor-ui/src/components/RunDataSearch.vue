@@ -14,7 +14,10 @@ type Props = {
 
 const INITIAL_WIDTH = '34px';
 
-const emit = defineEmits<{ (event: 'update:modelValue', value: Props['modelValue']): void }>();
+const emit = defineEmits<{
+	(event: 'update:modelValue', value: Props['modelValue']): void;
+	(event: 'focus'): void;
+}>();
 
 const props = withDefaults(defineProps<Props>(), {
 	modelValue: '',
@@ -45,6 +48,7 @@ const onFocus = () => {
 	focused.value = true;
 	maxWidth.value = '40%';
 	inputRef.value?.select();
+	emit('focus');
 };
 const onBlur = () => {
 	focused.value = false;
@@ -57,7 +61,11 @@ const goToUpgrade = () => {
 	void uiStore.goToUpgrade('ndv-filter', 'upgrade-ndv-filter');
 };
 const documentKeyHandler = (event: KeyboardEvent) => {
-	if (event.key === '/' && !focused.value && props.isPaneActive) {
+	const isTargetAnyFormElement =
+		event.target instanceof HTMLInputElement ||
+		event.target instanceof HTMLTextAreaElement ||
+		event.target instanceof HTMLSelectElement;
+	if (event.key === '/' && !focused.value && props.isPaneActive && !isTargetAnyFormElement) {
 		inputRef.value?.focus();
 		inputRef.value?.select();
 	}

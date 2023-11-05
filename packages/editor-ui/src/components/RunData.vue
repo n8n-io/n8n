@@ -181,9 +181,10 @@
 			/>
 			<run-data-search
 				v-if="showIOSearch"
+				v-model="search"
 				:paneType="paneType"
 				:isPaneActive="isPaneActive"
-				v-model="search"
+				@focus="activatePane"
 			/>
 		</div>
 
@@ -199,9 +200,10 @@
 			</n8n-text>
 			<run-data-search
 				v-if="showIOSearch"
+				v-model="search"
 				:paneType="paneType"
 				:isPaneActive="isPaneActive"
-				v-model="search"
+				@focus="activatePane"
 			/>
 		</div>
 
