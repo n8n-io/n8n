@@ -19,7 +19,6 @@ describe('useStorage', () => {
 		localStorage.setItem(key, value);
 
 		const data = useStorage(key);
-
 		expect(data.value).toBe(value);
 	});
 
