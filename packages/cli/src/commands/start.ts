@@ -119,6 +119,8 @@ export class Start extends BaseCommand {
 					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 				);
 
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+
 				await Container.get(MultiMainInstancePublisher).destroy();
 			}
 
@@ -256,6 +258,7 @@ export class Start extends BaseCommand {
 			if (multiMainInstancePublisher.isLeader) {
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
+				// only in case of leadership change without shutdown
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			}
 		});
