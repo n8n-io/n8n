@@ -6,7 +6,6 @@
 		data-test-id="canvas-node"
 		:ref="data.name"
 		:data-name="data.name"
-		@contextmenu="onContextMenuRightClick"
 	>
 		<div class="select-background" v-show="isSelected"></div>
 		<div
@@ -104,6 +103,17 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
+				<div>
+					<n8n-icon-button
+						v-if="!workflowRunning && !isConfigNode"
+						data-test-id="execute-node-button"
+						type="tertiary"
+						text
+						icon="play"
+						:title="$locale.baseText('node.execute')"
+						@click="executeNode"
+					/>
+				</div>
 				<n8n-action-dropdown
 					ref="contextMenu"
 					:items="nodeActions"
@@ -111,15 +121,6 @@
 					data-test-id="context-menu"
 					@visible-change="onContextMenuVisibleChange"
 					@select="onContextMenuAction"
-				/>
-
-				<n8n-icon-button
-					v-if="!workflowRunning && !isConfigNode"
-					data-test-id="execute-node-button"
-					type="tertiary"
-					text
-					icon="play"
-					@click="executeNode"
 				/>
 			</div>
 			<div
@@ -141,20 +142,6 @@
 				{{ nodeSubtitle }}
 			</div>
 		</div>
-		<!-- <div
-			v-if="contextMenuSource === 'right-click' && isContextMenuOpen"
-			class="context-menu"
-			:style="{ left: contextMenuPosition[0], top: contextMenuPosition[1] }"
-		>
-			<n8n-action-list
-				v-on-click-outside="onClickOutsideContextMenu"
-				:items="nodeActions"
-				placement="top"
-				data-test-id="context-menu"
-				@select="onContextMenuAction"
-			>
-			</n8n-action-list>
-		</div> -->
 	</div>
 </template>
 
@@ -200,7 +187,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
-import { getMousePosition } from '@/utils/nodeViewUtils';
 
 export default defineComponent({
 	name: 'Node',
@@ -541,6 +527,11 @@ export default defineComponent({
 					shortcut: { keys: ['↵'] },
 				},
 				{
+					id: 'copy',
+					label: this.$locale.baseText('node.copy'),
+					shortcut: { metaKey: true, keys: ['C'] },
+				},
+				{
 					id: 'deactivate',
 					label: this.data?.disabled
 						? this.$locale.baseText('node.activate')
@@ -649,8 +640,6 @@ export default defineComponent({
 			pinDataDiscoveryTooltipVisible: false,
 			dragging: false,
 			isContextMenuOpen: false,
-			contextMenuPosition: [0, 0],
-			contextMenuSource: 'none',
 			unwatchWorkflowDataItems: () => {},
 		};
 	},
@@ -761,6 +750,9 @@ export default defineComponent({
 				case 'open':
 					this.setNodeActive();
 					break;
+				case 'copy':
+					this.$emit('copyNode', this.name);
+					break;
 				case 'deactivate':
 					this.disableNode();
 					break;
@@ -776,31 +768,16 @@ export default defineComponent({
 				case 'pin':
 					this.$emit('pinNode', this.name);
 					break;
+				case 'copy':
+					this.$emit('copyNode', this.name);
+					break;
 				case 'delete':
 					void this.deleteNode();
 					break;
 			}
 		},
-		onContextMenuRightClick(e: MouseEvent): boolean {
-			e.preventDefault();
-			this.isContextMenuOpen = true;
-			this.contextMenuSource = 'right-click';
-			this.contextMenuPosition = getMousePosition(e);
-
-			this.$refs.contextMenu.open();
-
-			return false;
-		},
-		// onClickOutsideContextMenu(e: MouseEvent): void {
-		// 	this.isContextMenuOpen = false;
-		// },
 		onContextMenuVisibleChange(open: boolean): void {
 			this.isContextMenuOpen = open;
-			this.contextMenuSource = 'node-option';
-
-			if (open) {
-				this.$emit('nodeSelected', this.name);
-			}
 		},
 	},
 });
@@ -885,15 +862,9 @@ export default defineComponent({
 		&.touch-active,
 		&:hover,
 		&.menu-open {
-			.node-execute {
-				display: initial;
-			}
-
 			.node-options {
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				gap: var(--spacing-2xs);
+				pointer-events: all;
+				opacity: 1;
 			}
 		}
 
@@ -956,15 +927,23 @@ export default defineComponent({
 
 		.node-options {
 			--node-options-height: 26px;
-			display: none;
+			:deep(.button) {
+				--button-font-color: var(--color-text-light);
+			}
 			position: absolute;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: var(--spacing-2xs);
+			transition: opacity 100ms ease-in;
+			opacity: 0;
+			pointer-events: none;
 			top: calc(-1 * (var(--node-options-height) + var(--spacing-4xs)));
 			left: 0;
 			width: var(--node-width);
 			height: var(--node-options-height);
 			font-size: var(--font-size-s);
 			z-index: 10;
-			color: var(--color-text-light);
 			text-align: center;
 
 			.option {

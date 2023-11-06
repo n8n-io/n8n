@@ -816,6 +816,7 @@
 	"node.discovery.pinData.canvas": "You can pin this output instead of waiting for a test event. Open node to do so.",
 	"node.discovery.pinData.ndv": "You can pin this output instead of waiting for a test event.",
 	"node.open": "Open node...",
+	"node.copy": "Copy node",
 	"node.deactivate": "Deactivate node",
 	"node.activate": "Activate node",
 	"node.duplicate": "Duplicate node",

@@ -96,7 +96,7 @@ export default defineComponent({
 		},
 		activatorIcon: {
 			type: String,
-			default: 'ellipsis-v',
+			default: 'ellipsis-h',
 		},
 		iconSize: {
 			type: String,
@@ -113,6 +113,7 @@ export default defineComponent({
 		getItemClasses(item: IActionDropdownItem): Record<string, boolean> {
 			return {
 				[this.$style.itemContainer]: true,
+				[this.$style.disabled]: item.disabled,
 				[this.$style.hasCustomStyling]: item.customClass !== undefined,
 				...(item.customClass !== undefined ? { [item.customClass]: true } : {}),
 			};
@@ -179,13 +180,18 @@ export default defineComponent({
 	align-items: center;
 	gap: var(--spacing-2xs);
 	justify-content: space-between;
-	color: var(--color-text-base);
 	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-xloose);
-	padding: var(--spacing-4xs) var(--spacing-2xs);
+	line-height: 18px;
+	padding: var(--spacing-3xs) var(--spacing-2xs);
 
 	&:hover {
 		background-color: var(--color-background-base);
+	}
+
+	&.disabled {
+		.shortcut {
+			opacity: 0.3;
+		}
 	}
 }
 
