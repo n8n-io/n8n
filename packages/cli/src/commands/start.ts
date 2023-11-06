@@ -207,7 +207,7 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
-		this.logger.debug('License init complete');
+
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
@@ -233,15 +233,27 @@ export class Start extends BaseCommand {
 			return;
 		}
 
-		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
+		// multi-main scenario
 
 		const { MultiMainInstancePublisher } = await import(
 			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 		);
 
 		const multiMainPublisher = Container.get(MultiMainInstancePublisher);
+
+		await multiMainPublisher.init();
+		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+		await multiMainInstancePublisher.init();
+
+		if (
+			multiMainInstancePublisher.isLeader &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		await Container.get(OrchestrationHandlerMainService).init();
 
 		multiMainPublisher.on('leadershipChange', async () => {
 			if (multiMainPublisher.isLeader) {
@@ -250,9 +262,6 @@ export class Start extends BaseCommand {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 			}
 		});
-
-		await multiMainPublisher.init();
-		await Container.get(OrchestrationHandlerMainService).init();
 	}
 
 	async run() {

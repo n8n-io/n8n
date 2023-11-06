@@ -28,6 +28,8 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
+		if (this.initialized) return;
+
 		await this.initPublisher();
 
 		this.initialized = true;

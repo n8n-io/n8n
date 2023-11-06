@@ -144,6 +144,7 @@ export default defineComponent({
 	props: {
 		runIndex: {
 			type: Number,
+			required: true,
 		},
 		isReadOnly: {
 			type: Boolean,
