@@ -183,7 +183,7 @@
 				v-if="showIOSearch"
 				v-model="search"
 				:paneType="paneType"
-				:isPaneActive="isPaneActive"
+				:isAreaActive="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>
@@ -202,7 +202,7 @@
 				v-if="showIOSearch"
 				v-model="search"
 				:paneType="paneType"
-				:isPaneActive="isPaneActive"
+				:isAreaActive="isPaneActive"
 				@focus="activatePane"
 			/>
 		</div>

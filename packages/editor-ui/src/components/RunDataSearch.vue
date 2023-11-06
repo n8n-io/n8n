@@ -8,8 +8,8 @@ import type { NodePanelType } from '@/Interface';
 
 type Props = {
 	modelValue: string;
-	paneType: NodePanelType;
-	isPaneActive: boolean;
+	paneType?: NodePanelType;
+	isAreaActive?: boolean;
 };
 
 const INITIAL_WIDTH = '34px';
@@ -21,7 +21,8 @@ const emit = defineEmits<{
 }>();
 
 const props = withDefaults(defineProps<Props>(), {
-	modelValue: '',
+	paneType: 'output',
+	isAreaActive: false,
 });
 
 const locale = useI18n();
@@ -51,7 +52,7 @@ const documentKeyHandler = (event: KeyboardEvent) => {
 		event.target instanceof HTMLInputElement ||
 		event.target instanceof HTMLTextAreaElement ||
 		event.target instanceof HTMLSelectElement;
-	if (event.key === '/' && !focused.value && props.isPaneActive && !isTargetAnyFormElement) {
+	if (event.key === '/' && !focused.value && props.isAreaActive && !isTargetAnyFormElement) {
 		if (disabled.value) {
 			if (autoCloseTooltip.value) {
 				window.clearTimeout(autoCloseTooltip.value);
@@ -86,7 +87,7 @@ const onBlur = () => {
 	}
 };
 const onHideTooltip = () => {
-	// Need to set it to null so it keeps opening on hover
+	// Need to set it to null, so it keeps opening on hover
 	showTooltip.value = null;
 };
 onMounted(() => {
