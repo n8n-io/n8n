@@ -56,6 +56,9 @@ export class PruningService {
 		return true;
 	}
 
+	/**
+	 * @important Call only after DB connection is established and migrations have completed.
+	 */
 	startPruning() {
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();

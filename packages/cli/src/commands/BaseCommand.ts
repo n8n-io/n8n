@@ -22,6 +22,7 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
+import { PruningService } from '@/services/pruning.service';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -60,6 +61,12 @@ export abstract class BaseCommand extends Command {
 		await Db.migrate().catch(async (error: Error) =>
 			this.exitWithCrash('There was an error running database migrations', error),
 		);
+
+		const pruningService = Container.get(PruningService);
+
+		if (await pruningService.isPruningEnabled()) {
+			pruningService.startPruning();
+		}
 
 		const dbType = config.getEnv('database.type');
 
