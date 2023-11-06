@@ -33,9 +33,9 @@ const webhookService = mockInstance(WebhookService);
 // mock dynamic import to allow Jest to exit cleanly
 jest.mock('@/services/orchestration/main/MultiMainInstance.publisher.ee');
 
-const multiMainInstacePublisher = mockInstance(MultiMainInstancePublisher);
+const multiMainInstancePublisher = mockInstance(MultiMainInstancePublisher);
 
-Container.set(MultiMainInstancePublisher, multiMainInstacePublisher);
+Container.set(MultiMainInstancePublisher, multiMainInstancePublisher);
 
 setSchedulerAsLoadedNode();
 
@@ -255,7 +255,7 @@ describe('add()', () => {
 
 	describe('in multi-main scenario', () => {
 		describe('leader', () => {
-			test('when activation mode is not leadership change, leader should add webhooks only', async () => {
+			test('on regular activation mode, leader should add webhooks only', async () => {
 				const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
@@ -275,7 +275,7 @@ describe('add()', () => {
 				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
 			});
 
-			test('when activation mode is leadership change, leader should add triggers and pollers only', async () => {
+			test('on activation via leadership change, leader should add triggers and pollers only', async () => {
 				const mode = 'leadershipChange';
 
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
@@ -297,7 +297,31 @@ describe('add()', () => {
 		});
 
 		describe('follower', () => {
-			// @TODO
+			test.skip('on regular activation mode, follower should not add webhooks, triggers or pollers', async () => {
+				const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
+
+				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
+
+				// jest.spyOn(MultiMainInstancePublisher.prototype, 'isLeader', 'get').mockReturnValue(false);
+				// jest.replaceProperty(multiMainInstancePublisher, 'isLeader', true);
+				// Object.defineProperty(MultiMainInstancePublisher.prototype, 'isLeader', {
+				// 	get: jest.fn().mockReturnValue(false),
+				// });
+
+				const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+
+				await activeWorkflowRunner.init();
+				addWebhooksSpy.mockReset();
+				addTriggersAndPollersSpy.mockReset();
+
+				await activeWorkflowRunner.add(workflow.id, mode);
+
+				expect(addWebhooksSpy).not.toHaveBeenCalled();
+				expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+			});
 		});
 	});
 });
