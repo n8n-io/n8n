@@ -74,7 +74,7 @@ const onSearchUpdate = (value: string) => {
 const onFocus = () => {
 	opened.value = true;
 	focused.value = true;
-	maxWidth.value = '40%';
+	maxWidth.value = '30%';
 	inputRef.value?.select();
 	emit('focus');
 };
