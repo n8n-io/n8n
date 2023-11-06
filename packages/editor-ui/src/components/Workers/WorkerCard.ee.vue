@@ -17,8 +17,8 @@
 			<n8n-text color="text-light" size="small" :class="$style.container">
 				<span
 					>{{ $locale.baseText('workerList.item.lastUpdated') }} {{ secondsSinceLastUpdateString }}s
-					ago | Architecture: {{ worker.arch }} | Platform: {{ worker.platform }} | Uptime:
-					{{ upTime(worker.uptime) }}</span
+					ago | Architecture: {{ worker.arch }} | Platform: {{ worker.platform }} | n8n-Version:
+					{{ worker.version }} | Uptime: {{ upTime(worker.uptime) }}</span
 				>
 				<WorkerJobAccordion :items="worker.runningJobsSummary" />
 				<WorkerNetAccordion

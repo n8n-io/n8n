@@ -553,6 +553,7 @@ export interface IPushDataWorkerStatusPayload {
 		address: string;
 		internal: boolean;
 	}>;
+	version: string;
 }
 
 export interface IPushDataWorkerStatusMessage {

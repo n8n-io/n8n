@@ -9,6 +9,7 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { debounceMessageReceiver, getOsCpuString } from '../helpers';
 import type { WorkerCommandReceivedHandlerOptions } from './types';
 import { Logger } from '@/Logger';
+import { N8N_VERSION } from '@/constants';
 
 export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHandlerOptions) {
 	return async (channel: string, messageString: string) => {
@@ -56,6 +57,7 @@ export function getWorkerCommandReceivedHandler(options: WorkerCommandReceivedHa
 											internal: net.internal,
 										})),
 								),
+								version: N8N_VERSION,
 							},
 						});
 						break;
