@@ -693,13 +693,13 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	async addAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('Adding all trigger- and poller-based workflows');
+		this.logger.debug('[Leadership change] Adding all trigger- and poller-based workflows...');
 
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('Removing all trigger- and poller-based workflows');
+		this.logger.debug('[Leadership change] Removing all trigger- and poller-based workflows...');
 
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
@@ -731,9 +731,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		let workflow: Workflow;
 
 		const shouldAddWebhooks = activationMode !== 'leadershipChange';
+		console.log('shouldAddWebhooks', shouldAddWebhooks);
 
 		const shouldAddTriggersAndPollers =
 			config.getEnv('executions.mode') !== 'queue' || activationMode === 'leadershipChange';
+		console.log('shouldAddTriggersAndPollers', shouldAddTriggersAndPollers);
 
 		try {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
