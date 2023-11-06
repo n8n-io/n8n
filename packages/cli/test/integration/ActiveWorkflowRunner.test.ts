@@ -214,9 +214,9 @@ describe('executeErrorWorkflow()', () => {
 });
 
 describe('add()', () => {
-	describe("when execution mode is 'regular'", () => {
+	describe('in single-main scenario', () => {
 		test.each(['init', 'create', 'update', 'activate', 'manual'])(
-			"when activation mode is '%s', should add webhooks, triggers and pollers",
+			"when activation mode is '%s', leader should add webhooks, triggers and pollers",
 			async (mode: WorkflowActivateMode) => {
 				const workflow = await testDb.createWorkflow({ active: true }, owner);
 
@@ -237,11 +237,11 @@ describe('add()', () => {
 		);
 	});
 
-	describe("when execution mode is 'queue'", () => {
+	describe('in multi-main scenario', () => {
 		test.each(['init', 'create', 'update', 'activate', 'manual'])(
-			"when activation mode is '%s', should add webhooks only",
+			"when activation mode is '%s', leader should add webhooks only",
 			async (mode: WorkflowActivateMode) => {
-				config.set('executions.mode', 'queue');
+				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
 				const workflow = await testDb.createWorkflow({ active: true }, owner);
 
@@ -255,12 +255,12 @@ describe('add()', () => {
 				await activeWorkflowRunner.add(workflow.id, mode);
 
 				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
-				expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
 			},
 		);
 
-		test("when activation mode is 'leadershipChange', should add triggers and pollers only", async () => {
-			config.set('executions.mode', 'queue');
+		test("when activation mode is 'leadershipChange', leader should add triggers and pollers only", async () => {
+			jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
 			const workflow = await testDb.createWorkflow({ active: true }, owner);
 

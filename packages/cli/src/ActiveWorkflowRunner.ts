@@ -92,10 +92,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		};
 	} = {};
 
-	private isMultiMainScenario =
+	isMultiMainScenario =
 		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
 
-	private multiMainInstancePublisher: MultiMainInstancePublisher | undefined;
+	multiMainInstancePublisher: MultiMainInstancePublisher | undefined;
 
 	constructor(
 		private readonly logger: Logger,
