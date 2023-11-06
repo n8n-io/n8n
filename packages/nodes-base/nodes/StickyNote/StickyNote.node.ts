@@ -48,9 +48,9 @@ export class StickyNote implements INodeType {
 				displayName: 'Color',
 				name: 'color',
 				// eslint-disable-next-line n8n-nodes-base/node-param-color-type-unused
-				type: 'string',
+				type: 'number',
 				required: true,
-				default: '',
+				default: 1,
 			},
 		],
 	};

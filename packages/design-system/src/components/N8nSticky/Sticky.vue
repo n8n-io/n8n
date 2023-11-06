@@ -112,7 +112,7 @@ export default defineComponent({
 			default: false,
 		},
 		backgroundColor: {
-			type: Number,
+			value: [Number, String],
 			default: 1,
 		},
 	},
@@ -221,12 +221,6 @@ export default defineComponent({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		// background: linear-gradient(
-		// 	180deg,
-		// 	var(--color-sticky, var(--sticky-color-4)),
-		// 	#fff5d600 0.01%,
-		// 	var(--color-sticky, var(--sticky-color-4))
-		// );
 		border-radius: var(--border-radius-base);
 	}
 }
@@ -244,9 +238,9 @@ export default defineComponent({
 	.wrapper::after {
 		background: linear-gradient(
 			180deg,
-			var(--color-sticky, var(--sticky-color-4)),
+			var(--color-sticky, var(--sticky-color-1)),
 			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-4))
+			var(--color-sticky, var(--sticky-color-1))
 		);
 	}
 }
@@ -254,31 +248,81 @@ export default defineComponent({
 .color-2 {
 	background-color: var(--sticky-color-2);
 	border: 1px solid var(--color-sticky, var(--sticky-color-2));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-2)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-2))
+		);
+	}
 }
 
 .color-3 {
 	background-color: var(--sticky-color-3);
 	border: 1px solid var(--color-sticky, var(--sticky-color-3));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-3)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-3))
+		);
+	}
 }
 
 .color-4 {
 	background-color: var(--sticky-color-4);
 	border: 1px solid var(--color-sticky, var(--sticky-color-4));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-4)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-4))
+		);
+	}
 }
 
 .color-5 {
 	background-color: var(--sticky-color-5);
 	border: 1px solid var(--color-sticky, var(--sticky-color-5));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-5)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-5))
+		);
+	}
 }
 
 .color-6 {
 	background-color: var(--sticky-color-6);
 	border: 1px solid var(--color-sticky, var(--sticky-color-6));
+
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-6)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-6))
+		);
+	}
 }
 
 .color-7 {
 	background-color: var(--sticky-color-7);
 	border: 1px solid var(--color-sticky, var(--sticky-color-7));
+
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-7)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-7))
+		);
+	}
 }
 </style>
 
@@ -301,5 +345,4 @@ export default defineComponent({
 .full-height {
 	height: calc(100% - var(--spacing-2xs));
 }
-
 </style>
