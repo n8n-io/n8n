@@ -4,7 +4,7 @@
 			'n8n-sticky': true,
 			[$style.sticky]: true,
 			[$style.clickable]: !isResizing,
-			[`sticky-color-${backgroundColor}`]: true,
+			[$style[`color-${backgroundColor}`]]: true,
 		}"
 		:style="styles"
 		@keydown.prevent
@@ -221,12 +221,12 @@ export default defineComponent({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky, var(--sticky-color-4)),
-			#fff5d600 0.01%,
-			var(--color-sticky, var(--sticky-color-4))
-		);
+		// background: linear-gradient(
+		// 	180deg,
+		// 	var(--color-sticky, var(--sticky-color-4)),
+		// 	#fff5d600 0.01%,
+		// 	var(--color-sticky, var(--sticky-color-4))
+		// );
 		border-radius: var(--border-radius-base);
 	}
 }
@@ -235,6 +235,50 @@ export default defineComponent({
 	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
 	display: flex;
 	justify-content: flex-end;
+}
+
+.color-1 {
+	background-color: var(--sticky-color-1);
+	border: 1px solid var(--color-sticky, var(--sticky-color-1));
+
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-4)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-4))
+		);
+	}
+}
+
+.color-2 {
+	background-color: var(--sticky-color-2);
+	border: 1px solid var(--color-sticky, var(--sticky-color-2));
+}
+
+.color-3 {
+	background-color: var(--sticky-color-3);
+	border: 1px solid var(--color-sticky, var(--sticky-color-3));
+}
+
+.color-4 {
+	background-color: var(--sticky-color-4);
+	border: 1px solid var(--color-sticky, var(--sticky-color-4));
+}
+
+.color-5 {
+	background-color: var(--sticky-color-5);
+	border: 1px solid var(--color-sticky, var(--sticky-color-5));
+}
+
+.color-6 {
+	background-color: var(--sticky-color-6);
+	border: 1px solid var(--color-sticky, var(--sticky-color-6));
+}
+
+.color-7 {
+	background-color: var(--sticky-color-7);
+	border: 1px solid var(--color-sticky, var(--sticky-color-7));
 }
 </style>
 
@@ -258,38 +302,4 @@ export default defineComponent({
 	height: calc(100% - var(--spacing-2xs));
 }
 
-.sticky-color-1 {
-	background-color: var(--sticky-color-1);
-	border: 1px solid var(--color-sticky, var(--sticky-color-1));
-}
-
-.sticky-color-2 {
-	background-color: var(--sticky-color-2);
-	border: 1px solid var(--color-sticky, var(--sticky-color-2));
-}
-
-.sticky-color-3 {
-	background-color: var(--sticky-color-3);
-	border: 1px solid var(--color-sticky, var(--sticky-color-3));
-}
-
-.sticky-color-4 {
-	background-color: var(--sticky-color-4);
-	border: 1px solid var(--color-sticky, var(--sticky-color-4));
-}
-
-.sticky-color-5 {
-	background-color: var(--sticky-color-5);
-	border: 1px solid var(--color-sticky, var(--sticky-color-5));
-}
-
-.sticky-color-6 {
-	background-color: var(--sticky-color-6);
-	border: 1px solid var(--color-sticky, var(--sticky-color-6));
-}
-
-.sticky-color-7 {
-	background-color: var(--sticky-color-7);
-	border: 1px solid var(--color-sticky, var(--sticky-color-7));
-}
 </style>
