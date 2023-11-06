@@ -27,7 +27,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:backgroundColor="extractColorFromParameter(node.parameters.color)"
+					:backgroundColor="node.parameters.color"
 					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
@@ -85,7 +85,7 @@
 								'border-color': 'var(--color-text-dark)',
 								'box-shadow':
 									(index === 0 && node?.parameters.color === '') ||
-									index + 1 === extractIndexFromParameter(node?.parameters.color)
+									index + 1 === node?.parameters.color
 										? `0 0 0 1px var(--sticky-color-${index + 1})`
 										: 'none',
 							}"
@@ -219,22 +219,10 @@ export default defineComponent({
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
 		},
-		getColorFromIndex(index: number) {
-			const element = document.getElementsByClassName(`sticky-color-${index}`)[0];
-			const color = getComputedStyle(element).getPropertyValue(`--sticky-color-${index}`);
-			return color;
-		},
-		extractColorFromParameter(color?: string) {
-			return color?.split('-')[0];
-		},
-		extractIndexFromParameter(color?: string) {
-			return Number(color?.split('-')[1]);
-		},
 		changeColor(index: number) {
-			const color = this.getColorFromIndex(index);
 			this.workflowsStore.updateNodeProperties({
 				name: this.name,
-				properties: { parameters: { ...this.node.parameters, color: `${color}-${index}` } },
+				properties: { parameters: { ...this.node.parameters, color: index } },
 			});
 		},
 		onEdit(edit: boolean) {
