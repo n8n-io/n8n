@@ -411,23 +411,8 @@ export class UsersController {
 			throw new NotFoundError('User not found');
 		}
 
-		const resetPasswordToken = this.jwtService.signData(
-			{ sub: user.id },
-			{
-				expiresIn: '1d',
-			},
-		);
-
-		const baseUrl = getInstanceBaseUrl();
-
-		const link = this.userService.generatePasswordResetUrl(
-			baseUrl,
-			resetPasswordToken,
-			user.mfaEnabled,
-		);
-		return {
-			link,
-		};
+		const link = this.userService.generatePasswordResetUrl(user);
+		return { link };
 	}
 
 	@Authorized(['global', 'owner'])
