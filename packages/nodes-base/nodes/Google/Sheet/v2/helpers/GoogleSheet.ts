@@ -3,6 +3,7 @@ import type {
 	ILoadOptionsFunctions,
 	IDataObject,
 	IPollFunctions,
+	INode,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { utils as xlsxUtils } from 'xlsx';
@@ -117,7 +118,7 @@ export class GoogleSheet {
 	/**
 	 *  Returns the name of a sheet from a sheet id
 	 */
-	async spreadsheetGetSheetNameById(sheetId: string) {
+	async spreadsheetGetSheetNameById(node: INode, sheetId: string) {
 		const query = {
 			fields: 'sheets.properties',
 		};
@@ -133,9 +134,13 @@ export class GoogleSheet {
 		const foundItem = response.sheets.find(
 			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
 		);
+
 		if (!foundItem?.properties?.title) {
-			throw new Error(`Sheet with id ${sheetId} not found`);
+			throw new NodeOperationError(node, `Sheet with ID ${sheetId} not found`, {
+				severity: 'warning',
+			});
 		}
+
 		return foundItem.properties.title;
 	}
 
