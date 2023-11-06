@@ -21,6 +21,7 @@ import type { User } from '@/databases/entities/User';
 import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { chooseRandomly } from './shared/random';
+import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';
 
 mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
@@ -28,6 +29,13 @@ mockInstance(Push);
 mockInstance(SecretsHelper);
 
 const webhookService = mockInstance(WebhookService);
+
+// mock dynamic import to allow Jest to exit cleanly
+jest.mock('@/services/orchestration/main/MultiMainInstance.publisher.ee');
+
+const multiMainInstacePublisher = mockInstance(MultiMainInstancePublisher);
+
+Container.set(MultiMainInstancePublisher, multiMainInstacePublisher);
 
 setSchedulerAsLoadedNode();
 
