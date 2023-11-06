@@ -287,7 +287,7 @@ const WorkflowsView = defineComponent({
 				filtersToApply.ownedBy = ownedBy;
 			}
 
-			if (ownedBy && typeof sharedWith === 'string' && this.isValidUserId(sharedWith)) {
+			if (sharedWith && typeof sharedWith === 'string' && this.isValidUserId(sharedWith)) {
 				filtersToApply.sharedWith = sharedWith;
 			}
 
