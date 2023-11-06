@@ -20,6 +20,9 @@ import 'pdf-parse'; // for pdf
 
 export class DocumentBinaryInputLoader implements INodeType {
 	description: INodeTypeDescription = {
+		// This node is deprecated and will be removed in the future.
+		// The functionality was merged with the `DocumentJSONInputLoader` to `DocumentDefaultDataLoader`
+		hidden: true,
 		displayName: 'Binary Input Loader',
 		name: 'documentBinaryInputLoader',
 		icon: 'file:binary.svg',

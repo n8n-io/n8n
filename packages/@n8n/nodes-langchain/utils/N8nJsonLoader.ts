@@ -8,8 +8,11 @@ import { getMetadataFiltersValues } from './helpers';
 export class N8nJsonLoader {
 	private context: IExecuteFunctions;
 
-	constructor(context: IExecuteFunctions) {
+	private optionsPrefix: string;
+
+	constructor(context: IExecuteFunctions, optionsPrefix = '') {
 		this.context = context;
+		this.optionsPrefix = optionsPrefix;
 	}
 
 	async processAll(items?: INodeExecutionData[]): Promise<Document[]> {
@@ -27,7 +30,11 @@ export class N8nJsonLoader {
 	}
 
 	async processItem(item: INodeExecutionData, itemIndex: number): Promise<Document[]> {
-		const pointers = this.context.getNodeParameter('pointers', itemIndex) as string;
+		const pointers = this.context.getNodeParameter(
+			`${this.optionsPrefix}pointers`,
+			itemIndex,
+			'',
+		) as string;
 		const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
 
 		const textSplitter = (await this.context.getInputConnectionData(

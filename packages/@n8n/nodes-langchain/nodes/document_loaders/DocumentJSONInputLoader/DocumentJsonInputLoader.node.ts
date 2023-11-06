@@ -13,6 +13,9 @@ import { getConnectionHintNoticeField, metadataFilterField } from '../../../util
 
 export class DocumentJsonInputLoader implements INodeType {
 	description: INodeTypeDescription = {
+		// This node is deprecated and will be removed in the future.
+		// The functionality was merged with the `DocumentBinaryInputLoader` to `DocumentDefaultDataLoader`
+		hidden: true,
 		displayName: 'JSON Input Loader',
 		name: 'documentJsonInputLoader',
 		icon: 'file:json.svg',
