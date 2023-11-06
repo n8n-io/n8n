@@ -108,6 +108,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 	async init() {
 		if (this.isMultiMainScenario) {
+			// @TODO: This dynamic import triggers "Jest did not exit one second after the test run has completed."
 			const { MultiMainInstancePublisher } = await import(
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);

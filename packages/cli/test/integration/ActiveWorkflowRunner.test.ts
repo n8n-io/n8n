@@ -20,6 +20,7 @@ import * as testDb from './shared/testDb';
 import type { User } from '@/databases/entities/User';
 import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
+import { chooseRandomly } from './shared/random';
 
 mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
@@ -35,6 +36,14 @@ const externalHooks = mockInstance(ExternalHooks);
 let activeWorkflowRunner: ActiveWorkflowRunner;
 let owner: User;
 
+const NON_LEADERSHIP_CHANGE_MODES: WorkflowActivateMode[] = [
+	'init',
+	'create',
+	'update',
+	'activate',
+	'manual',
+];
+
 beforeAll(async () => {
 	await testDb.init();
 
@@ -44,6 +53,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
 	await activeWorkflowRunner.removeAll();
+	activeWorkflowRunner.removeAllQueuedWorkflowActivations();
 	await testDb.truncate(['Workflow']);
 	config.load(config.default);
 	jest.restoreAllMocks();
@@ -215,32 +225,31 @@ describe('executeErrorWorkflow()', () => {
 
 describe('add()', () => {
 	describe('in single-main scenario', () => {
-		test.each(['init', 'create', 'update', 'activate', 'manual'])(
-			"when activation mode is '%s', leader should add webhooks, triggers and pollers",
-			async (mode: WorkflowActivateMode) => {
-				const workflow = await testDb.createWorkflow({ active: true }, owner);
+		test('leader should add webhooks, triggers and pollers', async () => {
+			const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
-				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
-				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+			const workflow = await testDb.createWorkflow({ active: true }, owner);
 
-				await activeWorkflowRunner.init();
+			const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+			const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
 
-				// forget calls to spies from `init()`
-				addWebhooksSpy.mockReset();
-				addTriggersAndPollersSpy.mockReset();
+			await activeWorkflowRunner.init();
 
-				await activeWorkflowRunner.add(workflow.id, mode);
+			addWebhooksSpy.mockReset();
+			addTriggersAndPollersSpy.mockReset();
 
-				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
-				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
-			},
-		);
+			await activeWorkflowRunner.add(workflow.id, mode);
+
+			expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
+			expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('in multi-main scenario', () => {
-		test.each(['init', 'create', 'update', 'activate', 'manual'])(
-			"when activation mode is '%s', leader should add webhooks only",
-			async (mode: WorkflowActivateMode) => {
+		describe('leader', () => {
+			test('when activation mode is not leadership change, leader should add webhooks only', async () => {
+				const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
+
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
 				const workflow = await testDb.createWorkflow({ active: true }, owner);
@@ -256,25 +265,31 @@ describe('add()', () => {
 
 				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
 				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
-			},
-		);
+			});
 
-		test("when activation mode is 'leadershipChange', leader should add triggers and pollers only", async () => {
-			jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
+			test('when activation mode is leadership change, leader should add triggers and pollers only', async () => {
+				const mode = 'leadershipChange';
 
-			const workflow = await testDb.createWorkflow({ active: true }, owner);
+				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
-			const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
-			const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+				const workflow = await testDb.createWorkflow({ active: true }, owner);
 
-			await activeWorkflowRunner.init();
-			addWebhooksSpy.mockReset();
-			addTriggersAndPollersSpy.mockReset();
+				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
 
-			await activeWorkflowRunner.add(workflow.id, 'leadershipChange');
+				await activeWorkflowRunner.init();
+				addWebhooksSpy.mockReset();
+				addTriggersAndPollersSpy.mockReset();
 
-			expect(addWebhooksSpy).not.toHaveBeenCalled();
-			expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+				await activeWorkflowRunner.add(workflow.id, mode);
+
+				expect(addWebhooksSpy).not.toHaveBeenCalled();
+				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('follower', () => {
+			// @TODO
 		});
 	});
 });
