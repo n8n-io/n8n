@@ -49,9 +49,7 @@
 			>
 				<n8n-radio-buttons
 					v-show="
-						hasNodeRun &&
-						((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) &&
-						!editMode.enabled
+						hasNodeRun && (jsonData.length || binaryData.length || search) && !editMode.enabled
 					"
 					:modelValue="displayMode"
 					:options="buttons"
@@ -72,7 +70,7 @@
 				/>
 				<n8n-tooltip
 					placement="bottom-end"
-					v-if="canPinData && jsonData && jsonData.length > 0"
+					v-if="canPinData && rawInputData.length"
 					v-show="!editMode.enabled"
 					:visible="
 						isControlledPinDataTooltip
@@ -190,7 +188,9 @@
 
 		<div
 			v-else-if="
-				hasNodeRun && dataCount > 0 && maxRunIndex === 0 && !isArtificialRecoveredEventItem
+				hasNodeRun &&
+				((dataCount > 0 && maxRunIndex === 0) || search) &&
+				!isArtificialRecoveredEventItem
 			"
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
@@ -280,7 +280,10 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0" :class="$style.center">
+			<div
+				v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && !search"
+				:class="$style.center"
+			>
 				<slot name="no-output-data">xxx</slot>
 			</div>
 
@@ -327,6 +330,21 @@
 					<a @click="switchToBinary">
 						{{ $locale.baseText('runData.switchToBinary.binary') }}
 					</a>
+				</n8n-text>
+			</div>
+
+			<div v-else-if="showIoSearchNoMatchContent" :class="$style.center">
+				<n8n-text tag="h3" size="large">{{
+					$locale.baseText('ndv.search.noMatch.title')
+				}}</n8n-text>
+				<n8n-text>
+					<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+						<template #link>
+							<a href="#" @click="onSearchClear">
+								{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+							</a>
+						</template>
+					</i18n-t>
 				</n8n-text>
 			</div>
 
@@ -930,7 +948,10 @@ export default defineComponent({
 			return this.sourceControlStore.preferences.branchReadOnly;
 		},
 		showIOSearch(): boolean {
-			return this.hasNodeRun && this.dataCount > 0 && !this.hasRunError;
+			return this.hasNodeRun && !this.hasRunError;
+		},
+		showIoSearchNoMatchContent(): boolean {
+			return this.hasNodeRun && !this.inputData.length && this.search;
 		},
 	},
 	methods: {
@@ -1241,8 +1262,7 @@ export default defineComponent({
 			}
 
 			this.currentPage = 1;
-			const filteredData = inputData.filter(({ json }) => searchInObject(json, this.search));
-			return filteredData.length ? filteredData : inputData;
+			return inputData.filter(({ json }) => searchInObject(json, this.search));
 		},
 		getDataCount(
 			runIndex: number,
@@ -1393,6 +1413,10 @@ export default defineComponent({
 		},
 		activatePane() {
 			this.$emit('activatePane');
+		},
+		onSearchClear() {
+			this.search = '';
+			document.dispatchEvent(new KeyboardEvent('keyup', { key: '/' }));
 		},
 	},
 	watch: {
