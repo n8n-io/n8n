@@ -59,6 +59,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.createWorkflowButton().click();
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Workflow W2');
+		workflowPage.actions.saveWorkflowOnButtonClick();
 		cy.url().then((url) => {
 			workflowW2Url = url;
 		});

@@ -1344,4 +1344,11 @@ export const schema = {
 			env: 'N8N_LEADER_SELECTION_CHECK_INTERVAL',
 		},
 	},
+
+	proxy_hops: {
+		format: Number,
+		default: 0,
+		env: 'N8N_PROXY_HOPS',
+		doc: 'Number of reverse-proxies n8n is running behind',
+	},
 };
