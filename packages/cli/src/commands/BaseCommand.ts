@@ -243,6 +243,21 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
+		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled')) {
+			const { MultiMainInstancePublisher } = await import(
+				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+			);
+
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			if (multiMainInstancePublisher.isFollower) {
+				this.logger.debug('Instance is follower, skipping license initialization...');
+				return;
+			}
+		}
+
 		const license = Container.get(License);
 		await license.init(this.instanceType ?? 'main');
 
@@ -258,6 +273,7 @@ export abstract class BaseCommand extends Command {
 			try {
 				this.logger.debug('Attempting license activation');
 				await license.activate(activationKey);
+				this.logger.debug('License init complete');
 			} catch (e) {
 				this.logger.error('Could not activate license', e as Error);
 			}

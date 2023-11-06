@@ -13,8 +13,12 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 
 	private leaderId: string | undefined;
 
-	private get isLeader() {
+	public get isLeader() {
 		return this.id === this.leaderId;
+	}
+
+	public get isFollower() {
+		return !this.isLeader;
 	}
 
 	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
@@ -24,6 +28,8 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
+		if (this.initialized) return;
+
 		await this.initPublisher();
 
 		this.initialized = true;

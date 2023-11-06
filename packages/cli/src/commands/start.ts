@@ -26,10 +26,10 @@ import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License, FeatureNotLicensedError } from '@/License';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
 import { IConfig } from '@oclif/config';
 import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { PruningService } from '@/services/pruning.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -110,7 +110,9 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			Container.get(ExecutionRepository).clearTimers();
+			const pruningService = Container.get(PruningService);
+
+			if (await pruningService.isPruningEnabled()) await pruningService.stopPruning();
 
 			if (config.getEnv('leaderSelection.enabled')) {
 				const { MultiMainInstancePublisher } = await import(
@@ -205,7 +207,7 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
-		this.logger.debug('License init complete');
+
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
@@ -231,15 +233,23 @@ export class Start extends BaseCommand {
 			return;
 		}
 
-		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
-		}
+		// multi-main scenario
 
 		const { MultiMainInstancePublisher } = await import(
 			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 		);
 
-		await Container.get(MultiMainInstancePublisher).init();
+		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+		await multiMainInstancePublisher.init();
+
+		if (
+			multiMainInstancePublisher.isLeader &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
 		await Container.get(OrchestrationHandlerMainService).init();
 	}
 

@@ -113,6 +113,21 @@ export class License {
 
 	async onFeatureChange(_features: TFeatures): Promise<void> {
 		if (config.getEnv('executions.mode') === 'queue') {
+			if (config.getEnv('leaderSelection.enabled')) {
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
+
+				const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+				await multiMainInstancePublisher.init();
+
+				if (multiMainInstancePublisher.isFollower) {
+					this.logger.debug('Instance is follower, skipping sending of reloadLicense command...');
+					return;
+				}
+			}
+
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');
 				this.redisPublisher = await Container.get(RedisService).getPubSubPublisher();
