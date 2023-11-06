@@ -496,12 +496,7 @@
 						body: formData,
 					})
 						.then(async function (response) {
-							const data = await response.json();
-							data.status = response.status;
-							return data;
-						})
-						.then(function (data) {
-							if (data?.status === 200) {
+							if (response.status === 200) {
 								const redirectUrl = document.getElementById("redirectUrl");
 								if (redirectUrl) {
 									window.location.replace(redirectUrl.href);
@@ -515,6 +510,8 @@
 								document.querySelector('#submitted-content').textContent =
 									'An error occurred in the workflow handling this form';
 							}
+
+							return;
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
