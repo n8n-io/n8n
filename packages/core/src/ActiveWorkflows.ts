@@ -202,7 +202,7 @@ export class ActiveWorkflows {
 		return true;
 	}
 
-	async deactivateAllTriggerAndPollerBasedWorkflows() {
+	async removeAllTriggerAndPollerBasedWorkflows() {
 		for (const workflowId of Object.keys(this.activeWorkflows)) {
 			const w = this.activeWorkflows[workflowId];
 

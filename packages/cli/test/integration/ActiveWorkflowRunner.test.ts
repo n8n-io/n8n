@@ -1,46 +1,52 @@
-import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
 import { Container } from 'typedi';
+
+import { NodeApiError, NodeOperationError, Workflow } from 'n8n-workflow';
+import type { IWebhookData, WorkflowActivateMode } from 'n8n-workflow';
+import { ActiveWorkflows } from 'n8n-core';
+
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import config from '@/config';
 import { ExternalHooks } from '@/ExternalHooks';
 import { Push } from '@/push';
-import { ActiveExecutions } from '@/ActiveExecutions';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { WebhookService } from '@/services/webhook.service';
-import { mockInstance } from './shared/utils';
-import * as testDb from './shared/testDb';
-import { ActiveWorkflows } from 'n8n-core';
-import { WorkflowRepository } from '@/databases/repositories';
-import { setSchedulerAsLoadedNode } from '../unit/Helpers';
+import * as WebhookHelpers from '@/WebhookHelpers';
 import * as AdditionalData from '@/WorkflowExecuteAdditionalData';
-import type { User } from '@/databases/entities/User';
 import { WorkflowRunner } from '@/WorkflowRunner';
+
+import { mockInstance, setSchedulerAsLoadedNode } from './shared/utils';
+import * as testDb from './shared/testDb';
+import type { User } from '@/databases/entities/User';
+import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import { NodeTypes } from '@/NodeTypes';
 
 mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
-mockInstance(WebhookService);
 mockInstance(Push);
 mockInstance(SecretsHelper);
+
+const webhookService = mockInstance(WebhookService);
 
 setSchedulerAsLoadedNode();
 
 const externalHooks = mockInstance(ExternalHooks);
 
 let activeWorkflowRunner: ActiveWorkflowRunner;
-let workflowRepository: WorkflowRepository;
 let owner: User;
 
 beforeAll(async () => {
 	await testDb.init();
 
 	activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
-	workflowRepository = Container.get(WorkflowRepository);
 	owner = await testDb.createOwner();
 });
 
 afterEach(async () => {
+	await activeWorkflowRunner.removeAll();
 	await testDb.truncate(['Workflow']);
-
-	activeWorkflowRunner.activeWorkflows = new ActiveWorkflows();
+	config.load(config.default);
+	jest.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -48,20 +54,25 @@ afterAll(async () => {
 });
 
 describe('init()', () => {
-	test('should call external hooks', async () => {
+	test('should call `ExternalHooks.run()`', async () => {
+		const runSpy = jest.spyOn(externalHooks, 'run');
+
 		await activeWorkflowRunner.init();
 
-		expect(externalHooks.run).toHaveBeenCalledTimes(1);
+		expect(runSpy).toHaveBeenCalledTimes(1);
+		const [hook, arg] = runSpy.mock.calls[0];
+		expect(hook).toBe('activeWorkflows.initialized');
+		expect(arg).toBeEmptyArray();
 	});
 
 	test('should start with no active workflows', async () => {
-		const findSpy = jest.spyOn(workflowRepository, 'find');
-
 		await activeWorkflowRunner.init();
 
-		const activated = activeWorkflowRunner.getActiveWorkflows();
-		await expect(activated).resolves.toHaveLength(0);
-		expect(findSpy).toHaveBeenCalled();
+		const inStorage = activeWorkflowRunner.allActiveInStorage();
+		await expect(inStorage).resolves.toHaveLength(0);
+
+		const inMemory = activeWorkflowRunner.allActiveInMemory();
+		expect(inMemory).toHaveLength(0);
 	});
 
 	test('should start with one active workflow', async () => {
@@ -69,8 +80,11 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const activated = activeWorkflowRunner.getActiveWorkflows();
-		await expect(activated).resolves.toHaveLength(1);
+		const inStorage = activeWorkflowRunner.allActiveInStorage();
+		await expect(inStorage).resolves.toHaveLength(1);
+
+		const inMemory = activeWorkflowRunner.allActiveInMemory();
+		expect(inMemory).toHaveLength(1);
 	});
 
 	test('should start with multiple active workflows', async () => {
@@ -79,8 +93,11 @@ describe('init()', () => {
 
 		await activeWorkflowRunner.init();
 
-		const activated = activeWorkflowRunner.getActiveWorkflows();
-		await expect(activated).resolves.toHaveLength(2);
+		const inStorage = activeWorkflowRunner.allActiveInStorage();
+		await expect(inStorage).resolves.toHaveLength(2);
+
+		const inMemory = activeWorkflowRunner.allActiveInMemory();
+		expect(inMemory).toHaveLength(2);
 	});
 
 	test('should pre-check that every workflow can be activated', async () => {
@@ -98,62 +115,52 @@ describe('init()', () => {
 });
 
 describe('removeAll()', () => {
-	test('should remove all active workflows', async () => {
+	test('should remove all active workflows from memory', async () => {
 		await testDb.createWorkflow({ active: true }, owner);
 		await testDb.createWorkflow({ active: true }, owner);
-
-		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
 
 		await activeWorkflowRunner.init();
 		await activeWorkflowRunner.removeAll();
 
-		expect(removeSpy).toHaveBeenCalledTimes(2);
-
-		/**
-		 * We do not assert using `ActiveWorkflowRunner.getActiveWorkflows()` because
-		 * this method is for workflows stored as `active` in the DB, i.e. workflows that
-		 * must be activated on startup and deactivated on shutdown.
-		 *
-		 * Workflows stored as `active` are **not** the same as actually active workflows.
-		 */
+		const inMemory = activeWorkflowRunner.allActiveInMemory();
+		expect(inMemory).toHaveLength(0);
 	});
 });
 
 describe('remove()', () => {
-	test('should remove workflow webhooks', async () => {
+	test('should call `ActiveWorkflowRunner.clearWebhooks()`', async () => {
 		const workflow = await testDb.createWorkflow({ active: true }, owner);
-
-		const removeWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'removeWorkflowWebhooks');
+		const clearWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'clearWebhooks');
 
 		await activeWorkflowRunner.init();
 		await activeWorkflowRunner.remove(workflow.id);
 
-		expect(removeWebhooksSpy).toHaveBeenCalledTimes(1);
+		expect(clearWebhooksSpy).toHaveBeenCalledTimes(1);
 	});
 });
 
 describe('isActive()', () => {
-	test('should return true for workflow stored as active', async () => {
+	test('should return `true` for active workflow in storage', async () => {
 		const workflow = await testDb.createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
 
-		const isActive = activeWorkflowRunner.isActive(workflow.id);
-		await expect(isActive).resolves.toBe(true);
+		const isActiveInStorage = activeWorkflowRunner.isActive(workflow.id);
+		await expect(isActiveInStorage).resolves.toBe(true);
 	});
 
-	test('should return false for workflow stored as inactive', async () => {
+	test('should return `false` for inactive workflow in storage', async () => {
 		const workflow = await testDb.createWorkflow({ active: false }, owner);
 
 		await activeWorkflowRunner.init();
 
-		const isActive = activeWorkflowRunner.isActive(workflow.id);
-		await expect(isActive).resolves.toBe(false);
+		const isActiveInStorage = activeWorkflowRunner.isActive(workflow.id);
+		await expect(isActiveInStorage).resolves.toBe(false);
 	});
 });
 
 describe('runWorkflow()', () => {
-	test('should call WorkflowRunner.run()', async () => {
+	test('should call `WorkflowRunner.run()`', async () => {
 		const workflow = await testDb.createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
@@ -173,22 +180,22 @@ describe('runWorkflow()', () => {
 });
 
 describe('executeErrorWorkflow()', () => {
-	test('should call WorkflowExecuteAdditionalData.executeErrorWorkflow()', async () => {
+	test('should call `WorkflowExecuteAdditionalData.executeErrorWorkflow()`', async () => {
 		const workflow = await testDb.createWorkflow({ active: true }, owner);
 		const [node] = workflow.nodes;
 		const error = new NodeOperationError(node, 'Fake error message');
-		const executeErrorWorkflowSpy = jest.spyOn(AdditionalData, 'executeErrorWorkflow');
+		const executeSpy = jest.spyOn(AdditionalData, 'executeErrorWorkflow');
 
 		await activeWorkflowRunner.init();
-
 		activeWorkflowRunner.executeErrorWorkflow(error, workflow, 'trigger');
 
-		expect(executeErrorWorkflowSpy).toHaveBeenCalledTimes(1);
+		expect(executeSpy).toHaveBeenCalledTimes(1);
 	});
 
-	it('should be called on failure to activate due to 401', async () => {
+	test('should be called on failure to activate due to 401', async () => {
 		const storedWorkflow = await testDb.createWorkflow({ active: true }, owner);
 		const [node] = storedWorkflow.nodes;
+		const executeSpy = jest.spyOn(activeWorkflowRunner, 'executeErrorWorkflow');
 
 		jest.spyOn(activeWorkflowRunner, 'add').mockImplementation(() => {
 			throw new NodeApiError(node, {
@@ -197,13 +204,112 @@ describe('executeErrorWorkflow()', () => {
 			});
 		});
 
-		const executeErrorWorkflowSpy = jest.spyOn(activeWorkflowRunner, 'executeErrorWorkflow');
-
 		await activeWorkflowRunner.init();
 
-		const [error, workflow] = executeErrorWorkflowSpy.mock.calls[0];
-
+		expect(executeSpy).toHaveBeenCalledTimes(1);
+		const [error, workflow] = executeSpy.mock.calls[0];
 		expect(error.message).toContain('Authorization');
 		expect(workflow.id).toBe(storedWorkflow.id);
+	});
+});
+
+describe('add()', () => {
+	describe("when execution mode is 'regular'", () => {
+		test.each(['init', 'create', 'update', 'activate', 'manual'])(
+			"when activation mode is '%s', should add webhooks, triggers and pollers",
+			async (mode: WorkflowActivateMode) => {
+				const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+
+				await activeWorkflowRunner.init();
+
+				// forget calls to spies from `init()`
+				addWebhooksSpy.mockReset();
+				addTriggersAndPollersSpy.mockReset();
+
+				await activeWorkflowRunner.add(workflow.id, mode);
+
+				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
+				expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+			},
+		);
+	});
+
+	describe("when execution mode is 'queue'", () => {
+		test.each(['init', 'create', 'update', 'activate', 'manual'])(
+			"when activation mode is '%s', should add webhooks only",
+			async (mode: WorkflowActivateMode) => {
+				config.set('executions.mode', 'queue');
+
+				const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+
+				await activeWorkflowRunner.init();
+				addWebhooksSpy.mockReset();
+				addTriggersAndPollersSpy.mockReset();
+
+				await activeWorkflowRunner.add(workflow.id, mode);
+
+				expect(addWebhooksSpy).toHaveBeenCalledTimes(1);
+				expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+			},
+		);
+
+		test("when activation mode is 'leadershipChange', should add triggers and pollers only", async () => {
+			config.set('executions.mode', 'queue');
+
+			const workflow = await testDb.createWorkflow({ active: true }, owner);
+
+			const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
+			const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
+
+			await activeWorkflowRunner.init();
+			addWebhooksSpy.mockReset();
+			addTriggersAndPollersSpy.mockReset();
+
+			await activeWorkflowRunner.add(workflow.id, 'leadershipChange');
+
+			expect(addWebhooksSpy).not.toHaveBeenCalled();
+			expect(addTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+});
+
+describe('addWebhooks()', () => {
+	test('should call `WebhookService.storeWebhook()`', async () => {
+		const mockWebhook = { path: 'fake-path' } as unknown as IWebhookData;
+		const mockWebhookEntity = { webhookPath: 'fake-path' } as unknown as WebhookEntity;
+
+		jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([mockWebhook]);
+		webhookService.createWebhook.mockReturnValue(mockWebhookEntity);
+
+		const additionalData = await AdditionalData.getBase('fake-user-id');
+
+		const dbWorkflow = await testDb.createWorkflow({ active: true }, owner);
+
+		const workflow = new Workflow({
+			id: dbWorkflow.id,
+			name: dbWorkflow.name,
+			nodes: dbWorkflow.nodes,
+			connections: dbWorkflow.connections,
+			active: dbWorkflow.active,
+			nodeTypes: Container.get(NodeTypes),
+			staticData: dbWorkflow.staticData,
+			settings: dbWorkflow.settings,
+		});
+
+		const [node] = dbWorkflow.nodes;
+
+		jest.spyOn(Workflow.prototype, 'getNode').mockReturnValue(node);
+		jest.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated').mockReturnValue(true);
+		jest.spyOn(Workflow.prototype, 'createWebhookIfNotExists').mockResolvedValue(undefined);
+
+		await activeWorkflowRunner.addWebhooks(workflow, additionalData, 'trigger', 'init');
+
+		expect(webhookService.storeWebhook).toHaveBeenCalledTimes(1);
 	});
 });

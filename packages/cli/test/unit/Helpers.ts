@@ -1,6 +1,4 @@
 import type { INodeTypeData } from 'n8n-workflow';
-import { mockInstance } from '../integration/shared/utils';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 /**
  * Ensure all pending promises settle. The promise's `resolve` is placed in
@@ -37,16 +35,4 @@ export function mockNodeTypesData(
 			acc
 		);
 	}, {});
-}
-
-export function setSchedulerAsLoadedNode() {
-	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
-
-	Object.assign(nodesAndCredentials, {
-		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
-			addTrigger: true,
-		}),
-		known: { nodes: {}, credentials: {} },
-		types: { nodes: [], credentials: [] },
-	});
 }
