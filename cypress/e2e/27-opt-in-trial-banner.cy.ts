@@ -14,6 +14,10 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 	});
 
 	it('should render trial banner for opt-in cloud user', () => {
+		cy.intercept('GET', '/rest/admin/cloud-plan', {
+			body: planData,
+		}).as('getPlanData');
+
 		cy.intercept('GET', '/rest/settings', (req) => {
 			req.on('response', (res) => {
 				res.send({
@@ -21,10 +25,6 @@ describe('BannerStack', { disableAutoLogin: true }, () => {
 				});
 			});
 		}).as('loadSettings');
-
-		cy.intercept('GET', '/rest/admin/cloud-plan', {
-			body: planData,
-		}).as('getPlanData');
 
 		cy.signin({ email: INSTANCE_OWNER.email, password: INSTANCE_OWNER.password });
 

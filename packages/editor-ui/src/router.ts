@@ -1,49 +1,54 @@
 import { useStorage } from '@vueuse/core';
-import ChangePasswordView from './views/ChangePasswordView.vue';
-import ErrorView from './views/ErrorView.vue';
-import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
-import MainHeader from '@/components/MainHeader/MainHeader.vue';
-import MainSidebar from '@/components/MainSidebar.vue';
-import NodeView from '@/views/NodeView.vue';
-import WorkflowExecutionsList from '@/components/ExecutionsView/ExecutionsList.vue';
-import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
-import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
-import SettingsView from './views/SettingsView.vue';
-import SettingsLdapView from './views/SettingsLdapView.vue';
-import SettingsPersonalView from './views/SettingsPersonalView.vue';
-import SettingsUsersView from './views/SettingsUsersView.vue';
-import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
-import SettingsApiView from './views/SettingsApiView.vue';
-import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
-import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
-import SetupView from './views/SetupView.vue';
-import SigninView from './views/SigninView.vue';
-import SignupView from './views/SignupView.vue';
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
-
-import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
-import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
-import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
-import CredentialsView from '@/views/CredentialsView.vue';
-import ExecutionsView from '@/views/ExecutionsView.vue';
-import WorkflowsView from '@/views/WorkflowsView.vue';
-import VariablesView from '@/views/VariablesView.vue';
 import type { IPermissions } from './Interface';
-import { LOGIN_STATUS, ROLE } from '@/utils';
+import { isAuthorized, LOGIN_STATUS, ROLE, runExternalHook } from '@/utils';
 import { useSettingsStore } from './stores/settings.store';
+import { useUsersStore } from './stores/users.store';
 import { useTemplatesStore } from './stores/templates.store';
+import { useUIStore } from '@/stores/ui.store';
 import { useSSOStore } from './stores/sso.store';
-import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
-import SettingsSso from './views/SettingsSso.vue';
-import SignoutView from '@/views/SignoutView.vue';
-import SamlOnboarding from '@/views/SamlOnboarding.vue';
-import SettingsSourceControl from './views/SettingsSourceControl.vue';
-import SettingsExternalSecrets from './views/SettingsExternalSecrets.vue';
-import SettingsAuditLogs from './views/SettingsAuditLogs.vue';
-import WorkflowHistory from '@/views/WorkflowHistory.vue';
-import WorkflowOnboardingView from '@/views/WorkflowOnboardingView.vue';
+import { useWebhooksStore } from '@/stores/webhooks.store';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { useTelemetry } from '@/composables';
+
+const ChangePasswordView = async () => import('./views/ChangePasswordView.vue');
+const ErrorView = async () => import('./views/ErrorView.vue');
+const ForgotMyPasswordView = async () => import('./views/ForgotMyPasswordView.vue');
+const MainHeader = async () => import('@/components/MainHeader/MainHeader.vue');
+const MainSidebar = async () => import('@/components/MainSidebar.vue');
+const NodeView = async () => import('@/views/NodeView.vue');
+const WorkflowExecutionsList = async () => import('@/components/ExecutionsView/ExecutionsList.vue');
+const ExecutionsLandingPage = async () =>
+	import('@/components/ExecutionsView/ExecutionsLandingPage.vue');
+const ExecutionPreview = async () => import('@/components/ExecutionsView/ExecutionPreview.vue');
+const SettingsView = async () => import('./views/SettingsView.vue');
+const SettingsLdapView = async () => import('./views/SettingsLdapView.vue');
+const SettingsPersonalView = async () => import('./views/SettingsPersonalView.vue');
+const SettingsUsersView = async () => import('./views/SettingsUsersView.vue');
+const SettingsCommunityNodesView = async () => import('./views/SettingsCommunityNodesView.vue');
+const SettingsApiView = async () => import('./views/SettingsApiView.vue');
+const SettingsLogStreamingView = async () => import('./views/SettingsLogStreamingView.vue');
+const SettingsFakeDoorView = async () => import('./views/SettingsFakeDoorView.vue');
+const SetupView = async () => import('./views/SetupView.vue');
+const SigninView = async () => import('./views/SigninView.vue');
+const SignupView = async () => import('./views/SignupView.vue');
+const TemplatesCollectionView = async () => import('@/views/TemplatesCollectionView.vue');
+const TemplatesWorkflowView = async () => import('@/views/TemplatesWorkflowView.vue');
+const TemplatesSearchView = async () => import('@/views/TemplatesSearchView.vue');
+const CredentialsView = async () => import('@/views/CredentialsView.vue');
+const ExecutionsView = async () => import('@/views/ExecutionsView.vue');
+const WorkflowsView = async () => import('@/views/WorkflowsView.vue');
+const VariablesView = async () => import('@/views/VariablesView.vue');
+const SettingsUsageAndPlan = async () => import('./views/SettingsUsageAndPlan.vue');
+const SettingsSso = async () => import('./views/SettingsSso.vue');
+const SignoutView = async () => import('@/views/SignoutView.vue');
+const SamlOnboarding = async () => import('@/views/SamlOnboarding.vue');
+const SettingsSourceControl = async () => import('./views/SettingsSourceControl.vue');
+const SettingsExternalSecrets = async () => import('./views/SettingsExternalSecrets.vue');
+const SettingsAuditLogs = async () => import('./views/SettingsAuditLogs.vue');
+const WorkflowHistory = async () => import('@/views/WorkflowHistory.vue');
+const WorkflowOnboardingView = async () => import('@/views/WorkflowOnboardingView.vue');
 
 interface IRouteConfig {
 	meta: {
@@ -521,7 +526,7 @@ export const routes = [
 				path: 'usage',
 				name: VIEWS.USAGE,
 				components: {
-					settingsView: SettingsUsageAndPlanVue,
+					settingsView: SettingsUsageAndPlan,
 				},
 				meta: {
 					telemetry: {
@@ -867,6 +872,93 @@ const router = createRouter({
 		}
 	},
 	routes,
+});
+
+router.beforeEach(async (to, from, next) => {
+	/**
+	 * Initialize stores before routing
+	 */
+
+	const settingsStore = useSettingsStore();
+	const usersStore = useUsersStore();
+	await settingsStore.initialize();
+	await usersStore.initialize();
+
+	/**
+	 * Redirect to setup page. User should be redirected to this only once
+	 */
+
+	if (settingsStore.showSetupPage) {
+		if (to.name === VIEWS.SETUP) {
+			return next();
+		}
+
+		return next({ name: VIEWS.SETUP });
+	}
+
+	/**
+	 * Verify user permissions for current route
+	 */
+
+	const currentUser = usersStore.currentUser;
+	const permissions = to.meta?.permissions as IPermissions;
+	const canUserAccessCurrentRoute = permissions && isAuthorized(permissions, currentUser);
+	if (canUserAccessCurrentRoute) {
+		return next();
+	}
+
+	/**
+	 * If user cannot access the page and is not logged in, redirect to sign in
+	 */
+
+	if (!currentUser) {
+		const redirect =
+			to.query.redirect ||
+			encodeURIComponent(`${window.location.pathname}${window.location.search}`);
+		return next({ name: VIEWS.SIGNIN, query: { redirect } });
+	}
+
+	/**
+	 * If user cannot access page but is logged in, respect sign in redirect
+	 */
+
+	if (to.name === VIEWS.SIGNIN && typeof to.query.redirect === 'string') {
+		const redirect = decodeURIComponent(to.query.redirect);
+		if (redirect.startsWith('/')) {
+			// protect against phishing
+			return next(redirect);
+		}
+	}
+
+	/**
+	 * Otherwise, redirect to home page
+	 */
+
+	return next({ name: VIEWS.HOMEPAGE });
+});
+
+router.afterEach((to, from) => {
+	const telemetry = useTelemetry();
+	const uiStore = useUIStore();
+	const templatesStore = useTemplatesStore();
+
+	/**
+	 * Run external hooks
+	 */
+
+	void runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+
+	/**
+	 * Track current view for telemetry
+	 */
+
+	uiStore.currentView = (to.name as string) ?? '';
+	if (to.meta?.templatesEnabled) {
+		templatesStore.setSessionId();
+	} else {
+		templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
+	}
+	telemetry.page(to);
 });
 
 export default router;

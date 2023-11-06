@@ -34,7 +34,7 @@ declare global {
 			drag(
 				selector: string | Cypress.Chainable<JQuery<HTMLElement>>,
 				target: [number, number],
-				options?: { abs?: boolean; index?: number; realMouse?: boolean },
+				options?: { abs?: boolean; index?: number; realMouse?: boolean; clickToFinish?: boolean },
 			): void;
 			draganddrop(draggableSelector: string, droppableSelector: string): void;
 			shouldNotHaveConsoleErrors(): void;
