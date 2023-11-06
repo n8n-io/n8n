@@ -254,6 +254,8 @@ describe('add()', () => {
 
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
+				mockInstance(MultiMainInstancePublisher, { isLeader: true });
+
 				const workflow = await testDb.createWorkflow({ active: true }, owner);
 
 				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
