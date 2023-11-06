@@ -297,6 +297,7 @@ describe('add()', () => {
 		});
 
 		describe('follower', () => {
+			// eslint-disable-next-line n8n-local-rules/no-skipped-tests
 			test.skip('on regular activation mode, follower should not add webhooks, triggers or pollers', async () => {
 				const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
