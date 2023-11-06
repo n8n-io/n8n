@@ -51,7 +51,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					sheetName = `${spreadsheetId}||${sheetId}`;
 					break;
 				default:
-					sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
+					sheetName = await googleSheet.spreadsheetGetSheetNameById(this.getNode(), sheetId);
 			}
 
 			results = await sheet[googleSheets.operation].execute.call(
