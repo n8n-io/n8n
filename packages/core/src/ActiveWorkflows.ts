@@ -26,14 +26,23 @@ export class ActiveWorkflows {
 		[workflowId: string]: IWorkflowData;
 	} = {};
 
+	/**
+	 * Returns if the workflow is active in memory.
+	 */
 	isActive(workflowId: string) {
 		return this.activeWorkflows.hasOwnProperty(workflowId);
 	}
 
+	/**
+	 * Returns the IDs of the currently active workflows in memory.
+	 */
 	allActiveWorkflows() {
 		return Object.keys(this.activeWorkflows);
 	}
 
+	/**
+	 * Returns the workflow data for the given ID if currently active in memory.
+	 */
 	get(workflowId: string) {
 		return this.activeWorkflows[workflowId];
 	}
@@ -186,7 +195,10 @@ export class ActiveWorkflows {
 		};
 	}
 
-	async deactivate(workflowId: string) {
+	/**
+	 * Makes a workflow inactive in memory.
+	 */
+	async remove(workflowId: string) {
 		if (!this.isActive(workflowId)) {
 			Logger.warn(`Cannot deactivate already inactive workflow ID "${workflowId}"`);
 			return false;

@@ -108,7 +108,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Remove all currently active workflows from memory.
+	 * Removes all the currently active workflows from memory.
 	 */
 	async removeAll() {
 		let activeWorkflowIds: string[] = [];
@@ -243,7 +243,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Get the IDs of active workflows from memory.
+	 * Returns the ids of the currently active workflows from memory.
 	 */
 	allActiveInMemory() {
 		return this.activeWorkflows.allActiveWorkflows();
@@ -291,7 +291,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Check if the workflow is storage as `active` on disk.
+	 * Returns if the workflow is stored as `active`.
 	 *
 	 * @important Do not confuse with `ActiveWorkflows.isActive()`,
 	 * which checks if the workflow is active in memory.
@@ -306,14 +306,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Return the workflow activation error (if any) for a workflow.
+	 * Return error if there was a problem activating the workflow
 	 */
 	getActivationError(workflowId: string) {
 		return this.activationErrors[workflowId];
 	}
 
 	/**
-	 * Register any workflow-defined webhooks in the DB.
+	 * Register workflow-defined webhooks in the `workflow_entity` table.
 	 */
 	async addWebhooks(
 		workflow: Workflow,
@@ -397,7 +397,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Clear any workflow-defined webhooks from the `webhook_entity` table.
+	 * Clear workflow-defined webhooks from the `webhook_entity` table.
 	 */
 	async clearWebhooks(workflowId: string) {
 		const workflowData = await Db.collections.Workflow.findOne({
@@ -594,7 +594,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 				// Remove the workflow as "active"
 
-				void this.activeWorkflows.deactivate(workflowData.id);
+				void this.activeWorkflows.remove(workflowData.id);
 				this.activationErrors[workflowData.id] = {
 					time: new Date().getTime(),
 					error: {
@@ -609,7 +609,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 				);
 				this.executeErrorWorkflow(activationError, workflowData, mode);
 
-				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity); // @TODO: Typing
+				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
 			};
 			return returnFunctions;
 		};
@@ -638,7 +638,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Register as active in memory all stored workflows marked as `active`.
+	 * Register as active in memory all workflows stored as `active`.
 	 */
 	async addActiveWorkflows(activationMode: WorkflowActivateMode) {
 		const dbWorkflows = await this.workflowRepository.getAllActive();
@@ -693,13 +693,13 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	async addAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('Adding all trigger and poller based workflows');
+		this.logger.debug('Adding all trigger- and poller-based workflows');
 
 		await this.addActiveWorkflows('leadershipChange');
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
-		this.logger.debug('Removing all trigger and poller based workflows');
+		this.logger.debug('Removing all trigger- and poller-based workflows');
 
 		await this.activeWorkflows.removeAllTriggerAndPollerBasedWorkflows();
 	}
@@ -714,7 +714,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	 * - A `poller` is an HTTP-based node that can start a workflow when detecting
 	 * a change while regularly checking a third-party service.
 	 * - A `trigger` is any non-HTTP-based node that can start a workflow, e.g. a
-	 * time-based like Schedule Trigger or a message-queue-based node.
+	 * time-based node like Schedule Trigger or a message-queue-based node.
 	 *
 	 * Note that despite the name, most "trigger" nodes are actually webhook-based
 	 * and so qualify as `webhook`, e.g. Stripe Trigger.
@@ -929,7 +929,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		if (this.activeWorkflows.isActive(workflowId)) {
-			const removalSuccess = await this.activeWorkflows.deactivate(workflowId);
+			const removalSuccess = await this.activeWorkflows.remove(workflowId);
 			if (removalSuccess) {
 				this.logger.verbose(`Successfully deactivated workflow "${workflowId}"`, { workflowId });
 			}
@@ -937,7 +937,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	}
 
 	/**
-	 * Register as active a trigger- or poller-based workflow.
+	 * Register as active in memory a trigger- or poller-based workflow.
 	 */
 	async addTriggersAndPollers(
 		dbWorkflow: WorkflowEntity,
