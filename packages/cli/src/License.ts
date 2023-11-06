@@ -118,7 +118,11 @@ export class License {
 					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 				);
 
-				if (Container.get(MultiMainInstancePublisher).isFollower) {
+				const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+				await multiMainInstancePublisher.init();
+
+				if (multiMainInstancePublisher.isFollower) {
 					this.logger.debug('Instance is follower, skipping sending of reloadLicense command...');
 					return;
 				}
