@@ -2,6 +2,8 @@ import type { AppliedThemeOption, ThemeOption } from '@/Interface';
 import { useStorage } from '@/composables/useStorage';
 import { LOCAL_STORAGE_THEME } from '@/constants';
 
+const themeRef = useStorage(LOCAL_STORAGE_THEME);
+
 export function addThemeToBody(theme: AppliedThemeOption) {
 	window.document.body.setAttribute('data-theme', theme);
 }
@@ -12,7 +14,7 @@ export function isValidTheme(theme: string | null): theme is AppliedThemeOption 
 
 // query param allows overriding theme for demo view in preview iframe without flickering
 export function getThemeOverride() {
-	return getQueryParam('theme') || useStorage(LOCAL_STORAGE_THEME).value;
+	return getQueryParam('theme') || themeRef.value;
 }
 
 function getQueryParam(paramName: string): string | null {
@@ -22,10 +24,10 @@ function getQueryParam(paramName: string): string | null {
 export function updateTheme(theme: ThemeOption) {
 	if (theme === 'system') {
 		window.document.body.removeAttribute('data-theme');
-		useStorage(LOCAL_STORAGE_THEME).value = null;
+		themeRef.value = null;
 	} else {
 		addThemeToBody(theme);
-		useStorage(LOCAL_STORAGE_THEME).value = theme;
+		themeRef.value = theme;
 	}
 }
 
