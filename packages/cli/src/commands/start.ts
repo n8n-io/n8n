@@ -65,7 +65,7 @@ export class Start extends BaseCommand {
 
 	protected server = new Server();
 
-	private pruningService = Container.get(PruningService);
+	private pruningService: PruningService;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
@@ -333,6 +333,7 @@ export class Start extends BaseCommand {
 
 		await this.server.start();
 
+		this.pruningService = Container.get(PruningService);
 		if (await this.pruningService.isPruningEnabled()) {
 			this.pruningService.startPruning();
 		}
