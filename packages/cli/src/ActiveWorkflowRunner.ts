@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import { Service } from 'typedi';
+import Container, { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -65,6 +65,7 @@ import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@/databases/repositories';
 import config from '@/config';
+import type { MultiMainInstancePublisher } from './services/orchestration/main/MultiMainInstance.publisher.ee';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -91,6 +92,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		};
 	} = {};
 
+	private isMultiMainScenario =
+		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
+
+	private multiMainInstancePublisher: MultiMainInstancePublisher | undefined;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
@@ -101,6 +107,18 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {}
 
 	async init() {
+		if (this.isMultiMainScenario) {
+			const { MultiMainInstancePublisher } = await import(
+				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+			);
+
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			this.multiMainInstancePublisher = multiMainInstancePublisher;
+		}
+
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
@@ -730,12 +748,18 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {
 		let workflow: Workflow;
 
-		const shouldAddWebhooks = activationMode !== 'leadershipChange';
-		console.log('shouldAddWebhooks', shouldAddWebhooks);
+		let shouldAddWebhooks = true;
+		let shouldAddTriggersAndPollers = true;
 
-		const shouldAddTriggersAndPollers =
-			config.getEnv('executions.mode') !== 'queue' || activationMode === 'leadershipChange';
-		console.log('shouldAddTriggersAndPollers', shouldAddTriggersAndPollers);
+		if (this.isMultiMainScenario && activationMode !== 'leadershipChange') {
+			shouldAddWebhooks = this.multiMainInstancePublisher?.isLeader ?? false;
+			shouldAddTriggersAndPollers = this.multiMainInstancePublisher?.isLeader ?? false;
+		}
+
+		if (this.isMultiMainScenario && activationMode === 'leadershipChange') {
+			shouldAddWebhooks = false;
+			shouldAddTriggersAndPollers = true;
+		}
 
 		try {
 			const dbWorkflow = existingWorkflow ?? (await this.workflowRepository.findById(workflowId));
@@ -772,10 +796,18 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(sharing.user.id);
 
 			if (shouldAddWebhooks) {
+				this.logger.debug('============');
+				this.logger.debug(`Adding webhooks for workflow "${dbWorkflow.display()}"`);
+				this.logger.debug('============');
+
 				await this.addWebhooks(workflow, additionalData, 'trigger', activationMode);
 			}
 
 			if (shouldAddTriggersAndPollers) {
+				this.logger.debug('============');
+				this.logger.debug(`Adding triggers and pollers for workflow "${dbWorkflow.display()}"`);
+				this.logger.debug('============');
+
 				await this.addTriggersAndPollers(dbWorkflow, workflow, {
 					activationMode,
 					executionMode: 'trigger',

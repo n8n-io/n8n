@@ -239,9 +239,6 @@ export class Start extends BaseCommand {
 			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 		);
 
-		const multiMainPublisher = Container.get(MultiMainInstancePublisher);
-
-		await multiMainPublisher.init();
 		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
 
 		await multiMainInstancePublisher.init();
@@ -255,8 +252,8 @@ export class Start extends BaseCommand {
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		multiMainPublisher.on('leadershipChange', async () => {
-			if (multiMainPublisher.isLeader) {
+		multiMainInstancePublisher.on('leadershipChange', async () => {
+			if (multiMainInstancePublisher.isLeader) {
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
