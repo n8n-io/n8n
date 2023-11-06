@@ -46,7 +46,11 @@ export class PruningService {
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
 
-			return Container.get(MultiMainInstancePublisher).isLeader;
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			return multiMainInstancePublisher.isLeader;
 		}
 
 		return true;
@@ -63,7 +67,11 @@ export class PruningService {
 				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
 			);
 
-			if (Container.get(MultiMainInstancePublisher).isFollower) return;
+			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+			await multiMainInstancePublisher.init();
+
+			if (multiMainInstancePublisher.isFollower) return;
 		}
 
 		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');
