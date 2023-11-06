@@ -72,7 +72,7 @@ const WEBHOOK_PROD_UNREGISTERED_HINT =
 
 @Service()
 export class ActiveWorkflowRunner implements IWebhookManager {
-	public activeWorkflows = new ActiveWorkflows();
+	activeWorkflows = new ActiveWorkflows();
 
 	private activationErrors: {
 		[workflowId: string]: {
