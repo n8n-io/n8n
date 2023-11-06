@@ -159,7 +159,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
 						displayOptions: {
 							show: {
-								'/loader': ['json', 'auto'],
+								'/loader': ['jsonLoader', 'auto'],
 							},
 						},
 					},
@@ -171,7 +171,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
 						displayOptions: {
 							show: {
-								'/dataType': ['json'],
+								'/dataType': ['jsonLoader'],
 							},
 						},
 					},
@@ -183,7 +183,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						default: ',',
 						displayOptions: {
 							show: {
-								'/loader': ['csv', 'auto'],
+								'/loader': ['csvLoader', 'auto'],
 							},
 						},
 					},
@@ -195,7 +195,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						description: 'Column to extract from CSV',
 						displayOptions: {
 							show: {
-								'/loader': ['csv', 'auto'],
+								'/loader': ['csvLoader', 'auto'],
 							},
 						},
 					},
@@ -207,7 +207,7 @@ export class DocumentDefaultDataLoader implements INodeType {
 						default: true,
 						displayOptions: {
 							show: {
-								'/loader': ['pdf', 'auto'],
+								'/loader': ['pdfLoader', 'auto'],
 							},
 						},
 					},
@@ -224,7 +224,6 @@ export class DocumentDefaultDataLoader implements INodeType {
 	};
 
 	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
-		this.logger.verbose('Supply Data for Binary Input Loader');
 		const dataType = this.getNodeParameter('dataType', itemIndex, 'json') as 'json' | 'binary';
 
 		const processor =

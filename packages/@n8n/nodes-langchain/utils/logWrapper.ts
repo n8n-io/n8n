@@ -82,6 +82,7 @@ export function callMethodSync<T>(
 		throw new NodeOperationError(
 			connectedNode,
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
+			{ functionality: 'configuration-node' },
 		);
 	}
 }

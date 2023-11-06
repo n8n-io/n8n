@@ -3285,13 +3285,10 @@ export function getExecuteFunctions(
 							);
 
 							// Display on the calling node which node has the error
-							throw new NodeOperationError(
-								connectedNode,
-								`Error on node "${connectedNode.name}" which is connected via input "${inputName}"`,
-								{
-									itemIndex,
-								},
-							);
+							throw new NodeOperationError(connectedNode, error.message, {
+								itemIndex,
+								functionality: 'configuration-node',
+							});
 						}
 					});
 
