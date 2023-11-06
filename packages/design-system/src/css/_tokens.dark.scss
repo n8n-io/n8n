@@ -144,12 +144,13 @@
 	// Various
 	--color-info-tint-1: var(--prim-gray-420);
 	--color-info-tint-2: var(--prim-gray-740);
-
 	--border-color-base: var(--color-foreground-base);
 	--border-color-light: var(--color-foreground-light);
 	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 	--node-type-supplemental-label-color-l: 100%;
 	--color-configurable-node-name: var(--color-text-lighter);
+	--color-secondary-link: var(--prim-color-secondary-tint-200);
+	--color-secondary-link-hover: var(--prim-color-secondary-tint-100);
 }
 
 body[data-theme='dark'] {
