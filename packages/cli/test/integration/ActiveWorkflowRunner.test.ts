@@ -27,15 +27,9 @@ mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
 mockInstance(Push);
 mockInstance(SecretsHelper);
+mockInstance(MultiMainInstancePublisher);
 
 const webhookService = mockInstance(WebhookService);
-
-// mock dynamic import to allow Jest to exit cleanly
-jest.mock('@/services/orchestration/main/MultiMainInstance.publisher.ee');
-
-const multiMainInstancePublisher = mockInstance(MultiMainInstancePublisher);
-
-Container.set(MultiMainInstancePublisher, multiMainInstancePublisher);
 
 setSchedulerAsLoadedNode();
 
@@ -280,6 +274,8 @@ describe('add()', () => {
 
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
+				mockInstance(MultiMainInstancePublisher, { isLeader: true });
+
 				const workflow = await testDb.createWorkflow({ active: true }, owner);
 
 				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
@@ -297,18 +293,12 @@ describe('add()', () => {
 		});
 
 		describe('follower', () => {
-			// eslint-disable-next-line n8n-local-rules/no-skipped-tests
-			test.skip('on regular activation mode, follower should not add webhooks, triggers or pollers', async () => {
+			test('on regular activation mode, follower should not add webhooks, triggers or pollers', async () => {
 				const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
-				// multiMainInstancePublisher.isLeader.mockImplementation(() => false);
-				// jest.spyOn(MultiMainInstancePublisher.prototype, 'isLeader', 'get').mockReturnValue(false);
-				// jest.replaceProperty(multiMainInstancePublisher, 'isLeader', true);
-				// Object.defineProperty(MultiMainInstancePublisher.prototype, 'isLeader', {
-				// 	get: jest.fn().mockReturnValue(false),
-				// });
+				mockInstance(MultiMainInstancePublisher, { isLeader: false });
 
 				const workflow = await testDb.createWorkflow({ active: true }, owner);
 
