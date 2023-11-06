@@ -100,6 +100,7 @@ describe('Workflow Actions', () => {
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wrap(null).then(() => expect(interceptCalledCount).to.eq(0));
+		cy.waitForLoad();
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		cy.get('body').type(META_KEY, { release: false }).type('s');
 		cy.wait('@saveWorkflow');

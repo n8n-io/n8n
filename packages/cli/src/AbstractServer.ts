@@ -55,6 +55,9 @@ export abstract class AbstractServer {
 		this.app = express();
 		this.app.disable('x-powered-by');
 
+		const proxyHops = config.getEnv('proxy_hops');
+		if (proxyHops > 0) this.app.set('trust proxy', proxyHops);
+
 		this.protocol = config.getEnv('protocol');
 		this.sslKey = config.getEnv('ssl_key');
 		this.sslCert = config.getEnv('ssl_cert');
