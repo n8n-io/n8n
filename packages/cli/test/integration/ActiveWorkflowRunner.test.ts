@@ -302,6 +302,7 @@ describe('add()', () => {
 
 				jest.replaceProperty(activeWorkflowRunner, 'isMultiMainScenario', true);
 
+				// multiMainInstancePublisher.isLeader.mockReturnValue(false);
 				// jest.spyOn(MultiMainInstancePublisher.prototype, 'isLeader', 'get').mockReturnValue(false);
 				// jest.replaceProperty(multiMainInstancePublisher, 'isLeader', true);
 				// Object.defineProperty(MultiMainInstancePublisher.prototype, 'isLeader', {
