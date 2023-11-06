@@ -385,6 +385,10 @@
 						</svg>
 					</a>
 				</div>
+				{{#if redirectUrl}}
+					<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
+				{{/if}}
+				<input id="preventDefault" style="display: none;" value={{preventDefault}} />
 			</section>
 		</div>
 		<script>
@@ -459,7 +463,11 @@
 
 			form.addEventListener('submit', (e) => {
 				const valid = [];
-				e.preventDefault();
+				const preventDefault = document.getElementById("preventDefault").value;
+
+				if (preventDefault === 'true') {
+					e.preventDefault();
+				}
 
 				requiredInputs.forEach((input) => {
 					const errorSelector = `.error-${input.id}`;
@@ -493,7 +501,11 @@
 							return data;
 						})
 						.then(function (data) {
-							if (data.status === 200) {
+							if (data?.status === 200) {
+								const redirectUrl = document.getElementById("redirectUrl");
+								if (redirectUrl) {
+									window.location.replace(redirectUrl.href);
+								}
 								form.style.display = 'none';
 								document.querySelector('#submitted-form').style.display = 'block';
 							} else {

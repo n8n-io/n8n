@@ -161,6 +161,11 @@ export const formRespondMode: INodeProperties = {
 			value: 'lastNode',
 			description: 'When the last node of the workflow is executed',
 		},
+		{
+			name: "Using 'Respond to Webhook' Node",
+			value: 'responseNode',
+			description: 'Response defined in that node',
+		},
 	],
 	default: 'onReceived',
 	description: 'When to respond to the form submission',
@@ -172,6 +177,11 @@ export const formOptions: INodeProperties = {
 	type: 'collection',
 	placeholder: 'Add Option',
 	default: {},
+	displayOptions: {
+		hide: {
+			responseMode: ['responseNode'],
+		},
+	},
 	options: [
 		{
 			displayName: 'Form Submitted Text',
@@ -179,6 +189,24 @@ export const formOptions: INodeProperties = {
 			description: 'The text displayed to users after they filled the form',
 			type: 'string',
 			default: 'Your response has been recorded',
+			displayOptions: {
+				hide: {
+					'/responseMode': ['responseNode'],
+				},
+			},
+		},
+		{
+			displayName: 'Redirect URL',
+			name: 'redirectUrl',
+			description: 'The URL to redirect to after the user submits the form',
+			type: 'string',
+			default: '',
+			validateType: 'url',
+			displayOptions: {
+				hide: {
+					'/responseMode': ['responseNode'],
+				},
+			},
 		},
 	],
 };

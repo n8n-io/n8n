@@ -5,9 +5,11 @@ export const prepareFormData = (
 	formTitle: string,
 	formDescription: string,
 	formSubmittedText: string | undefined,
+	redirectUrl: string | undefined,
 	formFields: FormField[],
 	testRun: boolean,
 	instanceId?: string,
+	preventDefault?: boolean,
 ) => {
 	const validForm = formFields.length > 0;
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
@@ -25,7 +27,12 @@ export const prepareFormData = (
 		formSubmittedText,
 		n8nWebsiteLink,
 		formFields: [],
+		preventDefault,
 	};
+
+	if (redirectUrl) {
+		formData.redirectUrl = redirectUrl;
+	}
 
 	if (!validForm) {
 		return formData;
@@ -75,15 +82,23 @@ export async function formWebhook(context: IWebhookFunctions) {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
 		const formDescription = context.getNodeParameter('formDescription', '') as string;
 		const instanceId = context.getInstanceId();
-		const { formSubmittedText } = context.getNodeParameter('options', {}) as IDataObject;
+		const responseMode = context.getNodeParameter('responseMode', '') as string;
+		const { formSubmittedText, redirectUrl } = context.getNodeParameter(
+			'options',
+			{},
+		) as IDataObject;
+
+		const preventDefault = responseMode !== 'responseNode';
 
 		const data = prepareFormData(
 			formTitle,
 			formDescription,
 			formSubmittedText as string,
+			redirectUrl as string,
 			formFields,
 			mode === 'test',
 			instanceId,
+			preventDefault,
 		);
 
 		const res = context.getResponseObject();

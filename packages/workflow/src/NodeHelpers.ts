@@ -932,6 +932,10 @@ export function getNodeWebhooks(
 		);
 
 		if (httpMethod === undefined) {
+			if (node.type === 'n8n-nodes-base.wait') {
+				// Depending of resume parameter some webhooks would have httpMethod undefined
+				continue;
+			}
 			// TODO: Use a proper logger
 			console.error(
 				`The webhook "${path}" for node "${node.name}" in workflow "${workflowId}" could not be added because the httpMethod is not defined.`,
@@ -1230,6 +1234,13 @@ export const validateFieldType = (
 			}
 			return { valid: true, newValue: value };
 		}
+		case 'url': {
+			try {
+				return { valid: true, newValue: tryToParseUrl(value) };
+			} catch (e) {
+				return { valid: false, errorMessage: defaultErrorMessage };
+			}
+		}
 		default: {
 			return { valid: true, newValue: value };
 		}
@@ -1336,6 +1347,14 @@ export const tryToParseObject = (value: unknown): object => {
 	} catch (e) {
 		throw new Error(`The value "${String(value)}" is not a valid object.`);
 	}
+};
+
+export const tryToParseUrl = (value: unknown): string => {
+	const urlPattern = /^(https?|ftp|file):\/\/\S+|www\.\S+/;
+	if (!urlPattern.test(String(value))) {
+		throw new Error(`The value "${String(value)}" is not a valid url.`);
+	}
+	return String(value);
 };
 
 /*
