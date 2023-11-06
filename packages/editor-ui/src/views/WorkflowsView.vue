@@ -130,6 +130,7 @@ import { useWorkflowsStore } from '@/stores/workflows.store';
 import { useCredentialsStore } from '@/stores/credentials.store';
 import { useSourceControlStore } from '@/stores/sourceControl.store';
 import { genericHelpers } from '@/mixins/genericHelpers';
+import { useTagsStore } from '@/stores';
 
 type IResourcesListLayoutInstance = InstanceType<typeof ResourcesListLayout>;
 
@@ -153,7 +154,7 @@ const WorkflowsView = defineComponent({
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
-				status: StatusFilter.ALL,
+				status: StatusFilter.ALL as string | boolean,
 				tags: [] as string[],
 			},
 			sourceControlStoreUnsubscribe: () => {},
@@ -167,6 +168,7 @@ const WorkflowsView = defineComponent({
 			useWorkflowsStore,
 			useCredentialsStore,
 			useSourceControlStore,
+			useTagsStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
@@ -253,27 +255,68 @@ const WorkflowsView = defineComponent({
 			}
 
 			if (this.filters.status !== undefined && this.filters.status !== '') {
-				queryString.append('status', this.filters.status);
+				queryString.append('status', this.filters.status as string);
 			}
 
 			if (this.filters.tags.length) {
 				queryString.append('tags', this.filters.tags.join(','));
 			}
 
-			void this.$router.push({
+			if (this.filters.ownedBy) {
+				queryString.append('ownedBy', this.filters.ownedBy);
+			}
+
+			if (this.filters.sharedWith) {
+				queryString.append('sharedWith', this.filters.sharedWith);
+			}
+
+			void this.$router.replace({
 				name: VIEWS.WORKFLOWS,
 				query: { ...Object.fromEntries(queryString) },
 			});
 		},
+		isValidUserId(userId: string) {
+			return Object.keys(this.usersStore.users).includes(userId);
+		},
 		setFiltersFromQueryString() {
-			const { tags, status, search } = this.$route.query;
+			const { tags, status, search, ownedBy, sharedWith } = this.$route.query;
 
-			this.filters = {
-				...this.filters,
-				...(search && { search }),
-				...(status && { status: !!status }),
-				...(tags && { tags: tags.split(',') }),
-			};
+			const filtersToApply: { [key: string]: string | string[] | boolean } = {};
+
+			if (ownedBy && typeof ownedBy === 'string' && this.isValidUserId(ownedBy)) {
+				filtersToApply.ownedBy = ownedBy;
+			}
+
+			if (ownedBy && typeof sharedWith === 'string' && this.isValidUserId(sharedWith)) {
+				filtersToApply.sharedWith = sharedWith;
+			}
+
+			if (search && typeof search === 'string') {
+				filtersToApply.search = search;
+			}
+
+			if (tags && typeof tags === 'string') {
+				const currentTags = this.tagsStore.allTags.map((tag) => tag.id);
+				const savedTags = tags.split(',').filter((tag) => currentTags.includes(tag));
+				if (savedTags.length) {
+					filtersToApply.tags = savedTags;
+				}
+			}
+
+			if (
+				status &&
+				typeof status === 'string' &&
+				[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
+			) {
+				filtersToApply.status = status === 'true' ? true : false;
+			}
+
+			if (Object.keys(filtersToApply).length) {
+				this.filters = {
+					...this.filters,
+					...filtersToApply,
+				};
+			}
 		},
 	},
 	watch: {
