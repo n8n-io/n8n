@@ -66,7 +66,7 @@ class MemoryChatBufferSingleton {
 
 export class MemoryBufferWindow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Window Buffer Memory',
+		displayName: 'Window Buffer Memory (easiest)',
 		name: 'memoryBufferWindow',
 		icon: 'fa:database',
 		group: ['transform'],

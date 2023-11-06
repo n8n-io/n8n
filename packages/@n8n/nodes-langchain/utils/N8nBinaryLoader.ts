@@ -139,10 +139,6 @@ export class N8nBinaryLoader {
 					itemIndex,
 					'',
 				) as string;
-				console.log(
-					'🚀 ~ file: N8nBinaryLoader.ts:142 ~ N8nBinaryLoader ~ processItem ~ pointers:',
-					pointers,
-				);
 				const pointersArray = pointers.split(',').map((pointer) => pointer.trim());
 				loader = new JSONLoader(itemBlob, pointersArray);
 				break;

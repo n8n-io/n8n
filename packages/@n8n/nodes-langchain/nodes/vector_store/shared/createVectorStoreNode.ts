@@ -174,18 +174,6 @@ export const createVectorStoreNode = (args: VectorStoreNodeConstructorArgs) =>
 					},
 				},
 				...transformDescriptionForOperationMode(args.loadFields ?? [], 'load'),
-				{
-					displayName: 'Limit',
-					name: 'topK',
-					type: 'number',
-					default: 4,
-					description: 'Number of top results to fetch from vector store',
-					displayOptions: {
-						show: {
-							mode: ['load'],
-						},
-					},
-				},
 				...transformDescriptionForOperationMode(args.retrieveFields ?? [], 'retrieve'),
 			],
 		};
