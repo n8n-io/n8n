@@ -219,16 +219,8 @@ body {
 	justify-content: center;
 }
 
-.textContainer {
-	text-align: center;
-}
-
 .formContainer {
 	padding-bottom: var(--spacing-xl);
-}
-
-.qrContainer {
-	text-align: center;
 }
 
 .headerContainer {
