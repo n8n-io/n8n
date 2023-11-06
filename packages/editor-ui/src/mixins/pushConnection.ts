@@ -442,7 +442,11 @@ export const pushConnection = defineComponent({
 							title,
 							message:
 								runDataExecutedErrorMessage +
-								` Open <a data-action='openNodeDetail' data-action-parameter-node='${nodeError.node.name}'>node</a>`,
+								this.$locale.baseText('pushConnection.executionError.openNode', {
+									interpolate: {
+										node: nodeError.node.name,
+									},
+								}),
 							type: 'error',
 							duration: 0,
 							dangerouslyUseHTMLString: true,

@@ -344,7 +344,11 @@ import {
 	N8nPlusEndpointType,
 	EVENT_PLUS_ENDPOINT_CLICK,
 } from '@/plugins/jsplumb/N8nPlusEndpointType';
-import { EVENT_ADD_INPUT_ENDPOINT_CLICK } from '@/plugins/jsplumb/N8nAddInputEndpointType';
+import type { N8nAddInputEndpoint } from '@/plugins/jsplumb/N8nAddInputEndpointType';
+import {
+	EVENT_ADD_INPUT_ENDPOINT_CLICK,
+	N8nAddInputEndpointType,
+} from '@/plugins/jsplumb/N8nAddInputEndpointType';
 import { sourceControlEventBus } from '@/event-bus/source-control';
 import { getConnectorPaintStyleData, OVERLAY_ENDPOINT_ARROW_ID } from '@/utils/nodeViewUtils';
 import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
@@ -759,6 +763,42 @@ export default defineComponent({
 			});
 
 			await this.runWorkflow({});
+			this.refreshEndpointsErrorsState();
+		},
+		resetEndpointsErrors() {
+			const allEndpoints = Object.values(this.instance.getManagedElements()).flatMap(
+				(el) => el.endpoints,
+			);
+
+			allEndpoints
+				.filter((endpoint) => endpoint?.endpoint.type === N8nAddInputEndpointType)
+				.forEach((endpoint) => {
+					const n8nAddInputEndpoint = endpoint?.endpoint as N8nAddInputEndpoint;
+					if (n8nAddInputEndpoint && (endpoint?.connections ?? []).length > 0) {
+						n8nAddInputEndpoint.resetError();
+					}
+				});
+		},
+		refreshEndpointsErrorsState() {
+			const nodeIssues = this.workflowsStore.allNodes.filter((n) => n.issues);
+			// Set input color to red if there are issues
+			this.resetEndpointsErrors();
+			nodeIssues.forEach((node) => {
+				const managedNode = this.instance.getManagedElement(node.id);
+				const endpoints = this.instance.getEndpoints(managedNode);
+
+				Object.keys(node?.issues?.input ?? {}).forEach((connectionType) => {
+					const inputEndpointsWithIssues = endpoints.filter(
+						(e) => e._defaultType.scope === connectionType,
+					);
+					inputEndpointsWithIssues.forEach((endpoint) => {
+						const n8nAddInputEndpoint = endpoint?.endpoint as N8nAddInputEndpoint;
+						if (n8nAddInputEndpoint) {
+							n8nAddInputEndpoint.setError();
+						}
+					});
+				});
+			});
 		},
 		onRunContainerClick() {
 			if (this.containsTrigger && !this.allTriggersDisabled) return;
@@ -2309,36 +2349,21 @@ export default defineComponent({
 			}
 			this.historyStore.stopRecordingUndo();
 		},
-		insertNodeAfterSelected(info: {
-			sourceId: string;
-			index: number;
-			eventSource: NodeCreatorOpenSource;
-			connection?: Connection;
-			nodeCreatorView?: string;
-			outputType?: NodeConnectionType;
-			endpointUuid?: string;
-		}) {
-			const type = info.outputType || NodeConnectionType.Main;
-
+		getNodeCreatorFilter(nodeName: string, outputType?: NodeConnectionType) {
 			let filter;
-			// Get the node and set it as active that new nodes
-			// which get created get automatically connected
-			// to it.
-			const sourceNode = this.workflowsStore.getNodeById(info.sourceId);
-			if (!sourceNode) {
-				return;
-			}
-
 			const workflow = this.getCurrentWorkflow();
+			const workflowNode = workflow.getNode(nodeName);
+			if (!workflowNode) return { nodes: [] };
 
-			const nodeType = this.nodeTypesStore.getNodeType(sourceNode.type, sourceNode.typeVersion);
-
+			const nodeType = this.nodeTypesStore.getNodeType(
+				workflowNode?.type,
+				workflowNode.typeVersion,
+			);
 			if (nodeType) {
-				const workflowNode = workflow.getNode(sourceNode.name);
-				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode!, nodeType);
+				const inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
 
 				const filterFound = inputs.filter((input) => {
-					if (typeof input === 'string' || input.type !== info.outputType || !input.filter) {
+					if (typeof input === 'string' || input.type !== outputType || !input.filter) {
 						// No filters defined or wrong connection type
 						return false;
 					}
@@ -2349,6 +2374,26 @@ export default defineComponent({
 				if (filterFound.length) {
 					filter = filterFound[0].filter;
 				}
+			}
+
+			return filter;
+		},
+		insertNodeAfterSelected(info: {
+			sourceId: string;
+			index: number;
+			eventSource: NodeCreatorOpenSource;
+			connection?: Connection;
+			nodeCreatorView?: string;
+			outputType?: NodeConnectionType;
+			endpointUuid?: string;
+		}) {
+			const type = info.outputType ?? NodeConnectionType.Main;
+			// Get the node and set it as active that new nodes
+			// which get created get automatically connected
+			// to it.
+			const sourceNode = this.workflowsStore.getNodeById(info.sourceId);
+			if (!sourceNode) {
+				return;
 			}
 
 			this.uiStore.lastSelectedNode = sourceNode.name;
@@ -2375,7 +2420,11 @@ export default defineComponent({
 
 			if (isScopedConnection) {
 				useViewStacks()
-					.gotoCompatibleConnectionView(type, isOutput, filter)
+					.gotoCompatibleConnectionView(
+						type,
+						isOutput,
+						this.getNodeCreatorFilter(sourceNode.name, type),
+					)
 					.catch((e) => {});
 			}
 		},
@@ -2599,7 +2648,8 @@ export default defineComponent({
 					}
 				}
 				this.dropPrevented = false;
-				void this.updateNodesInputIssues();
+				this.updateNodesInputIssues();
+				this.resetEndpointsErrors();
 			} catch (e) {
 				console.error(e);
 			}
@@ -4529,19 +4579,25 @@ export default defineComponent({
 
 		this.registerCustomAction({
 			key: 'openSelectiveNodeCreator',
-			action: ({ connectiontype }: { connectiontype?: ConnectionTypes }) => {
+			action: ({ connectiontype, node }: { connectiontype: NodeConnectionType; node: string }) => {
 				this.onToggleNodeCreator({
-					source: 'NDV',
+					source: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
 					createNodeActive: true,
 					nodeCreatorView: AI_NODE_CREATOR_VIEW,
 				});
 
 				this.ndvStore.activeNodeName = null;
+
 				if (connectiontype) {
-					void useViewStacks().gotoCompatibleConnectionView(connectiontype);
+					void useViewStacks().gotoCompatibleConnectionView(
+						connectiontype,
+						false,
+						this.getNodeCreatorFilter(node, connectiontype),
+					);
 				}
 			},
 		});
+
 		this.readOnlyEnvRouteCheck();
 	},
 	activated() {
@@ -4605,6 +4661,7 @@ export default defineComponent({
 		document.removeEventListener('keyup', this.keyUp);
 		this.unregisterCustomAction('showNodeCreator');
 		this.unregisterCustomAction('openNodeDetail');
+		this.unregisterCustomAction('openSelectiveNodeCreator');
 
 		this.resetWorkspace();
 		this.instance.unbind();

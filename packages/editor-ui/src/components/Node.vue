@@ -1361,6 +1361,10 @@ export default defineComponent({
 		z-index: 10;
 	}
 
+	&.add-input-endpoint-error {
+		--endpoint-svg-color: var(--color-danger);
+	}
+
 	.add-input-endpoint-default {
 		transition: transform var(--add-input-endpoint--transition-duration) ease;
 	}
