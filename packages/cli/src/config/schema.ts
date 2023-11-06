@@ -419,6 +419,12 @@ export const schema = {
 					default: '',
 					env: 'QUEUE_BULL_REDIS_CLUSTER_NODES',
 				},
+				clusterSlotsRefreshTimeout: {
+					format: Number,
+					default: 1000,
+					env: 'QUEUE_BULL_REDIS_CLUSTER_SLOTS_REFRESH_TIMEOUT',
+					doc: 'The milliseconds before a timeout occurs while refreshing slots from the cluster',
+				},
 				tls: {
 					format: Boolean,
 					default: false,

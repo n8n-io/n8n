@@ -116,6 +116,7 @@ export function getRedisClusterClient(
 	return new redis.Cluster(
 		clusterNodes.map((node) => ({ host: node.host, port: node.port })),
 		{
+			slotsRefreshTimeout: config.getEnv('queue.bull.redis.clusterSlotsRefreshTimeout'),
 			redisOptions: sharedRedisOptions,
 			clusterRetryStrategy: (): number | null => {
 				const now = Date.now();
