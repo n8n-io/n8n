@@ -174,16 +174,15 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
+			const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
 			// Register a handler for active forms
-			this.app.all(
-				`/${this.endpointForm}/:path(*)`,
-				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
-			);
+			this.app.all(`/${this.endpointForm}/:path(*)`, webhookRequestHandler(activeWorkflowRunner));
 
 			// Register a handler for active webhooks
 			this.app.all(
 				`/${this.endpointWebhook}/:path(*)`,
-				webhookRequestHandler(Container.get(ActiveWorkflowRunner)),
+				webhookRequestHandler(activeWorkflowRunner),
 			);
 
 			// Register a handler for waiting forms
@@ -202,18 +201,10 @@ export abstract class AbstractServer {
 		if (this.testWebhooksEnabled) {
 			const testWebhooks = Container.get(TestWebhooks);
 
-			// Register a handler for test forms
+			// Register a handler
 			this.app.all(`/${this.endpointFormTest}/:path(*)`, webhookRequestHandler(testWebhooks));
-
-			// Register a handler for test webhooks
 			this.app.all(`/${this.endpointWebhookTest}/:path(*)`, webhookRequestHandler(testWebhooks));
 
-			// Removes a test form
-			// TODO UM: check if this needs validation with user management.
-			this.app.delete(
-				`/${this.restEndpoint}/test-form/:id`,
-				send(async (req) => testWebhooks.cancelTestWebhook(req.params.id)),
-			);
 			// Removes a test webhook
 			// TODO UM: check if this needs validation with user management.
 			this.app.delete(
