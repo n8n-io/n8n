@@ -773,7 +773,6 @@ export const workflowHelpers = defineComponent({
 				return isForm ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
 			}
 
-			// let baseUrl = this.rootStore.getWebhookUrl;
 			let baseUrl;
 			if (showUrlFor === 'test') {
 				baseUrl = isForm ? this.rootStore.getFormTestUrl : this.rootStore.getWebhookTestUrl;
