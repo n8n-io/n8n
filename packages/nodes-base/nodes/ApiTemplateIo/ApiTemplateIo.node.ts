@@ -488,6 +488,7 @@ export class ApiTemplateIo implements INodeType {
 
 						const qs = {
 							template_id: this.getNodeParameter('pdfTemplateId', i),
+							cloud_storage: '0',
 						};
 
 						let data;
