@@ -2,6 +2,7 @@ import type WebSocket from 'ws';
 import { Service } from 'typedi';
 import { Logger } from '@/Logger';
 import { AbstractPush } from './abstract.push';
+import type { User } from '@/databases/entities/User';
 
 function heartbeat(this: WebSocket) {
 	this.isAlive = true;
@@ -16,17 +17,34 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		setInterval(() => this.pingAll(), 60 * 1000);
 	}
 
-	add(sessionId: string, connection: WebSocket) {
+	add(sessionId: string, userId: User['id'], connection: WebSocket) {
 		connection.isAlive = true;
 		connection.on('pong', heartbeat);
 
-		super.add(sessionId, connection);
+		super.add(sessionId, userId, connection);
+
+		const onMessage = (data: WebSocket.RawData) => {
+			try {
+				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+
+				this.onMessageReceived(sessionId, JSON.parse(buffer.toString('utf8')));
+			} catch (error) {
+				this.logger.error("Couldn't parse message from editor-UI", {
+					error: error as unknown,
+					sessionId,
+					data,
+				});
+			}
+		};
 
 		// Makes sure to remove the session if the connection is closed
 		connection.once('close', () => {
 			connection.off('pong', heartbeat);
+			connection.off('message', onMessage);
 			this.remove(sessionId);
 		});
+
+		connection.on('message', onMessage);
 	}
 
 	protected close(connection: WebSocket): void {

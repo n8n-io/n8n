@@ -129,7 +129,7 @@ export class CommunityPackagesController {
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
-			this.push.send('reloadNodeType', {
+			this.push.broadcast('reloadNodeType', {
 				name: node.type,
 				version: node.latestVersion,
 			});
@@ -218,7 +218,7 @@ export class CommunityPackagesController {
 
 		// broadcast to connected frontends that node list has been updated
 		installedPackage.installedNodes.forEach((node) => {
-			this.push.send('removeNodeType', {
+			this.push.broadcast('removeNodeType', {
 				name: node.type,
 				version: node.latestVersion,
 			});
@@ -257,14 +257,14 @@ export class CommunityPackagesController {
 
 			// broadcast to connected frontends that node list has been updated
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				this.push.send('removeNodeType', {
+				this.push.broadcast('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,
 				});
 			});
 
 			newInstalledPackage.installedNodes.forEach((node) => {
-				this.push.send('reloadNodeType', {
+				this.push.broadcast('reloadNodeType', {
 					name: node.name,
 					version: node.latestVersion,
 				});
@@ -283,7 +283,7 @@ export class CommunityPackagesController {
 			return newInstalledPackage;
 		} catch (error) {
 			previouslyInstalledPackage.installedNodes.forEach((node) => {
-				this.push.send('removeNodeType', {
+				this.push.broadcast('removeNodeType', {
 					name: node.type,
 					version: node.latestVersion,
 				});
