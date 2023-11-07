@@ -22,7 +22,7 @@ describe('HTTP Request node', () => {
 	});
 
 	describe('Credential-only HTTP Request Node variants', () => {
-		it.only('should render a modified HTTP Request Node', () => {
+		it('should render a modified HTTP Request Node', () => {
 			workflowPage.actions.addInitialNodeToCanvas('Manual');
 
 			workflowPage.getters.nodeCreatorPlusButton().click();
