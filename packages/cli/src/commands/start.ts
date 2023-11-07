@@ -65,6 +65,8 @@ export class Start extends BaseCommand {
 
 	protected server = new Server();
 
+	private pruningService: PruningService;
+
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
 		this.setInstanceType('main');
@@ -110,9 +112,9 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			const pruningService = Container.get(PruningService);
-
-			if (await pruningService.isPruningEnabled()) await pruningService.stopPruning();
+			if (await this.pruningService.isPruningEnabled()) {
+				await this.pruningService.stopPruning();
+			}
 
 			if (config.getEnv('leaderSelection.enabled')) {
 				const { MultiMainInstancePublisher } = await import(
@@ -341,6 +343,11 @@ export class Start extends BaseCommand {
 		}
 
 		await this.server.start();
+
+		this.pruningService = Container.get(PruningService);
+		if (await this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
