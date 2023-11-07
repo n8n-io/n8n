@@ -44,6 +44,11 @@ export function issueJWT(user: User): JwtToken {
 	};
 }
 
+export const createPasswordSha = (user: User) =>
+	createHash('sha256')
+		.update(user.password.slice(user.password.length / 2))
+		.digest('hex');
+
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 	const user = await Db.collections.User.findOne({
 		where: { id: jwtPayload.id },
@@ -52,9 +57,7 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 
 	let passwordHash = null;
 	if (user?.password) {
-		passwordHash = createHash('sha256')
-			.update(user.password.slice(user.password.length / 2))
-			.digest('hex');
+		passwordHash = createPasswordSha(user);
 	}
 
 	// currently only LDAP users during synchronization
