@@ -1,5 +1,5 @@
 <template>
-	<div :class="['run-data', $style.container]" @click="activatePane" @mouseover="activatePane">
+	<div :class="['run-data', $style.container]" @mouseover="activatePane">
 		<n8n-callout
 			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
@@ -195,8 +195,21 @@
 			v-show="!editMode.enabled"
 			:class="$style.itemsCount"
 		>
-			<n8n-text>
-				{{ dataCount }} {{ $locale.baseText('ndv.output.items', { adjustToNumber: dataCount }) }}
+			<n8n-text v-if="search">
+				{{
+					$locale.baseText('ndv.search.items', {
+						adjustToNumber: unfilteredDataCount,
+						interpolate: { matched: dataCount, total: unfilteredDataCount },
+					})
+				}}
+			</n8n-text>
+			<n8n-text v-else>
+				{{
+					$locale.baseText('ndv.output.items', {
+						adjustToNumber: dataCount,
+						interpolate: { count: dataCount },
+					})
+				}}
 			</n8n-text>
 			<run-data-search
 				v-if="showIOSearch"
@@ -272,10 +285,26 @@
 			</div>
 
 			<div
-				v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1"
+				v-else-if="
+					hasNodeRun && (!unfilteredDataCount || (search && !dataCount)) && branches.length > 1
+				"
 				:class="$style.center"
 			>
-				<n8n-text>
+				<div v-if="search">
+					<n8n-text tag="h3" size="large">{{
+						$locale.baseText('ndv.search.noMatch.title')
+					}}</n8n-text>
+					<n8n-text>
+						<i18n-t keypath="ndv.search.noMatch.description" tag="span">
+							<template #link>
+								<a href="#" @click="onSearchClear">
+									{{ $locale.baseText('ndv.search.noMatch.description.link') }}
+								</a>
+							</template>
+						</i18n-t>
+					</n8n-text>
+				</div>
+				<n8n-text v-else>
 					{{ noDataInBranchMessage }}
 				</n8n-text>
 			</div>
@@ -822,6 +851,9 @@ export default defineComponent({
 		dataCount(): number {
 			return this.getDataCount(this.runIndex, this.currentOutputIndex);
 		},
+		unfilteredDataCount(): number {
+			return this.pinData ? this.pinData.length : this.rawInputData.length;
+		},
 		dataSizeInMB(): string {
 			return (this.dataSize / 1024 / 1000).toLocaleString();
 		},
@@ -912,8 +944,17 @@ export default defineComponent({
 				if (this.overrideOutputs && !this.overrideOutputs.includes(i)) {
 					continue;
 				}
+				const totalItemsCount = this.getRawInputData(this.runIndex, i).length;
 				const itemsCount = this.getDataCount(this.runIndex, i);
-				const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
+				const items = this.search
+					? this.$locale.baseText('ndv.search.items', {
+							adjustToNumber: totalItemsCount,
+							interpolate: { matched: itemsCount, total: totalItemsCount },
+					  })
+					: this.$locale.baseText('ndv.output.items', {
+							adjustToNumber: itemsCount,
+							interpolate: { count: itemsCount },
+					  });
 				let outputName = this.getOutputName(i);
 
 				if (`${outputName}` === `${i}`) {
@@ -927,7 +968,10 @@ export default defineComponent({
 					outputName = capitalize(`${this.getOutputName(i)}${appendBranchWord}`);
 				}
 				branches.push({
-					label: itemsCount ? `${outputName} (${itemsCount} ${items})` : outputName,
+					label:
+						(this.search && itemsCount) || totalItemsCount
+							? `${outputName} (${items})`
+							: outputName,
 					value: i,
 				});
 			}
@@ -1213,7 +1257,7 @@ export default defineComponent({
 		getRunLabel(option: number) {
 			let itemsCount = 0;
 			for (let i = 0; i <= this.maxOutputIndex; i++) {
-				itemsCount += this.getDataCount(option - 1, i);
+				itemsCount += this.getPinDataOrLiveData(this.getRawInputData(option - 1, i)).length;
 			}
 			const items = this.$locale.baseText('ndv.output.items', { adjustToNumber: itemsCount });
 			const itemsLabel = itemsCount > 0 ? ` (${itemsCount} ${items})` : '';
