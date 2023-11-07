@@ -5,6 +5,7 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 let owner: User;
 let user1: User;
@@ -27,6 +28,7 @@ beforeAll(async () => {
 	await utils.initBinaryDataService();
 	await utils.initNodeTypes();
 
+	utils.mockInstance(MultiMainSetup);
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 

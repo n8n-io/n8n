@@ -12,6 +12,7 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
@@ -38,6 +39,7 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
+			mockInstance(MultiMainSetup);
 			await initActiveWorkflowRunner();
 
 			const server = new (class extends AbstractServer {})();

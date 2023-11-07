@@ -13,6 +13,7 @@ import { STARTING_NODES } from '@/constants';
 import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';
 import Container from 'typedi';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -44,6 +45,7 @@ beforeAll(async () => {
 	});
 
 	await utils.initNodeTypes();
+	utils.mockInstance(MultiMainSetup);
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
