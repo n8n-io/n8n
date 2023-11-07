@@ -13,26 +13,51 @@ import { SSEPush } from './sse.push';
 import { WebSocketPush } from './websocket.push';
 import type { PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
 import type { IPushDataType } from '@/Interfaces';
+import type { User } from '@/databases/entities/User';
 
 const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
+/**
+ * Push service for uni- or bi-directional communication with frontend clients.
+ * Uses either server-sent events (SSE, unidirectional from backend --> frontend)
+ * or WebSocket (bidirectional backend <--> frontend) depending on the configuration.
+ *
+ * @emits message when a message is received from a client
+ */
 @Service()
 export class Push extends EventEmitter {
+	public isBidirectional = useWebSockets;
+
 	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
+		const {
+			userId,
+			query: { sessionId },
+		} = req;
 		if (req.ws) {
-			(this.backend as WebSocketPush).add(req.query.sessionId, req.ws);
+			(this.backend as WebSocketPush).add(sessionId, userId, req.ws);
+			this.backend.on('message', (msg) => this.emit('message', msg));
 		} else if (!useWebSockets) {
-			(this.backend as SSEPush).add(req.query.sessionId, { req, res });
+			(this.backend as SSEPush).add(sessionId, userId, { req, res });
 		} else {
 			res.status(401).send('Unauthorized');
+			return;
 		}
-		this.emit('editorUiConnected', req.query.sessionId);
+
+		this.emit('editorUiConnected', sessionId);
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string | undefined = undefined) {
+	broadcast<D>(type: IPushDataType, data?: D) {
+		this.backend.broadcast(type, data);
+	}
+
+	send<D>(type: IPushDataType, data: D, sessionId: string) {
 		this.backend.send(type, data, sessionId);
+	}
+
+	sendToUsers<D>(type: IPushDataType, data: D, userIds: Array<User['id']>) {
+		this.backend.sendToUsers(type, data, userIds);
 	}
 }
 
@@ -82,7 +107,8 @@ export const setupPushHandler = (restEndpoint: string, app: Application) => {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 			const authCookie: string = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-			await resolveJwt(authCookie);
+			const user = await resolveJwt(authCookie);
+			req.userId = user.id;
 		} catch (error) {
 			if (ws) {
 				ws.send(`Unauthorized: ${(error as Error).message}`);
