@@ -459,10 +459,10 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		nodes: nodes ?? [
 			{
 				id: 'uuid-1234',
-				name: 'Start',
+				name: 'Schedule Trigger',
 				parameters: {},
 				position: [-20, 260],
-				type: 'n8n-nodes-base.start',
+				type: 'n8n-nodes-base.scheduleTrigger',
 				typeVersion: 1,
 			},
 		],
