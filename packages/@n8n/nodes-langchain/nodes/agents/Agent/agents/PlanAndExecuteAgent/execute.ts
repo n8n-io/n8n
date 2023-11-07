@@ -28,9 +28,14 @@ export async function planAndExecuteAgentExecute(
 		0,
 	)) as BaseOutputParser[];
 
+	const options = this.getNodeParameter('options', 0, {}) as {
+		humanMessageTemplate?: string;
+	};
+
 	const agentExecutor = await PlanAndExecuteAgentExecutor.fromLLMAndTools({
 		llm: model,
 		tools,
+		humanMessageTemplate: options.humanMessageTemplate,
 	});
 
 	const returnData: INodeExecutionData[] = [];
