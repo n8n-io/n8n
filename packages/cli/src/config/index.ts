@@ -2,7 +2,6 @@ import convict from 'convict';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
 import { setGlobalState } from 'n8n-workflow';
-import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
@@ -25,6 +24,8 @@ if (inE2ETests) {
 	dotenv.config();
 }
 
+// Load schema after process.env has been overwritten
+import { schema } from './schema';
 const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
