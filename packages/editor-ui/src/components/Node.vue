@@ -19,6 +19,7 @@
 			<div
 				:class="nodeClass"
 				:style="nodeStyle"
+				@contextmenu="(e: MouseEvent) => openContextMenu(e, 'node-right-click')"
 				@click.left="onClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -36,7 +37,7 @@
 					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
 				>
 					<div v-if="hasIssues" class="node-issues" data-test-id="node-issues">
-						<n8n-tooltip placement="bottom">
+						<n8n-tooltip :show-after="500" placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							</template>
@@ -103,24 +104,21 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div>
-					<n8n-icon-button
-						v-if="!workflowRunning && !isConfigNode"
-						data-test-id="execute-node-button"
-						type="tertiary"
-						text
-						icon="play"
-						:title="$locale.baseText('node.execute')"
-						@click="executeNode"
-					/>
-				</div>
-				<n8n-action-dropdown
-					ref="contextMenu"
-					:items="nodeActions"
-					placement="top"
-					data-test-id="context-menu"
-					@visible-change="onContextMenuVisibleChange"
-					@select="onContextMenuAction"
+				<n8n-icon-button
+					data-test-id="execute-node-button"
+					type="tertiary"
+					text
+					icon="play"
+					:disabled="workflowRunning || isConfigNode"
+					:title="$locale.baseText('node.execute')"
+					@click="executeNode"
+				/>
+				<n8n-icon-button
+					data-test-id="overflow-node-button"
+					type="tertiary"
+					text
+					icon="ellipsis-h"
+					@click="(e: MouseEvent) => openContextMenu(e, 'node-button')"
 				/>
 			</div>
 			<div
@@ -186,10 +184,14 @@ import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 import { EnableNodeToggleCommand } from '@/models/history';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { IActionDropdownItem } from 'n8n-design-system/src/components/N8nActionDropdown/ActionDropdown.vue';
+import { ContextMenuTarget, useContextMenu } from '@/composables';
 
 export default defineComponent({
 	name: 'Node',
+	setup() {
+		const contextMenu = useContextMenu();
+		return { contextMenu };
+	},
 	mixins: [externalHooks, nodeBase, nodeHelpers, workflowHelpers, pinData, debounceHelper],
 	components: {
 		TitledList,
@@ -519,54 +521,12 @@ export default defineComponent({
 				!this.dragging
 			);
 		},
-		nodeActions(): IActionDropdownItem[] {
-			return [
-				{
-					id: 'open',
-					label: this.$locale.baseText('node.open'),
-					shortcut: { keys: ['↵'] },
-				},
-				{
-					id: 'copy',
-					label: this.$locale.baseText('node.copy'),
-					shortcut: { metaKey: true, keys: ['C'] },
-				},
-				{
-					id: 'deactivate',
-					label: this.data?.disabled
-						? this.$locale.baseText('node.activate')
-						: this.$locale.baseText('node.deactivate'),
-					shortcut: { keys: ['D'] },
-				},
-				{
-					id: 'duplicate',
-					label: this.$locale.baseText('node.duplicate'),
-					disabled: !this.isDuplicatable,
-					shortcut: { metaKey: true, keys: ['D'] },
-				},
-				{
-					id: 'execute',
-					label: this.$locale.baseText('node.execute'),
-				},
-				{
-					id: 'rename',
-					label: this.$locale.baseText('node.rename'),
-					shortcut: { keys: ['F2'] },
-				},
-				{
-					id: 'pin',
-					label: this.showPinnedDataInfo
-						? this.$locale.baseText('node.unpin')
-						: this.$locale.baseText('node.pin'),
-					shortcut: { keys: ['p'] },
-				},
-				{
-					id: 'delete',
-					divided: true,
-					label: this.$locale.baseText('node.delete'),
-					shortcut: { keys: ['Del'] },
-				},
-			];
+		isContextMenuOpen(): boolean {
+			return (
+				this.contextMenu.isOpen.value &&
+				this.contextMenu.target.value.source === 'node-button' &&
+				this.contextMenu.target.value.node.name === this.data?.name
+			);
 		},
 	},
 	watch: {
@@ -639,7 +599,6 @@ export default defineComponent({
 			showTriggerNodeTooltip: false,
 			pinDataDiscoveryTooltipVisible: false,
 			dragging: false,
-			isContextMenuOpen: false,
 			unwatchWorkflowDataItems: () => {},
 		};
 	},
@@ -744,40 +703,10 @@ export default defineComponent({
 				}, 2000);
 			}
 		},
-
-		onContextMenuAction(action: string): void {
-			switch (action) {
-				case 'open':
-					this.setNodeActive();
-					break;
-				case 'copy':
-					this.$emit('copyNode', this.name);
-					break;
-				case 'deactivate':
-					this.disableNode();
-					break;
-				case 'duplicate':
-					void this.duplicateNode();
-					break;
-				case 'execute':
-					this.executeNode();
-					break;
-				case 'rename':
-					this.$emit('renameNode', this.name);
-					break;
-				case 'pin':
-					this.$emit('pinNode', this.name);
-					break;
-				case 'copy':
-					this.$emit('copyNode', this.name);
-					break;
-				case 'delete':
-					void this.deleteNode();
-					break;
+		openContextMenu(event: MouseEvent, source: ContextMenuTarget['source']) {
+			if (this.data) {
+				this.contextMenu.open(event, { source, node: this.data });
 			}
-		},
-		onContextMenuVisibleChange(open: boolean): void {
-			this.isContextMenuOpen = open;
 		},
 	},
 });

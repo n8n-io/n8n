@@ -14,3 +14,4 @@ export * from './useToast';
 export * from './useNodeSpecificationValues';
 export * from './useDataSchema';
 export * from './useExecutionDebugging';
+export * from './useContextMenu';

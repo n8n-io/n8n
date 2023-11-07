@@ -17,6 +17,7 @@
 				@mousedown="mouseDown"
 				v-touch:tap="touchTap"
 				@mouseup="mouseUp"
+				@contextmenu="contextMenu.open"
 				@wheel="canvasStore.wheelScroll"
 			>
 				<div
@@ -105,6 +106,9 @@
 			</Suspense>
 			<Suspense>
 				<CanvasControls />
+			</Suspense>
+			<Suspense>
+				<ContextMenu />
 			</Suspense>
 			<div class="workflow-execute-wrapper" v-if="!isReadOnlyRoute && !readOnlyEnv">
 				<span
@@ -243,6 +247,7 @@ import {
 	useToast,
 	useTitleChange,
 	useExecutionDebugging,
+	useContextMenu,
 } from '@/composables';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
@@ -251,6 +256,7 @@ import { workflowRun } from '@/mixins/workflowRun';
 import { pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
+import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
 import Node from '@/components/Node.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
@@ -387,12 +393,15 @@ export default defineComponent({
 		KeyboardShortcutTooltip,
 		NodeCreation,
 		CanvasControls,
+		ContextMenu,
 	},
 	setup(props) {
 		const locale = useI18n();
+		const contextMenu = useContextMenu();
 
 		return {
 			locale,
+			contextMenu,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),

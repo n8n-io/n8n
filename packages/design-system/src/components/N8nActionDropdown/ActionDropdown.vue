@@ -7,11 +7,14 @@
 			@visible-change="onVisibleChange"
 			ref="elementDropdown"
 		>
+			<slot v-if="$slots.activator" name="activator" />
 			<n8n-icon-button
-				@click.stop.prevent
+				v-else
 				@blur="onButtonBlur"
 				type="tertiary"
 				text
+				:class="$style.activator"
+				:size="activatorSize"
 				:icon="activatorIcon"
 			/>
 
@@ -98,6 +101,10 @@ export default defineComponent({
 			type: String,
 			default: 'ellipsis-h',
 		},
+		activatorSize: {
+			type: String,
+			default: 'medium',
+		},
 		iconSize: {
 			type: String,
 			default: 'medium',
@@ -136,6 +143,10 @@ export default defineComponent({
 			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
 			elementDropdown.handleOpen();
 		},
+		close() {
+			const elementDropdown = this.$refs.elementDropdown as InstanceType<typeof ElDropdown>;
+			elementDropdown.handleClose();
+		},
 	},
 });
 </script>
@@ -155,23 +166,8 @@ export default defineComponent({
 }
 
 .activator {
-	cursor: pointer;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 30px;
-	height: 30px;
-	margin: 0;
-	border-radius: var(--border-radius-base);
-	line-height: normal !important;
-
-	svg {
-		position: static !important;
-	}
-
 	&:hover {
 		background-color: var(--color-background-base);
-		color: var(--color-primary);
 	}
 }
 
