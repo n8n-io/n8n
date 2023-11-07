@@ -11,6 +11,8 @@
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
+    "build:backend": "pnpm --filter=!n8n-design-system --filter=!n8n-editor-ui build",
+    "build:frontend": "pnpm --filter=n8n-design-system --filter=n8n-editor-ui build",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
@@ -23,6 +25,8 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "turbo run test",
+    "test:backend": "pnpm --filter=!n8n-design-system --filter=!n8n-editor-ui test",
+    "test:frontend": "pnpm --filter=n8n-design-system --filter=n8n-editor-ui test",
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
