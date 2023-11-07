@@ -12,6 +12,7 @@ export const vitestConfig = defineVitestConfig({
 		...(process.env.COVERAGE_ENABLED === 'true'
 			? {
 					coverage: {
+						enabled: true,
 						provider: 'v8',
 						reporter: require('../../jest.config.js').coverageReporters,
 						all: true,
