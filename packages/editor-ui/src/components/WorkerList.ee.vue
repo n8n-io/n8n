@@ -1,19 +1,17 @@
 <template>
-	<div :class="$style.execListWrapper">
-		<div :class="$style.execList">
-			<PushConnectionTracker class="actions"></PushConnectionTracker>
-			<div :class="$style.execListHeader">
-				<n8n-heading tag="h1" size="2xlarge">{{ this.pageTitle }}</n8n-heading>
-			</div>
-			<div v-if="isMounting">
-				<n8n-loading :class="$style.tableLoader" variant="custom" />
-			</div>
+	<div>
+		<PushConnectionTracker class="actions"></PushConnectionTracker>
+		<div :class="$style.workerListHeader">
+			<n8n-heading tag="h1" size="2xlarge">{{ pageTitle }}</n8n-heading>
+		</div>
+		<div v-if="isMounting">
+			<n8n-loading :class="$style.tableLoader" variant="custom" />
+		</div>
+		<div v-else>
+			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
 			<div v-else>
-				<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
-				<div v-else>
-					<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-						<WorkerCard :workerId="workerId" />
-					</div>
+				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
+					<WorkerCard :workerId="workerId" />
 				</div>
 			</div>
 		</div>
@@ -27,7 +25,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import PushConnectionTracker from '@/components/PushConnectionTracker.vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
-import { useI18n } from '@/composables';
+import { useI18n, useToast } from '@/composables';
 import type { IPushDataWorkerStatusPayload } from '@/Interface';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { useUIStore } from '@/stores/ui.store';
@@ -52,6 +50,7 @@ export default defineComponent({
 		const i18n = useI18n();
 		return {
 			i18n,
+			...useToast(),
 		};
 	},
 	data() {
@@ -106,26 +105,7 @@ export default defineComponent({
 </script>
 
 <style module lang="scss">
-.execListWrapper {
-	display: grid;
-	grid-template-rows: 1fr 0;
-	position: relative;
-	height: 100%;
-	width: 100%;
-	max-width: 1280px;
-}
-
-.execList {
-	position: relative;
-	height: 100%;
-	overflow: auto;
-	padding: var(--spacing-l) var(--spacing-l) 0;
-	@media (min-width: 1200px) {
-		padding: var(--spacing-2xl) var(--spacing-2xl) 0;
-	}
-}
-
-.execListHeader {
+.workerListHeader {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;

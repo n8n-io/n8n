@@ -98,6 +98,13 @@ export class E2EController {
 		this.enabledFeatures[feature] = enabled;
 	}
 
+	@Patch('/queue-mode')
+	async setQueueMode(req: Request<{}, {}, { enabled: boolean }>) {
+		const { enabled } = req.body;
+		config.set('executions.mode', enabled ? 'queue' : 'regular');
+		return { success: true, message: `Queue mode set to ${config.getEnv('executions.mode')}` };
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;

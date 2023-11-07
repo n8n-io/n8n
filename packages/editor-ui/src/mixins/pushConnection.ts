@@ -113,7 +113,10 @@ export const pushConnection = defineComponent({
 			this.connectRetries = 0;
 			this.lostConnection = false;
 			this.rootStore.pushConnectionActive = true;
-			this.clearAllStickyNotifications();
+			try {
+				// in the workers view context this fn is not defined
+				this.clearAllStickyNotifications();
+			} catch {}
 			this.pushSource?.removeEventListener('open', this.onConnectionSuccess);
 		},
 
