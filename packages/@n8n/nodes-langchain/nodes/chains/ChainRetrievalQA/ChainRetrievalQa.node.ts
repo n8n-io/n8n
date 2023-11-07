@@ -91,10 +91,7 @@ export class ChainRetrievalQa implements INodeType {
 			const query = this.getNodeParameter('query', itemIndex) as string;
 
 			if (query === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'No value for the required parameter "Query" was returned.',
-				);
+				throw new NodeOperationError(this.getNode(), 'The ‘query parameter is empty.');
 			}
 
 			const response = await chain.call({ query });

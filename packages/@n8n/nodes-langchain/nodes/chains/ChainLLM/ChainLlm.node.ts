@@ -76,20 +76,11 @@ async function createSimpleLLMChain(
 }
 
 async function getChain(
-	context: IExecuteFunctions,
 	query: string,
+	llm: BaseLanguageModel,
+	outputParsers: BaseOutputParser[],
 	messages?: MessagesTemplate[],
 ): Promise<unknown[]> {
-	const llm = (await context.getInputConnectionData(
-		NodeConnectionType.AiLanguageModel,
-		0,
-	)) as BaseLanguageModel;
-
-	const outputParsers = (await context.getInputConnectionData(
-		NodeConnectionType.AiOutputParser,
-		0,
-	)) as BaseOutputParser[];
-
 	const chatTemplate: ChatPromptTemplate | PromptTemplate = getChainPromptTemplate(llm, messages);
 
 	// If there are no output parsers, create a simple LLM chain and execute the query
@@ -225,19 +216,25 @@ export class ChainLlm implements INodeType {
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
+		const llm = (await this.getInputConnectionData(
+			NodeConnectionType.AiLanguageModel,
+			0,
+		)) as BaseLanguageModel;
+
+		const outputParsers = (await this.getInputConnectionData(
+			NodeConnectionType.AiOutputParser,
+			0,
+		)) as BaseOutputParser[];
 
 		for (let i = 0; i < items.length; i++) {
 			const prompt = this.getNodeParameter('prompt', i) as string;
 			const messages = this.getNodeParameter('messages.messageValues', i, []) as MessagesTemplate[];
 
 			if (prompt === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'No value for the required parameter "Prompt" was returned.',
-				);
+				throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 			}
 
-			const responses = await getChain(this, prompt, messages);
+			const responses = await getChain(prompt, llm, outputParsers, messages);
 
 			responses.forEach((response) => {
 				let data: IDataObject;

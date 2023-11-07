@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ getErrorMessage() }}</div>
+			<div class="error-message" v-html="getErrorMessage()" />
 			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
@@ -125,7 +125,12 @@ import { copyPaste } from '@/mixins/copyPaste';
 import { useToast } from '@/composables';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
 
-import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import type {
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -182,15 +187,32 @@ export default defineComponent({
 		getErrorMessage(): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
 
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				const baseErrorMessageSubNode =
+					this.$locale.baseText('nodeErrorView.errorSubNode', {
+						interpolate: { node: this.error.node.name },
+					}) + ': ';
+				return sanitizeHtml(
+					baseErrorMessageSubNode +
+						this.error.message +
+						this.$locale.baseText('pushConnection.executionError.openNode', {
+							interpolate: { node: this.error.node.name },
+						}),
+				);
+			}
 			if (!this.error.context?.messageTemplate) {
-				return baseErrorMessage + this.error.message;
+				return sanitizeHtml(baseErrorMessage + this.error.message);
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
 
-			return (
+			return sanitizeHtml(
 				baseErrorMessage +
-				this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName)
+					this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName),
 			);
 		},
 		parameterDisplayName(path: string, fullPath = true) {

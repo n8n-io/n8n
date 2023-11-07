@@ -38,10 +38,7 @@ export async function sqlAgentAgentExecute(
 		const input = this.getNodeParameter('input', i) as string;
 
 		if (input === undefined) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No value for the required parameter "Prompt" was returned.',
-			);
+			throw new NodeOperationError(this.getNode(), 'The ‘prompt’ parameter is empty.');
 		}
 
 		const options = this.getNodeParameter('options', i, {});

@@ -433,7 +433,7 @@ export const pushConnection = defineComponent({
 						let title: string;
 						const nodeError = runDataExecuted.data.resultData.error as NodeOperationError;
 						if (nodeError.node.name) {
-							title = `Problem in node ‘${nodeError.node.name}‘`;
+							title = `Error in sub-node ‘${nodeError.node.name}‘`;
 						} else {
 							title = 'Problem executing workflow';
 						}
@@ -453,19 +453,25 @@ export const pushConnection = defineComponent({
 						});
 					} else {
 						let title: string;
-						if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
-						} else {
-							title = 'Problem executing workflow';
-						}
+						const isManualExecutionCancelled =
+							runDataExecuted.mode === 'manual' && runDataExecuted.status === 'canceled';
 
-						this.showMessage({
-							title,
-							message: runDataExecutedErrorMessage,
-							type: 'error',
-							duration: 0,
-							dangerouslyUseHTMLString: true,
-						});
+						// Do not show the error message if the workflow got canceled manually
+						if (!isManualExecutionCancelled) {
+							if (runDataExecuted.data.resultData.lastNodeExecuted) {
+								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							} else {
+								title = 'Problem executing workflow';
+							}
+
+							this.showMessage({
+								title,
+								message: runDataExecutedErrorMessage,
+								type: 'error',
+								duration: 0,
+								dangerouslyUseHTMLString: true,
+							});
+						}
 					}
 				} else {
 					// Workflow did execute without a problem
