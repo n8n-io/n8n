@@ -103,10 +103,8 @@ export default defineComponent({
 
 			await this.usersStore.validatePasswordToken({ token });
 		} catch (e) {
-			this.showMessage({
-				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
-				type: 'error',
-			});
+			this.showError(e, this.$locale.baseText('auth.changePassword.tokenValidationError'));
+			void this.$router.replace({ name: VIEWS.SIGNIN });
 		}
 	},
 	methods: {
