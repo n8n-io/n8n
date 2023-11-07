@@ -441,6 +441,11 @@ export default defineComponent({
 					this.uiStore.nodeViewInitialized = false;
 				}
 			}
+			if (from?.name === VIEWS.EXECUTION_DEBUG) {
+				this.resetWorkspace();
+				await this.initView();
+				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
+			}
 		},
 		activeNode() {
 			// When a node gets set as active deactivate the create-menu
@@ -3067,9 +3072,12 @@ export default defineComponent({
 			}
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
+			document.removeEventListener('keydown', this.keyDown);
 			document.addEventListener('keydown', this.keyDown);
+			document.removeEventListener('keyup', this.keyUp);
 			document.addEventListener('keyup', this.keyUp);
 
+			window.removeEventListener('beforeunload', this.onBeforeUnload);
 			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(
@@ -3995,7 +4003,7 @@ export default defineComponent({
 
 					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
 					try {
-						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
+						this.setPinData(node, data.pinData[nodeName], 'add-nodes');
 						pinDataSuccess = true;
 					} catch (error) {
 						pinDataSuccess = false;

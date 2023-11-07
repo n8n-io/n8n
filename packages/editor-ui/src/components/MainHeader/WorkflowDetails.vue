@@ -379,7 +379,11 @@ export default defineComponent({
 				name: this.workflowName,
 				tags: this.currentWorkflowTagIds,
 			});
-			if (saved) await this.settingsStore.fetchPromptsData();
+
+			if (saved) {
+				await this.settingsStore.fetchPromptsData();
+				await this.$router.push({ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflowId } });
+			}
 		},
 		onShareButtonClick() {
 			this.uiStore.openModalWithData({
