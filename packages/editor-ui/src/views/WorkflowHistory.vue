@@ -70,6 +70,7 @@ const actions = computed<UserAction[]>(() =>
 const isFirstItemShown = computed(
 	() => workflowHistory.value[0]?.versionId === route.params.versionId,
 );
+const evaluatedPruneTime = computed(() => Math.floor(workflowHistoryStore.evaluatedPruneTime / 24));
 
 const loadMore = async (queryParams: WorkflowHistoryRequestParams) => {
 	const history = await workflowHistoryStore.getWorkflowHistory(
@@ -318,7 +319,7 @@ watchEffect(async () => {
 				:actions="actions"
 				:requestNumberOfItems="requestNumberOfItems"
 				:shouldUpgrade="workflowHistoryStore.shouldUpgrade"
-				:evaluatedPruneTime="workflowHistoryStore.evaluatedPruneTime"
+				:evaluatedPruneTime="evaluatedPruneTime"
 				:isListLoading="isListLoading"
 				@action="onAction"
 				@preview="onPreview"
