@@ -340,7 +340,7 @@ export class LoadNodesAndCredentials {
 				loader.reset();
 				await loader.loadAll();
 				await this.postProcessLoaders();
-				push.send('nodeDescriptionUpdated', undefined);
+				push.broadcast('nodeDescriptionUpdated');
 			}, 100);
 
 			const toWatch = loader.isLazyLoaded

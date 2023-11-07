@@ -10,8 +10,8 @@ export class JwtService {
 		return jwt.sign(payload, this.userManagementSecret, options);
 	}
 
-	public verifyToken(token: string, options: jwt.VerifyOptions = {}) {
-		return jwt.verify(token, this.userManagementSecret, options) as jwt.JwtPayload;
+	public verifyToken<T = JwtPayload>(token: string, options: jwt.VerifyOptions = {}) {
+		return jwt.verify(token, this.userManagementSecret, options) as T;
 	}
 }
 
