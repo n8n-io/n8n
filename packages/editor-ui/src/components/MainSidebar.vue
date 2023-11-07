@@ -293,7 +293,7 @@ export default defineComponent({
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.documentation'),
 							type: 'link',
 							properties: {
-								href: 'https://docs.n8n.io',
+								href: 'https://docs.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 								newWindow: true,
 							},
 						},
@@ -303,7 +303,7 @@ export default defineComponent({
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.forum'),
 							type: 'link',
 							properties: {
-								href: 'https://community.n8n.io',
+								href: 'https://community.n8n.io?utm_source=n8n_app&utm_medium=app_sidebar',
 								newWindow: true,
 							},
 						},

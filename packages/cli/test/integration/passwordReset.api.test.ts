@@ -1,8 +1,9 @@
 import { v4 as uuid } from 'uuid';
 import { compare } from 'bcryptjs';
 import { Container } from 'typedi';
-import { License } from '@/License';
+import { mock } from 'jest-mock-extended';
 
+import { License } from '@/License';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
@@ -10,6 +11,7 @@ import type { User } from '@db/entities/User';
 import { setCurrentAuthenticationMethod } from '@/sso/ssoHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import { JwtService } from '@/services/jwt.service';
+import { UserService } from '@/services/user.service';
 import { UserManagementMailer } from '@/UserManagement/email';
 
 import * as utils from './shared/utils/';
@@ -33,6 +35,7 @@ const externalHooks = utils.mockInstance(ExternalHooks);
 const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
 const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
+let userService: UserService;
 
 beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
@@ -45,6 +48,7 @@ beforeEach(async () => {
 	member = await testDb.createUser({ globalRole: globalMemberRole });
 	externalHooks.run.mockReset();
 	jest.replaceProperty(mailer, 'isEmailSetUp', true);
+	userService = Container.get(UserService);
 });
 
 describe('POST /forgot-password', () => {
@@ -127,7 +131,7 @@ describe('POST /forgot-password', () => {
 
 describe('GET /resolve-password-token', () => {
 	test('should succeed with valid inputs', async () => {
-		const resetPasswordToken = jwtService.signData({ sub: owner.id });
+		const resetPasswordToken = userService.generatePasswordResetToken(owner);
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -137,17 +141,15 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const first = await testServer.authlessAgent
+		await testServer.authlessAgent
 			.get('/resolve-password-token')
-			.query({ token: uuid() });
+			.query({ token: uuid() })
+			.expect(404);
 
-		const second = await testServer.authlessAgent
+		await testServer.authlessAgent
 			.get('/resolve-password-token')
-			.query({ userId: owner.id });
-
-		for (const response of [first, second]) {
-			expect(response.statusCode).toBe(400);
-		}
+			.query({ userId: owner.id })
+			.expect(400);
 	});
 
 	test('should fail if user is not found', async () => {
@@ -161,7 +163,18 @@ describe('GET /resolve-password-token', () => {
 	});
 
 	test('should fail if token is expired', async () => {
-		const resetPasswordToken = jwtService.signData({ sub: owner.id }, { expiresIn: '-1h' });
+		const resetPasswordToken = userService.generatePasswordResetToken(owner, '-1h');
+
+		const response = await testServer.authlessAgent
+			.get('/resolve-password-token')
+			.query({ userId: owner.id, token: resetPasswordToken });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should fail after password has changed', async () => {
+		const updatedUser = mock<User>({ ...owner, password: 'another-password' });
+		const resetPasswordToken = userService.generatePasswordResetToken(updatedUser);
 
 		const response = await testServer.authlessAgent
 			.get('/resolve-password-token')
@@ -175,7 +188,7 @@ describe('POST /change-password', () => {
 	const passwordToStore = randomValidPassword();
 
 	test('should succeed with valid inputs', async () => {
-		const resetPasswordToken = jwtService.signData({ sub: owner.id });
+		const resetPasswordToken = userService.generatePasswordResetToken(owner);
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
 			userId: owner.id,
@@ -202,7 +215,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		const resetPasswordToken = jwtService.signData({ sub: owner.id });
+		const resetPasswordToken = userService.generatePasswordResetToken(owner);
 
 		const invalidPayloads = [
 			{ token: uuid() },
@@ -236,7 +249,7 @@ describe('POST /change-password', () => {
 	});
 
 	test('should fail when token has expired', async () => {
-		const resetPasswordToken = jwtService.signData({ sub: owner.id }, { expiresIn: '-1h' });
+		const resetPasswordToken = userService.generatePasswordResetToken(owner, '-1h');
 
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
@@ -252,7 +265,7 @@ describe('POST /change-password', () => {
 	test('owner should be able to reset its password when quota:users = 1', async () => {
 		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
 
-		const resetPasswordToken = jwtService.signData({ sub: owner.id });
+		const resetPasswordToken = userService.generatePasswordResetToken(owner);
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
 			userId: owner.id,
@@ -281,7 +294,7 @@ describe('POST /change-password', () => {
 	test('member should not be able to reset its password when quota:users = 1', async () => {
 		jest.spyOn(Container.get(License), 'getUsersLimit').mockReturnValueOnce(1);
 
-		const resetPasswordToken = jwtService.signData({ sub: member.id });
+		const resetPasswordToken = userService.generatePasswordResetToken(member);
 		const response = await testServer.authlessAgent.post('/change-password').send({
 			token: resetPasswordToken,
 			userId: member.id,

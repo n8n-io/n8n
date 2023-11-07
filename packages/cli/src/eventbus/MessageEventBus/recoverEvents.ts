@@ -195,7 +195,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 			push.once('editorUiConnected', function handleUiBackUp() {
 				// add a small timeout to make sure the UI is back up
 				setTimeout(() => {
-					push.send('executionRecovered', { executionId });
+					push.broadcast('executionRecovered', { executionId });
 				}, 1000);
 			});
 		}

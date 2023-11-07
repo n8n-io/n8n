@@ -45,7 +45,7 @@ export async function getSheetHeaderRow(
 		sheetWithinDocument = '0';
 	}
 
-	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+	const sheetName = await sheet.spreadsheetGetSheetNameById(this.getNode(), sheetWithinDocument);
 	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 
 	if (sheetData === undefined) {

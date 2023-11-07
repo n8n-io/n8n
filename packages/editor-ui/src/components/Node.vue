@@ -146,7 +146,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import { useStorage } from '@vueuse/core';
+import { useStorage } from '@/composables/useStorage';
 import {
 	CUSTOM_API_CALL_KEY,
 	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
@@ -346,36 +346,38 @@ export default defineComponent({
 				top: this.position[1] + 'px',
 			};
 
-			const workflow = this.workflowsStore.getCurrentWorkflow();
-			const inputs =
-				NodeHelpers.getNodeInputs(workflow, this.node, this.nodeType) ||
-				([] as Array<ConnectionTypes | INodeInputConfiguration>);
-			const inputTypes = NodeHelpers.getConnectionTypes(inputs);
+			if (this.node && this.nodeType) {
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const inputs =
+					NodeHelpers.getNodeInputs(workflow, this.node, this.nodeType) ||
+					([] as Array<ConnectionTypes | INodeInputConfiguration>);
+				const inputTypes = NodeHelpers.getConnectionTypes(inputs);
 
-			const nonMainInputs = inputTypes.filter((input) => input !== NodeConnectionType.Main);
-			if (nonMainInputs.length) {
-				const requiredNonMainInputs = inputs.filter(
-					(input) => typeof input !== 'string' && input.required,
-				);
+				const nonMainInputs = inputTypes.filter((input) => input !== NodeConnectionType.Main);
+				if (nonMainInputs.length) {
+					const requiredNonMainInputs = inputs.filter(
+						(input) => typeof input !== 'string' && input.required,
+					);
 
-				let spacerCount = 0;
-				if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
-					const requiredNonMainInputsCount = requiredNonMainInputs.length;
-					const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
-					spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+					let spacerCount = 0;
+					if (NODE_INSERT_SPACER_BETWEEN_INPUT_GROUPS) {
+						const requiredNonMainInputsCount = requiredNonMainInputs.length;
+						const optionalNonMainInputsCount = nonMainInputs.length - requiredNonMainInputsCount;
+						spacerCount = requiredNonMainInputsCount > 0 && optionalNonMainInputsCount > 0 ? 1 : 0;
+					}
+
+					styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
 				}
 
-				styles['--configurable-node-input-count'] = nonMainInputs.length + spacerCount;
+				const outputs =
+					NodeHelpers.getNodeOutputs(workflow, this.node, this.nodeType) ||
+					([] as Array<ConnectionTypes | INodeOutputConfiguration>);
+
+				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+
+				const mainOutputs = outputTypes.filter((output) => output === NodeConnectionType.Main);
+				styles['--node-main-output-count'] = mainOutputs.length;
 			}
-
-			const outputs =
-				NodeHelpers.getNodeOutputs(workflow, this.node, this.nodeType) ||
-				([] as Array<ConnectionTypes | INodeOutputConfiguration>);
-
-			const outputTypes = NodeHelpers.getConnectionTypes(outputs);
-
-			const mainOutputs = outputTypes.filter((output) => output === NodeConnectionType.Main);
-			styles['--node-main-output-count'] = mainOutputs.length;
 
 			return styles;
 		},
@@ -568,10 +570,7 @@ export default defineComponent({
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = useStorage(
-			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
-			undefined,
-		).value;
+		const hasSeenPinDataTooltip = useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG).value;
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
@@ -612,7 +611,7 @@ export default defineComponent({
 			)
 				return;
 
-			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+			useStorage(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG).value = 'true';
 
 			this.pinDataDiscoveryTooltipVisible = true;
 			this.unwatchWorkflowDataItems();
