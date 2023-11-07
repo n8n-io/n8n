@@ -1,16 +1,16 @@
 import {
+	GMAIL_NODE_NAME,
+	HTTP_REQUEST_NODE_NAME,
+	NEW_GOOGLE_ACCOUNT_NAME,
 	NEW_NOTION_ACCOUNT_NAME,
+	NEW_QUERY_AUTH_ACCOUNT_NAME,
+	NEW_TRELLO_ACCOUNT_NAME,
 	NOTION_NODE_NAME,
 	PIPEDRIVE_NODE_NAME,
-	HTTP_REQUEST_NODE_NAME,
-	NEW_QUERY_AUTH_ACCOUNT_NAME,
-	GMAIL_NODE_NAME,
-	NEW_GOOGLE_ACCOUNT_NAME,
-	NEW_TRELLO_ACCOUNT_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
 	TRELLO_NODE_NAME,
 } from '../constants';
-import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
+import { CredentialsModal, CredentialsPage, NDV, WorkflowPage } from '../pages';
 import { getVisibleSelect } from '../utils';
 
 const credentialsPage = new CredentialsPage();
@@ -33,7 +33,7 @@ describe('Credentials', () => {
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
 		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
 		credentialsModal.actions.save();

@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
@@ -20,7 +21,6 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
-import { GOOGLE_DRIVE_FILE_URL_REGEX } from '../constants';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -418,7 +418,10 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 
 			const googleSheet = new GoogleSheet(documentId, this);
-			const sheetName: string = await googleSheet.spreadsheetGetSheetNameById(sheetId);
+			const sheetName: string = await googleSheet.spreadsheetGetSheetNameById(
+				this.getNode(),
+				sheetId,
+			);
 			const options = this.getNodeParameter('options') as IDataObject;
 
 			const previousRevision = workflowStaticData.lastRevision as number;

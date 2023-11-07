@@ -164,7 +164,7 @@ export class SetV1 implements INodeType {
 
 			const newItem: INodeExecutionData = {
 				json: {},
-				pairedItem: item.pairedItem,
+				pairedItem: { item: itemIndex },
 			};
 
 			if (!keepOnlySet) {

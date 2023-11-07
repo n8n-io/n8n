@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { Worker } from 'worker_threads';
 import { createReadStream, existsSync, rmSync } from 'fs';
 import readline from 'readline';
-import { jsonParse, LoggerProxy } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash/remove';
 import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
@@ -18,7 +18,9 @@ import {
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';
-import { inTest } from '../../constants';
+import { inTest } from '@/constants';
+import { Logger } from '@/Logger';
+import Container from 'typedi';
 
 interface MessageEventBusLogWriterConstructorOptions {
 	logBaseName?: string;
@@ -47,7 +49,13 @@ export class MessageEventBusLogWriter {
 
 	static options: Required<MessageEventBusLogWriterOptions>;
 
+	private readonly logger: Logger;
+
 	private _worker: Worker | undefined;
+
+	constructor() {
+		this.logger = Container.get(Logger);
+	}
 
 	public get worker(): Worker | undefined {
 		return this._worker;
@@ -66,7 +74,7 @@ export class MessageEventBusLogWriter {
 			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
 			MessageEventBusLogWriter.options = {
 				logFullBasePath: path.join(
-					options?.logBasePath ?? UserSettings.getUserN8nFolderPath(),
+					options?.logBasePath ?? Container.get(InstanceSettings).n8nFolder,
 					options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
 				),
 				keepNumberOfFiles:
@@ -135,7 +143,7 @@ export class MessageEventBusLogWriter {
 		this._worker = new Worker(workerFileName);
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
-				LoggerProxy.error('Event Bus Log Writer thread error, attempting to restart...', error);
+				this.logger.error('Event Bus Log Writer thread error, attempting to restart...', error);
 				await MessageEventBusLogWriter.instance.startThread();
 			});
 			return true;
@@ -234,7 +242,7 @@ export class MessageEventBusLogWriter {
 							}
 						}
 					} catch (error) {
-						LoggerProxy.error(
+						this.logger.error(
 							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}
@@ -242,7 +250,7 @@ export class MessageEventBusLogWriter {
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
 			} catch {
-				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return results;
@@ -307,7 +315,7 @@ export class MessageEventBusLogWriter {
 							if (msg !== null) messages.push(msg);
 						}
 					} catch {
-						LoggerProxy.error(
+						this.logger.error(
 							`Error reading line messages from file: ${logFileName}, line: ${line}`,
 						);
 					}
@@ -315,7 +323,7 @@ export class MessageEventBusLogWriter {
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
 			} catch {
-				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return messages;

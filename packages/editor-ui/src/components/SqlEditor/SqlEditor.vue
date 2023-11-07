@@ -16,8 +16,7 @@ import { acceptCompletion, autocompletion, ifNotIn } from '@codemirror/autocompl
 import { indentWithTab, history, redo, toggleComment } from '@codemirror/commands';
 import { bracketMatching, foldGutter, indentOnInput, LanguageSupport } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
-import type { Line } from '@codemirror/state';
-import type { Extension } from '@codemirror/state';
+import type { Line, Extension } from '@codemirror/state';
 import {
 	dropCursor,
 	EditorView,
@@ -141,7 +140,11 @@ export default defineComponent({
 			const extensions = [
 				sqlWithN8nLanguageSupport(),
 				expressionInputHandler(),
-				codeNodeEditorTheme({ isReadOnly: this.isReadOnly, customMaxHeight: '350px' }),
+				codeNodeEditorTheme({
+					isReadOnly: this.isReadOnly,
+					customMaxHeight: '350px',
+					customMinHeight: this.rows,
+				}),
 				lineNumbers(),
 				EditorView.lineWrapping,
 				EditorState.readOnly.of(this.isReadOnly),
@@ -188,15 +191,7 @@ export default defineComponent({
 	mounted() {
 		if (!this.isReadOnly) codeNodeEditorEventBus.on('error-line-number', this.highlightLine);
 
-		let doc = this.modelValue;
-
-		const lines = doc.split('\n');
-
-		if (lines.length < this.rows) {
-			doc += '\n'.repeat(this.rows - lines.length);
-		}
-
-		const state = EditorState.create({ doc, extensions: this.extensions });
+		const state = EditorState.create({ doc: this.modelValue, extensions: this.extensions });
 
 		this.editor = new EditorView({ parent: this.$refs.sqlEditor as HTMLDivElement, state });
 		this.editorState = this.editor.state;

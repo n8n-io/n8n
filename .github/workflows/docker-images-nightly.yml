@@ -73,6 +73,8 @@ jobs:
         uses: docker/build-push-action@v4.1.1
         with:
           context: .
+          build-args: |
+            N8N_RELEASE_TYPE=nightly
           file: ./docker/images/n8n-custom/Dockerfile
           platforms: linux/amd64
           provenance: false

@@ -9,6 +9,7 @@ import PCancelable from 'p-cancelable';
 import type {
 	ExecutionError,
 	ExecutionStatus,
+	GenericValue,
 	IConnection,
 	IDataObject,
 	IExecuteData,
@@ -19,20 +20,26 @@ import type {
 	IPinData,
 	IRun,
 	IRunData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	ITaskDataConnections,
 	ITaskDataConnectionsSource,
+	ITaskMetadata,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
-	IWorkflowExecuteAdditionalData,
 	NodeApiError,
 	NodeOperationError,
 	Workflow,
-	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
+import {
+	LoggerProxy as Logger,
+	WorkflowOperationError,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	WorkflowExecuteMode,
+	NodeHelpers,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import get from 'lodash/get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
@@ -62,6 +69,7 @@ export class WorkflowExecute {
 			executionData: {
 				contextData: {},
 				nodeExecutionStack: [],
+				metadata: {},
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
@@ -130,6 +138,7 @@ export class WorkflowExecute {
 			executionData: {
 				contextData: {},
 				nodeExecutionStack,
+				metadata: {},
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			},
@@ -157,7 +166,7 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		runData: IRunData,
 		startNodes: string[],
-		destinationNode: string,
+		destinationNode?: string,
 		pinData?: IPinData,
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
@@ -166,6 +175,7 @@ export class WorkflowExecute {
 		this.status = 'running';
 
 		const runIndex = 0;
+		let runNodeFilter: string[] | undefined;
 
 		// Initialize the nodeExecutionStack and waitingExecution with
 		// the data from runData
@@ -179,7 +189,6 @@ export class WorkflowExecute {
 			let incomingSourceData: ITaskDataConnectionsSource | null = null;
 
 			if (incomingNodeConnections === undefined) {
-				// If it has no incoming data add the default empty data
 				incomingData.push([
 					{
 						json: {},
@@ -199,8 +208,11 @@ export class WorkflowExecute {
 						if (node && pinData && pinData[node.name]) {
 							incomingData.push(pinData[node.name]);
 						} else {
+							if (!runData[connection.node]) {
+								continue;
+							}
 							const nodeIncomingData =
-								runData[connection.node][runIndex]?.data?.[connection.type][connection.index];
+								runData[connection.node]?.[runIndex]?.data?.[connection.type]?.[connection.index];
 							if (nodeIncomingData) {
 								incomingData.push(nodeIncomingData);
 							}
@@ -223,55 +235,55 @@ export class WorkflowExecute {
 
 			nodeExecutionStack.push(executeData);
 
-			// Check if the destinationNode has to be added as waiting
-			// because some input data is already fully available
-			incomingNodeConnections = workflow.connectionsByDestinationNode[destinationNode];
-			if (incomingNodeConnections !== undefined) {
-				for (const connections of incomingNodeConnections.main) {
-					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
-						connection = connections[inputIndex];
+			if (destinationNode) {
+				// Check if the destinationNode has to be added as waiting
+				// because some input data is already fully available
+				incomingNodeConnections = workflow.connectionsByDestinationNode[destinationNode];
+				if (incomingNodeConnections !== undefined) {
+					for (const connections of incomingNodeConnections.main) {
+						for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
+							connection = connections[inputIndex];
 
-						if (waitingExecution[destinationNode] === undefined) {
-							waitingExecution[destinationNode] = {};
-							waitingExecutionSource[destinationNode] = {};
-						}
-						if (waitingExecution[destinationNode][runIndex] === undefined) {
-							waitingExecution[destinationNode][runIndex] = {};
-							waitingExecutionSource[destinationNode][runIndex] = {};
-						}
-						if (waitingExecution[destinationNode][runIndex][connection.type] === undefined) {
-							waitingExecution[destinationNode][runIndex][connection.type] = [];
-							waitingExecutionSource[destinationNode][runIndex][connection.type] = [];
-						}
+							if (waitingExecution[destinationNode] === undefined) {
+								waitingExecution[destinationNode] = {};
+								waitingExecutionSource[destinationNode] = {};
+							}
+							if (waitingExecution[destinationNode][runIndex] === undefined) {
+								waitingExecution[destinationNode][runIndex] = {};
+								waitingExecutionSource[destinationNode][runIndex] = {};
+							}
+							if (waitingExecution[destinationNode][runIndex][connection.type] === undefined) {
+								waitingExecution[destinationNode][runIndex][connection.type] = [];
+								waitingExecutionSource[destinationNode][runIndex][connection.type] = [];
+							}
 
-						if (runData[connection.node] !== undefined) {
-							// Input data exists so add as waiting
-							// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
-							waitingExecution[destinationNode][runIndex][connection.type].push(
-								runData[connection.node][runIndex].data![connection.type][connection.index],
-							);
-							waitingExecutionSource[destinationNode][runIndex][connection.type].push({
-								previousNode: connection.node,
-								previousNodeOutput: connection.index || undefined,
-								previousNodeRun: runIndex || undefined,
-							} as ISourceData);
-						} else {
-							waitingExecution[destinationNode][runIndex][connection.type].push(null);
-							waitingExecutionSource[destinationNode][runIndex][connection.type].push(null);
+							if (runData[connection.node] !== undefined) {
+								// Input data exists so add as waiting
+								// incomingDataDestination.push(runData[connection.node!][runIndex].data![connection.type][connection.index]);
+								waitingExecution[destinationNode][runIndex][connection.type].push(
+									runData[connection.node][runIndex].data![connection.type][connection.index],
+								);
+								waitingExecutionSource[destinationNode][runIndex][connection.type].push({
+									previousNode: connection.node,
+									previousNodeOutput: connection.index || undefined,
+									previousNodeRun: runIndex || undefined,
+								} as ISourceData);
+							} else {
+								waitingExecution[destinationNode][runIndex][connection.type].push(null);
+								waitingExecutionSource[destinationNode][runIndex][connection.type].push(null);
+							}
 						}
 					}
 				}
+
+				// Only run the parent nodes and no others
+				runNodeFilter = workflow
+					.getParentNodes(destinationNode)
+					.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
+
+				runNodeFilter.push(destinationNode);
 			}
 		}
-
-		// Only run the parent nodes and no others
-		let runNodeFilter: string[] | undefined;
-		// eslint-disable-next-line prefer-const
-		runNodeFilter = workflow
-			.getParentNodes(destinationNode)
-			.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
-
-		runNodeFilter.push(destinationNode);
 
 		this.runExecutionData = {
 			startData: {
@@ -285,6 +297,7 @@ export class WorkflowExecute {
 			executionData: {
 				contextData: {},
 				nodeExecutionStack,
+				metadata: {},
 				waitingExecution,
 				waitingExecutionSource,
 			},
@@ -304,6 +317,22 @@ export class WorkflowExecute {
 		}
 
 		return this.additionalData.hooks.executeHookFunctions(hookName, parameters);
+	}
+
+	moveNodeMetadata(): void {
+		const metadata = get(this.runExecutionData, 'executionData.metadata');
+
+		if (metadata) {
+			const runData = get(this.runExecutionData, 'resultData.runData');
+
+			let index: number;
+			let metaRunData: ITaskMetadata;
+			for (const nodeName of Object.keys(metadata)) {
+				for ([index, metaRunData] of metadata[nodeName].entries()) {
+					runData[nodeName][index].metadata = metaRunData;
+				}
+			}
+		}
 	}
 
 	/**
@@ -771,7 +800,7 @@ export class WorkflowExecute {
 			pinDataNodeNames,
 		});
 		if (workflowIssues !== null) {
-			throw new Error(
+			throw new WorkflowOperationError(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
 			);
 		}
@@ -1015,6 +1044,7 @@ export class WorkflowExecute {
 									node: executionNode.name,
 									workflowId: workflow.id,
 								});
+
 								const runNodeData = await workflow.runNode(
 									executionData,
 									this.runExecutionData,
@@ -1024,6 +1054,112 @@ export class WorkflowExecute {
 									this.mode,
 								);
 								nodeSuccessData = runNodeData.data;
+
+								if (nodeSuccessData && executionData.node.onError === 'continueErrorOutput') {
+									// If errorOutput is activated check all the output items for error data.
+									// If any is found, route them to the last output as that will be the
+									// error output.
+
+									const nodeType = workflow.nodeTypes.getByNameAndVersion(
+										executionData.node.type,
+										executionData.node.typeVersion,
+									);
+									const outputs = NodeHelpers.getNodeOutputs(
+										workflow,
+										executionData.node,
+										nodeType.description,
+									);
+									const outputTypes = NodeHelpers.getConnectionTypes(outputs);
+									const mainOutputTypes = outputTypes.filter(
+										(output) => output === NodeConnectionType.Main,
+									);
+
+									const errorItems: INodeExecutionData[] = [];
+									const successItems: INodeExecutionData[] = [];
+
+									// Create a WorkflowDataProxy instance that we can get the data of the
+									// item which did error
+									const executeFunctions = NodeExecuteFunctions.getExecuteFunctions(
+										workflow,
+										this.runExecutionData,
+										runIndex,
+										[],
+										executionData.data,
+										executionData.node,
+										this.additionalData,
+										executionData,
+										this.mode,
+									);
+									const dataProxy = executeFunctions.getWorkflowDataProxy(0);
+
+									// Loop over all outputs except the error output as it would not contain data by default
+									for (
+										let outputIndex = 0;
+										outputIndex < mainOutputTypes.length - 1;
+										outputIndex++
+									) {
+										successItems.length = 0;
+										const items = nodeSuccessData.length ? nodeSuccessData[0] : [];
+
+										while (items.length) {
+											const item = items.pop();
+											if (item === undefined) {
+												continue;
+											}
+
+											let errorData: GenericValue | undefined;
+											if (item.error) {
+												errorData = item.error;
+												item.error = undefined;
+											} else if (item.json.error && Object.keys(item.json).length === 1) {
+												errorData = item.json.error;
+											}
+
+											if (errorData) {
+												const pairedItemData =
+													item.pairedItem && typeof item.pairedItem === 'object'
+														? Array.isArray(item.pairedItem)
+															? item.pairedItem[0]
+															: item.pairedItem
+														: undefined;
+
+												if (executionData!.source === null || pairedItemData === undefined) {
+													// Source data is missing for some reason so we can not figure out the item
+													errorItems.push(item);
+												} else {
+													const pairedItemInputIndex = pairedItemData.input || 0;
+
+													const sourceData =
+														executionData!.source[NodeConnectionType.Main][pairedItemInputIndex];
+
+													const constPairedItem = dataProxy.$getPairedItem(
+														sourceData!.previousNode,
+														sourceData,
+														pairedItemData,
+													);
+
+													if (constPairedItem === null) {
+														errorItems.push(item);
+													} else {
+														errorItems.push({
+															...item,
+															json: {
+																...constPairedItem.json,
+																...item.json,
+															},
+														});
+													}
+												}
+											} else {
+												successItems.push(item);
+											}
+										}
+
+										nodeSuccessData[outputIndex] = successItems;
+									}
+
+									nodeSuccessData[mainOutputTypes.length - 1] = errorItems;
+								}
 
 								if (runNodeData.closeFunction) {
 									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
@@ -1154,7 +1290,12 @@ export class WorkflowExecute {
 						taskData.error = executionError;
 						taskData.executionStatus = 'error';
 
-						if (executionData.node.continueOnFail === true) {
+						if (
+							executionData.node.continueOnFail === true ||
+							['continueRegularOutput', 'continueErrorOutput'].includes(
+								executionData.node.onError || '',
+							)
+						) {
 							// Workflow should continue running even if node errors
 							if (executionData.data.hasOwnProperty('main') && executionData.data.main.length > 0) {
 								// Simply get the input data of the node if it has any and pass it through
@@ -1376,7 +1517,6 @@ export class WorkflowExecute {
 										checkNode,
 										requiredInputs,
 										this.mode,
-										this.additionalData.timezone,
 										{ $version: checkNode.typeVersion },
 										undefined,
 										[],
@@ -1530,6 +1670,9 @@ export class WorkflowExecute {
 						// Static data of workflow changed
 						newStaticData = workflow.staticData;
 					}
+
+					this.moveNodeMetadata();
+
 					await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]).catch(
 						// eslint-disable-next-line @typescript-eslint/no-shadow
 						(error) => {
@@ -1588,6 +1731,7 @@ export class WorkflowExecute {
 		} else {
 			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
+			fullRunData.status = 'success';
 		}
 
 		// Check if static data changed
@@ -1597,6 +1741,9 @@ export class WorkflowExecute {
 			// Static data of workflow changed
 			newStaticData = workflow.staticData;
 		}
+
+		this.moveNodeMetadata();
+
 		await this.executeHook('workflowExecuteAfter', [fullRunData, newStaticData]);
 
 		if (closeFunction) {

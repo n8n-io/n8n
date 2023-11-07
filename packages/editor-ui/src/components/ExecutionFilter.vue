@@ -141,7 +141,7 @@ const onFilterReset = () => {
 };
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
+	void uiStore.goToUpgrade('custom-data-filter', 'upgrade-custom-data-filter');
 };
 
 onBeforeMount(() => {

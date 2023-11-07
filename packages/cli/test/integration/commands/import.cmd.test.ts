@@ -1,11 +1,14 @@
-import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils/';
+import * as Config from '@oclif/config';
+
 import { InternalHooks } from '@/InternalHooks';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
-import * as Config from '@oclif/config';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import * as testDb from '../shared/testDb';
+import { mockInstance } from '../shared/utils/';
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
+	mockInstance(LoadNodesAndCredentials);
 	await testDb.init();
 });
 

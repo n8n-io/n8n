@@ -19,17 +19,14 @@ export function useToast() {
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 
-	function showMessage(
-		messageData: Omit<NotificationOptions, 'message'> & { message?: string },
-		track = true,
-	) {
+	function showMessage(messageData: NotificationOptions, track = true) {
 		messageData = { ...messageDefaults, ...messageData };
-		messageData.message = messageData.message
-			? sanitizeHtml(messageData.message)
-			: messageData.message;
+		messageData.message =
+			typeof messageData.message === 'string'
+				? sanitizeHtml(messageData.message)
+				: messageData.message;
 
-		// @TODO Check if still working
-		const notification = Notification(messageData as NotificationOptions);
+		const notification = Notification(messageData);
 
 		if (messageData.duration === 0) {
 			stickyNotificationQueue.push(notification);
@@ -49,7 +46,7 @@ export function useToast() {
 
 	function showToast(config: {
 		title: string;
-		message: string;
+		message: NotificationOptions['message'];
 		onClick?: () => void;
 		onClose?: () => void;
 		duration?: number;

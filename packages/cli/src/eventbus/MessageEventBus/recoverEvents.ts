@@ -11,7 +11,7 @@ import { ExecutionRepository } from '@db/repositories';
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
 	messages: EventMessageTypes[],
-	applyToDb = true,
+	applyToDb: boolean,
 ): Promise<IRunExecutionData | undefined> {
 	const executionEntry = await Container.get(ExecutionRepository).findSingleExecution(executionId, {
 		includeData: true,

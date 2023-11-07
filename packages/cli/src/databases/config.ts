@@ -1,8 +1,9 @@
 import path from 'path';
+import { Container } from 'typedi';
 import type { SqliteConnectionOptions } from 'typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import type { MysqlConnectionOptions } from 'typeorm/driver/mysql/MysqlConnectionOptions';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { entities } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
@@ -21,7 +22,7 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 		configDBType === 'sqlite'
 			? {
 					database: path.resolve(
-						UserSettings.getUserN8nFolderPath(),
+						Container.get(InstanceSettings).n8nFolder,
 						config.getEnv('database.sqlite.database'),
 					),
 					enableWAL: config.getEnv('database.sqlite.enableWAL'),

@@ -95,7 +95,9 @@ export default defineComponent({
 					{ key: 'Mod-Shift-z', run: redo },
 				]),
 				indentOnInput(),
-				theme,
+				theme({
+					isReadOnly: this.isReadOnly,
+				}),
 				lineNumbers(),
 				highlightActiveLineGutter(),
 				history(),
@@ -103,6 +105,7 @@ export default defineComponent({
 				dropCursor(),
 				indentOnInput(),
 				highlightActiveLine(),
+				EditorView.editable.of(!this.isReadOnly),
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 					if (!viewUpdate.docChanged) return;

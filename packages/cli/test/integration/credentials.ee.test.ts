@@ -1,10 +1,8 @@
 import type { SuperAgentTest } from 'supertest';
 import { In } from 'typeorm';
-import { UserSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 
 import * as Db from '@/Db';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import type { Credentials } from '@/requests';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
@@ -302,21 +300,6 @@ describe('GET /credentials/:id', () => {
 
 		expect(response.statusCode).toBe(403);
 		expect(response.body.data).toBeUndefined(); // owner's cred not returned
-	});
-
-	test('should fail with missing encryption key', async () => {
-		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-
-		const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
-		mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
-
-		const response = await authOwnerAgent
-			.get(`/credentials/${savedCredential.id}`)
-			.query({ includeData: true });
-
-		expect(response.statusCode).toBe(500);
-
-		mock.mockRestore();
 	});
 
 	test('should return 404 if cred not found', async () => {

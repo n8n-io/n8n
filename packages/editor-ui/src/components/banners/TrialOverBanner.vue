@@ -4,7 +4,7 @@ import { i18n as locale } from '@/plugins/i18n';
 import { useUIStore } from '@/stores';
 
 function onUpdatePlanClick() {
-	useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
+	void useUIStore().goToUpgrade('canvas-nav', 'upgrade-canvas-nav', 'redirect');
 }
 </script>
 

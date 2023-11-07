@@ -1,13 +1,6 @@
 import type express from 'express';
 
-import { BinaryDataManager } from 'n8n-core';
-
-import {
-	getExecutions,
-	getExecutionInWorkflows,
-	deleteExecution,
-	getExecutionsCount,
-} from './executions.service';
+import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
@@ -15,6 +8,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ExecutionRepository } from '@/databases/repositories';
 
 export = {
 	deleteExecution: [
@@ -37,9 +31,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionIds([execution.id!]);
-
-			await deleteExecution(execution);
+			await Container.get(ExecutionRepository).hardDelete({
+				workflowId: execution.workflowId as string,
+				executionId: execution.id,
+			});
 
 			execution.id = id;
 
@@ -111,7 +106,7 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? '0' : (executions.slice(-1)[0].id as string);
+			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 

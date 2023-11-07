@@ -1,5 +1,6 @@
 import * as LoggerProxy from './LoggerProxy';
 export * as ErrorReporterProxy from './ErrorReporterProxy';
+export * as ExpressionEvaluatorProxy from './ExpressionEvaluatorProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';
@@ -8,6 +9,7 @@ export * from './Authentication';
 export * from './Constants';
 export * from './Cron';
 export * from './DeferredPromise';
+export * from './GlobalState';
 export * from './Interfaces';
 export * from './MessageEventBus';
 export * from './ExecutionStatus';

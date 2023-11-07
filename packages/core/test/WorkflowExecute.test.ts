@@ -3,14 +3,9 @@ import { createDeferredPromise, Workflow } from 'n8n-workflow';
 import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './helpers';
-import { initLogger } from './helpers/utils';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from './helpers/constants';
 
 describe('WorkflowExecute', () => {
-	beforeAll(() => {
-		initLogger();
-	});
-
 	describe('v0 execution order', () => {
 		const tests: WorkflowTestData[] = legacyWorkflowExecuteTests;
 

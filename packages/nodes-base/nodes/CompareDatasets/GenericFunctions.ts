@@ -9,7 +9,7 @@ import unset from 'lodash/unset';
 import { cloneDeep } from 'lodash';
 import set from 'lodash/set';
 import union from 'lodash/union';
-import { fuzzyCompare } from '@utils/utilities';
+import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -141,6 +141,10 @@ function compareItems(
 
 	return {
 		json: { keys, same, different, ...(!isEmpty(skipped) && { skipped }) },
+		pairedItem: [
+			...preparePairedItemDataArray(item1.pairedItem),
+			...preparePairedItemDataArray(item2.pairedItem),
+		],
 	} as INodeExecutionData;
 }
 

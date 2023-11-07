@@ -244,9 +244,7 @@ export default defineComponent({
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters: deepCopy(
-				defaultMessageEventBusDestinationOptions,
-			) as MessageEventBusDestinationOptions,
+			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
@@ -466,7 +464,7 @@ export default defineComponent({
 				return;
 			}
 			const saveResult = await this.logStreamingStore.saveDestination(this.nodeParameters);
-			if (saveResult === true) {
+			if (saveResult) {
 				this.hasOnceBeenSaved = true;
 				this.testMessageSent = false;
 				this.unchanged = true;

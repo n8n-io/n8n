@@ -6,8 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
-import { updateDisplayOptions } from '@utils/utilities';
 import { draftRLC } from '../../descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 export const properties: INodeProperties[] = [
 	draftRLC,

@@ -600,15 +600,7 @@ export class FileMaker implements INodeType {
 			// Get all the available topics to display them to user so that they can
 			// select them easily
 			async getLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				let returnData: INodePropertyOptions[];
-
-				try {
-					returnData = await layoutsApiRequest.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
-
-				return returnData;
+				return layoutsApiRequest.call(this);
 			},
 			async getResponseLayouts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -617,12 +609,8 @@ export class FileMaker implements INodeType {
 					value: '',
 				});
 
-				let layouts;
-				try {
-					layouts = await layoutsApiRequest.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const layouts = await layoutsApiRequest.call(this);
+
 				for (const layout of layouts) {
 					returnData.push({
 						name: layout.name,
@@ -635,12 +623,8 @@ export class FileMaker implements INodeType {
 			async getFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let fields;
-				try {
-					fields = await getFields.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const fields = await getFields.call(this);
+
 				for (const field of fields) {
 					returnData.push({
 						name: field.name,
@@ -653,12 +637,8 @@ export class FileMaker implements INodeType {
 			async getScripts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let scripts;
-				try {
-					scripts = await getScripts.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const scripts = await getScripts.call(this);
+
 				for (const script of scripts) {
 					if (!script.isFolder) {
 						returnData.push({
@@ -673,12 +653,8 @@ export class FileMaker implements INodeType {
 			async getPortals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let portals;
-				try {
-					portals = await getPortals.call(this);
-				} catch (error) {
-					throw new NodeOperationError(this.getNode(), error as Error);
-				}
+				const portals = await getPortals.call(this);
+
 				Object.keys(portals as IDataObject).forEach((portal) => {
 					returnData.push({
 						name: portal,

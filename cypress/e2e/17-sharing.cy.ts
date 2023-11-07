@@ -39,7 +39,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		credentialsPage.getters.emptyListCreateCredentialButton().click();
 		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 		credentialsModal.getters.newCredentialTypeButton().click();
-		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('Internal Integration Secret').type('1234567890');
 		credentialsModal.actions.setName('Credential C1');
 		credentialsModal.actions.save();
 		credentialsModal.actions.close();
@@ -59,6 +59,7 @@ describe('Sharing', { disableAutoLogin: true }, () => {
 		cy.visit(workflowsPage.url);
 		workflowsPage.getters.createWorkflowButton().click();
 		cy.createFixtureWorkflow('Test_workflow_1.json', 'Workflow W2');
+		workflowPage.actions.saveWorkflowOnButtonClick();
 		cy.url().then((url) => {
 			workflowW2Url = url;
 		});

@@ -49,7 +49,7 @@ encodeDecodeOptions.sort((a, b) => {
 
 export class MoveBinaryData implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Move Binary Data',
+		displayName: 'Convert to/from binary data',
 		name: 'moveBinaryData',
 		icon: 'fa:exchange-alt',
 		group: ['transform'],
@@ -57,7 +57,7 @@ export class MoveBinaryData implements INodeType {
 		subtitle: '={{$parameter["mode"]==="binaryToJson" ? "Binary to JSON" : "JSON to Binary"}}',
 		description: 'Move data between binary and JSON properties',
 		defaults: {
-			name: 'Move Binary Data',
+			name: 'Convert to/from binary data',
 			color: '#7722CC',
 		},
 		inputs: ['main'],
@@ -292,7 +292,7 @@ export class MoveBinaryData implements INodeType {
 						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
-						displayName: 'Mime Type',
+						displayName: 'MIME Type',
 						name: 'mimeType',
 						type: 'string',
 						displayOptions: {

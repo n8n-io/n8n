@@ -1,8 +1,6 @@
 import { Container } from 'typedi';
-import { randomBytes } from 'crypto';
-import { existsSync } from 'fs';
-import { BinaryDataManager, UserSettings } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import { BinaryDataService } from 'n8n-core';
+import { type INode } from 'n8n-workflow';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
@@ -18,6 +16,8 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { mockInstance } from './mocking';
+import { mockNodeTypesData } from '../../../unit/Helpers';
 
 export { mockInstance } from './mocking';
 export { setupTestServer } from './testServer';
@@ -72,24 +72,16 @@ export async function initNodeTypes() {
 }
 
 /**
- * Initialize a BinaryManager for test runs.
+ * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryManager() {
-	const binaryDataConfig = config.getEnv('binaryDataManager');
-	await BinaryDataManager.init(binaryDataConfig);
-}
-
-/**
- * Initialize a user settings config file if non-existent.
- */
-// TODO: this should be mocked
-export async function initEncryptionKey() {
-	const settingsPath = UserSettings.getUserSettingsPath();
-
-	if (!existsSync(settingsPath)) {
-		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		await UserSettings.writeUserSettings(userSettings, settingsPath);
-	}
+export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+	const binaryDataService = new BinaryDataService();
+	await binaryDataService.init({
+		mode,
+		availableModes: [mode],
+		localStoragePath: '',
+	});
+	Container.set(BinaryDataService, binaryDataService);
 }
 
 /**
@@ -176,3 +168,15 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
+
+export function setSchedulerAsLoadedNode() {
+	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+
+	Object.assign(nodesAndCredentials, {
+		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
+			addTrigger: true,
+		}),
+		known: { nodes: {}, credentials: {} },
+		types: { nodes: [], credentials: [] },
+	});
+}

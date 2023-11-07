@@ -6,6 +6,7 @@ RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" 
 
 ENV N8N_VERSION=${N8N_VERSION}
 ENV NODE_ENV=production
+ENV N8N_RELEASE_TYPE=stable
 RUN set -eux; \
 	apkArch="$(apk --print-arch)"; \
 	case "$apkArch" in \

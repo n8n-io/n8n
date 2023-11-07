@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import type { IBinaryDataConfig } from 'n8n-core';
+import type { BinaryData } from 'n8n-core';
 import type { schema } from './schema';
 
 // -----------------------------------
@@ -76,7 +76,7 @@ type ToReturnType<T extends ConfigOptionPath> = T extends NumericPath
 
 type ExceptionPaths = {
 	'queue.bull.redis': object;
-	binaryDataManager: IBinaryDataConfig;
+	binaryDataManager: BinaryData.Config;
 	'nodes.exclude': string[] | undefined;
 	'nodes.include': string[] | undefined;
 	'userManagement.isInstanceOwnerSetUp': boolean;

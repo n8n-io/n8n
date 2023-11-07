@@ -11,7 +11,7 @@ import assignWith from 'lodash/assignWith';
 import get from 'lodash/get';
 import merge from 'lodash/merge';
 import mergeWith from 'lodash/mergeWith';
-import { fuzzyCompare } from '@utils/utilities';
+import { fuzzyCompare, preparePairedItemDataArray } from '@utils/utilities';
 
 type PairToMatch = {
 	field1: string;
@@ -257,6 +257,7 @@ export function mergeMatched(
 
 		let json: IDataObject = {};
 		let binary: IBinaryKeyData = {};
+		let pairedItem: IPairedItemData[] = [];
 
 		if (resolveClash === 'addSuffix') {
 			const suffix1 = '1';
@@ -270,6 +271,10 @@ export function mergeMatched(
 				{ ...entry.binary },
 				...matches.map((item) => item.binary as IDataObject),
 			);
+			pairedItem = [
+				...preparePairedItemDataArray(entry.pairedItem),
+				...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+			];
 		} else {
 			const preferInput1 = 'preferInput1';
 			const preferInput2 = 'preferInput2';
@@ -294,6 +299,12 @@ export function mergeMatched(
 					...restMatches.map((item) => item.binary as IDataObject),
 					entry.binary as IDataObject,
 				);
+
+				pairedItem = [
+					...preparePairedItemDataArray(firstMatch.pairedItem),
+					...restMatches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+					...preparePairedItemDataArray(entry.pairedItem),
+				];
 			}
 
 			if (resolveClash === preferInput2) {
@@ -302,13 +313,12 @@ export function mergeMatched(
 					{ ...entry.binary },
 					...matches.map((item) => item.binary as IDataObject),
 				);
+				pairedItem = [
+					...preparePairedItemDataArray(entry.pairedItem),
+					...matches.map((item) => preparePairedItemDataArray(item.pairedItem)).flat(),
+				];
 			}
 		}
-
-		const pairedItem = [
-			entry.pairedItem as IPairedItemData,
-			...matches.map((m) => m.pairedItem as IPairedItemData),
-		];
 
 		returnData.push({
 			json,

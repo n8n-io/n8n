@@ -1,29 +1,30 @@
 import { Service } from 'typedi';
 import { DataSource, In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 import type {
 	FindManyOptions,
 	FindOneOptions,
 	FindOptionsWhere,
 	SelectQueryBuilder,
 } from 'typeorm';
-import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { parse, stringify } from 'flatted';
+import type { ExecutionStatus, IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
+import { BinaryDataService } from 'n8n-core';
 import type {
+	ExecutionPayload,
 	IExecutionBase,
-	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '@/Interfaces';
-import { LoggerProxy } from 'n8n-workflow';
-import type { IExecutionsSummary, IRunExecutionData } from 'n8n-workflow';
-import { ExecutionDataRepository } from './executionData.repository';
-import type { ExecutionData } from '../entities/ExecutionData';
+
+import config from '@/config';
 import type { IGetExecutionsQueryFilter } from '@/executions/executions.service';
 import { isAdvancedExecutionFiltersEnabled } from '@/executions/executionHelpers';
+import type { ExecutionData } from '../entities/ExecutionData';
+import { ExecutionEntity } from '../entities/ExecutionEntity';
 import { ExecutionMetadata } from '../entities/ExecutionMetadata';
-import { DateUtils } from 'typeorm/util/DateUtils';
-import { BinaryDataManager } from 'n8n-core';
-import config from '@/config';
+import { ExecutionDataRepository } from './executionData.repository';
+import { Logger } from '@/Logger';
 
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
@@ -66,9 +67,13 @@ function parseFiltersToQueryBuilder(
 
 @Service()
 export class ExecutionRepository extends Repository<ExecutionEntity> {
+	private hardDeletionBatchSize = 100;
+
 	constructor(
 		dataSource: DataSource,
+		private readonly logger: Logger,
 		private readonly executionDataRepository: ExecutionDataRepository,
+		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
 	}
@@ -203,7 +208,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return rest;
 	}
 
-	async createNewExecution(execution: IExecutionDb) {
+	async createNewExecution(execution: ExecutionPayload) {
 		const { data, workflowData, ...rest } = execution;
 
 		const newExecution = await this.save(rest);
@@ -226,11 +231,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		);
 	}
 
+	/**
+	 * Permanently remove a single execution and its binary data.
+	 */
+	async hardDelete(ids: { workflowId: string; executionId: string }) {
+		return Promise.all([this.delete(ids.executionId), this.binaryDataService.deleteMany([ids])]);
+	}
+
+	async updateStatus(executionId: string, status: ExecutionStatus) {
+		await this.update({ id: executionId }, { status });
+	}
+
 	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
 		// Se isolate startedAt because it must be set when the execution starts and should never change.
 		// So we prevent updating it, if it's sent (it usually is and causes problems to executions that
 		// are resumed after waiting for some time, as a new startedAt is set)
-		const { id, data, workflowData, startedAt, ...executionInformation } = execution;
+		const { id, data, workflowId, workflowData, startedAt, ...executionInformation } = execution;
 		if (Object.keys(executionInformation).length > 0) {
 			await this.update({ id: executionId }, executionInformation);
 		}
@@ -246,16 +262,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// @ts-ignore
 			await this.executionDataRepository.update({ executionId }, executionData);
 		}
-	}
-
-	async deleteExecution(executionId: string, deferBinaryDataDeletion = false) {
-		const binaryDataManager = BinaryDataManager.getInstance();
-		if (deferBinaryDataDeletion) {
-			await binaryDataManager.markDataForDeletionByExecutionId(executionId);
-		} else {
-			await binaryDataManager.deleteBinaryDataByExecutionIds([executionId]);
-		}
-		return this.delete({ id: executionId });
 	}
 
 	async countExecutions(
@@ -297,7 +303,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			}
 		} catch (error) {
 			if (error instanceof Error) {
-				LoggerProxy.warn(`Failed to get executions count from Postgres: ${error.message}`, {
+				this.logger.warn(`Failed to get executions count from Postgres: ${error.message}`, {
 					error,
 				});
 			}
@@ -341,7 +347,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			.orderBy({ 'execution.id': 'DESC' })
 			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
-
 		if (excludedExecutionIds.length > 0) {
 			query.andWhere('execution.id NOT IN (:...excludedExecutionIds)', { excludedExecutionIds });
 		}
@@ -367,7 +372,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutions(
+	async deleteExecutionsByFilter(
 		filters: IGetExecutionsQueryFilter | undefined,
 		accessibleWorkflowIds: string[],
 		deleteConditions: {
@@ -399,7 +404,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (!executions.length) {
 			if (deleteConditions.ids) {
-				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+				this.logger.error('Failed to delete an execution due to insufficient permissions', {
 					executionIds: deleteConditions.ids,
 				});
 			}
@@ -407,12 +412,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const executionIds = executions.map(({ id }) => id);
-		const binaryDataManager = BinaryDataManager.getInstance();
-		await binaryDataManager.deleteBinaryDataByExecutionIds(executionIds);
-
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = executionIds.splice(0, 500);
+			const batch = executionIds.splice(0, this.hardDeletionBatchSize);
 			await this.delete(batch);
 		} while (executionIds.length > 0);
 	}

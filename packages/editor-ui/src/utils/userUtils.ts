@@ -228,7 +228,7 @@ function getPersonalizationSurveyV2OrLater(
 
 	let codingSkill = null;
 	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {
-		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
+		codingSkill = parseInt(answers[CODING_SKILL_KEY], 10);
 		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 
@@ -369,7 +369,7 @@ function getPersonalizationSurveyV1(answers: IPersonalizationSurveyAnswersV1) {
 
 	let codingSkill = null;
 	if (answers[CODING_SKILL_KEY]) {
-		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
+		codingSkill = parseInt(answers[CODING_SKILL_KEY], 10);
 		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 

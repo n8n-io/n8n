@@ -15,14 +15,15 @@
 			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style.sidebar">
+			<div v-if="usersStore.currentUser" id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
 			<div id="content" :class="$style.content">
 				<router-view v-slot="{ Component }">
-					<keep-alive include="NodeView" :max="1">
+					<keep-alive v-if="$route.meta.keepWorkflowAlive" include="NodeView" :max="1">
 						<component :is="Component" />
 					</keep-alive>
+					<component v-else :is="Component" />
 				</router-view>
 			</div>
 			<Modals />
@@ -39,11 +40,11 @@ import BannerStack from '@/components/banners/BannerStack.vue';
 import Modals from '@/components/Modals.vue';
 import LoadingView from '@/views/LoadingView.vue';
 import Telemetry from '@/components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from '@/constants';
+import { HIRING_BANNER, VIEWS } from '@/constants';
 
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from '@/plugins/i18n';
-import { useGlobalLinkActions, useToast } from '@/composables';
+import { useGlobalLinkActions, useToast, useExternalHooks } from '@/composables';
 import {
 	useUIStore,
 	useSettingsStore,
@@ -58,7 +59,6 @@ import {
 import { useHistoryHelper } from '@/composables/useHistoryHelper';
 import { newVersions } from '@/mixins/newVersions';
 import { useRoute } from 'vue-router';
-import { useExternalHooks } from '@/composables';
 
 export default defineComponent({
 	name: 'App',
@@ -100,123 +100,39 @@ export default defineComponent({
 	},
 	data() {
 		return {
-			postAuthenticateDone: false,
-			settingsInitialized: false,
+			onAfterAuthenticateInitialized: false,
 			loading: true,
 		};
 	},
 	methods: {
-		async initSettings(): Promise<void> {
-			// The settings should only be initialized once
-			if (this.settingsInitialized) return;
-
-			try {
-				await this.settingsStore.getSettings();
-				this.settingsInitialized = true;
-			} catch (e) {
-				this.showToast({
-					title: this.$locale.baseText('startupError'),
-					message: this.$locale.baseText('startupError.message'),
-					type: 'error',
-					duration: 0,
-					dangerouslyUseHTMLString: true,
-				});
-
-				throw e;
-			}
-		},
-		async loginWithCookie(): Promise<void> {
-			try {
-				await this.usersStore.loginWithCookie();
-			} catch (e) {}
-		},
-		async initTemplates(): Promise<void> {
-			if (!this.settingsStore.isTemplatesEnabled) {
-				return;
-			}
-			try {
-				await this.settingsStore.testTemplatesEndpoint();
-			} catch (e) {}
-		},
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && !this.isDemoMode) {
 				console.log(HIRING_BANNER);
 			}
 		},
-		async initBanners() {
-			return this.uiStore.initBanners();
+		async initializeCloudData() {
+			await this.cloudPlanStore.checkForCloudPlanData();
+			await this.cloudPlanStore.fetchUserCloudAccount();
 		},
-		async checkForCloudPlanData() {
-			return this.cloudPlanStore.checkForCloudPlanData();
-		},
-		async initialize(): Promise<void> {
-			await this.initSettings();
-			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
-		},
-		trackPage(): void {
-			this.uiStore.currentView = this.$route.name || '';
-			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
-				this.templatesStore.setSessionId();
-			} else {
-				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
-			}
-
-			this.$telemetry.page(this.$route);
-		},
-		async authenticate() {
-			// redirect to setup page. user should be redirected to this only once
-			if (this.settingsStore.showSetupPage) {
-				if (this.$route.name === VIEWS.SETUP) {
-					return;
-				}
-
-				return this.$router.replace({ name: VIEWS.SETUP });
-			}
-
-			if (this.canUserAccessCurrentRoute()) {
-				return;
-			}
-
-			// if cannot access page and not logged in, ask to sign in
-			const user = this.usersStore.currentUser;
-			if (!user) {
-				const redirect =
-					this.$route.query.redirect ||
-					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				return this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
-			}
-
-			// if cannot access page and is logged in, respect signin redirect
-			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
-				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) {
-					// protect against phishing
-					return this.$router.replace(redirect);
-				}
-			}
-
-			// if cannot access page and is logged in
-			return this.$router.replace({ name: VIEWS.HOMEPAGE });
-		},
-		async redirectIfNecessary() {
-			const redirect =
-				this.$route.meta &&
-				typeof this.$route.meta.getRedirect === 'function' &&
-				this.$route.meta.getRedirect();
-
-			if (redirect) {
-				return this.$router.replace(redirect);
-			}
-			return;
-		},
-		setTheme() {
-			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
-			if (theme) {
-				window.document.body.classList.add(`theme-${theme}`);
+		async initializeTemplates() {
+			if (this.settingsStore.isTemplatesEnabled) {
+				try {
+					await this.settingsStore.testTemplatesEndpoint();
+				} catch (e) {}
 			}
 		},
-		async postAuthenticate() {
-			if (this.postAuthenticateDone) {
+		async initializeSourceControl() {
+			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
+				await this.sourceControlStore.getPreferences();
+			}
+		},
+		async initializeNodeTranslationHeaders() {
+			if (this.defaultLocale !== 'en') {
+				await this.nodeTypesStore.getNodeTranslationHeaders();
+			}
+		},
+		async onAfterAuthenticate() {
+			if (this.onAfterAuthenticateInitialized) {
 				return;
 			}
 
@@ -224,44 +140,30 @@ export default defineComponent({
 				return;
 			}
 
-			if (this.sourceControlStore.isEnterpriseSourceControlEnabled) {
-				await this.sourceControlStore.getPreferences();
-			}
+			await Promise.all([
+				this.initializeCloudData(),
+				this.initializeSourceControl(),
+				this.initializeTemplates(),
+				this.initializeNodeTranslationHeaders(),
+			]);
 
-			this.postAuthenticateDone = true;
+			this.onAfterAuthenticateInitialized = true;
 		},
 	},
-	async created() {
-		this.setTheme();
-		await this.initialize();
+	async mounted() {
 		this.logHiringBanner();
-		await this.authenticate();
-		await this.redirectIfNecessary();
+
 		void this.checkForNewVersions();
-		await this.checkForCloudPlanData();
-		void this.initBanners();
-		void this.postAuthenticate();
+		void this.onAfterAuthenticate();
 
-		this.loading = false;
-
-		this.trackPage();
 		void this.externalHooks.run('app.mount');
-
-		if (this.defaultLocale !== 'en') {
-			await this.nodeTypesStore.getNodeTranslationHeaders();
-		}
+		this.loading = false;
 	},
 	watch: {
-		'usersStore.currentUser'(currentValue, previousValue) {
+		async 'usersStore.currentUser'(currentValue, previousValue) {
 			if (currentValue && !previousValue) {
-				void this.postAuthenticate();
+				await this.onAfterAuthenticate();
 			}
-		},
-		async $route(route) {
-			await this.initSettings();
-			await this.redirectIfNecessary();
-
-			this.trackPage();
 		},
 		defaultLocale(newLocale) {
 			void loadLanguage(newLocale);

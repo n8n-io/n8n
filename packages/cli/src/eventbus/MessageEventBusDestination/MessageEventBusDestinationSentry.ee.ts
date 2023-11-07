@@ -3,7 +3,6 @@
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
 import {
-	LoggerProxy,
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
@@ -90,7 +89,7 @@ export class MessageEventBusDestinationSentry
 				sendResult = true;
 			}
 		} catch (error) {
-			if (error.message) LoggerProxy.debug(error.message as string);
+			if (error.message) this.logger.debug(error.message as string);
 		}
 		return sendResult;
 	}

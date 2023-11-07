@@ -122,7 +122,11 @@ export default defineComponent({
 
 .activator {
 	cursor: pointer;
-	padding: var(--spacing-2xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
 	margin: 0;
 	border-radius: var(--border-radius-base);
 	line-height: normal !important;
@@ -133,7 +137,7 @@ export default defineComponent({
 
 	&:hover {
 		background-color: var(--color-background-base);
-		color: initial !important;
+		color: var(--color-primary);
 	}
 }
 

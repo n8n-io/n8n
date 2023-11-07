@@ -52,7 +52,7 @@ export async function sheetsSearch(
 	_filter?: string,
 ): Promise<INodeListSearchResult> {
 	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	const spreadsheetId = getSpreadsheetId(this.getNode(), mode as ResourceLocator, value as string);
 
 	const query = {
 		fields: 'sheets.properties',

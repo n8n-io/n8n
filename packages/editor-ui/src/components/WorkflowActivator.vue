@@ -82,7 +82,7 @@ export default defineComponent({
 			return this.workflowActive === true && this.isWorkflowActive !== this.workflowActive;
 		},
 		getActiveColor(): string {
-			if (this.couldNotBeStarted === true) {
+			if (this.couldNotBeStarted) {
 				return '#ff4949';
 			}
 			return '#13ce66';
@@ -163,7 +163,7 @@ export default defineComponent({
 
 .could-not-be-started {
 	display: inline-block;
-	color: #ff4949;
+	color: var(--color-text-danger);
 	margin-left: 0.5em;
 }
 </style>

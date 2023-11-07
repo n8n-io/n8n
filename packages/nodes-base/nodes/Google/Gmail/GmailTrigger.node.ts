@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { DateTime } from 'luxon';
 import {
 	googleApiRequest,
 	googleApiRequestAllItems,
@@ -15,8 +16,6 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
-
-import { DateTime } from 'luxon';
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -185,7 +184,7 @@ export class GmailTrigger implements INodeType {
 						name: 'downloadAttachments',
 						type: 'boolean',
 						default: false,
-						description: "Whether the emaail's attachments will be downloaded",
+						description: "Whether the email's attachments will be downloaded",
 					},
 				],
 			},

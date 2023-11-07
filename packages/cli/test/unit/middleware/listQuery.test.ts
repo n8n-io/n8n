@@ -1,6 +1,4 @@
 import { filterListQueryMiddleware } from '@/middlewares/listQuery/filter';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 import { selectListQueryMiddleware } from '@/middlewares/listQuery/select';
 import { paginationListQueryMiddleware } from '@/middlewares/listQuery/pagination';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -18,7 +16,6 @@ describe('List query middleware', () => {
 	beforeEach(() => {
 		jest.restoreAllMocks();
 
-		LoggerProxy.init(getLogger());
 		mockReq = { baseUrl: '/rest/workflows' } as ListQuery.Request;
 		mockRes = { status: () => ({ json: jest.fn() }) } as unknown as Response;
 		args = [mockReq, mockRes, nextFn];

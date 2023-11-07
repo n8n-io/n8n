@@ -109,6 +109,7 @@ describe('ResourceMapper.vue', () => {
 	});
 
 	it('renders field on top of the list when they are selected for matching', async () => {
+		const user = userEvent.setup();
 		const { container, getByTestId } = renderComponent(
 			{
 				props: {
@@ -130,14 +131,15 @@ describe('ResourceMapper.vue', () => {
 		// Id should be the first field in the list
 		expect(container.querySelector('.parameter-item')).toContainHTML('id (using to match)');
 		// Select Last Name as matching column
-		await userEvent.click(getByTestId('matching-column-option-Last name'));
+		await user.click(getByTestId('matching-column-option-Last name'));
 		// Now, last name should be the first field in the list
-		expect(container.querySelector('.parameter-item  div.title')).toHaveTextContent(
+		expect(container.querySelector('.parameter-item div.title')).toHaveTextContent(
 			'Last name (using to match)',
 		);
-	});
+	}, 10000);
 
 	it('renders selected matching columns properly when multiple key matching is enabled', async () => {
+		const user = userEvent.setup();
 		const { getByTestId, getAllByText, queryByText } = renderComponent(
 			{
 				props: {
@@ -156,7 +158,7 @@ describe('ResourceMapper.vue', () => {
 		);
 		await waitAllPromises();
 		expect(getByTestId('resource-mapper-container')).toBeInTheDocument();
-		await userEvent.click(getByTestId('matching-column-option-Username'));
+		await user.click(getByTestId('matching-column-option-Username'));
 
 		// Both matching columns (id and Username) should be rendered in the dropdown
 		expect(
@@ -293,5 +295,47 @@ describe('ResourceMapper.vue', () => {
 		});
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('renders initially selected matching column properly', async () => {
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: {
+						parameters: {
+							columns: {
+								mappingMode: 'autoMapInputData',
+								matchingColumns: ['name'],
+								schema: [
+									{
+										id: 'name',
+										displayName: 'name',
+										canBeUsedToMatch: true,
+									},
+									{
+										id: 'email',
+										displayName: 'email',
+										canBeUsedToMatch: true,
+									},
+								],
+							},
+						},
+					},
+					parameter: {
+						typeOptions: {
+							resourceMapper: {
+								supportAutoMap: true,
+								mode: 'upsert',
+								multiKeyMatch: false,
+							},
+						},
+					},
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+
+		expect(getByTestId('matching-column-select').querySelector('input')).toHaveValue('name');
 	});
 });

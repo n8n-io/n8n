@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type { OptionsWithUrl } from 'request';
 
 import type {
@@ -8,8 +9,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import { createHmac } from 'crypto';
 
 import qs from 'qs';
 

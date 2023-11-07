@@ -69,7 +69,7 @@
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
 						@openSettings="openSettings"
-						@select="onInputSelect"
+						@changeInputNode="onInputNodeChange"
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
 						@itemHover="onInputItemHover"
@@ -106,6 +106,7 @@
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"
+						@redrawRequired="redrawRequired = true"
 						@activate="onWorkflowActivate"
 					/>
 					<a
@@ -134,7 +135,7 @@ import type {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, NodeHelpers, NodeConnectionType } from 'n8n-workflow';
 import type { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -199,6 +200,7 @@ export default defineComponent({
 	data() {
 		return {
 			settingsEventBus: createEventBus(),
+			redrawRequired: false,
 			runInputIndex: -1,
 			runOutputIndex: -1,
 			isLinkingEnabled: true,
@@ -274,6 +276,21 @@ export default defineComponent({
 			return [];
 		},
 		parentNode(): string | undefined {
+			const pinData = this.workflowsStore.getPinData;
+
+			// Return the first parent node that contains data
+			for (const parentNodeName of this.parentNodes) {
+				// Check first for pinned data
+				if (pinData[parentNodeName]) {
+					return parentNodeName;
+				}
+
+				// Check then the data of the current execution
+				if (this.workflowRunData?.[parentNodeName]) {
+					return parentNodeName;
+				}
+			}
+
 			return this.parentNodes[0];
 		},
 		isExecutableTriggerNode(): boolean {
@@ -299,7 +316,7 @@ export default defineComponent({
 				return null;
 			}
 			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
-			if (executionData && executionData.resultData) {
+			if (executionData?.resultData) {
 				return executionData.resultData.runData;
 			}
 			return null;
@@ -329,18 +346,27 @@ export default defineComponent({
 			return Math.min(this.runOutputIndex, this.maxOutputRun);
 		},
 		maxInputRun(): number {
-			if (this.inputNode === null) {
+			if (this.inputNode === null || this.activeNode === null) {
 				return 0;
 			}
+
+			const workflowNode = this.workflow.getNode(this.activeNode.name);
+			const outputs = NodeHelpers.getNodeOutputs(this.workflow, workflowNode, this.activeNodeType);
+
+			let node = this.inputNode;
 
 			const runData: IRunData | null = this.workflowRunData;
 
-			if (runData === null || !runData.hasOwnProperty(this.inputNode.name)) {
+			if (outputs.some((output) => output !== NodeConnectionType.Main)) {
+				node = this.activeNode;
+			}
+
+			if (!node || !runData || !runData.hasOwnProperty(node.name)) {
 				return 0;
 			}
 
-			if (runData[this.inputNode.name].length) {
-				return runData[this.inputNode.name].length - 1;
+			if (runData[node.name].length) {
+				return runData[node.name].length - 1;
 			}
 
 			return 0;
@@ -539,7 +565,7 @@ export default defineComponent({
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					pane: 'main',
+					pane: NodeConnectionType.Main,
 					type: 'i-wish-this-node-would',
 				});
 			}
@@ -607,6 +633,20 @@ export default defineComponent({
 				return;
 			}
 
+			if (
+				typeof this.activeNodeType?.outputs === 'string' ||
+				typeof this.activeNodeType?.inputs === 'string' ||
+				this.redrawRequired
+			) {
+				// TODO: We should keep track of if it actually changed and only do if required
+				// Whenever a node with custom inputs and outputs gets closed redraw it in case
+				// they changed
+				const nodeName = this.activeNode.name;
+				setTimeout(() => {
+					this.$emit('redrawNode', nodeName);
+				}, 1);
+			}
+
 			if (this.outputPanelEditMode.enabled) {
 				const shouldPinDataBeforeClosing = await this.confirm(
 					'',
@@ -620,24 +660,12 @@ export default defineComponent({
 				if (shouldPinDataBeforeClosing === MODAL_CONFIRM) {
 					const { value } = this.outputPanelEditMode;
 
-					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.emit('data-pinning-error', {
-							errorType: 'data-too-large',
-							source: 'on-ndv-close-modal',
-						});
-						return;
-					}
-
-					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.emit('data-pinning-error', {
-							errorType: 'invalid-json',
-							source: 'on-ndv-close-modal',
-						});
-						return;
-					}
-
 					if (this.activeNode) {
-						this.workflowsStore.pinData({ node: this.activeNode, data: jsonParse(value) });
+						try {
+							this.setPinData(this.activeNode, jsonParse(value), 'on-ndv-close-modal');
+						} catch (error) {
+							console.error(error);
+						}
 					}
 				}
 
@@ -673,7 +701,7 @@ export default defineComponent({
 				pane,
 			});
 		},
-		onInputSelect(value: string, index: number) {
+		onInputNodeChange(value: string, index: number) {
 			this.runInputIndex = -1;
 			this.isLinkingEnabled = true;
 			this.selectedInput = value;
@@ -742,6 +770,10 @@ $main-panel-width: 360px;
 	position: fixed;
 	top: var(--spacing-xs);
 	left: var(--spacing-l);
+
+	span {
+		color: var(--color-ndv-back-font);
+	}
 
 	&:hover {
 		cursor: pointer;

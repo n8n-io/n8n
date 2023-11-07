@@ -63,7 +63,11 @@ export async function execute(
 
 		let values: Array<IDataObject | string> = [];
 
-		const queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
+		let queryReplacement = this.getNodeParameter('options.queryReplacement', i, '');
+
+		if (typeof queryReplacement === 'number') {
+			queryReplacement = String(queryReplacement);
+		}
 
 		if (typeof queryReplacement === 'string') {
 			const node = this.getNode();

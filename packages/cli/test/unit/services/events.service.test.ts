@@ -1,5 +1,4 @@
-import type { IRun, WorkflowExecuteMode, ILogger } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import {
 	QueryFailedError,
 	type DataSource,
@@ -36,13 +35,13 @@ describe('EventsService', () => {
 	});
 	Object.assign(entityManager, { connection: dataSource });
 
-	LoggerProxy.init(mock<ILogger>());
 	config.set('diagnostics.enabled', true);
 	config.set('deployment.type', 'n8n-testing');
 	mocked(ownershipService.getWorkflowOwnerCached).mockResolvedValue(fakeUser);
 	const updateSettingsMock = jest.spyOn(userService, 'updateSettings').mockImplementation();
 
 	const eventsService = new EventsService(
+		mock(),
 		new WorkflowStatisticsRepository(dataSource),
 		ownershipService,
 	);

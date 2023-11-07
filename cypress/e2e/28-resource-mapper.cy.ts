@@ -19,7 +19,7 @@ describe('Resource Mapper', () => {
 			.findChildByTestId('parameter-input')
 			.should('have.length', 3);
 
-		ndv.actions.setInvalidExpression('fieldId');
+		ndv.actions.setInvalidExpression({ fieldName: 'fieldId' });
 
 		ndv.actions.refreshResourceMapperColumns();
 		ndv.getters.resourceMapperFieldsContainer().should('not.exist');
@@ -36,7 +36,7 @@ describe('Resource Mapper', () => {
 			.findChildByTestId('parameter-input')
 			.should('have.length', 3);
 
-		ndv.actions.setInvalidExpression('otherField');
+		ndv.actions.setInvalidExpression({ fieldName: 'otherField' });
 
 		ndv.actions.refreshResourceMapperColumns();
 		ndv.getters

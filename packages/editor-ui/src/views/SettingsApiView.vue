@@ -142,7 +142,7 @@ export default defineComponent({
 	},
 	methods: {
 		onUpgrade() {
-			this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
+			void this.uiStore.goToUpgrade('settings-n8n-api', 'upgrade-api', 'redirect');
 		},
 		async showDeleteModal() {
 			const confirmed = await this.confirm(

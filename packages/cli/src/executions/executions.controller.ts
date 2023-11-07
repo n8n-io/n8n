@@ -1,30 +1,15 @@
 import express from 'express';
-import { LoggerProxy } from 'n8n-workflow';
 import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
-import { getLogger } from '@/Logger';
 import type { ExecutionRequest } from '@/requests';
 import { EEExecutionsController } from './executions.controller.ee';
 import { ExecutionsService } from './executions.service';
 
 export const executionsController = express.Router();
-
-/**
- * Initialise Logger if needed
- */
-executionsController.use((req, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-	next();
-});
-
 executionsController.use('/', EEExecutionsController);
 
 /**

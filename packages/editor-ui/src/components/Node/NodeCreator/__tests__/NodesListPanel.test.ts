@@ -58,7 +58,7 @@ describe('NodesListPanel', () => {
 			});
 
 			await nextTick();
-			expect(screen.getByText('Select a trigger')).toBeInTheDocument();
+			expect(screen.getByText('What triggers this workflow?')).toBeInTheDocument();
 			expect(screen.queryByTestId('node-creator-search-bar')).toBeInTheDocument();
 			screen.getByText('On app event').click();
 			await nextTick();
@@ -76,7 +76,7 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(6);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
 		});
 
 		it('should render regular nodes', async () => {

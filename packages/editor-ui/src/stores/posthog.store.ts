@@ -1,6 +1,7 @@
 import type { Ref } from 'vue';
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import { useStorage } from '@/composables/useStorage';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
@@ -40,11 +41,11 @@ export const usePostHog = defineStore('posthog', () => {
 
 	if (!window.featureFlags) {
 		// for testing
-		const cachedOverrdies = localStorage.getItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES);
-		if (cachedOverrdies) {
+		const cachedOverrides = useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value;
+		if (cachedOverrides) {
 			try {
-				console.log('Overriding feature flags', cachedOverrdies);
-				overrides.value = JSON.parse(cachedOverrdies);
+				console.log('Overriding feature flags', cachedOverrides);
+				overrides.value = JSON.parse(cachedOverrides);
 			} catch (e) {
 				console.log('Could not override experiment', e);
 			}
@@ -59,7 +60,7 @@ export const usePostHog = defineStore('posthog', () => {
 					[name]: value,
 				};
 				try {
-					localStorage.setItem(LOCAL_STORAGE_EXPERIMENT_OVERRIDES, JSON.stringify(overrides.value));
+					useStorage(LOCAL_STORAGE_EXPERIMENT_OVERRIDES).value = JSON.stringify(overrides.value);
 				} catch (e) {}
 			},
 

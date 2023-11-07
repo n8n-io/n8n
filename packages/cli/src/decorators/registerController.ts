@@ -36,7 +36,8 @@ const authFreeRoutes: string[] = [];
 export const canSkipAuth = (method: string, path: string): boolean =>
 	authFreeRoutes.includes(`${method.toLowerCase()} ${path}`);
 
-export const registerController = (app: Application, config: Config, controller: object) => {
+export const registerController = (app: Application, config: Config, cObj: object) => {
+	const controller = cObj as Controller;
 	const controllerClass = controller.constructor;
 	const controllerBasePath = Reflect.getMetadata(CONTROLLER_BASE_PATH, controllerClass) as
 		| string
@@ -57,24 +58,22 @@ export const registerController = (app: Application, config: Config, controller:
 
 		const controllerMiddlewares = (
 			(Reflect.getMetadata(CONTROLLER_MIDDLEWARES, controllerClass) ?? []) as MiddlewareMetadata[]
-		).map(
-			({ handlerName }) =>
-				(controller as Controller)[handlerName].bind(controller) as RequestHandler,
-		);
+		).map(({ handlerName }) => controller[handlerName].bind(controller) as RequestHandler);
 
-		routes.forEach(({ method, path, middlewares: routeMiddlewares, handlerName }) => {
-			const authRole = authRoles && (authRoles[handlerName] ?? authRoles['*']);
-			router[method](
-				path,
-				...(authRole ? [createAuthMiddleware(authRole)] : []),
-				...controllerMiddlewares,
-				...routeMiddlewares,
-				send(async (req: Request, res: Response) =>
-					(controller as Controller)[handlerName](req, res),
-				),
-			);
-			if (!authRole || authRole === 'none') authFreeRoutes.push(`${method} ${prefix}${path}`);
-		});
+		routes.forEach(
+			({ method, path, middlewares: routeMiddlewares, handlerName, usesTemplates }) => {
+				const authRole = authRoles && (authRoles[handlerName] ?? authRoles['*']);
+				const handler = async (req: Request, res: Response) => controller[handlerName](req, res);
+				router[method](
+					path,
+					...(authRole ? [createAuthMiddleware(authRole)] : []),
+					...controllerMiddlewares,
+					...routeMiddlewares,
+					usesTemplates ? handler : send(handler),
+				);
+				if (!authRole || authRole === 'none') authFreeRoutes.push(`${method} ${prefix}${path}`);
+			},
+		);
 
 		app.use(prefix, router);
 	}

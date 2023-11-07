@@ -155,7 +155,7 @@ export default defineComponent({
 			return process.env.NODE_ENV;
 		},
 		isLicensed(): boolean {
-			if (this.disableLicense === true) return false;
+			if (this.disableLicense) return false;
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
 		},
 	},
@@ -188,7 +188,7 @@ export default defineComponent({
 			this.$forceUpdate();
 		},
 		goToUpgrade() {
-			this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
+			void this.uiStore.goToUpgrade('log-streaming', 'upgrade-log-streaming');
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;

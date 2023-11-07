@@ -41,6 +41,7 @@ import { defineComponent } from 'vue';
 import type { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
+import { useStorage } from '@/composables/useStorage';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
@@ -48,6 +49,7 @@ import PanelDragButton from './PanelDragButton.vue';
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -118,9 +120,12 @@ export default defineComponent({
 		setTimeout(() => {
 			this.initialized = true;
 		}, 0);
+
+		ndvEventBus.on('setPositionByName', this.setPositionByName);
 	},
 	beforeUnmount() {
 		window.removeEventListener('resize', this.setTotalWidth);
+		ndvEventBus.off('setPositionByName', this.setPositionByName);
 	},
 	computed: {
 		...mapStores(useNDVStore),
@@ -287,7 +292,7 @@ export default defineComponent({
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition as number,
+						relativeRight: this.maximumRightPosition,
 					},
 				});
 				return;
@@ -300,6 +305,15 @@ export default defineComponent({
 					relativeRight: mainPanelRelativeRight,
 				},
 			});
+		},
+		setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
+			const positionByName: Record<string, number> = {
+				minLeft: this.minimumLeftPosition,
+				maxRight: this.maximumRightPosition,
+				initial: this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth),
+			};
+
+			this.setPositions(positionByName[position]);
 		},
 		pxToRelativeWidth(px: number) {
 			return px / this.windowWidth;
@@ -332,9 +346,9 @@ export default defineComponent({
 			);
 		},
 		restorePositionData() {
-			const storedPanelWidthData = window.localStorage.getItem(
+			const storedPanelWidthData = useStorage(
 				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-			);
+			).value;
 
 			if (storedPanelWidthData) {
 				const parsedWidth = parseFloat(storedPanelWidthData);
@@ -347,10 +361,8 @@ export default defineComponent({
 			return false;
 		},
 		storePositionData() {
-			window.localStorage.setItem(
-				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-				this.mainPanelDimensions.relativeWidth.toString(),
-			);
+			useStorage(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`).value =
+				this.mainPanelDimensions.relativeWidth.toString();
 		},
 		onDragStart() {
 			this.isDragging = true;

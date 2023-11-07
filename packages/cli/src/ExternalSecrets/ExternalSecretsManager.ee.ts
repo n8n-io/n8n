@@ -5,13 +5,12 @@ import type {
 	SecretsProviderSettings,
 } from '@/Interfaces';
 
-import { UserSettings } from 'n8n-core';
+import { Cipher } from 'n8n-core';
 import Container, { Service } from 'typedi';
 
-import { AES, enc } from 'crypto-js';
-import { getLogger } from '@/Logger';
+import { Logger } from '@/Logger';
 
-import type { IDataObject } from 'n8n-workflow';
+import { jsonParse, type IDataObject } from 'n8n-workflow';
 import {
 	EXTERNAL_SECRETS_INITIAL_BACKOFF,
 	EXTERNAL_SECRETS_MAX_BACKOFF,
@@ -20,8 +19,7 @@ import {
 import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
 import { ExternalSecretsProviders } from './ExternalSecretsProviders.ee';
-
-const logger = getLogger();
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 
 @Service()
 export class ExternalSecretsManager {
@@ -38,9 +36,11 @@ export class ExternalSecretsManager {
 	initRetryTimeouts: Record<string, NodeJS.Timer> = {};
 
 	constructor(
-		private settingsRepo: SettingsRepository,
-		private license: License,
-		private secretsProviders: ExternalSecretsProviders,
+		private readonly logger: Logger,
+		private readonly settingsRepo: SettingsRepository,
+		private readonly license: License,
+		private readonly secretsProviders: ExternalSecretsProviders,
+		private readonly cipher: Cipher,
 	) {}
 
 	async init(): Promise<void> {
@@ -70,15 +70,25 @@ export class ExternalSecretsManager {
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
 	}
 
-	private async getEncryptionKey(): Promise<string> {
-		return UserSettings.getEncryptionKey();
+	async reloadAllProviders(backoff?: number) {
+		this.logger.debug('Reloading all external secrets providers');
+		const providers = this.getProviderNames();
+		if (!providers) {
+			return;
+		}
+		for (const provider of providers) {
+			await this.reloadProvider(provider, backoff);
+		}
 	}
 
-	private decryptSecretsSettings(value: string, encryptionKey: string): ExternalSecretsSettings {
-		const decryptedData = AES.decrypt(value, encryptionKey);
+	async broadcastReloadExternalSecretsProviders() {
+		await Container.get(SingleMainInstancePublisher).broadcastReloadExternalSecretsProviders();
+	}
 
+	private decryptSecretsSettings(value: string): ExternalSecretsSettings {
+		const decryptedData = this.cipher.decrypt(value);
 		try {
-			return JSON.parse(decryptedData.toString(enc.Utf8)) as ExternalSecretsSettings;
+			return jsonParse(decryptedData);
 		} catch (e) {
 			throw new Error(
 				'External Secrets Settings could not be decrypted. The likely reason is that a different "encryptionKey" was used to encrypt the data.',
@@ -93,8 +103,7 @@ export class ExternalSecretsManager {
 		if (encryptedSettings === null) {
 			return null;
 		}
-		const encryptionKey = await this.getEncryptionKey();
-		return this.decryptSecretsSettings(encryptedSettings, encryptionKey);
+		return this.decryptSecretsSettings(encryptedSettings);
 	}
 
 	private async internalInit() {
@@ -130,7 +139,7 @@ export class ExternalSecretsManager {
 		try {
 			await provider.init(providerSettings);
 		} catch (e) {
-			logger.error(
+			this.logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
 			this.retryInitWithBackoff(name, currentBackoff);
@@ -145,7 +154,7 @@ export class ExternalSecretsManager {
 			try {
 				await provider.disconnect();
 			} catch {}
-			logger.error(
+			this.logger.error(
 				`Error initializing secrets provider ${provider.displayName} (${provider.name}).`,
 			);
 			this.retryInitWithBackoff(name, currentBackoff);
@@ -180,7 +189,7 @@ export class ExternalSecretsManager {
 						await p.update();
 					}
 				} catch {
-					logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`);
+					this.logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`);
 				}
 			}),
 		);
@@ -274,6 +283,7 @@ export class ExternalSecretsManager {
 		await this.saveAndSetSettings(settings, this.settingsRepo);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
+		await this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);
 	}
@@ -293,6 +303,7 @@ export class ExternalSecretsManager {
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
 		await this.updateSecrets();
+		await this.broadcastReloadExternalSecretsProviders();
 	}
 
 	private async trackProviderSave(vaultType: string, isNew: boolean, userId?: string) {
@@ -309,13 +320,12 @@ export class ExternalSecretsManager {
 		});
 	}
 
-	encryptSecretsSettings(settings: ExternalSecretsSettings, encryptionKey: string): string {
-		return AES.encrypt(JSON.stringify(settings), encryptionKey).toString();
+	private encryptSecretsSettings(settings: ExternalSecretsSettings): string {
+		return this.cipher.encrypt(settings);
 	}
 
 	async saveAndSetSettings(settings: ExternalSecretsSettings, settingsRepo: SettingsRepository) {
-		const encryptionKey = await this.getEncryptionKey();
-		const encryptedSettings = this.encryptSecretsSettings(settings, encryptionKey);
+		const encryptedSettings = this.encryptSecretsSettings(settings);
 		await settingsRepo.saveEncryptedSecretsProviderSettings(encryptedSettings);
 	}
 
@@ -373,6 +383,7 @@ export class ExternalSecretsManager {
 		}
 		try {
 			await this.providers[provider].update();
+			await this.broadcastReloadExternalSecretsProviders();
 			return true;
 		} catch {
 			return false;

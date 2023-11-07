@@ -204,7 +204,7 @@ async function deleteVariable(data: EnvironmentVariable) {
 }
 
 function goToUpgrade() {
-	uiStore.goToUpgrade('variables', 'upgrade-variables');
+	void uiStore.goToUpgrade('variables', 'upgrade-variables');
 }
 
 function displayName(resource: EnvironmentVariable) {

@@ -1,16 +1,18 @@
 {
   "name": "n8n",
-  "version": "1.7.0",
+  "version": "1.15.1",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=18.10",
-    "pnpm": ">=8.7"
+    "pnpm": ">=8.9"
   },
-  "packageManager": "pnpm@8.7.0",
+  "packageManager": "pnpm@8.9.0",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
+    "build:backend": "pnpm --filter=!n8n-design-system --filter=!n8n-editor-ui build",
+    "build:frontend": "pnpm --filter=n8n-design-system --filter=n8n-editor-ui build",
     "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
@@ -23,14 +25,16 @@
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
     "start:windows": "cd packages/cli/bin && n8n",
     "test": "turbo run test",
+    "test:backend": "pnpm --filter=!n8n-design-system --filter=!n8n-editor-ui test",
+    "test:frontend": "pnpm --filter=n8n-design-system --filter=n8n-editor-ui test",
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
     "cypress:install": "cypress install",
     "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
-    "test:e2e:ui": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first start-server-and-test start http://localhost:5678/favicon.ico 'cypress open'",
-    "test:e2e:dev": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  CYPRESS_BASE_URL=http://localhost:8080 start-server-and-test dev http://localhost:8080/favicon.ico 'cypress open'",
-    "test:e2e:all": "cross-env E2E_TESTS=true NODE_OPTIONS=--dns-result-order=ipv4first  start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless'"
+    "test:e2e:ui": "scripts/run-e2e.js ui",
+    "test:e2e:dev": "scripts/run-e2e.js dev",
+    "test:e2e:all": "scripts/run-e2e.js all"
   },
   "dependencies": {
     "n8n": "workspace:*"

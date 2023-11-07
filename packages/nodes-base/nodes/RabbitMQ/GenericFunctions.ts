@@ -1,8 +1,7 @@
 import type { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
 import { sleep } from 'n8n-workflow';
-import { formatPrivateKey } from '@utils/utilities';
-
 import * as amqplib from 'amqplib';
+import { formatPrivateKey } from '@utils/utilities';
 
 export async function rabbitmqConnect(
 	this: IExecuteFunctions | ITriggerFunctions,

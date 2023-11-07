@@ -1,4 +1,4 @@
-import { UserSettings, Credentials } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
@@ -87,8 +87,6 @@ export async function removeCredential(credentials: CredentialsEntity): Promise<
 }
 
 export async function encryptCredential(credential: CredentialsEntity): Promise<ICredentialsDb> {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	// Encrypt the data
 	const coreCredential = new Credentials(
 		{ id: null, name: credential.name },
@@ -97,7 +95,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data, encryptionKey);
+	coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }

@@ -5,6 +5,7 @@ import {
 } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -27,12 +28,15 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
 	DEBUG_PAYWALL_MODAL_KEY,
+	N8N_PRICING_PAGE_URL,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 import type {
 	CloudUpdateLinkSourceType,
@@ -47,26 +51,45 @@ import type {
 	XYPosition,
 	Modals,
 	NewCredentialsModal,
+	ThemeOption,
+	AppliedThemeOption,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useRootStore } from './n8nRoot.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
 import { getCurlToJson } from '@/api/curlHelper';
-import { useWorkflowsStore } from './workflows.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useSettingsStore, useUsersStore } from '@/stores/settings.store';
 import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import type { BaseTextKey } from '@/plugins/i18n';
-import { i18n as locale } from '@/plugins/i18n';
 import { useTelemetryStore } from '@/stores/telemetry.store';
-import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { dismissBannerPermanently } from '@/api/ui';
 import type { BannerName } from 'n8n-workflow';
+import {
+	addThemeToBody,
+	getPreferredTheme,
+	getThemeOverride,
+	isValidTheme,
+	updateTheme,
+} from './ui.utils';
+
+let savedTheme: ThemeOption = 'system';
+try {
+	const value = getThemeOverride();
+	if (isValidTheme(value)) {
+		savedTheme = value;
+		addThemeToBody(value);
+	}
+} catch (e) {}
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
+		theme: savedTheme,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
+				open: false,
+			},
+			[CHAT_EMBED_MODAL_KEY]: {
 				open: false,
 			},
 			[CHANGE_PASSWORD_MODAL_KEY]: {
@@ -101,6 +124,9 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 			},
 			[VERSIONS_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_LM_CHAT_MODAL_KEY]: {
 				open: false,
 			},
 			[WORKFLOW_SETTINGS_MODAL_KEY]: {
@@ -150,6 +176,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[DEBUG_PAYWALL_MODAL_KEY]: {
 				open: false,
 			},
+			[WORKFLOW_HISTORY_VERSION_RESTORE]: {
+				open: false,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -184,15 +213,21 @@ export const useUIStore = defineStore(STORES.UI, {
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
 		executionSidebarAutoRefresh: true,
-		banners: {
-			V1: { dismissed: true },
-			TRIAL: { dismissed: true },
-			TRIAL_OVER: { dismissed: true },
-			NON_PRODUCTION_LICENSE: { dismissed: true },
-		},
 		bannersHeight: 0,
+		bannerStack: [],
 	}),
 	getters: {
+		appliedTheme(): AppliedThemeOption {
+			return this.theme === 'system' ? getPreferredTheme() : this.theme;
+		},
+		logo(): string {
+			const { releaseChannel } = useSettingsStore().settings;
+			const type = this.appliedTheme === 'dark' ? '-dark-mode.svg' : '.svg';
+
+			return releaseChannel === 'stable'
+				? `n8n-logo-expanded${type}`
+				: `n8n-${releaseChannel}-logo${type}`;
+		},
 		contextBasedTranslationKeys() {
 			const settingsStore = useSettingsStore();
 			const deploymentType = settingsStore.deploymentType;
@@ -205,7 +240,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 
 			return {
-				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
 				feature: {
 					unavailable: {
 						title: `contextual.feature.unavailable.title${contextKey}`,
@@ -334,25 +368,43 @@ export const useUIStore = defineStore(STORES.UI, {
 			};
 		},
 		upgradeLinkUrl() {
-			return (source: string, utm_campaign: string): string => {
-				const linkUrlTranslationKey = this.contextBasedTranslationKeys
-					.upgradeLinkUrl as BaseTextKey;
-				let linkUrl = locale.baseText(linkUrlTranslationKey);
+			return async (source: string, utm_campaign: string, deploymentType: string) => {
+				let linkUrl = '';
 
-				if (linkUrlTranslationKey.endsWith('.upgradeLinkUrl')) {
-					linkUrl = `${linkUrl}?ref=${source}`;
-				} else if (linkUrlTranslationKey.endsWith('.desktop')) {
-					linkUrl = `${linkUrl}&utm_campaign=${utm_campaign || source}`;
+				const searchParams = new URLSearchParams();
+
+				const isOwner = useUsersStore().isInstanceOwner;
+
+				if (deploymentType === 'cloud' && isOwner) {
+					const adminPanelHost = new URL(window.location.href).host.split('.').slice(1).join('.');
+					const { code } = await useCloudPlanStore().getAutoLoginCode();
+					linkUrl = `https://${adminPanelHost}/login`;
+					searchParams.set('code', code);
+					searchParams.set('returnPath', '/account/change-plan');
+				} else {
+					linkUrl = N8N_PRICING_PAGE_URL;
 				}
 
-				return linkUrl;
+				if (utm_campaign) {
+					searchParams.set('utm_campaign', utm_campaign);
+				}
+
+				if (source) {
+					searchParams.set('source', source);
+				}
+				return `${linkUrl}?${searchParams.toString()}`;
 			};
 		},
 		headerHeight() {
-			return Number(getStyleTokenValue('--header-height'));
+			const style = getComputedStyle(document.body);
+			return Number(style.getPropertyValue('--header-height'));
 		},
 	},
 	actions: {
+		setTheme(theme: ThemeOption): void {
+			this.theme = theme;
+			updateTheme(theme);
+		},
 		setMode(name: keyof Modals, mode: string): void {
 			this.modals[name] = {
 				...this.modals[name],
@@ -533,25 +585,30 @@ export const useUIStore = defineStore(STORES.UI, {
 			const rootStore = useRootStore();
 			return getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
-		goToUpgrade(
+		async goToUpgrade(
 			source: CloudUpdateLinkSourceType,
 			utm_campaign: UTMCampaign,
 			mode: 'open' | 'redirect' = 'open',
-		): void {
+		): Promise<void> {
 			const { usageLeft, trialDaysLeft, userIsTrialing } = useCloudPlanStore();
 			const { executionsLeft, workflowsLeft } = usageLeft;
+			const deploymentType = useSettingsStore().deploymentType;
+
 			useTelemetryStore().track('User clicked upgrade CTA', {
 				source,
 				isTrial: userIsTrialing,
-				deploymentType: useSettingsStore().deploymentType,
+				deploymentType,
 				trialDaysLeft,
 				executionsLeft,
 				workflowsLeft,
 			});
+
+			const upgradeLink = await this.upgradeLinkUrl(source, utm_campaign, deploymentType);
+
 			if (mode === 'open') {
-				window.open(this.upgradeLinkUrl(source, utm_campaign), '_blank');
+				window.open(upgradeLink, '_blank');
 			} else {
-				location.href = this.upgradeLinkUrl(source, utm_campaign);
+				location.href = upgradeLink;
 			}
 		},
 		async dismissBanner(
@@ -563,36 +620,23 @@ export const useUIStore = defineStore(STORES.UI, {
 					bannerName: name,
 					dismissedBanners: useSettingsStore().permanentlyDismissedBanners,
 				});
-				this.banners[name].dismissed = true;
-				this.banners[name].type = 'permanent';
+				this.removeBannerFromStack(name);
 				return;
 			}
-			this.banners[name].dismissed = true;
-			this.banners[name].type = 'temporary';
-		},
-		showBanner(name: BannerName): void {
-			this.banners[name].dismissed = false;
+			this.removeBannerFromStack(name);
 		},
 		updateBannersHeight(newHeight: number): void {
 			this.bannersHeight = newHeight;
 		},
-		async initBanners(): Promise<void> {
-			const cloudPlanStore = useCloudPlanStore();
-			if (cloudPlanStore.userIsTrialing) {
-				await this.dismissBanner('V1', 'temporary');
-				if (cloudPlanStore.trialExpired) {
-					this.showBanner('TRIAL_OVER');
-				} else {
-					this.showBanner('TRIAL');
-				}
-			}
+		pushBannerToStack(name: BannerName) {
+			if (this.bannerStack.includes(name)) return;
+			this.bannerStack.push(name);
 		},
-		async dismissAllBanners() {
-			return Promise.all([
-				this.dismissBanner('TRIAL', 'temporary'),
-				this.dismissBanner('TRIAL_OVER', 'temporary'),
-				this.dismissBanner('V1', 'temporary'),
-			]);
+		removeBannerFromStack(name: BannerName) {
+			this.bannerStack = this.bannerStack.filter((bannerName) => bannerName !== name);
+		},
+		clearBannerStack() {
+			this.bannerStack = [];
 		},
 	},
 });

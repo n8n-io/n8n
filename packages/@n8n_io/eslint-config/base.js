@@ -231,7 +231,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'variable',
-				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE', 'PascalCase'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},

@@ -6,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IPairedItemData,
 } from 'n8n-workflow';
 import { NodeOperationError, deepCopy } from 'n8n-workflow';
 
@@ -57,8 +58,8 @@ const shuffleArray = (array: any[]) => {
 	}
 };
 
-import * as summarize from './summarize.operation';
 import { sortByCode } from '../V3/helpers/utils';
+import * as summarize from './summarize.operation';
 
 export class ItemListsV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -1103,6 +1104,7 @@ return 0;`,
 					return [returnData];
 				} else {
 					let newItems: IDataObject[] = items.map((item) => item.json);
+					let pairedItem: IPairedItemData[] = [];
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
 					const fieldsToExclude = (
 						this.getNodeParameter('fieldsToExclude.fields', 0, []) as IDataObject[]
@@ -1112,7 +1114,7 @@ return 0;`,
 					).map((entry) => entry.fieldName);
 
 					if (fieldsToExclude.length || fieldsToInclude.length) {
-						newItems = newItems.reduce((acc, item) => {
+						newItems = newItems.reduce((acc, item, index) => {
 							const newItem: IDataObject = {};
 							let outputFields = Object.keys(item);
 
@@ -1132,11 +1134,16 @@ return 0;`,
 							if (isEmpty(newItem)) {
 								return acc;
 							}
+							pairedItem.push({ item: index });
 							return acc.concat([newItem]);
 						}, [] as IDataObject[]);
+					} else {
+						pairedItem = Array.from({ length: newItems.length }, (_, item) => ({
+							item,
+						}));
 					}
 
-					return [[{ json: { [destinationFieldName]: newItems } }]];
+					return [[{ json: { [destinationFieldName]: newItems }, pairedItem }]];
 				}
 			} else if (operation === 'removeDuplicates') {
 				const compare = this.getNodeParameter('compare', 0) as string;

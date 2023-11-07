@@ -18,6 +18,7 @@ import type {
 	Sort,
 } from 'mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
+import { generatePairedItemData } from '../../utils/utilities';
 import { nodeProperties } from './MongoDbProperties';
 
 import {
@@ -365,9 +366,11 @@ export class MongoDb implements INodeType {
 
 		stringifyObjectIDs(responseData);
 
+		const itemData = generatePairedItemData(items.length);
+
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),
-			{ itemData: { item: 0 } },
+			{ itemData },
 		);
 
 		returnItems.push(...executionData);

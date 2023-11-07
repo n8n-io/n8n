@@ -125,7 +125,7 @@ export const useExecutionDebugging = () => {
 					title: i18n.baseText(uiStore.contextBasedTranslationKeys.feature.unavailable.title),
 					footerButtonAction: () => {
 						uiStore.closeModal(DEBUG_PAYWALL_MODAL_KEY);
-						uiStore.goToUpgrade('debug', 'upgrade-debug');
+						void uiStore.goToUpgrade('debug', 'upgrade-debug');
 					},
 				},
 			});

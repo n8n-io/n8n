@@ -7,7 +7,7 @@ const uiStore = useUIStore();
 const auditLogsStore = useAuditLogsStore();
 
 const goToUpgrade = () => {
-	uiStore.goToUpgrade('audit-logs', 'upgrade-audit-logs');
+	void uiStore.goToUpgrade('audit-logs', 'upgrade-audit-logs');
 };
 </script>
 

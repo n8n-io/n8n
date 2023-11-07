@@ -41,6 +41,7 @@ import type {
 	IRun,
 	IRunNodeResponse,
 	NodeParameterValueType,
+	ConnectionTypes,
 } from './Interfaces';
 import { Node } from './Interfaces';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -56,7 +57,7 @@ function dedupe<T>(arr: T[]): T[] {
 }
 
 export class Workflow {
-	id: string | undefined;
+	id: string;
 
 	name: string | undefined;
 
@@ -92,7 +93,7 @@ export class Workflow {
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
 	}) {
-		this.id = parameters.id;
+		this.id = parameters.id as string;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
@@ -557,11 +558,11 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 */
 	getHighestNode(
 		nodeName: string,
-		type = 'main',
+		type: ConnectionTypes = 'main',
 		nodeConnectionIndex?: number,
 		checkedNodes?: string[],
 	): string[] {
@@ -639,17 +640,25 @@ export class Workflow {
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
 	 */
-	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
+	getChildNodes(
+		nodeName: string,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		depth = -1,
+	): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
 	}
 
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
-	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
+	getParentNodes(
+		nodeName: string,
+		type: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
+		depth = -1,
+	): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
 	}
 
@@ -657,15 +666,15 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {string} [type='main']
+	 * @param {ConnectionTypes} [type='main']
 	 * @param {*} [depth=-1]
 	 */
 	getConnectedNodes(
 		connections: IConnections,
 		nodeName: string,
-		type = 'main',
+		connectionType: ConnectionTypes | 'ALL' | 'ALL_NON_MAIN' = 'main',
 		depth = -1,
-		checkedNodes?: string[],
+		checkedNodesIncoming?: string[],
 	): string[] {
 		depth = depth === -1 ? -1 : depth;
 		const newDepth = depth === -1 ? depth : depth - 1;
@@ -679,57 +688,71 @@ export class Workflow {
 			return [];
 		}
 
-		if (!connections[nodeName].hasOwnProperty(type)) {
-			// Node does not have incoming connections of given type
-			return [];
+		let types: ConnectionTypes[];
+		if (connectionType === 'ALL') {
+			types = Object.keys(connections[nodeName]) as ConnectionTypes[];
+		} else if (connectionType === 'ALL_NON_MAIN') {
+			types = Object.keys(connections[nodeName]).filter(
+				(type) => type !== 'main',
+			) as ConnectionTypes[];
+		} else {
+			types = [connectionType];
 		}
 
-		checkedNodes = checkedNodes || [];
-
-		if (checkedNodes.includes(nodeName)) {
-			// Node got checked already before
-			return [];
-		}
-
-		checkedNodes.push(nodeName);
-
-		const returnNodes: string[] = [];
 		let addNodes: string[];
 		let nodeIndex: number;
 		let i: number;
 		let parentNodeName: string;
-		connections[nodeName][type].forEach((connectionsByIndex) => {
-			connectionsByIndex.forEach((connection) => {
-				if (checkedNodes!.includes(connection.node)) {
-					// Node got checked already before
-					return;
-				}
+		const returnNodes: string[] = [];
 
-				returnNodes.unshift(connection.node);
+		types.forEach((type) => {
+			if (!connections[nodeName].hasOwnProperty(type)) {
+				// Node does not have incoming connections of given type
+				return;
+			}
 
-				addNodes = this.getConnectedNodes(
-					connections,
-					connection.node,
-					type,
-					newDepth,
-					checkedNodes,
-				);
+			const checkedNodes = checkedNodesIncoming ? [...checkedNodesIncoming] : [];
 
-				for (i = addNodes.length; i--; i > 0) {
-					// Because nodes can have multiple parents it is possible that
-					// parts of the tree is parent of both and to not add nodes
-					// twice check first if they already got added before.
-					parentNodeName = addNodes[i];
-					nodeIndex = returnNodes.indexOf(parentNodeName);
+			if (checkedNodes.includes(nodeName)) {
+				// Node got checked already before
+				return;
+			}
 
-					if (nodeIndex !== -1) {
-						// Node got found before so remove it from current location
-						// that node-order stays correct
-						returnNodes.splice(nodeIndex, 1);
+			checkedNodes.push(nodeName);
+
+			connections[nodeName][type].forEach((connectionsByIndex) => {
+				connectionsByIndex.forEach((connection) => {
+					if (checkedNodes.includes(connection.node)) {
+						// Node got checked already before
+						return;
 					}
 
-					returnNodes.unshift(parentNodeName);
-				}
+					returnNodes.unshift(connection.node);
+
+					addNodes = this.getConnectedNodes(
+						connections,
+						connection.node,
+						connectionType,
+						newDepth,
+						checkedNodes,
+					);
+
+					for (i = addNodes.length; i--; i > 0) {
+						// Because nodes can have multiple parents it is possible that
+						// parts of the tree is parent of both and to not add nodes
+						// twice check first if they already got added before.
+						parentNodeName = addNodes[i];
+						nodeIndex = returnNodes.indexOf(parentNodeName);
+
+						if (nodeIndex !== -1) {
+							// Node got found before so remove it from current location
+							// that node-order stays correct
+							returnNodes.splice(nodeIndex, 1);
+						}
+
+						returnNodes.unshift(parentNodeName);
+					}
+				});
 			});
 		});
 
@@ -755,7 +778,7 @@ export class Workflow {
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
 
-		const type = 'main';
+		const type: ConnectionTypes = 'main';
 		let queue: IConnectedNode[] = [];
 		queue.push({
 			name: sourceNode,
@@ -821,7 +844,7 @@ export class Workflow {
 	getNodeConnectionIndexes(
 		nodeName: string,
 		parentNodeName: string,
-		type = 'main',
+		type: ConnectionTypes = 'main',
 		depth = -1,
 		checkedNodes?: string[],
 	): INodeConnection | undefined {

@@ -112,9 +112,12 @@ export const sleep = async (ms: number): Promise<void> =>
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('text/html')) return 'html';
 	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('audio/')) return 'audio';
 	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/')) return 'text';
+	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
+	if (mimeType.startsWith('application/pdf')) return 'pdf';
 	return;
 }
 

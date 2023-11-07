@@ -9,6 +9,7 @@ import {
 	OneToOne,
 	PrimaryColumn,
 	Relation,
+	DeleteDateColumn,
 } from 'typeorm';
 import { datetimeColumnType } from './AbstractEntity';
 import { idStringifier } from '../utils/transformers';
@@ -49,7 +50,7 @@ export class ExecutionEntity {
 	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
-	@Column(datetimeColumnType)
+	@DeleteDateColumn({ type: datetimeColumnType, nullable: true })
 	deletedAt: Date;
 
 	@Column({ nullable: true })

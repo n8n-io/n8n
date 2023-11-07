@@ -16,8 +16,8 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 
 	cy.waitForLoad(false);
 	workflowPage.actions.setWorkflowName(workflowName);
-
 	workflowPage.getters.saveButton().should('contain', 'Saved');
+	workflowPage.actions.zoomToFit();
 });
 
 Cypress.Commands.add(
@@ -33,7 +33,7 @@ Cypress.Commands.add('waitForLoad', (waitForIntercepts = true) => {
 	// we can't set them up here because at this point it would be too late
 	// and the requests would already have been made
 	if (waitForIntercepts) {
-		cy.wait(['@loadSettings']);
+		cy.wait(['@loadSettings', '@loadNodeTypes']);
 	}
 	cy.getByTestId('node-view-loader', { timeout: 20000 }).should('not.exist');
 	cy.get('.el-loading-mask', { timeout: 20000 }).should('not.exist');
@@ -160,4 +160,11 @@ Cypress.Commands.add('draganddrop', (draggableSelector, droppableSelector) => {
 				cy.get(draggableSelector).realMouseUp();
 			}
 		});
+});
+
+Cypress.Commands.add('shouldNotHaveConsoleErrors', () => {
+	cy.window().then((win) => {
+		const spy = cy.spy(win.console, 'error');
+		cy.wrap(spy).should('not.have.been.called');
+	});
 });

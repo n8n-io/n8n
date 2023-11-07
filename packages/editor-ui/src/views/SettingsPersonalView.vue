@@ -16,7 +16,7 @@
 			</div>
 		</div>
 		<div>
-			<div :class="$style.sectionHeader">
+			<div class="mb-s">
 				<n8n-heading size="large">{{
 					i18n.baseText('settings.personal.basicInformation')
 				}}</n8n-heading>
@@ -33,10 +33,10 @@
 			</div>
 		</div>
 		<div v-if="!signInWithLdap && !signInWithSaml">
-			<div :class="$style.sectionHeader">
+			<div class="mb-s">
 				<n8n-heading size="large">{{ i18n.baseText('settings.personal.security') }}</n8n-heading>
 			</div>
-			<div>
+			<div class="mb-s">
 				<n8n-input-label :label="i18n.baseText('auth.password')">
 					<n8n-link @click="openPasswordModal" data-test-id="change-password-link">{{
 						i18n.baseText('auth.changePassword')
@@ -44,9 +44,8 @@
 				</n8n-input-label>
 			</div>
 			<div v-if="isMfaFeatureEnabled">
-				<div :class="$style.mfaSection">
-					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')">
-					</n8n-input-label>
+				<div class="mb-xs">
+					<n8n-input-label :label="$locale.baseText('settings.personal.mfa.section.title')" />
 					<n8n-text :bold="false" :class="$style.infoText">
 						{{
 							mfaDisabled
@@ -58,26 +57,49 @@
 						</n8n-link>
 					</n8n-text>
 				</div>
-				<div :class="$style.mfaButtonContainer" v-if="mfaDisabled">
-					<n8n-button
-						:class="$style.button"
-						float="left"
-						type="tertiary"
-						:label="$locale.baseText('settings.personal.mfa.button.enabled')"
-						data-test-id="enable-mfa-button"
-						@click="onMfaEnableClick"
-					/>
-				</div>
-				<div v-else>
-					<n8n-button
-						:class="$style.disableMfaButton"
-						float="left"
-						type="tertiary"
-						:label="$locale.baseText('settings.personal.mfa.button.disabled')"
-						data-test-id="disable-mfa-button"
-						@click="onMfaDisableClick"
-					/>
-				</div>
+				<n8n-button
+					v-if="mfaDisabled"
+					:class="$style.button"
+					type="tertiary"
+					:label="$locale.baseText('settings.personal.mfa.button.enabled')"
+					data-test-id="enable-mfa-button"
+					@click="onMfaEnableClick"
+				/>
+				<n8n-button
+					v-else
+					:class="$style.disableMfaButton"
+					type="tertiary"
+					:label="$locale.baseText('settings.personal.mfa.button.disabled')"
+					data-test-id="disable-mfa-button"
+					@click="onMfaDisableClick"
+				/>
+			</div>
+		</div>
+		<div>
+			<div class="mb-s">
+				<n8n-heading size="large">{{
+					i18n.baseText('settings.personal.personalisation')
+				}}</n8n-heading>
+			</div>
+			<div>
+				<n8n-input-label :label="i18n.baseText('settings.personal.theme')">
+					<n8n-select
+						:class="$style.themeSelect"
+						data-test-id="theme-select"
+						size="small"
+						@update:modelValue="selectTheme"
+						:modelValue="currentTheme"
+						filterable
+					>
+						<n8n-option
+							v-for="item in themeOptions"
+							:key="item.name"
+							:label="$t(item.label)"
+							:value="item.name"
+						>
+						</n8n-option>
+					</n8n-select>
+				</n8n-input-label>
 			</div>
 		</div>
 		<div>
@@ -95,7 +117,7 @@
 
 <script lang="ts">
 import { useI18n, useToast } from '@/composables';
-import type { IFormInputs, IUser } from '@/Interface';
+import type { IFormInputs, IUser, ThemeOption } from '@/Interface';
 import { CHANGE_PASSWORD_MODAL_KEY, MFA_DOCS_URL, MFA_SETUP_MODAL_KEY } from '@/constants';
 import { useUIStore } from '@/stores/ui.store';
 import { useUsersStore } from '@/stores/users.store';
@@ -121,6 +143,20 @@ export default defineComponent({
 			formBus: createEventBus(),
 			readyToSubmit: false,
 			mfaDocsUrl: MFA_DOCS_URL,
+			themeOptions: [
+				{
+					name: 'system',
+					label: 'settings.personal.theme.systemDefault',
+				},
+				{
+					name: 'light',
+					label: 'settings.personal.theme.light',
+				},
+				{
+					name: 'dark',
+					label: 'settings.personal.theme.dark',
+				},
+			] as Array<{ name: ThemeOption; label: string }>,
 		};
 	},
 	mounted() {
@@ -173,7 +209,7 @@ export default defineComponent({
 			return this.currentUser?.signInType === 'ldap';
 		},
 		isLDAPFeatureEnabled(): boolean {
-			return this.settingsStore.settings.enterprise.ldap === true;
+			return this.settingsStore.settings.enterprise.ldap;
 		},
 		signInWithSaml(): boolean {
 			return (
@@ -186,8 +222,14 @@ export default defineComponent({
 		isMfaFeatureEnabled(): boolean {
 			return this.settingsStore.isMfaFeatureEnabled;
 		},
+		currentTheme(): ThemeOption {
+			return this.uiStore.theme;
+		},
 	},
 	methods: {
+		selectTheme(theme: ThemeOption) {
+			this.uiStore.setTheme(theme);
+		},
 		onInput() {
 			this.hasAnyChanges = true;
 		},
@@ -283,7 +325,6 @@ export default defineComponent({
 
 .disableMfaButton {
 	--button-color: var(--color-danger);
-	margin-top: var(--spacing-2xs);
 	> span {
 		font-weight: var(--font-weight-bold);
 	}
@@ -296,21 +337,12 @@ export default defineComponent({
 	}
 }
 
-.mfaSection {
-	margin-top: var(--spacing-l);
-}
-
 .infoText {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-light);
 }
 
-.sectionHeader {
-	margin-top: var(--spacing-2xl);
-	margin-bottom: var(--spacing-s);
-}
-
-.mfaButtonContainer {
-	margin-top: var(--spacing-2xs);
+.themeSelect {
+	max-width: 50%;
 }
 </style>

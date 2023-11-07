@@ -16,12 +16,8 @@ import type { Dirent } from 'fs';
 
 @Service()
 export class NodeTypes implements INodeTypes {
-	constructor(private nodesAndCredentials: LoadNodesAndCredentials) {}
-
-	init() {
-		// Some nodeTypes need to get special parameters applied like the
-		// polling nodes the polling times
-		this.applySpecialNodeParameters();
+	constructor(private loadNodesAndCredentials: LoadNodesAndCredentials) {
+		loadNodesAndCredentials.addPostProcessor(async () => this.applySpecialNodeParameters());
 	}
 
 	/**
@@ -50,20 +46,20 @@ export class NodeTypes implements INodeTypes {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
+	/* Some nodeTypes need to get special parameters applied like the polling nodes the polling times */
 	applySpecialNodeParameters() {
-		for (const nodeTypeData of Object.values(this.loadedNodes)) {
+		for (const nodeTypeData of Object.values(this.loadNodesAndCredentials.loadedNodes)) {
 			const nodeType = NodeHelpers.getVersionedNodeType(nodeTypeData.type);
 			NodeHelpers.applySpecialNodeParameters(nodeType);
 		}
 	}
 
 	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {
-		const loadedNodes = this.loadedNodes;
+		const { loadedNodes, knownNodes } = this.loadNodesAndCredentials;
 		if (type in loadedNodes) {
 			return loadedNodes[type];
 		}
 
-		const knownNodes = this.knownNodes;
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
 			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
@@ -72,14 +68,6 @@ export class NodeTypes implements INodeTypes {
 			return loadedNodes[type];
 		}
 		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
-	}
-
-	private get loadedNodes() {
-		return this.nodesAndCredentials.loaded.nodes;
-	}
-
-	private get knownNodes() {
-		return this.nodesAndCredentials.known.nodes;
 	}
 
 	async getNodeTranslationPath({

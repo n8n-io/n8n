@@ -104,7 +104,7 @@ const containsAPIAction = computed(() => {
 		return ((p as ActionCreateElement).properties.actionKey ?? '') === CUSTOM_API_CALL_KEY;
 	});
 
-	return result === true;
+	return result;
 });
 
 const isTriggerRootView = computed(() => rootView.value === TRIGGER_NODE_CREATOR_VIEW);
@@ -147,7 +147,7 @@ function onSelected(actionCreateElement: INodeCreateElement) {
 
 		emit('nodeTypeSelected', [actionData.key as string, actionNode]);
 	} else {
-		emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionData.key));
+		emit('nodeTypeSelected', [actionData.key as string]);
 	}
 
 	if (telemetry) setAddedNodeActionParameters(actionData, telemetry, rootView.value);

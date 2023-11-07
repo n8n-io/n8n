@@ -18,7 +18,7 @@ const useWebSockets = config.getEnv('push.backend') === 'websocket';
 
 @Service()
 export class Push extends EventEmitter {
-	private backend = useWebSockets ? new WebSocketPush() : new SSEPush();
+	private backend = useWebSockets ? Container.get(WebSocketPush) : Container.get(SSEPush);
 
 	handleRequest(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) {
 		if (req.ws) {

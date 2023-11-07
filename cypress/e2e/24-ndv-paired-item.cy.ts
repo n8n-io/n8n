@@ -276,4 +276,59 @@ describe('NDV', () => {
 		// todo there's a bug here need to fix ADO-534
 		// ndv.getters.outputHoveringItem().should('not.exist');
 	});
+
+	it('can resolve expression with paired item in multi-input node', () => {
+		cy.fixture('expression_with_paired_item_in_multi_input_node.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+		});
+
+		workflowPage.actions.zoomToFit();
+
+		/* prettier-ignore */
+		const PINNED_DATA = [
+			{
+				"id": "abc",
+				"historyId": "def",
+				"messages": [
+					{
+						"id": "abc"
+					}
+				]
+			},
+			{
+				"id": "abc",
+				"historyId": "def",
+				"messages": [
+					{
+						"id": "abc"
+					},
+					{
+						"id": "abc"
+					},
+					{
+						"id": "abc"
+					}
+				]
+			},
+			{
+				"id": "abc",
+				"historyId": "def",
+				"messages": [
+					{
+						"id": "abc"
+					}
+				]
+			}
+		];
+		/* prettier-ignore */
+		workflowPage.actions.openNode('Get thread details1');
+		ndv.actions.setPinnedData(PINNED_DATA);
+		ndv.actions.close();
+
+		workflowPage.actions.executeWorkflow();
+		workflowPage.actions.openNode('Switch1');
+		ndv.actions.execute();
+
+		ndv.getters.parameterExpressionPreview('output').should('include.text', '1');
+	});
 });

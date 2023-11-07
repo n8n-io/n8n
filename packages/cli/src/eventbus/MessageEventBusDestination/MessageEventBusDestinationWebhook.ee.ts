@@ -7,7 +7,6 @@ import axios from 'axios';
 import type { AxiosRequestConfig, Method } from 'axios';
 import {
 	jsonParse,
-	LoggerProxy,
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
@@ -18,14 +17,13 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '@/CredentialsHelper';
-import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
-import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 import { MessageEventBus } from '../MessageEventBus/MessageEventBus';
 import type { MessageWithCallback } from '../MessageEventBus/MessageEventBus';
 import * as SecretsHelpers from '@/ExternalSecrets/externalSecretsHelper.ee';
+import Container from 'typedi';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -102,19 +100,17 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
-		LoggerProxy.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
 		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
 		if (foundCredential) {
-			const timezone = config.getEnv('generic.timezone');
 			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
 				{ secretsHelpers: SecretsHelpers } as unknown as IWorkflowExecuteAdditionalData,
 				foundCredential[1],
 				foundCredential[0],
 				'internal',
-				timezone,
 				true,
 			);
 			return credentialsDecrypted;
@@ -135,13 +131,7 @@ export class MessageEventBusDestinationWebhook
 		} as AxiosRequestConfig;
 
 		if (this.credentialsHelper === undefined) {
-			let encryptionKey: string | undefined;
-			try {
-				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch {}
-			if (encryptionKey) {
-				this.credentialsHelper = new CredentialsHelper(encryptionKey);
-			}
+			this.credentialsHelper = Container.get(CredentialsHelper);
 		}
 
 		const sendQuery = this.sendQuery;
@@ -365,7 +355,7 @@ export class MessageEventBusDestinationWebhook
 				}
 			}
 		} catch (error) {
-			LoggerProxy.warn(
+			this.logger.warn(
 				`Webhook destination ${this.label} failed to send message to: ${this.url} - ${
 					(error as Error).message
 				}`,

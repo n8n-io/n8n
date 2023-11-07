@@ -20,7 +20,7 @@ import type {
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import type {
 	IDataObject,
-	ILogLevel,
+	LogLevel,
 	IN8nUISettings,
 	ITelemetrySettings,
 	WorkflowSettings,
@@ -31,10 +31,13 @@ import { useUIStore } from './ui.store';
 import { useUsersStore } from './users.store';
 import { useVersionsStore } from './versions.store';
 import { makeRestApiRequest } from '@/utils';
-import { useCloudPlanStore } from './cloudPlan.store';
+import { useTitleChange, useToast } from '@/composables';
+import { ExpressionEvaluatorProxy } from 'n8n-workflow';
+import { i18n } from '@/plugins/i18n';
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
+		initialized: false,
 		settings: {} as IN8nUISettings,
 		promptsData: {} as IN8nPrompts,
 		userManagement: {
@@ -70,7 +73,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	}),
 	getters: {
 		isEnterpriseFeatureEnabled() {
-			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise[feature];
+			return (feature: EnterpriseEditionFeature): boolean => this.settings.enterprise?.[feature];
 		},
 		versionCli(): string {
 			return this.settings.versionCli;
@@ -130,7 +133,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		telemetry(): ITelemetrySettings {
 			return this.settings.telemetry;
 		},
-		logLevel(): ILogLevel {
+		logLevel(): LogLevel {
 			return this.settings.logLevel;
 		},
 		isTelemetryEnabled(): boolean {
@@ -186,8 +189,38 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.userManagement.quota === -1 || this.userManagement.quota > userStore.allUsers.length
 			);
 		},
+		isDevRelease(): boolean {
+			return this.settings.releaseChannel === 'dev';
+		},
 	},
 	actions: {
+		async initialize() {
+			if (this.initialized) {
+				return;
+			}
+
+			const { showToast } = useToast();
+			try {
+				await this.getSettings();
+
+				ExpressionEvaluatorProxy.setEvaluator(this.settings.expressions.evaluator);
+
+				// Re-compute title since settings are now available
+				useTitleChange().titleReset();
+
+				this.initialized = true;
+			} catch (e) {
+				showToast({
+					title: i18n.baseText('startupError'),
+					message: i18n.baseText('startupError.message'),
+					type: 'error',
+					duration: 0,
+					dangerouslyUseHTMLString: true,
+				});
+
+				throw e;
+			}
+		},
 		setSettings(settings: IN8nUISettings): void {
 			this.settings = settings;
 			this.userManagement = settings.userManagement;
@@ -205,7 +238,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				this.saml.loginLabel = settings.sso.saml.loginLabel;
 			}
 			if (settings.enterprise?.showNonProdBanner) {
-				useUIStore().banners.NON_PRODUCTION_LICENSE.dismissed = false;
+				useUIStore().pushBannerToStack('NON_PRODUCTION_LICENSE');
+			}
+			if (settings.versionCli) {
+				useRootStore().setVersionCli(settings.versionCli);
+			}
+
+			const isV1BannerDismissedPermanently = (settings.banners?.dismissed || []).includes('V1');
+			if (!isV1BannerDismissedPermanently && useRootStore().versionCli.startsWith('1.')) {
+				useUIStore().pushBannerToStack('V1');
 			}
 		},
 		async getSettings(): Promise<void> {
@@ -232,15 +273,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-
-			const isV1BannerDismissedPermanently = settings.banners.dismissed.includes('V1');
-			if (
-				!isV1BannerDismissedPermanently &&
-				useRootStore().versionCli.startsWith('1.') &&
-				!useCloudPlanStore().userIsTrialing
-			) {
-				useUIStore().showBanner('V1');
-			}
 
 			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},

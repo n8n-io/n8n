@@ -1,7 +1,7 @@
-import { UserSettings } from 'n8n-core';
-import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
+import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
+import { v4 as uuid } from 'uuid';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -26,12 +26,17 @@ import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
 import { VariablesService } from '@/environments/variables/variables.service';
-import { TagRepository, WorkflowTagMappingRepository } from '@/databases/repositories';
+import {
+	TagRepository,
+	WorkflowHistoryRepository,
+	WorkflowTagMappingRepository,
+} from '@/databases/repositories';
 import { separate } from '@/utils';
 
 import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
+import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -112,13 +117,18 @@ export async function terminate() {
 export async function truncate(collections: CollectionName[]) {
 	const [tag, rest] = separate(collections, (c) => c === 'Tag');
 
-	if (tag) {
+	if (tag.length) {
 		await Container.get(TagRepository).delete({});
 		await Container.get(WorkflowTagMappingRepository).delete({});
 	}
 
 	for (const collection of rest) {
-		await Db.collections[collection].delete({});
+		if (typeof collection === 'string') {
+			await Db.collections[collection].delete({});
+		} else {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			await Container.get(collection as { new (): Repository<any> }).delete({});
+		}
 	}
 }
 
@@ -171,6 +181,10 @@ export function affixRoleToSaveCredential(role: Role) {
 		saveCredential(credentialPayload, { user, role });
 }
 
+export async function getAllCredentials() {
+	return Db.collections.Credentials.find();
+}
+
 // ----------------------------------
 //           user creation
 // ----------------------------------
@@ -202,8 +216,6 @@ export async function createLdapUser(attributes: Partial<User>, ldapId: string):
 export async function createUserWithMfaEnabled(
 	data: { numberOfRecoveryCodes: number } = { numberOfRecoveryCodes: 10 },
 ) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	const email = randomEmail();
 	const password = randomPassword();
 
@@ -211,7 +223,7 @@ export async function createUserWithMfaEnabled(
 
 	const secret = toptService.generateSecret();
 
-	const mfaService = new MfaService(Db.collections.User, toptService, encryptionKey);
+	const mfaService = Container.get(MfaService);
 
 	const recoveryCodes = mfaService.generateRecoveryCodes(data.numberOfRecoveryCodes);
 
@@ -349,11 +361,11 @@ export async function createManyExecutions(
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-async function createExecution(
+export async function createExecution(
 	attributes: Partial<ExecutionEntity & ExecutionData>,
 	workflow: WorkflowEntity,
 ) {
-	const { data, finished, mode, startedAt, stoppedAt, waitTill, status } = attributes;
+	const { data, finished, mode, startedAt, stoppedAt, waitTill, status, deletedAt } = attributes;
 
 	const execution = await Db.collections.Execution.save({
 		finished: finished ?? true,
@@ -363,6 +375,7 @@ async function createExecution(
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
 		status,
+		deletedAt,
 	});
 
 	await Db.collections.ExecutionData.save({
@@ -438,7 +451,7 @@ export async function createManyWorkflows(
  * @param user user to assign the workflow to
  */
 export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, user?: User) {
-	const { active, name, nodes, connections } = attributes;
+	const { active, name, nodes, connections, versionId } = attributes;
 
 	const workflowEntity = Db.collections.Workflow.create({
 		active: active ?? false,
@@ -446,14 +459,15 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		nodes: nodes ?? [
 			{
 				id: 'uuid-1234',
-				name: 'Start',
+				name: 'Schedule Trigger',
 				parameters: {},
 				position: [-20, 260],
-				type: 'n8n-nodes-base.start',
+				type: 'n8n-nodes-base.scheduleTrigger',
 				typeVersion: 1,
 			},
 		],
 		connections: connections ?? {},
+		versionId: versionId ?? uuid(),
 		...attributes,
 	});
 
@@ -528,6 +542,10 @@ export async function getAllWorkflows() {
 	return Db.collections.Workflow.find();
 }
 
+export async function getAllExecutions() {
+	return Db.collections.Execution.find();
+}
+
 // ----------------------------------
 //        workflow sharing
 // ----------------------------------
@@ -566,6 +584,49 @@ export async function getVariableById(id: string) {
 			id,
 		},
 	});
+}
+
+// ----------------------------------
+//          workflow history
+// ----------------------------------
+
+export async function createWorkflowHistoryItem(
+	workflowId: string,
+	data?: Partial<WorkflowHistory>,
+) {
+	return Container.get(WorkflowHistoryRepository).save({
+		authors: 'John Smith',
+		connections: {},
+		nodes: [
+			{
+				id: 'uuid-1234',
+				name: 'Start',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+			},
+		],
+		versionId: uuid(),
+		...(data ?? {}),
+		workflowId,
+	});
+}
+
+export async function createManyWorkflowHistoryItems(
+	workflowId: string,
+	count: number,
+	time?: Date,
+) {
+	const baseTime = (time ?? new Date()).valueOf();
+	return Promise.all(
+		[...Array(count)].map(async (_, i) =>
+			createWorkflowHistoryItem(workflowId, {
+				createdAt: new Date(baseTime + i),
+				updatedAt: new Date(baseTime + i),
+			}),
+		),
+	);
 }
 
 // ----------------------------------
@@ -628,12 +689,10 @@ const getDBOptions = (type: TestDBType, name: string) => ({
 // ----------------------------------
 
 async function encryptCredentialData(credential: CredentialsEntity) {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-
 	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data, encryptionKey);
+	coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }

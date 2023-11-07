@@ -3,11 +3,12 @@ import type {
 	ILoadOptionsFunctions,
 	IDataObject,
 	IPollFunctions,
+	INode,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
 import get from 'lodash/get';
+import { apiRequest } from '../transport';
 import type {
 	ILookupValues,
 	ISheetUpdateData,
@@ -117,7 +118,7 @@ export class GoogleSheet {
 	/**
 	 *  Returns the name of a sheet from a sheet id
 	 */
-	async spreadsheetGetSheetNameById(sheetId: string) {
+	async spreadsheetGetSheetNameById(node: INode, sheetId: string) {
 		const query = {
 			fields: 'sheets.properties',
 		};
@@ -133,9 +134,13 @@ export class GoogleSheet {
 		const foundItem = response.sheets.find(
 			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
 		);
+
 		if (!foundItem?.properties?.title) {
-			throw new Error(`Sheet with id ${sheetId} not found`);
+			throw new NodeOperationError(node, `Sheet with ID ${sheetId} not found`, {
+				severity: 'warning',
+			});
 		}
+
 		return foundItem.properties.title;
 	}
 
@@ -551,6 +556,53 @@ export class GoogleSheet {
 		}
 
 		return { updateData, appendData };
+	}
+
+	/**
+	 * Updates data in a sheet
+	 *
+	 * @param {IDataObject[]} inputData Data to update Sheet with
+	 * @param {string} range The range to look for data
+	 * @param {number} dataStartRowIndex Index of the first row which contains data
+	 * @param {string[][]} columnNamesList The column names to use
+	 * @returns {Promise<string[][]>}
+	 * @memberof GoogleSheet
+	 */
+	prepareDataForUpdatingByRowNumber(
+		inputData: IDataObject[],
+		range: string,
+		columnNamesList: string[][],
+	) {
+		const decodedRange = this.getDecodedSheetRange(range);
+		const columnNames = columnNamesList[0];
+		const updateData: ISheetUpdateData[] = [];
+
+		for (const item of inputData) {
+			const updateRowIndex = item.row_number as number;
+
+			for (const name of columnNames) {
+				if (name === 'row_number') continue;
+				if (item[name] === undefined || item[name] === null) continue;
+
+				const columnToUpdate = this.getColumnWithOffset(
+					decodedRange.start?.column || 'A',
+					columnNames.indexOf(name),
+				);
+
+				let updateValue = item[name] as string;
+				if (typeof updateValue === 'object') {
+					try {
+						updateValue = JSON.stringify(updateValue);
+					} catch (error) {}
+				}
+				updateData.push({
+					range: `${decodedRange.name}!${columnToUpdate}${updateRowIndex}`,
+					values: [[updateValue]],
+				});
+			}
+		}
+
+		return { updateData };
 	}
 
 	/**
