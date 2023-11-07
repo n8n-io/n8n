@@ -184,6 +184,24 @@ export const formOptions: INodeProperties = {
 	},
 	options: [
 		{
+			displayName: 'Respond With',
+			name: 'respondWith',
+			type: 'options',
+			default: 'text',
+			options: [
+				{
+					name: 'Form Submitted Text',
+					value: 'text',
+					description: 'Show a text to the user after form submission',
+				},
+				{
+					name: 'Redirect URL',
+					value: 'redirect',
+					description: 'Redirect the user to a URL after form submission',
+				},
+			],
+		},
+		{
 			displayName: 'Form Submitted Text',
 			name: 'formSubmittedText',
 			description: 'The text displayed to users after they filled the form',
@@ -191,7 +209,7 @@ export const formOptions: INodeProperties = {
 			default: 'Your response has been recorded',
 			displayOptions: {
 				hide: {
-					'/responseMode': ['responseNode'],
+					respondWith: ['redirect'],
 				},
 			},
 		},
@@ -203,8 +221,8 @@ export const formOptions: INodeProperties = {
 			default: '',
 			validateType: 'url',
 			displayOptions: {
-				hide: {
-					'/responseMode': ['responseNode'],
+				show: {
+					respondWith: ['redirect'],
 				},
 			},
 		},

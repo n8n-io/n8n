@@ -357,8 +357,31 @@ export class Wait extends Webhook {
 			},
 			{
 				...formOptions,
-				displayOptions: displayOnFormSubmission,
+				displayOptions: {
+					show: {
+						resume: ['form'],
+					},
+					hide: {
+						responseMode: ['responseNode'],
+					},
+				},
 				options: [...(formOptions.options as INodeProperties[]), webhookSuffix],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resume: ['form'],
+					},
+					hide: {
+						responseMode: ['onReceived', 'lastNode'],
+					},
+				},
+				options: [webhookSuffix],
 			},
 		],
 	};
