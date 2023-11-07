@@ -88,7 +88,7 @@ describe('Canvas Actions', () => {
 		cy.wait('@createWorkflow').then((interception: Interception) => {
 			const { request } = interception;
 			const color = request.body?.nodes[0]?.parameters?.color;
-			expect(color).to.be(1);
+			expect(color).to.equal(1);
 		});
 
 		workflowPage.getters.stickies().should('have.length', 1);
