@@ -101,12 +101,17 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :modelValue="filters.status" @update:modelValue="setKeyValue('status', $event)">
+				<n8n-select
+					data-test-id="status-dropdown"
+					:modelValue="filters.status"
+					@update:modelValue="setKeyValue('status', $event)"
+				>
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
 						:label="option.label"
 						:value="option.value"
+						data-test-id="status"
 					>
 					</n8n-option>
 				</n8n-select>
