@@ -331,7 +331,7 @@ export class WorkflowPage extends BasePage {
 				.find('[data-test-id="change-sticky-color"]')
 				.click({ force: true });
 		},
-		pickNonDefaultColor: () => {
+		pickColor: (index: number) => {
 			this.getters.colors().eq(1).click();
 		},
 		editSticky: (content: string) => {

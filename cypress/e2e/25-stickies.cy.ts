@@ -77,7 +77,7 @@ describe('Canvas Actions', () => {
 
 		getPopper().should('be.visible');
 
-		workflowPage.actions.pickNonDefaultColor();
+		workflowPage.actions.pickColor(1);
 
 		workflowPage.actions.toggleColorPalette();
 
@@ -88,7 +88,7 @@ describe('Canvas Actions', () => {
 		cy.wait('@createWorkflow').then((interception: Interception) => {
 			const { request } = interception;
 			const color = request.body?.nodes[0]?.parameters?.color;
-			expect(color).not.to.be.undefined;
+			expect(color).toBe(1);
 		});
 
 		workflowPage.getters.stickies().should('have.length', 1);
