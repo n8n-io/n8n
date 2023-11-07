@@ -92,10 +92,18 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		};
 	} = {};
 
-	isMultiMainScenario =
+	private isMultiMainScenario =
 		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
 
-	multiMainInstancePublisher: MultiMainInstancePublisher | undefined;
+	private multiMainInstancePublisher: MultiMainInstancePublisher;
+
+	async isFollower() {
+		if (!this.isMultiMainScenario) return null;
+
+		if (!this.multiMainInstancePublisher) await this.initMultiMaininstancePublisher();
+
+		return this.multiMainInstancePublisher.isFollower;
+	}
 
 	constructor(
 		private readonly logger: Logger,
@@ -107,20 +115,22 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	) {}
 
 	async init() {
-		if (this.isMultiMainScenario) {
-			const { MultiMainInstancePublisher } = await import(
-				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-			);
-
-			this.multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-			await this.multiMainInstancePublisher.init();
-		}
+		if (this.isMultiMainScenario) await this.initMultiMaininstancePublisher();
 
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
 		await this.webhookService.populateCache();
+	}
+
+	private async initMultiMaininstancePublisher() {
+		const { MultiMainInstancePublisher } = await import(
+			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		);
+
+		this.multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+		await this.multiMainInstancePublisher.init();
 	}
 
 	/**
@@ -744,6 +754,13 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 	) {
+		if (this.isMultiMainScenario && (await this.isFollower())) {
+			this.logger.debug(
+				'[Multi-main setup] Instance is follower, skipping addition of workflow to active workflows in memory...',
+			);
+			return;
+		}
+
 		let workflow: Workflow;
 
 		let shouldAddWebhooks = true;
@@ -940,6 +957,14 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string) {
 		// Remove all the webhooks of the workflow
+
+		if (this.isMultiMainScenario && (await this.isFollower())) {
+			this.logger.debug(
+				'[Multi-main setup] Instance is follower, skipping removal of workflow from active workflows in memory...',
+			);
+			return;
+		}
+
 		try {
 			await this.clearWebhooks(workflowId);
 		} catch (error) {

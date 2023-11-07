@@ -250,9 +250,14 @@ export class WorkflowsService {
 
 		await Container.get(ExternalHooks).run('workflow.update', [workflow]);
 
+		/**
+		 * If the workflow being updated is stored as `active`, remove it from
+		 * active workflows in memory, and re-add it after the update.
+		 *
+		 * If a trigger or poller in the workflow was updated, the new value
+		 * will take effect only on removing and readding.
+		 */
 		if (shared.workflow.active) {
-			// When workflow gets saved always remove it as the triggers could have been
-			// changed and so the changes would not take effect
 			await Container.get(ActiveWorkflowRunner).remove(workflowId);
 		}
 
