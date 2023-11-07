@@ -57,7 +57,8 @@ export class DocumentDefaultDataLoader implements INodeType {
 		outputNames: ['Document'],
 		properties: [
 			{
-				displayName: 'This will load data from a previous step in the workflow',
+				displayName:
+					'This will load data from a previous step in the workflow. <a href="/templates/1962" target="_blank">Example</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -79,6 +80,31 @@ export class DocumentDefaultDataLoader implements INodeType {
 						name: 'Binary',
 						value: 'binary',
 						description: 'Process binary data from previous step in the workflow',
+					},
+				],
+			},
+			{
+				displayName: 'Mode',
+				name: 'jsonMode',
+				type: 'options',
+				default: 'allInputData',
+				required: true,
+				displayOptions: {
+					show: {
+						dataType: ['json'],
+					},
+				},
+				options: [
+					{
+						name: 'Load All Input Data',
+						value: 'allInputData',
+						description: 'Use all JSON data that flows into the parent agent or chain',
+					},
+					{
+						name: 'Load Specific Data',
+						value: 'expressionData',
+						description:
+							'Load a subset of data, and/or data from any previous step in the workflow',
 					},
 				],
 			},
@@ -132,12 +158,29 @@ export class DocumentDefaultDataLoader implements INodeType {
 				],
 			},
 			{
-				displayName: 'Binary Data Key',
+				displayName: 'Data',
+				name: 'jsonData',
+				type: 'string',
+				typeOptions: {
+					rows: 6,
+				},
+				default: '',
+				required: true,
+				description: 'Drag and drop fields from the input pane, or use an expression',
+				displayOptions: {
+					show: {
+						dataType: ['json'],
+						jsonMode: ['expressionData'],
+					},
+				},
+			},
+			{
+				displayName: 'Input Data Field Name',
 				name: 'binaryDataKey',
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'Name of the binary property from which to read the file buffer',
+				description: 'The name of the input field containing the binary file data to be processed',
 				displayOptions: {
 					show: {
 						dataType: ['binary'],
@@ -160,18 +203,6 @@ export class DocumentDefaultDataLoader implements INodeType {
 						displayOptions: {
 							show: {
 								'/loader': ['jsonLoader', 'auto'],
-							},
-						},
-					},
-					{
-						displayName: 'Pointers',
-						name: 'pointers',
-						type: 'string',
-						default: '',
-						description: 'Pointers to extract from JSON, e.g. "/text" or "/text, /meta/title"',
-						displayOptions: {
-							show: {
-								'/dataType': ['jsonLoader'],
 							},
 						},
 					},

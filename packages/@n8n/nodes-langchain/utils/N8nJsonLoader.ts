@@ -1,8 +1,14 @@
-import { type IExecuteFunctions, type INodeExecutionData, NodeConnectionType } from 'n8n-workflow';
+import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	NodeConnectionType,
+	NodeOperationError,
+} from 'n8n-workflow';
 
 import type { CharacterTextSplitter } from 'langchain/text_splitter';
 import type { Document } from 'langchain/document';
 import { JSONLoader } from 'langchain/document_loaders/fs/json';
+import { TextLoader } from 'langchain/document_loaders/fs/text';
 import { getMetadataFiltersValues } from './helpers';
 
 export class N8nJsonLoader {
@@ -30,6 +36,10 @@ export class N8nJsonLoader {
 	}
 
 	async processItem(item: INodeExecutionData, itemIndex: number): Promise<Document[]> {
+		const mode = this.context.getNodeParameter('jsonMode', itemIndex, 'allInputData') as
+			| 'allInputData'
+			| 'expressionData';
+
 		const pointers = this.context.getNodeParameter(
 			`${this.optionsPrefix}pointers`,
 			itemIndex,
@@ -45,15 +55,40 @@ export class N8nJsonLoader {
 
 		if (!item) return [];
 
-		const itemString = JSON.stringify(item.json);
-		const itemBlob = new Blob([itemString], { type: 'application/json' });
-		const jsonDoc = new JSONLoader(itemBlob, pointersArray);
-		const docs = textSplitter ? await jsonDoc.loadAndSplit(textSplitter) : await jsonDoc.load();
+		let documentLoader: JSONLoader | TextLoader | null = null;
+
+		if (mode === 'allInputData') {
+			const itemString = JSON.stringify(item.json);
+			const itemBlob = new Blob([itemString], { type: 'application/json' });
+			documentLoader = new JSONLoader(itemBlob, pointersArray);
+		}
+
+		if (mode === 'expressionData') {
+			const dataString = this.context.getNodeParameter('jsonData', itemIndex) as string | object;
+			if (typeof dataString === 'object') {
+				const itemBlob = new Blob([JSON.stringify(dataString)], { type: 'application/json' });
+				documentLoader = new JSONLoader(itemBlob, pointersArray);
+			}
+
+			if (typeof dataString === 'string') {
+				const itemBlob = new Blob([dataString], { type: 'text/plain' });
+				documentLoader = new TextLoader(itemBlob);
+			}
+		}
+
+		if (documentLoader === null) {
+			// This should never happen
+			throw new NodeOperationError(this.context.getNode(), 'Document loader is not initialized');
+		}
+
+		const docs = textSplitter
+			? await documentLoader.loadAndSplit(textSplitter)
+			: await documentLoader.load();
 
 		if (metadata) {
-			docs.forEach((document) => {
-				document.metadata = {
-					...document.metadata,
+			docs.forEach((doc) => {
+				doc.metadata = {
+					...doc.metadata,
 					...metadata,
 				};
 			});
