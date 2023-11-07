@@ -69,16 +69,18 @@ export abstract class AbstractPush<T> extends EventEmitter {
 		}
 	}
 
-	send<D>(type: IPushDataType, data: D, sessionId: string | undefined) {
+	broadcast<D>(type: IPushDataType, data?: D) {
+		this.sendToSessions(type, data, Object.keys(this.connections));
+	}
+
+	send<D>(type: IPushDataType, data: D, sessionId: string) {
 		const { connections } = this;
-		if (sessionId !== undefined && connections[sessionId] === undefined) {
+		if (connections[sessionId] === undefined) {
 			this.logger.error(`The session "${sessionId}" is not registered.`, { sessionId });
 			return;
 		}
 
-		const connectionsToSend = sessionId === undefined ? Object.keys(connections) : [sessionId];
-
-		this.sendToSessions(type, data, connectionsToSend);
+		this.sendToSessions(type, data, [sessionId]);
 	}
 
 	/**
