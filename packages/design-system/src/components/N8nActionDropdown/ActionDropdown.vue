@@ -3,6 +3,7 @@
 		<el-dropdown
 			:placement="placement"
 			:trigger="trigger"
+			:class="$style.foo"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 			ref="elementDropdown"
@@ -152,7 +153,7 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.actionDropdownContainer {
+:global(.el-dropdown__list) {
 	.userActionsMenu {
 		min-width: 160px;
 		padding: var(--spacing-4xs) 0;
@@ -160,10 +161,6 @@ export default defineComponent({
 
 	.elementItem {
 		padding: 0;
-
-		&:hover {
-			color: inherit;
-		}
 	}
 }
 
@@ -207,8 +204,6 @@ export default defineComponent({
 }
 
 :global(li.is-disabled) {
-	color: var(--color-text-lighter);
-
 	.hasCustomStyling {
 		color: inherit !important;
 	}
