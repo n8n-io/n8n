@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+import Container from 'typedi';
 import { EventEmitter } from 'events';
 import type WebSocket from 'ws';
 import { WebSocketPush } from '@/push/websocket.push';
-import type { Logger } from '@/Logger';
+import { Logger } from '@/Logger';
 import type { User } from '@/databases/entities/User';
 import type { PushDataExecutionRecovered } from '@/Interfaces';
+import { mockInstance } from '../../integration/shared/utils';
 
 jest.useFakeTimers();
 
@@ -20,32 +21,20 @@ class MockWebSocket extends EventEmitter {
 	public close = jest.fn();
 }
 
-const createMockWebSocket = (): jest.Mocked<WebSocket> => {
-	return new MockWebSocket() as unknown as jest.Mocked<WebSocket>;
-};
+const createMockWebSocket = () => new MockWebSocket() as unknown as jest.Mocked<WebSocket>;
 
 describe('WebSocketPush', () => {
-	let webSocketPush: WebSocketPush;
-	let mockWebSocket1: jest.Mocked<WebSocket>;
-	let mockWebSocket2: jest.Mocked<WebSocket>;
-	let mockLogger: Logger;
-
 	const sessionId1 = 'test-session1';
 	const sessionId2 = 'test-session2';
 	const userId: User['id'] = 'test-user';
 
-	beforeEach(() => {
-		mockWebSocket1 = createMockWebSocket();
-		mockWebSocket2 = createMockWebSocket();
-		mockLogger = {
-			debug: jest.fn(),
-			error: jest.fn(),
-			warn: jest.fn(),
-			info: jest.fn(),
-			verbose: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+	mockInstance(Logger);
+	const webSocketPush = Container.get(WebSocketPush);
+	const mockWebSocket1 = createMockWebSocket();
+	const mockWebSocket2 = createMockWebSocket();
 
-		webSocketPush = new WebSocketPush(mockLogger);
+	beforeEach(() => {
+		jest.resetAllMocks();
 	});
 
 	it('can add a connection', () => {
@@ -102,7 +91,7 @@ describe('WebSocketPush', () => {
 			},
 		};
 
-		webSocketPush.send('executionRecovered', data, undefined);
+		webSocketPush.broadcast('executionRecovered', data);
 
 		const expectedMsg = JSON.stringify({
 			type: 'executionRecovered',
