@@ -33,6 +33,7 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+import { keysToLowercase } from '../../../utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
