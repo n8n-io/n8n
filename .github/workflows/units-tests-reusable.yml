@@ -51,8 +51,11 @@ jobs:
           path: ./packages/**/dist
           key: ${{ inputs.cacheKey }}
 
-      - name: Test
-        run: pnpm test
+      - name: Test Backend
+        run: pnpm test:backend
+
+      - name: Test Frontend
+        run: pnpm test:frontend
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
