@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Container } from 'typedi';
 import { debounceMessageReceiver, messageToRedisServiceCommandObject } from '../helpers';
 import config from '@/config';
@@ -5,12 +6,18 @@ import { MessageEventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { ExternalHooks } from '@/ExternalHooks';
 
 export async function handleCommandMessageMain(messageString: string) {
-	const queueModeId = config.get('redis.queueModeId');
-	const isMainInstance = config.get('generic.instanceType') === 'main';
+	const queueModeId = config.getEnv('redis.queueModeId');
+	const isMainInstance = config.getEnv('generic.instanceType') === 'main';
 	const message = messageToRedisServiceCommandObject(messageString);
 	const logger = Container.get(Logger);
+	const multiMainSetup = Container.get(MultiMainSetup);
+	const externalHooks = Container.get(ExternalHooks);
 
 	if (message) {
 		logger.debug(
@@ -44,6 +51,7 @@ export async function handleCommandMessageMain(messageString: string) {
 				}
 				await Container.get(License).reload();
 				break;
+
 			case 'restartEventBus':
 				if (!debounceMessageReceiver(message, 200)) {
 					message.payload = {
@@ -52,6 +60,8 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 				await Container.get(MessageEventBus).restart();
+				break;
+
 			case 'reloadExternalSecretsProviders':
 				if (!debounceMessageReceiver(message, 200)) {
 					message.payload = {
@@ -60,10 +70,60 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 				await Container.get(ExternalSecretsManager).reloadAllProviders();
+				break;
+
+			case 'workflowWasUpdated':
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				if (multiMainSetup.isFollower) break;
+
+				const workflowRepository = Container.get(WorkflowRepository);
+				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+
+				const workflow = await workflowRepository.findOne({
+					select: ['id', 'active'],
+					where: {
+						id: (message.payload?.workflowId as string) ?? '',
+					},
+				});
+
+				if (!workflow) break;
+
+				try {
+					await activeWorkflowRunner.remove(workflow.id);
+					await activeWorkflowRunner.add(workflow.id, workflow.active ? 'update' : 'activate');
+					await externalHooks.run('workflow.activate', [workflow]);
+				} catch (e) {
+					const error = e instanceof Error ? e : new Error(`${e}`);
+					logger.error(`Error while trying to handle workflow update: ${error.message}`);
+				}
+
+				await multiMainSetup.broadcastWorkflowWasActivated(
+					workflow.id,
+					[message.senderId],
+					(message.payload?.pushSessionId as string) ?? '',
+				);
+
+				break;
+
+			case 'workflowWasActivated':
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				// TODO: inform frontend of workflow activation result
+				break;
+
 			default:
 				break;
 		}
+
 		return message;
 	}
+
 	return;
 }

@@ -6,7 +6,9 @@ export type RedisServiceCommand =
 	| 'restartEventBus'
 	| 'stopWorker'
 	| 'reloadLicense'
-	| 'reloadExternalSecretsProviders';
+	| 'reloadExternalSecretsProviders'
+	| 'workflowWasUpdated'
+	| 'workflowWasActivated';
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.

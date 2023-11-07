@@ -99,4 +99,23 @@ export class MultiMainSetup extends SingleMainSetup {
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 		}
 	}
+
+	async broadcastWorkflowWasUpdated(workflowId: string, pushSessionId = '') {
+		if (!this.sanityCheck()) return;
+
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowWasUpdated',
+			payload: { workflowId, pushSessionId },
+		});
+	}
+
+	async broadcastWorkflowWasActivated(workflowId: string, targets: string[], pushSessionId = '') {
+		if (!this.sanityCheck()) return;
+
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowWasActivated',
+			targets,
+			payload: { workflowId, pushSessionId },
+		});
+	}
 }
