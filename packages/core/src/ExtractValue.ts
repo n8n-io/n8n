@@ -1,4 +1,10 @@
 import {
+	LoggerProxy,
+	NodeHelpers,
+	NodeOperationError,
+	WorkflowOperationError,
+	executeFilter,
+	isFilterValue,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -6,9 +12,7 @@ import {
 	type INodePropertyOptions,
 	type INodeType,
 	type NodeParameterValueType,
-	isFilterValue,
 } from 'n8n-workflow';
-import { NodeOperationError, NodeHelpers, LoggerProxy, executeFilter } from 'n8n-workflow';
 
 function findPropertyFromParameterName(
 	parameterName: string,
@@ -63,12 +67,12 @@ function executeRegexExtractValue(
 ): NodeParameterValueType | object {
 	const extracted = regex.exec(value);
 	if (!extracted) {
-		throw new Error(
+		throw new WorkflowOperationError(
 			`ERROR: ${parameterDisplayName} parameter's value is invalid. This is likely because the URL entered is incorrect`,
 		);
 	}
 	if (extracted.length < 2 || extracted.length > 2) {
-		throw new Error(
+		throw new WorkflowOperationError(
 			`Property "${parameterName}" has an invalid extractValue regex "${regex.source}". extractValue expects exactly one group to be returned.`,
 		);
 	}

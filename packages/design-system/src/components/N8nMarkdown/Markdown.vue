@@ -261,7 +261,16 @@ export default defineComponent({
 }
 
 .sticky {
-	color: var(--color-text-dark);
+	color: var(--color-sticky-font);
+
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		color: var(--color-sticky-font);
+	}
 
 	h1,
 	h2,
@@ -308,7 +317,7 @@ export default defineComponent({
 	}
 
 	code {
-		background-color: var(--color-background-base);
+		background-color: var(--color-sticky-code-background);
 		padding: 0 var(--spacing-4xs);
 		color: var(--color-secondary);
 	}
@@ -327,6 +336,8 @@ export default defineComponent({
 
 	img {
 		object-fit: contain;
+		margin-top: var(--spacing-xs);
+		margin-bottom: var(--spacing-2xs);
 
 		&[src*='#full-width'] {
 			width: 100%;

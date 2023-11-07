@@ -21,15 +21,15 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { License, FeatureNotLicensedError } from '@/License';
 import { IConfig } from '@oclif/config';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { PruningService } from '@/services/pruning.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -64,6 +64,8 @@ export class Start extends BaseCommand {
 	protected activeWorkflowRunner: ActiveWorkflowRunner;
 
 	protected server = new Server();
+
+	private pruningService: PruningService;
 
 	constructor(argv: string[], cmdConfig: IConfig) {
 		super(argv, cmdConfig);
@@ -110,7 +112,19 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			Container.get(ExecutionRepository).clearTimers();
+			if (await this.pruningService.isPruningEnabled()) {
+				await this.pruningService.stopPruning();
+			}
+
+			if (config.getEnv('leaderSelection.enabled')) {
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
+
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+
+				await Container.get(MultiMainInstancePublisher).destroy();
+			}
 
 			await Container.get(InternalHooks).onN8nStop();
 
@@ -155,10 +169,11 @@ export class Start extends BaseCommand {
 		}
 
 		const closingTitleTag = '</title>';
+		const { staticCacheDir } = this.instanceSettings;
 		const compileFile = async (fileName: string) => {
 			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
 			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-				const destFile = path.join(GENERATED_STATIC_DIR, fileName);
+				const destFile = path.join(staticCacheDir, fileName);
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
@@ -197,7 +212,7 @@ export class Start extends BaseCommand {
 		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
-		this.logger.debug('License init complete');
+
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
@@ -215,10 +230,41 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') === 'queue') {
-			await Container.get(OrchestrationMainService).init();
+		if (config.get('executions.mode') !== 'queue') return;
+
+		if (!config.get('leaderSelection.enabled')) {
+			await Container.get(SingleMainInstancePublisher).init();
 			await Container.get(OrchestrationHandlerMainService).init();
+			return;
 		}
+
+		// multi-main scenario
+
+		const { MultiMainInstancePublisher } = await import(
+			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		);
+
+		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+		await multiMainInstancePublisher.init();
+
+		if (
+			multiMainInstancePublisher.isLeader &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		await Container.get(OrchestrationHandlerMainService).init();
+
+		multiMainInstancePublisher.on('leadershipChange', async () => {
+			if (multiMainInstancePublisher.isLeader) {
+				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+			} else {
+				// only in case of leadership change without shutdown
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			}
+		});
 	}
 
 	async run() {
@@ -298,6 +344,11 @@ export class Start extends BaseCommand {
 		}
 
 		await this.server.start();
+
+		this.pruningService = Container.get(PruningService);
+		if (await this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();

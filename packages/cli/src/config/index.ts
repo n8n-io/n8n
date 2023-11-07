@@ -1,19 +1,13 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
-import { tmpdir } from 'os';
-import { mkdirSync, mkdtempSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'fs';
 import { setGlobalState } from 'n8n-workflow';
-import { schema } from './schema';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
-	const testsDir = join(tmpdir(), 'n8n-e2e/');
-	mkdirSync(testsDir, { recursive: true });
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
 		E2E_TESTS: 'true',
-		N8N_USER_FOLDER: mkdtempSync(testsDir),
 		EXECUTIONS_PROCESS: 'main',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_PUBLIC_API_DISABLED: 'true',
@@ -30,6 +24,8 @@ if (inE2ETests) {
 	dotenv.config();
 }
 
+// Load schema after process.env has been overwritten
+import { schema } from './schema';
 const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method

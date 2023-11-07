@@ -34,7 +34,8 @@ export async function handleCommandMessageMain(messageString: string) {
 					};
 					return message;
 				}
-				if (isMainInstance) {
+
+				if (isMainInstance && !config.getEnv('leaderSelection.enabled')) {
 					// at this point in time, only a single main instance is supported, thus this command _should_ never be caught currently
 					logger.error(
 						'Received command to reload license via Redis, but this should not have happened and is not supported on the main instance yet.',

@@ -152,6 +152,7 @@ export class SwitchV2 implements INodeType {
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
+						sortable: true,
 					},
 					displayOptions: {
 						show: {
@@ -226,6 +227,7 @@ export class SwitchV2 implements INodeType {
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
+						sortable: true,
 					},
 					displayOptions: {
 						show: {
@@ -299,6 +301,7 @@ export class SwitchV2 implements INodeType {
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
+						sortable: true,
 					},
 					displayOptions: {
 						show: {
@@ -389,6 +392,7 @@ export class SwitchV2 implements INodeType {
 					type: 'fixedCollection',
 					typeOptions: {
 						multipleValues: true,
+						sortable: true,
 					},
 					displayOptions: {
 						show: {

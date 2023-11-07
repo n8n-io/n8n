@@ -1121,6 +1121,7 @@ export interface UIState {
 	executionSidebarAutoRefresh: boolean;
 	bannersHeight: number;
 	bannerStack: BannerName[];
+	theme: ThemeOption;
 }
 
 export type IFakeDoor = {
@@ -1167,6 +1168,7 @@ export interface INodeCreatorState {
 }
 
 export interface ISettingsState {
+	initialized: boolean;
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
 	userManagement: IUserManagementSettings;
@@ -1231,6 +1233,7 @@ export interface IVersionsState {
 }
 
 export interface IUsersState {
+	initialized: boolean;
 	currentUserId: null | string;
 	users: { [userId: string]: IUser };
 	currentUserCloudInfo: Cloud.UserAccount | null;
@@ -1677,3 +1680,6 @@ export type ToggleNodeCreatorOptions = {
 	source?: NodeCreatorOpenSource;
 	nodeCreatorView?: string;
 };
+
+export type AppliedThemeOption = 'light' | 'dark';
+export type ThemeOption = AppliedThemeOption | 'system';

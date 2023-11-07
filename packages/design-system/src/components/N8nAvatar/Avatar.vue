@@ -89,7 +89,7 @@ export default defineComponent({
 	position: absolute;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: var(--color-text-xlight);
+	color: var(--color-avatar-font);
 	text-shadow: 0px 1px 6px rgba(25, 11, 9, 0.3);
 }
 

@@ -170,7 +170,7 @@ export default defineComponent({
 		}
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-warning-h), 94%, 80%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-running);
 		}
 		.statusLabel,
 		.spinner {
@@ -181,15 +181,14 @@ export default defineComponent({
 	&.success {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-success-h), 60%, 70%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-success);
 		}
 	}
 
 	&.waiting {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base)
-				hsl(var(--color-secondary-h), 94%, 80%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-waiting);
 		}
 		.statusLabel {
 			color: var(--color-secondary);
@@ -199,7 +198,7 @@ export default defineComponent({
 	&.error {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-error);
 		}
 		.statusLabel {
 			color: var(--color-danger);
@@ -209,7 +208,7 @@ export default defineComponent({
 	&.unknown {
 		&,
 		& .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-text-light);
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--execution-card-border-unknown);
 		}
 	}
 }

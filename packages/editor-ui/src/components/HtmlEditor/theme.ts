@@ -20,6 +20,7 @@ export const theme = ({ isReadOnly }: { isReadOnly: boolean }) => [
 		},
 		'&.cm-editor': {
 			...(isReadOnly ? { backgroundColor: 'var(--color-code-background-readonly)' } : {}),
+			borderColor: 'var(--border-color-base)',
 		},
 		'&.cm-editor.cm-focused': {
 			outline: '0',
@@ -40,6 +41,7 @@ export const theme = ({ isReadOnly }: { isReadOnly: boolean }) => [
 			color: 'var(--color-code-gutterForeground)',
 			borderTopLeftRadius: 'var(--border-radius-base)',
 			borderBottomLeftRadius: 'var(--border-radius-base)',
+			borderRightColor: 'var(--border-color-base)',
 		},
 		'.cm-scroller': {
 			overflow: 'auto',

@@ -140,13 +140,17 @@ export default defineComponent({
 	flex-direction: column;
 	position: absolute;
 	z-index: 2; // cover tooltips
-	background: white;
+	background: var(--color-code-background);
 	border: var(--border-base);
 	border-top: none;
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
 	border-bottom-left-radius: 4px;
 	border-bottom-right-radius: 4px;
+
+	:global(.cm-editor) {
+		background-color: var(--color-code-background);
+	}
 
 	.header,
 	.body,
@@ -179,7 +183,7 @@ export default defineComponent({
 			display: inline-block;
 			font-size: var(--font-size-2xs);
 			height: var(--font-size-m);
-			background-color: #f0f0f0;
+			background-color: var(--color-expression-syntax-example);
 			margin-left: var(--spacing-5xs);
 			margin-right: var(--spacing-5xs);
 		}

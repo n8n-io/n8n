@@ -1,17 +1,11 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import {
-	NodeOperationError,
-	SubworkflowOperationError,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { NodeOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { isSharingEnabled } from './UserManagementHelper';
-import { WorkflowsService } from '@/workflows/workflows.services';
-import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
 import Container from 'typedi';
 import { RoleService } from '@/services/role.service';
@@ -135,14 +129,7 @@ export class PermissionChecker {
 		}
 
 		if (policy === 'workflowsFromSameOwner') {
-			const user = await Container.get(UserService).findOne({ where: { id: userId } });
-			if (!user) {
-				throw new WorkflowOperationError(
-					'Fatal error: user not found. Please contact the system administrator.',
-				);
-			}
-			const sharing = await WorkflowsService.getSharing(user, subworkflow.id, ['role', 'user']);
-			if (!sharing || sharing.role.name !== 'owner') {
+			if (subworkflowOwner?.id !== userId) {
 				throw errorToThrow;
 			}
 		}

@@ -97,7 +97,7 @@ export class NDV extends BasePage {
 
 	actions = {
 		pinData: () => {
-			this.getters.pinDataButton().click();
+			this.getters.pinDataButton().click({ force: true });
 		},
 		editPinnedData: () => {
 			this.getters.editPinnedDataButton().click();
@@ -121,7 +121,12 @@ export class NDV extends BasePage {
 			this.getters.pinnedDataEditor().click();
 			this.getters
 				.pinnedDataEditor()
-				.type(`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`);
+				.type(
+					`{selectall}{backspace}${JSON.stringify(data).replace(new RegExp('{', 'g'), '{{}')}`,
+					{
+						delay: 0,
+					},
+				);
 
 			this.actions.savePinnedData();
 		},
@@ -204,7 +209,6 @@ export class NDV extends BasePage {
 				.find('span')
 				.should('include.html', asEncodedHTML(value));
 		},
-
 		refreshResourceMapperColumns: () => {
 			this.getters.resourceMapperSelectColumn().realHover();
 			this.getters
@@ -215,15 +219,12 @@ export class NDV extends BasePage {
 
 			getVisiblePopper().find('li').last().click();
 		},
-
 		addFilterCondition: (paramName: string) => {
 			this.getters.filterConditionAdd(paramName).click();
 		},
-
 		removeFilterCondition: (paramName: string, index: number) => {
 			this.getters.filterConditionRemove(paramName, index).click();
 		},
-
 		setInvalidExpression: ({
 			fieldName,
 			invalidExpression,
