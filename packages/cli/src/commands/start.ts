@@ -27,9 +27,10 @@ import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
 import { License, FeatureNotLicensedError } from '@/License';
 import { IConfig } from '@oclif/config';
-import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 import { PruningService } from '@/services/pruning.service';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -116,14 +117,12 @@ export class Start extends BaseCommand {
 				await this.pruningService.stopPruning();
 			}
 
-			if (config.getEnv('leaderSelection.enabled')) {
-				const { MultiMainInstancePublisher } = await import(
-					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-				);
+			const multiMainSetup = Container.get(MultiMainSetup);
 
+			if (multiMainSetup.isEnabled) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
-				await Container.get(MultiMainInstancePublisher).destroy();
+				await multiMainSetup.shutdown();
 			}
 
 			await Container.get(InternalHooks).onN8nStop();
@@ -232,32 +231,25 @@ export class Start extends BaseCommand {
 		if (config.get('executions.mode') !== 'queue') return;
 
 		if (!config.get('leaderSelection.enabled')) {
-			await Container.get(SingleMainInstancePublisher).init();
+			await Container.get(SingleMainSetup).init();
 			await Container.get(OrchestrationHandlerMainService).init();
 			return;
 		}
 
 		// multi-main scenario
 
-		const { MultiMainInstancePublisher } = await import(
-			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-		);
+		const multiMainSetup = Container.get(MultiMainSetup);
 
-		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+		await multiMainSetup.init();
 
-		await multiMainInstancePublisher.init();
-
-		if (
-			multiMainInstancePublisher.isLeader &&
-			!Container.get(License).isMultipleMainInstancesLicensed()
-		) {
+		if (multiMainSetup.isLeader && !Container.get(License).isMultipleMainInstancesLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		multiMainInstancePublisher.on('leadershipChange', async () => {
-			if (multiMainInstancePublisher.isLeader) {
+		multiMainSetup.on('leadershipChange', async () => {
+			if (multiMainSetup.isLeader) {
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
 				// only in case of leadership change without shutdown

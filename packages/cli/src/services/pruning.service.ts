@@ -1,4 +1,4 @@
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
 import { LessThanOrEqual, IsNull, Not, In, Brackets } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
@@ -9,6 +9,7 @@ import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories';
 import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 @Service()
 export class PruningService {
@@ -23,13 +24,11 @@ export class PruningService {
 
 	public hardDeletionTimeout: NodeJS.Timeout | undefined;
 
-	private isMultiMainScenario =
-		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
+		private readonly multiMainSetup: MultiMainSetup,
 	) {}
 
 	async isPruningEnabled() {
@@ -41,16 +40,10 @@ export class PruningService {
 			return false;
 		}
 
-		if (this.isMultiMainScenario) {
-			const { MultiMainInstancePublisher } = await import(
-				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-			);
+		await this.multiMainSetup.init();
 
-			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-			await multiMainInstancePublisher.init();
-
-			return multiMainInstancePublisher.isLeader;
+		if (this.multiMainSetup.isEnabled) {
+			return this.multiMainSetup.isLeader;
 		}
 
 		return true;
@@ -65,16 +58,10 @@ export class PruningService {
 	}
 
 	async stopPruning() {
-		if (this.isMultiMainScenario) {
-			const { MultiMainInstancePublisher } = await import(
-				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-			);
+		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+			this.logger.debug('[Multi-main setup] Instance is follower, skipping pruning stop...');
 
-			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-			await multiMainInstancePublisher.init();
-
-			if (multiMainInstancePublisher.isFollower) return;
+			return;
 		}
 
 		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');

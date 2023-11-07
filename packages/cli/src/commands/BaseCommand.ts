@@ -22,6 +22,7 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -243,19 +244,16 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
-		if (config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled')) {
-			const { MultiMainInstancePublisher } = await import(
-				'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		await multiMainSetup.init();
+
+		if (multiMainSetup.isEnabled && multiMainSetup.isFollower) {
+			this.logger.debug(
+				'[Multi-main setup] Instance is follower, skipping license initialization...',
 			);
 
-			const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-			await multiMainInstancePublisher.init();
-
-			if (multiMainInstancePublisher.isFollower) {
-				this.logger.debug('Instance is follower, skipping license initialization...');
-				return;
-			}
+			return;
 		}
 
 		const license = Container.get(License);

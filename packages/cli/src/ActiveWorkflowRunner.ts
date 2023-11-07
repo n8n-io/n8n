@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 
-import Container, { Service } from 'typedi';
+import { Service } from 'typedi';
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
 import type {
@@ -64,8 +64,7 @@ import { In } from 'typeorm';
 import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@/databases/repositories';
-import config from '@/config';
-import type { MultiMainInstancePublisher } from './services/orchestration/main/MultiMainInstance.publisher.ee';
+import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -92,19 +91,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		};
 	} = {};
 
-	private isMultiMainScenario =
-		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
-
-	private multiMainInstancePublisher: MultiMainInstancePublisher;
-
-	async isFollower() {
-		if (!this.isMultiMainScenario) return null;
-
-		if (!this.multiMainInstancePublisher) await this.initMultiMaininstancePublisher();
-
-		return this.multiMainInstancePublisher.isFollower;
-	}
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly activeExecutions: ActiveExecutions,
@@ -112,25 +98,15 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly multiMainSetup: MultiMainSetup,
 	) {}
 
 	async init() {
-		if (this.isMultiMainScenario) await this.initMultiMaininstancePublisher();
-
+		await this.multiMainSetup.init();
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized', []);
 		await this.webhookService.populateCache();
-	}
-
-	private async initMultiMaininstancePublisher() {
-		const { MultiMainInstancePublisher } = await import(
-			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
-		);
-
-		this.multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
-
-		await this.multiMainInstancePublisher.init();
 	}
 
 	/**
@@ -754,10 +730,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 	) {
-		if (this.isMultiMainScenario && (await this.isFollower())) {
+		if (this.multiMainSetup.isEnabled && !this.multiMainSetup.isLeader) {
 			this.logger.debug(
 				'[Multi-main setup] Instance is follower, skipping addition of workflow to active workflows in memory...',
 			);
+
 			return;
 		}
 
@@ -766,12 +743,12 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		let shouldAddWebhooks = true;
 		let shouldAddTriggersAndPollers = true;
 
-		if (this.isMultiMainScenario && activationMode !== 'leadershipChange') {
-			shouldAddWebhooks = this.multiMainInstancePublisher?.isLeader ?? false;
-			shouldAddTriggersAndPollers = this.multiMainInstancePublisher?.isLeader ?? false;
+		if (this.multiMainSetup.isEnabled && activationMode !== 'leadershipChange') {
+			shouldAddWebhooks = this.multiMainSetup.isLeader;
+			shouldAddTriggersAndPollers = this.multiMainSetup.isLeader;
 		}
 
-		if (this.isMultiMainScenario && activationMode === 'leadershipChange') {
+		if (this.multiMainSetup.isEnabled && activationMode === 'leadershipChange') {
 			shouldAddWebhooks = false;
 			shouldAddTriggersAndPollers = true;
 		}
@@ -958,10 +935,11 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	async remove(workflowId: string) {
 		// Remove all the webhooks of the workflow
 
-		if (this.isMultiMainScenario && (await this.isFollower())) {
+		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
 			this.logger.debug(
 				'[Multi-main setup] Instance is follower, skipping removal of workflow from active workflows in memory...',
 			);
+
 			return;
 		}
 

@@ -1,23 +1,33 @@
 import config from '@/config';
 import { Service } from 'typedi';
 import { TIME } from '@/constants';
-import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 
-/**
- * For use in main instance, in multiple main instances cluster.
- */
+class NotInitializedError extends Error {
+	constructor() {
+		super('MultiMainSetup class has not been initialized');
+	}
+}
+
 @Service()
-export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
+export class MultiMainSetup extends SingleMainSetup {
+	isEnabled =
+		config.getEnv('executions.mode') === 'queue' && config.getEnv('leaderSelection.enabled');
+
 	private id = this.queueModeId;
 
 	private leaderId: string | undefined;
 
 	get isLeader() {
+		if (!this.isInitialized) throw new NotInitializedError();
+
 		return this.id === this.leaderId;
 	}
 
 	get isFollower() {
+		if (!this.isInitialized) throw new NotInitializedError();
+
 		return !this.isLeader;
 	}
 
@@ -28,11 +38,11 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
 	async init() {
-		if (this.initialized) return;
+		if (this.isInitialized) return;
 
 		await this.initPublisher();
 
-		this.initialized = true;
+		this.isInitialized = true;
 
 		await this.tryBecomeLeader();
 
@@ -44,7 +54,7 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 		);
 	}
 
-	async destroy() {
+	async shutdown() {
 		clearInterval(this.leaderCheckInterval);
 
 		if (this.isLeader) await this.redisPublisher.clear(this.leaderKey);

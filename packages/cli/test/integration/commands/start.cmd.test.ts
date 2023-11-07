@@ -8,7 +8,7 @@ import config from '@/config';
 import { License } from '@/License';
 
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
-import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 import { RedisService } from '@/services/redis.service';
@@ -25,7 +25,7 @@ beforeAll(() => {
 	mockInstance(RedisService);
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
-	mockInstance(MultiMainInstancePublisher);
+	mockInstance(MultiMainSetup);
 	mockInstance(OrchestrationHandlerMainService);
 });
 
@@ -38,7 +38,7 @@ test('should not init license if instance is follower in multi-main scenario', a
 	config.set('executions.mode', 'queue');
 	config.set('leaderSelection.enabled', true);
 
-	jest.spyOn(MultiMainInstancePublisher.prototype, 'isFollower', 'get').mockReturnValue(true);
+	jest.spyOn(MultiMainSetup.prototype, 'isFollower', 'get').mockReturnValue(true);
 	jest.spyOn(BaseCommand.prototype, 'init').mockImplementation(async () => {});
 
 	const licenseMock = mockInstance(License, {

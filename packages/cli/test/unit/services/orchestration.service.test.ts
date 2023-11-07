@@ -1,6 +1,6 @@
 import Container from 'typedi';
 import config from '@/config';
-import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
+import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import type { RedisServiceWorkerResponseObject } from '@/services/redis/RedisServiceCommands';
 import { eventBus } from '@/eventbus';
 import { RedisService } from '@/services/redis.service';
@@ -12,7 +12,7 @@ import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { Logger } from '@/Logger';
 
-const os = Container.get(SingleMainInstancePublisher);
+const os = Container.get(SingleMainSetup);
 const handler = Container.get(OrchestrationHandlerMainService);
 
 let queueModeId: string;
