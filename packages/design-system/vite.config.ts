@@ -1,9 +1,29 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
+import { type UserConfig } from 'vitest';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 
-const { coverageReporters } = require('../../jest.config.js');
+export const vitestConfig = defineVitestConfig({
+	test: {
+		globals: true,
+		environment: 'jsdom',
+		setupFiles: ['./src/__tests__/setup.ts'],
+		coverage:
+			process.env.COVERAGE_ENABLED === 'true'
+				? {
+						provider: 'v8',
+						reporter: require('../../jest.config.js').coverageReporters,
+						all: true,
+				  }
+				: undefined,
+		css: {
+			modules: {
+				classNameStrategy: 'non-scoped',
+			},
+		},
+	},
+}) as UserConfig;
 
 export default mergeConfig(
 	defineConfig({
@@ -35,21 +55,5 @@ export default mergeConfig(
 			},
 		},
 	}),
-	defineVitestConfig({
-		test: {
-			globals: true,
-			environment: 'jsdom',
-			setupFiles: ['./src/__tests__/setup.ts'],
-			coverage: {
-				provider: 'v8',
-				reporter: coverageReporters,
-				all: true,
-			},
-			css: {
-				modules: {
-					classNameStrategy: 'non-scoped',
-				},
-			},
-		},
-	}),
+	vitestConfig,
 );
