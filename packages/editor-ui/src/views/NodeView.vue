@@ -4587,13 +4587,16 @@ export default defineComponent({
 				});
 
 				this.ndvStore.activeNodeName = null;
-
-				if (connectiontype) {
-					void useViewStacks().gotoCompatibleConnectionView(
-						connectiontype,
-						false,
-						this.getNodeCreatorFilter(node, connectiontype),
-					);
+				// Select the node so that the node creator knows which node to connect to
+				const nodeData = this.workflowsStore.getNodeByName(node);
+				if (connectiontype && nodeData) {
+					this.insertNodeAfterSelected({
+						index: 0,
+						endpointUuid: `${nodeData.id}-input${connectiontype}0`,
+						eventSource: NODE_CREATOR_OPEN_SOURCES.NOTICE_ERROR_MESSAGE,
+						outputType: connectiontype,
+						sourceId: nodeData.id,
+					});
 				}
 			},
 		});
