@@ -35,6 +35,7 @@ import { rateLimit } from 'express-rate-limit';
 const throttle = rateLimit({
 	windowMs: 5 * 60 * 1000, // 5 minutes
 	limit: 5, // Limit each IP to 5 requests per `window` (here, per 5 minutes).
+	message: { message: 'Too many requests' },
 });
 
 @RestController()
