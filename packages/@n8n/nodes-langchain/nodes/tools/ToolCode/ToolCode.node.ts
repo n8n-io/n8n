@@ -16,14 +16,14 @@ import { DynamicTool } from 'langchain/tools';
 
 export class ToolCode implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Code Tool',
+		displayName: 'Custom Code Tool',
 		name: 'toolCode',
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Create a tool via code',
+		description: 'Write a tool in JS or Python',
 		defaults: {
-			name: 'Code Tool',
+			name: 'Custom Code Tool',
 		},
 		codex: {
 			categories: ['AI'],

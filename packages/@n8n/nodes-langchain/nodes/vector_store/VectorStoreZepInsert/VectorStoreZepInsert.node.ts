@@ -105,7 +105,7 @@ export class VectorStoreZepInsert implements INodeType {
 		const items = this.getInputData(0);
 		const collectionName = this.getNodeParameter('collectionName', 0) as string;
 		const options =
-			(this.getNodeParameter('options', 0) as {
+			(this.getNodeParameter('options', 0, {}) as {
 				isAutoEmbedded?: boolean;
 				embeddingDimensions?: number;
 			}) || {};
