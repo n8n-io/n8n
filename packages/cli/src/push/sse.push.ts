@@ -1,14 +1,14 @@
 import SSEChannel from 'sse-channel';
 import { Service } from 'typedi';
 import { Logger } from '@/Logger';
-import { AbstractBidirectionalPush } from './abstractBidirectional.push';
+import { AbstractPush } from './abstract.push';
 import type { PushRequest, PushResponse } from './types';
 import type { User } from '@/databases/entities/User';
 
 type Connection = { req: PushRequest; res: PushResponse };
 
 @Service()
-export class SSEPush extends AbstractBidirectionalPush<Connection> {
+export class SSEPush extends AbstractPush<Connection> {
 	readonly channel = new SSEChannel();
 
 	readonly connections: Record<string, Connection> = {};
