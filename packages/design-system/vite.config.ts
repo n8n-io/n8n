@@ -9,14 +9,15 @@ export const vitestConfig = defineVitestConfig({
 		globals: true,
 		environment: 'jsdom',
 		setupFiles: ['./src/__tests__/setup.ts'],
-		coverage:
-			process.env.COVERAGE_ENABLED === 'true'
-				? {
+		...(process.env.COVERAGE_ENABLED === 'true'
+			? {
+					coverage: {
 						provider: 'v8',
 						reporter: require('../../jest.config.js').coverageReporters,
 						all: true,
-				  }
-				: undefined,
+					},
+			  }
+			: {}),
 		css: {
 			modules: {
 				classNameStrategy: 'non-scoped',
