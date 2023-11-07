@@ -152,16 +152,18 @@ export default defineComponent({
 </script>
 
 <style lang="scss" module>
-.userActionsMenu {
-	min-width: 160px;
-	padding: var(--spacing-4xs) 0;
-}
+.actionDropdownContainer {
+	.userActionsMenu {
+		min-width: 160px;
+		padding: var(--spacing-4xs) 0;
+	}
 
-.elementItem {
-	padding: 0;
+	.elementItem {
+		padding: 0;
 
-	&:hover {
-		color: inherit;
+		&:hover {
+			color: inherit;
+		}
 	}
 }
 
