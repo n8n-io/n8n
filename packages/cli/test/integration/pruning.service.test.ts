@@ -9,6 +9,7 @@ import { PruningService } from '@/services/pruning.service';
 import { BinaryDataService } from 'n8n-core';
 import { Logger } from '@/Logger';
 import { mockInstance } from './shared/utils';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;
@@ -24,6 +25,7 @@ describe('softDeleteOnPruningCycle()', () => {
 			mockInstance(Logger),
 			Db.collections.Execution,
 			mockInstance(BinaryDataService),
+			mockInstance(MultiMainSetup),
 		);
 
 		workflow = await testDb.createWorkflow();
