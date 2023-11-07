@@ -228,8 +228,7 @@ isDst.doc = {
 	name: 'isDst',
 	returnType: 'boolean',
 	description: 'Checks if a Date is within Daylight Savings Time.',
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-isDst',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-isDst',
 };
 
 isWeekend.doc = {
@@ -254,8 +253,7 @@ extract.doc = {
 	description: 'Extracts the part defined in `datePart` from a Date. Default unit is `week`.',
 	returnType: 'number',
 	args: [{ name: 'datePart?', type: 'DurationUnit' }],
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-extract',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-extract',
 };
 
 format.doc = {
@@ -263,8 +261,7 @@ format.doc = {
 	description: 'Formats a Date in the given structure.',
 	returnType: 'string',
 	args: [{ name: 'fmt', type: 'TimeFormat' }],
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-format',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-format',
 };
 
 isBetween.doc = {
@@ -287,8 +284,7 @@ isInLast.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-isInLast',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-isInLast',
 };
 
 minus.doc = {
@@ -299,8 +295,7 @@ minus.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-minus',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-minus',
 };
 
 plus.doc = {
@@ -311,8 +306,7 @@ plus.doc = {
 		{ name: 'n', type: 'number' },
 		{ name: 'unit?', type: 'DurationUnit' },
 	],
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-plus',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/dates/#date-plus',
 };
 
 export const dateExtensions: ExtensionMap = {

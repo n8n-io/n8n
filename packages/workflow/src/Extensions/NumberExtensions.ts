@@ -44,8 +44,7 @@ ceil.doc = {
 	name: 'ceil',
 	description: 'Rounds up a number to a whole number.',
 	returnType: 'number',
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-ceil',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/numbers/#number-ceil',
 };
 
 floor.doc = {

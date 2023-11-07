@@ -528,8 +528,7 @@ hash.doc = {
 	description: 'Returns a string hashed with the given algorithm. Default algorithm is `md5`.',
 	returnType: 'string',
 	args: [{ name: 'algo?', type: 'Algorithm' }],
-	docURL:
-		'https://docs.n8n.io/code/expressions/data-transformation-functions/strings/#string-hash',
+	docURL: 'https://docs.n8n.io/code/expressions/data-transformation-functions/strings/#string-hash',
 };
 
 quote.doc = {
