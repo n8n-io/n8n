@@ -75,7 +75,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		getNodeType() {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-				if (nodeTypeName.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)) {
+				if (nodeTypeName?.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)) {
 					const credentialName = nodeTypeName.split('.')[1];
 					const httpNode = this.getNodeType(
 						HTTP_REQUEST_NODE_TYPE,
