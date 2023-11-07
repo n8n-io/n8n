@@ -16,7 +16,6 @@ import type {
 	IWorkflowBase,
 	CredentialLoadingDetails,
 	Workflow,
-	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	IExecutionsSummary,
@@ -63,20 +62,6 @@ import type {
 } from '@db/repositories';
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
-
-export interface IActivationError {
-	time: number;
-	error: {
-		message: string;
-	};
-}
-
-export interface IQueuedWorkflowActivations {
-	activationMode: WorkflowActivateMode;
-	lastTimeout: number;
-	timeout: NodeJS.Timeout;
-	workflowData: IWorkflowDb;
-}
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
