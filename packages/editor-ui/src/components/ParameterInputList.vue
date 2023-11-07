@@ -102,7 +102,7 @@
 				labelSize="small"
 				@valueChanged="valueChanged"
 			/>
-			<Filter
+			<FilterConditions
 				v-else-if="parameter.type === 'filter'"
 				:parameter="parameter"
 				:value="getParameterValue(nodeValues, parameter.name, path)"
@@ -163,7 +163,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 import ResourceMapper from '@/components/ResourceMapper/ResourceMapper.vue';
-import Filter from '@/components/Filter/Filter.vue';
+import FilterConditions from '@/components/FilterConditions/FilterConditions.vue';
 import { get, set } from 'lodash-es';
 import { useNDVStore } from '@/stores/ndv.store';
 import { useNodeTypesStore } from '@/stores/nodeTypes.store';
@@ -186,7 +186,7 @@ export default defineComponent({
 		CollectionParameter,
 		ImportParameter,
 		ResourceMapper,
-		Filter,
+		FilterConditions,
 	},
 	props: {
 		nodeValues: {

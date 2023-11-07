@@ -1246,13 +1246,6 @@ export const tryToParseBoolean = (value: unknown): value is boolean => {
 };
 
 export const tryToParseDateTime = (value: unknown): DateTime => {
-	if (typeof value === 'number') {
-		const unixDate = DateTime.fromSeconds(value);
-		if (unixDate.isValid) {
-			return unixDate;
-		}
-	}
-
 	const dateString = String(value).trim();
 
 	// Rely on luxon to parse different date formats
