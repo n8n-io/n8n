@@ -297,6 +297,8 @@ export class FrontendService {
 
 		this.settings.mfa.enabled = config.get('mfa.enabled');
 
+		this.settings.executionMode = config.getEnv('executions.mode');
+
 		return this.settings;
 	}
 

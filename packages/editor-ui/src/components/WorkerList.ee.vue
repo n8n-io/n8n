@@ -11,7 +11,7 @@
 			<div v-if="workerIds.length === 0">{{ $locale.baseText('workerList.empty') }}</div>
 			<div v-else>
 				<div v-for="workerId in workerIds" :key="workerId" :class="$style.card">
-					<WorkerCard :workerId="workerId" />
+					<WorkerCard :workerId="workerId" data-test-id="worker-card" />
 				</div>
 			</div>
 		</div>
@@ -63,10 +63,16 @@ export default defineComponent({
 		this.isMounting = false;
 	},
 	beforeMount() {
+		if (window.Cypress !== undefined) {
+			return;
+		}
 		this.pushConnect();
 		this.orchestrationManagerStore.startWorkerStatusPolling();
 	},
 	beforeUnmount() {
+		if (window.Cypress !== undefined) {
+			return;
+		}
 		this.orchestrationManagerStore.stopWorkerStatusPolling();
 		this.pushDisconnect();
 	},

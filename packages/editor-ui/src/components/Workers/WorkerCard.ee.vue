@@ -5,7 +5,7 @@
 				tag="h2"
 				bold
 				:class="stale ? [$style.cardHeading, $style.stale] : [$style.cardHeading]"
-				data-test-id="workflow-card-name"
+				data-test-id="worker-card-name"
 			>
 				{{ worker.workerId }} ({{ worker.hostname }}) | Average Load:
 				{{ averageWorkerLoadFromLoadsAsString(worker.loadAvg ?? [0]) }} | Free Memory:

@@ -12,7 +12,7 @@ describe('Worker View (unlicensed)', () => {
 	it('should not show up in the menu sidebar', () => {
 		cy.signin(INSTANCE_MEMBERS[0]);
 		cy.visit(workerViewPage.url);
-		workerViewPage.getters.menuItems().find('#Workers').should('not.exist');
+		workerViewPage.getters.menuItem().should('not.exist');
 	});
 
 	it('should show action box', () => {
@@ -22,7 +22,7 @@ describe('Worker View (unlicensed)', () => {
 	});
 });
 
-describe.skip('Worker View (licensed)', () => {
+describe('Worker View (licensed)', () => {
 	beforeEach(() => {
 		cy.enableFeature('workerView');
 		cy.enableQueueMode();
@@ -32,10 +32,10 @@ describe.skip('Worker View (licensed)', () => {
 		cy.signin(INSTANCE_MEMBERS[0]);
 		cy.enableQueueMode();
 		cy.visit(workerViewPage.url);
-		workerViewPage.getters.menuItems().find('#Workers').should('exist');
+		workerViewPage.getters.menuItem().should('exist');
 	});
 
-	it('should show action box', () => {
+	it('should show worker list view', () => {
 		cy.signin(INSTANCE_MEMBERS[0]);
 		cy.visit(workerViewPage.url);
 		workerViewPage.getters.workerViewLicensed().should('exist');
