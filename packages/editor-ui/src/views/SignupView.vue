@@ -121,7 +121,7 @@ export default defineComponent({
 		async onSubmit(values: { [key: string]: string | boolean }) {
 			if (!this.inviterId || !this.inviteeId) {
 				this.showError(
-					new Error(this.$locale.baseText('auth.changePassword.tokenValidationError')),
+					new Error(this.$locale.baseText('auth.signup.tokenValidationError')),
 					this.$locale.baseText('auth.signup.setupYourAccountError'),
 				);
 				return;

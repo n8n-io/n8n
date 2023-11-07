@@ -19,7 +19,12 @@ import type { ServeStaticOptions } from 'serve-static';
 import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
 import { Not, In } from 'typeorm';
 
-import { LoadMappingOptions, LoadNodeParameterOptions, LoadNodeListSearch } from 'n8n-core';
+import {
+	LoadMappingOptions,
+	LoadNodeParameterOptions,
+	LoadNodeListSearch,
+	InstanceSettings,
+} from 'n8n-core';
 
 import type {
 	INodeCredentials,
@@ -46,7 +51,6 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	EDITOR_UI_DIST_DIR,
-	GENERATED_STATIC_DIR,
 	inDevelopment,
 	inE2ETests,
 	N8N_VERSION,
@@ -272,15 +276,7 @@ export class Server extends AbstractServer {
 			),
 			Container.get(MeController),
 			new NodeTypesController(config, nodeTypes),
-			new PasswordResetController(
-				logger,
-				externalHooks,
-				internalHooks,
-				mailer,
-				userService,
-				jwtService,
-				mfaService,
-			),
+			Container.get(PasswordResetController),
 			Container.get(TagsController),
 			new TranslationController(config, this.credentialTypes),
 			new UsersController(
@@ -959,11 +955,12 @@ export class Server extends AbstractServer {
 			);
 		}
 
+		const { staticCacheDir } = Container.get(InstanceSettings);
 		if (frontendService) {
 			const staticOptions: ServeStaticOptions = {
 				cacheControl: false,
 				setHeaders: (res: express.Response, path: string) => {
-					const isIndex = path === pathJoin(GENERATED_STATIC_DIR, 'index.html');
+					const isIndex = path === pathJoin(staticCacheDir, 'index.html');
 					const cacheControl = isIndex
 						? 'no-cache, no-store, must-revalidate'
 						: 'max-age=86400, immutable';
@@ -989,7 +986,7 @@ export class Server extends AbstractServer {
 
 			this.app.use(
 				'/',
-				express.static(GENERATED_STATIC_DIR),
+				express.static(staticCacheDir),
 				express.static(EDITOR_UI_DIST_DIR, staticOptions),
 			);
 
@@ -999,7 +996,7 @@ export class Server extends AbstractServer {
 				next();
 			});
 		} else {
-			this.app.use('/', express.static(GENERATED_STATIC_DIR));
+			this.app.use('/', express.static(staticCacheDir));
 		}
 	}
 

@@ -236,19 +236,7 @@ export const setupTestServer = ({
 						registerController(app, config, Container.get(MeController));
 						break;
 					case 'passwordReset':
-						registerController(
-							app,
-							config,
-							new PasswordResetController(
-								logger,
-								externalHooks,
-								internalHooks,
-								mailer,
-								userService,
-								Container.get(JwtService),
-								mfaService,
-							),
-						);
+						registerController(app, config, Container.get(PasswordResetController));
 						break;
 					case 'owner':
 						registerController(

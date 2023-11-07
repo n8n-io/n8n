@@ -36,6 +36,7 @@ afterEach(() => {
 
 test('should not init license if instance is follower in multi-main scenario', async () => {
 	config.set('executions.mode', 'queue');
+	config.set('endpoints.disableUi', true);
 	config.set('leaderSelection.enabled', true);
 
 	jest.spyOn(MultiMainSetup.prototype, 'isFollower', 'get').mockReturnValue(true);
