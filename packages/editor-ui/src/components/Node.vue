@@ -110,7 +110,7 @@
 					text
 					icon="play"
 					:disabled="workflowRunning || isConfigNode"
-					:title="$locale.baseText('node.execute')"
+					:title="$locale.baseText('node.executeNode')"
 					@click="executeNode"
 				/>
 				<n8n-icon-button
@@ -655,27 +655,6 @@ export default defineComponent({
 				button_name: 'execute',
 				workflow_id: this.workflowsStore.workflowId,
 			});
-		},
-		async deleteNode() {
-			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
-				button_name: 'delete',
-				workflow_id: this.workflowsStore.workflowId,
-			});
-
-			// Wait a tick else vue causes problems because the data is gone
-			await this.$nextTick();
-			this.$emit('removeNode', this.data.name);
-		},
-		async duplicateNode() {
-			this.$telemetry.track('User clicked node hover button', {
-				node_type: this.data.type,
-				button_name: 'duplicate',
-				workflow_id: this.workflowsStore.workflowId,
-			});
-			// Wait a tick else vue causes problems because the data is gone
-			await this.$nextTick();
-			this.$emit('duplicateNode', this.data.name);
 		},
 
 		onClick(event: MouseEvent) {

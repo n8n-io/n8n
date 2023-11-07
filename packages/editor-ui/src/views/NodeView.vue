@@ -45,13 +45,9 @@
 					/>
 					<node
 						v-for="nodeData in nodesToRender"
-						@duplicateNode="duplicateNode"
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
-						@pinNode="pinNode"
-						@renameNode="renameNodePrompt"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
@@ -108,7 +104,7 @@
 				<CanvasControls />
 			</Suspense>
 			<Suspense>
-				<ContextMenu />
+				<ContextMenu @action="onContextMenuAction" />
 			</Suspense>
 			<div class="workflow-execute-wrapper" v-if="!isReadOnlyRoute && !readOnlyEnv">
 				<span
@@ -248,12 +244,14 @@ import {
 	useTitleChange,
 	useExecutionDebugging,
 	useContextMenu,
+	ContextMenuAction,
+	useDataSchema,
 } from '@/composables';
 import { useUniqueNodeName } from '@/composables/useUniqueNodeName';
 import { useI18n } from '@/composables/useI18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { workflowRun } from '@/mixins/workflowRun';
-import { pinData } from '@/mixins/pinData';
+import { PinDataSource, pinData } from '@/mixins/pinData';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import ContextMenu from '@/components/ContextMenu/ContextMenu.vue';
@@ -398,10 +396,12 @@ export default defineComponent({
 	setup(props) {
 		const locale = useI18n();
 		const contextMenu = useContextMenu();
+		const dataSchema = useDataSchema();
 
 		return {
 			locale,
 			contextMenu,
+			dataSchema,
 			...useCanvasMouseSelect(),
 			...useGlobalLinkActions(),
 			...useTitleChange(),
@@ -1085,6 +1085,8 @@ export default defineComponent({
 			}
 		},
 		async keyDown(e: KeyboardEvent) {
+			this.contextMenu.close();
+
 			if (e.key === 's' && this.isCtrlKeyPressed(e)) {
 				e.stopPropagation();
 				e.preventDefault();
@@ -1133,31 +1135,27 @@ export default defineComponent({
 				return;
 			}
 
-			if (e.key === 'd' && !this.isCtrlKeyPressed(e)) {
-				void this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
-			} else if (e.key === 'd' && this.isCtrlKeyPressed(e)) {
-				const selectedNodes = this.uiStore.getSelectedNodes;
+			const selectedNodes = this.uiStore.getSelectedNodes
+				.map((node) => node && this.workflowsStore.getNodeByName(node.name))
+				.filter((node) => !!node) as INode[];
 
+			if (e.key === 'd' && !this.isCtrlKeyPressed(e)) {
+				void this.callDebounced('toggleActivationNodes', { debounceTime: 350 }, selectedNodes);
+			} else if (e.key === 'd' && this.isCtrlKeyPressed(e)) {
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
-					selectedNodes.forEach((node) => {
-						void this.duplicateNode(node.name);
-					});
+					void this.duplicateNodes(selectedNodes);
 				}
 			} else if (e.key === 'p' && !this.isCtrlKeyPressed(e)) {
-				const selectedNodes = this.uiStore.getSelectedNodes;
-
 				if (selectedNodes.length > 0) {
 					e.preventDefault();
-					selectedNodes.forEach((node) => {
-						void this.pinNode(node.name);
-					});
+					this.togglePinNodes(selectedNodes, 'keyboard-shortcut');
 				}
 			} else if (e.key === 'Delete' || e.key === 'Backspace') {
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
+				void this.callDebounced('deleteNodes', { debounceTime: 500 }, selectedNodes);
 			} else if (e.key === 'Tab') {
 				this.onToggleNodeCreator({
 					source: NODE_CREATOR_OPEN_SOURCES.TAB,
@@ -1171,7 +1169,6 @@ export default defineComponent({
 			) {
 				void this.onRunWorkflow();
 			} else if (e.key === 's' && e.shiftKey && !this.isReadOnlyRoute && !this.readOnlyEnv) {
-				console.log('heelo');
 				void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 			} else if (e.key === this.controlKeyCode) {
 				this.ctrlKeyPressed = true;
@@ -1193,13 +1190,13 @@ export default defineComponent({
 
 				void this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 			} else if (e.key === 'c' && this.isCtrlKeyPressed(e)) {
-				void this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
+				void this.callDebounced('copyNodes', { debounceTime: 1000 }, selectedNodes);
 			} else if (e.key === 'x' && this.isCtrlKeyPressed(e)) {
 				// Cut nodes
 				e.stopPropagation();
 				e.preventDefault();
 
-				void this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
+				void this.callDebounced('cutNodes', { debounceTime: 1000 }, selectedNodes);
 			} else if (e.key === 'n' && this.isCtrlKeyPressed(e) && e.altKey) {
 				// Create a new workflow
 				e.stopPropagation();
@@ -1367,42 +1364,46 @@ export default defineComponent({
 			}
 		},
 
-		deactivateSelectedNode() {
+		toggleActivationNodes(nodes: INode[]) {
 			if (!this.editAllowedCheck()) {
 				return;
 			}
-			this.disableNodes(
-				this.uiStore.getSelectedNodes
-					.map((node) => node && this.workflowsStore.getNodeByName(node.name))
-					.filter((node) => !!node) as INode[],
-				true,
-			);
+
+			this.disableNodes(nodes, true);
 		},
 
-		pinNode(name: string) {
-			const node = this.workflowsStore.getNodeByName(name);
-			const pinData = this.workflowsStore.pinDataByNodeName(name);
+		togglePinNodes(nodes: INode[], source: PinDataSource) {
+			if (!this.editAllowedCheck()) {
+				return;
+			}
 
-			if (node) {
-				const data = this.getNodeInputData(node);
-				if (pinData) {
-					this.workflowsStore.unpinData({ node });
-				} else if (data) {
-					this.workflowsStore.pinData({ node, data });
+			this.historyStore.startRecordingUndo();
+
+			const nextStatePinned = nodes.some(
+				(node) => !this.workflowsStore.pinDataByNodeName(node.name),
+			);
+
+			for (const node of nodes) {
+				if (nextStatePinned) {
+					const dataToPin = this.dataSchema.getInputDataWithPinned(node);
+					if (dataToPin.length !== 0) {
+						this.setPinData(node, dataToPin, source);
+					}
+				} else {
+					this.unsetPinData(node, source);
 				}
 			}
+
+			this.historyStore.stopRecordingUndo();
 		},
 
-		deleteSelectedNodes() {
+		deleteNodes(nodes: INode[]) {
 			// Copy "selectedNodes" as the nodes get deleted out of selection
 			// when they get deleted and if we would use original it would mess
 			// with the index and would so not delete all nodes
-			const nodesToDelete: string[] = this.uiStore.getSelectedNodes.map((node: INodeUi) => {
-				return node.name;
-			});
 			this.historyStore.startRecordingUndo();
-			nodesToDelete.forEach((nodeName: string) => {
-				this.removeNode(nodeName, true, false);
+			nodes.forEach((node) => {
+				this.removeNode(node.name, true, false);
 			});
 			setTimeout(() => {
 				this.historyStore.stopRecordingUndo();
@@ -1490,16 +1491,16 @@ export default defineComponent({
 			}
 		},
 
-		cutSelectedNodes() {
+		cutNodes(nodes: INode[]) {
 			const deleteCopiedNodes = !this.isReadOnlyRoute && !this.readOnlyEnv;
-			this.copySelectedNodes(deleteCopiedNodes);
+			this.copyNodes(nodes, deleteCopiedNodes);
 			if (deleteCopiedNodes) {
-				this.deleteSelectedNodes();
+				this.deleteNodes(nodes);
 			}
 		},
 
-		copySelectedNodes(isCut: boolean) {
-			void this.getSelectedNodesToSave().then((data) => {
+		copyNodes(nodes: INode[], isCut = false) {
+			void this.getNodesToSave(nodes).then((data) => {
 				const workflowToCopy: IWorkflowToShare = {
 					meta: {
 						instanceId: this.rootStore.instanceId,
@@ -1758,6 +1759,11 @@ export default defineComponent({
 				);
 				if (source === 'paste') {
 					this.$telemetry.track('User pasted nodes', {
+						workflow_id: this.workflowsStore.workflowId,
+						node_graph_string: nodeGraph,
+					});
+				} else if (source === 'duplicate') {
+					this.$telemetry.track('User duplicated nodes', {
 						workflow_id: this.workflowsStore.workflowId,
 						node_graph_string: nodeGraph,
 					});
@@ -3262,84 +3268,13 @@ export default defineComponent({
 				this.workflowsStore.removeConnection({ connection: connectionInfo });
 			}
 		},
-		async duplicateNode(nodeName: string) {
+		async duplicateNodes(nodes: INode[]): Promise<void> {
 			if (!this.editAllowedCheck()) {
 				return;
 			}
-			const node = this.workflowsStore.getNodeByName(nodeName);
 
-			if (node) {
-				const nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-
-				if (
-					nodeTypeData?.maxNodes !== undefined &&
-					this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes
-				) {
-					this.showMaxNodeTypeError(nodeTypeData);
-					return;
-				}
-
-				// Deep copy the data so that data on lower levels of the node-properties do
-				// not share objects
-				const newNodeData = deepCopy(this.getNodeDataToSave(node));
-				newNodeData.id = uuid();
-
-				const localizedName = this.locale.localizeNodeName(newNodeData.name, newNodeData.type);
-
-				newNodeData.name = this.uniqueNodeName(localizedName);
-
-				newNodeData.position = NodeViewUtils.getNewNodePosition(
-					this.nodes,
-					[node.position[0], node.position[1] + 140],
-					[0, 140],
-				);
-
-				if (newNodeData.webhookId) {
-					// Make sure that the node gets a new unique webhook-ID
-					newNodeData.webhookId = uuid();
-				}
-
-				if (
-					newNodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
-				) {
-					const usedCredentials = this.workflowsStore.usedCredentials;
-					newNodeData.credentials = Object.fromEntries(
-						Object.entries(newNodeData.credentials).filter(([_, credential]) => {
-							return (
-								credential.id &&
-								(!usedCredentials[credential.id] ||
-									usedCredentials[credential.id]?.currentUserHasAccess)
-							);
-						}),
-					);
-				}
-
-				await this.addNodes([newNodeData], [], true);
-
-				const pinDataForNode = this.workflowsStore.pinDataByNodeName(nodeName);
-				if (pinDataForNode?.length) {
-					try {
-						this.setPinData(newNodeData, pinDataForNode, 'duplicate-node');
-					} catch (error) {
-						console.error(error);
-					}
-				}
-
-				this.uiStore.stateIsDirty = true;
-
-				// Automatically deselect all nodes and select the current one and also active
-				// current node
-				this.deselectAllNodes();
-				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, false);
-				});
-
-				this.$telemetry.track('User duplicated node', {
-					node_type: node.type,
-					workflow_id: this.workflowsStore.workflowId,
-				});
-			}
+			const workflowData = deepCopy(await this.getNodesToSave(nodes));
+			await this.importWorkflowData(workflowData, 'duplicate', false);
 		},
 		getJSPlumbConnection(
 			sourceNodeName: string,
@@ -4087,21 +4022,43 @@ export default defineComponent({
 				connections: tempWorkflow.connectionsBySourceNode,
 			};
 		},
-		async getSelectedNodesToSave(): Promise<IWorkflowData> {
+		async getNodesToSave(nodes: INode[]): Promise<IWorkflowData> {
 			const data: IWorkflowData = {
 				nodes: [],
 				connections: {},
+				pinData: {},
 			};
 
 			// Get data of all the selected noes
 			let nodeData;
 			const exportNodeNames: string[] = [];
 
-			for (const node of this.uiStore.getSelectedNodes) {
+			for (const node of nodes) {
 				nodeData = this.getNodeDataToSave(node);
 				exportNodeNames.push(node.name);
 
 				data.nodes.push(nodeData);
+
+				const pinDataForNode = this.workflowsStore.pinDataByNodeName(node.name);
+				if (pinDataForNode) {
+					data.pinData![node.name] = pinDataForNode;
+				}
+
+				if (
+					nodeData.credentials &&
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
+				) {
+					const usedCredentials = this.workflowsStore.usedCredentials;
+					nodeData.credentials = Object.fromEntries(
+						Object.entries(nodeData.credentials).filter(([_, credential]) => {
+							return (
+								credential.id &&
+								(!usedCredentials[credential.id] ||
+									usedCredentials[credential.id]?.currentUserHasAccess)
+							);
+						}),
+					);
+				}
 			}
 
 			// Get only connections of exported nodes and ignore all other ones
@@ -4466,6 +4423,49 @@ export default defineComponent({
 					await this.applyExecutionData(this.$route.params.executionId as string);
 					this.workflowsStore.isInDebugMode = true;
 				}
+			}
+		},
+		onContextMenuAction(action: ContextMenuAction, nodes: INode[]): void {
+			switch (action) {
+				case 'copy':
+					this.copyNodes(nodes);
+					break;
+				case 'delete':
+					this.deleteNodes(nodes);
+					break;
+				case 'duplicate':
+					void this.duplicateNodes(nodes);
+					break;
+				case 'execute':
+					this.onRunNode(nodes[0].name, 'NodeView.onContextMenuAction');
+					break;
+				case 'open':
+					this.ndvStore.activeNodeName = nodes[0].name;
+					break;
+				case 'rename':
+					void this.renameNodePrompt(nodes[0].name);
+					break;
+				case 'toggle_activation':
+					this.toggleActivationNodes(nodes);
+					break;
+				case 'toggle_pin':
+					this.togglePinNodes(nodes, 'context-menu');
+					break;
+				case 'add_node':
+					this.onToggleNodeCreator({
+						source: NODE_CREATOR_OPEN_SOURCES.CONTEXT_MENU,
+						createNodeActive: !this.isReadOnlyRoute && !this.readOnlyEnv,
+					});
+					break;
+				case 'add_sticky':
+					void this.onAddNodes({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+					break;
+				case 'select_all':
+					this.selectAllNodes();
+					break;
+				case 'deselect_all':
+					this.deselectAllNodes();
+					break;
 			}
 		},
 	},

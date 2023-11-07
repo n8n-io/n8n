@@ -117,7 +117,7 @@ export default function useCanvasMouseSelect() {
 	}
 
 	function _mouseMoveSelect(e: MouseEvent) {
-		if (e.buttons === 0 && !isContextMenuOpen) {
+		if (e.buttons === 0) {
 			// Mouse button is not pressed anymore so stop selection mode
 			// Happens normally when mouse leave the view pressed and then
 			// comes back unpressed.
@@ -130,7 +130,7 @@ export default function useCanvasMouseSelect() {
 
 	function mouseUpMouseSelect(e: MouseEvent) {
 		// Ignore right-click
-		if (e.button === 2) return;
+		if (e.button === 2 || isContextMenuOpen.value) return;
 
 		if (!selectActive.value) {
 			if (isTouchDevice && e.target instanceof HTMLElement) {

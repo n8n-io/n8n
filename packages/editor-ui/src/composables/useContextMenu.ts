@@ -6,6 +6,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import { getMousePosition } from '../utils/nodeViewUtils';
 import { useI18n } from './useI18n';
+import { useDataSchema } from './useDataSchema';
 
 export type ContextMenuTarget =
 	| { source: 'canvas' }
@@ -19,7 +20,11 @@ export type ContextMenuAction =
 	| 'execute'
 	| 'rename'
 	| 'toggle_pin'
-	| 'delete';
+	| 'delete'
+	| 'select_all'
+	| 'deselect_all'
+	| 'add_node'
+	| 'add_sticky';
 
 const position = ref<XYPosition>([0, 0]);
 const isOpen = ref(false);
@@ -31,6 +36,7 @@ export const useContextMenu = () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const { getInputDataWithPinned } = useDataSchema();
 
 	const i18n = useI18n();
 	const isReadOnly = computed(
@@ -52,8 +58,8 @@ export const useContextMenu = () => {
 
 	const canPinNode = (node: INode): boolean => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		const dataToPin = workflowsStore.getWorkflowResultDataByNodeName(node.name);
-		if (!nodeType || !dataToPin) return false;
+		const dataToPin = getInputDataWithPinned(node);
+		if (!nodeType || dataToPin.length === 0) return false;
 		return nodeType.outputs.length === 1 && !PIN_DATA_NODE_TYPES_DENYLIST.includes(node.type);
 	};
 
@@ -66,24 +72,28 @@ export const useContextMenu = () => {
 		actions.value = [];
 	};
 
-	const getTargetNodes = (menuTarget: ContextMenuTarget): INode[] => {
+	const targetNodes = computed(() => {
 		const selectedNodes = uiStore.selectedNodes;
-		if (menuTarget.source === 'canvas') {
+		const currentTarget = target.value;
+		if (currentTarget.source === 'canvas') {
 			return selectedNodes;
-		} else if (menuTarget.source === 'node-right-click') {
-			const isNodeInSelection = selectedNodes.some((node) => node.name === menuTarget.node.name);
-			return isNodeInSelection ? selectedNodes : [menuTarget.node];
+		} else if (currentTarget.source === 'node-right-click') {
+			const isNodeInSelection = selectedNodes.some((node) => node.name === currentTarget.node.name);
+			return isNodeInSelection ? selectedNodes : [currentTarget.node];
 		}
 
-		return [menuTarget.node];
-	};
+		return [currentTarget.node];
+	});
 
 	return {
 		isOpen,
 		position,
 		target,
 		actions,
+		targetNodes,
 		open: (event: MouseEvent, menuTarget: ContextMenuTarget = { source: 'canvas' }) => {
+			event.stopPropagation();
+
 			if (isOpen.value && menuTarget.source === target.value.source) {
 				// Close context menu, let browser open native context menu
 				close();
@@ -91,42 +101,46 @@ export const useContextMenu = () => {
 			}
 
 			event.preventDefault();
-			event.stopPropagation();
 
 			target.value = menuTarget;
 			position.value = getMousePosition(event);
-			console.log(event, position.value);
 			isOpen.value = true;
 
-			const nodes = getTargetNodes(menuTarget);
+			const nodes = targetNodes.value;
+
+			const selectionActions = [
+				{
+					id: 'select_all',
+					divided: true,
+					label: i18n.baseText('contextMenu.selectAll'),
+					shortcut: { metaKey: true, keys: ['A'] },
+					disabled: nodes.length === workflowsStore.allNodes.length,
+				},
+				{
+					id: 'deselect_all',
+					label: i18n.baseText('contextMenu.deselectAll'),
+					disabled: nodes.length === 0,
+				},
+			];
 
 			if (nodes.length === 0) {
 				actions.value = [
-					{
-						id: 'select_all',
-						label: i18n.baseText('contextMenu.selectAll'),
-						shortcut: { metaKey: true, keys: ['A'] },
-						disabled: nodes.length === workflowsStore.allNodes.length,
-					},
-					{
-						id: 'deselect_all',
-						label: i18n.baseText('contextMenu.deselectAll'),
-						disabled: nodes.length === 0,
-					},
 					{
 						id: 'add_node',
 						shortcut: { keys: ['Tab'] },
 						label: i18n.baseText('contextMenu.addNode'),
 						disabled: isReadOnly.value,
 					},
+					{
+						id: 'add_sticky',
+						shortcut: { shiftKey: true, keys: ['s'] },
+						label: i18n.baseText('contextMenu.addSticky'),
+						disabled: isReadOnly.value,
+					},
+					...selectionActions,
 				];
 			} else {
 				const menuActions: IActionDropdownItem[] = [
-					{
-						id: 'copy',
-						label: i18n.baseText('contextMenu.copy', { adjustToNumber: nodes.length }),
-						shortcut: { metaKey: true, keys: ['C'] },
-					},
 					{
 						id: 'toggle_activation',
 						label: nodes.every((node) => node.disabled)
@@ -135,20 +149,27 @@ export const useContextMenu = () => {
 						shortcut: { keys: ['D'] },
 						disabled: isReadOnly.value,
 					},
+
+					{
+						id: 'toggle_pin',
+						label: nodes.every((node) => hasPinData(node))
+							? i18n.baseText('contextMenu.unpin', { adjustToNumber: nodes.length })
+							: i18n.baseText('contextMenu.pin', { adjustToNumber: nodes.length }),
+						shortcut: { keys: ['p'] },
+						disabled: isReadOnly.value || !nodes.every(canPinNode),
+					},
+					{
+						id: 'copy',
+						label: i18n.baseText('contextMenu.copy', { adjustToNumber: nodes.length }),
+						shortcut: { metaKey: true, keys: ['C'] },
+					},
 					{
 						id: 'duplicate',
 						label: i18n.baseText('contextMenu.duplicate', { adjustToNumber: nodes.length }),
 						shortcut: { metaKey: true, keys: ['D'] },
 						disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 					},
-					{
-						id: 'pin',
-						label: nodes.some((node) => hasPinData(node))
-							? i18n.baseText('contextMenu.unpin', { adjustToNumber: nodes.length })
-							: i18n.baseText('contextMenu.pin', { adjustToNumber: nodes.length }),
-						shortcut: { keys: ['p'] },
-						disabled: isReadOnly.value || !nodes.every(canPinNode),
-					},
+					...selectionActions,
 					{
 						id: 'delete',
 						divided: true,
@@ -160,23 +181,23 @@ export const useContextMenu = () => {
 
 				if (nodes.length === 1) {
 					// Add actions only available for a single node
-					menuActions.splice(0, 0, {
-						id: 'open',
-						label: i18n.baseText('contextMenu.open'),
-						shortcut: { keys: ['↵'] },
-					});
-
-					menuActions.splice(0, 4, {
-						id: 'execute',
-						label: i18n.baseText('contextMenu.execute'),
-					});
-
-					menuActions.splice(0, 5, {
-						id: 'rename',
-						label: i18n.baseText('contextMenu.rename'),
-						shortcut: { keys: ['F2'] },
-						disabled: isReadOnly.value,
-					});
+					menuActions.unshift(
+						{
+							id: 'open',
+							label: i18n.baseText('contextMenu.open'),
+							shortcut: { keys: ['↵'] },
+						},
+						{
+							id: 'execute',
+							label: i18n.baseText('contextMenu.execute'),
+						},
+						{
+							id: 'rename',
+							label: i18n.baseText('contextMenu.rename'),
+							shortcut: { keys: ['F2'] },
+							disabled: isReadOnly.value,
+						},
+					);
 				}
 
 				actions.value = menuActions;
