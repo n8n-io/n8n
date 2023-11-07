@@ -5,14 +5,10 @@ export function getCredentialOnlyNodeType(
 	httpNode?: INodeTypeDescription,
 	credentialType?: ICredentialType,
 ): INodeTypeDescription | undefined {
-	if (!httpNode || !credentialType?.httpRequestNode) return undefined;
+	const { httpRequestNode } = credentialType ?? {};
+	if (!httpNode || !credentialType || !httpRequestNode) return undefined;
 
-	const {
-		docsUrl,
-		apiBaseUrl,
-		apiBaseUrlPlaceholder,
-		name: nodeName,
-	} = credentialType.httpRequestNode;
+	const { docsUrl, name: nodeName } = httpRequestNode;
 
 	const credentialOnlyNode = deepCopy(httpNode);
 
@@ -41,12 +37,15 @@ export function getCredentialOnlyNodeType(
 			case 'nodeCredentialType':
 				return { ...prop, type: 'hidden', default: credentialType.name };
 			case 'url':
-				return {
-					...prop,
-					default: apiBaseUrl,
-					placeholder:
-						apiBaseUrlPlaceholder ?? (apiBaseUrl ? `e.g. ${apiBaseUrl}` : prop.placeholder),
-				};
+				const properties = { ...prop };
+				if ('apiBaseUrl' in httpRequestNode) {
+					const { apiBaseUrl } = httpRequestNode;
+					properties.default = apiBaseUrl;
+					properties.placeholder = apiBaseUrl ? `e.g. ${apiBaseUrl}` : prop.placeholder;
+				} else {
+					properties.placeholder = httpRequestNode.apiBaseUrlPlaceholder;
+				}
+				return properties;
 			default:
 				return prop;
 		}

@@ -308,12 +308,10 @@ export interface ICredentialTestRequestData {
 	testRequest: ICredentialTestRequest;
 }
 
-export interface ICredentialHttpRequestNodeVariant {
+type ICredentialHttpRequestNode = {
+	name: string;
 	docsUrl: string;
-	name?: string;
-	apiBaseUrl?: string;
-	apiBaseUrlPlaceholder?: string;
-}
+} & ({ apiBaseUrl: string } | { apiBaseUrlPlaceholder: string });
 
 export interface ICredentialType {
 	name: string;
@@ -331,7 +329,7 @@ export interface ICredentialType {
 	) => Promise<IDataObject>;
 	test?: ICredentialTestRequest;
 	genericAuth?: boolean;
-	httpRequestNodeVariant?: ICredentialHttpRequestNodeVariant;
+	httpRequestNode?: ICredentialHttpRequestNode;
 }
 
 export interface ICredentialTypes {
