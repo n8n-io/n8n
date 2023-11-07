@@ -1,3 +1,18 @@
+## [1.15.2](https://github.com/n8n-io/n8n/compare/n8n@1.15.1...n8n@1.15.2) (2023-11-07)
+
+
+### Bug Fixes
+
+* **core:** Decrease reset password token expire time ([#7598](https://github.com/n8n-io/n8n/issues/7598)) ([44664d2](https://github.com/n8n-io/n8n/commit/44664d2580c12cc56b6e92a9b6c69fb6d681cd20))
+* **editor:** Allow overriding theme from query params ([#7591](https://github.com/n8n-io/n8n/issues/7591)) ([1362585](https://github.com/n8n-io/n8n/commit/136258580f0ca0242d5e146a6e20a9ee9beeedc3))
+* **editor:** Fix issue that frontend breaks with unkown nodes ([#7596](https://github.com/n8n-io/n8n/issues/7596)) ([dd7b7d1](https://github.com/n8n-io/n8n/commit/dd7b7d10fcb7b0c7f3e1b0eee584a18e9f9f8164))
+* **editor:** Hide not supported node options ([#7597](https://github.com/n8n-io/n8n/issues/7597)) ([658cacc](https://github.com/n8n-io/n8n/commit/658cacca1603b3fa86ca601f2878c2d2b497b6a0))
+* **editor:** Remove unknown credentials on pasting workflow ([#7582](https://github.com/n8n-io/n8n/issues/7582)) ([0768271](https://github.com/n8n-io/n8n/commit/076827175319b977cd11826dab17e5af0b0ede19))
+* **editor:** Reset canvas zoom before workspace reset in node view ([#7625](https://github.com/n8n-io/n8n/issues/7625)) ([44460f9](https://github.com/n8n-io/n8n/commit/44460f9034abb4fb639dc6939018f157248eee0b))
+* **editor:** Zoom in/out on canvas the same amount on scroll/gesture ([#7602](https://github.com/n8n-io/n8n/issues/7602)) ([be6fbf2](https://github.com/n8n-io/n8n/commit/be6fbf2d7edb3e71cae3c2fc65e8ea2b8c5a03cf))
+
+
+
 ## [1.15.1](https://github.com/n8n-io/n8n/compare/n8n@1.14.0...n8n@1.15.1) (2023-11-02)
 
 
