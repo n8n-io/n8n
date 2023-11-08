@@ -116,4 +116,13 @@ export class MultiMainSetup extends SingleMainSetup {
 			payload: { workflowId, pushSessionId },
 		});
 	}
+
+	async broadcastWorkflowWasDeactivated(workflowId: string, pushSessionId = '') {
+		if (!this.sanityCheck()) return;
+
+		await this.redisPublisher.publishToCommandChannel({
+			command: 'workflowWasDeactivated',
+			payload: { workflowId, pushSessionId },
+		});
+	}
 }

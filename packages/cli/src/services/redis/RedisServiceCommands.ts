@@ -8,7 +8,8 @@ export type RedisServiceCommand =
 	| 'reloadLicense'
 	| 'reloadExternalSecretsProviders'
 	| 'workflowWasUpdated'
-	| 'workflowWasActivated';
+	| 'workflowWasActivated'
+	| 'workflowWasDeactivated';
 
 /**
  * An object to be sent via Redis pub/sub from the main process to the workers.

@@ -229,6 +229,18 @@ export const pushConnection = defineComponent({
 				}
 			}
 
+			if (receivedData.type === 'workflowActivated') {
+				this.workflowsStore.setWorkflowActive(receivedData.data.workflowId);
+
+				return true;
+			}
+
+			if (receivedData.type === 'workflowDeactivated') {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+
+				return true;
+			}
+
 			// recovered execution data is handled like executionFinished data, however for security reasons
 			// we need to fetch the data from the server again rather than push it to all clients
 			let recoveredPushData: IPushDataExecutionFinished | undefined = undefined;

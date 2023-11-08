@@ -946,10 +946,10 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 
 		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
 			this.logger.debug(
-				'[Multi-main setup] Instance is follower, skipping removal of workflow from active workflows in memory...',
+				'[Multi-main setup] Instance is follower, skipping removal of workflow from active workflows in memory and broadcasting "workflowWasDeactivated" into command channel...',
 			);
 
-			// @TODO: broadcast workflowWasDeactivated
+			await this.multiMainSetup.broadcastWorkflowWasDeactivated(workflowId);
 
 			return;
 		}

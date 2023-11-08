@@ -10,6 +10,7 @@ import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee'
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
+import { Push } from '@/push';
 
 export async function handleCommandMessageMain(messageString: string) {
 	const queueModeId = config.getEnv('redis.queueModeId');
@@ -18,6 +19,7 @@ export async function handleCommandMessageMain(messageString: string) {
 	const logger = Container.get(Logger);
 	const multiMainSetup = Container.get(MultiMainSetup);
 	const externalHooks = Container.get(ExternalHooks);
+	const push = Container.get(Push);
 
 	if (message) {
 		logger.debug(
@@ -102,11 +104,13 @@ export async function handleCommandMessageMain(messageString: string) {
 					logger.error(`Error while trying to handle workflow update: ${error.message}`);
 				}
 
-				await multiMainSetup.broadcastWorkflowWasActivated(
-					workflow.id,
-					[message.senderId],
-					(message.payload?.pushSessionId as string) ?? '',
-				);
+				if (workflow.active) {
+					await multiMainSetup.broadcastWorkflowWasActivated(
+						workflow.id,
+						[message.senderId],
+						(message.payload?.pushSessionId as string) ?? '',
+					);
+				}
 
 				break;
 
@@ -116,7 +120,30 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				// TODO: inform frontend of workflow activation result
+				const { workflowId, sessionId } = message.payload ?? {};
+
+				console.log('[activation] sessionId', sessionId);
+
+				if (typeof workflowId !== 'string' || typeof sessionId !== 'string') break;
+
+				push.send('workflowActivated', { workflowId }, sessionId);
+
+				break;
+
+			case 'workflowWasDeactivated':
+				if (!debounceMessageReceiver(message, 100)) {
+					message.payload = { result: 'debounced' };
+					return message;
+				}
+
+				const { _workflowId, _sessionId } = message.payload ?? {};
+
+				console.log('[deactivation] sessionId', _sessionId);
+
+				if (typeof _workflowId !== 'string' || typeof _sessionId !== 'string') break;
+
+				push.send('workflowDeactivated', { workflowId: _workflowId }, _sessionId);
+
 				break;
 
 			default:

@@ -504,7 +504,19 @@ export type IPushData =
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataActiveWorkflowUsersChanged
+	| PushDataActiveWorkflowAdded
+	| PushDataActiveWorkflowRemoved;
+
+type PushDataActiveWorkflowAdded = {
+	data: IActiveWorkflowAdded;
+	type: 'workflowActivated';
+};
+
+type PushDataActiveWorkflowRemoved = {
+	data: IActiveWorkflowRemoved;
+	type: 'workflowDeactivated';
+};
 
 type PushDataActiveWorkflowUsersChanged = {
 	data: IActiveWorkflowUsersChanged;
@@ -565,6 +577,12 @@ export interface IActiveWorkflowUser {
 	user: User;
 	lastSeen: Date;
 }
+
+export interface IActiveWorkflowAdded {
+	workflowId: Workflow['id'];
+}
+
+type IActiveWorkflowRemoved = IActiveWorkflowAdded;
 
 export interface IActiveWorkflowUsersChanged {
 	workflowId: Workflow['id'];
