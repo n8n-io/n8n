@@ -1323,4 +1323,32 @@ export const schema = {
 			env: 'N8N_WORKFLOW_HISTORY_PRUNE_TIME',
 		},
 	},
+
+	leaderSelection: {
+		enabled: {
+			doc: 'Whether to enable leader selection for multiple main instances (license required)',
+			format: Boolean,
+			default: false,
+			env: 'N8N_LEADER_SELECTION_ENABLED',
+		},
+		ttl: {
+			doc: 'Time to live in Redis for leader selection key, in seconds',
+			format: Number,
+			default: 10,
+			env: 'N8N_LEADER_SELECTION_KEY_TTL',
+		},
+		interval: {
+			doc: 'Interval in Redis for leader selection check, in seconds',
+			format: Number,
+			default: 3,
+			env: 'N8N_LEADER_SELECTION_CHECK_INTERVAL',
+		},
+	},
+
+	proxy_hops: {
+		format: Number,
+		default: 0,
+		env: 'N8N_PROXY_HOPS',
+		doc: 'Number of reverse-proxies n8n is running behind',
+	},
 };

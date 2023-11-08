@@ -85,6 +85,7 @@ export const LICENSE_FEATURES = {
 	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
+	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 } as const;
 
 export const LICENSE_QUOTAS = {

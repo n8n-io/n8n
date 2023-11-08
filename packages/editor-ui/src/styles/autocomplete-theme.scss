@@ -30,8 +30,12 @@
 	}
 }
 
+.ͼ2 .cm-tooltip-autocomplete ul li[aria-selected] {
+	background-color: var(--color-autocomplete-selected-background);
+}
+
 .ͼ2 .cm-tooltip-autocomplete ul li[aria-selected] .cm-completionLabel {
-	color: var(--color-text-xlight) !important;
+	color: var(--color-autocomplete-selected-font) !important;
 	font-weight: 600;
 }
 

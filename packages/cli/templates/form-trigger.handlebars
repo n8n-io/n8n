@@ -283,6 +283,20 @@
 									</div>
 								{{/if}}
 
+								{{#if isTextarea}}
+									<div class='form-group'>
+										<label class='form-label' for='{{id}}'>{{label}}</label>
+										<textarea
+											class='form-input {{inputRequired}}'
+											id='{{id}}'
+											name='{{id}}'
+										></textarea>
+										<p class='{{errorId}} error-hidden'>
+											This field is required
+										</p>
+									</div>
+								{{/if}}
+
 								{{#if isInput}}
 									<div class='form-group'>
 										<label class='form-label' for='{{id}}'>{{label}}</label>

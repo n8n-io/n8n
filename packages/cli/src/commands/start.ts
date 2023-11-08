@@ -21,15 +21,15 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import { Server } from '@/Server';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { License } from '@/License';
-import { ExecutionRepository } from '@/databases/repositories/execution.repository';
+import { License, FeatureNotLicensedError } from '@/License';
 import { IConfig } from '@oclif/config';
-import { OrchestrationMainService } from '@/services/orchestration/main/orchestration.main.service';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { PruningService } from '@/services/pruning.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -110,7 +110,17 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			Container.get(ExecutionRepository).clearTimers();
+			const pruningService = Container.get(PruningService);
+
+			if (await pruningService.isPruningEnabled()) await pruningService.stopPruning();
+
+			if (config.getEnv('leaderSelection.enabled')) {
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
+
+				await Container.get(MultiMainInstancePublisher).destroy();
+			}
 
 			await Container.get(InternalHooks).onN8nStop();
 
@@ -215,10 +225,24 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') === 'queue') {
-			await Container.get(OrchestrationMainService).init();
+		if (config.get('executions.mode') !== 'queue') return;
+
+		if (!config.get('leaderSelection.enabled')) {
+			await Container.get(SingleMainInstancePublisher).init();
 			await Container.get(OrchestrationHandlerMainService).init();
+			return;
 		}
+
+		if (!Container.get(License).isMultipleMainInstancesLicensed()) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		const { MultiMainInstancePublisher } = await import(
+			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		);
+
+		await Container.get(MultiMainInstancePublisher).init();
+		await Container.get(OrchestrationHandlerMainService).init();
 	}
 
 	async run() {

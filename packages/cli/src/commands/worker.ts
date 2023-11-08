@@ -112,13 +112,11 @@ export class Worker extends BaseCommand {
 
 	async runJob(job: Job, nodeTypes: INodeTypes): Promise<JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
-			executionId,
-			{
-				includeData: true,
-				unflattenData: true,
-			},
-		);
+		const executionRepository = Container.get(ExecutionRepository);
+		const fullExecutionData = await executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
 
 		if (!fullExecutionData) {
 			this.logger.error(
@@ -133,6 +131,7 @@ export class Worker extends BaseCommand {
 		this.logger.info(
 			`Start job: ${job.id} (Workflow ID: ${workflowId} | Execution: ${executionId})`,
 		);
+		await executionRepository.updateStatus(executionId, 'running');
 
 		const workflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(workflowId);
 

@@ -88,14 +88,20 @@ export default defineComponent({
 				});
 			} catch (error) {
 				let message = this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator');
-				if (error.httpStatusCode === 422) {
-					message = this.$locale.baseText(error.message);
+				if (error.isAxiosError) {
+					const { status } = error.response;
+					if (status === 429) {
+						message = this.$locale.baseText('forgotPassword.tooManyRequests');
+					} else if (error.httpStatusCode === 422) {
+						message = this.$locale.baseText(error.message);
+					}
+
+					this.showMessage({
+						type: 'error',
+						title: this.$locale.baseText('forgotPassword.sendingEmailError'),
+						message,
+					});
 				}
-				this.showMessage({
-					type: 'error',
-					title: this.$locale.baseText('forgotPassword.sendingEmailError'),
-					message,
-				});
 			}
 			this.loading = false;
 		},

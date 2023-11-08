@@ -10,3 +10,4 @@ export * from './typesUtils';
 export * from './userUtils';
 export * from './sourceControlUtils';
 export * from './expressions';
+export * from './objectUtils';
