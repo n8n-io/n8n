@@ -3070,12 +3070,9 @@ export default defineComponent({
 			}
 			this.historyStore.reset();
 			this.uiStore.nodeViewInitialized = true;
-			document.removeEventListener('keydown', this.keyDown);
 			document.addEventListener('keydown', this.keyDown);
-			document.removeEventListener('keyup', this.keyUp);
 			document.addEventListener('keyup', this.keyUp);
 
-			window.removeEventListener('beforeunload', this.onBeforeUnload);
 			window.addEventListener('beforeunload', this.onBeforeUnload);
 		},
 		getOutputEndpointUUID(
