@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message" v-html="getErrorMessage()" />
+			<div class="error-message" v-text="getErrorMessage()" />
 			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
@@ -175,6 +175,18 @@ export default defineComponent({
 				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
 		getErrorDescription(): string {
+			const isSubNodeError =
+				this.error.name === 'NodeOperationError' &&
+				(this.error as NodeOperationError).functionality === 'configuration-node';
+
+			if (isSubNodeError) {
+				return sanitizeHtml(
+					this.error.description +
+						this.$locale.baseText('pushConnection.executionError.openNode', {
+							interpolate: { node: this.error.node.name },
+						}),
+				);
+			}
 			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
@@ -192,27 +204,24 @@ export default defineComponent({
 				(this.error as NodeOperationError).functionality === 'configuration-node';
 
 			if (isSubNodeError) {
-				const baseErrorMessageSubNode =
-					this.$locale.baseText('nodeErrorView.errorSubNode', {
-						interpolate: { node: this.error.node.name },
-					}) + ': ';
-				return sanitizeHtml(
-					baseErrorMessageSubNode +
-						this.error.message +
-						this.$locale.baseText('pushConnection.executionError.openNode', {
-							interpolate: { node: this.error.node.name },
-						}),
-				);
+				const baseErrorMessageSubNode = this.$locale.baseText('nodeErrorView.errorSubNode', {
+					interpolate: { node: this.error.node.name },
+				});
+				return baseErrorMessageSubNode;
+			}
+
+			if (this.error.message === this.error.description) {
+				return baseErrorMessage;
 			}
 			if (!this.error.context?.messageTemplate) {
-				return sanitizeHtml(baseErrorMessage + this.error.message);
+				return baseErrorMessage + this.error.message;
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
 
-			return sanitizeHtml(
+			return (
 				baseErrorMessage +
-					this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName),
+				this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName)
 			);
 		},
 		parameterDisplayName(path: string, fullPath = true) {

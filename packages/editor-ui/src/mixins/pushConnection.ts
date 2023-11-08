@@ -441,7 +441,7 @@ export const pushConnection = defineComponent({
 						this.showMessage({
 							title,
 							message:
-								runDataExecutedErrorMessage +
+								(nodeError?.description ?? runDataExecutedErrorMessage) +
 								this.$locale.baseText('pushConnection.executionError.openNode', {
 									interpolate: {
 										node: nodeError.node.name,

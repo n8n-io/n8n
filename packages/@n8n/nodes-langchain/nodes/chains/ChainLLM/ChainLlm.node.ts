@@ -157,14 +157,7 @@ export class ChainLlm implements INodeType {
 				default: '={{ $json.input }}',
 			},
 			{
-				displayName:
-					'The options below to add prompts are only valid for chat models, they will be ignored for other models.',
-				name: 'notice',
-				type: 'notice',
-				default: '',
-			},
-			{
-				displayName: 'Chat Messages',
+				displayName: 'Chat Messages (if Using a Chat Model)',
 				name: 'messages',
 				type: 'fixedCollection',
 				typeOptions: {

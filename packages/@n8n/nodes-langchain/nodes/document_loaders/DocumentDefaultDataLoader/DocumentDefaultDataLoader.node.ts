@@ -180,7 +180,8 @@ export class DocumentDefaultDataLoader implements INodeType {
 				type: 'string',
 				default: 'data',
 				required: true,
-				description: 'The name of the input field containing the binary file data to be processed',
+				description:
+					'The name of the field in the agent or chain’s input that contains the binary file to be processed',
 				displayOptions: {
 					show: {
 						dataType: ['binary'],

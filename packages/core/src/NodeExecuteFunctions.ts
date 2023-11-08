@@ -3285,10 +3285,15 @@ export function getExecuteFunctions(
 							);
 
 							// Display on the calling node which node has the error
-							throw new NodeOperationError(connectedNode, error.message, {
-								itemIndex,
-								functionality: 'configuration-node',
-							});
+							throw new NodeOperationError(
+								connectedNode,
+								`Error in sub-node ${connectedNode.name}‘. `,
+								{
+									itemIndex,
+									functionality: 'configuration-node',
+									description: error.message,
+								},
+							);
 						}
 					});
 

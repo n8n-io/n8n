@@ -42,13 +42,16 @@ export async function callMethodAsync<T>(
 		return await parameters.method.call(this, ...parameters.arguments);
 	} catch (e) {
 		const connectedNode = parameters.executeFunctions.getNode();
-		const error = new NodeOperationError(connectedNode, e, { functionality: 'configuration-node' });
+		const error = new NodeOperationError(connectedNode, e, {
+			functionality: 'configuration-node',
+		});
 		parameters.executeFunctions.addOutputData(
 			parameters.connectionType,
 			parameters.currentNodeRunIndex,
 			error,
 		);
 		if (error.message) {
+			error.description = error.message;
 			throw error;
 		}
 		throw new NodeOperationError(
