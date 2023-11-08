@@ -114,7 +114,12 @@ export class Start extends BaseCommand {
 			await Container.get(License).shutdown();
 
 			if (await this.pruningService.isPruningEnabled()) {
-				await this.pruningService.stopPruning();
+				if (
+					!this.multiMainSetup.isEnabled ||
+					(this.multiMainSetup.isEnabled && this.multiMainSetup.isLeader)
+				) {
+					this.pruningService.stopPruning();
+				}
 			}
 
 			const multiMainSetup = Container.get(MultiMainSetup);
@@ -338,7 +343,19 @@ export class Start extends BaseCommand {
 		this.pruningService = Container.get(PruningService);
 
 		if (await this.pruningService.isPruningEnabled()) {
-			this.pruningService.startPruning();
+			if (!this.multiMainSetup.isEnabled) {
+				this.pruningService.startPruning();
+			}
+
+			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isLeader) {
+				this.pruningService.startPruning();
+
+				this.multiMainSetup.on('leadershipChange', async () => {
+					if (this.multiMainSetup.isLeader) {
+						this.pruningService.startPruning();
+					}
+				});
+			}
 		}
 
 		// Start to get active workflows and run their triggers

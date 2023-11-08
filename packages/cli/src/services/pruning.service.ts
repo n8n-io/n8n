@@ -9,7 +9,6 @@ import config from '@/config';
 import { ExecutionRepository } from '@/databases/repositories';
 import { Logger } from '@/Logger';
 import { ExecutionEntity } from '@/databases/entities/ExecutionEntity';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 @Service()
 export class PruningService {
@@ -28,7 +27,6 @@ export class PruningService {
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
-		private readonly multiMainSetup: MultiMainSetup,
 	) {}
 
 	async isPruningEnabled() {
@@ -40,31 +38,25 @@ export class PruningService {
 			return false;
 		}
 
-		await this.multiMainSetup.init();
-
-		if (this.multiMainSetup.isEnabled) {
-			return this.multiMainSetup.isLeader;
-		}
-
 		return true;
 	}
 
 	/**
-	 * @important Call only after DB connection is established and migrations have completed.
+	 * @important Call only after DB connection is established and migrations
+	 * have completed. In multi-main scenario, only if instance is leader.
 	 */
 	startPruning() {
+		this.logger.debug('[Pruning] Starting soft-deletion interval and hard-deletion timeout');
+
 		this.setSoftDeletionInterval();
 		this.scheduleHardDeletion();
 	}
 
-	async stopPruning() {
-		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
-			this.logger.debug('[Multi-main setup] Instance is follower, skipping pruning stop...');
-
-			return;
-		}
-
-		this.logger.debug('Clearing soft-deletion interval and hard-deletion timeout (pruning cycle)');
+	/**
+	 * @important In multi-main scenario, only if instance is leader.
+	 */
+	stopPruning() {
+		this.logger.debug('[Pruning] Removing soft-deletion interval and hard-deletion timeout');
 
 		clearInterval(this.softDeletionInterval);
 		clearTimeout(this.hardDeletionTimeout);
