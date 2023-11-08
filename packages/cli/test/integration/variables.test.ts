@@ -7,6 +7,7 @@ import { License } from '@/License';
 import { VariablesService } from '@/environments/variables/variables.service';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { createOwner, createUser } from './shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -48,9 +49,9 @@ async function getVariableById(id: string) {
 beforeAll(async () => {
 	utils.mockInstance(License, licenseLike);
 
-	const owner = await testDb.createOwner();
+	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
-	const member = await testDb.createUser();
+	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
 });
 

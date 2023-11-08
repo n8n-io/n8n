@@ -15,8 +15,6 @@ import { mockInstance } from '../integration/shared/utils';
 import Container from 'typedi';
 
 describe('CredentialsHelper', () => {
-	const TEST_ENCRYPTION_KEY = 'test';
-
 	const mockNodesAndCredentials = mockInstance(LoadNodesAndCredentials, {
 		loadedNodes: {
 			'test.set': {

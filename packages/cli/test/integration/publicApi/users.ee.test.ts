@@ -8,6 +8,8 @@ import { License } from '@/License';
 import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils/';
 import * as testDb from '../shared/testDb';
+import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
+import { createUser, createUserShell } from '../shared/db/users';
 
 utils.mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),
@@ -19,7 +21,10 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
-	[globalOwnerRole, globalMemberRole] = await testDb.getAllRoles();
+	[globalOwnerRole, globalMemberRole] = await Promise.all([
+		getGlobalOwnerRole(),
+		getGlobalMemberRole(),
+	]);
 });
 
 beforeEach(async () => {
@@ -29,13 +34,13 @@ beforeEach(async () => {
 describe('With license unlimited quota:users', () => {
 	describe('GET /users', () => {
 		test('should fail due to missing API Key', async () => {
-			const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+			const owner = await createUser({ globalRole: globalOwnerRole });
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			await authOwnerAgent.get('/users').expect(401);
 		});
 
 		test('should fail due to invalid API Key', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
@@ -45,20 +50,20 @@ describe('With license unlimited quota:users', () => {
 		});
 
 		test('should fail due to member trying to access owner only endpoint', async () => {
-			const member = await testDb.createUser({ apiKey: randomApiKey() });
+			const member = await createUser({ apiKey: randomApiKey() });
 			const authMemberAgent = testServer.publicApiAgentFor(member);
 			await authMemberAgent.get('/users').expect(403);
 		});
 
 		test('should return all users', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
 
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 
-			await testDb.createUser();
+			await createUser();
 
 			const response = await authOwnerAgent.get('/users').expect(200);
 			expect(response.body.data.length).toBe(2);
@@ -94,13 +99,13 @@ describe('With license unlimited quota:users', () => {
 
 	describe('GET /users/:id', () => {
 		test('should fail due to missing API Key', async () => {
-			const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+			const owner = await createUser({ globalRole: globalOwnerRole });
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			await authOwnerAgent.get(`/users/${owner.id}`).expect(401);
 		});
 
 		test('should fail due to invalid API Key', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
@@ -110,12 +115,12 @@ describe('With license unlimited quota:users', () => {
 		});
 
 		test('should fail due to member trying to access owner only endpoint', async () => {
-			const member = await testDb.createUser({ apiKey: randomApiKey() });
+			const member = await createUser({ apiKey: randomApiKey() });
 			const authMemberAgent = testServer.publicApiAgentFor(member);
 			await authMemberAgent.get(`/users/${member.id}`).expect(403);
 		});
 		test('should return 404 for non-existing id ', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
@@ -124,12 +129,12 @@ describe('With license unlimited quota:users', () => {
 		});
 
 		test('should return a pending user', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
 
-			const { id: memberId } = await testDb.createUserShell(globalMemberRole);
+			const { id: memberId } = await createUserShell(globalMemberRole);
 
 			const authOwnerAgent = testServer.publicApiAgentFor(owner);
 			const response = await authOwnerAgent.get(`/users/${memberId}`).expect(200);
@@ -163,7 +168,7 @@ describe('With license unlimited quota:users', () => {
 
 	describe('GET /users/:email', () => {
 		test('with non-existing email should return 404', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
@@ -172,7 +177,7 @@ describe('With license unlimited quota:users', () => {
 		});
 
 		test('should return a user', async () => {
-			const owner = await testDb.createUser({
+			const owner = await createUser({
 				globalRole: globalOwnerRole,
 				apiKey: randomApiKey(),
 			});
@@ -213,7 +218,7 @@ describe('With license without quota:users', () => {
 	beforeEach(async () => {
 		utils.mockInstance(License, { getUsersLimit: jest.fn().mockReturnValue(null) });
 
-		const owner = await testDb.createUser({
+		const owner = await createUser({
 			globalRole: globalOwnerRole,
 			apiKey: randomApiKey(),
 		});

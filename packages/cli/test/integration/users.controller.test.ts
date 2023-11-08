@@ -1,3 +1,4 @@
+import { createMember, createOwner } from './shared/db/users';
 import * as testDb from './shared/testDb';
 import { setupTestServer } from './shared/utils/';
 import type { User } from '@/databases/entities/User';
@@ -12,8 +13,8 @@ let member: User;
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await testDb.createOwner();
-	member = await testDb.createMember();
+	owner = await createOwner();
+	member = await createMember();
 });
 
 const validatePublicUser = (user: PublicUser) => {
@@ -47,7 +48,7 @@ describe('GET /users', () => {
 
 	describe('filter', () => {
 		test('should filter users by field: email', async () => {
-			const secondMember = await testDb.createMember();
+			const secondMember = await createMember();
 
 			const response = await testServer
 				.authAgentFor(owner)
@@ -71,7 +72,7 @@ describe('GET /users', () => {
 		});
 
 		test('should filter users by field: firstName', async () => {
-			const secondMember = await testDb.createMember();
+			const secondMember = await createMember();
 
 			const response = await testServer
 				.authAgentFor(owner)
@@ -95,7 +96,7 @@ describe('GET /users', () => {
 		});
 
 		test('should filter users by field: lastName', async () => {
-			const secondMember = await testDb.createMember();
+			const secondMember = await createMember();
 
 			const response = await testServer
 				.authAgentFor(owner)

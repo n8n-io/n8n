@@ -9,6 +9,8 @@ import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHist
 
 import * as testDb from './shared/testDb';
 import { mockInstance } from './shared/utils';
+import { createWorkflow } from './shared/db/workflows';
+import { createManyWorkflowHistoryItems } from './shared/db/workflowHistory';
 
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
@@ -98,9 +100,9 @@ describe('Workflow History Manager', () => {
 	});
 
 	const createWorkflowHistory = async (ageInDays = 2) => {
-		const workflow = await testDb.createWorkflow();
+		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();
-		return testDb.createManyWorkflowHistoryItems(workflow.id, 10, time);
+		return createManyWorkflowHistoryItems(workflow.id, 10, time);
 	};
 
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {

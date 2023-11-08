@@ -8,6 +8,8 @@ import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
 import { affixRoleToSaveCredential } from '../shared/db/credentials';
+import { getAllRoles } from '../shared/db/roles';
+import { addApiKey, createUser, createUserShell } from '../shared/db/users';
 
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -22,13 +24,13 @@ const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
 beforeAll(async () => {
 	const [globalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
-		await testDb.getAllRoles();
+		await getAllRoles();
 
 	globalMemberRole = fetchedGlobalMemberRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	owner = await testDb.addApiKey(await testDb.createUserShell(globalOwnerRole));
-	member = await testDb.createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
+	owner = await addApiKey(await createUserShell(globalOwnerRole));
+	member = await createUser({ globalRole: globalMemberRole, apiKey: randomApiKey() });
 
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
@@ -151,7 +153,7 @@ describe('DELETE /credentials/:id', () => {
 	});
 
 	test('should delete owned cred for member but leave others untouched', async () => {
-		const anotherMember = await testDb.createUser({
+		const anotherMember = await createUser({
 			globalRole: globalMemberRole,
 			apiKey: randomApiKey(),
 		});
