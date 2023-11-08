@@ -89,9 +89,7 @@ export const setupAuthMiddlewares = (
 			canSkipAuth(req.method, req.path) ||
 			isAuthExcluded(req.url, ignoredEndpoints) ||
 			req.url.startsWith(`/${restEndpoint}/settings`) ||
-			isPostUsersId(req, restEndpoint) ||
-			req.url.startsWith(`/${restEndpoint}/oauth2-credential/callback`) ||
-			req.url.startsWith(`/${restEndpoint}/oauth1-credential/callback`)
+			isPostUsersId(req, restEndpoint)
 		) {
 			return next();
 		}

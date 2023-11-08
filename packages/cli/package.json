@@ -129,6 +129,7 @@
     "express-handlebars": "^7.0.2",
     "express-openapi-validator": "^4.13.6",
     "express-prom-bundle": "^6.6.0",
+    "express-rate-limit": "^7.1.3",
     "fast-glob": "^3.2.5",
     "flatted": "^3.2.4",
     "formidable": "^3.5.0",

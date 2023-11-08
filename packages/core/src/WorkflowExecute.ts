@@ -212,7 +212,7 @@ export class WorkflowExecute {
 								continue;
 							}
 							const nodeIncomingData =
-								runData[connection.node][runIndex]?.data?.[connection.type][connection.index];
+								runData[connection.node]?.[runIndex]?.data?.[connection.type]?.[connection.index];
 							if (nodeIncomingData) {
 								incomingData.push(nodeIncomingData);
 							}
