@@ -20,6 +20,10 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { saveCredential } from './shared/db/credentials';
+import { getAllRoles } from './shared/db/roles';
+import { createUser, createUserShell } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
 
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -37,13 +41,13 @@ beforeAll(async () => {
 		fetchedGlobalMemberRole,
 		fetchedWorkflowOwnerRole,
 		fetchedCredentialOwnerRole,
-	] = await testDb.getAllRoles();
+	] = await getAllRoles();
 
 	globalMemberRole = fetchedGlobalMemberRole;
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	owner = await createUser({ globalRole: globalOwnerRole });
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
@@ -57,7 +61,7 @@ beforeEach(async () => {
 
 describe('DELETE /users/:id', () => {
 	test('should delete the user', async () => {
-		const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
+		const userToDelete = await createUser({ globalRole: globalMemberRole });
 
 		const newWorkflow = new WorkflowEntity();
 
@@ -132,7 +136,7 @@ describe('DELETE /users/:id', () => {
 	});
 
 	test('should fail if user to delete is transferee', async () => {
-		const { id: idToDelete } = await testDb.createUser({ globalRole: globalMemberRole });
+		const { id: idToDelete } = await createUser({ globalRole: globalMemberRole });
 
 		const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
 			transferId: idToDelete,
@@ -145,11 +149,11 @@ describe('DELETE /users/:id', () => {
 	});
 
 	test('with transferId should perform transfer', async () => {
-		const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
+		const userToDelete = await createUser({ globalRole: globalMemberRole });
 
-		const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
+		const savedWorkflow = await createWorkflow(undefined, userToDelete);
 
-		const savedCredential = await testDb.saveCredential(randomCredentialPayload(), {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: userToDelete,
 			role: credentialOwnerRole,
 		});
@@ -184,7 +188,7 @@ describe('DELETE /users/:id', () => {
 
 describe('POST /users/:id', () => {
 	test('should fill out a user shell', async () => {
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const memberShell = await createUserShell(globalMemberRole);
 
 		const memberData = {
 			inviterId: owner.id,
@@ -282,7 +286,7 @@ describe('POST /users/:id', () => {
 	});
 
 	test('should fail with already accepted invite', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const member = await createUser({ globalRole: globalMemberRole });
 
 		const newMemberData = {
 			inviterId: owner.id,
@@ -317,8 +321,8 @@ describe('POST /users', () => {
 	});
 
 	test('should email invites and create user shells but ignore existing', async () => {
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
-		const memberShell = await testDb.createUserShell(globalMemberRole);
+		const member = await createUser({ globalRole: globalMemberRole });
+		const memberShell = await createUserShell(globalMemberRole);
 
 		const testEmails = [
 			randomEmail(),
@@ -407,7 +411,7 @@ describe('POST /users/:id/reinvite', () => {
 
 		expect(reinviteResponse.statusCode).toBe(200);
 
-		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const member = await createUser({ globalRole: globalMemberRole });
 		const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
 
 		expect(reinviteMemberResponse.statusCode).toBe(400);

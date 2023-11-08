@@ -1,7 +1,10 @@
+import { Service } from 'typedi';
 import { Authorized, Delete, Get, Post, RestController } from '@/decorators';
 import { AuthenticatedRequest, MFA } from '@/requests';
 import { BadRequestError } from '@/ResponseHelper';
 import { MfaService } from '@/Mfa/mfa.service';
+
+@Service()
 @Authorized()
 @RestController('/mfa')
 export class MFAController {

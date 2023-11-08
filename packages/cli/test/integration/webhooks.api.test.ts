@@ -12,6 +12,8 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
+import { createUser } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
@@ -31,8 +33,8 @@ describe('Webhook API', () => {
 	describe('Content-Type support', () => {
 		beforeAll(async () => {
 			const node = new WebhookTestingNode();
-			const user = await testDb.createUser();
-			await testDb.createWorkflow(createWebhookWorkflow(node), user);
+			const user = await createUser();
+			await createWorkflow(createWebhookWorkflow(node), user);
 
 			const nodeTypes = mockInstance(NodeTypes);
 			nodeTypes.getByName.mockReturnValue(node);
@@ -134,8 +136,8 @@ describe('Webhook API', () => {
 	describe('Params support', () => {
 		beforeAll(async () => {
 			const node = new WebhookTestingNode();
-			const user = await testDb.createUser();
-			await testDb.createWorkflow(createWebhookWorkflow(node, ':variable', 'PATCH'), user);
+			const user = await createUser();
+			await createWorkflow(createWebhookWorkflow(node, ':variable', 'PATCH'), user);
 
 			const nodeTypes = mockInstance(NodeTypes);
 			nodeTypes.getByName.mockReturnValue(node);
