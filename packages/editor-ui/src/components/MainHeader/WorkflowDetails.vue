@@ -382,7 +382,13 @@ export default defineComponent({
 
 			if (saved) {
 				await this.settingsStore.fetchPromptsData();
-				await this.$router.push({ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflowId } });
+
+				if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
+					await this.$router.push({
+						name: VIEWS.WORKFLOW,
+						params: { name: this.currentWorkflowId },
+					});
+				}
 			}
 		},
 		onShareButtonClick() {
