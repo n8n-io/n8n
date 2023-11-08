@@ -107,7 +107,7 @@
 					<div v-if="showFiltersDropdown" v-show="hasFilters" class="mt-xs">
 						<n8n-info-tip :bold="false">
 							{{ i18n.baseText(`${resourceKey}.filters.active`) }}
-							<n8n-link @click="resetFilters" size="small">
+							<n8n-link data-test-id="workflows-filter-reset" @click="resetFilters" size="small">
 								{{ i18n.baseText(`${resourceKey}.filters.active.reset`) }}
 							</n8n-link>
 						</n8n-info-tip>
@@ -392,6 +392,19 @@ export default defineComponent({
 			this.loading = false;
 			await this.$nextTick();
 			this.focusSearchInput();
+
+			if (this.hasAppliedFilters()) {
+				this.hasFilters = true;
+			}
+		},
+		hasAppliedFilters(): boolean {
+			return !!this.filterKeys.find(
+				(key) =>
+					key !== 'search' &&
+					(Array.isArray(this.filters[key])
+						? this.filters[key].length > 0
+						: this.filters[key] !== ''),
+			);
 		},
 		setCurrentPage(page: number) {
 			this.currentPage = page;
