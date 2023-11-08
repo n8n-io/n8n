@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { InstanceSettings } from 'n8n-core';
 
-import { GENERATED_STATIC_DIR, LICENSE_FEATURES } from '@/constants';
+import { LICENSE_FEATURES } from '@/constants';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -205,8 +205,9 @@ export class FrontendService {
 	async generateTypes() {
 		this.overwriteCredentialsProperties();
 
+		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
-		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
+		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
 		this.writeStaticJSON('credentials', credentials);
@@ -303,7 +304,8 @@ export class FrontendService {
 	}
 
 	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
-		const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
+		const { staticCacheDir } = this.instanceSettings;
+		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');
 		stream.write('[\n');
 		data.forEach((entry, index) => {

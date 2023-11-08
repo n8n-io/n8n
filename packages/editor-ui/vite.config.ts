@@ -1,12 +1,10 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
-import { defineConfig as defineVitestConfig } from 'vitest/config';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 import packageJSON from './package.json';
-
-const { coverageReporters } = require('../../jest.config.js');
+import { vitestConfig } from '../design-system/vite.config';
 
 const vendorChunks = ['vue', 'vue-router'];
 const n8nChunks = ['n8n-workflow', 'n8n-design-system'];
@@ -115,21 +113,5 @@ export default mergeConfig(
 			},
 		},
 	}),
-	defineVitestConfig({
-		test: {
-			globals: true,
-			environment: 'jsdom',
-			setupFiles: ['./src/__tests__/setup.ts'],
-			coverage: {
-				provider: 'v8',
-				reporter: coverageReporters,
-				all: true,
-			},
-			css: {
-				modules: {
-					classNameStrategy: 'non-scoped',
-				},
-			},
-		},
-	}),
+	vitestConfig,
 );
