@@ -75,6 +75,7 @@
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
 						@itemHover="onInputItemHover"
+						@search="onSearch"
 					/>
 				</template>
 				<template #output>
@@ -95,6 +96,7 @@
 						@openSettings="openSettings"
 						@tableMounted="onOutputTableMounted"
 						@itemHover="onOutputItemHover"
+						@search="onSearch"
 					/>
 				</template>
 				<template #main>
@@ -217,6 +219,7 @@ export default defineComponent({
 			avgOutputRowHeight: 0,
 			isInputPaneActive: false,
 			isOutputPaneActive: false,
+			isPairedItemHoveringEnabled: true,
 		};
 	},
 	mounted() {
@@ -522,10 +525,7 @@ export default defineComponent({
 			}
 		},
 		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (!this.inputNodeName) {
-				return;
-			}
-			if (e === null) {
+			if (e === null || !this.inputNodeName || !this.isPairedItemHoveringEnabled) {
 				this.ndvStore.setHoveringItem(null);
 				return;
 			}
@@ -539,7 +539,7 @@ export default defineComponent({
 			this.ndvStore.setHoveringItem(item);
 		},
 		onOutputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
-			if (e === null || !this.activeNode) {
+			if (e === null || !this.activeNode || !this.isPairedItemHoveringEnabled) {
 				this.ndvStore.setHoveringItem(null);
 				return;
 			}
@@ -730,6 +730,9 @@ export default defineComponent({
 		activateOutputPane() {
 			this.isInputPaneActive = false;
 			this.isOutputPaneActive = true;
+		},
+		onSearch(search: string) {
+			this.isPairedItemHoveringEnabled = !search;
 		},
 	},
 });

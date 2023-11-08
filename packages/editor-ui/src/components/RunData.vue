@@ -386,7 +386,7 @@
 					:runIndex="runIndex"
 					:pageOffset="currentPageOffset"
 					:totalRuns="maxRunIndex"
-					:hasDefaultHoverState="paneType === 'input'"
+					:hasDefaultHoverState="paneType === 'input' && !search"
 					:search="search"
 					@mounted="$emit('tableMounted', $event)"
 					@activeRowChanged="onItemHover"
@@ -1495,6 +1495,9 @@ export default defineComponent({
 				pane: this.paneType as 'input' | 'output',
 				branchIndex,
 			});
+		},
+		search(newSearch: string) {
+			this.$emit('search', newSearch);
 		},
 	},
 });

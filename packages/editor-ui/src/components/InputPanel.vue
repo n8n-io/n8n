@@ -21,6 +21,7 @@
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
+		@search="$emit('search', $event)"
 		data-test-id="ndv-input-panel"
 	>
 		<template #header>

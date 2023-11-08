@@ -19,6 +19,7 @@
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
+		@search="$emit('search', $event)"
 		ref="runData"
 		:data-output-type="outputMode"
 	>
