@@ -88,8 +88,8 @@ export default defineComponent({
 				});
 			} catch (error) {
 				let message = this.$locale.baseText('forgotPassword.smtpErrorContactAdministrator');
-				if (error.isAxiosError) {
-					const { status } = error.response;
+				if (error.httpStatusCode) {
+					const { httpStatusCode: status } = error;
 					if (status === 429) {
 						message = this.$locale.baseText('forgotPassword.tooManyRequests');
 					} else if (error.httpStatusCode === 422) {
