@@ -13,6 +13,8 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { getGlobalOwnerRole } from './shared/db/roles';
+import { createUserShell } from './shared/db/users';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['owner'] });
 
@@ -21,11 +23,11 @@ let ownerShell: User;
 let authOwnerShellAgent: SuperAgentTest;
 
 beforeAll(async () => {
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
+	globalOwnerRole = await getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
-	ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await createUserShell(globalOwnerRole);
 	authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 });

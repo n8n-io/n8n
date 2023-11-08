@@ -22,6 +22,8 @@ import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { chooseRandomly } from './shared/random';
 import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';
+import { createOwner } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
 
 mockInstance(ActiveExecutions);
 mockInstance(ActiveWorkflows);
@@ -50,7 +52,7 @@ beforeAll(async () => {
 	await testDb.init();
 
 	activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
-	owner = await testDb.createOwner();
+	owner = await createOwner();
 });
 
 afterEach(async () => {
@@ -88,7 +90,7 @@ describe('init()', () => {
 	});
 
 	test('should start with one active workflow', async () => {
-		await testDb.createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
 
@@ -100,8 +102,8 @@ describe('init()', () => {
 	});
 
 	test('should start with multiple active workflows', async () => {
-		await testDb.createWorkflow({ active: true }, owner);
-		await testDb.createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
 
@@ -113,8 +115,8 @@ describe('init()', () => {
 	});
 
 	test('should pre-check that every workflow can be activated', async () => {
-		await testDb.createWorkflow({ active: true }, owner);
-		await testDb.createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
 
 		const precheckSpy = jest
 			.spyOn(Workflow.prototype, 'checkIfWorkflowCanBeActivated')
@@ -128,8 +130,8 @@ describe('init()', () => {
 
 describe('removeAll()', () => {
 	test('should remove all active workflows from memory', async () => {
-		await testDb.createWorkflow({ active: true }, owner);
-		await testDb.createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
+		await createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
 		await activeWorkflowRunner.removeAll();
@@ -141,7 +143,7 @@ describe('removeAll()', () => {
 
 describe('remove()', () => {
 	test('should call `ActiveWorkflowRunner.clearWebhooks()`', async () => {
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflow({ active: true }, owner);
 		const clearWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'clearWebhooks');
 
 		await activeWorkflowRunner.init();
@@ -153,7 +155,7 @@ describe('remove()', () => {
 
 describe('isActive()', () => {
 	test('should return `true` for active workflow in storage', async () => {
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
 
@@ -162,7 +164,7 @@ describe('isActive()', () => {
 	});
 
 	test('should return `false` for inactive workflow in storage', async () => {
-		const workflow = await testDb.createWorkflow({ active: false }, owner);
+		const workflow = await createWorkflow({ active: false }, owner);
 
 		await activeWorkflowRunner.init();
 
@@ -173,7 +175,7 @@ describe('isActive()', () => {
 
 describe('runWorkflow()', () => {
 	test('should call `WorkflowRunner.run()`', async () => {
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflow({ active: true }, owner);
 
 		await activeWorkflowRunner.init();
 
@@ -193,7 +195,7 @@ describe('runWorkflow()', () => {
 
 describe('executeErrorWorkflow()', () => {
 	test('should call `WorkflowExecuteAdditionalData.executeErrorWorkflow()`', async () => {
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflow({ active: true }, owner);
 		const [node] = workflow.nodes;
 		const error = new NodeOperationError(node, 'Fake error message');
 		const executeSpy = jest.spyOn(AdditionalData, 'executeErrorWorkflow');
@@ -205,7 +207,7 @@ describe('executeErrorWorkflow()', () => {
 	});
 
 	test('should be called on failure to activate due to 401', async () => {
-		const storedWorkflow = await testDb.createWorkflow({ active: true }, owner);
+		const storedWorkflow = await createWorkflow({ active: true }, owner);
 		const [node] = storedWorkflow.nodes;
 		const executeSpy = jest.spyOn(activeWorkflowRunner, 'executeErrorWorkflow');
 
@@ -230,7 +232,7 @@ describe('add()', () => {
 		test('leader should add webhooks, triggers and pollers', async () => {
 			const mode = chooseRandomly(NON_LEADERSHIP_CHANGE_MODES);
 
-			const workflow = await testDb.createWorkflow({ active: true }, owner);
+			const workflow = await createWorkflow({ active: true }, owner);
 
 			const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
 			const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
@@ -256,7 +258,7 @@ describe('add()', () => {
 
 				mockInstance(MultiMainInstancePublisher, { isLeader: true });
 
-				const workflow = await testDb.createWorkflow({ active: true }, owner);
+				const workflow = await createWorkflow({ active: true }, owner);
 
 				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
 				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
@@ -278,7 +280,7 @@ describe('add()', () => {
 
 				mockInstance(MultiMainInstancePublisher, { isLeader: true });
 
-				const workflow = await testDb.createWorkflow({ active: true }, owner);
+				const workflow = await createWorkflow({ active: true }, owner);
 
 				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
 				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
@@ -302,7 +304,7 @@ describe('add()', () => {
 
 				mockInstance(MultiMainInstancePublisher, { isLeader: false });
 
-				const workflow = await testDb.createWorkflow({ active: true }, owner);
+				const workflow = await createWorkflow({ active: true }, owner);
 
 				const addWebhooksSpy = jest.spyOn(activeWorkflowRunner, 'addWebhooks');
 				const addTriggersAndPollersSpy = jest.spyOn(activeWorkflowRunner, 'addTriggersAndPollers');
@@ -330,7 +332,7 @@ describe('addWebhooks()', () => {
 
 		const additionalData = await AdditionalData.getBase('fake-user-id');
 
-		const dbWorkflow = await testDb.createWorkflow({ active: true }, owner);
+		const dbWorkflow = await createWorkflow({ active: true }, owner);
 
 		const workflow = new Workflow({
 			id: dbWorkflow.id,
