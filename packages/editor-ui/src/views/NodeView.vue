@@ -442,9 +442,7 @@ export default defineComponent({
 				}
 			}
 			if (from?.name === VIEWS.EXECUTION_DEBUG) {
-				this.resetWorkspace();
-				await this.initView();
-				this.addPinDataConnections(this.workflowsStore.getPinData || ({} as IPinData));
+				this.clearExecutionData();
 			}
 		},
 		activeNode() {
