@@ -79,7 +79,7 @@ export async function apiRequestAllItems(
  * Get a cursor-based paginator to use with n8n 'getAll' type endpoints.
  *
  * It will look up a 'nextCursor' in the response and if the node has
- * 'returnAll' set to true, it will consecutively include it as the 'cursor' query
+ * 'returnAll' set to true, will consecutively include it as the 'cursor' query
  * parameter for the next request, effectively getting everything in slices.
  *
  * Prequisites:
