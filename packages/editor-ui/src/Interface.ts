@@ -415,19 +415,7 @@ export type IPushData =
 	| PushDataReloadNodeType
 	| PushDataRemoveNodeType
 	| PushDataTestWebhook
-	| PushDataExecutionRecovered
-	| PushDataActiveWorkflowAdded
-	| PushDataActiveWorkflowRemoved;
-
-type PushDataActiveWorkflowAdded = {
-	data: IActiveWorkflowAdded;
-	type: 'workflowActivated';
-};
-
-type PushDataActiveWorkflowRemoved = {
-	data: IActiveWorkflowRemoved;
-	type: 'workflowDeactivated';
-};
+	| PushDataExecutionRecovered;
 
 type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
@@ -473,12 +461,6 @@ type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
-
-export interface IActiveWorkflowAdded {
-	workflowId: string;
-}
-
-type IActiveWorkflowRemoved = IActiveWorkflowAdded;
 
 export interface IPushDataExecutionStarted {
 	executionId: string;

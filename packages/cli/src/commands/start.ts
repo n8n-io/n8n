@@ -336,6 +336,7 @@ export class Start extends BaseCommand {
 		await this.server.start();
 
 		this.pruningService = Container.get(PruningService);
+
 		if (await this.pruningService.isPruningEnabled()) {
 			this.pruningService.startPruning();
 		}
