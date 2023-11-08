@@ -122,8 +122,6 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				const { workflowId, sessionId } = message.payload ?? {};
 
-				console.log('[activation] sessionId', sessionId);
-
 				if (typeof workflowId !== 'string' || typeof sessionId !== 'string') break;
 
 				push.send('workflowActivated', { workflowId }, sessionId);
@@ -137,8 +135,6 @@ export async function handleCommandMessageMain(messageString: string) {
 				}
 
 				const { _workflowId, _sessionId } = message.payload ?? {};
-
-				console.log('[deactivation] sessionId', _sessionId);
 
 				if (typeof _workflowId !== 'string' || typeof _sessionId !== 'string') break;
 
