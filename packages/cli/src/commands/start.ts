@@ -231,26 +231,24 @@ export class Start extends BaseCommand {
 	async initOrchestration() {
 		if (config.get('executions.mode') !== 'queue') return;
 
-		if (!config.get('leaderSelection.enabled')) {
+		// queue mode in single-main scenario
+
+		if (!this.multiMainSetup.isEnabled) {
 			await Container.get(SingleMainSetup).init();
 			await Container.get(OrchestrationHandlerMainService).init();
 			return;
 		}
 
-		// multi-main scenario
+		// queue mode in multi-main scenario
 
-		const multiMainSetup = Container.get(MultiMainSetup);
-
-		await multiMainSetup.init();
-
-		if (multiMainSetup.isLeader && !Container.get(License).isMultipleMainInstancesLicensed()) {
+		if (this.multiMainSetup.isLeader && !Container.get(License).isMultipleMainInstancesLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		multiMainSetup.on('leadershipChange', async () => {
-			if (multiMainSetup.isLeader) {
+		this.multiMainSetup.on('leadershipChange', async () => {
+			if (this.multiMainSetup.isLeader) {
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
 				// only in case of leadership change without shutdown

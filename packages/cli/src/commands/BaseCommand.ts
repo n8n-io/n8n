@@ -39,6 +39,8 @@ export abstract class BaseCommand extends Command {
 
 	protected server?: AbstractServer;
 
+	protected multiMainSetup: MultiMainSetup;
+
 	async init(): Promise<void> {
 		await initErrorHandling();
 		initExpressionEvaluator();
@@ -83,6 +85,10 @@ export abstract class BaseCommand extends Command {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(InternalHooks).init();
+
+		this.multiMainSetup = Container.get(MultiMainSetup);
+
+		await this.multiMainSetup.init();
 	}
 
 	protected setInstanceType(instanceType: N8nInstanceType) {
