@@ -3,7 +3,7 @@ import { CREDENTIAL_ONLY_NODE_PREFIX } from '../constants';
 import { i18n } from '@/plugins/i18n';
 
 export function isCredentialOnlyNodeType(nodeTypeName: string): boolean {
-	return nodeTypeName.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
+	return nodeTypeName?.startsWith(CREDENTIAL_ONLY_NODE_PREFIX) ?? false;
 }
 
 export function getCredentialTypeName(nodeTypeName: string): string {
