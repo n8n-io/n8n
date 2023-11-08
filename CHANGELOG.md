@@ -1,3 +1,38 @@
+# [1.16.0](https://github.com/n8n-io/n8n/compare/n8n@1.15.1...n8n@1.16.0) (2023-11-08)
+
+
+### Bug Fixes
+
+* **core:** Comply with custom default for workflow saving settings ([#7634](https://github.com/n8n-io/n8n/issues/7634)) ([48c068f](https://github.com/n8n-io/n8n/commit/48c068f97b6c7df08fec9fd9d80a0e7eaacc95f5))
+* **core:** Decrease reset password token expire time ([#7598](https://github.com/n8n-io/n8n/issues/7598)) ([2aa7f63](https://github.com/n8n-io/n8n/commit/2aa7f6375a01625980278aee714bdc06002b0948))
+* **core:** Ensure `init` before checking leader or follower in multi-main scenario ([#7621](https://github.com/n8n-io/n8n/issues/7621)) ([a994ba5](https://github.com/n8n-io/n8n/commit/a994ba5e8d7092edeae05e7aa5fdfbb9fd854034))
+* **core:** Ensure pruning starts only after migrations have completed ([#7626](https://github.com/n8n-io/n8n/issues/7626)) ([f748de9](https://github.com/n8n-io/n8n/commit/f748de9567ed1ecebea0ee35e9c71f8ea0e2d450))
+* **core:** Fix accessor error when running partial execution ([#7618](https://github.com/n8n-io/n8n/issues/7618)) ([26361df](https://github.com/n8n-io/n8n/commit/26361dfcd31c9952c8ef109314ca88f5f03e40f4)), closes [#6229](https://github.com/n8n-io/n8n/issues/6229)
+* **core:** Make password-reset urls valid only for single-use ([#7622](https://github.com/n8n-io/n8n/issues/7622)) ([6031424](https://github.com/n8n-io/n8n/commit/60314248f4b021f451eb744184fe150ddc03bc6e))
+* **Crypto Node:** Fix issue with value not appearing for Sign action ([#7619](https://github.com/n8n-io/n8n/issues/7619)) ([5df583f](https://github.com/n8n-io/n8n/commit/5df583f783731e46500600e6a23ff3b7fdfb4e52))
+* **editor:** Allow overriding theme from query params ([#7591](https://github.com/n8n-io/n8n/issues/7591)) ([2854a0c](https://github.com/n8n-io/n8n/commit/2854a0cf467258c6dacc15c2b200cf6480b6ecef))
+* **editor:** Fix issue that frontend breaks with unkown nodes ([#7596](https://github.com/n8n-io/n8n/issues/7596)) ([db56a9e](https://github.com/n8n-io/n8n/commit/db56a9ee37e8b041ea8958fc8400b9e5b6b81316))
+* **editor:** Fix local storage flags defaulting to undefined string ([#7603](https://github.com/n8n-io/n8n/issues/7603)) ([151e60f](https://github.com/n8n-io/n8n/commit/151e60f829663e79982aae6ac1cd8489f3083224))
+* **editor:** Fix workflow history prune time limit (getting hours instead of days) ([#7644](https://github.com/n8n-io/n8n/issues/7644)) ([3d5a485](https://github.com/n8n-io/n8n/commit/3d5a485bcf7fef4c6b7d96df3a77c041178951a6))
+* **editor:** Hide not supported node options ([#7597](https://github.com/n8n-io/n8n/issues/7597)) ([b532a7b](https://github.com/n8n-io/n8n/commit/b532a7bdb7d33d5ffb20665dfde58cb664d39b4a))
+* **editor:** Remove unknown credentials on pasting workflow ([#7582](https://github.com/n8n-io/n8n/issues/7582)) ([d633753](https://github.com/n8n-io/n8n/commit/d63375368713b31e15735721c7a7603fe08a6645))
+* **editor:** Reset canvas zoom before workspace reset in node view ([#7625](https://github.com/n8n-io/n8n/issues/7625)) ([78b84af](https://github.com/n8n-io/n8n/commit/78b84af8d1cfed005c7d9c715d832e8c91fd9e3f))
+* **editor:** Zoom in/out on canvas the same amount on scroll/gesture ([#7602](https://github.com/n8n-io/n8n/issues/7602)) ([c92402a](https://github.com/n8n-io/n8n/commit/c92402a3cabfdc227f3c929bc7731d42f4516776))
+* **Facebook Lead Ads Trigger Node:** Fix issue with missing scope for business management  ([#7616](https://github.com/n8n-io/n8n/issues/7616)) ([32b85ba](https://github.com/n8n-io/n8n/commit/32b85ba2fec6e74d8648be7e718b52140c1bc4fc))
+
+
+### Features
+
+* **core:** Add the node version to telemetry in node_graph_string ([#7449](https://github.com/n8n-io/n8n/issues/7449)) ([59dc36a](https://github.com/n8n-io/n8n/commit/59dc36abd9141a863cb41c17a9115410b27bdb16))
+* **core:** Coordinate workflow activation in multiple main scenario in internal API ([#7566](https://github.com/n8n-io/n8n/issues/7566)) ([c857e42](https://github.com/n8n-io/n8n/commit/c857e42677ef0d415caf66f00d7af029546dfd79))
+* **core:** Initial support for two-way communication over websockets ([#7570](https://github.com/n8n-io/n8n/issues/7570)) ([ac87701](https://github.com/n8n-io/n8n/commit/ac877014eda83eb2ee61c87f29e2583f3fbfd125))
+* **core:** Log executed migrations with info level ([#7586](https://github.com/n8n-io/n8n/issues/7586)) ([7dac9ab](https://github.com/n8n-io/n8n/commit/7dac9ab82c2f91cfbb66a57f175c1865e8c8107a))
+* **core:** Rate limit forgot password endpoint ([#7604](https://github.com/n8n-io/n8n/issues/7604)) ([5790e25](https://github.com/n8n-io/n8n/commit/5790e251b8072679d7c061e2d2fa1f4229e03cf8))
+* **LinkedIn Node:** Add support for Article thumbnails ([#7489](https://github.com/n8n-io/n8n/issues/7489)) ([e6d3d1a](https://github.com/n8n-io/n8n/commit/e6d3d1a4c2dd6a860e935df4b0ce3f13e23030c7))
+* **NocoDB Node:** Add new data apis and workspace support ([#7329](https://github.com/n8n-io/n8n/issues/7329)) ([da2d2a8](https://github.com/n8n-io/n8n/commit/da2d2a83bbfb05db3a10aef99bfde3ccaf160d60))
+
+
+
 ## [1.15.1](https://github.com/n8n-io/n8n/compare/n8n@1.14.0...n8n@1.15.1) (2023-11-02)
 
 
