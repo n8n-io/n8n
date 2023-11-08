@@ -94,6 +94,7 @@ import {
 	faMapSigns,
 	faMousePointer,
 	faNetworkWired,
+	faPalette,
 	faPause,
 	faPauseCircle,
 	faPen,
@@ -253,6 +254,7 @@ export const FontAwesomePlugin: Plugin<{}> = {
 		addIcon(faMapSigns);
 		addIcon(faMousePointer);
 		addIcon(faNetworkWired);
+		addIcon(faPalette);
 		addIcon(faPause);
 		addIcon(faPauseCircle);
 		addIcon(faPen);
