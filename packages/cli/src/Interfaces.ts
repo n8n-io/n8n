@@ -505,7 +505,7 @@ export type IPushData =
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
-	| PushDataActiveWorkflowUsersChanged;
+	| PushDataActiveWorkflowUsersChanged
 	| PushDataWorkerStatusMessage;
 
 type PushDataActiveWorkflowUsersChanged = {

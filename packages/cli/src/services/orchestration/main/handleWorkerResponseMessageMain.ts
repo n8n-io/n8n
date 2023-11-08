@@ -10,7 +10,7 @@ export async function handleWorkerResponseMessageMain(messageString: string) {
 		switch (workerResponse.command) {
 			case 'getStatus':
 				const push = Container.get(Push);
-				push.send('sendWorkerStatusMessage', {
+				push.broadcast('sendWorkerStatusMessage', {
 					workerId: workerResponse.workerId,
 					status: workerResponse.payload,
 				});
