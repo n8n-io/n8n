@@ -289,7 +289,6 @@ export function useActionsGenerator() {
 					const credentialOnlyNodes = httpOnlyCredentials.map((credentialType) =>
 						getSimplifiedNodeType(getCredentialOnlyNodeType(app, credentialType)),
 					);
-					console.log(httpOnlyCredentials, credentialOnlyNodes);
 					mergedNodes.push(...credentialOnlyNodes);
 				}
 

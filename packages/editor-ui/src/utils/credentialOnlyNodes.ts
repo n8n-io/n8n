@@ -1,23 +1,37 @@
 import { deepCopy, type ICredentialType, type INodeTypeDescription } from 'n8n-workflow';
 import { CREDENTIAL_ONLY_NODE_PREFIX } from '../constants';
+import { i18n } from '@/plugins/i18n';
+
+export function isCredentialOnlyNodeType(nodeTypeName: string): boolean {
+	return nodeTypeName.startsWith(CREDENTIAL_ONLY_NODE_PREFIX);
+}
+
+export function getCredentialTypeName(nodeTypeName: string): string {
+	return nodeTypeName.split('.')[1];
+}
+
+export function getCredentialOnlyNodeTypeName(credentialTypeName: string): string {
+	return `${CREDENTIAL_ONLY_NODE_PREFIX}.${credentialTypeName}`;
+}
 
 export function getCredentialOnlyNodeType(
-	httpNode?: INodeTypeDescription,
+	httpNode?: INodeTypeDescription | null,
 	credentialType?: ICredentialType,
 ): INodeTypeDescription | undefined {
 	const { httpRequestNode } = credentialType ?? {};
 	if (!httpNode || !credentialType || !httpRequestNode) return undefined;
 
-	const { docsUrl, name: nodeName } = httpRequestNode;
+	const { docsUrl, name: displayName } = httpRequestNode;
 
 	const credentialOnlyNode = deepCopy(httpNode);
 
 	const httpIcon = httpNode.iconUrl;
 
-	credentialOnlyNode.name = `${CREDENTIAL_ONLY_NODE_PREFIX}.${credentialType.name}`;
-	credentialOnlyNode.displayName = nodeName ?? credentialType.displayName;
+	credentialOnlyNode.name = getCredentialOnlyNodeTypeName(credentialType.name);
+	credentialOnlyNode.extendsCredential = credentialType.name;
+	credentialOnlyNode.displayName = displayName ?? credentialType.displayName;
 	credentialOnlyNode.description = 'HTTP request';
-	credentialOnlyNode.defaults.name = `${nodeName} HTTP Request`;
+	credentialOnlyNode.defaults.name = `${displayName} HTTP Request`;
 	credentialOnlyNode.codex = {};
 
 	credentialOnlyNode.credentials = [{ name: credentialType.name, required: true }];
@@ -53,7 +67,9 @@ export function getCredentialOnlyNodeType(
 
 	credentialOnlyNode.properties.splice(1, 0, {
 		type: 'notice',
-		displayName: `Use the <a target="_blank" href="${docsUrl}">${nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a ${nodeName} credential below.`,
+		displayName: i18n.baseText('ndv.httpRequest.credentialOnly.docsNotice', {
+			interpolate: { nodeName: displayName, docsUrl },
+		}),
 		name: 'httpVariantWarning',
 		default: '',
 	});

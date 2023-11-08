@@ -7,7 +7,6 @@ import {
 	getResourceMapperFields,
 } from '@/api/nodeTypes';
 import {
-	CREDENTIAL_ONLY_NODE_PREFIX,
 	DEFAULT_NODETYPE_VERSION,
 	HTTP_REQUEST_NODE_TYPE,
 	STORES,
@@ -38,7 +37,11 @@ import { NodeConnectionType, NodeHelpers } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { useCredentialsStore } from './credentials.store';
 import { useRootStore } from './n8nRoot.store';
-import { getCredentialOnlyNodeType } from '../utils/credentialOnlyNodes';
+import {
+	getCredentialOnlyNodeType,
+	getCredentialTypeName,
+	isCredentialOnlyNodeType,
+} from '@/utils/credentialOnlyNodes';
 
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
@@ -75,14 +78,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 		},
 		getNodeType() {
 			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
-				if (nodeTypeName?.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)) {
-					const credentialName = nodeTypeName.split('.')[1];
-					const httpNode = this.getNodeType(
-						HTTP_REQUEST_NODE_TYPE,
-						version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
-					);
-					const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
-					return getCredentialOnlyNodeType(httpNode, credential);
+				if (isCredentialOnlyNodeType(nodeTypeName)) {
+					return this.getCredentialOnlyNodeType(nodeTypeName, version);
 				}
 
 				const nodeVersions = this.nodeTypes[nodeTypeName];
@@ -92,6 +89,17 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 				const versionNumbers = Object.keys(nodeVersions).map(Number);
 				const nodeType = nodeVersions[version ?? Math.max(...versionNumbers)];
 				return nodeType ?? null;
+			};
+		},
+		getCredentialOnlyNodeType() {
+			return (nodeTypeName: string, version?: number): INodeTypeDescription | null => {
+				const credentialName = getCredentialTypeName(nodeTypeName);
+				const httpNode = this.getNodeType(
+					HTTP_REQUEST_NODE_TYPE,
+					version ?? CREDENTIAL_ONLY_HTTP_NODE_VERSION,
+				);
+				const credential = useCredentialsStore().getCredentialTypeByName(credentialName);
+				return getCredentialOnlyNodeType(httpNode, credential) ?? null;
 			};
 		},
 		isConfigNode() {

@@ -18,11 +18,7 @@ import { useTitleChange } from '@/composables/useTitleChange';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
-import {
-	CREDENTIAL_ONLY_NODE_PREFIX,
-	FORM_TRIGGER_NODE_TYPE,
-	HTTP_REQUEST_NODE_TYPE,
-} from '../constants';
+import { FORM_TRIGGER_NODE_TYPE } from '@/constants';
 import { openPopUpWindow } from '@/utils/executionUtils';
 
 export const workflowRun = defineComponent({
@@ -226,14 +222,6 @@ export const workflowRun = defineComponent({
 				}
 
 				const workflowData = await this.getWorkflowDataToSave();
-
-				workflowData.nodes = workflowData.nodes.map((node) => {
-					// Execute credential only nodes as HTTP Request Node
-					if (node.type.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)) {
-						node.type = HTTP_REQUEST_NODE_TYPE;
-					}
-					return node;
-				});
 
 				const startRunData: IStartRunData = {
 					workflowData,

@@ -964,6 +964,7 @@ export interface INode {
 	parameters: INodeParameters;
 	credentials?: INodeCredentials;
 	webhookId?: string;
+	extendsCredential?: string;
 }
 
 export interface IPinData {
@@ -1619,6 +1620,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	extendsCredential?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 }
 
