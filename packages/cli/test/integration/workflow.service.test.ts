@@ -3,6 +3,8 @@ import * as testDb from './shared/testDb';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { mockInstance } from './shared/utils';
 import { Telemetry } from '@/telemetry';
+import { createOwner } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
 
 mockInstance(Telemetry);
 
@@ -23,8 +25,8 @@ afterAll(async () => {
 
 describe('update()', () => {
 	test('should remove and re-add to active workflows on `active: true` payload', async () => {
-		const owner = await testDb.createOwner();
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const owner = await createOwner();
+		const workflow = await createWorkflow({ active: true }, owner);
 
 		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');
@@ -42,8 +44,8 @@ describe('update()', () => {
 	});
 
 	test('should remove from active workflows on `active: false` payload', async () => {
-		const owner = await testDb.createOwner();
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const owner = await createOwner();
+		const workflow = await createWorkflow({ active: true }, owner);
 
 		const removeSpy = jest.spyOn(activeWorkflowRunner, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowRunner, 'add');

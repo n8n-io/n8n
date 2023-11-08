@@ -342,7 +342,7 @@ describe('add()', () => {
 						jest.replaceProperty(multiMainSetup, 'isEnabled', true);
 						jest.replaceProperty(multiMainSetup, 'isFollower', true);
 
-						const workflow = await testDb.createWorkflow({ active: true }, owner);
+						const workflow = await createWorkflow({ active: true }, owner);
 
 						const broadcastSpy = jest.spyOn(multiMainSetup, 'broadcastWorkflowWasUpdated');
 

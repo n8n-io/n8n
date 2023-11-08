@@ -18,6 +18,7 @@ import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
 import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { mockInstance } from '../shared/utils/';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -28,10 +29,12 @@ let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
-const licenseLike = utils.mockInstance(License, {
+const licenseLike = mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });
+
+mockInstance(MultiMainSetup, { isEnabled: false });
 
 beforeAll(async () => {
 	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();
@@ -49,7 +52,6 @@ beforeAll(async () => {
 	});
 
 	await utils.initNodeTypes();
-	utils.mockInstance(MultiMainSetup);
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
