@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type { IWorkflowBase, JsonObject, ExecutionStatus } from 'n8n-workflow';
-import { jsonParse, Workflow } from 'n8n-workflow';
+import { jsonParse, Workflow, WorkflowOperationError } from 'n8n-workflow';
 import type { FindOperator } from 'typeorm';
 import { In } from 'typeorm';
 import { ActiveExecutions } from '@/ActiveExecutions';
@@ -311,7 +311,7 @@ export class ExecutionsService {
 							nodeName: stack.node.name,
 						},
 					);
-					throw new Error(
+					throw new WorkflowOperationError(
 						`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`,
 					);
 				}
