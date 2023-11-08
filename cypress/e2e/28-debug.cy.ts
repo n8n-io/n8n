@@ -134,5 +134,6 @@ describe('Debug', () => {
 		cy.wait(['@getExecution']);
 		executionsTab.getters.executionDebugButton().should('have.text', 'Copy to editor').click();
 		cy.get('.el-notification').contains("Some execution data wasn't imported").should('be.visible');
+		cy.url().should('include', '/debug');
 	});
 });
