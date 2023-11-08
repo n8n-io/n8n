@@ -5,7 +5,7 @@ import { useStorage } from '@vueuse/core';
 import { useUsersStore } from '@/stores/users.store';
 import { useRootStore } from '@/stores/n8nRoot.store';
 import { useSettingsStore } from '@/stores/settings.store';
-import type { FeatureFlags, IDataObject, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/constants';
 import { useTelemetryStore } from './telemetry.store';
 import { debounce } from 'lodash-es';
