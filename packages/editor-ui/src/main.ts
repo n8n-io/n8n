@@ -42,13 +42,6 @@ app.use(i18nInstance);
 
 app.mount('#app');
 
-<<<<<<< HEAD
-router.afterEach((to, from) => {
-	void runExternalHook('main.routeChange', { from, to });
-});
-
-=======
->>>>>>> origin/master
 if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
