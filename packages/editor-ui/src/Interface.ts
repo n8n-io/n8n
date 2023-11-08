@@ -49,7 +49,7 @@ import type {
 import type { BulkCommand, Undoable } from '@/models/history';
 import type { PartialBy, TupleToUnion } from '@/utils/typeHelpers';
 import type { Component } from 'vue';
-import type { ExternalHooks } from '@/types';
+import type { runExternalHook } from '@/utils';
 
 export * from 'n8n-design-system/types';
 
@@ -157,14 +157,8 @@ export interface INodeTypesMaxCount {
 	};
 }
 
-export type ExtractArrayType<T> = T extends Array<infer U> ? U : () => void;
-export type FunctionWithParams<T> = T extends (...args: any[]) => any ? T : never;
-
 export interface IExternalHooks {
-	run<Context extends keyof ExternalHooks, Event extends keyof ExternalHooks[Context]>(
-		eventName: `${Context}.${Event extends string ? Event : never}`,
-		metadata?: Parameters<FunctionWithParams<ExtractArrayType<ExternalHooks[Context][Event]>>>[0],
-	): Promise<void>;
+	run: typeof runExternalHook;
 }
 
 export interface INodeTranslationHeaders {

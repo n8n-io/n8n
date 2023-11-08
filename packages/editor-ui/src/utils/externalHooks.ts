@@ -1,8 +1,16 @@
 import type { IDataObject } from 'n8n-workflow';
-import type { ExternalHooks, ExternalHooksGenericContext } from '@/types/externalHooks';
 import { useWebhooksStore } from '@/stores/webhooks.store';
+import type {
+	ExternalHooks,
+	ExternalHooksKey,
+	ExternalHooksGenericContext,
+	ExtractExternalHooksMethodPayloadFromKey,
+} from '@/types/externalHooks';
 
-export async function runExternalHook(eventName: string, metadata?: IDataObject) {
+export async function runExternalHook<T extends ExternalHooksKey>(
+	eventName: T,
+	metadata?: ExtractExternalHooksMethodPayloadFromKey<T>,
+) {
 	if (!window.n8nExternalHooks) {
 		return;
 	}
@@ -19,7 +27,7 @@ export async function runExternalHook(eventName: string, metadata?: IDataObject)
 		const hookMethods = context[operator];
 
 		for (const hookMethod of hookMethods) {
-			await hookMethod(store, metadata);
+			await hookMethod(store, metadata as IDataObject);
 		}
 	}
 }

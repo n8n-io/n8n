@@ -5,7 +5,10 @@ import type {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-} from 'n8n-workflow/src';
+	INodeParameterResourceLocator,
+	NodeParameterValue,
+	ResourceMapperValue,
+} from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type {
 	AuthenticationModalEventData,
@@ -29,19 +32,14 @@ import type {
 } from '@/Interface';
 import type { ComponentPublicInstance } from 'vue/dist/vue';
 import type { useWebhooksStore } from '@/stores';
-import type { IDataObject } from 'n8n-workflow';
 
-export type ExternalHooksMethod<T = IDataObject, R = void> = (
-	store: ReturnType<typeof useWebhooksStore>,
-	metadata: T,
-) => R | Promise<R>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export interface ExternalHooksMethod<T = any, R = void> {
+	(store: ReturnType<typeof useWebhooksStore>, metadata: T): R | Promise<R>;
+}
 
 export interface ExternalHooksGenericContext {
 	[key: string]: ExternalHooksMethod[];
-}
-
-export interface ExternalHooksGeneric {
-	[key: string]: ExternalHooksGenericContext;
 }
 
 export interface ExternalHooks {
@@ -199,7 +197,16 @@ export interface ExternalHooks {
 			ExternalHooksMethod<{
 				node_type?: string;
 				action: string;
-				resource: INodeParameters['resource'];
+				resource:
+					| string
+					| number
+					| true
+					| INodeParameters
+					| INodeParameterResourceLocator
+					| NodeParameterValue[]
+					| INodeParameters[]
+					| INodeParameterResourceLocator[]
+					| ResourceMapperValue[];
 			}>
 		>;
 		selectedTypeChanged: Array<ExternalHooksMethod<{ oldValue: string; newValue: string }>>;
@@ -265,3 +272,23 @@ export interface ExternalHooks {
 		>;
 	};
 }
+
+export type ExternalHooksKey = {
+	[K in keyof ExternalHooks]: `${K}.${Extract<keyof ExternalHooks[K], string>}`;
+}[keyof ExternalHooks];
+
+type ExtractHookMethodArray<
+	P extends keyof ExternalHooks,
+	S extends keyof ExternalHooks[P],
+> = ExternalHooks[P][S] extends Array<infer U> ? U : never;
+
+type ExtractHookMethodFunction<T> = T extends ExternalHooksMethod ? T : never;
+
+export type ExtractExternalHooksMethodPayloadFromKey<T extends ExternalHooksKey> =
+	T extends `${infer P}.${infer S}`
+		? P extends keyof ExternalHooks
+			? S extends keyof ExternalHooks[P]
+				? Parameters<ExtractHookMethodFunction<ExtractHookMethodArray<P, S>>>[1]
+				: never
+			: never
+		: never;
