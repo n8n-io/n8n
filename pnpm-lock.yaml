@@ -141,6 +141,8 @@ importers:
         specifier: ^0.21.1
         version: 0.21.4
 
+  packages/@n8n/permissions: {}
+
   packages/@n8n_io/eslint-config:
     devDependencies:
       '@types/eslint':
