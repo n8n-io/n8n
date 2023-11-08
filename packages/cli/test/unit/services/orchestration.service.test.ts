@@ -11,6 +11,7 @@ import { OrchestrationHandlerMainService } from '@/services/orchestration/main/o
 import * as helpers from '@/services/orchestration/helpers';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { Logger } from '@/Logger';
+import { Push } from '@/push';
 
 const os = Container.get(SingleMainSetup);
 const handler = Container.get(OrchestrationHandlerMainService);
@@ -33,6 +34,7 @@ const workerRestartEventbusResponse: RedisServiceWorkerResponseObject = {
 
 describe('Orchestration Service', () => {
 	const logger = mockInstance(Logger);
+	mockInstance(Push);
 	beforeAll(async () => {
 		mockInstance(RedisService);
 		mockInstance(ExternalSecretsManager);
