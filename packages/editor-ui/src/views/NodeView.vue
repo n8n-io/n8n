@@ -4140,6 +4140,7 @@ export default defineComponent({
 
 			this.onToggleNodeCreator({ createNodeActive: false });
 			this.nodeCreatorStore.setShowScrim(false);
+			this.canvasStore.resetZoom();
 
 			// Reset nodes
 			this.unbindEndpointEventListeners();

@@ -289,6 +289,14 @@ export default defineComponent({
 	padding-bottom: var(--spacing-xl);
 }
 
+.qrContainer {
+	text-align: center;
+
+	canvas {
+		border: 4px solid var(--prim-gray-10);
+	}
+}
+
 .headerContainer {
 	text-align: center;
 }
