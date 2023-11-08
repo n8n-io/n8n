@@ -16,7 +16,6 @@ import type {
 	IWorkflowBase,
 	CredentialLoadingDetails,
 	Workflow,
-	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	ExecutionStatus,
 	IExecutionsSummary,
@@ -64,20 +63,6 @@ import type {
 import type { LICENSE_FEATURES, LICENSE_QUOTAS } from './constants';
 import type { WorkflowWithSharingsAndCredentials } from './workflows/workflows.types';
 import type { WorkerJobStatusSummary } from './services/orchestration/worker/types';
-
-export interface IActivationError {
-	time: number;
-	error: {
-		message: string;
-	};
-}
-
-export interface IQueuedWorkflowActivations {
-	activationMode: WorkflowActivateMode;
-	lastTimeout: number;
-	timeout: NodeJS.Timeout;
-	workflowData: IWorkflowDb;
-}
 
 export interface ICredentialsTypeData {
 	[key: string]: CredentialLoadingDetails;
@@ -520,34 +505,40 @@ export type IPushData =
 	| PushDataTestWebhook
 	| PushDataNodeDescriptionUpdated
 	| PushDataExecutionRecovered
+	| PushDataActiveWorkflowUsersChanged;
 	| PushDataWorkerStatusMessage;
 
-type PushDataExecutionRecovered = {
+type PushDataActiveWorkflowUsersChanged = {
+	data: IActiveWorkflowUsersChanged;
+	type: 'activeWorkflowUsersChanged';
+};
+
+export type PushDataExecutionRecovered = {
 	data: IPushDataExecutionRecovered;
 	type: 'executionRecovered';
 };
 
-type PushDataExecutionFinished = {
+export type PushDataExecutionFinished = {
 	data: IPushDataExecutionFinished;
 	type: 'executionFinished';
 };
 
-type PushDataExecutionStarted = {
+export type PushDataExecutionStarted = {
 	data: IPushDataExecutionStarted;
 	type: 'executionStarted';
 };
 
-type PushDataExecuteAfter = {
+export type PushDataExecuteAfter = {
 	data: IPushDataNodeExecuteAfter;
 	type: 'nodeExecuteAfter';
 };
 
-type PushDataExecuteBefore = {
+export type PushDataExecuteBefore = {
 	data: IPushDataNodeExecuteBefore;
 	type: 'nodeExecuteBefore';
 };
 
-type PushDataConsoleMessage = {
+export type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
 };
@@ -562,20 +553,30 @@ type PushDataReloadNodeType = {
 	type: 'reloadNodeType';
 };
 
-type PushDataRemoveNodeType = {
+export type PushDataRemoveNodeType = {
 	data: IPushDataRemoveNodeType;
 	type: 'removeNodeType';
 };
 
-type PushDataTestWebhook = {
+export type PushDataTestWebhook = {
 	data: IPushDataTestWebhook;
 	type: 'testWebhookDeleted' | 'testWebhookReceived';
 };
 
-type PushDataNodeDescriptionUpdated = {
+export type PushDataNodeDescriptionUpdated = {
 	data: undefined;
 	type: 'nodeDescriptionUpdated';
 };
+
+export interface IActiveWorkflowUser {
+	user: User;
+	lastSeen: Date;
+}
+
+export interface IActiveWorkflowUsersChanged {
+	workflowId: Workflow['id'];
+	activeUsers: IActiveWorkflowUser[];
+}
 
 export interface IPushDataExecutionRecovered {
 	executionId: string;

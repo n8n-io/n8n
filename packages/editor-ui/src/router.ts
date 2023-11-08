@@ -1,4 +1,5 @@
-import { useStorage } from '@vueuse/core';
+import { useStorage } from '@/composables/useStorage';
+
 import type { RouteLocation, RouteRecordRaw } from 'vue-router';
 import { createRouter, createWebHistory } from 'vue-router';
 import type { IPermissions } from './Interface';
@@ -818,7 +819,7 @@ export const routes = [
 							role: [ROLE.Owner],
 						},
 						deny: {
-							shouldDeny: () => !useStorage('audit-logs', undefined).value,
+							shouldDeny: () => !useStorage('audit-logs').value,
 						},
 					},
 				},
