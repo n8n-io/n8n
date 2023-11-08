@@ -3998,7 +3998,7 @@ export default defineComponent({
 
 					const node = tempWorkflow.nodes[nodeNameTable[nodeName]];
 					try {
-						this.setPinData(node, data.pinData[nodeName], 'add-nodes');
+						this.setPinData(node, data.pinData![nodeName], 'add-nodes');
 						pinDataSuccess = true;
 					} catch (error) {
 						pinDataSuccess = false;
