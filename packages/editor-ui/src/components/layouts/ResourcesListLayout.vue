@@ -397,26 +397,18 @@ export default defineComponent({
 			await this.$nextTick();
 			this.focusSearchInput();
 
-			if (this.filtersLength() > 0) {
+			if (this.hasAppliedFilters()) {
 				this.hasFilters = true;
 			}
 		},
-		filtersLength(): number {
-			let length = 0;
-
-			this.filterKeys.forEach((key) => {
-				if (key === 'search') {
-					return;
-				}
-
-				length += (
-					Array.isArray(this.filters[key]) ? this.filters[key].length > 0 : this.filters[key] !== ''
-				)
-					? 1
-					: 0;
-			});
-
-			return length;
+		hasAppliedFilters(): boolean {
+			return !!this.filterKeys.find(
+				(key) =>
+					key !== 'search' &&
+					(Array.isArray(this.filters[key])
+						? this.filters[key].length > 0
+						: this.filters[key] !== ''),
+			);
 		},
 		setCurrentPage(page: number) {
 			this.currentPage = page;

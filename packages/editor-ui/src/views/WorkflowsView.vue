@@ -253,31 +253,31 @@ const WorkflowsView = defineComponent({
 			(this.$refs.layout as IResourcesListLayoutInstance).sendFiltersTelemetry(source);
 		},
 		saveFiltersOnQueryString() {
-			const queryString = new URLSearchParams();
+			const query: { [key: string]: string } = {};
 
 			if (this.filters.search) {
-				queryString.append('search', this.filters.search);
+				query.search = this.filters.search;
 			}
 
-			if (this.filters.status !== undefined && this.filters.status !== '') {
-				queryString.append('status', this.filters.status as string);
+			if (typeof this.filters.status === 'string' && this.filters.status !== '') {
+				query.status = this.filters.status;
 			}
 
 			if (this.filters.tags.length) {
-				queryString.append('tags', this.filters.tags.join(','));
+				query.tags = this.filters.tags.join(',');
 			}
 
 			if (this.filters.ownedBy) {
-				queryString.append('ownedBy', this.filters.ownedBy);
+				query.ownedBy = this.filters.ownedBy;
 			}
 
 			if (this.filters.sharedWith) {
-				queryString.append('sharedWith', this.filters.sharedWith);
+				query.sharedWith = this.filters.sharedWith;
 			}
 
 			void this.$router.replace({
 				name: VIEWS.WORKFLOWS,
-				query: { ...Object.fromEntries(queryString) },
+				query,
 			});
 		},
 		isValidUserId(userId: string) {
@@ -313,7 +313,7 @@ const WorkflowsView = defineComponent({
 				typeof status === 'string' &&
 				[StatusFilter.ACTIVE.toString(), StatusFilter.DEACTIVATED.toString()].includes(status)
 			) {
-				filtersToApply.status = status === 'true' ? true : false;
+				filtersToApply.status = status === 'true';
 			}
 
 			if (Object.keys(filtersToApply).length) {
