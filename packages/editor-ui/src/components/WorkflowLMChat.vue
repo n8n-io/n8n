@@ -64,17 +64,12 @@
 						</div>
 					</div>
 				</div>
-				<div class="logs-wrapper">
+				<div class="logs-wrapper" v-if="node">
 					<n8n-text class="logs-title" tag="p" size="large">{{
 						$locale.baseText('chat.window.logs')
 					}}</n8n-text>
 					<div class="logs">
-						<run-data-ai v-if="node" :node="node" hide-title slim :key="messages.length" />
-						<div v-else class="no-node-connected">
-							<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{
-								$locale.baseText('chat.window.noExecution')
-							}}</n8n-text>
-						</div>
+						<run-data-ai :node="node" hide-title slim :key="messages.length" />
 					</div>
 				</div>
 			</div>
@@ -503,6 +498,7 @@ export default defineComponent({
 	display: flex;
 	height: 100%;
 	min-height: 400px;
+	z-index: 9999;
 
 	.logs-wrapper {
 		border: 1px solid #e0e0e0;
