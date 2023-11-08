@@ -307,7 +307,6 @@ export class Crypto implements INodeType {
 				displayOptions: {
 					show: {
 						action: ['sign'],
-						binaryData: [false],
 					},
 				},
 				type: 'string',
