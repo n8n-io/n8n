@@ -259,8 +259,8 @@ const WorkflowsView = defineComponent({
 				query.search = this.filters.search;
 			}
 
-			if (typeof this.filters.status === 'string' && this.filters.status !== '') {
-				query.status = this.filters.status;
+			if (typeof this.filters.status !== 'string') {
+				query.status = this.filters.status.toString();
 			}
 
 			if (this.filters.tags.length) {
