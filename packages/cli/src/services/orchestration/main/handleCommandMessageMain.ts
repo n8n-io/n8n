@@ -81,7 +81,6 @@ export async function handleCommandMessageMain(messageString: string) {
 				if (multiMainSetup.isFollower) break;
 
 				const workflowRepository = Container.get(WorkflowRepository);
-				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 				const workflow = await workflowRepository.findOne({
 					select: ['id', 'active'],
@@ -91,6 +90,8 @@ export async function handleCommandMessageMain(messageString: string) {
 				});
 
 				if (!workflow) break;
+
+				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 				try {
 					await activeWorkflowRunner.remove(workflow.id);

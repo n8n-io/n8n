@@ -730,12 +730,19 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 	) {
-		if (this.multiMainSetup.isEnabled && !this.multiMainSetup.isLeader) {
+		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
+			const prefix = '[Multi-main setup] Instance is follower';
+
 			this.logger.debug(
-				'[Multi-main setup] Instance is follower, skipping addition of workflow to active workflows in memory and broadcasting "workflowWasUpdated" into command channel...',
+				[prefix, 'skipping addition of workflow to active workflows in memory...'].join(', '),
 			);
 
-			await this.multiMainSetup.broadcastWorkflowWasUpdated(workflowId);
+			if (['activate', 'update'].includes(activationMode)) {
+				this.logger.debug(
+					[prefix, 'broadcasting "workflowWasUpdated" into command channel...'].join(', '),
+				);
+				await this.multiMainSetup.broadcastWorkflowWasUpdated(workflowId);
+			}
 
 			return;
 		}
@@ -941,6 +948,8 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			this.logger.debug(
 				'[Multi-main setup] Instance is follower, skipping removal of workflow from active workflows in memory...',
 			);
+
+			// @TODO: broadcast workflowWasDeactivated
 
 			return;
 		}

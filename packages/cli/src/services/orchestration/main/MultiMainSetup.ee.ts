@@ -26,8 +26,6 @@ export class MultiMainSetup extends SingleMainSetup {
 	}
 
 	get isFollower() {
-		if (!this.isInitialized) throw new NotInitializedError();
-
 		return !this.isLeader;
 	}
 
