@@ -15,7 +15,15 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { OptionsWithUri } from 'request';
 
 /**
- * A custom API request function to be used with the resourceLocator lookup queries.
+ * Sends an API request to a specified endpoint using the provided method and body.
+ * The request is authenticated using n8nApi credentials and can be used with the resourceLocator lookup queries.
+ *
+ * @param {string} method - The HTTP method to use for the request.
+ * @param {string} endpoint - The API endpoint to send the request to.
+ * @param {object} body - The body of the request.
+ * @param {IDataObject} [query] - Optional query parameters to include in the request.
+ * @returns {Promise<any>} - Returns a promise that resolves with the response from the API request.
+ * @throws {NodeApiError} - Throws an error if the request fails.
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -52,6 +60,16 @@ export async function apiRequest(
 	}
 }
 
+/**
+ * Sends an API request to retrieve all items from a specified endpoint.
+ * It handles pagination by using a cursor and a limit of 100 items per request.
+ *
+ * @param {string} method - The HTTP method to use for the request.
+ * @param {string} endpoint - The API endpoint to send the request to.
+ * @param {object} body - The body of the request.
+ * @param {IDataObject} [query] - Optional query parameters to include in the request.
+ * @returns {Promise<any>} A promise that resolves with an array of all items retrieved from the API.
+ */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
