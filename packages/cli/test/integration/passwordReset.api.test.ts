@@ -23,6 +23,8 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
+import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
+import { createUser } from './shared/db/users';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
@@ -38,14 +40,14 @@ const jwtService = Container.get(JwtService);
 let userService: UserService;
 
 beforeAll(async () => {
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
+	globalOwnerRole = await getGlobalOwnerRole();
+	globalMemberRole = await getGlobalMemberRole();
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
+	owner = await createUser({ globalRole: globalOwnerRole });
+	member = await createUser({ globalRole: globalMemberRole });
 	externalHooks.run.mockReset();
 	jest.replaceProperty(mailer, 'isEmailSetUp', true);
 	userService = Container.get(UserService);
@@ -53,7 +55,7 @@ beforeEach(async () => {
 
 describe('POST /forgot-password', () => {
 	test('should send password reset email', async () => {
-		const member = await testDb.createUser({
+		const member = await createUser({
 			email: 'test@test.com',
 			globalRole: globalMemberRole,
 		});
@@ -79,7 +81,7 @@ describe('POST /forgot-password', () => {
 
 	test('should fail if SAML is authentication method', async () => {
 		await setCurrentAuthenticationMethod('saml');
-		const member = await testDb.createUser({
+		const member = await createUser({
 			email: 'test@test.com',
 			globalRole: globalMemberRole,
 		});

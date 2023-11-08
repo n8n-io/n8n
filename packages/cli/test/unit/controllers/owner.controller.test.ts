@@ -7,7 +7,7 @@ import type { SettingsRepository } from '@db/repositories';
 import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
-import { OwnerController } from '@/controllers';
+import { OwnerController } from '@/controllers/owner.controller';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { UserService } from '@/services/user.service';

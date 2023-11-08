@@ -1,6 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
 import { SOURCE_CONTROL_API_ROOT } from '@/environments/sourceControl/constants';
-import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils/';
 import type { User } from '@db/entities/User';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
@@ -10,6 +9,8 @@ import { License } from '@/License';
 import { SourceControlPreferencesService } from '@/environments/sourceControl/sourceControlPreferences.service.ee';
 import { SourceControlService } from '@/environments/sourceControl/sourceControl.service.ee';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
+import { getGlobalMemberRole, getGlobalOwnerRole } from '../shared/db/roles';
+import { createUser } from '../shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -24,10 +25,10 @@ const testServer = utils.setupTestServer({
 });
 
 beforeAll(async () => {
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	const globalMemberRole = await testDb.getGlobalMemberRole();
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	member = await testDb.createUser({ globalRole: globalMemberRole });
+	const globalOwnerRole = await getGlobalOwnerRole();
+	const globalMemberRole = await getGlobalMemberRole();
+	owner = await createUser({ globalRole: globalOwnerRole });
+	member = await createUser({ globalRole: globalMemberRole });
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
 
