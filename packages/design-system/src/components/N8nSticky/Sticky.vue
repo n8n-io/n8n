@@ -1,6 +1,11 @@
 <template>
 	<div
-		:class="{ 'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing }"
+		:class="{
+			'n8n-sticky': true,
+			[$style.sticky]: true,
+			[$style.clickable]: !isResizing,
+			[$style[`color-${backgroundColor}`]]: true,
+		}"
 		:style="styles"
 		@keydown.prevent
 	>
@@ -106,6 +111,10 @@ export default defineComponent({
 			type: Boolean,
 			default: false,
 		},
+		backgroundColor: {
+			value: [Number, String],
+			default: 1,
+		},
 	},
 	components: {
 		N8nInput,
@@ -132,10 +141,12 @@ export default defineComponent({
 			return this.width;
 		},
 		styles(): { height: string; width: string } {
-			return {
+			const styles: { height: string; width: string } = {
 				height: `${this.resHeight}px`,
 				width: `${this.resWidth}px`,
 			};
+
+			return styles;
 		},
 		shouldShowFooter(): boolean {
 			return this.resHeight > 100 && this.resWidth > 155;
@@ -189,8 +200,6 @@ export default defineComponent({
 <style lang="scss" module>
 .sticky {
 	position: absolute;
-	background-color: var(--color-sticky-default-background);
-	border: 1px solid var(--color-sticky-default-border);
 	border-radius: var(--border-radius-base);
 }
 
@@ -212,12 +221,6 @@ export default defineComponent({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(
-			180deg,
-			var(--color-sticky-default-background),
-			#fff5d600 0.01%,
-			var(--color-sticky-default-background)
-		);
 		border-radius: var(--border-radius-base);
 	}
 }
@@ -226,6 +229,100 @@ export default defineComponent({
 	padding: var(--spacing-5xs) var(--spacing-2xs) 0 var(--spacing-2xs);
 	display: flex;
 	justify-content: flex-end;
+}
+
+.color-1 {
+	background-color: var(--sticky-color-1);
+	border: 1px solid var(--color-sticky, var(--sticky-color-1));
+
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-1)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-1))
+		);
+	}
+}
+
+.color-2 {
+	background-color: var(--sticky-color-2);
+	border: 1px solid var(--color-sticky, var(--sticky-color-2));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-2)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-2))
+		);
+	}
+}
+
+.color-3 {
+	background-color: var(--sticky-color-3);
+	border: 1px solid var(--color-sticky, var(--sticky-color-3));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-3)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-3))
+		);
+	}
+}
+
+.color-4 {
+	background-color: var(--sticky-color-4);
+	border: 1px solid var(--color-sticky, var(--sticky-color-4));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-4)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-4))
+		);
+	}
+}
+
+.color-5 {
+	background-color: var(--sticky-color-5);
+	border: 1px solid var(--color-sticky, var(--sticky-color-5));
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-5)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-5))
+		);
+	}
+}
+
+.color-6 {
+	background-color: var(--sticky-color-6);
+	border: 1px solid var(--color-sticky, var(--sticky-color-6));
+
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-6)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-6))
+		);
+	}
+}
+
+.color-7 {
+	background-color: var(--sticky-color-7);
+	border: 1px solid var(--color-sticky, var(--sticky-color-7));
+
+	.wrapper::after {
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky, var(--sticky-color-7)),
+			#fff5d600 0.01%,
+			var(--color-sticky, var(--sticky-color-7))
+		);
+	}
 }
 </style>
 
