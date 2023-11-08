@@ -9,6 +9,7 @@ import {
 
 import { Cohere } from 'langchain/llms/cohere';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmCohere implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,6 +48,7 @@ export class LmCohere implements INodeType {
 			},
 		],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',

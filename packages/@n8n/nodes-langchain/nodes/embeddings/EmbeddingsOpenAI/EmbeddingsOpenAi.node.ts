@@ -10,6 +10,7 @@ import {
 import type { ClientOptions } from 'openai';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class EmbeddingsOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -48,6 +49,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName: 'Options',
 				name: 'options',

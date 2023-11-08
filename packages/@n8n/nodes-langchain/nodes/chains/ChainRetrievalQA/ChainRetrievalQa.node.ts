@@ -10,6 +10,7 @@ import {
 import { RetrievalQAChain } from 'langchain/chains';
 import type { BaseLanguageModel } from 'langchain/dist/base_language';
 import type { BaseRetriever } from 'langchain/schema/retriever';
+import { getTemplateNoticeField } from '../../../utils/sharedFields';
 
 export class ChainRetrievalQa implements INodeType {
 	description: INodeTypeDescription = {
@@ -56,6 +57,7 @@ export class ChainRetrievalQa implements INodeType {
 		outputs: [NodeConnectionType.Main],
 		credentials: [],
 		properties: [
+			getTemplateNoticeField(1960),
 			{
 				displayName: 'Query',
 				name: 'query',
@@ -89,10 +91,7 @@ export class ChainRetrievalQa implements INodeType {
 			const query = this.getNodeParameter('query', itemIndex) as string;
 
 			if (query === undefined) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'No value for the required parameter "Query" was returned.',
-				);
+				throw new NodeOperationError(this.getNode(), 'The ‘query‘ parameter is empty.');
 			}
 
 			const response = await chain.call({ query });

@@ -7,6 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 import { ItemListOutputParser } from './ItemListOutputParser';
 
 export class OutputParserItemList implements INodeType {
@@ -40,6 +41,7 @@ export class OutputParserItemList implements INodeType {
 		outputs: [NodeConnectionType.AiOutputParser],
 		outputNames: ['Output Parser'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Options',
 				name: 'options',

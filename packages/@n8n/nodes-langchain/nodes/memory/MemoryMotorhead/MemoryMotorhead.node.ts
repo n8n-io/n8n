@@ -9,6 +9,7 @@ import {
 
 import { MotorheadMemory } from 'langchain/memory';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class MemoryMotorhead implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,6 +47,7 @@ export class MemoryMotorhead implements INodeType {
 			},
 		],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',

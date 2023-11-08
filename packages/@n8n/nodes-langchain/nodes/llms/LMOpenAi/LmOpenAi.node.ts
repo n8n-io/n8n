@@ -10,6 +10,7 @@ import {
 import type { ClientOptions } from 'openai';
 import { OpenAI } from 'langchain/llms/openai';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class LmOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +54,7 @@ export class LmOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiChain, NodeConnectionType.AiAgent]),
 			{
 				displayName: 'Model',
 				name: 'model',

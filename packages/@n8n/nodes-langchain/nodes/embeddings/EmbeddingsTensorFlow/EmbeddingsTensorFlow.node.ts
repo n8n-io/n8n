@@ -9,6 +9,7 @@ import {
 import '@tensorflow/tfjs-backend-cpu';
 import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class EmbeddingsTensorFlow implements INodeType {
 	description: INodeTypeDescription = {
@@ -41,6 +42,7 @@ export class EmbeddingsTensorFlow implements INodeType {
 		outputs: [NodeConnectionType.AiEmbedding],
 		outputNames: ['Embeddings'],
 		properties: [
+			getConnectionHintNoticeField([NodeConnectionType.AiVectorStore]),
 			{
 				displayName:
 					'The TensorFlow model we use for generating embeddings is using 512-dimensional embeddings. Please make sure to use the same dimensionality for your vector store. Be aware that running this model with high-dimensional embeddings may result in high CPU usage on the machine.',

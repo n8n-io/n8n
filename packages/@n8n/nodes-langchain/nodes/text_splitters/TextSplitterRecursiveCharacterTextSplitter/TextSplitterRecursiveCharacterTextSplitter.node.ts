@@ -9,6 +9,7 @@ import {
 import type { RecursiveCharacterTextSplitterParams } from 'langchain/text_splitter';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { logWrapper } from '../../../utils/logWrapper';
+import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -40,30 +41,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 		outputs: [NodeConnectionType.AiTextSplitter],
 		outputNames: ['Text Splitter'],
 		properties: [
-			// {
-			// 	displayName: 'Separators',
-			// 	name: 'separators',
-			// 	type: 'fixedCollection',
-			// 	typeOptions: {
-			// 		multipleValues: true,
-			// 	},
-			// 	placeholder: 'Add Separator',
-			// 	default: [{ separator: '' }],
-			// 	options: [
-			// 		{
-			// 			name: 'values',
-			// 			displayName: 'Values',
-			// 			values: [
-			// 				{
-			// 					displayName: 'Separator',
-			// 					name: 'separator',
-			// 					type: 'string',
-			// 					default: '',
-			// 				}
-			// 			]
-			// 		}
-			// 	]
-			// },
+			getConnectionHintNoticeField([NodeConnectionType.AiDocument]),
 			{
 				displayName: 'Chunk Size',
 				name: 'chunkSize',
