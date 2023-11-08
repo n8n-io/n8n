@@ -13,11 +13,11 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 
 	private leaderId: string | undefined;
 
-	public get isLeader() {
+	get isLeader() {
 		return this.id === this.leaderId;
 	}
 
-	public get isFollower() {
+	get isFollower() {
 		return !this.isLeader;
 	}
 
@@ -83,6 +83,8 @@ export class MultiMainInstancePublisher extends SingleMainInstancePublisher {
 			this.logger.debug(`Leader is now this instance "${this.id}"`);
 
 			this.leaderId = this.id;
+
+			this.emit('leadershipChange', this.id);
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 		}

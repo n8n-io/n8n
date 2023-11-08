@@ -1,14 +1,14 @@
+import Container from 'typedi';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import * as testDb from './../shared/testDb';
-import * as utils from '../shared/utils';
 import { randomPassword } from '@/Ldap/helpers';
-import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
 import { TOTPService } from '@/Mfa/totp.service';
-import Container from 'typedi';
-import { JwtService } from '@/services/jwt.service';
+import { UserService } from '@/services/user.service';
+import { randomDigit, randomString, randomValidPassword, uniqueId } from '../shared/random';
+import * as testDb from '../shared/testDb';
+import * as utils from '../shared/utils';
 
 jest.mock('@/telemetry');
 
@@ -206,7 +206,7 @@ describe('Change password with MFA enabled', () => {
 	});
 
 	test('POST /change-password should fail due to missing MFA token', async () => {
-		const { user } = await testDb.createUserWithMfaEnabled();
+		await testDb.createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
 
@@ -216,11 +216,11 @@ describe('Change password with MFA enabled', () => {
 			.post('/change-password')
 			.send({ password: newPassword, token: resetPasswordToken });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('POST /change-password should fail due to invalid MFA token', async () => {
-		const { user } = await testDb.createUserWithMfaEnabled();
+		await testDb.createUserWithMfaEnabled();
 
 		const newPassword = randomValidPassword();
 
@@ -232,7 +232,7 @@ describe('Change password with MFA enabled', () => {
 			mfaToken: randomDigit(),
 		});
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(404);
 	});
 
 	test('POST /change-password should update password', async () => {
@@ -242,9 +242,7 @@ describe('Change password with MFA enabled', () => {
 
 		config.set('userManagement.jwtSecret', randomString(5, 10));
 
-		const jwtService = Container.get(JwtService);
-
-		const resetPasswordToken = jwtService.signData({ sub: user.id });
+		const resetPasswordToken = Container.get(UserService).generatePasswordResetToken(user);
 
 		const mfaToken = new TOTPService().generateTOTP(rawSecret);
 

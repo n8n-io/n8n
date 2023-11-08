@@ -93,7 +93,7 @@
 	"auth.changePassword.passwordUpdatedMessage": "You can now sign in with your new password",
 	"auth.changePassword.passwordsMustMatchError": "Passwords must match",
 	"auth.changePassword.reenterNewPassword": "Re-enter new password",
-	"auth.changePassword.tokenValidationError": "Issue validating invite token",
+	"auth.changePassword.tokenValidationError": "Invalid password-reset token",
 	"auth.defaultPasswordRequirements": "8+ characters, at least 1 number and 1 capital letter",
 	"auth.validation.missingParameters": "Missing token or user id",
 	"auth.email": "Email",

@@ -30,7 +30,7 @@ const config = {
 		return acc;
 	}, {}),
 	setupFilesAfterEnv: ['jest-expect-message'],
-	collectCoverage: true,
+	collectCoverage: process.env.COVERAGE_ENABLED === 'true',
 	coverageReporters: [process.env.COVERAGE_REPORT === 'true' ? 'text' : 'text-summary'],
 	collectCoverageFrom: ['src/**/*.ts'],
 };
