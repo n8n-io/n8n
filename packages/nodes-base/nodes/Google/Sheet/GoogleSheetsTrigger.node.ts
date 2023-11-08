@@ -418,7 +418,10 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 
 			const googleSheet = new GoogleSheet(documentId, this);
-			const sheetName: string = await googleSheet.spreadsheetGetSheetNameById(sheetId);
+			const sheetName: string = await googleSheet.spreadsheetGetSheetNameById(
+				this.getNode(),
+				sheetId,
+			);
 			const options = this.getNodeParameter('options') as IDataObject;
 
 			const previousRevision = workflowStaticData.lastRevision as number;

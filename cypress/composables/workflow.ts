@@ -1,4 +1,3 @@
-import { WorkflowPage } from '../pages';
 import { ROUTES } from '../constants';
 import { getManualChatModal } from './modals/chat-modal';
 
@@ -56,6 +55,14 @@ export function getConnectionBySourceAndTarget(source: string, target: string) {
 		.eq(0);
 }
 
+export function getNodeCreatorSearchBar() {
+	return cy.getByTestId('node-creator-search-bar');
+}
+
+export function getNodeCreatorPlusButton() {
+	return cy.getByTestId('node-creator-plus-button');
+}
+
 /**
  * Actions
  */
@@ -66,12 +73,25 @@ export function addNodeToCanvas(
 	preventNdvClose?: boolean,
 	action?: string,
 ) {
-	new WorkflowPage().actions.addNodeToCanvas(
-		nodeDisplayName,
-		plusButtonClick,
-		preventNdvClose,
-		action,
-	);
+	if (plusButtonClick) {
+		getNodeCreatorPlusButton().click();
+	}
+
+	getNodeCreatorSearchBar().type(nodeDisplayName);
+	getNodeCreatorSearchBar().type('{enter}');
+	cy.wait(500);
+	cy.get('body').then((body) => {
+		if (body.find('[data-test-id=node-creator]').length > 0) {
+			if (action) {
+				cy.contains(action).click();
+			} else {
+				// Select the first action
+				cy.get('[data-keyboard-nav-type="action"]').eq(0).click();
+			}
+		}
+	});
+
+	if (!preventNdvClose) cy.get('body').type('{esc}');
 }
 
 export function navigateToNewWorkflowPage(preventNodeViewUnload = true) {

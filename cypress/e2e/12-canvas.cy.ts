@@ -16,11 +16,11 @@ const NDVDialog = new NDV();
 const DEFAULT_ZOOM_FACTOR = 1;
 const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
 const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
-const ZOOM_OUT_X1_FACTOR = 0.75;
-const ZOOM_OUT_X2_FACTOR = 0.5625;
+const ZOOM_OUT_X1_FACTOR = 0.8;
+const ZOOM_OUT_X2_FACTOR = 0.64;
 
-const PINCH_ZOOM_IN_FACTOR = 1.32;
-const PINCH_ZOOM_OUT_FACTOR = 0.4752;
+const PINCH_ZOOM_IN_FACTOR = 1.05702;
+const PINCH_ZOOM_OUT_FACTOR = 0.946058;
 const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Node Manipulation and Navigation', () => {
@@ -176,6 +176,7 @@ describe('Canvas Node Manipulation and Navigation', () => {
 		WorkflowPage.getters.canvasNodeByName(MANUAL_TRIGGER_NODE_DISPLAY_NAME).click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
+
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', [50, 150], { clickToFinish: true });
 		WorkflowPage.getters
 			.canvasNodes()
@@ -222,8 +223,8 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			);
 	});
 
-	it('should zoom using pinch to zoom', () => {
-		WorkflowPage.actions.pinchToZoom(2, 'zoomIn');
+	it('should zoom using scroll or pinch gesture', () => {
+		WorkflowPage.actions.pinchToZoom(1, 'zoomIn');
 		WorkflowPage.getters
 			.nodeView()
 			.should(
@@ -232,7 +233,11 @@ describe('Canvas Node Manipulation and Navigation', () => {
 				`matrix(${PINCH_ZOOM_IN_FACTOR}, 0, 0, ${PINCH_ZOOM_IN_FACTOR}, 0, 0)`,
 			);
 
-		WorkflowPage.actions.pinchToZoom(4, 'zoomOut');
+		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
+		// Zoom in 1x + Zoom out 1x should reset to default (=1)
+		WorkflowPage.getters.nodeView().should('have.css', 'transform', `matrix(1, 0, 0, 1, 0, 0)`);
+
+		WorkflowPage.actions.pinchToZoom(1, 'zoomOut');
 		WorkflowPage.getters
 			.nodeView()
 			.should(
@@ -364,5 +369,41 @@ describe('Canvas Node Manipulation and Navigation', () => {
 			cy.get('[class*=hasIssues]').should('have.length', 1);
 			NDVDialog.actions.close();
 		});
+	});
+
+	it('should render connections correctly if unkown nodes are present', () => {
+		const unknownNodeName = 'Unknown node';
+		cy.createFixtureWorkflow('workflow-with-unknown-nodes.json', 'Unknown nodes');
+
+		WorkflowPage.getters.canvasNodeByName(`${unknownNodeName} 1`).should('exist');
+		WorkflowPage.getters.canvasNodeByName(`${unknownNodeName} 2`).should('exist');
+		WorkflowPage.actions.zoomToFit();
+
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('plus', `${unknownNodeName} 1`),
+			WorkflowPage.getters.getEndpointSelector('input', EDIT_FIELDS_SET_NODE_NAME),
+		);
+
+		cy.draganddrop(
+			WorkflowPage.getters.getEndpointSelector('plus', `${unknownNodeName} 2`),
+			WorkflowPage.getters.getEndpointSelector('input', `${EDIT_FIELDS_SET_NODE_NAME}1`),
+		);
+
+		WorkflowPage.actions.executeWorkflow();
+		cy.contains('Node not found').should('be.visible');
+
+		WorkflowPage.getters
+			.canvasNodeByName(`${unknownNodeName} 1`)
+			.find('[data-test-id=delete-node-button]')
+			.click({ force: true });
+
+			WorkflowPage.getters
+			.canvasNodeByName(`${unknownNodeName} 2`)
+			.find('[data-test-id=delete-node-button]')
+			.click({ force: true });
+
+		WorkflowPage.actions.executeWorkflow();
+
+		cy.contains('Node not found').should('not.exist');
 	});
 });
