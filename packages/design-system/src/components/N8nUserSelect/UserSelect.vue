@@ -1,5 +1,6 @@
 <template>
 	<n8n-select
+		data-test-id="user-select-trigger"
 		v-bind="$attrs"
 		:modelValue="modelValue"
 		:filterable="true"

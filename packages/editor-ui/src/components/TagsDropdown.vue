@@ -17,6 +17,7 @@
 			ref="selectRef"
 			loading-text="..."
 			popper-class="tags-dropdown"
+			data-test-id="tags-dropdown"
 			@update:modelValue="onTagsUpdated"
 			@visible-change="onVisibleChange"
 			@remove-tag="onRemoveTag"
@@ -48,6 +49,7 @@
 				:key="tag.id + '_' + i"
 				:label="tag.name"
 				class="tag"
+				data-test-id="tag"
 				ref="tagRefs"
 			/>
 

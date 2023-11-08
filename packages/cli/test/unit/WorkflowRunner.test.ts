@@ -1,13 +1,16 @@
 import type { User } from '@db/entities/User';
 import * as testDb from '../integration/shared/testDb';
 import * as utils from '../integration/shared/utils/';
-import { createWorkflow, createExecution } from '../integration/shared/testDb';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { WorkflowHooks, type ExecutionError, type IWorkflowExecuteHooks } from 'n8n-workflow';
 import { Push } from '@/push';
 import { mockInstance } from '../integration/shared/utils';
 import Container from 'typedi';
 import config from '@/config';
+import { getGlobalOwnerRole } from '../integration/shared/db/roles';
+import { createUser } from '../integration/shared/db/users';
+import { createWorkflow } from '../integration/shared/db/workflows';
+import { createExecution } from '../integration/shared/db/executions';
 
 let owner: User;
 let runner: WorkflowRunner;
@@ -21,8 +24,8 @@ const watchers = new Watchers();
 const watchedWorkflowExecuteAfter = jest.spyOn(watchers, 'workflowExecuteAfter');
 
 beforeAll(async () => {
-	const globalOwnerRole = await testDb.getGlobalOwnerRole();
-	owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const globalOwnerRole = await getGlobalOwnerRole();
+	owner = await createUser({ globalRole: globalOwnerRole });
 
 	mockInstance(Push);
 	Container.set(Push, new Push());
