@@ -83,6 +83,7 @@
 								'border-width': '1px',
 								'border-style': 'solid',
 								'border-color': 'var(--color-text-dark)',
+								'background-color': `var(--sticky-color-${index + 1})`,
 								'box-shadow':
 									(index === 0 && node?.parameters.color === '') ||
 									index + 1 === node?.parameters.color
@@ -402,33 +403,5 @@ export default defineComponent({
 	&:hover {
 		cursor: pointer;
 	}
-}
-
-.sticky-color-1 {
-	background-color: var(--sticky-color-1);
-}
-
-.sticky-color-2 {
-	background-color: var(--sticky-color-2);
-}
-
-.sticky-color-3 {
-	background-color: var(--sticky-color-3);
-}
-
-.sticky-color-4 {
-	background-color: var(--sticky-color-4);
-}
-
-.sticky-color-5 {
-	background-color: var(--sticky-color-5);
-}
-
-.sticky-color-6 {
-	background-color: var(--sticky-color-6);
-}
-
-.sticky-color-7 {
-	background-color: var(--sticky-color-7);
 }
 </style>
