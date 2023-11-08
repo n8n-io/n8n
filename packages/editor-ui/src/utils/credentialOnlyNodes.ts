@@ -32,7 +32,12 @@ export function getCredentialOnlyNodeType(
 	credentialOnlyNode.displayName = displayName ?? credentialType.displayName;
 	credentialOnlyNode.description = 'HTTP request';
 	credentialOnlyNode.defaults.name = `${displayName} HTTP Request`;
-	credentialOnlyNode.codex = {};
+	credentialOnlyNode.codex = {
+		...credentialOnlyNode.codex,
+		alias: [],
+		categories: [],
+		subcategories: {},
+	};
 
 	credentialOnlyNode.credentials = [{ name: credentialType.name, required: true }];
 
