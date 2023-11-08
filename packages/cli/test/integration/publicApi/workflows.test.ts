@@ -13,6 +13,10 @@ import { STARTING_NODES } from '@/constants';
 import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';
 import Container from 'typedi';
+import { getAllRoles } from '../shared/db/roles';
+import { createUser } from '../shared/db/users';
+import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
+import { createTag } from '../shared/db/tags';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -29,16 +33,16 @@ const licenseLike = utils.mockInstance(License, {
 });
 
 beforeAll(async () => {
-	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await testDb.getAllRoles();
+	const [globalOwnerRole, globalMemberRole, fetchedWorkflowOwnerRole] = await getAllRoles();
 
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 
-	owner = await testDb.createUser({
+	owner = await createUser({
 		globalRole: globalOwnerRole,
 		apiKey: randomApiKey(),
 	});
 
-	member = await testDb.createUser({
+	member = await createUser({
 		globalRole: globalMemberRole,
 		apiKey: randomApiKey(),
 	});
@@ -80,9 +84,9 @@ describe('GET /workflows', () => {
 
 	test('should return all owned workflows', async () => {
 		await Promise.all([
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({}, member),
+			createWorkflow({}, member),
+			createWorkflow({}, member),
+			createWorkflow({}, member),
 		]);
 
 		const response = await authMemberAgent.get('/workflows');
@@ -120,9 +124,9 @@ describe('GET /workflows', () => {
 
 	test('should return all owned workflows with pagination', async () => {
 		await Promise.all([
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({}, member),
+			createWorkflow({}, member),
+			createWorkflow({}, member),
+			createWorkflow({}, member),
 		]);
 
 		const response = await authMemberAgent.get('/workflows?limit=1');
@@ -173,11 +177,11 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return all owned workflows filtered by tag', async () => {
-		const tag = await testDb.createTag({});
+		const tag = await createTag({});
 
 		const [workflow] = await Promise.all([
-			testDb.createWorkflow({ tags: [tag] }, member),
-			testDb.createWorkflow({}, member),
+			createWorkflow({ tags: [tag] }, member),
+			createWorkflow({}, member),
 		]);
 
 		const response = await authMemberAgent.get(`/workflows?tags=${tag.name}`);
@@ -213,15 +217,15 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
-		const tags = await Promise.all([await testDb.createTag({}), await testDb.createTag({})]);
+		const tags = await Promise.all([await createTag({}), await createTag({})]);
 		const tagNames = tags.map((tag) => tag.name).join(',');
 
 		const [workflow1, workflow2] = await Promise.all([
-			testDb.createWorkflow({ tags }, member),
-			testDb.createWorkflow({ tags }, member),
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({ tags: [tags[0]] }, member),
-			testDb.createWorkflow({ tags: [tags[1]] }, member),
+			createWorkflow({ tags }, member),
+			createWorkflow({ tags }, member),
+			createWorkflow({}, member),
+			createWorkflow({ tags: [tags[0]] }, member),
+			createWorkflow({ tags: [tags[1]] }, member),
 		]);
 
 		const response = await authMemberAgent.get(`/workflows?tags=${tagNames}`);
@@ -254,11 +258,11 @@ describe('GET /workflows', () => {
 
 	test('should return all workflows for owner', async () => {
 		await Promise.all([
-			testDb.createWorkflow({}, owner),
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({}, owner),
-			testDb.createWorkflow({}, member),
-			testDb.createWorkflow({}, owner),
+			createWorkflow({}, owner),
+			createWorkflow({}, member),
+			createWorkflow({}, owner),
+			createWorkflow({}, member),
+			createWorkflow({}, owner),
 		]);
 
 		const response = await authOwnerAgent.get('/workflows');
@@ -307,7 +311,7 @@ describe('GET /workflows/:id', () => {
 
 	test('should retrieve workflow', async () => {
 		// create and assign workflow to owner
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
@@ -340,7 +344,7 @@ describe('GET /workflows/:id', () => {
 
 	test('should retrieve non-owned workflow for owner', async () => {
 		// create and assign workflow to owner
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
 
@@ -373,7 +377,7 @@ describe('DELETE /workflows/:id', () => {
 
 	test('should delete the workflow', async () => {
 		// create and assign workflow to owner
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
@@ -402,7 +406,7 @@ describe('DELETE /workflows/:id', () => {
 
 	test('should delete non-owned workflow when owner', async () => {
 		// create and assign workflow to owner
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
@@ -444,13 +448,13 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should fail due to trying to activate a workflow without a trigger', async () => {
-		const workflow = await testDb.createWorkflow({}, owner);
+		const workflow = await createWorkflow({}, owner);
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
 		expect(response.statusCode).toBe(400);
 	});
 
 	test('should set workflow as active', async () => {
-		const workflow = await testDb.createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTrigger({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -485,7 +489,7 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
-		const workflow = await testDb.createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTrigger({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -546,7 +550,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should deactivate workflow', async () => {
-		const workflow = await testDb.createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTrigger({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -583,7 +587,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
-		const workflow = await testDb.createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTrigger({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -869,7 +873,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update workflow', async () => {
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 		const payload = {
 			name: 'name updated',
 			nodes: [
@@ -936,7 +940,7 @@ describe('PUT /workflows/:id', () => {
 
 	test('should create workflow history version when licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 		const payload = {
 			name: 'name updated',
 			nodes: [
@@ -991,7 +995,7 @@ describe('PUT /workflows/:id', () => {
 
 	test('should not create workflow history when not licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 		const payload = {
 			name: 'name updated',
 			nodes: [
@@ -1037,7 +1041,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update non-owned workflow if owner', async () => {
-		const workflow = await testDb.createWorkflow({}, member);
+		const workflow = await createWorkflow({}, member);
 
 		const payload = {
 			name: 'name owner updated',
