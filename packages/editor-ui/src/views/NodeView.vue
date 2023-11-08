@@ -462,7 +462,11 @@ export default defineComponent({
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
-		if (getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS || from.name === VIEWS.TEMPLATE_IMPORT) {
+		if (
+			getNodeViewTab(to) === MAIN_HEADER_TABS.EXECUTIONS ||
+			from.name === VIEWS.TEMPLATE_IMPORT ||
+			(getNodeViewTab(to) === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG)
+		) {
 			next();
 			return;
 		}
