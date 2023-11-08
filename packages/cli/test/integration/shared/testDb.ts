@@ -2,16 +2,15 @@ import type { DataSourceOptions as ConnectionOptions, Repository } from 'typeorm
 import { DataSource as Connection } from 'typeorm';
 import { Container } from 'typedi';
 import { v4 as uuid } from 'uuid';
+import { hash } from 'bcryptjs';
 
 import config from '@/config';
 import * as Db from '@/Db';
-import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { entities } from '@db/entities';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
-import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type { Role } from '@db/entities/Role';
@@ -25,7 +24,6 @@ import type { CollectionName, CredentialPayload, PostgresSchemaSection } from '.
 import type { ExecutionData } from '@db/entities/ExecutionData';
 import { generateNanoId } from '@db/utils/generators';
 import { RoleService } from '@/services/role.service';
-import { VariablesService } from '@/environments/variables/variables.service';
 import {
 	TagRepository,
 	WorkflowHistoryRepository,
@@ -33,7 +31,6 @@ import {
 } from '@/databases/repositories';
 import { separate } from '@/utils';
 
-import { randomPassword } from '@/Ldap/helpers';
 import { TOTPService } from '@/Mfa/totp.service';
 import { MfaService } from '@/Mfa/mfa.service';
 import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
@@ -41,6 +38,8 @@ import type { WorkflowHistory } from '@/databases/entities/WorkflowHistory';
 export type TestDBType = 'postgres' | 'mysql';
 
 export const testDbPrefix = 'n8n_test_';
+
+const randomPassword = () => Math.random().toString(36).slice(-8);
 
 export function getPostgresSchemaSection(
 	schema = config.getSchema(),
@@ -133,59 +132,6 @@ export async function truncate(collections: CollectionName[]) {
 }
 
 // ----------------------------------
-//        credential creation
-// ----------------------------------
-
-/**
- * Save a credential to the test DB, sharing it with a user.
- */
-export async function saveCredential(
-	credentialPayload: CredentialPayload,
-	{ user, role }: { user: User; role: Role },
-) {
-	const newCredential = new CredentialsEntity();
-
-	Object.assign(newCredential, credentialPayload);
-
-	const encryptedData = await encryptCredentialData(newCredential);
-
-	Object.assign(newCredential, encryptedData);
-
-	const savedCredential = await Db.collections.Credentials.save(newCredential);
-
-	savedCredential.data = newCredential.data;
-
-	await Db.collections.SharedCredentials.save({
-		user,
-		credentials: savedCredential,
-		role,
-	});
-
-	return savedCredential;
-}
-
-export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Container.get(RoleService).findCredentialUserRole();
-	const newSharedCredentials = users.map((user) =>
-		Db.collections.SharedCredentials.create({
-			userId: user.id,
-			credentialsId: credential.id,
-			roleId: role?.id,
-		}),
-	);
-	return Db.collections.SharedCredentials.save(newSharedCredentials);
-}
-
-export function affixRoleToSaveCredential(role: Role) {
-	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
-		saveCredential(credentialPayload, { user, role });
-}
-
-export async function getAllCredentials() {
-	return Db.collections.Credentials.find();
-}
-
-// ----------------------------------
 //           user creation
 // ----------------------------------
 
@@ -196,7 +142,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
 	const user: Partial<User> = {
 		email: email ?? randomEmail(),
-		password: await hashPassword(password ?? randomValidPassword()),
+		password: await hash(password ?? randomValidPassword(), 10),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRoleId: (globalRole ?? (await getGlobalMemberRole())).id,
@@ -284,7 +230,7 @@ export async function createManyUsers(
 		[...Array(amount)].map(async () =>
 			Db.collections.User.create({
 				email: email ?? randomEmail(),
-				password: await hashPassword(password ?? randomValidPassword()),
+				password: await hash(password ?? randomValidPassword(), 10),
 				firstName: firstName ?? randomName(),
 				lastName: lastName ?? randomName(),
 				globalRole,
@@ -557,36 +503,6 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 }
 
 // ----------------------------------
-//             variables
-// ----------------------------------
-
-export async function createVariable(key: string, value: string) {
-	const result = await Db.collections.Variables.save({
-		id: generateNanoId(),
-		key,
-		value,
-	});
-	await Container.get(VariablesService).updateCache();
-	return result;
-}
-
-export async function getVariableByKey(key: string) {
-	return Db.collections.Variables.findOne({
-		where: {
-			key,
-		},
-	});
-}
-
-export async function getVariableById(id: string) {
-	return Db.collections.Variables.findOne({
-		where: {
-			id,
-		},
-	});
-}
-
-// ----------------------------------
 //          workflow history
 // ----------------------------------
 
@@ -683,16 +599,3 @@ const getDBOptions = (type: TestDBType, name: string) => ({
 	synchronize: false,
 	logging: false,
 });
-
-// ----------------------------------
-//            encryption
-// ----------------------------------
-
-async function encryptCredentialData(credential: CredentialsEntity) {
-	const coreCredential = createCredentialsFromCredentialsEntity(credential, true);
-
-	// @ts-ignore
-	coreCredential.setData(credential.data);
-
-	return coreCredential.getDataToSave() as ICredentialsDb;
-}

@@ -1,12 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
 import type { INode, IPinData } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-
-import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
-import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
 import type { User } from '@/databases/entities/User';
-import { randomCredentialPayload } from './shared/random';
 import { v4 as uuid } from 'uuid';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
@@ -14,6 +9,12 @@ import type { ListQuery } from '@/requests';
 import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+
+import * as utils from './shared/utils/';
+import * as testDb from './shared/testDb';
+import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
+import { randomCredentialPayload } from './shared/random';
+import { saveCredential } from './shared/db/credentials';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -172,7 +173,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows', async () => {
-		const credential = await testDb.saveCredential(randomCredentialPayload(), {
+		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
 			role: await Container.get(RoleService).findCredentialOwnerRole(),
 		});

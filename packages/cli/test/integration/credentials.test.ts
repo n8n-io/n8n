@@ -6,10 +6,12 @@ import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Credentials } from '@/requests';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
+
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
+import { affixRoleToSaveCredential } from './shared/db/credentials';
 
 // mock that credentialsSharing is not enabled
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
@@ -31,7 +33,7 @@ beforeAll(async () => {
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);

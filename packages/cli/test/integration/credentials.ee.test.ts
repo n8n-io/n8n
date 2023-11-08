@@ -7,10 +7,12 @@ import type { Credentials } from '@/requests';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
+
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils/';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 const testServer = utils.setupTestServer({ endpointGroups: ['credentials'] });
@@ -31,7 +33,7 @@ beforeAll(async () => {
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 });
 
 beforeEach(async () => {
@@ -83,7 +85,7 @@ describe('GET /credentials', () => {
 		await saveCredential(randomCredentialPayload(), { user: member1 });
 
 		const sharedWith = [member1, member2, member3];
-		await testDb.shareCredentialWithUsers(savedCredential, sharedWith);
+		await shareCredentialWithUsers(savedCredential, sharedWith);
 
 		const response = await authOwnerAgent.get('/credentials');
 
@@ -148,7 +150,7 @@ describe('GET /credentials', () => {
 			user: member1,
 		});
 
-		await testDb.shareCredentialWithUsers(savedMemberCredential, [member2]);
+		await shareCredentialWithUsers(savedMemberCredential, [member2]);
 
 		const response = await testServer.authAgentFor(member1).get('/credentials');
 
@@ -220,7 +222,7 @@ describe('GET /credentials/:id', () => {
 		});
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
-		await testDb.shareCredentialWithUsers(savedCredential, [member2]);
+		await shareCredentialWithUsers(savedCredential, [member2]);
 
 		const response1 = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
 
@@ -259,7 +261,7 @@ describe('GET /credentials/:id', () => {
 		});
 		const authMemberAgent = testServer.authAgentFor(member1);
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
-		await testDb.shareCredentialWithUsers(savedCredential, [member2, member3]);
+		await shareCredentialWithUsers(savedCredential, [member2, member3]);
 
 		const firstResponse = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
 
@@ -327,7 +329,7 @@ describe('PUT /credentials/:id/share', () => {
 		});
 		const shareWithIds = [member1.id, member2.id, member3.id];
 
-		await testDb.shareCredentialWithUsers(savedCredential, [member4, member5]);
+		await shareCredentialWithUsers(savedCredential, [member4, member5]);
 
 		const response = await authOwnerAgent
 			.put(`/credentials/${savedCredential.id}/share`)
@@ -463,7 +465,7 @@ describe('PUT /credentials/:id/share', () => {
 			globalRole: globalMemberRole,
 		});
 
-		await testDb.shareCredentialWithUsers(savedCredential, [member1, member2]);
+		await shareCredentialWithUsers(savedCredential, [member1, member2]);
 
 		const response = await authOwnerAgent
 			.put(`/credentials/${savedCredential.id}/share`)

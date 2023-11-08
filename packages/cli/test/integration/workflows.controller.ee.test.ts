@@ -16,6 +16,7 @@ import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';
 import Container from 'typedi';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db/credentials';
 
 let owner: User;
 let member: User;
@@ -50,7 +51,7 @@ beforeAll(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initNodeTypes();
 });
@@ -318,7 +319,7 @@ describe('GET /workflows/:id', () => {
 	test('GET should return workflow with credentials for all users with access', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		// Both users have access to the credential (none is owner)
-		await testDb.shareCredentialWithUsers(savedCredential, [anotherMember]);
+		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflowPayload = makeWorkflow({
 			withPinData: false,
@@ -403,7 +404,7 @@ describe('POST /workflows', () => {
 
 	it('Should allow saving a workflow using a credential owned by others and shared with you', async () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		await testDb.shareCredentialWithUsers(savedCredential, [anotherMember]);
+		await shareCredentialWithUsers(savedCredential, [anotherMember]);
 
 		const workflow = makeWorkflow({
 			withPinData: false,

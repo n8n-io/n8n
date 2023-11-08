@@ -20,6 +20,7 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { saveCredential } from './shared/db/credentials';
 
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -149,7 +150,7 @@ describe('DELETE /users/:id', () => {
 
 		const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
-		const savedCredential = await testDb.saveCredential(randomCredentialPayload(), {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: userToDelete,
 			role: credentialOwnerRole,
 		});

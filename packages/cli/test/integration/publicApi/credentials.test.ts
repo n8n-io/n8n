@@ -7,6 +7,7 @@ import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils/';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
+import { affixRoleToSaveCredential } from '../shared/db/credentials';
 
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -32,7 +33,7 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 
 	await utils.initCredentialsTypes();
 });

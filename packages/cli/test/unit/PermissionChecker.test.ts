@@ -22,6 +22,7 @@ import {
 import * as testDb from '../integration/shared/testDb';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 import { mockNodeTypesData } from './Helpers';
+import { affixRoleToSaveCredential } from '../integration/shared/db/credentials';
 
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
@@ -40,7 +41,7 @@ beforeAll(async () => {
 	credentialOwnerRole = await testDb.getCredentialOwnerRole();
 	workflowOwnerRole = await testDb.getWorkflowOwnerRole();
 
-	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = affixRoleToSaveCredential(credentialOwnerRole);
 });
 
 beforeEach(async () => {
