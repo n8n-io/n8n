@@ -384,7 +384,7 @@ export default defineComponent({
 				await this.settingsStore.fetchPromptsData();
 
 				if (this.$route.name === VIEWS.EXECUTION_DEBUG) {
-					await this.$router.push({
+					await this.$router.replace({
 						name: VIEWS.WORKFLOW,
 						params: { name: this.currentWorkflowId },
 					});
