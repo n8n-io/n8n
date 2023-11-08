@@ -5,10 +5,12 @@ export type Resource =
 	| 'credential'
 	| 'variable'
 	| 'sourceControl'
-	| 'externalSecretStore';
+	| 'externalSecretsStore';
 
-export type ResourceScope<R extends Resource, Operations = DefaultOperations> = `${R}:${string &
-	Operations}`;
+export type ResourceScope<
+	R extends Resource,
+	Operations extends string = DefaultOperations,
+> = `${R}:${Operations}`;
 export type WildcardScope = `${Resource}:*` | '*';
 
 export type WorkflowScope = ResourceScope<'workflow'>;
@@ -17,11 +19,17 @@ export type CredentialScope = ResourceScope<'credential'>;
 export type VariableScope = ResourceScope<'variable'>;
 export type SourceControlScope = ResourceScope<'sourceControl', 'pull' | 'push' | 'manage'>;
 export type ExternalSecretStoreScope = ResourceScope<
-	'externalSecretStore',
+	'externalSecretsStore',
 	DefaultOperations | 'refresh'
 >;
 
-export type AllScopes = WorkflowScope | UserScope | CredentialScope | VariableScope;
+export type Scope =
+	| WorkflowScope
+	| UserScope
+	| CredentialScope
+	| VariableScope
+	| SourceControlScope
+	| ExternalSecretStoreScope;
 
 export type ScopeLevel = 'global' | 'project' | 'resource';
-export type ScopeLevels = Record<ScopeLevel, AllScopes[]>;
+export type ScopeLevels = Record<ScopeLevel, Scope[]>;

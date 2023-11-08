@@ -1,7 +1,7 @@
 import { hasScope } from '@/hasScope';
-import type { AllScopes } from '@/types';
+import type { Scope } from '@/types';
 
-const ownerPermissions: AllScopes[] = [
+const ownerPermissions: Scope[] = [
 	'workflow:create',
 	'workflow:read',
 	'workflow:update',
@@ -23,7 +23,7 @@ const ownerPermissions: AllScopes[] = [
 	'variable:delete',
 	'variable:list',
 ];
-const memberPermissions: AllScopes[] = ['user:list', 'variable:list', 'variable:read'];
+const memberPermissions: Scope[] = ['user:list', 'variable:list', 'variable:read'];
 
 describe('hasScope', () => {
 	test('should work with a single permission on both modes with only global scopes', () => {
@@ -70,23 +70,15 @@ describe('hasScope', () => {
 
 	test('should work with oneOf mode', () => {
 		expect(
-			hasScope(
-				['workflow:create', 'workflow:read'],
-				{
-					global: ownerPermissions,
-				},
-				{ mode: 'oneOf' },
-			),
+			hasScope(['workflow:create', 'workflow:read'], {
+				global: ownerPermissions,
+			}),
 		).toBe(true);
 
 		expect(
-			hasScope(
-				['workflow:create', 'workflow:read'],
-				{
-					global: memberPermissions,
-				},
-				{ mode: 'oneOf' },
-			),
+			hasScope(['workflow:create', 'workflow:read'], {
+				global: memberPermissions,
+			}),
 		).toBe(false);
 	});
 
