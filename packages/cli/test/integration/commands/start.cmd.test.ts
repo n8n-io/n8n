@@ -18,6 +18,8 @@ import { OrchestrationHandlerMainService } from '@/services/orchestration/main/o
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 
+let multiMainSetup: MultiMainSetup;
+
 beforeAll(() => {
 	mockInstance(ExternalSecretsManager);
 	mockInstance(ActiveWorkflowRunner);
@@ -25,7 +27,7 @@ beforeAll(() => {
 	mockInstance(RedisService);
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
-	mockInstance(MultiMainSetup);
+	multiMainSetup = mockInstance(MultiMainSetup, { isEnabled: false });
 	mockInstance(OrchestrationHandlerMainService);
 });
 
@@ -35,11 +37,9 @@ afterEach(() => {
 });
 
 test('should not init license if instance is follower in multi-main scenario', async () => {
-	config.set('executions.mode', 'queue');
 	config.set('endpoints.disableUi', true);
-	config.set('leaderSelection.enabled', true);
 
-	jest.spyOn(MultiMainSetup.prototype, 'isFollower', 'get').mockReturnValue(true);
+	jest.replaceProperty(multiMainSetup, 'isEnabled', true);
 	jest.spyOn(BaseCommand.prototype, 'init').mockImplementation(async () => {});
 
 	const licenseMock = mockInstance(License, {

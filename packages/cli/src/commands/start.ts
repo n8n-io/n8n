@@ -236,6 +236,10 @@ export class Start extends BaseCommand {
 	async initOrchestration() {
 		if (config.get('executions.mode') !== 'queue') return;
 
+		this.multiMainSetup = Container.get(MultiMainSetup);
+
+		await this.multiMainSetup.init();
+
 		// queue mode in single-main scenario
 
 		if (!this.multiMainSetup.isEnabled) {
