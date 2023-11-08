@@ -159,14 +159,14 @@ export class RabbitMQTrigger implements INodeType {
 										name: 'exchange',
 										type: 'string',
 										default: '',
-										placeholder: "exchange"
+										placeholder: 'exchange',
 									},
 									{
 										displayName: 'RoutingKey',
 										name: 'routingKey',
 										type: 'string',
 										default: '',
-										placeholder: "routing-key"
+										placeholder: 'routing-key',
 									},
 								],
 							},
