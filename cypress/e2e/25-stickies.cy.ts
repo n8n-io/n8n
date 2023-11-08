@@ -84,8 +84,11 @@ describe('Canvas Actions', () => {
 
 		moveSticky({ top: 200, left: 200 });
 
-		dragRightEdge({ left: 200, top: 200, height: 160, width: 240 }, 100);
-		dragRightEdge({ left: 200, top: 200, height: 160, width: 240 }, -50);
+		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [100, 100]);
+		checkStickiesStyle(100, 20, 160, 346);
+
+		cy.drag('[data-test-id="sticky"] [data-dir="right"]', [-50, -50]);
+		checkStickiesStyle(100, 20, 160, 302);
 	});
 
 	it('expands/shrinks sticky from the left edge', () => {
@@ -204,27 +207,6 @@ type Position = {
 	top: number;
 	left: number;
 };
-
-type BoundingBox = {
-	height: number;
-	width: number;
-	top: number;
-	left: number;
-};
-
-function dragRightEdge(curr: BoundingBox, move: number) {
-	workflowPage.getters
-		.stickies()
-		.first()
-		.then(($el) => {
-			const { left, top, height, width } = curr;
-			cy.drag(`[data-test-id="sticky"] [data-dir="right"]`, [left + width + move, 0], {
-				abs: true,
-			});
-			stickyShouldBePositionedCorrectly({ top, left });
-			stickyShouldHaveCorrectSize([height, width * 1.5 + move]);
-		});
-}
 
 function shouldHaveOneSticky() {
 	workflowPage.getters.stickies().should('have.length', 1);

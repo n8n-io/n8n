@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { BinaryDataService } from 'n8n-core';
-import type { INode } from 'n8n-workflow';
+import { type INode } from 'n8n-workflow';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
@@ -16,6 +16,8 @@ import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { mockInstance } from './mocking';
+import { mockNodeTypesData } from '../../../unit/Helpers';
 
 export { mockInstance } from './mocking';
 export { setupTestServer } from './testServer';
@@ -166,3 +168,15 @@ export function makeWorkflow(options?: {
 }
 
 export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
+
+export function setSchedulerAsLoadedNode() {
+	const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+
+	Object.assign(nodesAndCredentials, {
+		loadedNodes: mockNodeTypesData(['scheduleTrigger'], {
+			addTrigger: true,
+		}),
+		known: { nodes: {}, credentials: {} },
+		types: { nodes: [], credentials: [] },
+	});
+}

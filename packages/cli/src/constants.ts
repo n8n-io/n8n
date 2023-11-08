@@ -1,8 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
-import { Container } from 'typedi';
 import type { n8n } from 'n8n-core';
-import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
@@ -17,10 +15,6 @@ export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
-export const GENERATED_STATIC_DIR = join(
-	Container.get(InstanceSettings).userHome,
-	'.cache/n8n/public',
-);
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
 export function getN8nPackageJson() {
