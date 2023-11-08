@@ -20,14 +20,14 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolWorkflow implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Workflow Tool',
+		displayName: 'Custom n8n Workflow Tool',
 		name: 'toolWorkflow',
 		icon: 'fa:network-wired',
 		group: ['transform'],
 		version: 1,
-		description: 'Create a tool via a workflow',
+		description: 'Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.',
 		defaults: {
-			name: 'Workflow Tool',
+			name: 'Custom n8n Workflow Tool',
 		},
 		codex: {
 			categories: ['AI'],

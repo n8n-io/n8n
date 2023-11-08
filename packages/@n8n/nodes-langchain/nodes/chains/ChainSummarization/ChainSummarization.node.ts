@@ -74,19 +74,18 @@ export class ChainSummarization implements INodeType {
 						name: 'Map Reduce (Recommended)',
 						value: 'map_reduce',
 						description:
-							'Individually summarizes each document using an LLM (Map step), then combines these summaries into a global summary (Reduce step), with an optional compression step to ensure fit',
+							'Summarize each document (or chunk) individually, then summarize those summaries',
 					},
 					{
 						name: 'Refine',
 						value: 'refine',
 						description:
-							'Iteratively updates its answer by looping over the documents and passing the current document along with the latest intermediate answer to an LLM, suitable for analyzing large document sets, albeit with more LLM calls',
+							'Summarize the first document (or chunk). Then update that summary based on the next document (or chunk), and repeat.',
 					},
 					{
 						name: 'Stuff',
 						value: 'stuff',
-						description:
-							'Inserts all documents into a prompt, then passes it to an LLM for summarization, ideal for small document sets',
+						description: 'Pass all documents (or chunks) at once. Ideal for small datasets.',
 					},
 				],
 			},
@@ -98,9 +97,10 @@ export class ChainSummarization implements INodeType {
 				placeholder: 'Add Option',
 				options: [
 					{
-						displayName: 'Combine Map Prompt',
+						displayName: 'Final Prompt to Combine',
 						name: 'combineMapPrompt',
 						type: 'string',
+						hint: 'The prompt to combine individual summaries',
 						displayOptions: {
 							show: {
 								'/type': ['map_reduce'],
@@ -112,13 +112,14 @@ export class ChainSummarization implements INodeType {
 						},
 					},
 					{
-						displayName: 'Prompt',
+						displayName: 'Individual Summary Prompt',
 						name: 'prompt',
 						type: 'string',
 						default: DEFAULT_PROMPT_TEMPLATE,
+						hint: 'The prompt to summarize an individual document (or chunk)',
 						displayOptions: {
-							hide: {
-								'/type': ['refine'],
+							show: {
+								'/type': ['map_reduce'],
 							},
 						},
 						typeOptions: {
@@ -126,7 +127,21 @@ export class ChainSummarization implements INodeType {
 						},
 					},
 					{
-						displayName: 'Refine Prompt',
+						displayName: 'Prompt',
+						name: 'prompt',
+						type: 'string',
+						default: DEFAULT_PROMPT_TEMPLATE,
+						displayOptions: {
+							show: {
+								'/type': ['stuff'],
+							},
+						},
+						typeOptions: {
+							rows: 6,
+						},
+					},
+					{
+						displayName: 'Subsequent (Refine) Prompt',
 						name: 'refinePrompt',
 						type: 'string',
 						displayOptions: {
@@ -135,12 +150,13 @@ export class ChainSummarization implements INodeType {
 							},
 						},
 						default: REFINE_PROMPT_TEMPLATE,
+						hint: 'The prompt to refine the summary based on the next document (or chunk)',
 						typeOptions: {
 							rows: 6,
 						},
 					},
 					{
-						displayName: 'Refine Question Prompt',
+						displayName: 'Initial Prompt',
 						name: 'refineQuestionPrompt',
 						type: 'string',
 						displayOptions: {
@@ -149,6 +165,7 @@ export class ChainSummarization implements INodeType {
 							},
 						},
 						default: DEFAULT_PROMPT_TEMPLATE,
+						hint: 'The prompt for the first document (or chunk)',
 						typeOptions: {
 							rows: 6,
 						},

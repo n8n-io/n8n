@@ -12,7 +12,7 @@ import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
 
 export class ToolSerpApi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'SerpAPI',
+		displayName: 'SerpApi (Google Search)',
 		name: 'toolSerpApi',
 		icon: 'file:serpApi.svg',
 		group: ['transform'],
