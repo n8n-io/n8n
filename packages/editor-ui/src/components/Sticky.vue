@@ -27,6 +27,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
+					:backgroundColor="node.parameters.color"
 					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
@@ -41,7 +42,10 @@
 				/>
 			</div>
 
-			<div v-show="showActions" class="sticky-options no-select-on-click">
+			<div
+				v-show="showActions"
+				:class="{ 'sticky-options': true, 'no-select-on-click': true, 'force-show': forceActions }"
+			>
 				<div
 					v-touch:tap="deleteNode"
 					class="option"
@@ -50,6 +54,45 @@
 				>
 					<font-awesome-icon icon="trash" />
 				</div>
+				<n8n-popover
+					effect="dark"
+					:popper-style="{ width: '208px' }"
+					trigger="click"
+					placement="top"
+					@show="onShowPopover"
+					@hide="onHidePopover"
+				>
+					<template #reference>
+						<div
+							class="option"
+							data-test-id="change-sticky-color"
+							:title="$locale.baseText('node.changeColor')"
+						>
+							<font-awesome-icon icon="palette" />
+						</div>
+					</template>
+					<div class="content">
+						<div
+							class="color"
+							data-test-id="color"
+							v-for="(_, index) in Array.from({ length: 7 })"
+							:key="index"
+							v-on:click="changeColor(index + 1)"
+							:class="`sticky-color-${index + 1}`"
+							:style="{
+								'border-width': '1px',
+								'border-style': 'solid',
+								'border-color': 'var(--color-text-dark)',
+								'background-color': `var(--sticky-color-${index + 1})`,
+								'box-shadow':
+									(index === 0 && node?.parameters.color === '') ||
+									index + 1 === node?.parameters.color
+										? `0 0 0 1px var(--sticky-color-${index + 1})`
+										: 'none',
+							}"
+						></div>
+					</div>
+				</n8n-popover>
 			</div>
 		</div>
 	</div>
@@ -149,7 +192,10 @@ export default defineComponent({
 			return returnStyles;
 		},
 		showActions(): boolean {
-			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
+			return (
+				!(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing) ||
+				this.forceActions
+			);
 		},
 		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
@@ -157,15 +203,28 @@ export default defineComponent({
 	},
 	data() {
 		return {
+			forceActions: false,
 			isResizing: false,
 			isTouchActive: false,
 		};
 	},
 	methods: {
+		onShowPopover() {
+			this.forceActions = true;
+		},
+		onHidePopover() {
+			this.forceActions = false;
+		},
 		async deleteNode() {
 			// Wait a tick else vue causes problems because the data is gone
 			await this.$nextTick();
 			this.$emit('removeNode', this.data.name);
+		},
+		changeColor(index: number) {
+			this.workflowsStore.updateNodeProperties({
+				name: this.name,
+				properties: { parameters: { ...this.node.parameters, color: index } },
+			});
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
@@ -211,12 +270,13 @@ export default defineComponent({
 		onResizeEnd() {
 			this.isResizing = false;
 		},
-		setParameters(params: { content?: string; height?: number; width?: number }) {
+		setParameters(params: { content?: string; height?: number; width?: number; color?: string }) {
 			if (this.node) {
 				const nodeParameters = {
 					content: isString(params.content) ? params.content : this.node.parameters.content,
 					height: isNumber(params.height) ? params.height : this.node.parameters.height,
 					width: isNumber(params.width) ? params.width : this.node.parameters.width,
+					color: isString(params.color) ? params.color : this.node.parameters.color,
 				};
 
 				const updateInformation: IUpdateInformation = {
@@ -299,6 +359,10 @@ export default defineComponent({
 			}
 		}
 
+		.force-show {
+			display: flex;
+		}
+
 		&.is-touch-device .sticky-options {
 			left: -25px;
 			width: 150px;
@@ -321,5 +385,23 @@ export default defineComponent({
 	left: -8px;
 	top: -8px;
 	z-index: 0;
+}
+
+.content {
+	display: flex;
+	flex-direction: row;
+	width: fit-content;
+	gap: var(--spacing-2xs);
+}
+
+.color {
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	border-color: var(--color-primary-shade-1);
+
+	&:hover {
+		cursor: pointer;
+	}
 }
 </style>
