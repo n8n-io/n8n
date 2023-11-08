@@ -119,7 +119,7 @@ export class ChainLlm implements INodeType {
 		icon: 'fa:link',
 		group: ['transform'],
 		version: 1,
-		description: 'A simple chain to prompt a large language mode',
+		description: 'A simple chain to prompt a large language model',
 		defaults: {
 			name: 'Basic LLM Chain',
 			color: '#909298',

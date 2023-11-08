@@ -67,13 +67,16 @@ export async function conversationalAgentExecute(
 		} else {
 			outputParser = new CombiningOutputParser(...outputParsers);
 		}
-		const formatInstructions = outputParser.getFormatInstructions();
 
-		prompt = new PromptTemplate({
-			template: '{input}\n{formatInstructions}',
-			inputVariables: ['input'],
-			partialVariables: { formatInstructions },
-		});
+		if (outputParser) {
+			const formatInstructions = outputParser.getFormatInstructions();
+
+			prompt = new PromptTemplate({
+				template: '{input}\n{formatInstructions}',
+				inputVariables: ['input'],
+				partialVariables: { formatInstructions },
+			});
+		}
 	}
 
 	const items = this.getInputData();

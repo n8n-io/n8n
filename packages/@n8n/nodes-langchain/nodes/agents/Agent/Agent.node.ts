@@ -127,16 +127,16 @@ function getInputs(
 
 export class Agent implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Agent',
+		displayName: 'AI Agent',
 		name: 'agent',
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
-		description: 'Seamlessly coordinates LLMs & tools per user input',
+		description: 'Generates an action plan and executes it. Can use external tools.',
 		subtitle:
 			"={{ {	conversationalAgent: 'Conversational Agent', openAiFunctionsAgent: 'OpenAI Functions Agent', reactAgent: 'ReAct Agent', sqlAgent: 'SQL Agent' }[$parameter.agent] }}",
 		defaults: {
-			name: 'Agent',
+			name: 'AI Agent',
 			color: '#404040',
 		},
 		codex: {
