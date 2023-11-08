@@ -14,7 +14,6 @@ import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
@@ -41,7 +40,6 @@ describe('Webhook API', () => {
 			nodeTypes.getByName.mockReturnValue(node);
 			nodeTypes.getByNameAndVersion.mockReturnValue(node);
 
-			mockInstance(MultiMainSetup);
 			await initActiveWorkflowRunner();
 
 			const server = new (class extends AbstractServer {})();
@@ -55,6 +53,7 @@ describe('Webhook API', () => {
 
 		test('should handle JSON', async () => {
 			const response = await agent.post('/webhook/abcd').send({ test: true });
+			console.log('response.body', response.body);
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
 				type: 'application/json',
