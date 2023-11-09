@@ -1,6 +1,5 @@
 import type { SuperAgentTest } from 'supertest';
 import { License } from '@/License';
-import * as testDb from '../shared/testDb';
 import * as utils from '../shared/utils/';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
 import { Cipher } from 'n8n-core';
@@ -18,6 +17,7 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { jsonParse, type IDataObject } from 'n8n-workflow';
 import { mock } from 'jest-mock-extended';
+import { createOwner, createUser } from '../shared/db/users';
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
@@ -97,9 +97,9 @@ const getDummyProviderData = ({
 };
 
 beforeAll(async () => {
-	const owner = await testDb.createOwner();
+	const owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
-	const member = await testDb.createUser();
+	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 });

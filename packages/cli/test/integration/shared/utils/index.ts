@@ -12,7 +12,6 @@ import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -29,7 +28,8 @@ export { setupTestServer } from './testServer';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner> {
+export async function initActiveWorkflowRunner() {
+	const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
 	const workflowRunner = Container.get(ActiveWorkflowRunner);
 	await workflowRunner.init();
 	return workflowRunner;

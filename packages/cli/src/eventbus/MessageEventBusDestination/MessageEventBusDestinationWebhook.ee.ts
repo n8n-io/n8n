@@ -165,7 +165,6 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		const parametersToKeyValue = async (
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			acc: Promise<{ [key: string]: any }>,
 			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 		) => {
