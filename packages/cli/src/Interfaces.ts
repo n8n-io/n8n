@@ -280,7 +280,6 @@ export interface IExternalHooks {
 
 export interface IExternalHooksFileData {
 	[key: string]: {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		[key: string]: Array<(...args: any[]) => Promise<void>>;
 	};
 }
@@ -291,7 +290,6 @@ export interface IExternalHooksFunctions {
 
 export interface IExternalHooksClass {
 	init(): Promise<void>;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	run(hookName: string, hookParameters?: any[]): Promise<void>;
 }
 
@@ -636,7 +634,6 @@ export interface INodesTypeData {
 }
 
 export interface IWorkflowErrorData {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	[key: string]: any;
 	execution?: {
 		id?: string;
@@ -658,7 +655,6 @@ export interface IWorkflowErrorData {
 
 export interface IProcessMessageDataHook {
 	hook: string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	parameters: any[];
 }
 

@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+import { includeInputFields } from './common.descriptions';
 
 export const FormatDateDescription: INodeProperties[] = [
 	{
@@ -117,6 +118,7 @@ export const FormatDateDescription: INodeProperties[] = [
 		},
 		default: {},
 		options: [
+			includeInputFields,
 			{
 				displayName: 'Use Workflow Timezone',
 				name: 'timezone',
