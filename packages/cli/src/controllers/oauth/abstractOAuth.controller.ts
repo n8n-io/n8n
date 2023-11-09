@@ -9,7 +9,7 @@ import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.
 import type { ICredentialsDb } from '@/Interfaces';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 import type { OAuthRequest } from '@/requests';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
+import { BadRequestError, NotFoundError } from '@/ResponseErrors';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';

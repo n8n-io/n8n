@@ -5,7 +5,7 @@ import { Service } from 'typedi';
 import { randomBytes } from 'crypto';
 import { Authorized, Delete, Get, Patch, Post, RestController } from '@/decorators';
 import { compareHash, hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
 import type { User } from '@db/entities/User';

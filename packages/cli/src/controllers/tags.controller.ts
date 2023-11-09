@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import config from '@/config';
 import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import { TagService } from '@/services/tag.service';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import { TagsRequest } from '@/requests';
 import { Service } from 'typedi';
 

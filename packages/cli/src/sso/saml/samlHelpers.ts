@@ -3,7 +3,7 @@ import config from '@/config';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { User } from '@db/entities/User';
 import { License } from '@/License';
-import { AuthError, InternalServerError } from '@/ResponseHelper';
+import { AuthError, InternalServerError } from '@/ResponseErrors';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import type { SamlPreferences } from './types/samlPreferences';
 import type { SamlUserAttributes } from './types/samlUserAttributes';

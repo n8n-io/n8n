@@ -8,7 +8,8 @@ import { createHmac } from 'crypto';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Authorized, Get, RestController } from '@/decorators';
 import { OAuthRequest } from '@/requests';
-import { NotFoundError, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { NotFoundError, ServiceUnavailableError } from '@/ResponseErrors';
+import { sendErrorResponse } from '@/ResponseHelper';
 import { AbstractOAuthController } from './abstractOAuth.controller';
 
 interface OAuth1CredentialData {

@@ -7,7 +7,7 @@ import {
 	BadRequestError,
 	InternalServerError,
 	UnauthorizedError,
-} from '@/ResponseHelper';
+} from '@/ResponseErrors';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { Request, Response } from 'express';

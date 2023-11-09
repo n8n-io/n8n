@@ -6,7 +6,7 @@ import type { PublicUser } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MeController } from '@/controllers/me.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import { ExternalHooks } from '@/ExternalHooks';

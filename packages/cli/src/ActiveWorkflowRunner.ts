@@ -40,7 +40,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WebhookRequest,
 } from '@/Interfaces';
-import * as ResponseHelper from '@/ResponseHelper';
+import { NotFoundError } from '@/ResponseErrors';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
@@ -169,7 +169,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const webhook = await this.webhookService.findWebhook(httpMethod, path);
 
 		if (webhook === null) {
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod),
 				WEBHOOK_PROD_UNREGISTERED_HINT,
 			);
@@ -195,9 +195,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		});
 
 		if (workflowData === null) {
-			throw new ResponseHelper.NotFoundError(
-				`Could not find workflow with id "${webhook.workflowId}"`,
-			);
+			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
 		}
 
 		const workflow = new Workflow({
@@ -226,7 +224,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		const workflowStartNode = workflow.getNode(webhookData.node);
 
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise((resolve, reject) => {

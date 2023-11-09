@@ -5,7 +5,7 @@ import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { Config } from '@/config';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers/owner.controller';
 import { AUTH_COOKIE_NAME } from '@/constants';

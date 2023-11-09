@@ -6,7 +6,7 @@ import {
 	TranslationController,
 	CREDENTIAL_TRANSLATIONS_DIR,
 } from '@/controllers/translation.controller';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 
 describe('TranslationController', () => {
 	const config = mock<Config>();

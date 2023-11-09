@@ -9,7 +9,7 @@ import type { EventMessageTypes, FailedEventSummary } from './EventMessageClasse
 import { eventNamesAll } from './EventMessageClasses';
 import type { EventMessageAuditOptions } from './EventMessageClasses/EventMessageAudit';
 import { EventMessageAudit } from './EventMessageClasses/EventMessageAudit';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type { IRunExecutionData } from 'n8n-workflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import type { EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';

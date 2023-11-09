@@ -29,7 +29,7 @@ import {
 	isLdapCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso/ssoHelpers';
-import { BadRequestError, InternalServerError } from '../ResponseHelper';
+import { BadRequestError, InternalServerError } from '@/ResponseErrors';
 import { RoleService } from '@/services/role.service';
 import { Logger } from '@/Logger';
 import { UserRepository } from '@db/repositories/user.repository';

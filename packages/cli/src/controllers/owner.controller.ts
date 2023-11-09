@@ -1,7 +1,7 @@
 import validator from 'validator';
 import { validateEntity } from '@/GenericHelpers';
 import { Authorized, Post, RestController } from '@/decorators';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import { hashPassword, validatePassword } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { Response } from 'express';

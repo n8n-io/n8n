@@ -11,7 +11,7 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 	UnprocessableRequestError,
-} from '@/ResponseHelper';
+} from '@/ResponseErrors';
 import {
 	getInstanceBaseUrl,
 	hashPassword,

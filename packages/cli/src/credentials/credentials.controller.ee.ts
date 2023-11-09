@@ -3,6 +3,7 @@ import type { INodeCredentialTestResult } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '@/ResponseErrors';
 
 import type { CredentialRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
@@ -40,7 +41,7 @@ EECredentialsController.get(
 		)) as CredentialsEntity;
 
 		if (!credential) {
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Could not load the credential. If you think this is an error, ask the owner to share it with you again',
 			);
 		}
@@ -48,7 +49,7 @@ EECredentialsController.get(
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError('Forbidden.');
+			throw new UnauthorizedError('Forbidden.');
 		}
 
 		credential = Container.get(OwnershipService).addOwnedByAndSharedWith(credential);
@@ -82,7 +83,7 @@ EECredentialsController.post(
 		const sharing = await EECredentials.getSharing(req.user, credentialId);
 		if (!ownsCredential) {
 			if (!sharing) {
-				throw new ResponseHelper.UnauthorizedError('Forbidden');
+				throw new UnauthorizedError('Forbidden');
 			}
 
 			const decryptedData = EECredentials.decrypt(sharing.credentials);
@@ -115,12 +116,12 @@ EECredentialsController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
 		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
 		if (!ownsCredential || !credential) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			throw new UnauthorizedError('Forbidden');
 		}
 
 		let amountRemoved: number | null = null;

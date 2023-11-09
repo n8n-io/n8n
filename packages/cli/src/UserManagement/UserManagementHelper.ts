@@ -2,7 +2,7 @@ import { In } from 'typeorm';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 import { Container } from 'typedi';
 
-import * as ResponseHelper from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type { WhereClause } from '@/Interfaces';
 import type { User } from '@db/entities/User';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
@@ -43,7 +43,7 @@ export function generateUserInviteUrl(inviterId: string, inviteeId: string): str
 // TODO: Enforce at model level
 export function validatePassword(password?: string): string {
 	if (!password) {
-		throw new ResponseHelper.BadRequestError('Password is mandatory');
+		throw new BadRequestError('Password is mandatory');
 	}
 
 	const hasInvalidLength =
@@ -70,7 +70,7 @@ export function validatePassword(password?: string): string {
 			message.push('Password must contain at least 1 uppercase letter.');
 		}
 
-		throw new ResponseHelper.BadRequestError(message.join(' '));
+		throw new BadRequestError(message.join(' '));
 	}
 
 	return password;

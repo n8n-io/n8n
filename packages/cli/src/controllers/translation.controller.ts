@@ -3,7 +3,7 @@ import { ICredentialTypes } from 'n8n-workflow';
 import { join } from 'path';
 import { access } from 'fs/promises';
 import { Authorized, Get, RestController } from '@/decorators';
-import { BadRequestError, InternalServerError } from '@/ResponseHelper';
+import { BadRequestError, InternalServerError } from '@/ResponseErrors';
 import { Config } from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
 

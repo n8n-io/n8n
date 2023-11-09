@@ -1,6 +1,6 @@
 import { Authorized, Get, Post, RestController } from '@/decorators';
 import { ExternalSecretsRequest } from '@/requests';
-import { NotFoundError } from '@/ResponseHelper';
+import { NotFoundError } from '@/ResponseErrors';
 import { Response } from 'express';
 import { Service } from 'typedi';
 import { ProviderNotFoundError, ExternalSecretsService } from './ExternalSecrets.service.ee';

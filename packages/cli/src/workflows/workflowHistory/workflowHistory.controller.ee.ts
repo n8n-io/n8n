@@ -8,7 +8,7 @@ import {
 } from './workflowHistory.service.ee';
 import { Request, Response, NextFunction } from 'express';
 import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflowHistoryHelper.ee';
-import { NotFoundError } from '@/ResponseHelper';
+import { NotFoundError } from '@/ResponseErrors';
 import { paginationListQueryMiddleware } from '@/middlewares/listQuery/pagination';
 
 const DEFAULT_TAKE = 20;

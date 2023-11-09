@@ -134,6 +134,7 @@ import { RoleService } from './services/role.service';
 import { UserService } from './services/user.service';
 import { OrchestrationController } from './controllers/orchestration.controller';
 import { WorkflowHistoryController } from './workflows/workflowHistory/workflowHistory.controller.ee';
+import { BadRequestError, NotFoundError } from '@/ResponseErrors';
 
 const exec = promisify(callbackExec);
 
@@ -517,9 +518,7 @@ export class Server extends AbstractServer {
 					const { path, methodName } = req.query;
 
 					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
+						throw new BadRequestError('Parameter currentNodeParameters is required.');
 					}
 
 					const currentNodeParameters = jsonParse(
@@ -554,7 +553,7 @@ export class Server extends AbstractServer {
 						);
 					}
 
-					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
+					throw new BadRequestError('Parameter methodName is required.');
 				},
 			),
 		);
@@ -573,9 +572,7 @@ export class Server extends AbstractServer {
 					const { path, methodName } = req.query;
 
 					if (!req.query.currentNodeParameters) {
-						throw new ResponseHelper.BadRequestError(
-							'Parameter currentNodeParameters is required.',
-						);
+						throw new BadRequestError('Parameter currentNodeParameters is required.');
 					}
 
 					const currentNodeParameters = jsonParse(
@@ -644,9 +641,7 @@ export class Server extends AbstractServer {
 						userId: req.user.id,
 					});
 
-					throw new ResponseHelper.BadRequestError(
-						`Workflow with ID "${workflowId}" could not be found.`,
-					);
+					throw new BadRequestError(`Workflow with ID "${workflowId}" could not be found.`);
 				}
 
 				return this.activeWorkflowRunner.getActivationError(workflowId);
@@ -669,7 +664,7 @@ export class Server extends AbstractServer {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError('Invalid cURL command');
+						throw new BadRequestError('Invalid cURL command');
 					}
 				},
 			),
@@ -802,7 +797,7 @@ export class Server extends AbstractServer {
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				if (!sharedWorkflowIds.length) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				const fullExecutionData = await Container.get(ExecutionRepository).findSingleExecution(
@@ -815,7 +810,7 @@ export class Server extends AbstractServer {
 				);
 
 				if (!fullExecutionData) {
-					throw new ResponseHelper.NotFoundError('Execution not found');
+					throw new NotFoundError('Execution not found');
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {

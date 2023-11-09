@@ -17,7 +17,7 @@ import {
 import { SourceControlGitService } from './sourceControlGit.service.ee';
 import type { PushResult } from 'simple-git';
 import { SourceControlExportService } from './sourceControlExport.service.ee';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type { ImportResult } from './types/importResult';
 import type { SourceControlPushWorkFolder } from './types/sourceControlPushWorkFolder';
 import type { SourceControllPullOptions } from './types/sourceControlPullWorkFolder';

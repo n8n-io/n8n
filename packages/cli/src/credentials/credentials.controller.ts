@@ -4,6 +4,7 @@ import { deepCopy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
+import { NotFoundError } from '@/ResponseErrors';
 import config from '@/config';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
@@ -60,9 +61,7 @@ credentialsController.get(
 		const sharing = await CredentialsService.getSharing(req.user, credentialId, ['credentials']);
 
 		if (!sharing) {
-			throw new ResponseHelper.NotFoundError(
-				`Credential with ID "${credentialId}" could not be found.`,
-			);
+			throw new NotFoundError(`Credential with ID "${credentialId}" could not be found.`);
 		}
 
 		const { credentials: credential } = sharing;
@@ -145,7 +144,7 @@ credentialsController.patch(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
 			);
 		}
@@ -165,9 +164,7 @@ credentialsController.patch(
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
-			throw new ResponseHelper.NotFoundError(
-				`Credential ID "${credentialId}" could not be found to be updated.`,
-			);
+			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
@@ -197,7 +194,7 @@ credentialsController.delete(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				'Credential to be deleted not found. You can only removed credentials owned by you',
 			);
 		}

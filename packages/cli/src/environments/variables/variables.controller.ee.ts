@@ -2,6 +2,7 @@ import express from 'express';
 import { Container } from 'typedi';
 
 import * as ResponseHelper from '@/ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseErrors';
 import type { VariablesRequest } from '@/requests';
 import {
 	VariablesLicenseError,
@@ -32,7 +33,7 @@ EEVariablesController.post(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.AuthError('Unauthorized');
+			throw new AuthError('Unauthorized');
 		}
 		const variable = req.body;
 		delete variable.id;
@@ -40,9 +41,9 @@ EEVariablesController.post(
 			return await Container.get(EEVariablesService).create(variable);
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			} else if (error instanceof VariablesValidationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			}
 			throw error;
 		}
@@ -61,7 +62,7 @@ EEVariablesController.patch(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.AuthError('Unauthorized');
+			throw new AuthError('Unauthorized');
 		}
 		const variable = req.body;
 		delete variable.id;
@@ -69,9 +70,9 @@ EEVariablesController.patch(
 			return await Container.get(EEVariablesService).update(id, variable);
 		} catch (error) {
 			if (error instanceof VariablesLicenseError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			} else if (error instanceof VariablesValidationError) {
-				throw new ResponseHelper.BadRequestError(error.message);
+				throw new BadRequestError(error.message);
 			}
 			throw error;
 		}

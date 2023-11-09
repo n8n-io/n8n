@@ -12,9 +12,9 @@ import { SourceControlPreferencesService } from './sourceControlPreferences.serv
 import type { SourceControlPreferences } from './types/sourceControlPreferences';
 import type { SourceControlledFile } from './types/sourceControlledFile';
 import { SOURCE_CONTROL_API_ROOT, SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type { ImportResult } from './types/importResult';
-import { InternalHooks } from '../../InternalHooks';
+import { InternalHooks } from '@/InternalHooks';
 import { getRepoType } from './sourceControlHelper.ee';
 import { SourceControlGetStatus } from './types/sourceControlGetStatus';
 

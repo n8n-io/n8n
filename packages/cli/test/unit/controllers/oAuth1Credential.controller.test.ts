@@ -7,7 +7,7 @@ import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { User } from '@db/entities/User';
 import type { OAuthRequest } from '@/requests';
-import { BadRequestError, NotFoundError } from '@/ResponseHelper';
+import { BadRequestError, NotFoundError } from '@/ResponseErrors';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
 import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 import { ExternalHooks } from '@/ExternalHooks';

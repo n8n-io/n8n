@@ -9,7 +9,7 @@ import {
 	MessageEventBusDestinationSyslog,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { BadRequestError } from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseErrors';
 import type {
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationOptions,

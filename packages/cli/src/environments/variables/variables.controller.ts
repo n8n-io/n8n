@@ -2,6 +2,7 @@ import express from 'express';
 import { Container } from 'typedi';
 
 import * as ResponseHelper from '@/ResponseHelper';
+import { AuthError, BadRequestError, NotFoundError } from '@/ResponseErrors';
 import type { VariablesRequest } from '@/requests';
 import { VariablesService } from './variables.service';
 import { EEVariablesController } from './variables.controller.ee';
@@ -22,7 +23,7 @@ variablesController.get(
 variablesController.post(
 	'/',
 	ResponseHelper.send(async () => {
-		throw new ResponseHelper.BadRequestError('No variables license found');
+		throw new BadRequestError('No variables license found');
 	}),
 );
 
@@ -32,7 +33,7 @@ variablesController.get(
 		const id = req.params.id;
 		const variable = await Container.get(VariablesService).getCached(id);
 		if (variable === null) {
-			throw new ResponseHelper.NotFoundError(`Variable with id ${req.params.id} not found`);
+			throw new NotFoundError(`Variable with id ${req.params.id} not found`);
 		}
 		return variable;
 	}),
@@ -41,7 +42,7 @@ variablesController.get(
 variablesController.patch(
 	'/:id(\\w+)',
 	ResponseHelper.send(async () => {
-		throw new ResponseHelper.BadRequestError('No variables license found');
+		throw new BadRequestError('No variables license found');
 	}),
 );
 
@@ -57,7 +58,7 @@ variablesController.delete(
 					userId: req.user.id,
 				},
 			);
-			throw new ResponseHelper.AuthError('Unauthorized');
+			throw new AuthError('Unauthorized');
 		}
 		await Container.get(VariablesService).delete(id);
 

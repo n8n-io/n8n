@@ -8,7 +8,7 @@ import {
 } from '@/constants';
 import { Authorized, Delete, Get, Middleware, Patch, Post, RestController } from '@/decorators';
 import { NodeRequest } from '@/requests';
-import { BadRequestError, InternalServerError } from '@/ResponseHelper';
+import { BadRequestError, InternalServerError } from '@/ResponseErrors';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import { InternalHooks } from '@/InternalHooks';

@@ -9,7 +9,7 @@ import {
 } from '../middleware/samlEnabledMiddleware';
 import { SamlService } from '../saml.service.ee';
 import { SamlConfiguration } from '../types/requests';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseErrors';
 import { getInitSSOFormView } from '../views/initSsoPost';
 import { issueCookie } from '@/auth/jwt';
 import { validate } from 'class-validator';

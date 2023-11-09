@@ -2,7 +2,7 @@ import type express from 'express';
 import Container, { Service } from 'typedi';
 import type { User } from '@db/entities/User';
 import { jsonParse } from 'n8n-workflow';
-import { AuthError, BadRequestError } from '@/ResponseHelper';
+import { AuthError, BadRequestError } from '@/ResponseErrors';
 import { getServiceProviderInstance } from './serviceProvider.ee';
 import type { SamlUserAttributes } from './types/samlUserAttributes';
 import { isSsoJustInTimeProvisioningEnabled } from '../ssoHelpers';

@@ -18,7 +18,7 @@ import {
 	InternalServerError,
 	NotFoundError,
 	UnauthorizedError,
-} from '@/ResponseHelper';
+} from '@/ResponseErrors';
 import { Response } from 'express';
 import { ListQuery, UserRequest, UserSettingsUpdatePayload } from '@/requests';
 import { UserManagementMailer } from '@/UserManagement/email';

@@ -18,7 +18,7 @@ import type {
 	WebhookRequest,
 } from '@/Interfaces';
 import { Push } from '@/push';
-import * as ResponseHelper from '@/ResponseHelper';
+import { NotFoundError } from '@/ResponseErrors';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import { webhookNotFoundErrorMessage } from './utils';
 
@@ -77,7 +77,7 @@ export class TestWebhooks implements IWebhookManager {
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
 				const methods = await this.getWebhookMethods(path);
-				throw new ResponseHelper.NotFoundError(
+				throw new NotFoundError(
 					webhookNotFoundErrorMessage(path, httpMethod, methods),
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
@@ -105,7 +105,7 @@ export class TestWebhooks implements IWebhookManager {
 		if (testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
 			const methods = await this.getWebhookMethods(path);
-			throw new ResponseHelper.NotFoundError(
+			throw new NotFoundError(
 				webhookNotFoundErrorMessage(path, httpMethod, methods),
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
@@ -118,7 +118,7 @@ export class TestWebhooks implements IWebhookManager {
 		// get additional data
 		const workflowStartNode = workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
+			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise(async (resolve, reject) => {
@@ -168,10 +168,7 @@ export class TestWebhooks implements IWebhookManager {
 		const webhookMethods = this.activeWebhooks.getWebhookMethods(path);
 		if (!webhookMethods.length) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.NotFoundError(
-				webhookNotFoundErrorMessage(path),
-				WEBHOOK_TEST_UNREGISTERED_HINT,
-			);
+			throw new NotFoundError(webhookNotFoundErrorMessage(path), WEBHOOK_TEST_UNREGISTERED_HINT);
 		}
 
 		return webhookMethods;

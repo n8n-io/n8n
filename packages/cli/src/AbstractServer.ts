@@ -12,13 +12,14 @@ import * as Db from '@/Db';
 import { N8nInstanceType } from '@/Interfaces';
 import type { IExternalHooksClass } from '@/Interfaces';
 import { ExternalHooks } from '@/ExternalHooks';
-import { send, sendErrorResponse, ServiceUnavailableError } from '@/ResponseHelper';
+import { send, sendErrorResponse } from '@/ResponseHelper';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { TestWebhooks } from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { webhookRequestHandler } from '@/WebhookHelpers';
 import { generateHostInstanceId } from './databases/utils/generators';
 import { Logger } from '@/Logger';
+import { ServiceUnavailableError } from './ResponseErrors';
 
 export abstract class AbstractServer {
 	protected logger: Logger;

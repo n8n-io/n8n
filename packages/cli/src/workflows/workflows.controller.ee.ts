@@ -2,6 +2,12 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnauthorizedError,
+} from '@/ResponseErrors';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -52,13 +58,13 @@ EEWorkflowController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.BadRequestError('Bad request');
+			throw new BadRequestError('Bad request');
 		}
 
 		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
 
 		if (!ownsWorkflow || !workflow) {
-			throw new ResponseHelper.UnauthorizedError('Forbidden');
+			throw new UnauthorizedError('Forbidden');
 		}
 
 		let newShareeIds: string[] = [];
@@ -101,13 +107,13 @@ EEWorkflowController.get(
 		const workflow = await EEWorkflows.get({ id: workflowId }, { relations });
 
 		if (!workflow) {
-			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
+			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(
+			throw new UnauthorizedError(
 				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
@@ -156,7 +162,7 @@ EEWorkflowController.post(
 		try {
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
 		} catch (error) {
-			throw new ResponseHelper.BadRequestError(
+			throw new BadRequestError(
 				'The workflow you are trying to save contains credentials that are not shared with you',
 			);
 		}
@@ -181,7 +187,7 @@ EEWorkflowController.post(
 
 		if (!savedWorkflow) {
 			Container.get(Logger).error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.InternalServerError(
+			throw new InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
 			);
 		}
