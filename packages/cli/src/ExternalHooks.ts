@@ -82,7 +82,6 @@ export class ExternalHooks implements IExternalHooksClass {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async run(hookName: string, hookParameters?: any[]): Promise<void> {
 		const externalHookFunctions: IExternalHooksFunctions = {
 			dbCollections: Db.collections,

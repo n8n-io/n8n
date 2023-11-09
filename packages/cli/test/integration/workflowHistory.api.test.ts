@@ -72,7 +72,6 @@ describe('GET /workflow-history/:workflowId', () => {
 				),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0]! as any;
 		delete last.nodes;
 		delete last.connections;
@@ -101,7 +100,6 @@ describe('GET /workflow-history/:workflowId', () => {
 			new Array(10).fill(undefined).map(async (_) => createWorkflowHistoryItem(workflow2.id)),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0]! as any;
 		delete last.nodes;
 		delete last.connections;
@@ -125,7 +123,6 @@ describe('GET /workflow-history/:workflowId', () => {
 				),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[0]! as any;
 		delete last.nodes;
 		delete last.connections;
@@ -149,7 +146,6 @@ describe('GET /workflow-history/:workflowId', () => {
 				),
 		);
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const last = versions.sort((a, b) => b.createdAt.valueOf() - a.createdAt.valueOf())[5]! as any;
 		delete last.nodes;
 		delete last.connections;
