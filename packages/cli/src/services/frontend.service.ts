@@ -175,7 +175,6 @@ export class FrontendService {
 				debugInEditor: false,
 				binaryDataS3: false,
 				workflowHistory: false,
-				nodeIOFilters: false,
 			},
 			mfa: {
 				enabled: false,
@@ -264,7 +263,6 @@ export class FrontendService {
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
 			workflowHistory:
 				this.license.isWorkflowHistoryLicensed() && config.getEnv('workflowHistory.enabled'),
-			nodeIOFilters: this.license.isFeatureEnabled(LICENSE_FEATURES.NODE_IO_FILTERS),
 		});
 
 		if (this.license.isLdapEnabled()) {
