@@ -202,7 +202,6 @@ export class UsersController {
 					});
 					if (result.emailSent) {
 						resp.user.emailSent = true;
-						delete resp.user.inviteAcceptUrl;
 						void this.internalHooks.onUserTransactionalEmail({
 							user_id: id,
 							message_type: 'New user invite',
