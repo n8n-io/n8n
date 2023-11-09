@@ -1,59 +1,24 @@
-import { parse } from 'flatted';
 import type { FindOptionsWhere } from 'typeorm';
-import { In, Not, Raw, LessThan, IsNull } from 'typeorm';
-
-import * as Db from '@/Db';
-import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';
+import { In, Not, Raw, LessThan } from 'typeorm';
+import { Container } from 'typedi';
 import type { ExecutionStatus } from 'n8n-workflow';
 
-function prepareExecutionData(
-	execution: IExecutionFlattedDb | null,
-): IExecutionResponseApi | undefined {
-	if (!execution) return undefined;
-
-	// @ts-ignore
-	if (!execution.data) return execution;
-
-	return {
-		...execution,
-		data: parse(execution.data) as object,
-	};
-}
+import * as Db from '@/Db';
+import type { IExecutionBase, IExecutionFlattedDb } from '@/Interfaces';
+import { ExecutionRepository } from '@db/repositories';
 
 function getStatusCondition(status: ExecutionStatus) {
-	const condition: Pick<
-		FindOptionsWhere<IExecutionFlattedDb>,
-		'finished' | 'waitTill' | 'stoppedAt'
-	> = {};
+	const condition: Pick<FindOptionsWhere<IExecutionFlattedDb>, 'status'> = {};
 
 	if (status === 'success') {
-		condition.finished = true;
+		condition.status = 'success';
 	} else if (status === 'waiting') {
-		condition.waitTill = Not(IsNull());
+		condition.status = 'waiting';
 	} else if (status === 'error') {
-		condition.stoppedAt = Not(IsNull());
-		condition.finished = false;
+		condition.status = In(['error', 'crashed', 'failed']);
 	}
 
 	return condition;
-}
-
-function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IExecutionFlattedDb> {
-	const selectFields: Array<keyof IExecutionFlattedDb> = [
-		'id',
-		'mode',
-		'retryOf',
-		'retrySuccessId',
-		'startedAt',
-		'stoppedAt',
-		'workflowId',
-		'waitTill',
-		'finished',
-	];
-
-	if (includeData) selectFields.push('data');
-
-	return selectFields;
 }
 
 export async function getExecutions(params: {
@@ -63,7 +28,7 @@ export async function getExecutions(params: {
 	workflowIds?: string[];
 	status?: ExecutionStatus;
 	excludedExecutionsIds?: string[];
-}): Promise<IExecutionResponseApi[]> {
+}): Promise<IExecutionBase[]> {
 	let where: FindOptionsWhere<IExecutionFlattedDb> = {};
 
 	if (params.lastId && params.excludedExecutionsIds?.length) {
@@ -85,14 +50,29 @@ export async function getExecutions(params: {
 		where = { ...where, workflowId: In(params.workflowIds) };
 	}
 
-	const executions = await Db.collections.Execution.find({
-		select: getExecutionSelectableProperties(params.includeData),
-		where,
-		order: { id: 'DESC' },
-		take: params.limit,
-	});
-
-	return executions.map(prepareExecutionData) as IExecutionResponseApi[];
+	return Container.get(ExecutionRepository).findMultipleExecutions(
+		{
+			select: [
+				'id',
+				'mode',
+				'retryOf',
+				'retrySuccessId',
+				'startedAt',
+				'stoppedAt',
+				'workflowId',
+				'waitTill',
+				'finished',
+			],
+			where,
+			order: { id: 'DESC' },
+			take: params.limit,
+			relations: ['executionData'],
+		},
+		{
+			includeData: params.includeData,
+			unflattenData: true,
+		},
+	);
 }
 
 export async function getExecutionsCount(data: {
@@ -102,6 +82,7 @@ export async function getExecutionsCount(data: {
 	status?: ExecutionStatus;
 	excludedWorkflowIds?: string[];
 }): Promise<number> {
+	// TODO: Consider moving this to the repository as well
 	const executions = await Db.collections.Execution.count({
 		where: {
 			...(data.lastId && { id: LessThan(data.lastId) }),
@@ -119,21 +100,12 @@ export async function getExecutionInWorkflows(
 	id: string,
 	workflowIds: string[],
 	includeData?: boolean,
-): Promise<IExecutionResponseApi | undefined> {
-	const execution = await Db.collections.Execution.findOne({
-		select: getExecutionSelectableProperties(includeData),
+): Promise<IExecutionBase | undefined> {
+	return Container.get(ExecutionRepository).findSingleExecution(id, {
 		where: {
-			id,
 			workflowId: In(workflowIds),
 		},
+		includeData,
+		unflattenData: true,
 	});
-
-	return prepareExecutionData(execution);
-}
-
-export async function deleteExecution(
-	execution: IExecutionResponseApi | undefined,
-): Promise<IExecutionFlattedDb> {
-	// @ts-ignore
-	return Db.collections.Execution.remove(execution);
 }

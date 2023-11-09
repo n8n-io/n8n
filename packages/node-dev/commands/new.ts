@@ -20,7 +20,6 @@ export class New extends Command {
 
 	static examples = ['$ n8n-node-dev new'];
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		try {
 			this.log('\nCreate new credentials/node');
@@ -105,7 +104,7 @@ export class New extends Command {
 			// node file
 			const destinationFilePath = join(
 				process.cwd(),
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				`${changeCase.pascalCase(nodeName)}.${typeAnswers.type.toLowerCase()}.ts`,
 			);
 
@@ -152,10 +151,10 @@ export class New extends Command {
 
 			this.log(`Node got created: ${destinationFilePath}`);
 		} catch (error) {
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.log(`\nGOT ERROR: "${error.message}"`);
 			this.log('====================================');
-			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.log(error.stack);
 		}
 	}

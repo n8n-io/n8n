@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	JsonObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
@@ -13,7 +12,7 @@ import { NodeApiError } from 'n8n-workflow';
 import type { IRelation } from './Interfaces';
 
 export async function orbitApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
@@ -111,7 +110,8 @@ export async function orbitApiRequestAllItems(
 		}
 
 		query.page++;
-		if (query.limit && returnData.length >= query.limit) {
+		const limit = query.limit as number | undefined;
+		if (limit && returnData.length >= limit) {
 			return returnData;
 		}
 	} while (responseData.data.length !== 0);

@@ -1,19 +1,27 @@
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { useStorage } from '@/composables/useStorage';
+
 import { externalHooks } from '@/mixins/externalHooks';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { showMessage } from '@/mixins/showMessage';
+import { useToast } from '@/composables';
 
-import mixins from 'vue-typed-mixins';
 import {
 	LOCAL_STORAGE_ACTIVATION_FLAG,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 } from '@/constants';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useSettingsStore } from '@/stores/settings';
-import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 
-export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessage).extend({
+export const workflowActivate = defineComponent({
+	mixins: [externalHooks, workflowHelpers],
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			updatingWorkflowActivation: false,
@@ -33,7 +41,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 			telemetrySource?: string,
 		) {
 			this.updatingWorkflowActivation = true;
-			const nodesIssuesExist = this.workflowsStore.nodesIssuesExist as boolean;
+			const nodesIssuesExist = this.workflowsStore.nodesIssuesExist;
 
 			let currWorkflowId: string | undefined = workflowId;
 			if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -42,7 +50,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 					this.updatingWorkflowActivation = false;
 					return;
 				}
-				currWorkflowId = this.workflowsStore.workflowId as string;
+				currWorkflowId = this.workflowsStore.workflowId;
 			}
 			const isCurrentWorkflow = currWorkflowId === this.workflowsStore.workflowId;
 
@@ -56,11 +64,11 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 				ndv_input: telemetrySource === 'ndv',
 			};
 			this.$telemetry.track('User set workflow active status', telemetryPayload);
-			this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+			void this.$externalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 			try {
 				if (isWorkflowActive && newActiveState) {
-					this.$showMessage({
+					this.showMessage({
 						title: this.$locale.baseText('workflowActivator.workflowIsActive'),
 						type: 'success',
 					});
@@ -69,8 +77,8 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 					return;
 				}
 
-				if (isCurrentWorkflow && nodesIssuesExist) {
-					this.$showMessage({
+				if (isCurrentWorkflow && nodesIssuesExist && newActiveState) {
+					this.showMessage({
 						title: this.$locale.baseText(
 							'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
 						),
@@ -84,10 +92,13 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 					return;
 				}
 
-				await this.updateWorkflow({ workflowId: currWorkflowId, active: newActiveState });
+				await this.updateWorkflow(
+					{ workflowId: currWorkflowId, active: newActiveState },
+					!this.uiStore.stateIsDirty,
+				);
 			} catch (error) {
-				const newStateName = newActiveState === true ? 'activated' : 'deactivated';
-				this.$showError(
+				const newStateName = newActiveState ? 'activated' : 'deactivated';
+				this.showError(
 					error,
 					this.$locale.baseText('workflowActivator.showError.title', {
 						interpolate: { newStateName },
@@ -100,7 +111,7 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 			const activationEventName = isCurrentWorkflow
 				? 'workflow.activeChangeCurrent'
 				: 'workflow.activeChange';
-			this.$externalHooks().run(activationEventName, {
+			void this.$externalHooks().run(activationEventName, {
 				workflowId: currWorkflowId,
 				active: newActiveState,
 			});
@@ -109,13 +120,10 @@ export const workflowActivate = mixins(externalHooks, workflowHelpers, showMessa
 			this.updatingWorkflowActivation = false;
 
 			if (isCurrentWorkflow) {
-				if (
-					newActiveState &&
-					window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true'
-				) {
+				if (newActiveState && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 					this.uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 				} else {
-					this.settingsStore.fetchPromptsData();
+					await this.settingsStore.fetchPromptsData();
 				}
 			}
 		},

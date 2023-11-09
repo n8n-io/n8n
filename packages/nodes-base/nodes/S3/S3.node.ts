@@ -1,6 +1,5 @@
-import { paramCase, snakeCase } from 'change-case';
-
 import { createHash } from 'crypto';
+import { paramCase, snakeCase } from 'change-case';
 
 import { Builder } from 'xml2js';
 
@@ -14,11 +13,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { bucketFields, bucketOperations } from '../Aws/S3/BucketDescription';
+import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
 
-import { folderFields, folderOperations } from '../Aws/S3/FolderDescription';
+import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
 
-import { fileFields, fileOperations } from '../Aws/S3/FileDescription';
+import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
 
@@ -902,9 +901,9 @@ export class S3 implements INodeType {
 		}
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

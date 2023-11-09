@@ -360,7 +360,7 @@ export class GoogleSlides implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the pages to display them to user so that he can
+			// Get all the pages to display them to user so that they can
 			// select them easily
 			async getPages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -591,6 +591,6 @@ export class GoogleSlides implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

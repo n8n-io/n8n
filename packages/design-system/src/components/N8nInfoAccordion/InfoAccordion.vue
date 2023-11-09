@@ -41,15 +41,20 @@
 <script lang="ts">
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { EventBus } from '../../utils';
+import { createEventBus } from '../../utils';
 
-interface IAccordionItem {
+export interface IAccordionItem {
 	id: string;
 	label: string;
 	icon: string;
+	iconColor?: string;
+	tooltip?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-info-accordion',
 	components: {
 		N8nText,
@@ -64,9 +69,7 @@ export default Vue.extend({
 		},
 		items: {
 			type: Array as PropType<IAccordionItem[]>,
-			default() {
-				return [];
-			},
+			default: () => [],
 		},
 		initiallyExpanded: {
 			type: Boolean,
@@ -76,9 +79,13 @@ export default Vue.extend({
 			type: Object as PropType<{ icon: string; color: string }>,
 			required: false,
 		},
+		eventBus: {
+			type: Object as PropType<EventBus>,
+			default: () => createEventBus(),
+		},
 	},
 	mounted() {
-		this.$on('expand', () => {
+		this.eventBus.on('expand', () => {
 			this.expanded = true;
 		});
 		this.expanded = this.initiallyExpanded;
@@ -92,8 +99,8 @@ export default Vue.extend({
 		toggle() {
 			this.expanded = !this.expanded;
 		},
-		onClick(e) {
-			this.$emit('click', e);
+		onClick(e: MouseEvent) {
+			this.$emit('click:body', e);
 		},
 		onTooltipClick(item: string, event: MouseEvent) {
 			this.$emit('tooltipClick', item, event);

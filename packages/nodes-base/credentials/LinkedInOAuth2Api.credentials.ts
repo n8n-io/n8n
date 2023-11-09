@@ -42,7 +42,7 @@ export class LinkedInOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'=r_liteprofile,r_emailaddress,w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social":""}}',
+				'=w_member_social{{$self["organizationSupport"] === true ? ",w_organization_social":",r_liteprofile,r_emailaddress"}}',
 			description:
 				'Standard scopes for posting on behalf of a user or organization. See <a href="https://docs.microsoft.com/en-us/linkedin/marketing/getting-started#available-permissions"> this resource </a>.',
 		},

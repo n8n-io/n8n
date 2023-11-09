@@ -171,7 +171,7 @@ export const eventFields: INodeProperties[] = [
 					},
 				],
 				default: 'no',
-				description: 'Wheater the event is all day or not',
+				description: 'Whether the event is all day or not',
 			},
 			{
 				displayName: 'Attendees',
@@ -224,7 +224,7 @@ export const eventFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'Creates a conference link (Hangouts, Meet etc) and attachs it to the event',
+				description: 'Creates a conference link (Hangouts, Meet etc) and attaches it to the event',
 			},
 			{
 				displayName: 'Description',
@@ -828,7 +828,7 @@ export const eventFields: INodeProperties[] = [
 					},
 				],
 				default: 'no',
-				description: 'Wheater the event is all day or not',
+				description: 'Whether the event is all day or not',
 			},
 			{
 				displayName: 'Attendees',

@@ -1,7 +1,8 @@
+import { URL } from 'url';
 import type { Request } from 'aws4';
 import { sign } from 'aws4';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type { OptionsWithUri } from 'request';
 
@@ -16,8 +17,6 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import { URL } from 'url';
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params)
@@ -204,7 +203,8 @@ export async function s3ApiRequestSOAPAllItems(
 				returnData.push(get(responseData, propertyName) as IDataObject);
 			}
 		}
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (

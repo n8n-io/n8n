@@ -7,9 +7,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { autopilotApiRequest } from './GenericFunctions';
-
 import { snakeCase } from 'change-case';
+import { autopilotApiRequest } from './GenericFunctions';
 
 export class AutopilotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -80,7 +79,6 @@ export class AutopilotTrigger implements INodeType {
 		],
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

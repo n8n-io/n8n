@@ -38,7 +38,7 @@ withDefaults(defineProps<BlockUiProps>(), {
 .fade-leave-active {
 	transition: opacity 200ms;
 }
-.fade-enter,
+.fade-enter-from,
 .fade-leave-to {
 	opacity: 0;
 }

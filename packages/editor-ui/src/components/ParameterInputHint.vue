@@ -1,11 +1,6 @@
 <template>
 	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
-		<div
-			v-if="!renderHTML"
-			:class="{ [$style.singleline]: singleLine, [$style.highlight]: highlight }"
-		>
-			{{ hint }}
-		</div>
+		<div v-if="!renderHTML" :class="classes"><span v-html="simplyText"></span></div>
 		<div
 			v-else
 			ref="hint"
@@ -16,10 +11,10 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { sanitizeHtml } from '@/utils';
-import Vue from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'InputHint',
 	props: {
 		hint: {
@@ -38,6 +33,26 @@ export default Vue.extend({
 	},
 	methods: {
 		sanitizeHtml,
+	},
+	computed: {
+		classes() {
+			return {
+				[this.$style.singleline]: this.singleLine,
+				[this.$style.highlight]: this.highlight,
+			};
+		},
+		simplyText(): string {
+			if (this.hint) {
+				return String(this.hint)
+					.replace(/&/g, '&amp;') // allows us to keep spaces at the beginning of an expression
+					.replace(/</g, '&lt;') // prevent XSS exploits since we are rendering HTML
+					.replace(/>/g, '&gt;')
+					.replace(/"/g, '&quot;')
+					.replace(/ /g, '&nbsp;');
+			}
+
+			return '';
+		},
 	},
 	mounted() {
 		if (this.$refs.hint) {

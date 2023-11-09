@@ -1,0 +1,133 @@
+{
+	"name": "My workflow 12",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "7db7d51a-83c2-4aa0-a736-9c3d1c031b60",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [20, 340]
+		},
+		{
+			"parameters": {
+				"authentication": "serviceAccount",
+				"operation": "insert",
+				"projectId": {
+					"__rl": true,
+					"value": "test-project",
+					"mode": "list",
+					"cachedResultName": "test-project",
+					"cachedResultUrl": "https://console.cloud.google.com/bigquery?project=test-project"
+				},
+				"datasetId": {
+					"__rl": true,
+					"value": "bigquery_node_dev_test_dataset",
+					"mode": "list",
+					"cachedResultName": "bigquery_node_dev_test_dataset"
+				},
+				"tableId": {
+					"__rl": true,
+					"value": "num_text",
+					"mode": "list",
+					"cachedResultName": "num_text"
+				},
+				"options": {
+					"traceId": "trace_id"
+				}
+			},
+			"id": "83d00275-0f98-4d5e-a3d6-bbca940ff8ac",
+			"name": "Google BigQuery",
+			"type": "n8n-nodes-base.googleBigQuery",
+			"typeVersion": 2,
+			"position": [500, 340],
+			"credentials": {
+				"googleApi": {
+					"id": "66",
+					"name": "Google account 5"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n{\n\"id\":\n1,\n\"test\":\n\"111\"\n},\n{\n\"id\":\n2,\n\"test\":\n\"222\"\n},\n{\n\"id\":\n3,\n\"test\":\n\"333\"\n},\n];"
+			},
+			"id": "11d06660-cbd3-4bd2-9619-68e82438a0e3",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [240, 340]
+		}
+	],
+	"pinData": {
+		"Code": [
+			{
+				"json": {
+					"id": 1,
+					"test": "111"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"test": "222"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"test": "333"
+				}
+			}
+		],
+		"Google BigQuery": [
+			{
+				"json": {
+					"kind": "bigquery#tableDataInsertAllResponse"
+				}
+			},
+			{
+				"json": {
+					"kind": "bigquery#tableDataInsertAllResponse"
+				}
+			},
+			{
+				"json": {
+					"kind": "bigquery#tableDataInsertAllResponse"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Google BigQuery",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "30d3e38a-b5a4-4999-816d-7c05a68f31c8",
+	"id": "156",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

@@ -8,10 +8,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { snakeCase } from 'change-case';
 import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import type { IMessage } from './MessageInterface';
-import { snakeCase } from 'change-case';
 import { streamFields, streamOperations } from './StreamDescription';
 import { userFields, userOperations } from './UserDescription';
 import type { IPrincipal, IStream } from './StreamInterface';
@@ -75,7 +75,7 @@ export class Zulip implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available streams to display them to user so that he can
+			// Get all the available streams to display them to user so that they can
 			// select them easily
 			async getStreams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -90,7 +90,7 @@ export class Zulip implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available topics to display them to user so that he can
+			// Get all the available topics to display them to user so that they can
 			// select them easily
 			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const streamId = this.getCurrentNodeParameter('stream') as string;
@@ -106,7 +106,7 @@ export class Zulip implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available users to display them to user so that he can
+			// Get all the available users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -468,6 +468,6 @@ export class Zulip implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

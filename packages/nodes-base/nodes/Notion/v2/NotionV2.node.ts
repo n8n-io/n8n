@@ -10,6 +10,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import type { SortData, FileRecord } from '../GenericFunctions';
 import {
 	downloadFiles,
@@ -24,14 +25,13 @@ import {
 	mapSorting,
 	notionApiRequest,
 	notionApiRequestAllItems,
+	notionApiRequestGetBlockChildrens,
 	simplifyObjects,
 	validateJSON,
 } from '../GenericFunctions';
 
-import moment from 'moment-timezone';
-
-import { versionDescription } from './VersionDescription';
 import { getDatabases } from '../SearchFunctions';
+import { versionDescription } from './VersionDescription';
 
 export class NotionV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -207,7 +207,7 @@ export class NotionV2 implements INodeType {
 				}));
 			},
 
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -273,6 +273,7 @@ export class NotionV2 implements INodeType {
 						this.getNodeParameter('blockId', i, '', { extractValue: true }) as string,
 					);
 					const returnAll = this.getNodeParameter('returnAll', i);
+					const fetchNestedBlocks = this.getNodeParameter('fetchNestedBlocks', i) as boolean;
 
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -282,8 +283,13 @@ export class NotionV2 implements INodeType {
 							`/blocks/${blockId}/children`,
 							{},
 						);
+
+						if (fetchNestedBlocks) {
+							responseData = await notionApiRequestGetBlockChildrens.call(this, responseData);
+						}
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i);
+						const limit = this.getNodeParameter('limit', i);
+						qs.page_size = limit;
 						responseData = await notionApiRequest.call(
 							this,
 							'GET',
@@ -291,7 +297,13 @@ export class NotionV2 implements INodeType {
 							{},
 							qs,
 						);
-						responseData = responseData.results;
+						const results = responseData.results;
+
+						if (fetchNestedBlocks) {
+							responseData = await notionApiRequestGetBlockChildrens.call(this, results, [], limit);
+						} else {
+							responseData = results;
+						}
 					}
 
 					responseData = responseData.map((_data: IDataObject) => ({
@@ -600,6 +612,16 @@ export class NotionV2 implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
+
+					const options = this.getNodeParameter('options', i);
+					if (options.icon) {
+						if (options.iconType && options.iconType === 'file') {
+							body.icon = { type: 'external', external: { url: options.icon } };
+						} else {
+							body.icon = { type: 'emoji', emoji: options.icon };
+						}
+					}
+
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple) {
 						responseData = simplifyObjects(responseData, false);
@@ -758,11 +780,6 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		if (download) {
-			const rawData = returnData.map((data) => data.json);
-			return this.prepareOutputData(rawData as INodeExecutionData[]);
-		}
-
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

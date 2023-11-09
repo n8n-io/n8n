@@ -1,17 +1,14 @@
 import type { INode, Workflow } from 'n8n-workflow';
-import {
-	NodeOperationError,
-	SubworkflowOperationError,
-	WorkflowOperationError,
-} from 'n8n-workflow';
+import { NodeOperationError, SubworkflowOperationError } from 'n8n-workflow';
 import type { FindOptionsWhere } from 'typeorm';
 import { In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRoleId, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
-import { WorkflowsService } from '@/workflows/workflows.services';
-import { UserService } from '@/user/user.service';
+import { isSharingEnabled } from './UserManagementHelper';
+import { OwnershipService } from '@/services/ownership.service';
+import Container from 'typedi';
+import { RoleService } from '@/services/role.service';
 
 export class PermissionChecker {
 	/**
@@ -44,6 +41,7 @@ export class PermissionChecker {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflowId: workflow.id },
+				select: ['userId'],
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
@@ -51,8 +49,9 @@ export class PermissionChecker {
 		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
 
 		if (!isSharingEnabled()) {
+			const role = await Container.get(RoleService).findCredentialOwnerRole();
 			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhere.roleId = await getRoleId('credential', 'owner');
+			credentialsWhere.roleId = role.id;
 		}
 
 		const credentialSharings = await Db.collections.SharedCredentials.find({
@@ -71,6 +70,7 @@ export class PermissionChecker {
 
 		throw new NodeOperationError(nodeToFlag, 'Node has no access to credential', {
 			description: 'Please recreate the credential or ask its owner to share it with you.',
+			severity: 'warning',
 		});
 	}
 
@@ -99,7 +99,9 @@ export class PermissionChecker {
 			policy = 'workflowsFromSameOwner';
 		}
 
-		const subworkflowOwner = await getWorkflowOwner(subworkflow.id);
+		const subworkflowOwner = await Container.get(OwnershipService).getWorkflowOwnerCached(
+			subworkflow.id,
+		);
 
 		const errorToThrow = new SubworkflowOperationError(
 			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
@@ -116,7 +118,7 @@ export class PermissionChecker {
 			if (parentWorkflowId === undefined) {
 				throw errorToThrow;
 			}
-			const allowedCallerIds = (subworkflow.settings.callerIds as string | undefined)
+			const allowedCallerIds = subworkflow.settings.callerIds
 				?.split(',')
 				.map((id) => id.trim())
 				.filter((id) => id !== '');
@@ -127,14 +129,7 @@ export class PermissionChecker {
 		}
 
 		if (policy === 'workflowsFromSameOwner') {
-			const user = await UserService.get({ id: userId });
-			if (!user) {
-				throw new WorkflowOperationError(
-					'Fatal error: user not found. Please contact the system administrator.',
-				);
-			}
-			const sharing = await WorkflowsService.getSharing(user, subworkflow.id, ['role', 'user']);
-			if (!sharing || sharing.role.name !== 'owner') {
+			if (subworkflowOwner?.id !== userId) {
 				throw errorToThrow;
 			}
 		}

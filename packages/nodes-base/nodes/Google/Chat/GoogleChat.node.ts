@@ -12,9 +12,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { IMessage, IMessageUi } from './MessageInterface';
-
 import type { OptionsWithUri } from 'request';
+import moment from 'moment-timezone';
+import jwt from 'jsonwebtoken';
+import type { IMessage, IMessageUi } from './MessageInterface';
 
 import {
 	// attachmentFields,
@@ -33,9 +34,6 @@ import {
 
 import { googleApiRequest, googleApiRequestAllItems, validateJSON } from './GenericFunctions';
 
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
 export class GoogleChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Chat',
@@ -109,7 +107,7 @@ export class GoogleChat implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the spaces to display them to user so that he can
+			// Get all the spaces to display them to user so that they can
 			// select them easily
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -559,10 +557,10 @@ export class GoogleChat implements INodeType {
 
 		if (operation === 'download') {
 			// For file downloads the files get attached to the existing items
-			return this.prepareOutputData(items);
+			return [items];
 		} else {
 			// For all other ones does the output get replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		}
 	}
 }

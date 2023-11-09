@@ -16,6 +16,7 @@
 				v-for="option in currentResults"
 				:key="option.key"
 				:extendAll="extendAll"
+				:redactValues="redactValues"
 				@itemSelected="forwardItemSelected"
 			></variable-selector-item>
 		</div>
@@ -24,9 +25,11 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE } from '@/constants';
 
-import {
+import type {
 	GenericValue,
 	IContextObject,
 	IDataObject,
@@ -36,34 +39,28 @@ import {
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
-	WorkflowDataProxy,
 } from 'n8n-workflow';
+import { NodeConnectionType, WorkflowDataProxy } from 'n8n-workflow';
 
 import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
-import {
-	IExecutionResponse,
-	INodeUi,
-	IVariableItemSelected,
-	IVariableSelectorOption,
-} from '@/Interface';
+import type { INodeUi, IVariableItemSelected, IVariableSelectorOption } from '@/Interface';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import mixins from 'vue-typed-mixins';
-import { mapStores } from 'pinia';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useRootStore } from '@/stores/n8nRootStore';
-import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores/n8nRoot.store';
+import { useNDVStore } from '@/stores/ndv.store';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [STICKY_NODE_TYPE];
 
-export default mixins(workflowHelpers).extend({
+export default defineComponent({
 	name: 'VariableSelector',
+	mixins: [workflowHelpers],
 	components: {
 		VariableSelectorItem,
 	},
-	props: ['path'],
+	props: ['path', 'redactValues'],
 	data() {
 		return {
 			variableFilter: '',
@@ -72,6 +69,13 @@ export default mixins(workflowHelpers).extend({
 	},
 	computed: {
 		...mapStores(useNDVStore, useRootStore, useWorkflowsStore),
+		activeNode(): INodeUi | null {
+			const activeNode = this.ndvStore.activeNode!;
+			if (!activeNode) {
+				return null;
+			}
+			return this.getParentMainInputNode(this.getCurrentWorkflow(), activeNode);
+		},
 		extendAll(): boolean {
 			if (this.variableFilter) {
 				return true;
@@ -131,7 +135,7 @@ export default mixins(workflowHelpers).extend({
 				return newItems;
 			}
 
-			if (inputData && inputData.options) {
+			if (inputData?.options) {
 				const newOptions = this.removeEmptyEntries(inputData.options);
 				if (Array.isArray(newOptions) && newOptions.length) {
 					// Has still options left so return
@@ -293,9 +297,9 @@ export default mixins(workflowHelpers).extend({
 		 * @param {string} filterText Filter text for parameters
 		 * @param {number} [itemIndex=0] The index of the item
 		 * @param {number} [runIndex=0] The index of the run
-		 * @param {string} [inputName='main'] The name of the input
+		 * @param {string} [inputName=NodeConnectionType.Main] The name of the input
 		 * @param {number} [outputIndex=0] The index of the output
-		 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
 		getNodeRunDataOutput(
 			nodeName: string,
@@ -303,7 +307,7 @@ export default mixins(workflowHelpers).extend({
 			filterText: string,
 			itemIndex = 0,
 			runIndex = 0,
-			inputName = 'main',
+			inputName = NodeConnectionType.Main,
 			outputIndex = 0,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
@@ -356,7 +360,7 @@ export default mixins(workflowHelpers).extend({
 		 * @param {string} nodeName The name of the node to get the data of
 		 * @param {IPinData[string]} pinData The node's pin data
 		 * @param {string} filterText Filter text for parameters
-		 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+		 * @param {boolean} [useShort=false] Use short notation $json vs. $('NodeName').json
 		 */
 		getNodePinDataOutput(
 			nodeName: string,
@@ -364,7 +368,7 @@ export default mixins(workflowHelpers).extend({
 			filterText: string,
 			useShort = false,
 		): IVariableSelectorOption[] | null {
-			const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
+			const outputData = pinData.map((data) => ({ json: data }) as INodeExecutionData)[0];
 
 			return this.getNodeOutput(nodeName, outputData, filterText, useShort);
 		},
@@ -387,7 +391,7 @@ export default mixins(workflowHelpers).extend({
 
 			// Get json data
 			if (outputData.hasOwnProperty('json')) {
-				const jsonPropertyPrefix = useShort === true ? '$json' : `$node["${nodeName}"].json`;
+				const jsonPropertyPrefix = useShort ? '$json' : `$('${nodeName}').item.json`;
 
 				const jsonDataOptions: IVariableSelectorOption[] = [];
 				for (const propertyName of Object.keys(outputData.json)) {
@@ -412,7 +416,7 @@ export default mixins(workflowHelpers).extend({
 
 			// Get binary data
 			if (outputData.hasOwnProperty('binary')) {
-				const binaryPropertyPrefix = useShort === true ? '$binary' : `$node["${nodeName}"].binary`;
+				const binaryPropertyPrefix = useShort ? '$binary' : `$('${nodeName}').item.binary`;
 
 				const binaryData = [];
 				let binaryPropertyData = [];
@@ -465,20 +469,18 @@ export default mixins(workflowHelpers).extend({
 			filterText: string,
 		): IVariableSelectorOption[] | null {
 			const itemIndex = 0;
-			const inputName = 'main';
+			const inputName = NodeConnectionType.Main;
 			const runIndex = 0;
 			const returnData: IVariableSelectorOption[] = [];
 
-			const activeNode: INodeUi | null = this.ndvStore.activeNode;
-
-			if (activeNode === null) {
+			if (this.activeNode === null) {
 				return returnData;
 			}
 
 			const nodeConnection = this.workflow.getNodeConnectionIndexes(
-				activeNode.name,
+				this.activeNode.name,
 				parentNode[0],
-				'main',
+				inputName,
 			);
 			const connectionInputData = this.connectionInputData(
 				parentNode,
@@ -513,7 +515,6 @@ export default mixins(workflowHelpers).extend({
 				connectionInputData,
 				{},
 				'manual',
-				this.rootStore.timezone,
 				additionalKeys,
 			);
 			const proxy = dataProxy.getDataProxy();
@@ -528,7 +529,7 @@ export default mixins(workflowHelpers).extend({
 
 				returnData.push({
 					name: key,
-					key: `$node["${nodeName}"].context["${key}"]`,
+					key: `$('${nodeName}').context["${key}"]`,
 					// @ts-ignore
 					value: nodeContext[key],
 				});
@@ -584,16 +585,14 @@ export default mixins(workflowHelpers).extend({
 			return returnParameters;
 		},
 		getFilterResults(filterText: string, itemIndex: number): IVariableSelectorOption[] {
-			const inputName = 'main';
+			const inputName = NodeConnectionType.Main;
 
-			const activeNode: INodeUi | null = this.ndvStore.activeNode;
-
-			if (activeNode === null) {
+			if (this.activeNode === null) {
 				return [];
 			}
 
 			const executionData = this.workflowsStore.getWorkflowExecution;
-			let parentNode = this.workflow.getParentNodes(activeNode.name, inputName, 1);
+			let parentNode = this.workflow.getParentNodes(this.activeNode.name, inputName, 1);
 			let runData = this.workflowsStore.getWorkflowRunData;
 
 			if (runData === null) {
@@ -609,14 +608,15 @@ export default mixins(workflowHelpers).extend({
 			const currentNodeData: IVariableSelectorOption[] = [];
 
 			let tempOptions: IVariableSelectorOption[];
-			if (executionData !== null && executionData.data !== undefined) {
+
+			if (executionData?.data !== undefined) {
 				const runExecutionData: IRunExecutionData = executionData.data;
 
 				tempOptions = this.getNodeContext(
 					this.workflow,
 					runExecutionData,
 					parentNode,
-					activeNode.name,
+					this.activeNode.name,
 					filterText,
 				) as IVariableSelectorOption[];
 				if (tempOptions.length) {
@@ -632,17 +632,23 @@ export default mixins(workflowHelpers).extend({
 			if (parentNode.length) {
 				// If the node has an input node add the input data
 
-				const activeInputParentNode = parentNode.find(
-					(node) => node === this.ndvStore.ndvInputNodeName,
-				)!;
+				let ndvInputNodeName = this.ndvStore.ndvInputNodeName;
+				if (!ndvInputNodeName) {
+					// If no input node is set use the first parent one
+					// this is imporant for config-nodes which do not have
+					// a main input
+					ndvInputNodeName = parentNode[0];
+				}
+
+				const activeInputParentNode = parentNode.find((node) => node === ndvInputNodeName)!;
 
 				// Check from which output to read the data.
 				// Depends on how the nodes are connected.
 				// (example "IF" node. If node is connected to "true" or to "false" output)
 				const nodeConnection = this.workflow.getNodeConnectionIndexes(
-					activeNode.name,
+					this.activeNode.name,
 					activeInputParentNode,
-					'main',
+					inputName,
 				);
 				const outputIndex = nodeConnection === undefined ? 0 : nodeConnection.sourceIndex;
 
@@ -652,7 +658,7 @@ export default mixins(workflowHelpers).extend({
 					filterText,
 					itemIndex,
 					0,
-					'main',
+					inputName,
 					outputIndex,
 					true,
 				) as IVariableSelectorOption[];
@@ -733,7 +739,7 @@ export default mixins(workflowHelpers).extend({
 				name: this.$locale.baseText('variableSelector.parameters'),
 				options: this.sortOptions(
 					this.getNodeParameters(
-						activeNode.name,
+						this.activeNode.name,
 						initialPath,
 						skipParameter,
 						filterText,
@@ -753,7 +759,7 @@ export default mixins(workflowHelpers).extend({
 			// -----------------------------------------
 			const allNodesData: IVariableSelectorOption[] = [];
 			let nodeOptions: IVariableSelectorOption[];
-			const upstreamNodes = this.workflow.getParentNodes(activeNode.name, inputName);
+			const upstreamNodes = this.workflow.getParentNodes(this.activeNode.name, inputName);
 
 			const workflowNodes = Object.entries(this.workflow.nodes);
 
@@ -766,7 +772,7 @@ export default mixins(workflowHelpers).extend({
 				// Add the parameters of all nodes
 				// TODO: Later have to make sure that no parameters can be referenced which have expression which use input-data (for nodes which are not parent nodes)
 
-				if (nodeName === activeNode.name) {
+				if (nodeName === this.activeNode.name) {
 					// Skip the current node as this one get added separately
 					continue;
 				}
@@ -779,17 +785,12 @@ export default mixins(workflowHelpers).extend({
 					{
 						name: this.$locale.baseText('variableSelector.parameters'),
 						options: this.sortOptions(
-							this.getNodeParameters(
-								nodeName,
-								`$node["${nodeName}"].parameter`,
-								undefined,
-								filterText,
-							),
+							this.getNodeParameters(nodeName, `$('${nodeName}').params`, undefined, filterText),
 						),
 					} as IVariableSelectorOption,
 				];
 
-				if (executionData !== null && executionData.data !== undefined) {
+				if (executionData?.data !== undefined) {
 					const runExecutionData: IRunExecutionData = executionData.data;
 
 					parentNode = this.workflow.getParentNodes(nodeName, inputName, 1);

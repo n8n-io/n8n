@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import type { SortData } from '../GenericFunctions';
 import {
 	extractDatabaseId,
@@ -25,10 +26,8 @@ import {
 	simplifyObjects,
 } from '../GenericFunctions';
 
-import moment from 'moment-timezone';
-
-import { versionDescription } from './VersionDescription';
 import { getDatabases } from '../SearchFunctions';
+import { versionDescription } from './VersionDescription';
 
 export class NotionV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -202,7 +201,7 @@ export class NotionV1 implements INodeType {
 				}));
 			},
 
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -625,6 +624,6 @@ export class NotionV1 implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

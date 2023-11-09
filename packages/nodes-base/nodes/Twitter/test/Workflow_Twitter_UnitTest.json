@@ -1,0 +1,284 @@
+{
+	"name": "node-1-twitter-node-overhaul",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "91cdc3d3-9cf7-4fe0-b74c-b17e0c8b404d",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-420, 80]
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"me": true
+			},
+			"id": "4ee34d07-db6c-413b-95f3-932182770044",
+			"name": "Twitter1",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [-140, 260],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "121",
+					"name": "Twitter OAuth account 2"
+				}
+			},
+			"disabled": false
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"tweetDeleteId": {
+					"__rl": true,
+					"value": "={{ $('Twitter').item.json.id }}",
+					"mode": "id"
+				}
+			},
+			"id": "ceca5fb1-f4b7-4dbe-9505-61793bffd87a",
+			"name": "Twitter3",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [240, 80],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "121",
+					"name": "Twitter OAuth account 2"
+				}
+			},
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"operation": "retweet",
+				"tweetId": {
+					"__rl": true,
+					"value": "={{ $json.id }}",
+					"mode": "id"
+				},
+				"additionalFields": {}
+			},
+			"id": "ce49286a-04bb-4f59-bae5-ef64a1bca2b0",
+			"name": "Twitter2",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [40, 80],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "121",
+					"name": "Twitter OAuth account 2"
+				}
+			},
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"text": "test5",
+				"additionalFields": {}
+			},
+			"id": "370e20de-dca6-48ab-aa24-47fb326bad77",
+			"name": "Twitter",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [-140, 80],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "121",
+					"name": "Twitter OAuth account 2"
+				}
+			},
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"resource": "list",
+				"list": {
+					"__rl": true,
+					"value": "https://twitter.com/i/lists/1663852298521419776",
+					"mode": "url"
+				},
+				"user": {
+					"__rl": true,
+					"value": "n8n_io",
+					"mode": "username"
+				}
+			},
+			"id": "ea1c13af-80b8-41d4-8591-e16b8e7be84b",
+			"name": "Twitter7",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [-140, 640],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "121",
+					"name": "Twitter OAuth account 2"
+				}
+			},
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"operation": "search",
+				"searchText": "bloomberg",
+				"limit": 10,
+				"additionalFields": {}
+			},
+			"id": "216b3061-a52b-4d64-9ed8-9cc6940f6efa",
+			"name": "Twitter5",
+			"type": "n8n-nodes-base.twitter",
+			"typeVersion": 2,
+			"position": [-140, 440],
+			"credentials": {
+				"twitterOAuth2Api": {
+					"id": "121",
+					"name": "Twitter OAuth account 2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Twitter1": [
+			{
+				"json": {
+					"id": "1285192200213626880",
+					"name": "Integration-n8n",
+					"username": "IntegrationN8n"
+				}
+			}
+		],
+		"Twitter5": [
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357334740811776"],
+					"id": "1666357334740811776",
+					"text": "RT @business: Extreme heat is happening earlier than usual this year in Asia. That’s posing a grave risk to agriculture and industrial acti…"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357331276230656"],
+					"id": "1666357331276230656",
+					"text": "@ROBVME @sheepsleepdeep @mattxiv Bit like Bloomberg, but then for an incredible average beer brand, to which grown ass adults have some deeply emotional attachment to and going through a teenage break-up with, because a tiktok.\nGot it."
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357319381180417"],
+					"id": "1666357319381180417",
+					"text": "The global economy is set for a weak recovery from the shocks of Covid and Russia’s war in Ukraine, dogged by persistent inflation and central banks' restrictive policies, the OECD warns https://t.co/HPtelXu8iR https://t.co/rziWHhr8Np"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357315946303488"],
+					"id": "1666357315946303488",
+					"text": "RT @lukedepulford: Love this so much. Variations of “Glory to Hong Kong” are THE WHOLE TOP TEN of the most downloaded song on iTunes.\n\n✊\n\nh…"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357265320869891"],
+					"id": "1666357265320869891",
+					"text": "RT @business: The SEC said it’s seeking to freeze https://t.co/35sr7lifRX’s assets and protect customer funds, including through the repatr…"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357244760555520"],
+					"id": "1666357244760555520",
+					"text": "RT @BloombergJapan: オプション市場で日経平均先高観強まる、３万4000円に備える買い急増 https://t.co/mIcdkgokYj"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357239710359552"],
+					"id": "1666357239710359552",
+					"text": "Twitter'a mı girdim bloomberg mi anlamadım,dolar euro altın..maşallahları var,tl mi onun anası sikilmiş."
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357235340165120"],
+					"id": "1666357235340165120",
+					"text": "RT @business: These charts show why Germany needs mass migration https://t.co/rvZixuwwnu"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357210409213952"],
+					"id": "1666357210409213952",
+					"text": "RT @elonmusk: @MattWalshBlog View count is actually understated, as it does not include anything from our API, for example tweets you see i…"
+				}
+			},
+			{
+				"json": {
+					"edit_history_tweet_ids": ["1666357208983166976"],
+					"id": "1666357208983166976",
+					"text": "RT @coinbureau: There we go. Without proving in a court of law that these tokens are \"securities\" the SEC may be able to restrict access to…"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Twitter1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Twitter",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Twitter7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Twitter5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Twitter1": {
+			"main": [[]]
+		},
+		"Twitter2": {
+			"main": [
+				[
+					{
+						"node": "Twitter3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Twitter": {
+			"main": [
+				[
+					{
+						"node": "Twitter2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "bc985960-5bfd-4b56-b290-ab839b3c0c30",
+	"id": "66",
+	"meta": {
+		"instanceId": "8e9416f42a954d0a370d988ac3c0f916f44074a6e45189164b1a8559394a7516"
+	},
+	"tags": []
+}

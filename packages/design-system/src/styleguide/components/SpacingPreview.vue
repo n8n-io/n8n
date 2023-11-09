@@ -8,10 +8,11 @@
 		</div>
 	</div>
 </template>
-<script lang="ts">
-import Vue from 'vue';
 
-export default Vue.extend({
+<script lang="ts">
+import { defineComponent } from 'vue';
+
+export default defineComponent({
 	name: 'SpacingPreview',
 	props: {
 		property: {

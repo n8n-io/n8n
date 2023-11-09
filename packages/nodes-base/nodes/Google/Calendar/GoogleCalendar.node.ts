@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+import { v4 as uuid } from 'uuid';
 import {
 	encodeURIComponentOnce,
 	getCalendars,
@@ -23,10 +25,6 @@ import { eventFields, eventOperations } from './EventDescription';
 import { calendarFields, calendarOperations } from './CalendarDescription';
 
 import type { IEvent } from './EventInterface';
-
-import moment from 'moment-timezone';
-
-import { v4 as uuid } from 'uuid';
 
 export class GoogleCalendar implements INodeType {
 	description: INodeTypeDescription = {
@@ -79,7 +77,7 @@ export class GoogleCalendar implements INodeType {
 			getTimezones,
 		},
 		loadOptions: {
-			// Get all the calendars to display them to user so that he can
+			// Get all the calendars to display them to user so that they can
 			// select them easily
 			async getConferenceSolutations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -104,7 +102,7 @@ export class GoogleCalendar implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the colors to display them to user so that he can
+			// Get all the colors to display them to user so that they can
 			// select them easily
 			async getColors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -269,7 +267,7 @@ export class GoogleCalendar implements INodeType {
 							}
 						}
 
-						if (additionalFields.allday) {
+						if (additionalFields.allday === 'yes') {
 							body.start = {
 								date: timezone
 									? moment.tz(start, timezone).utc(true).format('YYYY-MM-DD')
@@ -281,6 +279,7 @@ export class GoogleCalendar implements INodeType {
 									: moment.tz(end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
+
 						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 						//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 						body.recurrence = [];
@@ -526,7 +525,8 @@ export class GoogleCalendar implements INodeType {
 								body.reminders.overrides = reminders;
 							}
 						}
-						if (updateFields.allday && updateFields.start && updateFields.end) {
+
+						if (updateFields.allday === 'yes' && updateFields.start && updateFields.end) {
 							body.start = {
 								date: updateTimezone
 									? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
@@ -538,7 +538,7 @@ export class GoogleCalendar implements INodeType {
 									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
-						//exampel: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
+						//example: RRULE:FREQ=WEEKLY;INTERVAL=2;COUNT=10;UNTIL=20110701T170000Z
 						//https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html
 						body.recurrence = [];
 						if (updateFields.rrule) {
@@ -600,6 +600,6 @@ export class GoogleCalendar implements INodeType {
 				}
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

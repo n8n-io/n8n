@@ -2,7 +2,7 @@ import { flags } from '@oclif/command';
 import fs from 'fs';
 import path from 'path';
 import type { FindOptionsWhere } from 'typeorm';
-import { Credentials, UserSettings } from 'n8n-core';
+import { Credentials } from 'n8n-core';
 import * as Db from '@/Db';
 import type { ICredentialsDb, ICredentialsDecryptedDb } from '@/Interfaces';
 import { BaseCommand } from '../BaseCommand';
@@ -110,16 +110,14 @@ export class ExportCredentialsCommand extends BaseCommand {
 			findQuery.id = flags.id;
 		}
 
-		const credentials = await Db.collections.Credentials.findBy(findQuery);
+		const credentials: ICredentialsDb[] = await Db.collections.Credentials.findBy(findQuery);
 
 		if (flags.decrypted) {
-			const encryptionKey = await UserSettings.getEncryptionKey();
-
 			for (let i = 0; i < credentials.length; i++) {
 				const { name, type, nodesAccess, data } = credentials[i];
 				const id = credentials[i].id;
 				const credential = new Credentials({ id, name }, type, nodesAccess, data);
-				const plainData = credential.getData(encryptionKey);
+				const plainData = credential.getData();
 				(credentials[i] as ICredentialsDecryptedDb).data = plainData;
 			}
 		}
@@ -134,7 +132,6 @@ export class ExportCredentialsCommand extends BaseCommand {
 			for (i = 0; i < credentials.length; i++) {
 				fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/restrict-plus-operands
 					(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
 					credentials[i].id
 				}.json`;

@@ -13,21 +13,25 @@
 				:buttonLoading="formLoading"
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"
-				@input="onInput"
-			/>
+				@update="onUpdate"
+			>
+				<SSOLogin v-if="withSso" />
+			</n8n-form-box>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-import Logo from '../components/Logo.vue';
+import Logo from '@/components/Logo.vue';
+import SSOLogin from '@/components/SSOLogin.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'AuthView',
 	components: {
 		Logo,
+		SSOLogin,
 	},
 	props: {
 		form: {},
@@ -38,10 +42,14 @@ export default Vue.extend({
 		subtitle: {
 			type: String,
 		},
+		withSso: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
-		onInput(e: { name: string; value: string }) {
-			this.$emit('input', e);
+		onUpdate(e: { name: string; value: string }) {
+			this.$emit('update', e);
 		},
 		onSubmit(values: { [key: string]: string }) {
 			this.$emit('submit', values);

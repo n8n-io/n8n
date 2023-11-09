@@ -8,11 +8,10 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
-
-import moment from 'moment-timezone';
 
 export class GetResponse implements INodeType {
 	description: INodeTypeDescription = {
@@ -86,7 +85,7 @@ export class GetResponse implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the campaigns to display them to user so that he can
+			// Get all the campaigns to display them to user so that they can
 			// select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -99,7 +98,7 @@ export class GetResponse implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the tagd to display them to user so that he can
+			// Get all the tagd to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -112,7 +111,7 @@ export class GetResponse implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -308,6 +307,6 @@ export class GetResponse implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

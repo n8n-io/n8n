@@ -118,25 +118,29 @@
 </template>
 
 <script lang="ts">
-//@ts-ignore
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
 import VueJsonPretty from 'vue-json-pretty';
 import { copyPaste } from '@/mixins/copyPaste';
-import { showMessage } from '@/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
+import { useToast } from '@/composables';
 import { MAX_DISPLAY_DATA_SIZE } from '@/constants';
-import { INodeUi } from '@/Interface';
 
-import { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNDVStore } from '@/stores/ndv.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
 
-export default mixins(copyPaste, showMessage).extend({
+export default defineComponent({
 	name: 'NodeErrorView',
+	mixins: [copyPaste],
 	props: ['error'],
 	components: {
 		VueJsonPretty,
+	},
+	setup() {
+		return {
+			...useToast(),
+		};
 	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
@@ -166,7 +170,7 @@ export default mixins(copyPaste, showMessage).extend({
 				.replace(/%%PARAMETER_FULL%%/g, parameterFullName);
 		},
 		getErrorDescription(): string {
-			if (!this.error.context || !this.error.context.descriptionTemplate) {
+			if (!this.error.context?.descriptionTemplate) {
 				return sanitizeHtml(this.error.description);
 			}
 
@@ -178,7 +182,7 @@ export default mixins(copyPaste, showMessage).extend({
 		getErrorMessage(): string {
 			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
 
-			if (!this.error.context || !this.error.context.messageTemplate) {
+			if (!this.error.context?.messageTemplate) {
 				return baseErrorMessage + this.error.message;
 			}
 
@@ -196,7 +200,7 @@ export default mixins(copyPaste, showMessage).extend({
 					throw new Error();
 				}
 
-				if (fullPath === false) {
+				if (!fullPath) {
 					return parameters.pop()!.displayName;
 				}
 				return parameters.map((parameter) => parameter.displayName).join(' > ');
@@ -252,7 +256,7 @@ export default mixins(copyPaste, showMessage).extend({
 			this.copySuccess();
 		},
 		copySuccess() {
-			this.$showMessage({
+			this.showMessage({
 				title: this.$locale.baseText('nodeErrorView.showMessage.title'),
 				type: 'info',
 			});
@@ -267,7 +271,7 @@ export default mixins(copyPaste, showMessage).extend({
 }
 
 .error-message {
-	color: #ff0000;
+	color: var(--color-ndv-ouptut-error-font);
 	font-weight: bold;
 	font-size: 1.1rem;
 }

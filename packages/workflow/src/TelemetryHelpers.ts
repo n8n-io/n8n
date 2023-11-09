@@ -154,6 +154,7 @@ export function generateNodesGraph(
 			const nodeItem: INodeGraphItem = {
 				id: node.id,
 				type: node.type,
+				version: node.typeVersion,
 				position: node.position,
 			};
 
@@ -161,7 +162,7 @@ export function generateNodesGraph(
 				nodeItem.src_instance_id = options.sourceInstanceId;
 			}
 
-			if (node.id && options?.nodeIdMap && options.nodeIdMap[node.id]) {
+			if (node.id && options?.nodeIdMap?.[node.id]) {
 				nodeItem.src_node_id = options.nodeIdMap[node.id];
 			}
 

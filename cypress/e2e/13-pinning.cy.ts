@@ -1,14 +1,15 @@
+import {
+	HTTP_REQUEST_NODE_NAME,
+	MANUAL_TRIGGER_NODE_NAME,
+	PIPEDRIVE_NODE_NAME,
+	EDIT_FIELDS_SET_NODE_NAME,
+} from '../constants';
 import { WorkflowPage, NDV } from '../pages';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 
 describe('Data pinning', () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
 	});
@@ -44,7 +45,7 @@ describe('Data pinning', () => {
 			});
 	});
 
-	it('Should be be able to set pinned data', () => {
+	it('Should be able to set pinned data', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger', { keepNdvOpen: true });
 		ndv.getters.container().should('be.visible');
 		ndv.getters.pinDataButton().should('not.exist');
@@ -61,10 +62,76 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
-		cy.reload();
 		workflowPage.actions.openNode('Schedule Trigger');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
 	});
+
+	it('Should be duplicating pin data when duplicating node', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData([{ test: 1 }]);
+		ndv.actions.close();
+
+		workflowPage.actions.duplicateNode(workflowPage.getters.canvasNodes().last());
+
+		workflowPage.actions.saveWorkflowOnButtonClick();
+
+		workflowPage.actions.openNode('Edit Fields1');
+
+		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
+		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);
+	});
+
+	it('Should show an error when maximum pin data size is exceeded', () => {
+		workflowPage.actions.addInitialNodeToCanvas('Schedule Trigger');
+		workflowPage.actions.addNodeToCanvas('Edit Fields', true, true);
+		ndv.getters.container().should('be.visible');
+		ndv.getters.pinDataButton().should('not.exist');
+		ndv.getters.editPinnedDataButton().should('be.visible');
+
+		ndv.actions.setPinnedData([
+			{
+				test: '1'.repeat(Cypress.env('MAX_PINNED_DATA_SIZE')),
+			},
+		]);
+		workflowPage.getters
+			.errorToast()
+			.should('contain', 'Workflow has reached the maximum allowed pinned data size');
+	});
+
+	it('Should be able to reference paired items in a node located before pinned data', () => {
+		workflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME, true, true);
+		ndv.actions.setPinnedData([{ http: 123 }]);
+		ndv.actions.close();
+
+		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true, true);
+		ndv.actions.setPinnedData(Array(3).fill({ pipedrive: 123 }));
+		ndv.actions.close();
+
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME, true, true);
+		setExpressionOnStringValueInSet(`{{ $('${HTTP_REQUEST_NODE_NAME}').item`);
+
+		const output = '[Object: {"json": {"http": 123}, "pairedItem": {"item": 0}}]';
+
+		cy.get('div').contains(output).should('be.visible');
+	});
 });
+
+function setExpressionOnStringValueInSet(expression: string) {
+	cy.get('button').contains('Execute node').click();
+	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
+
+	ndv.getters.nthParam(4).contains('Expression').invoke('show').click();
+
+	ndv.getters
+		.inlineExpressionEditorInput()
+		.clear()
+		.type(expression, { parseSpecialCharSequences: false });
+}

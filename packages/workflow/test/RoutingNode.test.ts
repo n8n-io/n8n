@@ -5,7 +5,6 @@ import type {
 	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	INodeProperties,
-	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
@@ -34,7 +33,7 @@ const preSendFunction1 = async function (
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	requestOptions.headers = (requestOptions.headers || {}) as IDataObject;
+	requestOptions.headers = requestOptions.headers || {};
 	requestOptions.headers.addedIn = 'preSendFunction1';
 	return requestOptions;
 };
@@ -344,6 +343,7 @@ describe('RoutingNode', () => {
 								type: 'string',
 								routing: {
 									send: {
+										// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 										property: '={{ `value${5+1}A` }}',
 										type: 'query',
 										value: '={{$value.toUpperCase()}}',
@@ -357,6 +357,7 @@ describe('RoutingNode', () => {
 								type: 'string',
 								routing: {
 									send: {
+										// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 										property: '={{ `value${6+1}B` }}',
 										type: 'body',
 										value: "={{$value.split(',')}}",

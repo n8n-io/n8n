@@ -269,6 +269,6 @@ export class Flow implements INodeType {
 			);
 			returnData.push(...executionData);
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

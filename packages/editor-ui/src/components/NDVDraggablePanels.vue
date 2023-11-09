@@ -37,18 +37,19 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import { mapStores } from 'pinia';
 import { get } from 'lodash-es';
+import { useStorage } from '@/composables/useStorage';
 
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
 import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
-import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
-import { NodePanelType } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv.store';
+import { ndvEventBus } from '@/event-bus';
 
 const SIDE_MARGIN = 24;
 const SIDE_PANELS_MARGIN = 80;
@@ -64,8 +65,9 @@ const initialMainPanelWidth: { [key: string]: number } = {
 	wide: MAIN_NODE_PANEL_WIDTH * 2,
 };
 
-export default mixins(debounceHelper).extend({
+export default defineComponent({
 	name: 'NDVDraggablePanels',
+	mixins: [debounceHelper],
 	components: {
 		PanelDragButton,
 	},
@@ -118,9 +120,12 @@ export default mixins(debounceHelper).extend({
 		setTimeout(() => {
 			this.initialized = true;
 		}, 0);
+
+		ndvEventBus.on('setPositionByName', this.setPositionByName);
 	},
-	destroyed() {
+	beforeUnmount() {
 		window.removeEventListener('resize', this.setTotalWidth);
+		ndvEventBus.off('setPositionByName', this.setPositionByName);
 	},
 	computed: {
 		...mapStores(useNDVStore),
@@ -287,7 +292,7 @@ export default mixins(debounceHelper).extend({
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition as number,
+						relativeRight: this.maximumRightPosition,
 					},
 				});
 				return;
@@ -300,6 +305,15 @@ export default mixins(debounceHelper).extend({
 					relativeRight: mainPanelRelativeRight,
 				},
 			});
+		},
+		setPositionByName(position: 'minLeft' | 'maxRight' | 'initial') {
+			const positionByName: Record<string, number> = {
+				minLeft: this.minimumLeftPosition,
+				maxRight: this.maximumRightPosition,
+				initial: this.getInitialLeftPosition(this.mainPanelDimensions.relativeWidth),
+			};
+
+			this.setPositions(positionByName[position]);
 		},
 		pxToRelativeWidth(px: number) {
 			return px / this.windowWidth;
@@ -315,7 +329,7 @@ export default mixins(debounceHelper).extend({
 		},
 		onResizeDebounced(data: { direction: string; x: number; width: number }) {
 			if (this.initialized) {
-				this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
+				void this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string; x: number; width: number }) {
@@ -332,9 +346,9 @@ export default mixins(debounceHelper).extend({
 			);
 		},
 		restorePositionData() {
-			const storedPanelWidthData = window.localStorage.getItem(
+			const storedPanelWidthData = useStorage(
 				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-			);
+			).value;
 
 			if (storedPanelWidthData) {
 				const parsedWidth = parseFloat(storedPanelWidthData);
@@ -347,10 +361,8 @@ export default mixins(debounceHelper).extend({
 			return false;
 		},
 		storePositionData() {
-			window.localStorage.setItem(
-				`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`,
-				this.mainPanelDimensions.relativeWidth.toString(),
-			);
+			useStorage(`${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`).value =
+				this.mainPanelDimensions.relativeWidth.toString();
 		},
 		onDragStart() {
 			this.isDragging = true;
@@ -435,6 +447,10 @@ export default mixins(debounceHelper).extend({
 
 .draggable {
 	visibility: hidden;
+}
+
+.double-width {
+	left: 90%;
 }
 
 .dragButtonContainer {

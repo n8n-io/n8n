@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddExecutionEntityIndexes1644422880309 implements MigrationInterface {
-	name = 'AddExecutionEntityIndexes1644422880309';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+export class AddExecutionEntityIndexes1644422880309 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX IF EXISTS IDX_${tablePrefix}c4d999a5e90784e8caccf5589d`);
 		await queryRunner.query(`DROP INDEX IF EXISTS IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2`);
 		await queryRunner.query(
@@ -29,9 +24,7 @@ export class AddExecutionEntityIndexes1644422880309 implements MigrationInterfac
 		);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}d160d4771aba5a0d78943edbe3"`);
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}85b981df7b444f905f8bf50747"`);
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}72ffaaab9f04c2c1f1ea86e662"`);

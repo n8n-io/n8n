@@ -11,6 +11,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+
+import { snakeCase } from 'change-case';
 import {
 	asanaApiRequest,
 	asanaApiRequestAllItems,
@@ -18,10 +21,6 @@ import {
 	getTaskFields,
 	getWorkspaces,
 } from './GenericFunctions';
-
-import moment from 'moment-timezone';
-
-import { snakeCase } from 'change-case';
 
 export class Asana implements INodeType {
 	description: INodeTypeDescription = {
@@ -1680,7 +1679,7 @@ export class Asana implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available workspaces to display them to user so that he can
+			// Get all the available workspaces to display them to user so that they can
 			// select them easily
 			getWorkspaces,
 
@@ -1764,7 +1763,7 @@ export class Asana implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available teams to display them to user so that he can
+			// Get all the available teams to display them to user so that they can
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workspaceId = this.getCurrentNodeParameter('workspace');

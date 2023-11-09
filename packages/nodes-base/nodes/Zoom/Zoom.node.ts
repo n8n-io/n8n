@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { zoomApiRequest, zoomApiRequestAllItems } from './GenericFunctions';
 
 import { meetingFields, meetingOperations } from './MeetingDescription';
@@ -21,8 +22,6 @@ import { meetingFields, meetingOperations } from './MeetingDescription';
 // 	webinarOperations,
 // 	webinarFields,
 // } from './WebinarDescription';
-
-import moment from 'moment-timezone';
 
 interface Settings {
 	host_video?: boolean;
@@ -135,7 +134,7 @@ export class Zoom implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the timezones to display them to user so that he can select them easily
+			// Get all the timezones to display them to user so that they can select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				for (const timezone of moment.tz.names()) {
@@ -792,6 +791,6 @@ export class Zoom implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

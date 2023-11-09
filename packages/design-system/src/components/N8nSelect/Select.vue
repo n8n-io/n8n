@@ -10,30 +10,29 @@
 			<slot name="prepend" />
 		</div>
 		<el-select
-			v-bind="$props"
-			:value="value"
+			v-bind="{ ...$props, ...listeners }"
+			:modelValue="modelValue"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			v-on="$listeners"
 			ref="innerSelect"
 		>
-			<template #prefix>
+			<template #prefix v-if="$slots.prefix">
 				<slot name="prefix" />
 			</template>
-			<template #suffix>
+			<template #suffix v-if="$slots.suffix">
 				<slot name="suffix" />
 			</template>
-			<template #default>
-				<slot></slot>
-			</template>
+			<slot></slot>
 		</el-select>
 	</div>
 </template>
 
 <script lang="ts">
-import { Select as ElSelect } from 'element-ui';
-import Vue from 'vue';
+import { ElSelect } from 'element-plus';
+import { defineComponent } from 'vue';
+
+type InnerSelectRef = InstanceType<typeof ElSelect>;
 
 export interface IProps {
 	size?: string;
@@ -41,13 +40,14 @@ export interface IProps {
 	popperClass?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect,
 	},
 	props: {
-		value: {},
+		...ElSelect.props,
+		modelValue: {},
 		size: {
 			type: String,
 			default: 'large',
@@ -92,7 +92,20 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		listeners() {
+			return Object.entries(this.$attrs).reduce<Record<string, () => {}>>((acc, [key, value]) => {
+				if (/^on[A-Z]/.test(key)) {
+					acc[key] = value;
+				}
+
+				return acc;
+			}, {});
+		},
 		computedSize(): string | undefined {
+			if (this.size === 'medium') {
+				return 'default';
+			}
+
 			if (this.size === 'xlarge') {
 				return undefined;
 			}
@@ -117,23 +130,23 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.focus();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.focus();
 			}
 		},
 		blur() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				select.blur();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				selectRef.blur();
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
-			if (select) {
-				const input = select.$refs.input as (Vue & HTMLElement) | undefined;
-				if (input) {
-					input.focus();
+			const selectRef = this.$refs.innerSelect as InnerSelectRef | undefined;
+			if (selectRef) {
+				const inputRef = selectRef.$refs.input as HTMLInputElement | undefined;
+				if (inputRef) {
+					inputRef.focus();
 				}
 			}
 		},
@@ -167,6 +180,9 @@ export default Vue.extend({
 	input {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
+		@-moz-document url-prefix() {
+			padding: 0 var(--spacing-3xs);
+		}
 	}
 }
 

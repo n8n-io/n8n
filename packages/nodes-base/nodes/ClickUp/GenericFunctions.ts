@@ -3,7 +3,6 @@ import type { OptionsWithUri } from 'request';
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
@@ -13,12 +12,7 @@ import type {
 import { NodeApiError } from 'n8n-workflow';
 
 export async function clickupApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
 
@@ -79,7 +73,8 @@ export async function clickupApiRequestAllItems(
 		responseData = await clickupApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 		query.page++;
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData[propertyName] && responseData[propertyName].length !== 0);

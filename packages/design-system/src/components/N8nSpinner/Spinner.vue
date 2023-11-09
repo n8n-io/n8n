@@ -13,9 +13,9 @@
 <script lang="ts">
 import N8nIcon from '../N8nIcon';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-spinner',
 	components: {
 		N8nIcon,

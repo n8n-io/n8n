@@ -13,10 +13,10 @@ export const contactOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Lead To Campaign',
+				name: 'Add Contact To Campaign',
 				value: 'addToCampaign',
-				description: 'Add lead to a campaign',
-				action: 'Add a lead to a campaign',
+				description: 'Add contact to a campaign',
+				action: 'Add a contact to a campaign',
 			},
 			{
 				name: 'Add Note',

@@ -1,16 +1,12 @@
 import { EnableNodeToggleCommand } from './../models/history';
-import { useHistoryStore } from '@/stores/history';
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-	CUSTOM_API_CALL_KEY,
-	EnterpriseEditionFeature,
-} from '@/constants';
+import { useHistoryStore } from '@/stores/history.store';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, CUSTOM_API_CALL_KEY } from '@/constants';
 
-import {
+import type {
+	ConnectionTypes,
 	IBinaryKeyData,
 	ICredentialType,
 	INodeCredentialDescription,
-	NodeHelpers,
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
@@ -23,30 +19,33 @@ import {
 	INode,
 	INodePropertyOptions,
 	IDataObject,
+	Workflow,
+	INodeInputConfiguration,
 } from 'n8n-workflow';
+import { NodeHelpers, ExpressionEvaluatorProxy, NodeConnectionType } from 'n8n-workflow';
 
-import {
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
+	NodePanelType,
 } from '@/Interface';
-
-import { restApi } from '@/mixins/restApi';
 
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
-import { isObjectLiteral } from '@/utils';
+import { isObject } from '@/utils';
 import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
-import { useSettingsStore } from '@/stores/settings';
-import { useUsersStore } from '@/stores/users';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
+import { useSettingsStore } from '@/stores/settings.store';
+import { useUsersStore } from '@/stores/users.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useRootStore } from '@/stores';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { defineComponent } from 'vue';
 
-export const nodeHelpers = mixins(restApi).extend({
+export const nodeHelpers = defineComponent({
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -54,6 +53,8 @@ export const nodeHelpers = mixins(restApi).extend({
 			useNodeTypesStore,
 			useSettingsStore,
 			useWorkflowsStore,
+			useUsersStore,
+			useRootStore,
 		),
 	},
 	methods: {
@@ -64,7 +65,7 @@ export const nodeHelpers = mixins(restApi).extend({
 		isCustomApiCallSelected(nodeValues: INodeParameters): boolean {
 			const { parameters } = nodeValues;
 
-			if (!isObjectLiteral(parameters)) return false;
+			if (!isObject(parameters)) return false;
 
 			return (
 				(parameters.resource !== undefined && parameters.resource.includes(CUSTOM_API_CALL_KEY)) ||
@@ -85,6 +86,24 @@ export const nodeHelpers = mixins(restApi).extend({
 			node: INodeUi | null,
 		) {
 			return NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
+		},
+
+		// Updates all the issues on all the nodes
+		refreshNodeIssues(): void {
+			const nodes = this.workflowsStore.allNodes;
+			let nodeType: INodeTypeDescription | null;
+			let foundNodeIssues: INodeIssues | null;
+
+			nodes.forEach((node) => {
+				if (node.disabled === true) {
+					return;
+				}
+				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				foundNodeIssues = this.getNodeIssues(nodeType, node);
+				if (foundNodeIssues !== null) {
+					node.issues = foundNodeIssues;
+				}
+			});
 		},
 
 		// Returns all the issues of the node
@@ -127,9 +146,17 @@ export const nodeHelpers = mixins(restApi).extend({
 						NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
 					}
 				}
+
+				const workflow = this.workflowsStore.getCurrentWorkflow();
+				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
+				if (nodeIssues === null) {
+					nodeIssues = nodeInputIssues;
+				} else {
+					NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+				}
 			}
 
-			if (this.hasNodeExecutionIssues(node) === true && !ignoreIssues.includes('execution')) {
+			if (this.hasNodeExecutionIssues(node) && !ignoreIssues.includes('execution')) {
 				if (nodeIssues === null) {
 					nodeIssues = {};
 				}
@@ -171,6 +198,25 @@ export const nodeHelpers = mixins(restApi).extend({
 			};
 		},
 
+		updateNodesInputIssues() {
+			const nodes = this.workflowsStore.allNodes;
+			const workflow = this.workflowsStore.getCurrentWorkflow();
+
+			for (const node of nodes) {
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) {
+					return;
+				}
+				const nodeInputIssues = this.getNodeInputIssues(workflow, node, nodeType);
+
+				this.workflowsStore.setNodeIssue({
+					node: node.name,
+					type: 'input',
+					value: nodeInputIssues?.input ? nodeInputIssues.input : null,
+				});
+			}
+		},
+
 		// Updates the execution issues.
 		updateNodesExecutionIssues() {
 			const nodes = this.workflowsStore.allNodes;
@@ -181,6 +227,14 @@ export const nodeHelpers = mixins(restApi).extend({
 					type: 'execution',
 					value: this.hasNodeExecutionIssues(node) ? true : null,
 				});
+			}
+		},
+
+		updateNodeCredentialIssuesByName(name: string): void {
+			const node = this.workflowsStore.getNodeByName(name);
+
+			if (node) {
+				this.updateNodeCredentialIssues(node);
 			}
 		},
 
@@ -198,6 +252,14 @@ export const nodeHelpers = mixins(restApi).extend({
 				type: 'credentials',
 				value: newIssues,
 			});
+		},
+
+		updateNodeParameterIssuesByName(name: string): void {
+			const node = this.workflowsStore.getNodeByName(name);
+
+			if (node) {
+				this.updateNodeParameterIssues(node);
+			}
 		},
 
 		// Updates the parameter-issues of the node
@@ -229,6 +291,45 @@ export const nodeHelpers = mixins(restApi).extend({
 			});
 		},
 
+		// Returns all the input-issues of the node
+		getNodeInputIssues(
+			workflow: Workflow,
+			node: INodeUi,
+			nodeType?: INodeTypeDescription,
+		): INodeIssues | null {
+			const foundIssues: INodeIssueObjectProperty = {};
+
+			const workflowNode = workflow.getNode(node.name);
+			let inputs: Array<ConnectionTypes | INodeInputConfiguration> = [];
+			if (nodeType && workflowNode) {
+				inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
+			}
+
+			inputs.forEach((input) => {
+				if (typeof input === 'string' || input.required !== true) {
+					return;
+				}
+
+				const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
+
+				if (parentNodes.length === 0) {
+					foundIssues[input.type] = [
+						this.$locale.baseText('nodeIssues.input.missing', {
+							interpolate: { inputName: input.displayName || input.type },
+						}),
+					];
+				}
+			});
+
+			if (Object.keys(foundIssues).length) {
+				return {
+					input: foundIssues,
+				};
+			}
+
+			return null;
+		},
+
 		// Returns all the credential-issues of the node
 		getNodeCredentialIssues(node: INodeUi, nodeType?: INodeTypeDescription): INodeIssues | null {
 			if (node.disabled) {
@@ -248,7 +349,7 @@ export const nodeHelpers = mixins(restApi).extend({
 			const foundIssues: INodeIssueObjectProperty = {};
 
 			let userCredentials: ICredentialsResponse[] | null;
-			let credentialType: ICredentialType | null;
+			let credentialType: ICredentialType | undefined;
 			let credentialDisplayName: string;
 			let selectedCredentials: INodeCredentialsDetails;
 
@@ -261,7 +362,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				selectedCredsAreUnusable(node, genericAuthType)
 			) {
 				const credential = this.credentialsStore.getCredentialTypeByName(genericAuthType);
-				return this.reportUnsetCredential(credential);
+				return credential ? this.reportUnsetCredential(credential) : null;
 			}
 
 			if (
@@ -274,7 +375,7 @@ export const nodeHelpers = mixins(restApi).extend({
 
 				if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
 					const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
-					return this.reportUnsetCredential(credential);
+					return credential ? this.reportUnsetCredential(credential) : null;
 				}
 			}
 
@@ -285,7 +386,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				selectedCredsAreUnusable(node, nodeCredentialType)
 			) {
 				const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
-				return this.reportUnsetCredential(credential);
+				return credential ? this.reportUnsetCredential(credential) : null;
 			}
 
 			for (const credentialTypeDescription of nodeType.credentials) {
@@ -304,7 +405,7 @@ export const nodeHelpers = mixins(restApi).extend({
 					credentialDisplayName = credentialType.displayName;
 				}
 
-				if (!node.credentials || !node.credentials?.[credentialTypeDescription.name]) {
+				if (!node.credentials?.[credentialTypeDescription.name]) {
 					// Credentials are not set
 					if (credentialTypeDescription.required) {
 						foundIssues[credentialTypeDescription.name] = [
@@ -315,9 +416,7 @@ export const nodeHelpers = mixins(restApi).extend({
 					}
 				} else {
 					// If they are set check if the value is valid
-					selectedCredentials = node.credentials[
-						credentialTypeDescription.name
-					] as INodeCredentialsDetails;
+					selectedCredentials = node.credentials[credentialTypeDescription.name];
 					if (typeof selectedCredentials === 'string') {
 						selectedCredentials = {
 							id: null,
@@ -361,9 +460,11 @@ export const nodeHelpers = mixins(restApi).extend({
 					}
 
 					if (nameMatches.length === 0) {
+						const isInstanceOwner = this.usersStore.isInstanceOwner;
 						const isCredentialUsedInWorkflow =
 							this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
-						if (!isCredentialUsedInWorkflow) {
+
+						if (!isCredentialUsedInWorkflow && !isInstanceOwner) {
 							foundIssues[credentialTypeDescription.name] = [
 								this.$locale.baseText('nodeIssues.credentials.doNotExist', {
 									interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
@@ -401,48 +502,60 @@ export const nodeHelpers = mixins(restApi).extend({
 			}
 		},
 
-		getNodeInputData(node: INodeUi | null, runIndex = 0, outputIndex = 0): INodeExecutionData[] {
+		getNodeInputData(
+			node: INodeUi | null,
+			runIndex = 0,
+			outputIndex = 0,
+			paneType: NodePanelType = 'output',
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
+		): INodeExecutionData[] {
 			if (node === null) {
 				return [];
 			}
-
 			if (this.workflowsStore.getWorkflowExecution === null) {
 				return [];
 			}
+
 			const executionData = this.workflowsStore.getWorkflowExecution.data;
-			if (!executionData || !executionData.resultData) {
+			if (!executionData?.resultData) {
 				// unknown status
 				return [];
 			}
 			const runData = executionData.resultData.runData;
 
-			if (
-				runData === null ||
-				runData[node.name] === undefined ||
-				!runData[node.name][runIndex].data ||
-				runData[node.name][runIndex].data === undefined
-			) {
+			const taskData = get(runData, `[${node.name}][${runIndex}]`);
+			if (!taskData) {
 				return [];
 			}
 
-			return this.getMainInputData(runData[node.name][runIndex].data!, outputIndex);
+			let data: ITaskDataConnections | undefined = taskData.data!;
+			if (paneType === 'input' && taskData.inputOverride) {
+				data = taskData.inputOverride!;
+			}
+
+			if (!data) {
+				return [];
+			}
+
+			return this.getInputData(data, outputIndex, connectionType);
 		},
 
 		// Returns the data of the main input
-		getMainInputData(
+		getInputData(
 			connectionsData: ITaskDataConnections,
 			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): INodeExecutionData[] {
 			if (
 				!connectionsData ||
-				!connectionsData.hasOwnProperty('main') ||
-				connectionsData.main === undefined ||
-				connectionsData.main.length < outputIndex ||
-				connectionsData.main[outputIndex] === null
+				!connectionsData.hasOwnProperty(connectionType) ||
+				connectionsData[connectionType] === undefined ||
+				connectionsData[connectionType].length < outputIndex ||
+				connectionsData[connectionType][outputIndex] === null
 			) {
 				return [];
 			}
-			return connectionsData.main[outputIndex] as INodeExecutionData[];
+			return connectionsData[connectionType][outputIndex] as INodeExecutionData[];
 		},
 
 		// Returns all the binary data of all the entries
@@ -451,6 +564,7 @@ export const nodeHelpers = mixins(restApi).extend({
 			node: string | null,
 			runIndex: number,
 			outputIndex: number,
+			connectionType: ConnectionTypes = NodeConnectionType.Main,
 		): IBinaryKeyData[] {
 			if (node === null) {
 				return [];
@@ -458,16 +572,15 @@ export const nodeHelpers = mixins(restApi).extend({
 
 			const runData: IRunData | null = workflowRunData;
 
-			if (
-				runData === null ||
-				!runData[node] ||
-				!runData[node][runIndex] ||
-				!runData[node][runIndex].data
-			) {
+			if (!runData?.[node]?.[runIndex]?.data) {
 				return [];
 			}
 
-			const inputData = this.getMainInputData(runData[node][runIndex].data!, outputIndex);
+			const inputData = this.getInputData(
+				runData[node][runIndex].data!,
+				outputIndex,
+				connectionType,
+			);
 
 			const returnData: IBinaryKeyData[] = [];
 			for (let i = 0; i < inputData.length; i++) {
@@ -503,6 +616,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				this.workflowsStore.clearNodeExecutionData(node.name);
 				this.updateNodeParameterIssues(node);
 				this.updateNodeCredentialIssues(node);
+				this.updateNodesInputIssues();
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(
 						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
@@ -524,12 +638,21 @@ export const nodeHelpers = mixins(restApi).extend({
 			}
 
 			if (nodeType !== null && nodeType.subtitle !== undefined) {
-				return workflow.expression.getSimpleParameterValue(
-					data as INode,
-					nodeType.subtitle,
-					'internal',
-					PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-				) as string | undefined;
+				try {
+					ExpressionEvaluatorProxy.setEvaluator(
+						useSettingsStore().settings.expressions?.evaluator ?? 'tmpl',
+					);
+					return workflow.expression.getSimpleParameterValue(
+						data as INode,
+						nodeType.subtitle,
+						'internal',
+						{},
+						undefined,
+						PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					) as string | undefined;
+				} catch (e) {
+					return undefined;
+				}
 			}
 
 			if (data.parameters.operation !== undefined) {

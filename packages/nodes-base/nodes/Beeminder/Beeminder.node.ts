@@ -9,6 +9,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import {
 	createDatapoint,
 	deleteDatapoint,
@@ -17,8 +18,6 @@ import {
 } from './Beeminder.node.functions';
 
 import { beeminderApiRequest } from './GenericFunctions';
-
-import moment from 'moment-timezone';
 
 export class Beeminder implements INodeType {
 	description: INodeTypeDescription = {
@@ -269,7 +268,7 @@ export class Beeminder implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available groups to display them to user so that he can
+			// Get all the available groups to display them to user so that they can
 			// select them easily
 			async getGoals(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const credentials = await this.getCredentials('beeminderApi');
@@ -379,6 +378,6 @@ export class Beeminder implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

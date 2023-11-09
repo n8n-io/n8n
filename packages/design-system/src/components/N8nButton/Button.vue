@@ -1,11 +1,11 @@
 <template>
 	<button
 		:class="classes"
-		:disabled="disabled || loading"
+		:disabled="isDisabled"
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
 		aria-live="polite"
-		v-on="$listeners"
+		v-bind="$attrs"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
 			<n8n-spinner v-if="loading" :size="size" />
@@ -17,158 +17,112 @@
 	</button>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
+<script setup lang="ts">
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
+import { useCssModule, computed, useAttrs } from 'vue';
 
-export default Vue.extend({
-	name: 'n8n-button',
-	props: {
-		label: {
-			type: String,
-		},
-		type: {
-			type: String,
-			default: 'primary',
-			validator: (value: string): boolean =>
-				['primary', 'secondary', 'tertiary', 'success', 'warning', 'danger'].includes(value),
-		},
-		size: {
-			type: String,
-			default: 'medium',
-			validator: (value: string): boolean =>
-				['mini', 'small', 'medium', 'large', 'xlarge'].includes(value),
-		},
-		loading: {
-			type: Boolean,
-			default: false,
-		},
-		disabled: {
-			type: Boolean,
-			default: false,
-		},
-		outline: {
-			type: Boolean,
-			default: false,
-		},
-		text: {
-			type: Boolean,
-			default: false,
-		},
-		icon: {
-			type: [String, Array],
-		},
-		block: {
-			type: Boolean,
-			default: false,
-		},
-		active: {
-			type: Boolean,
-			default: false,
-		},
-		float: {
-			type: String,
-			validator: (value: string): boolean => ['left', 'right'].includes(value),
-		},
-		square: {
-			type: Boolean,
-			default: false,
-		},
+const $style = useCssModule();
+const $attrs = useAttrs();
+
+const props = defineProps({
+	label: {
+		type: String,
+		default: '',
 	},
-	components: {
-		N8nSpinner,
-		N8nIcon,
+	type: {
+		type: String,
+		default: 'primary',
 	},
-	computed: {
-		ariaBusy(): string {
-			return this.loading ? 'true' : 'false';
-		},
-		ariaDisabled(): string {
-			return this.disabled ? 'true' : 'false';
-		},
-		classes(): string {
-			return (
-				`button ${this.$style.button} ${this.$style[this.type]}` +
-				`${this.size ? ` ${this.$style[this.size]}` : ''}` +
-				`${this.outline ? ` ${this.$style.outline}` : ''}` +
-				`${this.loading ? ` ${this.$style.loading}` : ''}` +
-				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ''}` +
-				`${this.text ? ` ${this.$style.text}` : ''}` +
-				`${this.disabled ? ` ${this.$style.disabled}` : ''}` +
-				`${this.block ? ` ${this.$style.block}` : ''}` +
-				`${this.active ? ` ${this.$style.active}` : ''}` +
-				`${this.icon || this.loading ? ` ${this.$style.icon}` : ''}` +
-				`${this.square ? ` ${this.$style.square}` : ''}`
-			);
-		},
+	size: {
+		type: String,
+		default: 'medium',
 	},
+	loading: {
+		type: Boolean,
+		default: false,
+	},
+	disabled: {
+		type: Boolean,
+		default: false,
+	},
+	outline: {
+		type: Boolean,
+		default: false,
+	},
+	text: {
+		type: Boolean,
+		default: false,
+	},
+	icon: {
+		type: [String, Array],
+	},
+	block: {
+		type: Boolean,
+		default: false,
+	},
+	active: {
+		type: Boolean,
+		default: false,
+	},
+	float: {
+		type: String,
+	},
+	square: {
+		type: Boolean,
+		default: false,
+	},
+});
+
+const ariaBusy = computed(() => (props.loading ? 'true' : undefined));
+const ariaDisabled = computed(() => (props.disabled ? 'true' : undefined));
+const isDisabled = computed(() => props.disabled || props.loading);
+
+const classes = computed(() => {
+	return (
+		`button ${$style.button} ${$style[props.type]}` +
+		`${props.size ? ` ${$style[props.size]}` : ''}` +
+		`${props.outline ? ` ${$style.outline}` : ''}` +
+		`${props.loading ? ` ${$style.loading}` : ''}` +
+		`${props.float ? ` ${$style[`float-${props.float}`]}` : ''}` +
+		`${props.text ? ` ${$style.text}` : ''}` +
+		`${props.disabled ? ` ${$style.disabled}` : ''}` +
+		`${props.block ? ` ${$style.block}` : ''}` +
+		`${props.active ? ` ${$style.active}` : ''}` +
+		`${props.icon || props.loading ? ` ${$style.withIcon}` : ''}` +
+		`${props.square ? ` ${$style.square}` : ''}`
+	);
 });
 </script>
 
+<style lang="scss">
+@import './Button';
+
+.el-button {
+	@include n8n-button(true);
+
+	--button-padding-vertical: var(--spacing-2xs);
+	--button-padding-horizontal: var(--spacing-xs);
+	--button-font-size: var(--font-size-2xs);
+
+	+ .el-button {
+		margin-left: var(--spacing-2xs);
+	}
+
+	&.btn--cancel,
+	&.el-color-dropdown__link-btn {
+		@include n8n-button-secondary;
+	}
+}
+</style>
+
 <style lang="scss" module>
+@import './Button';
 @import '../../css/mixins/utils';
 @import '../../css/common/var';
 
 .button {
-	display: inline-block;
-	line-height: 1;
-	white-space: nowrap;
-	cursor: pointer;
-
-	border: var(--border-width-base) $button-border-color var(--border-style-base);
-	color: $button-font-color;
-	background-color: $button-background-color;
-	font-weight: var(--font-weight-bold);
-	border-radius: $button-border-radius;
-	padding: $button-padding-vertical $button-padding-horizontal;
-	font-size: $button-font-size;
-
-	-webkit-appearance: none;
-	text-align: center;
-	box-sizing: border-box;
-	outline: none;
-	margin: 0;
-	transition: 0.3s;
-
-	@include utils-user-select(none);
-
-	&:hover {
-		color: $button-hover-color;
-		border-color: $button-hover-border-color;
-		background-color: $button-hover-background-color;
-	}
-
-	&:focus {
-		border-color: $button-focus-outline-color;
-		outline: $focus-outline-width solid $button-focus-outline-color;
-	}
-
-	&:active,
-	&.active {
-		color: $button-active-color;
-		border-color: $button-active-border-color;
-		background-color: $button-active-background-color;
-		outline: none;
-	}
-
-	&::-moz-focus-inner {
-		border: 0;
-	}
-
-	> i {
-		display: none;
-	}
-
-	> span {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	span + span {
-		margin-left: var(--spacing-3xs);
-	}
+	@include n8n-button;
 }
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0);
@@ -178,105 +132,39 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
  */
 
 .secondary {
-	--button-color: var(--color-primary);
-	--button-border-color: var(--color-primary);
-	--button-background-color: var(--color-background-xlight);
-
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
-
-	--button-hover-background-color: var(--color-primary-tint-3);
-	--button-hover-color: var(--color-primary);
-	--button-hover-border-color: var(--color-primary);
-
-	--button-focus-outline-color: var(--color-primary-tint-1);
+	@include n8n-button-secondary;
 }
 
 .tertiary {
-	font-weight: var(--font-weight-regular) !important;
-
-	--button-background-color: var(--color-background-xlight);
-	--button-color: var(--color-text-dark);
-	--button-border-color: var(--color-neutral-850);
-
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
-
-	--button-hover-background-color: var(--color-neutral-950);
-	--button-hover-color: var(--color-text-dark);
-	--button-hover-border-color: var(--color-neutral-800);
-
-	--button-focus-outline-color: hsla(
-		var(--color-neutral-h),
-		var(--color-neutral-s),
-		var(--color-neutral-l),
-		0.2
-	);
+	@include n8n-button-secondary;
 }
 
 .success {
-	--button-background-color: var(--color-success);
-	--button-color: var(--color-text-xlight);
-	--button-border-color: var(--color-success);
-
-	--button-active-background-color: var(--color-success-350);
-	--button-active-border-color: var(--color-success-350);
-
-	--button-hover-background-color: var(--color-success-450);
-	--button-hover-border-color: var(--color-success-450);
-
-	--button-focus-outline-color: hsla(
-		var(--color-success-h),
-		var(--color-success-s),
-		var(--color-success-l),
-		0.33
-	);
+	@include n8n-button-success;
 }
 
 .warning {
-	--button-background-color: var(--color-warning);
-	--button-color: var(--color-text-xlight);
-	--button-border-color: var(--color-warning);
-
-	--button-active-background-color: var(--color-warning-500);
-	--button-active-border-color: var(--color-warning-500);
-
-	--button-hover-background-color: var(--color-warning-650);
-	--button-hover-border-color: var(--color-warning-650);
-
-	--button-focus-outline-color: hsla(
-		var(--color-warning-h),
-		var(--color-warning-s),
-		var(--color-warning-l),
-		0.33
-	);
+	@include n8n-button-warning;
 }
 
 .danger {
-	--button-background-color: var(--color-danger);
-	--button-color: var(--color-text-xlight);
-	--button-border-color: var(--color-danger);
-	--button-active-color: var(--color-text-xlight);
-
-	--button-active-background-color: var(--color-danger-600);
-	--button-active-border-color: var(--color-danger-600);
-
-	--button-hover-background-color: var(--color-danger-700);
-	--button-hover-border-color: var(--color-danger-700);
-
-	--button-focus-outline-color: hsla(
-		var(--color-danger-h),
-		var(--color-danger-s),
-		var(--color-danger-l),
-		0.33
-	);
+	@include n8n-button-danger;
 }
 
 /**
  * Sizes
  */
+
+.xmini {
+	--button-padding-vertical: var(--spacing-4xs);
+	--button-padding-horizontal: var(--spacing-3xs);
+	--button-font-size: var(--font-size-3xs);
+
+	&.square {
+		height: 22px;
+		width: 22px;
+	}
+}
 
 .mini {
 	--button-padding-vertical: var(--spacing-4xs);
@@ -332,85 +220,98 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 /**
  * Modifiers
  */
-
 .outline {
-	--button-color: var(--color-primary);
 	--button-background-color: transparent;
 	--button-disabled-background-color: transparent;
-	--button-active-background-color: transparent;
 
 	&.primary {
-		--button-color: var(--color-primary);
-		--button-border-color: var(--color-primary);
-		--button-active-background-color: var(--color-primary);
-	}
-
-	&.tertiary {
-		--button-color: var(--color-text-dark);
+		--button-font-color: var(--color-primary);
+		--button-disabled-font-color: var(--color-primary-tint-1);
+		--button-disabled-border-color: var(--color-primary-tint-1);
+		--button-disabled-background-color: transparent;
 	}
 
 	&.success {
-		--button-color: var(--color-success);
+		--button-font-color: var(--color-success);
 		--button-border-color: var(--color-success);
+		--button-hover-border-color: var(--color-success);
+		--button-hover-background-color: var(--color-success);
 		--button-active-background-color: var(--color-success);
+		--button-disabled-font-color: var(--color-success-light);
+		--button-disabled-border-color: var(--color-success-light);
+		--button-disabled-background-color: transparent;
 	}
 
 	&.warning {
-		--button-color: var(--color-warning);
+		--button-font-color: var(--color-warning);
 		--button-border-color: var(--color-warning);
+		--button-hover-border-color: var(--color-warning);
+		--button-hover-background-color: var(--color-warning);
 		--button-active-background-color: var(--color-warning);
+		--button-disabled-font-color: var(--color-warning-tint-1);
+		--button-disabled-border-color: var(--color-warning-tint-1);
+		--button-disabled-background-color: transparent;
 	}
 
 	&.danger {
-		--button-color: var(--color-danger);
+		--button-font-color: var(--color-danger);
 		--button-border-color: var(--color-danger);
+		--button-hover-border-color: var(--color-danger);
+		--button-hover-background-color: var(--color-danger);
 		--button-active-background-color: var(--color-danger);
+		--button-disabled-font-color: var(--color-danger-tint-1);
+		--button-disabled-border-color: var(--color-danger-tint-1);
+		--button-disabled-background-color: transparent;
 	}
 }
 
 .text {
-	--button-color: var(--color-text-light);
+	--button-font-color: var(--color-text-button-secondary-font);
 	--button-border-color: transparent;
 	--button-background-color: transparent;
-	--button-active-color: var(--color-text-light);
-	--button-active-background-color: transparent;
-	--button-active-border-color: transparent;
-	--button-hover-color: var(--color-text-light);
-	--button-hover-background-color: transparent;
 	--button-hover-border-color: transparent;
+	--button-hover-background-color: transparent;
+	--button-active-border-color: transparent;
+	--button-active-background-color: transparent;
+	--button-focus-border-color: transparent;
+	--button-focus-background-color: transparent;
+	--button-disabled-border-color: transparent;
+	--button-disabled-background-color: transparent;
 
-	&.primary {
-		--button-color: var(--color-primary);
-		--button-active-color: var(--color-primary);
-		--button-hover-color: var(--color-primary);
+	&:focus {
+		outline: 0;
 	}
 
-	&.secondary {
-		--button-color: var(--color-primary-tint-1);
-		--button-active-color: var(--color-primary-tint-1);
-		--button-hover-color: var(--color-primary-tint-1);
+	&.primary {
+		--button-font-color: var(--color-primary);
+		--button-hover-font-color: var(--color-primary-shade-1);
+		--button-active-font-color: var(--color-primary-shade-1);
+		--button-focus-font-color: var(--color-primary);
+		--button-disabled-font-color: var(--color-primary-tint-1);
 	}
 
 	&.success {
-		--button-color: var(--color-success);
-		--button-active-color: var(--color-success);
-		--button-hover-color: var(--color-success);
-	}
-
-	&.tertiary {
-		--button-hover-color: var(--color-primary);
+		--button-font-color: var(--color-success);
+		--button-hover-font-color: var(--color-success-shade-1);
+		--button-active-font-color: var(--color-success-shade-1);
+		--button-focus-font-color: var(--color-success);
+		--button-disabled-font-color: var(--color-success-light);
 	}
 
 	&.warning {
-		--button-color: var(--color-warning);
-		--button-active-color: var(--color-warning);
-		--button-hover-color: var(--color-warning);
+		--button-font-color: var(--color-warning);
+		--button-hover-font-color: var(--color-warning-shade-1);
+		--button-active-font-color: var(--color-warning-shade-1);
+		--button-focus-font-color: var(--color-warning);
+		--button-disabled-font-color: var(--color-warning-tint-1);
 	}
 
 	&.danger {
-		--button-color: var(--color-danger);
-		--button-active-color: var(--color-danger);
-		--button-hover-color: var(--color-danger);
+		--button-font-color: var(--color-danger);
+		--button-hover-font-color: var(--color-danger-shade-1);
+		--button-active-font-color: var(--color-danger-shade-1);
+		--button-focus-font-color: var(--color-danger);
+		--button-disabled-font-color: var(--color-danger-tint-1);
 	}
 
 	&:hover {
@@ -431,7 +332,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 		right: -1px;
 		bottom: -1px;
 		border-radius: inherit;
-		background-color: $loading-overlay-background-color;
 	}
 }
 
@@ -442,9 +342,6 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	&:focus {
 		cursor: not-allowed;
 		background-image: none;
-		color: $button-disabled-font-color;
-		background-color: $button-disabled-background-color;
-		border-color: $button-disabled-border-color;
 	}
 }
 
@@ -453,9 +350,16 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-active-background-color: transparent;
 }
 
+.withIcon {
+	display: inline-flex;
+	justify-content: center;
+	align-items: center;
+}
+
 .icon {
 	display: inline-flex;
 	justify-content: center;
+	align-items: center;
 
 	svg {
 		display: block;

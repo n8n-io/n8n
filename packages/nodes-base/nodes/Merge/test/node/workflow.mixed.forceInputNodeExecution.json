@@ -1,0 +1,2440 @@
+{
+	"name": "Merge 2",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "8d0ffac0-dfbf-4407-91db-0756041b0894",
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [-320, 1640]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json[\"test\"] }}",
+							"value2": "b"
+						}
+					]
+				}
+			},
+			"id": "8bc8719a-4e79-4df0-bd34-e67b4aaa7823",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 1,
+			"position": [140, 1180]
+		},
+		{
+			"parameters": {},
+			"id": "26ceab02-97d2-4e4b-b27f-d5a5584e697e",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 1260]
+		},
+		{
+			"parameters": {},
+			"id": "2b3f9309-8c75-4dc6-bf02-ab19f17983d7",
+			"name": "Merge1",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 1260]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {}
+			},
+			"id": "a0456576-8dbb-437f-81e5-5fe331eb45f6",
+			"name": "Merge3",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 1100]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {}
+			},
+			"id": "66c801a7-c020-42b1-bedb-f5104a792e0c",
+			"name": "Merge4",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 1100]
+		},
+		{
+			"parameters": {
+				"operation": "getAllPeople"
+			},
+			"id": "e8e83cef-c782-490c-9a0e-206435e3b71c",
+			"name": "Customer Datastore (n8n training)",
+			"type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+			"typeVersion": 1,
+			"position": [-100, 1640]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch"
+			},
+			"id": "f8b779dc-992d-49db-9fc2-d8b76b0f3419",
+			"name": "Merge2",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 1440]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch"
+			},
+			"id": "e6136b98-ab2c-4c44-bc14-6af3fa39ed01",
+			"name": "Merge5",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 1440]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "nameB",
+							"value": "B"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c97cba6c-5a4e-4929-81d1-da20be216900",
+			"name": "Set1B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [380, 1260]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "nameA",
+							"value": "A"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "87fdfaf7-dafc-427e-ad89-3839ea9718aa",
+			"name": "Set1A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [380, 1120]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"joinMode": "keepEverything",
+				"options": {}
+			},
+			"id": "f5e4aabd-93f8-405c-804a-9487393467e6",
+			"name": "Merge6",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 940],
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"joinMode": "keepEverything",
+				"options": {}
+			},
+			"id": "b713a005-f140-4565-b30a-3136d892a8c3",
+			"name": "Merge8",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 940],
+			"disabled": true
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {}
+			},
+			"id": "868d4a27-7192-4252-826b-dcc20b42948a",
+			"name": "Merge9",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 780]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {}
+			},
+			"id": "b8e770e8-c0a0-413b-a887-4e6395787d76",
+			"name": "Merge10",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 780]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch",
+				"output": "input2"
+			},
+			"id": "925a9e9e-2628-4561-a7d7-89f55248e1d4",
+			"name": "Merge7",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 1620]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch",
+				"output": "input2"
+			},
+			"id": "fed3c762-9171-4d7e-85b9-c2c100eba9f9",
+			"name": "Merge11",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 1620]
+		},
+		{
+			"parameters": {},
+			"id": "8f3b781a-c82b-40a0-a896-d459e25f9b79",
+			"name": "Merge12",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 2360]
+		},
+		{
+			"parameters": {},
+			"id": "65c4b385-cf4c-4a6e-98bb-797dbfdf67a0",
+			"name": "Merge13",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 2360]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {}
+			},
+			"id": "5260edf9-c448-4790-ac0a-6f1bc9845c56",
+			"name": "Merge14",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 2200]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "mergeByPosition",
+				"options": {}
+			},
+			"id": "1d60a9d0-cd9e-418e-85e7-19726f6dfc27",
+			"name": "Merge15",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 2200]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch"
+			},
+			"id": "0432532f-7ab6-428e-8a09-5473ea43da9e",
+			"name": "Merge16",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 2540]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch"
+			},
+			"id": "0ffc7240-3225-4223-a8c9-f76327dfbe02",
+			"name": "Merge17",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 2540]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"joinMode": "keepEverything",
+				"options": {}
+			},
+			"id": "5b139ae2-f46d-4149-9e63-b50acaac2be7",
+			"name": "Merge18",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 2040]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"mergeByFields": {
+					"values": [
+						{
+							"field1": "id",
+							"field2": "id"
+						}
+					]
+				},
+				"joinMode": "keepEverything",
+				"options": {}
+			},
+			"id": "49132c5a-a0bb-4254-a693-9a243ef13ca8",
+			"name": "Merge19",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 2040]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {}
+			},
+			"id": "2856e67f-d640-45b6-8d2d-7264bf419b2f",
+			"name": "Merge20",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 1880]
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combinationMode": "multiplex",
+				"options": {}
+			},
+			"id": "a8fb6c81-fdc0-4da3-a3d7-21f8d901d5f2",
+			"name": "Merge21",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 1880]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch",
+				"output": "input2"
+			},
+			"id": "922005a8-9d49-4e63-9b53-22aedcc5577d",
+			"name": "Merge22",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [640, 2720]
+		},
+		{
+			"parameters": {
+				"mode": "chooseBranch",
+				"output": "input2"
+			},
+			"id": "6d0d4e32-a7e8-447b-929f-7faaa3044a5f",
+			"name": "Merge23",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 2,
+			"position": [900, 2720]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "nameA",
+							"value": "A"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "c60a9307-efbf-444e-899c-33002e80d9f0",
+			"name": "Set2A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [380, 2220]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "nameB",
+							"value": "B"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "df76be2b-5e4f-48bf-b779-aacfffb8c2ba",
+			"name": "Set2B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [380, 2360]
+		}
+	],
+	"pinData": {
+		"Merge10": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge9": [
+			{
+				"json": {
+					"nameA": "A",
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"nameA": "A",
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"nameA": "A",
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"nameA": "A",
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"nameA": "A",
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge3": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge4": [
+			{
+				"json": {
+					"nameA": "A",
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge1": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge": [
+			{
+				"json": {
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge2": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge5": [
+			{
+				"json": {
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge7": [
+			{
+				"json": {
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge11": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge21": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge20": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge19": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge18": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge14": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge15": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge13": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge12": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge16": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		],
+		"Merge17": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge22": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameA": "A"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameA": "A"
+				}
+			}
+		],
+		"Merge23": [
+			{
+				"json": {
+					"id": "23423532",
+					"name": "Jay Gatsby",
+					"email": "gatsby@west-egg.com",
+					"notes": "Keeps asking about a green light??",
+					"country": "US",
+					"created": "1925-04-10",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423533",
+					"name": "José Arcadio Buendía",
+					"email": "jab@macondo.co",
+					"notes": "Lots of people named after him. Very confusing",
+					"country": "CO",
+					"created": "1967-05-05",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423534",
+					"name": "Max Sendak",
+					"email": "info@in-and-out-of-weeks.org",
+					"notes": "Keeps rolling his terrible eyes",
+					"country": "US",
+					"created": "1963-04-09",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423535",
+					"name": "Zaphod Beeblebrox",
+					"email": "captain@heartofgold.com",
+					"notes": "Felt like I was talking to more than one person",
+					"country": null,
+					"created": "1979-10-12",
+					"nameB": "B"
+				}
+			},
+			{
+				"json": {
+					"id": "23423536",
+					"name": "Edmund Pevensie",
+					"email": "edmund@narnia.gov",
+					"notes": "Passionate sailor",
+					"country": "UK",
+					"created": "1950-10-16",
+					"nameB": "B"
+				}
+			}
+		]
+	},
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Customer Datastore (n8n training)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Set1A",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Set1B",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Customer Datastore (n8n training)": {
+			"main": [
+				[
+					{
+						"node": "IF",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set2A",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Set2B",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1B": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge10",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge9",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge11",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Set1A": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge3",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge4",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge2",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge6",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge8",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge10",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge7",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set2A": {
+			"main": [
+				[
+					{
+						"node": "Merge12",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge13",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge14",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge16",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge17",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge18",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge19",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge21",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge20",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge22",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge23",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set2B": {
+			"main": [
+				[
+					{
+						"node": "Merge12",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge13",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge15",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge14",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge16",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge17",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge18",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge19",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge21",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge20",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge22",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge23",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "4548f6c2-c043-4184-946d-0a6a89112ef1",
+	"id": "1108",
+	"meta": {
+		"instanceId": "021d3c82ba2d3bc090cbf4fc81c9312668bcc34297e022bb3438c5c88a43a5ff"
+	},
+	"tags": []
+}

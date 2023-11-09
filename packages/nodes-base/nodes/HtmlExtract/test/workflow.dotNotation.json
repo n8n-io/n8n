@@ -1,0 +1,143 @@
+{
+	"name": "http fix",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5cfa67ba-caba-40f6-b0c4-b54015b28bf0",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [300, 580]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"headers\": {\n      \"host\": \"n8n.mydomain.live\",\n      \"user-agent\": \"axios/1.2.1\",\n      \"content-length\": \"4405\",\n      \"accept\": \"application/json, text/plain, */*\",\n      \"accept-encoding\": \"gzip, compress, deflate, br\",\n      \"content-type\": \"application/json\",\n      \"x-forwarded-for\": \"85.203.36.52\",\n      \"x-forwarded-host\": \"n8n.mydomain.live\",\n      \"x-forwarded-port\": \"443\",\n      \"x-forwarded-proto\": \"https\",\n      \"x-forwarded-server\": \"8bd0a4ed6c1a\",\n      \"x-real-ip\": \"85.203.36.52\"\n    },\n    \"params\": {},\n    \"query\": {},\n    \"body\": {\n      \"html\": \"<html><head></head><body bgcolor=\\\"FFFFFf\\\" link=\\\"006666\\\" alink=\\\"8B4513\\\" vlink=\\\"006666\\\"><hmtl> <title>webpage1</title> <table width=\\\"75%\\\" align=\\\"center\\\"> <tbody><tr> <td> <div align=\\\"center\\\"><h1>STARTING . . . </h1></div> <div align=\\\"justify\\\"><p>There are lots of ways to create web pages using already coded programmes. These lessons will teach you how to use the underlying HyperText Markup Language - HTML. <br> </p><p>HTML isn't computer code, but is a language that uses US English to enable texts (words, images, sounds) to be inserted and formatting such as colo(u)r and centre/ering to be written in. The process is fairly simple; the main difficulties often lie in small mistakes - if you slip up while word processing your reader may pick up your typos, but the page will still be legible. However, if your HTML is inaccurate the page may not appear - writing web pages is, at the least, very good practice for proof reading!</p> <p>Learning HTML will enable you to: </p><ul> <li>create your own simple pages </li><li>read and appreciate pages created by others </li><li>develop an understanding of the creative and literary implications of web-texts </li><li>have the confidence to branch out into more complex web design </li></ul><p></p> <p>A HTML web page is made up of tags. Tags are placed in brackets like this <b>&lt; tag &gt; </b>. A tag tells the browser how to display information. Most tags need to be opened &lt; tag &gt; and closed &lt; /tag &gt;. </p><p> To make a simple web page you need to know only four tags: </p><ul> <li>&lt; HTML &gt; tells the browser your page is written in HTML format </li><li>&lt; HEAD &gt; this is a kind of preface of vital information that doesn't appear on the screen. </li><li>&lt; TITLE &gt;Write the title of the web page here - this is the information that viewers see on the upper bar of their screen. (I've given this page the title 'webpage1'). </li><li>&lt; BODY &gt;This is where you put the content of your page, the words and pictures that people read on the screen. </li></ul> <p>All these tags need to be closed. </p><h4>EXERCISE</h4> <p>Write a simple web page.</p> <p> Copy out exactly the HTML below, using a WP program such as Notepad.<br> Information in <i>italics</i> indicates where you can insert your own text, other information is HTML and needs to be exact. However, make sure there are no spaces between the tag brackets and the text inside.<br> (Find Notepad by going to the START menu PROGRAMS ACCESSORIES NOTEPAD). </p><p> &lt; HTML &gt;<br> &lt; HEAD &gt;<br> &lt; TITLE &gt;<i> title of page</i>&lt; /TITLE &gt;<br> &lt; /HEAD &gt;<br> &lt; BODY&gt;<br> <i> write what you like here: 'my first web page', or a piece about what you are reading, or a few thoughts on the course, or copy out a few words from a book or cornflake packet. Just type in your words using no extras such as bold, or italics, as these have special HTML tags, although you may use upper and lower case letters and single spaces. </i><br> &lt; /BODY &gt;<br> &lt; /HTML &gt;<br> </p><p>Save the file as 'first.html' (ie. call the file anything at all) It's useful if you start a folder - just as you would for word-processing - and call it something like WEBPAGES, and put your first.html file in the folder. </p><p>NOW - open your browser.<br> On Netscape the process is: <br> Top menu; FILE OPEN PAGE CHOOSE FILE<br> Click on your WEBPAGES folder FIRST file<br> Click 'open' and your page should appear. </p><p>On Internet Explorer: <br> Top menu; FILE OPEN BROWSE <br> Click on your WEBPAGES folder FIRST file<br> Click 'open' and your page should appear.<br> </p><p>If the page doesn't open, go back over your notepad typing and make sure that all the HTML tags are correct. Check there are no spaces between tags and internal text; check that all tags are closed; check that you haven't written &lt; HTLM &gt; or &lt; BDDY &gt;. Your page will work eventually. </p><p> Make another page. Call it somethingdifferent.html and place it in the same WEBPAGES folder as detailed above. </p><p>start formatting in <a href=\\\"webpage2.html\\\">lesson two</a> <br><a href=\\\"col3.html\\\">back to wws index</a> </p> <p></p> </div> </td> </tr> </tbody></table> </hmtl></body></html>\"\n    }\n  }\n];"
+			},
+			"id": "88a269af-c315-491c-b897-578cfb81268a",
+			"name": "Mock data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [520, 580]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "data",
+							"value": "={{ $json[\"body\"][\"html\"] }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "d674426f-e9de-473b-9225-1b29ddeb2bad",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [740, 680]
+		},
+		{
+			"parameters": {
+				"extractionValues": {
+					"values": [
+						{
+							"key": "title",
+							"cssSelector": "h1"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "ad74d9ea-adf3-42b1-87c8-be1096356096",
+			"name": "HTML Extract (top level)",
+			"type": "n8n-nodes-base.htmlExtract",
+			"typeVersion": 1,
+			"position": [960, 680]
+		},
+		{
+			"parameters": {
+				"dataPropertyName": "body.html",
+				"extractionValues": {
+					"values": [
+						{
+							"key": "title",
+							"cssSelector": "h1"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "2a6bcc8e-31d3-4ca3-bb27-000c192f37b4",
+			"name": "HTML Extract (nested)",
+			"type": "n8n-nodes-base.htmlExtract",
+			"typeVersion": 1,
+			"position": [740, 480]
+		}
+	],
+	"pinData": {
+		"HTML Extract (nested)": [
+			{
+				"json": {
+					"title": "STARTING . . ."
+				}
+			}
+		],
+		"HTML Extract (top level)": [
+			{
+				"json": {
+					"title": "STARTING . . ."
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Mock data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Mock data": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "HTML Extract (nested)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "HTML Extract (top level)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "2efa91fb-7750-4c8f-93c0-7daa6dcf3ef2",
+	"id": "152",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

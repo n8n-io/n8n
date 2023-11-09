@@ -6,10 +6,7 @@ const { LoggerProxy } = require('n8n-workflow');
 const { packageDir, writeJSON } = require('./common');
 const { loadClassInIsolation } = require('../dist/ClassLoader');
 
-LoggerProxy.init({
-	log: console.log.bind(console),
-	warn: console.warn.bind(console),
-});
+LoggerProxy.init(console);
 
 const loadClass = (sourcePath) => {
 	try {
@@ -38,6 +35,10 @@ const generate = async (kind) => {
 				else obj[name] = { className, sourcePath };
 			}
 
+			if (kind === 'credentials' && Array.isArray(instance.extends)) {
+				obj[name].extends = instance.extends;
+			}
+
 			if (kind === 'nodes') {
 				const { credentials } = instance.description;
 				if (credentials && credentials.length) {
@@ -53,6 +54,7 @@ const generate = async (kind) => {
 			}
 			return obj;
 		}, {});
+
 	LoggerProxy.info(`Detected ${Object.keys(data).length} ${kind}`);
 	await writeJSON(`known/${kind}.json`, data);
 	return data;

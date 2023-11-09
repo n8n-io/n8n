@@ -64,12 +64,51 @@ export interface IMarkupReplyKeyboardRemove {
  * @param {IDataObject} body The body object to add fields to
  * @param {number} index The index of the item
  */
-export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
+export function addAdditionalFields(
+	this: IExecuteFunctions,
+	body: IDataObject,
+	index: number,
+	nodeVersion?: number,
+	instanceId?: string,
+) {
+	const operation = this.getNodeParameter('operation', index);
+
 	// Add the additional fields
 	const additionalFields = this.getNodeParameter('additionalFields', index);
-	Object.assign(body, additionalFields);
 
-	const operation = this.getNodeParameter('operation', index);
+	if (operation === 'sendMessage') {
+		const attributionText = 'This message was sent automatically with ';
+		const link = `https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=${encodeURIComponent(
+			'n8n-nodes-base.telegram',
+		)}${instanceId ? '_' + instanceId : ''}`;
+
+		if (nodeVersion && nodeVersion >= 1.1 && additionalFields.appendAttribution === undefined) {
+			additionalFields.appendAttribution = true;
+		}
+
+		if (!additionalFields.parse_mode) {
+			additionalFields.parse_mode = 'Markdown';
+		}
+
+		const regex = /(https?|ftp|file):\/\/\S+|www\.\S+|\S+\.\S+/;
+		const containsUrl = regex.test(body.text as string);
+
+		if (!containsUrl) {
+			body.disable_web_page_preview = true;
+		}
+
+		if (additionalFields.appendAttribution) {
+			if (additionalFields.parse_mode === 'Markdown') {
+				body.text = `${body.text}\n\n_${attributionText}_[n8n](${link})`;
+			} else if (additionalFields.parse_mode === 'HTML') {
+				body.text = `${body.text}\n\n<em>${attributionText}</em><a href="${link}" target="_blank">n8n</a>`;
+			}
+		}
+
+		delete additionalFields.appendAttribution;
+	}
+
+	Object.assign(body, additionalFields);
 
 	// Add the reply markup
 	let replyMarkupOption = '';
@@ -100,7 +139,7 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 		if (keyboardData.rows !== undefined) {
 			for (const row of keyboardData.rows) {
 				const sendRows: ITelegramKeyboardButton[] = [];
-				if (row.row === undefined || row.row.buttons === undefined) {
+				if (row.row?.buttons === undefined) {
 					continue;
 				}
 				for (const button of row.row.buttons) {

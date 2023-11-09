@@ -66,5 +66,5 @@ export async function get(this: IExecuteFunctions, index: number) {
 		),
 	};
 
-	return this.prepareOutputData(newItem as unknown as INodeExecutionData[]);
+	return [newItem as unknown as INodeExecutionData[]];
 }

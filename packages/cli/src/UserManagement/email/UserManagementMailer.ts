@@ -2,13 +2,9 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
+import { Container, Service } from 'typedi';
 import config from '@/config';
-import type {
-	InviteEmailData,
-	PasswordResetData,
-	SendEmailResult,
-	UserManagementMailerImplementation,
-} from './Interfaces';
+import type { InviteEmailData, PasswordResetData, SendEmailResult } from './Interfaces';
 import { NodeMailer } from './NodeMailer';
 
 type Template = HandlebarsTemplateDelegate<unknown>;
@@ -36,16 +32,20 @@ async function getTemplate(
 	return template;
 }
 
+@Service()
 export class UserManagementMailer {
-	private mailer: UserManagementMailerImplementation | undefined;
+	readonly isEmailSetUp: boolean;
+
+	private mailer: NodeMailer | undefined;
 
 	constructor() {
-		// Other implementations can be used in the future.
-		if (
+		this.isEmailSetUp =
 			config.getEnv('userManagement.emails.mode') === 'smtp' &&
-			config.getEnv('userManagement.emails.smtp.host') !== ''
-		) {
-			this.mailer = new NodeMailer();
+			config.getEnv('userManagement.emails.smtp.host') !== '';
+
+		// Other implementations can be used in the future.
+		if (this.isEmailSetUp) {
+			this.mailer = Container.get(NodeMailer);
 		}
 	}
 
@@ -80,13 +80,4 @@ export class UserManagementMailer {
 		// No error, just say no email was sent.
 		return result ?? { emailSent: false };
 	}
-}
-
-let mailerInstance: UserManagementMailer | undefined;
-
-export function getInstance(): UserManagementMailer {
-	if (mailerInstance === undefined) {
-		mailerInstance = new UserManagementMailer();
-	}
-	return mailerInstance;
 }

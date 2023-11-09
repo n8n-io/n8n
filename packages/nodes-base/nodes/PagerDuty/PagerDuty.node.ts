@@ -8,6 +8,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
+import moment from 'moment-timezone';
 import {
 	keysToSnakeCase,
 	pagerDutyApiRequest,
@@ -23,10 +25,6 @@ import { logEntryFields, logEntryOperations } from './LogEntryDescription';
 import { userFields, userOperations } from './UserDescription';
 
 import type { IIncident } from './IncidentInterface';
-
-import { snakeCase } from 'change-case';
-
-import moment from 'moment-timezone';
 
 export class PagerDuty implements INodeType {
 	description: INodeTypeDescription = {
@@ -121,7 +119,7 @@ export class PagerDuty implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available escalation policies to display them to user so that he can
+			// Get all the available escalation policies to display them to user so that they can
 			// select them easily
 			async getEscalationPolicies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -141,7 +139,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available priorities to display them to user so that he can
+			// Get all the available priorities to display them to user so that they can
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -163,7 +161,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the available services to display them to user so that he can
+			// Get all the available services to display them to user so that they can
 			// select them easily
 			async getServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -183,7 +181,7 @@ export class PagerDuty implements INodeType {
 				}
 				return returnData;
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -472,6 +470,6 @@ export class PagerDuty implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -3,13 +3,13 @@
 </template>
 
 <script lang="ts">
-import { IFakeDoor } from '@/Interface';
-import Vue from 'vue';
+import type { IFakeDoor } from '@/Interface';
+import { defineComponent } from 'vue';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'SettingsFakeDoorView',
 	components: {
 		FeatureComingSoon,

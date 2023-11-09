@@ -5,12 +5,12 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
-import mixins from 'vue-typed-mixins';
-
-export default mixins(genericHelpers).extend({
+export default defineComponent({
 	name: 'ExecutionTime',
+	mixins: [genericHelpers],
 	props: ['startTime'],
 	computed: {
 		time(): string {
@@ -33,7 +33,7 @@ export default mixins(genericHelpers).extend({
 			this.setNow();
 		}, 1000);
 	},
-	destroyed() {
+	beforeUnmount() {
 		// Make sure that the timer gets destroyed once no longer needed
 		if (this.intervalTimer !== null) {
 			clearInterval(this.intervalTimer);

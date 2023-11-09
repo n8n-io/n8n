@@ -5,7 +5,6 @@ import type {
 	IDataObject,
 	IDisplayOptions,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -17,11 +16,10 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
 
-import { filters } from './Filters';
-
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+import { filters } from './Filters';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
 	if (uuidValidate(value)) return true;
@@ -44,12 +42,7 @@ const apiVersion: { [key: number]: string } = {
 };
 
 export async function notionApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IPollFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
 
@@ -87,7 +80,6 @@ export async function notionApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
@@ -106,12 +98,55 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		if (query.limit && query.limit <= returnData.length) {
+		const limit = query.limit as number | undefined;
+		if (limit && limit <= returnData.length) {
 			return returnData;
 		}
 	} while (responseData.has_more !== false);
 
 	return returnData;
+}
+
+export async function notionApiRequestGetBlockChildrens(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	blocks: IDataObject[],
+	responseData: IDataObject[] = [],
+	limit?: number,
+) {
+	if (blocks.length === 0) return responseData;
+
+	for (const block of blocks) {
+		responseData.push(block);
+
+		if (block.type === 'child_page') continue;
+
+		if (block.has_children) {
+			let childrens = await notionApiRequestAllItems.call(
+				this,
+				'results',
+				'GET',
+				`/blocks/${block.id}/children`,
+			);
+
+			childrens = (childrens || []).map((entry: IDataObject) => ({
+				object: entry.object,
+				parent_id: block.id,
+				...entry,
+			}));
+
+			await notionApiRequestGetBlockChildrens.call(this, childrens, responseData);
+		}
+
+		if (limit && responseData.length === limit) {
+			return responseData;
+		}
+
+		if (limit && responseData.length > limit) {
+			return responseData.slice(0, limit);
+		}
+	}
+
+	return responseData;
 }
 
 export function getBlockTypes() {
@@ -284,6 +319,10 @@ function getDateFormat(includeTime: boolean) {
 	return '';
 }
 
+function isEmpty(value: unknown): boolean {
+	return value === undefined || value === null || value === '';
+}
+
 function getPropertyKeyValue(
 	this: IExecuteFunctions,
 	value: any,
@@ -332,7 +371,16 @@ function getPropertyKeyValue(
 			};
 			break;
 		case 'multi_select':
+			if (isEmpty(value.multiSelectValue)) {
+				result = {
+					type: 'multi_select',
+					multi_select: [],
+				};
+				break;
+			}
+
 			const multiSelectValue = value.multiSelectValue;
+
 			result = {
 				type: 'multi_select',
 				multi_select: (Array.isArray(multiSelectValue)
@@ -367,6 +415,14 @@ function getPropertyKeyValue(
 			};
 			break;
 		case 'select':
+			if (isEmpty(value.selectValue)) {
+				result = {
+					type: 'select',
+					select: null,
+				};
+				break;
+			}
+
 			result = {
 				type: 'select',
 				select: version === 1 ? { id: value.selectValue } : { name: value.selectValue },
@@ -879,7 +935,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 				},
@@ -902,7 +958,7 @@ export function getSearchFilters(resource: string) {
 			],
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -919,7 +975,7 @@ export function getSearchFilters(resource: string) {
 			},
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['manual'],
@@ -942,7 +998,7 @@ export function getSearchFilters(resource: string) {
 			type: 'notice',
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],
@@ -956,7 +1012,7 @@ export function getSearchFilters(resource: string) {
 			type: 'string',
 			displayOptions: {
 				show: {
-					version: [2],
+					'@version': [2],
 					resource: [resource],
 					operation: ['getAll'],
 					filterType: ['json'],

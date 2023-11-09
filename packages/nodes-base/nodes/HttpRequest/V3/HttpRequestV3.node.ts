@@ -8,19 +8,32 @@ import type {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	IRequestOptionsSimplified,
+	PaginationOptions,
 	JsonObject,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, jsonParse, NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
+
+import {
+	BINARY_ENCODING,
+	NodeApiError,
+	NodeOperationError,
+	jsonParse,
+	removeCircularRefs,
+	sleep,
+} from 'n8n-workflow';
 
 import type { OptionsWithUri } from 'request-promise-native';
 
-import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
+import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
+	prepareRequestBody,
+	reduceAsync,
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+import { keysToLowercase } from '@utils/utilities';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -35,10 +48,10 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: 3,
+			version: [3, 4, 4.1],
 			defaults: {
 				name: 'HTTP Request',
-				color: '#2200DD',
+				color: '#0004F5',
 			},
 			inputs: ['main'],
 			outputs: ['main'],
@@ -131,6 +144,18 @@ export class HttpRequestV3 implements INodeType {
 					displayOptions: {
 						show: {
 							authentication: ['predefinedCredentialType'],
+						},
+					},
+				},
+				{
+					displayName:
+						'Make sure you have specified the scope(s) for the Service Account in the credential',
+					name: 'googleApiWarning',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: {
+							nodeCredentialType: ['googleApi'],
 						},
 					},
 				},
@@ -379,7 +404,9 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 					default: 'keypair',
-					description: 'Asasas',
+					// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-json
+					description:
+						'The body can be specified using explicit fields (<code>keypair</code>) or using a JavaScript object (<code>json</code>)',
 				},
 				{
 					displayName: 'Body Parameters',
@@ -745,9 +772,7 @@ export class HttpRequestV3 implements INodeType {
 							typeOptions: {
 								multipleValues: false,
 							},
-							default: {
-								redirect: {},
-							},
+							default: { redirect: {} },
 							options: [
 								{
 									displayName: 'Redirect',
@@ -776,6 +801,56 @@ export class HttpRequestV3 implements INodeType {
 									],
 								},
 							],
+							displayOptions: {
+								show: {
+									'@version': [1, 2, 3],
+								},
+							},
+						},
+						{
+							displayName: 'Redirects',
+							name: 'redirect',
+							placeholder: 'Add Redirect',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {
+								redirect: {},
+							},
+							options: [
+								{
+									displayName: 'Redirect',
+									name: 'redirect',
+									values: [
+										{
+											displayName: 'Follow Redirects',
+											name: 'followRedirects',
+											type: 'boolean',
+											default: true,
+											noDataExpression: true,
+											description: 'Whether to follow all redirects',
+										},
+										{
+											displayName: 'Max Redirects',
+											name: 'maxRedirects',
+											type: 'number',
+											displayOptions: {
+												show: {
+													followRedirects: [true],
+												},
+											},
+											default: 21,
+											description: 'Max number of redirects to follow',
+										},
+									],
+								},
+							],
+							displayOptions: {
+								hide: {
+									'@version': [1, 2, 3],
+								},
+							},
 						},
 						{
 							displayName: 'Response',
@@ -853,6 +928,228 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 						{
+							displayName: 'Pagination',
+							name: 'pagination',
+							placeholder: 'Add pagination',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {
+								pagination: {},
+							},
+							options: [
+								{
+									displayName: 'Pagination',
+									name: 'pagination',
+									values: [
+										{
+											displayName: 'Pagination Mode',
+											name: 'paginationMode',
+											type: 'options',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											options: [
+												{
+													name: 'Off',
+													value: 'off',
+												},
+												{
+													name: 'Update a Parameter in Each Request',
+													value: 'updateAParameterInEachRequest',
+												},
+												{
+													name: 'Response Contains Next URL',
+													value: 'responseContainsNextURL',
+												},
+											],
+											default: 'updateAParameterInEachRequest',
+											description: 'If pagination should be used',
+										},
+										{
+											displayName:
+												'Use the $response variables to access the data of the previous response. <a href="https://docs.n8n.io/code/builtin/http-node-variables/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.httpRequest" target="_blank">More info</a>',
+											name: 'webhookNotice',
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											type: 'notice',
+											default: '',
+										},
+										{
+											displayName: 'Next URL',
+											name: 'nextURL',
+											type: 'string',
+											displayOptions: {
+												show: {
+													paginationMode: ['responseContainsNextURL'],
+												},
+											},
+											default: '',
+											description:
+												'Should evaluate to true when pagination is complete. More info.',
+										},
+										{
+											displayName: 'Parameters',
+											name: 'parameters',
+											type: 'fixedCollection',
+											displayOptions: {
+												show: {
+													paginationMode: ['updateAParameterInEachRequest'],
+												},
+											},
+											typeOptions: {
+												multipleValues: true,
+												noExpression: true,
+											},
+											placeholder: 'Add Parameter',
+											default: {
+												parameters: [
+													{
+														type: 'qs',
+														name: '',
+														value: '',
+													},
+												],
+											},
+											options: [
+												{
+													name: 'parameters',
+													displayName: 'Parameter',
+													values: [
+														{
+															displayName: 'Type',
+															name: 'type',
+															type: 'options',
+															options: [
+																{
+																	name: 'Body',
+																	value: 'body',
+																},
+																{
+																	name: 'Header',
+																	value: 'headers',
+																},
+																{
+																	name: 'Query',
+																	value: 'qs',
+																},
+															],
+															default: 'qs',
+															description: 'Where the parameter should be set',
+														},
+														{
+															displayName: 'Name',
+															name: 'name',
+															type: 'string',
+															default: '',
+														},
+														{
+															displayName: 'Value',
+															name: 'value',
+															type: 'string',
+															default: '',
+														},
+													],
+												},
+											],
+										},
+										{
+											displayName: 'Pagination Complete When',
+											name: 'paginationCompleteWhen',
+											type: 'options',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											options: [
+												{
+													name: 'Response Is Empty',
+													value: 'responseIsEmpty',
+												},
+												{
+													name: 'Receive Specific Status Code(s)',
+													value: 'receiveSpecificStatusCodes',
+												},
+												{
+													name: 'Other',
+													value: 'other',
+												},
+											],
+											default: 'responseIsEmpty',
+											description: 'When should no further requests be made?',
+										},
+										{
+											displayName: 'Status Code(s) when Complete',
+											name: 'statusCodesWhenComplete',
+											type: 'string',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												show: {
+													paginationCompleteWhen: ['receiveSpecificStatusCodes'],
+												},
+											},
+											default: '',
+											description: 'Accepts comma-separated values',
+										},
+										{
+											displayName: 'Complete Expression',
+											name: 'completeExpression',
+											type: 'string',
+											displayOptions: {
+												show: {
+													paginationCompleteWhen: ['other'],
+												},
+											},
+											default: '',
+											description:
+												'Should evaluate to true when pagination is complete. More info.',
+										},
+										{
+											displayName: 'Limit Pages Fetched',
+											name: 'limitPagesFetched',
+											type: 'boolean',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												hide: {
+													paginationMode: ['off'],
+												},
+											},
+											default: false,
+											noDataExpression: true,
+											description: 'Whether the number of requests should be limited',
+										},
+										{
+											displayName: 'Max Pages',
+											name: 'maxRequests',
+											type: 'number',
+											typeOptions: {
+												noDataExpression: true,
+											},
+											displayOptions: {
+												show: {
+													limitPagesFetched: [true],
+												},
+											},
+											default: 100,
+											description: 'Maximum amount of request to be make',
+										},
+									],
+								},
+							],
+						},
+						{
 							displayName: 'Proxy',
 							name: 'proxy',
 							type: 'string',
@@ -873,12 +1170,20 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 				},
+				{
+					displayName:
+						"You can view the raw requests this node makes in your browser's developer console",
+					name: 'infoMessage',
+					type: 'notice',
+					default: '',
+				},
 			],
 		};
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
+		const nodeVersion = this.getNode().typeVersion;
 
 		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
@@ -895,6 +1200,7 @@ export class HttpRequestV3 implements INodeType {
 		let httpDigestAuth;
 		let httpHeaderAuth;
 		let httpQueryAuth;
+		let httpCustomAuth;
 		let oAuth1Api;
 		let oAuth2Api;
 		let nodeCredentialType;
@@ -917,6 +1223,10 @@ export class HttpRequestV3 implements INodeType {
 			} else if (genericAuthType === 'httpQueryAuth') {
 				try {
 					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch {}
+			} else if (genericAuthType === 'httpCustomAuth') {
+				try {
+					httpCustomAuth = await this.getCredentials('httpCustomAuth');
 				} catch {}
 			} else if (genericAuthType === 'oAuth1Api') {
 				try {
@@ -945,6 +1255,26 @@ export class HttpRequestV3 implements INodeType {
 
 		let autoDetectResponseFormat = false;
 
+		// Can not be defined on a per item level
+		const pagination = this.getNodeParameter('options.pagination.pagination', 0, null, {
+			rawExpressions: true,
+		}) as {
+			paginationMode: 'off' | 'updateAParameterInEachRequest' | 'responseContainsNextURL';
+			nextURL?: string;
+			parameters: {
+				parameters: Array<{
+					type: 'body' | 'headers' | 'qs';
+					name: string;
+					value: string;
+				}>;
+			};
+			paginationCompleteWhen: 'responseIsEmpty' | 'receiveSpecificStatusCodes' | 'other';
+			statusCodesWhenComplete: string;
+			completeExpression: string;
+			limitPagesFetched: boolean;
+			maxRequests: number;
+		};
+
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('method', itemIndex) as string;
 
@@ -960,23 +1290,28 @@ export class HttpRequestV3 implements INodeType {
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
 			const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
-			const bodyParameters = this.getNodeParameter('bodyParameters.parameters', itemIndex, []) as [
-				{ name: string; value: string },
-			];
+			const bodyParameters = this.getNodeParameter(
+				'bodyParameters.parameters',
+				itemIndex,
+				[],
+			) as BodyParameter[];
 			const jsonBodyParameter = this.getNodeParameter('jsonBody', itemIndex, '') as string;
 			const body = this.getNodeParameter('body', itemIndex, '') as string;
 
 			const sendHeaders = this.getNodeParameter('sendHeaders', itemIndex, false) as boolean;
+
 			const headerParameters = this.getNodeParameter(
 				'headerParameters.parameters',
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+
 			const specifyHeaders = this.getNodeParameter(
 				'specifyHeaders',
 				itemIndex,
 				'keypair',
 			) as string;
+
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
@@ -1024,21 +1359,21 @@ export class HttpRequestV3 implements INodeType {
 				gzip: true,
 				rejectUnauthorized: !allowUnauthorizedCerts || false,
 				followRedirect: false,
+				resolveWithFullResponse: true,
 			};
 
-			// When response format is set to auto-detect,
-			// we need to access to response header content-type
-			// and the only way is using "resolveWithFullResponse"
-			if (autoDetectResponseFormat || fullResponse) {
-				requestOptions.resolveWithFullResponse = true;
+			if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
+				requestOptions = { ...requestOptions, followAllRedirects: false };
 			}
 
-			if (redirect?.redirect?.followRedirects) {
+			const defaultRedirect = nodeVersion >= 4 && redirect === undefined;
+
+			if (redirect?.redirect?.followRedirects || defaultRedirect) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
 
-			if (redirect?.redirect?.maxRedirects) {
+			if (redirect?.redirect?.maxRedirects || defaultRedirect) {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
@@ -1053,17 +1388,16 @@ export class HttpRequestV3 implements INodeType {
 			if (timeout) {
 				requestOptions.timeout = timeout;
 			} else {
-				// set default timeout to 1 hour
-				requestOptions.timeout = 3600000;
+				// set default timeout to 5 minutes
+				requestOptions.timeout = 300_000;
 			}
-
 			if (sendQuery && queryParameterArrays) {
 				Object.assign(requestOptions, {
 					qsStringifyOptions: { arrayFormat: queryParameterArrays },
 				});
 			}
 
-			const parametersToKeyValue = (
+			const parametersToKeyValue = async (
 				accumulator: { [key: string]: any },
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
@@ -1073,7 +1407,7 @@ export class HttpRequestV3 implements INodeType {
 					let uploadData: Buffer | Readable;
 					const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
 					if (itemBinaryData.id) {
-						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
 					} else {
 						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
 					}
@@ -1094,7 +1428,12 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendBody && bodyParameters) {
 				if (specifyBody === 'keypair' || bodyContentType === 'multipart-form-data') {
-					requestOptions.body = bodyParameters.reduce(parametersToKeyValue, {});
+					requestOptions.body = await prepareRequestBody(
+						bodyParameters,
+						bodyContentType,
+						nodeVersion,
+						parametersToKeyValue,
+					);
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
 					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
@@ -1105,7 +1444,7 @@ export class HttpRequestV3 implements INodeType {
 								this.getNode(),
 								'JSON parameter need to be an valid JSON',
 								{
-									runIndex: itemIndex,
+									itemIndex,
 								},
 							);
 						}
@@ -1140,7 +1479,7 @@ export class HttpRequestV3 implements INodeType {
 					const itemBinaryData = this.helpers.assertBinaryData(itemIndex, inputDataFieldName);
 
 					if (itemBinaryData.id) {
-						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+						uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
 						const metadata = await this.helpers.getBinaryMetadata(itemBinaryData.id);
 						contentLength = metadata.fileSize;
 					} else {
@@ -1150,8 +1489,8 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.body = uploadData;
 					requestOptions.headers = {
 						...requestOptions.headers,
-						'Content-Length': contentLength,
-						'Content-Type': itemBinaryData.mimeType ?? 'application/octet-stream',
+						'content-length': contentLength,
+						'content-type': itemBinaryData.mimeType ?? 'application/octet-stream',
 					};
 				} else if (bodyContentType === 'raw') {
 					requestOptions.body = body;
@@ -1161,7 +1500,7 @@ export class HttpRequestV3 implements INodeType {
 			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
 				if (specifyQuery === 'keypair') {
-					requestOptions.qs = queryParameters.reduce(parametersToKeyValue, {});
+					requestOptions.qs = await reduceAsync(queryParameters, parametersToKeyValue);
 				} else if (specifyQuery === 'json') {
 					// query is specified using JSON
 					try {
@@ -1171,7 +1510,7 @@ export class HttpRequestV3 implements INodeType {
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
 							{
-								runIndex: itemIndex,
+								itemIndex,
 							},
 						);
 					}
@@ -1182,8 +1521,9 @@ export class HttpRequestV3 implements INodeType {
 
 			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
+				let additionalHeaders: IDataObject = {};
 				if (specifyHeaders === 'keypair') {
-					requestOptions.headers = headerParameters.reduce(parametersToKeyValue, {});
+					additionalHeaders = await reduceAsync(headerParameters, parametersToKeyValue);
 				} else if (specifyHeaders === 'json') {
 					// body is specified using JSON
 					try {
@@ -1193,31 +1533,37 @@ export class HttpRequestV3 implements INodeType {
 							this.getNode(),
 							'JSON parameter need to be an valid JSON',
 							{
-								runIndex: itemIndex,
+								itemIndex,
 							},
 						);
 					}
 
-					requestOptions.headers = jsonParse(jsonHeadersParameter);
+					additionalHeaders = jsonParse(jsonHeadersParameter);
 				}
+				requestOptions.headers = {
+					...requestOptions.headers,
+					...keysToLowercase(additionalHeaders),
+				};
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
 				requestOptions.encoding = null;
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else if (bodyContentType === 'raw') {
 				requestOptions.json = false;
+				requestOptions.useStream = true;
 			} else {
 				requestOptions.json = true;
 			}
 
-			// // Add Content Type if any are set
+			// Add Content Type if any are set
 			if (bodyContentType === 'raw') {
 				if (requestOptions.headers === undefined) {
 					requestOptions.headers = {};
 				}
 				const rawContentType = this.getNodeParameter('rawContentType', itemIndex) as string;
-				requestOptions.headers['Content-Type'] = rawContentType;
+				requestOptions.headers['content-type'] = rawContentType;
 			}
 
 			const authDataKeys: IAuthDataSanitizeKeys = {};
@@ -1249,6 +1595,24 @@ export class HttpRequestV3 implements INodeType {
 				};
 				authDataKeys.auth = ['pass'];
 			}
+			if (httpCustomAuth !== undefined) {
+				const customAuth = jsonParse<IRequestOptionsSimplified>(
+					(httpCustomAuth.json as string) || '{}',
+					{ errorMessage: 'Invalid Custom Auth JSON' },
+				);
+				if (customAuth.headers) {
+					requestOptions.headers = { ...requestOptions.headers, ...customAuth.headers };
+					authDataKeys.headers = Object.keys(customAuth.headers);
+				}
+				if (customAuth.body) {
+					requestOptions.body = { ...requestOptions.body, ...customAuth.body };
+					authDataKeys.body = Object.keys(customAuth.body);
+				}
+				if (customAuth.qs) {
+					requestOptions.qs = { ...requestOptions.qs, ...customAuth.qs };
+					authDataKeys.qs = Object.keys(customAuth.qs);
+				}
+			}
 
 			if (requestOptions.headers!.accept === undefined) {
 				if (responseFormat === 'json') {
@@ -1261,12 +1625,67 @@ export class HttpRequestV3 implements INodeType {
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}
-
 			try {
 				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
 			} catch (e) {}
 
-			if (authentication === 'genericCredentialType' || authentication === 'none') {
+			if (pagination && pagination.paginationMode !== 'off') {
+				let continueExpression = '={{false}}';
+				if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
+					// Split out comma separated list of status codes into array
+					const statusCodesWhenCompleted = pagination.statusCodesWhenComplete
+						.split(',')
+						.map((item) => parseInt(item.trim()));
+
+					continueExpression = `={{ !${JSON.stringify(
+						statusCodesWhenCompleted,
+					)}.includes($response.statusCode) }}`;
+				} else if (pagination.paginationCompleteWhen === 'responseIsEmpty') {
+					continueExpression =
+						'={{ Array.isArray($response.body) ? $response.body.length : !!$response.body }}';
+				} else {
+					// Other
+					if (!pagination.completeExpression.length || pagination.completeExpression[0] !== '=') {
+						throw new NodeOperationError(this.getNode(), 'Invalid or empty Complete Expression');
+					}
+					continueExpression = `={{ !(${pagination.completeExpression.trim().slice(3, -2)}) }}`;
+				}
+
+				const paginationData: PaginationOptions = {
+					continue: continueExpression,
+					request: {},
+				};
+
+				if (pagination.paginationMode === 'updateAParameterInEachRequest') {
+					// Iterate over all parameters and add them to the request
+					paginationData.request = {};
+					pagination.parameters.parameters.forEach((parameter) => {
+						if (!paginationData.request[parameter.type]) {
+							paginationData.request[parameter.type] = {};
+						}
+						paginationData.request[parameter.type]![parameter.name] = parameter.value;
+					});
+				} else if (pagination.paginationMode === 'responseContainsNextURL') {
+					paginationData.request.url = pagination.nextURL;
+				}
+
+				if (pagination.limitPagesFetched) {
+					paginationData.maxRequests = pagination.maxRequests;
+				}
+
+				if (responseFormat === 'file') {
+					paginationData.binaryResult = true;
+				}
+
+				const requestPromise = this.helpers.requestWithAuthenticationPaginated.call(
+					this,
+					requestOptions,
+					itemIndex,
+					paginationData,
+					nodeCredentialType,
+				);
+				requestPromises.push(requestPromise);
+			} else if (authentication === 'genericCredentialType' || authentication === 'none') {
 				if (oAuth1Api) {
 					const requestOAuth1 = this.helpers.requestOAuth1.call(this, 'oAuth1Api', requestOptions);
 					requestOAuth1.catch(() => {});
@@ -1300,20 +1719,25 @@ export class HttpRequestV3 implements INodeType {
 		}
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
-		let response: any;
+		let responseData: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			response = promisesResponses.shift();
-			if (response!.status !== 'fulfilled') {
+			responseData = promisesResponses.shift();
+			if (responseData!.status !== 'fulfilled') {
+				if (responseData.reason.statusCode === 429) {
+					responseData.reason.message =
+						"Try spacing your requests out using the batching settings under 'Options'";
+				}
 				if (!this.continueOnFail()) {
-					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
-						response.reason.error = Buffer.from(response.reason.error as Buffer).toString();
+					if (autoDetectResponseFormat && responseData.reason.error instanceof Buffer) {
+						responseData.reason.error = Buffer.from(responseData.reason.error as Buffer).toString();
 					}
-					throw new NodeApiError(this.getNode(), response as JsonObject);
+					throw new NodeApiError(this.getNode(), responseData as JsonObject, { itemIndex });
 				} else {
+					removeCircularRefs(responseData.reason as JsonObject);
 					// Return the actual reason as error
 					returnItems.push({
 						json: {
-							error: response.reason,
+							error: responseData.reason,
 						},
 						pairedItem: {
 							item: itemIndex,
@@ -1323,9 +1747,12 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
-			response = response.value;
-
-			const url = this.getNodeParameter('url', itemIndex) as string;
+			let responses: any[];
+			if (Array.isArray(responseData.value)) {
+				responses = responseData.value;
+			} else {
+				responses = [responseData.value];
+			}
 
 			let responseFormat = this.getNodeParameter(
 				'options.response.response.responseFormat',
@@ -1339,180 +1766,194 @@ export class HttpRequestV3 implements INodeType {
 				false,
 			) as boolean;
 
-			if (autoDetectResponseFormat) {
-				const responseContentType = response.headers['content-type'] ?? '';
-				if (responseContentType.includes('application/json')) {
-					responseFormat = 'json';
-					const neverError = this.getNodeParameter(
-						'options.response.response.neverError',
-						0,
-						false,
-					) as boolean;
-
-					const data = await this.helpers
-						.binaryToBuffer(response.body as Buffer | Readable)
-						.then((body) => body.toString());
-					response.body = jsonParse(data, {
-						...(neverError
-							? { fallbackValue: {} }
-							: { errorMessage: 'Invalid JSON in response body' }),
-					});
-				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
-					responseFormat = 'file';
-				} else {
-					responseFormat = 'text';
-					const data = await this.helpers
-						.binaryToBuffer(response.body as Buffer | Readable)
-						.then((body) => body.toString());
-					response.body = !data ? undefined : data;
-				}
-			}
-
-			if (autoDetectResponseFormat && !fullResponse) {
-				delete response.headers;
-				delete response.statusCode;
-				delete response.statusMessage;
-				response = response.body;
-				requestOptions.resolveWithFullResponse = false;
-			}
-
-			if (responseFormat === 'file') {
-				const outputPropertyName = this.getNodeParameter(
-					'options.response.response.outputPropertyName',
-					0,
-					'data',
-				) as string;
-
-				const newItem: INodeExecutionData = {
-					json: {},
-					binary: {},
-					pairedItem: {
-						item: itemIndex,
-					},
-				};
-
-				if (items[itemIndex].binary !== undefined) {
-					// Create a shallow copy of the binary data so that the old
-					// data references which do not get changed still stay behind
-					// but the incoming data does not get changed.
-					Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
-				}
-
-				const fileName = url.split('/').pop();
-
-				if (fullResponse) {
-					const returnItem: IDataObject = {};
-					for (const property of fullResponseProperties) {
-						if (property === 'body') {
-							continue;
-						}
-						returnItem[property] = response![property];
-					}
-
-					newItem.json = returnItem;
-
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response!.body as Buffer | Readable,
-						fileName,
-					);
-				} else {
-					newItem.json = items[itemIndex].json;
-
-					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(
-						response! as Buffer | Readable,
-						fileName,
-					);
-				}
-
-				returnItems.push(newItem);
-			} else if (responseFormat === 'text') {
-				const outputPropertyName = this.getNodeParameter(
-					'options.response.response.outputPropertyName',
-					0,
-					'data',
-				) as string;
-				if (fullResponse) {
-					const returnItem: IDataObject = {};
-					for (const property of fullResponseProperties) {
-						if (property === 'body') {
-							returnItem[outputPropertyName] = toText(response![property]);
-							continue;
-						}
-
-						returnItem[property] = response![property];
-					}
-					returnItems.push({
-						json: returnItem,
-						pairedItem: {
-							item: itemIndex,
-						},
-					});
-				} else {
-					returnItems.push({
-						json: {
-							[outputPropertyName]: toText(response),
-						},
-						pairedItem: {
-							item: itemIndex,
-						},
-					});
-				}
-			} else {
-				// responseFormat: 'json'
-				if (requestOptions.resolveWithFullResponse === true) {
-					const returnItem: IDataObject = {};
-					for (const property of fullResponseProperties) {
-						returnItem[property] = response![property];
-					}
-
-					if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-						try {
-							returnItem.body = JSON.parse(returnItem.body);
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Response body is not valid JSON. Change "Response Format" to "Text"',
-								{ itemIndex },
-							);
-						}
-					}
-
-					returnItems.push({
-						json: returnItem,
-						pairedItem: {
-							item: itemIndex,
-						},
-					});
-				} else {
-					if (responseFormat === 'json' && typeof response === 'string') {
-						try {
-							response = JSON.parse(response);
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Response body is not valid JSON. Change "Response Format" to "Text"',
-								{ itemIndex },
-							);
-						}
-					}
-
-					if (Array.isArray(response)) {
-						// eslint-disable-next-line @typescript-eslint/no-loop-func
-						response.forEach((item) =>
-							returnItems.push({
-								json: item,
-								pairedItem: {
-									item: itemIndex,
-								},
-							}),
-						);
+			// eslint-disable-next-line prefer-const
+			for (let [index, response] of Object.entries(responses)) {
+				if (this.getMode() === 'manual' && index === '0') {
+					// For manual executions save the first response in the context
+					// so that we can use it in the frontend and so make it easier for
+					// the users to create the required pagination expressions
+					const nodeContext = this.getContext('node');
+					if (pagination && pagination.paginationMode !== 'off') {
+						nodeContext.response = responseData.value[0];
 					} else {
+						nodeContext.response = responseData.value;
+					}
+				}
+
+				if (autoDetectResponseFormat) {
+					const responseContentType = response.headers['content-type'] ?? '';
+					if (responseContentType.includes('application/json')) {
+						responseFormat = 'json';
+						if (!response.__bodyResolved) {
+							const neverError = this.getNodeParameter(
+								'options.response.response.neverError',
+								0,
+								false,
+							) as boolean;
+
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
+							response.body = jsonParse(data, {
+								...(neverError
+									? { fallbackValue: {} }
+									: { errorMessage: 'Invalid JSON in response body' }),
+							});
+						}
+					} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
+						responseFormat = 'file';
+					} else {
+						responseFormat = 'text';
+						if (!response.__bodyResolved) {
+							const data = await this.helpers
+								.binaryToBuffer(response.body as Buffer | Readable)
+								.then((body) => body.toString());
+							response.body = !data ? undefined : data;
+						}
+					}
+				}
+
+				if (autoDetectResponseFormat && !fullResponse) {
+					delete response.headers;
+					delete response.statusCode;
+					delete response.statusMessage;
+				}
+				if (!fullResponse) {
+					response = response.body;
+				}
+
+				if (responseFormat === 'file') {
+					const outputPropertyName = this.getNodeParameter(
+						'options.response.response.outputPropertyName',
+						0,
+						'data',
+					) as string;
+
+					const newItem: INodeExecutionData = {
+						json: {},
+						binary: {},
+						pairedItem: {
+							item: itemIndex,
+						},
+					};
+
+					if (items[itemIndex].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
+					}
+
+					let binaryData: Buffer | Readable;
+					if (fullResponse) {
+						const returnItem: IDataObject = {};
+						for (const property of fullResponseProperties) {
+							if (property === 'body') {
+								continue;
+							}
+							returnItem[property] = response[property];
+						}
+
+						newItem.json = returnItem;
+						binaryData = response?.body;
+					} else {
+						newItem.json = items[itemIndex].json;
+						binaryData = response;
+					}
+					newItem.binary![outputPropertyName] = await this.helpers.prepareBinaryData(binaryData);
+
+					returnItems.push(newItem);
+				} else if (responseFormat === 'text') {
+					const outputPropertyName = this.getNodeParameter(
+						'options.response.response.outputPropertyName',
+						0,
+						'data',
+					) as string;
+					if (fullResponse) {
+						const returnItem: IDataObject = {};
+						for (const property of fullResponseProperties) {
+							if (property === 'body') {
+								returnItem[outputPropertyName] = toText(response[property]);
+								continue;
+							}
+
+							returnItem[property] = response[property];
+						}
 						returnItems.push({
-							json: response,
+							json: returnItem,
 							pairedItem: {
 								item: itemIndex,
 							},
 						});
+					} else {
+						returnItems.push({
+							json: {
+								[outputPropertyName]: toText(response),
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+					}
+				} else {
+					// responseFormat: 'json'
+					if (fullResponse) {
+						const returnItem: IDataObject = {};
+						for (const property of fullResponseProperties) {
+							returnItem[property] = response[property];
+						}
+
+						if (responseFormat === 'json' && typeof returnItem.body === 'string') {
+							try {
+								returnItem.body = JSON.parse(returnItem.body);
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Response body is not valid JSON. Change "Response Format" to "Text"',
+									{ itemIndex },
+								);
+							}
+						}
+
+						returnItems.push({
+							json: returnItem,
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+					} else {
+						if (responseFormat === 'json' && typeof response === 'string') {
+							try {
+								if (typeof response !== 'object') {
+									response = JSON.parse(response);
+								}
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Response body is not valid JSON. Change "Response Format" to "Text"',
+									{ itemIndex },
+								);
+							}
+						}
+
+						if (Array.isArray(response)) {
+							// eslint-disable-next-line @typescript-eslint/no-loop-func
+							response.forEach((item) =>
+								returnItems.push({
+									json: item,
+									pairedItem: {
+										item: itemIndex,
+									},
+								}),
+							);
+						} else {
+							returnItems.push({
+								json: response,
+								pairedItem: {
+									item: itemIndex,
+								},
+							});
+						}
 					}
 				}
 			}
@@ -1520,6 +1961,6 @@ export class HttpRequestV3 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

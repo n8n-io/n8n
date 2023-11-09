@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { clockifyApiRequest, clockifyApiRequestAllItems } from './GenericFunctions';
 
 import type { IClientDto, IWorkspaceDto } from './WorkpaceInterfaces';
@@ -29,8 +30,6 @@ import { timeEntryFields, timeEntryOperations } from './TimeEntryDescription';
 import { userFields, userOperations } from './UserDescription';
 
 import { workspaceFields, workspaceOperations } from './WorkspaceDescription';
-
-import moment from 'moment-timezone';
 
 export class Clockify implements INodeType {
 	description: INodeTypeDescription = {
@@ -764,7 +763,7 @@ export class Clockify implements INodeType {
 							body.start = moment.tz(body.start, timezone).utc().format();
 						} else {
 							// even if you do not want to update the start time, it always has to be set
-							// to make it more simple to the user, if he did not set a start time look for the current start time
+							// to make it more simple to the user, if they did not set a start time look for the current start time
 							// and set it
 							const {
 								timeInterval: { start },
@@ -848,6 +847,6 @@ export class Clockify implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

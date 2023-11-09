@@ -1,34 +1,32 @@
 import convict from 'convict';
 import dotenv from 'dotenv';
-import { tmpdir } from 'os';
-import { mkdtempSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { schema } from './schema';
+import { readFileSync } from 'fs';
+import { setGlobalState } from 'n8n-workflow';
 import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
 		E2E_TESTS: 'true',
-		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
 		EXECUTIONS_PROCESS: 'main',
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_PUBLIC_API_DISABLED: 'true',
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
+		N8N_AI_ENABLED: 'true',
 	};
 } else if (inTest) {
+	process.env.N8N_LOG_LEVEL = 'silent';
+	process.env.N8N_ENCRYPTION_KEY = 'test-encryption-key';
 	process.env.N8N_PUBLIC_API_DISABLED = 'true';
-	process.env.N8N_PUBLIC_API_SWAGGERUI_DISABLED = 'true';
+	process.env.SKIP_STATISTICS_EVENTS = 'true';
 } else {
 	dotenv.config();
 }
 
-const config = convict(schema);
-
-if (inE2ETests) {
-	config.set('enterprise.features.sharing', true);
-}
+// Load schema after process.env has been overwritten
+import { schema } from './schema';
+const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
@@ -70,6 +68,10 @@ if (!inE2ETests && !inTest) {
 
 config.validate({
 	allowed: 'strict',
+});
+
+setGlobalState({
+	defaultTimezone: config.getEnv('generic.timezone'),
 });
 
 // eslint-disable-next-line import/no-default-export

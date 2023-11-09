@@ -9,9 +9,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { convertKitApiRequest } from './GenericFunctions';
-
 import { snakeCase } from 'change-case';
+import { convertKitApiRequest } from './GenericFunctions';
 
 export class ConvertKitTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -173,7 +172,7 @@ export class ConvertKitTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the tags to display them to user so that he can
+			// Get all the tags to display them to user so that they can
 			// select them easily
 			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -193,7 +192,7 @@ export class ConvertKitTrigger implements INodeType {
 
 				return returnData;
 			},
-			// Get all the forms to display them to user so that he can
+			// Get all the forms to display them to user so that they can
 			// select them easily
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -214,7 +213,7 @@ export class ConvertKitTrigger implements INodeType {
 				return returnData;
 			},
 
-			// Get all the sequences to display them to user so that he can
+			// Get all the sequences to display them to user so that they can
 			// select them easily
 			async getSequences(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -237,7 +236,6 @@ export class ConvertKitTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

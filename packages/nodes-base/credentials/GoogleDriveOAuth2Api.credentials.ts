@@ -22,5 +22,12 @@ export class GoogleDriveOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: scopes.join(' '),
 		},
+		{
+			displayName:
+				'Make sure that you have enabled the Google Drive API in the Google Cloud Console. <a href="https://docs.n8n.io/integrations/builtin/credentials/google/oauth-generic/#scopes" target="_blank">More info</a>.',
+			name: 'notice',
+			type: 'notice',
+			default: '',
+		},
 	];
 }

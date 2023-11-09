@@ -1,9 +1,11 @@
 import { Command, flags } from '@oclif/command';
 import type { DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { DataSource as Connection } from 'typeorm';
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
+import { Container } from 'typedi';
+import { Logger } from '@/Logger';
 import { getConnectionOptions } from '@/Db';
+import type { Migration } from '@db/types';
+import { wrapMigration } from '@db/utils/migrationHelpers';
 import config from '@/config';
 
 export class DbRevertMigrationCommand extends Command {
@@ -15,7 +17,7 @@ export class DbRevertMigrationCommand extends Command {
 		help: flags.help({ char: 'h' }),
 	};
 
-	protected logger = LoggerProxy.init(getLogger());
+	protected logger = Container.get(Logger);
 
 	private connection: Connection;
 
@@ -33,6 +35,8 @@ export class DbRevertMigrationCommand extends Command {
 			dropSchema: false,
 			logging: ['query', 'error', 'schema'],
 		};
+
+		(connectionOptions.migrations as Migration[]).forEach(wrapMigration);
 
 		this.connection = new Connection(connectionOptions);
 		await this.connection.initialize();

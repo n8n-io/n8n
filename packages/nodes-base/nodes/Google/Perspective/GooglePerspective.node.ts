@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import ISO6391 from 'iso-639-1';
 import type {
 	AttributesValuesUi,
 	CommentAnalyzeBody,
@@ -17,8 +18,6 @@ import type {
 } from './types';
 
 import { googleApiRequest } from './GenericFunctions';
-
-import ISO6391 from 'iso-639-1';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
@@ -175,7 +174,7 @@ export class GooglePerspective implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available languages to display them to user so that he can
+			// Get all the available languages to display them to user so that they can
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -282,6 +281,6 @@ export class GooglePerspective implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

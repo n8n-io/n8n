@@ -10,6 +10,8 @@ export function setupServer() {
 		seeds(server) {
 			server.createList('credentialType', 8);
 			server.create('user', {
+				firstName: 'Nathan',
+				lastName: 'Doe',
 				isDefaultUser: true,
 			});
 		},
@@ -21,13 +23,13 @@ export function setupServer() {
 	// Enable logging
 	server.logging = false;
 
-	// Handle undefined endpoints
-	server.post('/rest/:any', () => new Promise(() => {}));
-
 	// Handle defined endpoints
 	for (const endpointsFn of endpoints) {
 		endpointsFn(server);
 	}
+
+	// Handle undefined endpoints
+	server.post('/rest/:any', async () => ({}));
 
 	// Reset for everything else
 	server.namespace = '';

@@ -1,3 +1,9 @@
+import { createWriteStream } from 'fs';
+import { basename, dirname } from 'path';
+import type { Readable } from 'stream';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -10,16 +16,11 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, NodeApiError } from 'n8n-workflow';
-import { createWriteStream } from 'fs';
-import { basename, dirname } from 'path';
-import type { Readable } from 'stream';
-import { pipeline } from 'stream';
-import { promisify } from 'util';
 import { file as tmpFile } from 'tmp-promise';
 
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
+import { formatPrivateKey } from '@utils/utilities';
 
 interface ReturnFtpItem {
 	type: string;
@@ -64,6 +65,10 @@ async function callRecursiveList(
 
 		// Is directory
 		if (item.type === 'd') {
+			// ignore . and .. to prevent infinite loop
+			if (item.name === '.' || item.name === '..') {
+				return;
+			}
 			pathArray.push(currentPath);
 		}
 
@@ -459,14 +464,22 @@ export class Ftp implements INodeType {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
 					const sftp = new sftpClient();
-					await sftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						username: credentials.username as string,
-						password: credentials.password as string,
-						privateKey: credentials.privateKey as string | undefined,
-						passphrase: credentials.passphrase as string | undefined,
-					});
+					if (credentials.privateKey) {
+						await sftp.connect({
+							host: credentials.host as string,
+							port: credentials.port as number,
+							username: credentials.username as string,
+							privateKey: formatPrivateKey(credentials.privateKey as string),
+							passphrase: credentials.passphrase as string | undefined,
+						});
+					} else {
+						await sftp.connect({
+							host: credentials.host as string,
+							port: credentials.port as number,
+							username: credentials.username as string,
+							password: credentials.password as string,
+						});
+					}
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -502,14 +515,22 @@ export class Ftp implements INodeType {
 
 			if (protocol === 'sftp') {
 				sftp = new sftpClient();
-				await sftp.connect({
-					host: credentials.host as string,
-					port: credentials.port as number,
-					username: credentials.username as string,
-					password: credentials.password as string,
-					privateKey: credentials.privateKey as string | undefined,
-					passphrase: credentials.passphrase as string | undefined,
-				});
+				if (credentials.privateKey) {
+					await sftp.connect({
+						host: credentials.host as string,
+						port: credentials.port as number,
+						username: credentials.username as string,
+						privateKey: formatPrivateKey(credentials.privateKey as string),
+						passphrase: credentials.passphrase as string | undefined,
+					});
+				} else {
+					await sftp.connect({
+						host: credentials.host as string,
+						port: credentials.port as number,
+						username: credentials.username as string,
+						password: credentials.password as string,
+					});
+				}
 			} else {
 				ftp = new ftpClient();
 				await ftp.connect({
@@ -601,11 +622,11 @@ export class Ftp implements INodeType {
 							await sftp!.get(path, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-							const filePathDownload = this.getNodeParameter('path', i) as string;
+							const remoteFilePath = this.getNodeParameter('path', i) as string;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
-								filePathDownload,
+								basename(remoteFilePath),
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -628,7 +649,7 @@ export class Ftp implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -697,11 +718,11 @@ export class Ftp implements INodeType {
 							await streamPipeline(stream, createWriteStream(binaryFile.path));
 
 							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
-							const filePathDownload = this.getNodeParameter('path', i) as string;
+							const remoteFilePath = this.getNodeParameter('path', i) as string;
 
-							items[i].binary![dataPropertyNameDownload] = await this.helpers.copyBinaryFile(
+							items[i].binary![dataPropertyNameDownload] = await this.nodeHelpers.copyBinaryFile(
 								binaryFile.path,
-								filePathDownload,
+								basename(remoteFilePath),
 							);
 
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -738,7 +759,7 @@ export class Ftp implements INodeType {
 
 							let uploadData: Buffer | Readable;
 							if (binaryData.id) {
-								uploadData = this.helpers.getBinaryStream(binaryData.id);
+								uploadData = await this.helpers.getBinaryStream(binaryData.id);
 							} else {
 								uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 							}
@@ -785,7 +806,7 @@ export class Ftp implements INodeType {
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				return this.prepareOutputData([{ json: { error: error.message } }]);
+				return [[{ json: { error: error.message } }]];
 			}
 
 			throw error;

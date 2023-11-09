@@ -1,21 +1,19 @@
+import { createHmac } from 'crypto';
 import type { OptionsWithUrl } from 'request';
 
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { createHmac } from 'crypto';
-
 import qs from 'qs';
 
 export async function unleashedApiRequest(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
 	body: IDataObject = {},

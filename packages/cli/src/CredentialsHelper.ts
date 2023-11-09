@@ -1,13 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-
+import { Service } from 'typedi';
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import type {
 	ICredentialDataDecryptedObject,
@@ -32,6 +30,9 @@ import type {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	IWorkflowExecuteAdditionalData,
+	ICredentialTestFunctions,
+	Severity,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -39,7 +40,6 @@ import {
 	NodeHelpers,
 	RoutingNode,
 	Workflow,
-	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
@@ -51,9 +51,11 @@ import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
-import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { Container } from 'typedi';
+import { isObjectLiteral } from './utils';
+import { Logger } from '@/Logger';
+
+const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
 const mockNode = {
 	name: '',
@@ -84,13 +86,24 @@ const mockNodeTypes: INodeTypes = {
 	},
 };
 
+class CredentialNotFoundError extends Error {
+	severity: Severity;
+
+	constructor(credentialId: string, credentialType: string) {
+		super(`Credential with ID "${credentialId}" does not exist for type "${credentialType}".`);
+		this.severity = 'warning';
+	}
+}
+
+@Service()
 export class CredentialsHelper extends ICredentialsHelper {
 	constructor(
-		encryptionKey: string,
-		private credentialTypes = Container.get(CredentialTypes),
-		private nodeTypes = Container.get(NodeTypes),
+		private readonly logger: Logger,
+		private readonly credentialTypes: CredentialTypes,
+		private readonly nodeTypes: NodeTypes,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {
-		super(encryptionKey);
+		super();
 	}
 
 	/**
@@ -102,7 +115,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		incomingRequestOptions: IHttpRequestOptions | IRequestOptionsSimplified,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): Promise<IHttpRequestOptions> {
 		const requestOptions = incomingRequestOptions;
 		const credentialType = this.credentialTypes.getByName(typeName);
@@ -110,7 +122,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialType.authenticate) {
 			if (typeof credentialType.authenticate === 'function') {
 				// Special authentication function is defined
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+
 				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
 
@@ -127,20 +139,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 				if (authenticate.type === 'generic') {
 					Object.entries(authenticate.properties).forEach(([outerKey, outerValue]) => {
 						Object.entries(outerValue).forEach(([key, value]) => {
-							keyResolved = this.resolveValue(
-								key,
-								{ $credentials: credentials },
-								workflow,
-								node,
-								defaultTimezone,
-							);
+							keyResolved = this.resolveValue(key, { $credentials: credentials }, workflow, node);
 
 							valueResolved = this.resolveValue(
 								value as string,
 								{ $credentials: credentials },
 								workflow,
 								node,
-								defaultTimezone,
 							);
 
 							// @ts-ignore
@@ -172,7 +177,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			(property) => property.type === 'hidden' && property?.typeOptions?.expirable === true,
 		);
 
-		if (expirableProperty === undefined || expirableProperty.name === undefined) {
+		if (expirableProperty?.name === undefined) {
 			return undefined;
 		}
 
@@ -217,14 +222,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 	/**
 	 * Resolves the given value in case it is an expression
 	 */
-	resolveValue(
+	private resolveValue(
 		parameterValue: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		workflow: Workflow,
 		node: INode,
-		defaultTimezone: string,
 	): string {
-		if (parameterValue.charAt(0) !== '=') {
+		if (typeof parameterValue !== 'string' || parameterValue.charAt(0) !== '=') {
 			return parameterValue;
 		}
 
@@ -232,7 +236,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			node,
 			parameterValue,
 			'internal',
-			defaultTimezone,
 			additionalKeys,
 			undefined,
 			'',
@@ -254,9 +257,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Returns the credentials instance
-	 *
-	 * @param {INodeCredentialsDetails} nodeCredential id and name to return instance of
-	 * @param {string} type Type of the credential to return instance of
 	 */
 	async getCredentials(
 		nodeCredential: INodeCredentialsDetails,
@@ -267,17 +267,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		const credential = userId
-			? await Db.collections.SharedCredentials.findOneOrFail({
-					relations: ['credentials'],
-					where: { credentials: { id: nodeCredential.id, type }, userId },
-			  }).then((shared) => shared.credentials)
-			: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+		let credential: CredentialsEntity;
 
-		if (!credential) {
-			throw new Error(
-				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
-			);
+		try {
+			credential = userId
+				? await Db.collections.SharedCredentials.findOneOrFail({
+						relations: ['credentials'],
+						where: { credentials: { id: nodeCredential.id, type }, userId },
+				  }).then((shared) => shared.credentials)
+				: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+		} catch (error) {
+			throw new CredentialNotFoundError(nodeCredential.id, type);
 		}
 
 		return new Credentials(
@@ -290,8 +290,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Returns all the properties of the credentials with the given name
-	 *
-	 * @param {string} type The name of the type to return credentials off
 	 */
 	getCredentialsProperties(type: string): INodeProperties[] {
 		const credentialTypeData = this.credentialTypes.getByName(type);
@@ -333,32 +331,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Returns the decrypted credential data with applied overwrites
-	 *
-	 * @param {INodeCredentialsDetails} nodeCredentials id and name to return instance of
-	 * @param {string} type Type of the credentials to return data of
-	 * @param {boolean} [raw] Return the data as supplied without defaults or overwrites
 	 */
 	async getDecrypted(
+		additionalData: IWorkflowExecuteAdditionalData,
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
-		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
+		const decryptedDataOriginal = credentials.getData();
 
 		if (raw === true) {
 			return decryptedDataOriginal;
 		}
 
+		await additionalData?.secretsHelpers?.waitForInit();
+
+		const canUseSecrets = await this.credentialOwnedByOwner(nodeCredentials);
+
 		return this.applyDefaultsAndOverwrites(
+			additionalData,
 			decryptedDataOriginal,
 			type,
 			mode,
-			defaultTimezone,
 			expressionResolveValues,
+			canUseSecrets,
 		);
 	}
 
@@ -366,16 +365,20 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Applies credential default data and overwrites
 	 */
 	applyDefaultsAndOverwrites(
+		additionalData: IWorkflowExecuteAdditionalData,
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
 		type: string,
 		mode: WorkflowExecuteMode,
-		defaultTimezone: string,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
+		canUseSecrets?: boolean,
 	): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
 		// Load and apply the credentials overwrites if any exist
-		const dataWithOverwrites = CredentialsOverwrites().applyOverwrite(type, decryptedDataOriginal);
+		const dataWithOverwrites = this.credentialsOverwrites.applyOverwrite(
+			type,
+			decryptedDataOriginal,
+		);
 
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
@@ -392,10 +395,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
-		if (expressionResolveValues) {
-			const timezone =
-				(expressionResolveValues.workflow.settings.timezone as string) || defaultTimezone;
+		const additionalKeys = NodeExecuteFunctions.getAdditionalKeys(additionalData, mode, null, {
+			secretsEnabled: canUseSecrets,
+		});
 
+		if (expressionResolveValues) {
 			try {
 				decryptedData = expressionResolveValues.workflow.expression.getParameterValue(
 					decryptedData as INodeParameters,
@@ -405,14 +409,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 					expressionResolveValues.node.name,
 					expressionResolveValues.connectionInputData,
 					mode,
-					timezone,
-					{},
+					additionalKeys,
 					undefined,
 					false,
 					decryptedData,
 				) as ICredentialDataDecryptedObject;
 			} catch (e) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				e.message += ' [Error resolving credentials]';
 				throw e;
 			}
@@ -429,8 +431,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				mockNode,
 				decryptedData as INodeParameters,
 				mode,
-				defaultTimezone,
-				{},
+				additionalKeys,
 				undefined,
 				undefined,
 				decryptedData,
@@ -442,26 +443,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Updates credentials in the database
-	 *
-	 * @param {string} name Name of the credentials to set data of
-	 * @param {string} type Type of the credentials to set data of
-	 * @param {ICredentialDataDecryptedObject} data The data to set
 	 */
 	async updateCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/await-thenable
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		if (!Db.isInitialized) {
-			// The first time executeWorkflow gets called the Database has
-			// to get initialized first
-			await Db.init();
-		}
-
-		credentials.setData(data, this.encryptionKey);
+		credentials.setData(data);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 		// Add special database related data
@@ -474,6 +464,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		};
 
 		await Db.collections.Credentials.update(findQuery, newCredentialsData);
+	}
+
+	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
+		const oauthTokenData = credentialsDecrypted?.data?.oauthTokenData;
+
+		if (!isObjectLiteral(oauthTokenData)) return false;
+
+		return 'access_token' in oauthTokenData;
 	}
 
 	private getCredentialTestFunction(
@@ -506,6 +504,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
 				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
+					if (
+						name === credentialType &&
+						this.credentialTypes.getParentTypes(name).includes('oAuth2Api')
+					) {
+						return async function oauth2CredTest(
+							this: ICredentialTestFunctions,
+							cred: ICredentialsDecrypted,
+						): Promise<INodeCredentialTestResult> {
+							return CredentialsHelper.hasAccessToken(cred)
+								? {
+										status: 'OK',
+										message: OAUTH2_CREDENTIAL_TEST_SUCCEEDED,
+								  }
+								: {
+										status: 'Error',
+										message: OAUTH2_CREDENTIAL_TEST_FAILED,
+								  };
+						};
+					}
+
 					if (name === credentialType && !!testedBy) {
 						if (typeof testedBy === 'string') {
 							if (node instanceof VersionedNodeType) {
@@ -544,23 +562,36 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<INodeCredentialTestResult> {
 		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
-			return Promise.resolve({
+			return {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
-			});
+			};
 		}
 
 		if (credentialsDecrypted.data) {
-			credentialsDecrypted.data = CredentialsOverwrites().applyOverwrite(
-				credentialType,
-				credentialsDecrypted.data,
-			);
+			try {
+				const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+				credentialsDecrypted.data = this.applyDefaultsAndOverwrites(
+					additionalData,
+					credentialsDecrypted.data,
+					credentialType,
+					'internal' as WorkflowExecuteMode,
+					undefined,
+					user.isOwner,
+				);
+			} catch (error) {
+				this.logger.debug('Credential test failed', error);
+				return {
+					status: 'Error',
+					message: error.message.toString(),
+				};
+			}
 		}
 
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
 			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+
 			return credentialTestFunction.call(credentialTestFunctions, credentialsDecrypted);
 		}
 
@@ -695,9 +726,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					return {
 						status: 'Error',
 						message:
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							errorResponseData.statusMessage ||
-							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}
@@ -707,7 +736,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					message: error.cause.code,
 				};
 			}
-			Logger.debug('Credential test failed', error);
+			this.logger.debug('Credential test failed', error);
 			return {
 				status: 'Error',
 				message: error.message.toString(),
@@ -739,36 +768,36 @@ export class CredentialsHelper extends ICredentialsHelper {
 			message: 'Connection successful!',
 		};
 	}
-}
 
-/**
- * Get a credential if it has been shared with a user.
- */
-export async function getCredentialForUser(
-	credentialId: string,
-	user: User,
-): Promise<ICredentialsDb | null> {
-	const sharedCredential = await Db.collections.SharedCredentials.findOne({
-		relations: ['credentials'],
-		where: whereClause({
-			user,
-			entityType: 'credentials',
-			entityId: credentialId,
-		}),
-	});
+	async credentialOwnedByOwner(nodeCredential: INodeCredentialsDetails): Promise<boolean> {
+		if (!nodeCredential.id) {
+			return false;
+		}
 
-	if (!sharedCredential) return null;
+		const credential = await Db.collections.SharedCredentials.findOne({
+			where: {
+				role: {
+					scope: 'credential',
+					name: 'owner',
+				},
+				user: {
+					globalRole: {
+						scope: 'global',
+						name: 'owner',
+					},
+				},
+				credentials: {
+					id: nodeCredential.id,
+				},
+			},
+		});
 
-	return sharedCredential.credentials as ICredentialsDb;
-}
+		if (!credential) {
+			return false;
+		}
 
-/**
- * Get a credential without user check
- */
-export async function getCredentialWithoutUser(
-	credentialId: string,
-): Promise<ICredentialsDb | null> {
-	return Db.collections.Credentials.findOneBy({ id: credentialId });
+		return true;
+	}
 }
 
 export function createCredentialsFromCredentialsEntity(

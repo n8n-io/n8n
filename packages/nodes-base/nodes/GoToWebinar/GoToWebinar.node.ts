@@ -9,6 +9,20 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import isEmpty from 'lodash/isEmpty';
+import omit from 'lodash/omit';
+
+import moment from 'moment-timezone';
+import {
+	goToWebinarApiRequest,
+	goToWebinarApiRequestAllItems,
+	handleGetAll,
+	loadAnswers,
+	loadRegistranMultiChoiceQuestions,
+	loadRegistranSimpleQuestions,
+	loadWebinars,
+	loadWebinarSessions,
+} from './GenericFunctions';
 import {
 	attendeeFields,
 	attendeeOperations,
@@ -23,22 +37,6 @@ import {
 	webinarFields,
 	webinarOperations,
 } from './descriptions';
-
-import {
-	goToWebinarApiRequest,
-	goToWebinarApiRequestAllItems,
-	handleGetAll,
-	loadAnswers,
-	loadRegistranMultiChoiceQuestions,
-	loadRegistranSimpleQuestions,
-	loadWebinars,
-	loadWebinarSessions,
-} from './GenericFunctions';
-
-import isEmpty from 'lodash.isempty';
-import omit from 'lodash.omit';
-
-import moment from 'moment-timezone';
 
 export class GoToWebinar implements INodeType {
 	description: INodeTypeDescription = {
@@ -120,7 +118,7 @@ export class GoToWebinar implements INodeType {
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
 				return loadWebinarSessions.call(this);
 			},
-			// Get all the timezones to display them to user so that he can
+			// Get all the timezones to display them to user so that they can
 			// select them easily
 			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -652,6 +650,6 @@ export class GoToWebinar implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

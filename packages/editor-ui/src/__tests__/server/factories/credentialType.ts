@@ -1,5 +1,4 @@
 import { Factory } from 'miragejs';
-import { faker } from '@faker-js/faker';
 import type { ICredentialType } from 'n8n-workflow';
 
 const credentialTypes = [

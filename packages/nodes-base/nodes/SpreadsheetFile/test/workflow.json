@@ -1,7 +1,4 @@
 {
-	"meta": {
-		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
-	},
 	"nodes": [
 		{
 			"parameters": {},
@@ -29,11 +26,11 @@
 		},
 		{
 			"parameters": {
-				"filePath": "C:\\Users\\spech\\Documents\\GitHub\\n8n-master\\packages\\nodes-base\\nodes\\SpreadsheetFile\\test\\spreadsheet.csv"
+				"fileSelector": "spreadsheet.csv"
 			},
 			"id": "d7620053-eb3d-43dd-b2cd-d60d9a08a9cc",
 			"name": "Read Binary File",
-			"type": "n8n-nodes-base.readBinaryFile",
+			"type": "n8n-nodes-base.readBinaryFiles",
 			"typeVersion": 1,
 			"position": [
 				840,
@@ -173,6 +170,22 @@
 				1060,
 				940
 			]
+		},
+		{
+			"parameters": {
+				"fileFormat": "csv",
+				"options": {
+					"maxRowCount": 1
+				}
+			},
+			"id": "de905389-a11b-4dd8-8416-14d650804445",
+			"name": "Read CSV with Row Limit",
+			"type": "n8n-nodes-base.spreadsheetFile",
+			"typeVersion": 2,
+			"position": [
+				-60,
+				1340
+			]
 		}
 	],
 	"connections": {
@@ -243,6 +256,11 @@
 					},
 					{
 						"node": "Read From File Read as String",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Read CSV with Row Limit",
 						"type": "main",
 						"index": 0
 					}

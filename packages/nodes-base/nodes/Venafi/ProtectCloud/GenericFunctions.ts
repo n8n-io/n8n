@@ -2,7 +2,6 @@ import type { OptionsWithUri } from 'request';
 
 import type {
 	IExecuteFunctions,
-	IExecuteSingleFunctions,
 	ILoadOptionsFunctions,
 	IDataObject,
 	IHookFunctions,
@@ -10,12 +9,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 import * as nacl_factory from 'js-nacl';
 
 export async function venafiApiRequest(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
 	body = {},

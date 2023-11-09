@@ -7,9 +7,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { snakeCase } from 'change-case';
 import { getFileSha, githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
 
-import { snakeCase } from 'change-case';
 import { getRepositories, getUsers } from './SearchFunctions';
 
 export class Github implements INodeType {
@@ -2269,7 +2269,7 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return this.prepareOutputData(returnData);
+			return [returnData];
 		} else {
 			// For all other ones simply return the unchanged items
 			return [items];

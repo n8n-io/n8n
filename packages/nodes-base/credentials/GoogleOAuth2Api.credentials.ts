@@ -9,7 +9,7 @@ export class GoogleOAuth2Api implements ICredentialType {
 
 	documentationUrl = 'google/oauth-generic';
 
-	icon = 'file:Google.svg';
+	icon = 'file:icons/Google.svg';
 
 	properties: INodeProperties[] = [
 		{

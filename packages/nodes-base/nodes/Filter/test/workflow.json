@@ -1,0 +1,599 @@
+{
+	"name": "filter tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "f12d6634-c941-4e1b-837d-5c480678dafa",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [300, 1000]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    id: 1,\n    name: 'Adam',\n    subscribed: false,\n    updatedAt: '2011-10-05T14:48:00.000Z',\n    notes: null,\n    email: 'adam@mail.com',\n  },\n  {\n    id: 2,\n    name: 'Victor',\n    subscribed: true,\n    updatedAt: '2020-10-05T14:48:00.000Z',\n    notes: 'some notes',\n    email: 'victor@mail.com',\n  },\n  {\n    id: 3,\n    name: 'Sam',\n    subscribed: true,\n    updatedAt: '2021-10-05T14:48:00.000Z',\n    notes: 'other notes',\n    email: 'sam@mail.com',\n  },  \n];"
+			},
+			"id": "032d6d92-27f4-4b07-b45f-5b79bdea594a",
+			"name": "Code",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [600, 1000]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json.subscribed }}",
+							"value2": true
+						},
+						{
+							"value1": "={{ !$json.notes }}",
+							"operation": "notEqual",
+							"value2": true
+						}
+					]
+				}
+			},
+			"id": "b6935975-5ba9-4daf-b240-7883d34e3198",
+			"name": "Filter Boolean",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 340]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"dateTime": [
+						{
+							"value1": "={{ $json.updatedAt }}",
+							"value2": "2018-12-31T22:00:00.000Z"
+						},
+						{
+							"value1": "={{ $json.updatedAt }}",
+							"operation": "before",
+							"value2": "2021-08-03T03:30:08.000Z"
+						}
+					]
+				}
+			},
+			"id": "56f5f03c-2d65-4abe-bbed-0a14cc2bd7c4",
+			"name": "Filter Date",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 520]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "smallerEqual",
+							"value2": 5
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"value2": 10
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "notEqual",
+							"value2": 4
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "larger",
+							"value2": 1
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "largerEqual",
+							"value2": 2
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "isNotEmpty"
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "equal",
+							"value2": 3
+						}
+					]
+				}
+			},
+			"id": "b944927d-070b-4e04-9dc2-1e884e7535ae",
+			"name": "Filter Number",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 680]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.notes }}",
+							"operation": "contains",
+							"value2": "notes"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "endsWith",
+							"value2": "com"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notContains",
+							"value2": "foo"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notEndsWith",
+							"value2": "gmail"
+						},
+						{
+							"value1": "={{ $json.notes }}",
+							"operation": "notContains",
+							"value2": "spam"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notEqual",
+							"value2": "={{ null }}"
+						},
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "regex",
+							"value2": "/^[A-Z][a-z]*$/"
+						},
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notRegex",
+							"value2": "^[A-Z]+$/"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notStartsWith",
+							"value2": "a"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "isNotEmpty"
+						}
+					]
+				}
+			},
+			"id": "19968f30-116e-441a-8cd7-ea9b55deac27",
+			"name": "Filter String",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 820]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"boolean": [
+						{
+							"value1": "={{ $json.subscribed }}",
+							"value2": true
+						},
+						{
+							"value1": "={{ !$json.notes }}",
+							"operation": "notEqual",
+							"value2": true
+						},
+						{
+							"value1": "={{ $json.subscribed }}"
+						}
+					]
+				},
+				"combineConditions": "OR"
+			},
+			"id": "eebb6476-8f80-4d63-ac37-7c7e4b04c2f0",
+			"name": "Filter Boolean1",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 1020]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"dateTime": [
+						{
+							"value1": "={{ $json.updatedAt }}",
+							"value2": "2018-12-31T22:00:00.000Z"
+						},
+						{
+							"value1": "={{ $json.updatedAt }}",
+							"operation": "before",
+							"value2": "2021-08-03T03:30:08.000Z"
+						}
+					]
+				},
+				"combineConditions": "OR"
+			},
+			"id": "bd6d0ad9-aede-40d5-96b2-3f8ba96e92ab",
+			"name": "Filter Date1",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 1200]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"number": [
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "smallerEqual",
+							"value2": 5
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"value2": 10
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "notEqual",
+							"value2": 4
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "larger",
+							"value2": 1
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "largerEqual",
+							"value2": 2
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "isNotEmpty"
+						},
+						{
+							"value1": "={{ $json.id }}",
+							"operation": "equal",
+							"value2": 3
+						}
+					]
+				},
+				"combineConditions": "OR"
+			},
+			"id": "7c93501e-92c1-4b51-823e-3265f9141f3a",
+			"name": "Filter Number1",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 1360]
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"string": [
+						{
+							"value1": "={{ $json.notes }}",
+							"operation": "contains",
+							"value2": "notes"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "endsWith",
+							"value2": "com"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notContains",
+							"value2": "foo"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notEndsWith",
+							"value2": "gmail"
+						},
+						{
+							"value1": "={{ $json.notes }}",
+							"operation": "notContains",
+							"value2": "spam"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notEqual",
+							"value2": "={{ null }}"
+						},
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "regex",
+							"value2": "/^[A-Z][a-z]*$/"
+						},
+						{
+							"value1": "={{ $json.name }}",
+							"operation": "notRegex",
+							"value2": "^[A-Z]+$/"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "notStartsWith",
+							"value2": "a"
+						},
+						{
+							"value1": "={{ $json.email }}",
+							"operation": "isNotEmpty"
+						}
+					]
+				},
+				"combineConditions": "OR"
+			},
+			"id": "ba84910a-d2c2-4cc6-b0db-9eec2b54da6c",
+			"name": "Filter String1",
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 1,
+			"position": [1040, 1500]
+		}
+	],
+	"pinData": {
+		"Filter Boolean": [
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		],
+		"Filter Date": [
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			}
+		],
+		"Filter Number": [
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		],
+		"Filter String": [
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		],
+		"Filter Boolean1": [
+			{
+				"json": {
+					"id": 1,
+					"name": "Adam",
+					"subscribed": false,
+					"updatedAt": "2011-10-05T14:48:00.000Z",
+					"notes": null,
+					"email": "adam@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		],
+		"Filter Date1": [
+			{
+				"json": {
+					"id": 1,
+					"name": "Adam",
+					"subscribed": false,
+					"updatedAt": "2011-10-05T14:48:00.000Z",
+					"notes": null,
+					"email": "adam@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		],
+		"Filter Number1": [
+			{
+				"json": {
+					"id": 1,
+					"name": "Adam",
+					"subscribed": false,
+					"updatedAt": "2011-10-05T14:48:00.000Z",
+					"notes": null,
+					"email": "adam@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		],
+		"Filter String1": [
+			{
+				"json": {
+					"id": 1,
+					"name": "Adam",
+					"subscribed": false,
+					"updatedAt": "2011-10-05T14:48:00.000Z",
+					"notes": null,
+					"email": "adam@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "Victor",
+					"subscribed": true,
+					"updatedAt": "2020-10-05T14:48:00.000Z",
+					"notes": "some notes",
+					"email": "victor@mail.com"
+				}
+			},
+			{
+				"json": {
+					"id": 3,
+					"name": "Sam",
+					"subscribed": true,
+					"updatedAt": "2021-10-05T14:48:00.000Z",
+					"notes": "other notes",
+					"email": "sam@mail.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Code",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Code": {
+			"main": [
+				[
+					{
+						"node": "Filter Boolean",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter Date",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter Number",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter String",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter Boolean1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter Date1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter Number1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Filter String1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "a4e0701c-9bfd-40aa-b9ec-fc57948d2c0f",
+	"id": "136",
+	"meta": {
+		"instanceId": "36203ea1ce3cef713fa25999bd9874ae26b9e4c2c3a90a365f2882a154d031d0"
+	},
+	"tags": []
+}

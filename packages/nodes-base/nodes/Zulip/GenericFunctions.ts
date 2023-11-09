@@ -26,7 +26,7 @@ export async function zulipApiRequest(
 ) {
 	const credentials = await this.getCredentials('zulipApi');
 
-	const endpoint = `${credentials.url}/api/v1`;
+	const endpoint = `${credentials.url.toString().replace(new RegExp('/$'), '')}/api/v1`;
 
 	let options: OptionsWithUri = {
 		auth: {

@@ -1,15 +1,15 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
-import type clientOAuth2 from 'client-oauth2';
+import type { ClientOAuth2, ClientOAuth2Options, ClientOAuth2Token } from '@n8n/client-oauth2';
 
 export const getClientCredentialsToken = async (
-	oAuth2Client: clientOAuth2,
+	oAuth2Client: ClientOAuth2,
 	credentials: ICredentialDataDecryptedObject,
-): Promise<clientOAuth2.Token> => {
+): Promise<ClientOAuth2Token> => {
 	const options = {};
 	if (credentials.authentication === 'body') {
 		Object.assign(options, {
 			headers: {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
 				Authorization: '',
 			},
 			body: {
@@ -18,5 +18,5 @@ export const getClientCredentialsToken = async (
 			},
 		});
 	}
-	return oAuth2Client.credentials.getToken(options);
+	return oAuth2Client.credentials.getToken(options as ClientOAuth2Options);
 };

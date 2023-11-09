@@ -5,7 +5,7 @@ export class WorkflowsPage extends BasePage {
 	getters = {
 		newWorkflowButtonCard: () => cy.getByTestId('new-workflow-card'),
 		newWorkflowTemplateCard: () => cy.getByTestId('new-workflow-template-card'),
-		searchBar: () => cy.getByTestId('resources-list-search').find('input'),
+		searchBar: () => cy.getByTestId('resources-list-search'),
 		createWorkflowButton: () => cy.getByTestId('resources-list-add'),
 		workflowCards: () => cy.getByTestId('resources-list-item'),
 		workflowCard: (workflowName: string) =>
@@ -23,6 +23,14 @@ export class WorkflowsPage extends BasePage {
 			this.getters.workflowCard(workflowName).findChildByTestId('workflow-card-actions'),
 		workflowDeleteButton: () =>
 			cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
+		workflowFilterButton: () => cy.getByTestId('resources-list-filters-trigger').filter(':visible'),
+		workflowTagsDropdown: () => cy.getByTestId('tags-dropdown'),
+		workflowTagItem: (tag: string) => cy.getByTestId('tag').contains(tag),
+		workflowStatusDropdown: () => cy.getByTestId('status-dropdown'),
+		workflowStatusItem: (status: string) => cy.getByTestId('status').contains(status),
+		workflowOwnershipDropdown: () => cy.getByTestId('user-select-trigger'),
+		workflowOwner: (email: string) => cy.getByTestId('user-email').contains(email),
+		workflowResetFilters: () => cy.getByTestId('workflows-filter-reset'),
 		// Not yet implemented
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),
@@ -36,8 +44,10 @@ export class WorkflowsPage extends BasePage {
 			cy.visit(this.url);
 			this.getters.workflowCardActions(name).click();
 			this.getters.workflowDeleteButton().click();
+			cy.intercept('DELETE', '/rest/workflows/*').as('deleteWorkflow');
 
 			cy.get('button').contains('delete').click();
+			cy.wait('@deleteWorkflow');
 		},
 	};
 }

@@ -23,6 +23,10 @@ export class OAuth2Api implements ICredentialType {
 					name: 'Client Credentials',
 					value: 'clientCredentials',
 				},
+				{
+					name: 'PKCE',
+					value: 'pkce',
+				},
 			],
 			default: 'authorizationCode',
 		},
@@ -32,7 +36,7 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					grantType: ['authorizationCode'],
+					grantType: ['authorizationCode', 'pkce'],
 				},
 			},
 			default: '',
@@ -74,7 +78,7 @@ export class OAuth2Api implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					grantType: ['authorizationCode'],
+					grantType: ['authorizationCode', 'pkce'],
 				},
 			},
 			default: '',
@@ -99,6 +103,13 @@ export class OAuth2Api implements ICredentialType {
 				},
 			],
 			default: 'header',
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
+			doNotInherit: true,
 		},
 	];
 }

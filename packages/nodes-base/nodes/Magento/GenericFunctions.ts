@@ -11,8 +11,7 @@ import type {
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
-
-import type { Address, Filter, FilterGroup, ProductAttribute, Search } from './Types';
+import type { Filter, Address, Search, FilterGroup, ProductAttribute } from './types';
 
 export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,

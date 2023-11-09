@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import { CONTROLLER_BASE_PATH } from './constants';
 
 export const RestController =

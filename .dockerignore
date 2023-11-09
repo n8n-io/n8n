@@ -10,3 +10,4 @@ packages/**/.turbo
 .git
 .github
 *.tsbuildinfo
+packages/cli/dist/**/e2e.*

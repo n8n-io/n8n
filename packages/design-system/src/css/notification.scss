@@ -9,9 +9,15 @@
 	box-sizing: border-box;
 	border: 1px solid var.$notification-border-color;
 	position: fixed;
-	background-color: var.$color-white;
+	background-color: var(--color-notification-background);
 	box-shadow: var.$notification-shadow;
-	transition: opacity 0.3s, transform 0.3s, left 0.3s, right 0.3s, top 0.4s, bottom 0.3s;
+	transition:
+		opacity 0.3s,
+		transform 0.3s,
+		left 0.3s,
+		right 0.3s,
+		top 0.4s,
+		bottom 0.3s;
 	overflow: hidden;
 
 	&.right {
@@ -67,24 +73,24 @@
 		}
 	}
 
-	.el-icon-success {
+	.el-icon.el-notification--success {
 		color: var.$notification-success-icon-color;
 	}
 
-	.el-icon-error {
+	.el-icon.el-notification--error {
 		color: var.$notification-danger-icon-color;
 	}
 
-	.el-icon-info {
+	.el-icon.el-notification--info {
 		color: var.$notification-info-icon-color;
 	}
 
-	.el-icon-warning {
+	.el-icon.el-notification--warning {
 		color: var.$notification-warning-icon-color;
 	}
 }
 
-.el-notification-fade-enter {
+.el-notification-fade-enter-from {
 	&.right {
 		right: 0;
 		transform: translateX(100%);

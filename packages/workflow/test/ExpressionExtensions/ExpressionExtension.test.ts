@@ -2,6 +2,8 @@
  * @jest-environment jsdom
  */
 
+/* eslint-disable n8n-local-rules/no-interpolation-in-regular-string */
+
 import { extendTransform } from '@/Extensions';
 import { joinExpression, splitExpression } from '@/Extensions/ExpressionParser';
 import { evaluate } from './Helpers';

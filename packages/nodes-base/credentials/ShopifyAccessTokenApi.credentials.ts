@@ -34,6 +34,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			name: 'appSecretKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Secret key needed to verify the webhook when using Shopify Trigger node',
 		},

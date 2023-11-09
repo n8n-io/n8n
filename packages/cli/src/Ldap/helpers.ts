@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-import { AES, enc } from 'crypto-js';
 import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
-import { UserSettings } from 'n8n-core';
+import { Container } from 'typedi';
+import { Cipher } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
@@ -10,29 +10,34 @@ import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { AuthIdentity } from '@db/entities/AuthIdentity';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
-import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
 
 import {
 	BINARY_AD_ATTRIBUTES,
 	LDAP_CONFIG_SCHEMA,
-	LDAP_ENABLED,
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
 import type { ConnectionSecurity, LdapConfig } from './types';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
-import { getLicense } from '@/License';
-import { Container } from 'typedi';
+import { jsonParse } from 'n8n-workflow';
+import { License } from '@/License';
 import { InternalHooks } from '@/InternalHooks';
+import {
+	getCurrentAuthenticationMethod,
+	isEmailCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso/ssoHelpers';
+import { BadRequestError, InternalServerError } from '../ResponseHelper';
+import { RoleService } from '@/services/role.service';
+import { Logger } from '@/Logger';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
  */
-export const isLdapEnabled = (): boolean => {
-	const license = getLicense();
-	return isUserManagementEnabled() && (config.getEnv(LDAP_ENABLED) || license.isLdapEnabled());
+export const isLdapEnabled = () => {
+	return Container.get(License).isLdapEnabled();
 };
 
 /**
@@ -50,9 +55,21 @@ export const setLdapLoginLabel = (value: string): void => {
 /**
  * Set the LDAP login enabled to the configuration object
  */
-export const setLdapLoginEnabled = (value: boolean): void => {
-	config.set(LDAP_LOGIN_ENABLED, value);
-};
+export async function setLdapLoginEnabled(enabled: boolean): Promise<void> {
+	if (isEmailCurrentAuthenticationMethod() || isLdapCurrentAuthenticationMethod()) {
+		if (enabled) {
+			config.set(LDAP_LOGIN_ENABLED, true);
+			await setCurrentAuthenticationMethod('ldap');
+		} else if (!enabled) {
+			config.set(LDAP_LOGIN_ENABLED, false);
+			await setCurrentAuthenticationMethod('email');
+		}
+	} else {
+		throw new InternalServerError(
+			`Cannot switch LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+		);
+	}
+}
 
 /**
  * Retrieve the LDAP login label from the configuration object
@@ -75,7 +92,7 @@ export const randomPassword = (): string => {
  * Return the user role to be assigned to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
-	return Db.collections.Role.findOneByOrFail({ scope: 'global', name: 'member' });
+	return Container.get(RoleService).findGlobalMemberRole();
 };
 
 /**
@@ -94,22 +111,6 @@ export const validateLdapConfigurationSchema = (
 };
 
 /**
- * Encrypt password using the instance's encryption key
- */
-export const encryptPassword = async (password: string): Promise<string> => {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return AES.encrypt(password, encryptionKey).toString();
-};
-
-/**
- * Decrypt password using the instance's encryption key
- */
-export const decryptPassword = async (password: string): Promise<string> => {
-	const encryptionKey = await UserSettings.getEncryptionKey();
-	return AES.decrypt(password, encryptionKey).toString(enc.Utf8);
-};
-
-/**
  * Retrieve the LDAP configuration (decrypted) form the database
  */
 export const getLdapConfig = async (): Promise<LdapConfig> => {
@@ -117,7 +118,7 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 		key: LDAP_FEATURE_NAME,
 	});
 	const configurationData = jsonParse<LdapConfig>(configuration.value);
-	configurationData.bindingAdminPassword = await decryptPassword(
+	configurationData.bindingAdminPassword = Container.get(Cipher).decrypt(
 		configurationData.bindingAdminPassword,
 	);
 	return configurationData;
@@ -126,8 +127,8 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 /**
  * Take the LDAP configuration and set login enabled and login label to the config object
  */
-export const setGlobalLdapConfigVariables = (ldapConfig: LdapConfig): void => {
-	setLdapLoginEnabled(ldapConfig.loginEnabled);
+export const setGlobalLdapConfigVariables = async (ldapConfig: LdapConfig): Promise<void> => {
+	await setLdapLoginEnabled(ldapConfig.loginEnabled);
 	setLdapLoginLabel(ldapConfig.loginLabel);
 };
 
@@ -154,20 +155,19 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 		throw new Error(message);
 	}
 
+	if (ldapConfig.loginEnabled && getCurrentAuthenticationMethod() === 'saml') {
+		throw new BadRequestError('LDAP cannot be enabled if SSO in enabled');
+	}
+
 	LdapManager.updateConfig({ ...ldapConfig });
 
-	ldapConfig.bindingAdminPassword = await encryptPassword(ldapConfig.bindingAdminPassword);
+	ldapConfig.bindingAdminPassword = Container.get(Cipher).encrypt(ldapConfig.bindingAdminPassword);
 
 	if (!ldapConfig.loginEnabled) {
 		ldapConfig.synchronizationEnabled = false;
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
 			await deleteAllLdapIdentities();
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_update',
-				users: ldapUsers.length,
-				user_ids: ldapUsers.map((user) => user.id),
-			});
 		}
 	}
 
@@ -175,7 +175,7 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
 		{ key: LDAP_FEATURE_NAME },
 		{ value: JSON.stringify(ldapConfig), loadOnStartup: true },
 	);
-	setGlobalLdapConfigVariables(ldapConfig);
+	await setGlobalLdapConfigVariables(ldapConfig);
 };
 
 /**
@@ -183,21 +183,19 @@ export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> =>
  * If it's the first run of this feature, all the default data is created in the database
  */
 export const handleLdapInit = async (): Promise<void> => {
-	if (!isLdapEnabled()) {
-		const ldapUsers = await getLdapUsers();
-		if (ldapUsers.length) {
-			void Container.get(InternalHooks).onLdapUsersDisabled({
-				reason: 'ldap_feature_deactivated',
-				users: ldapUsers.length,
-				user_ids: ldapUsers.map((user) => user.id),
-			});
-		}
-		return;
-	}
+	if (!isLdapEnabled()) return;
 
 	const ldapConfig = await getLdapConfig();
 
-	setGlobalLdapConfigVariables(ldapConfig);
+	try {
+		await setGlobalLdapConfigVariables(ldapConfig);
+	} catch (error) {
+		Container.get(Logger).warn(
+			`Cannot set LDAP login enabled state when an authentication method other than email or ldap is active (current: ${getCurrentAuthenticationMethod()})`,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			error,
+		);
+	}
 
 	// init LDAP manager with the current
 	// configuration
@@ -242,7 +240,7 @@ export const findAndAuthenticateLdapUser = async (
 			void Container.get(InternalHooks).onLdapLoginSyncFailed({
 				error: e.message,
 			});
-			Logger.error('LDAP - Error during search', { message: e.message });
+			Container.get(Logger).error('LDAP - Error during search', { message: e.message });
 		}
 		return undefined;
 	}
@@ -268,7 +266,9 @@ export const findAndAuthenticateLdapUser = async (
 		await ldapService.validUser(user.dn, password);
 	} catch (e) {
 		if (e instanceof Error) {
-			Logger.error('LDAP - Error validating user against LDAP server', { message: e.message });
+			Container.get(Logger).error('LDAP - Error validating user against LDAP server', {
+				message: e.message,
+			});
 		}
 		return undefined;
 	}

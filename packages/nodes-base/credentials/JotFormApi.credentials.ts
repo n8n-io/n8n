@@ -28,6 +28,10 @@ export class JotFormApi implements ICredentialType {
 					name: 'eu-api.jotform.com',
 					value: 'eu-api.jotform.com',
 				},
+				{
+					name: 'hipaa-api.jotform.com',
+					value: 'hipaa-api.jotform.com',
+				},
 			],
 			default: 'api.jotform.com',
 			description:

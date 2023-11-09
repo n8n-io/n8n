@@ -1,13 +1,6 @@
 import type express from 'express';
 
-import { BinaryDataManager } from 'n8n-core';
-
-import {
-	getExecutions,
-	getExecutionInWorkflows,
-	deleteExecution,
-	getExecutionsCount,
-} from './executions.service';
+import { getExecutions, getExecutionInWorkflows, getExecutionsCount } from './executions.service';
 import { ActiveExecutions } from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import type { ExecutionRequest } from '../../../types';
@@ -15,6 +8,7 @@ import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { Container } from 'typedi';
 import { InternalHooks } from '@/InternalHooks';
+import { ExecutionRepository } from '@/databases/repositories';
 
 export = {
 	deleteExecution: [
@@ -23,7 +17,7 @@ export = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
 			// user does not have workflows hence no executions
-			// or the execution he is trying to access belongs to a workflow he does not own
+			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -37,9 +31,10 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id);
-
-			await deleteExecution(execution);
+			await Container.get(ExecutionRepository).hardDelete({
+				workflowId: execution.workflowId as string,
+				executionId: execution.id,
+			});
 
 			execution.id = id;
 
@@ -52,7 +47,7 @@ export = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
 			// user does not have workflows hence no executions
-			// or the execution he is trying to access belongs to a workflow he does not own
+			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
 				return res.status(404).json({ message: 'Not Found' });
 			}
@@ -90,8 +85,8 @@ export = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user);
 
 			// user does not have workflows hence no executions
-			// or the execution he is trying to access belongs to a workflow he does not own
-			if (!sharedWorkflowsIds.length) {
+			// or the execution they are trying to access belongs to a workflow they do not own
+			if (!sharedWorkflowsIds.length || (workflowId && !sharedWorkflowsIds.includes(workflowId))) {
 				return res.status(200).json({ data: [], nextCursor: null });
 			}
 
@@ -105,7 +100,7 @@ export = {
 				limit,
 				lastId,
 				includeData,
-				...(workflowId && { workflowIds: [workflowId] }),
+				workflowIds: workflowId ? [workflowId] : sharedWorkflowsIds,
 				excludedExecutionsIds: runningExecutionsIds,
 			};
 

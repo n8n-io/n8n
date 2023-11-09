@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable no-param-reassign */
-/* eslint-disable no-continue */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-restricted-syntax */
-import get from 'lodash.get';
-import merge from 'lodash.merge';
-import set from 'lodash.set';
+
+import get from 'lodash/get';
+import merge from 'lodash/merge';
+import set from 'lodash/set';
 
 import type {
 	ICredentialDataDecryptedObject,
@@ -39,7 +35,9 @@ import type {
 	INodePropertyCollection,
 	NodeParameterValueType,
 	PostReceiveAction,
+	JsonObject,
 } from './Interfaces';
+import type { NodeError } from './NodeErrors';
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as NodeHelpers from './NodeHelpers';
 
@@ -125,8 +123,9 @@ export class RoutingNode {
 
 		// TODO: Think about how batching could be handled for REST APIs which support it
 		for (let i = 0; i < items.length; i++) {
+			let thisArgs: IExecuteSingleFunctions | undefined;
 			try {
-				const thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
+				thisArgs = nodeExecuteFunctions.getExecuteSingleFunctions(
 					this.workflow,
 					this.runExecutionData,
 					runIndex,
@@ -213,15 +212,30 @@ export class RoutingNode {
 
 				returnData.push(...responseData);
 			} catch (error) {
-				if (get(this.node, 'continueOnFail', false)) {
-					returnData.push({ json: {}, error: error.message });
+				if (thisArgs !== undefined && thisArgs.continueOnFail()) {
+					returnData.push({ json: {}, error: error as NodeError });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, {
+
+				interface AxiosError extends NodeError {
+					isAxiosError: boolean;
+					description: string | undefined;
+					response?: { status: number };
+				}
+
+				let routingError = error as AxiosError;
+
+				if (error instanceof NodeApiError) routingError = error.cause as AxiosError;
+
+				throw new NodeApiError(this.node, error as JsonObject, {
 					runIndex,
 					itemIndex: i,
-					message: error?.message,
-					description: error?.description,
+					message: routingError?.message,
+					description: routingError?.description,
+					httpCode:
+						routingError.isAxiosError && routingError.response
+							? String(routingError.response?.status)
+							: 'none',
 				});
 			}
 		}
@@ -277,7 +291,7 @@ export class RoutingNode {
 					});
 				});
 			} catch (error) {
-				throw new NodeOperationError(this.node, error, {
+				throw new NodeOperationError(this.node, error as Error, {
 					runIndex,
 					itemIndex,
 					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
@@ -357,7 +371,6 @@ export class RoutingNode {
 		if (action.type === 'setKeyValue') {
 			const returnData: INodeExecutionData[] = [];
 
-			// eslint-disable-next-line @typescript-eslint/no-loop-func
 			inputData.forEach((item) => {
 				const returnItem: IDataObject = {};
 				for (const key of Object.keys(action.properties)) {
@@ -452,7 +465,7 @@ export class RoutingNode {
 			}
 		} else {
 			// No postReceive functionality got defined so simply add data as it is
-			// eslint-disable-next-line no-lonely-if
+
 			if (Array.isArray(responseData.body)) {
 				returnData = responseData.body.map((json) => {
 					return {
@@ -704,7 +717,6 @@ export class RoutingNode {
 				this.node.name,
 				this.connectionInputData,
 				this.mode,
-				this.additionalData.timezone,
 				additionalKeys ?? {},
 				executeData,
 				returnObjectAsString,
@@ -812,7 +824,7 @@ export class RoutingNode {
 
 					if (nodeProperties.routing.send.type === 'body') {
 						// Send in "body"
-						// eslint-disable-next-line no-lonely-if
+
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							(returnData.options.body as Record<string, any>)![propertyName] = value;
@@ -821,7 +833,7 @@ export class RoutingNode {
 						}
 					} else {
 						// Send in "query"
-						// eslint-disable-next-line no-lonely-if
+
 						if (nodeProperties.routing.send.propertyInDotNotation === false) {
 							returnData.options.qs![propertyName] = value;
 						} else {

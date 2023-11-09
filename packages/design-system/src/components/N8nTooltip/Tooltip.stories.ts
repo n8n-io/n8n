@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nTooltip from './Tooltip.vue';
 
 export default {
@@ -36,15 +36,40 @@ export default {
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nTooltip,
 	},
-	template:
-		'<n8n-tooltip v-bind="$props"><div style="margin:50px; display: inline-block;"><span>yo</span></div></n8n-tooltip>',
+	template: '<n8n-tooltip v-bind="args"><button>Hover me</button></n8n-tooltip>',
 });
 
 export const Tooltip = Template.bind({});
 Tooltip.args = {
 	content: '...',
+};
+
+export const TooltipWithButtons = Template.bind({});
+TooltipWithButtons.args = {
+	content: 'Hello world!',
+	buttons: [
+		{
+			attrs: {
+				label: 'Button 1',
+				'data-test-id': 'tooltip-button',
+			},
+			listeners: {
+				onClick: () => alert('Clicked 1'),
+			},
+		},
+		{
+			attrs: {
+				label: 'Button 2',
+				'data-test-id': 'tooltip-button',
+			},
+			listeners: {
+				onClick: () => alert('Clicked 2'),
+			},
+		},
+	],
 };

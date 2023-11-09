@@ -5,15 +5,17 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list
-				:parameters="getProperties"
-				:nodeValues="nodeValues"
-				:path="path"
-				:hideDelete="hideDelete"
-				:indent="true"
-				:isReadOnly="isReadOnly"
-				@valueChanged="valueChanged"
-			/>
+			<Suspense>
+				<parameter-input-list
+					:parameters="getProperties"
+					:nodeValues="nodeValues"
+					:path="path"
+					:hideDelete="hideDelete"
+					:indent="true"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+			</Suspense>
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -28,7 +30,7 @@
 						v-model="selectedOption"
 						:placeholder="getPlaceholderText"
 						size="small"
-						@change="optionSelected"
+						@update:modelValue="optionSelected"
 						filterable
 					>
 						<n8n-option
@@ -46,21 +48,24 @@
 </template>
 
 <script lang="ts">
-import { INodeUi, IUpdateInformation } from '@/Interface';
+import { defineAsyncComponent, defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import { deepCopy, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash-es';
 
-import mixins from 'vue-typed-mixins';
-import { Component } from 'vue';
-import { mapStores } from 'pinia';
-import { useNDVStore } from '@/stores/ndv';
+import { useNDVStore } from '@/stores/ndv.store';
 
-export default mixins(nodeHelpers).extend({
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+
+export default defineComponent({
 	name: 'CollectionParameter',
+	mixins: [nodeHelpers],
 	props: [
 		'hideDelete', // boolean
 		'nodeValues', // NodeParameters
@@ -70,7 +75,7 @@ export default mixins(nodeHelpers).extend({
 		'isReadOnly', // boolean
 	],
 	components: {
-		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {
@@ -107,11 +112,9 @@ export default mixins(nodeHelpers).extend({
 		},
 		// Returns all the options which did not get added already
 		parameterOptions(): Array<INodePropertyOptions | INodeProperties> {
-			return (this.filteredOptions as Array<INodePropertyOptions | INodeProperties>).filter(
-				(option) => {
-					return !this.propertyNames.includes(option.name);
-				},
-			);
+			return this.filteredOptions.filter((option) => {
+				return !this.propertyNames.includes(option.name);
+			});
 		},
 		propertyNames(): string[] {
 			if (this.values) {
@@ -205,7 +208,28 @@ export default mixins(nodeHelpers).extend({
 		margin-top: var(--spacing-xs);
 
 		.button {
+			color: var(--color-text-dark);
+			font-weight: var(--font-weight-normal);
+			--button-border-color: var(--color-foreground-base);
 			--button-background-color: var(--color-background-base);
+
+			--button-hover-font-color: var(--color-button-secondary-font);
+			--button-hover-border-color: var(--color-foreground-base);
+			--button-hover-background-color: var(--color-background-base);
+
+			--button-active-font-color: var(--color-button-secondary-font);
+			--button-active-border-color: var(--color-foreground-base);
+			--button-active-background-color: var(--color-background-base);
+
+			--button-focus-font-color: var(--color-button-secondary-font);
+			--button-focus-border-color: var(--color-foreground-base);
+			--button-focus-background-color: var(--color-background-base);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
 		}
 	}
 

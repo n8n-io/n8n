@@ -1,0 +1,19 @@
+{
+	"node": "n8n-nodes-base.quickChart",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Marketing & Content"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/quickchart"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickchart/"
+			}
+		]
+	},
+	"alias": ["image", "graph", "report", "chart", "diagram", "data", "visualize"]
+}

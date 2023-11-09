@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto';
 import type {
 	IHookFunctions,
 	IWebhookFunctions,
@@ -10,8 +11,6 @@ import type {
 } from 'n8n-workflow';
 
 import { clickupApiRequest } from './GenericFunctions';
-
-import { createHmac } from 'crypto';
 
 export class ClickUpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -242,7 +241,7 @@ export class ClickUpTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available teams to display them to user so that he can
+			// Get all the available teams to display them to user so that they can
 			// select them easily
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -260,7 +259,6 @@ export class ClickUpTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

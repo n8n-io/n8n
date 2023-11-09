@@ -1,17 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
-import {
+import type {
 	INode,
 	IConnections,
 	IRunExecutionData,
-	Workflow,
 	IExecuteData,
-	WorkflowDataProxy,
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
 	IVersionedNodeType,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { Workflow, WorkflowDataProxy, NodeHelpers } from 'n8n-workflow';
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {
@@ -293,7 +291,7 @@ const executeData: IExecuteData = {
 	data: runExecutionData.resultData.runData[lastNodeName][0].data!,
 	node: nodes.find((node) => node.name === lastNodeName) as INode,
 	source: {
-		main: runExecutionData.resultData.runData[lastNodeName][0].source!,
+		main: runExecutionData.resultData.runData[lastNodeName][0].source,
 	},
 };
 
@@ -306,7 +304,6 @@ const dataProxy = new WorkflowDataProxy(
 	lastNodeConnectionInputData || [],
 	{},
 	'manual',
-	'America/New_York',
 	{},
 	executeData,
 );

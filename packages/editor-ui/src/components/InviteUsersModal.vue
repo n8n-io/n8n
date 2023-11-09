@@ -35,21 +35,9 @@
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
-				@input="onInput"
+				@update="onInput"
 				@submit="onSubmit"
 			/>
-			<n8n-info-tip v-if="!settingsStore.isSmtpSetup" class="mt-s">
-				<i18n path="settings.users.setupSMTPInfo">
-					<template #link>
-						<a
-							href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-							target="_blank"
-						>
-							{{ $locale.baseText('settings.users.setupSMTPInfo.link') }}
-						</a>
-					</template>
-				</i18n>
-			</n8n-info-tip>
 		</template>
 		<template v-if="!showInviteUrls" #footer>
 			<n8n-button
@@ -64,18 +52,17 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-
-import { showMessage } from '@/mixins/showMessage';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+import { useToast } from '@/composables';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
-import Vue from 'vue';
-import { IFormInputs, IInviteResponse, IUser } from '@/Interface';
+import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
-import { mapStores } from 'pinia';
-import { useUsersStore } from '@/stores/users';
-import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users.store';
+import { useSettingsStore } from '@/stores/settings.store';
+import { createEventBus } from 'n8n-design-system/utils';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -90,19 +77,25 @@ function getEmail(email: string): string {
 	return parsed;
 }
 
-export default mixins(showMessage, copyPaste).extend({
-	components: { Modal },
+export default defineComponent({
 	name: 'InviteUsersModal',
+	mixins: [copyPaste],
+	components: { Modal },
 	props: {
 		modalName: {
 			type: String,
 		},
 	},
+	setup() {
+		return {
+			...useToast(),
+		};
+	},
 	data() {
 		return {
 			config: null as IFormInputs | null,
-			formBus: new Vue(),
-			modalBus: new Vue(),
+			formBus: createEventBus(),
+			modalBus: createEventBus(),
 			emails: '',
 			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
@@ -224,7 +217,7 @@ export default mixins(showMessage, copyPaste).extend({
 				);
 
 				if (successfulEmailInvites.length) {
-					this.$showMessage({
+					this.showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
 							successfulEmailInvites.length > 1
@@ -244,7 +237,7 @@ export default mixins(showMessage, copyPaste).extend({
 						this.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
 					}
 
-					this.$showMessage({
+					this.showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
 							successfulUrlInvites.length > 1
@@ -266,7 +259,7 @@ export default mixins(showMessage, copyPaste).extend({
 
 				if (erroredInvites.length) {
 					setTimeout(() => {
-						this.$showMessage({
+						this.showMessage({
 							type: 'error',
 							title: this.$locale.baseText('settings.users.usersEmailedError'),
 							message: this.$locale.baseText('settings.users.emailInvitesSentError', {
@@ -279,15 +272,15 @@ export default mixins(showMessage, copyPaste).extend({
 				if (successfulUrlInvites.length > 1) {
 					this.showInviteUrls = successfulUrlInvites;
 				} else {
-					this.modalBus.$emit('close');
+					this.modalBus.emit('close');
 				}
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
+				this.showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
 			}
 			this.loading = false;
 		},
 		showCopyInviteLinkToast(successfulUrlInvites: IInviteResponse[]) {
-			this.$showMessage({
+			this.showMessage({
 				type: 'success',
 				title: this.$locale.baseText(
 					successfulUrlInvites.length > 1
@@ -307,7 +300,7 @@ export default mixins(showMessage, copyPaste).extend({
 			});
 		},
 		onSubmitClick() {
-			this.formBus.$emit('submit');
+			this.formBus.emit('submit');
 		},
 		onCopyInviteLink(user: IUser) {
 			if (user.inviteAcceptUrl && this.showInviteUrls) {

@@ -302,8 +302,8 @@ export class AwsSns implements INodeType {
 
 					const params = [
 						'TopicArn=' + topic,
-						'Subject=' + (this.getNodeParameter('subject', i) as string),
-						'Message=' + (this.getNodeParameter('message', i) as string),
+						'Subject=' + encodeURIComponent(this.getNodeParameter('subject', i) as string),
+						'Message=' + encodeURIComponent(this.getNodeParameter('message', i) as string),
 					];
 
 					const responseData = await awsApiRequestSOAP.call(

@@ -44,7 +44,7 @@
 <script lang="ts" setup>
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
-import { useCanvasStore } from '@/stores/canvas';
+import { useCanvasStore } from '@/stores/canvas.store';
 
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
@@ -76,7 +76,7 @@ onBeforeUnmount(() => {
 .zoomMenu {
 	position: absolute;
 	width: 210px;
-	bottom: 108px;
+	bottom: var(--spacing-2xl);
 	left: 35px;
 	line-height: 25px;
 	color: #444;

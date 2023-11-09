@@ -9,6 +9,13 @@ export class AirtableApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'API Keys will be deprecated by the end of January 2024, see <a href="https://support.airtable.com/docs/airtable-api-key-deprecation-notice" target="_blank">this article</a> for more details. We recommend to use Personal Access Token instead.',
+			name: 'deprecated',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',

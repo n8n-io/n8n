@@ -7,7 +7,7 @@ import type {
 	IHttpRequestOptions,
 } from 'n8n-workflow';
 
-import get from 'lodash.get';
+import get from 'lodash/get';
 
 export async function customerIoApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -32,7 +32,13 @@ export async function customerIoApiRequest(
 		const region = credentials.region;
 		options.url = `https://${region}/api/v1${endpoint}`;
 	} else if (baseApi === 'api') {
-		options.url = `https://api.customer.io/v1/api${endpoint}`;
+		const region = credentials.region;
+		// Special handling for EU region
+		if (region === 'track-eu.customer.io') {
+			options.url = `https://api-eu.customer.io/v1/api${endpoint}`;
+		} else {
+			options.url = `https://api.customer.io/v1/api${endpoint}`;
+		}
 	} else if (baseApi === 'beta') {
 		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
 	}

@@ -60,7 +60,7 @@ export const pipelineFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Version control system',
+		description: 'Source control system',
 	},
 	{
 		displayName: 'Project Slug',

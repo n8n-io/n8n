@@ -24,7 +24,9 @@
 					:key="property.name + index"
 					class="parameter-item"
 				>
-					<div class="parameter-item-wrapper">
+					<div
+						:class="index ? 'border-top-dashed parameter-item-wrapper ' : 'parameter-item-wrapper'"
+					>
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon
 								icon="trash"
@@ -49,14 +51,16 @@
 								/>
 							</div>
 						</div>
-						<parameter-input-list
-							:parameters="property.values"
-							:nodeValues="nodeValues"
-							:path="getPropertyPath(property.name, index)"
-							:hideDelete="true"
-							:isReadOnly="isReadOnly"
-							@valueChanged="valueChanged"
-						/>
+						<Suspense>
+							<parameter-input-list
+								:parameters="property.values"
+								:nodeValues="nodeValues"
+								:path="getPropertyPath(property.name, index)"
+								:hideDelete="true"
+								:isReadOnly="isReadOnly"
+								@valueChanged="valueChanged"
+							/>
+						</Suspense>
 					</div>
 				</div>
 			</div>
@@ -96,7 +100,7 @@
 					v-model="selectedOption"
 					:placeholder="getPlaceholderText"
 					size="small"
-					@change="optionSelected"
+					@update:modelValue="optionSelected"
 					filterable
 				>
 					<n8n-option
@@ -112,21 +116,23 @@
 </template>
 
 <script lang="ts">
-import Vue, { Component, PropType } from 'vue';
-import { IUpdateInformation } from '@/Interface';
+import { defineAsyncComponent, defineComponent } from 'vue';
+import type { PropType } from 'vue';
+import type { IUpdateInformation } from '@/Interface';
 
-import {
+import type {
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValue,
-	deepCopy,
-	isINodePropertyCollectionList,
 } from 'n8n-workflow';
+import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash-es';
 
-export default Vue.extend({
+const ParameterInputList = defineAsyncComponent(async () => import('./ParameterInputList.vue'));
+
+export default defineComponent({
 	name: 'FixedCollectionParameter',
 	props: {
 		nodeValues: {
@@ -151,7 +157,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		ParameterInputList,
 	},
 	data() {
 		return {
@@ -337,15 +343,33 @@ export default Vue.extend({
 </script>
 
 <style scoped lang="scss">
-::v-deep {
-	.button {
-		--button-background-color: var(--color-background-base);
-		--button-border-color: var(--color-foreground-base);
-	}
-}
-
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
+
+	:deep(.button) {
+		font-weight: var(--font-weight-normal);
+		--button-font-color: var(--color-text-dark);
+		--button-border-color: var(--color-foreground-base);
+		--button-background-color: var(--color-background-base);
+
+		--button-hover-font-color: var(--color-text-dark);
+		--button-hover-border-color: var(--color-foreground-base);
+		--button-hover-background-color: var(--color-background-base);
+
+		--button-active-font-color: var(--color-text-dark);
+		--button-active-border-color: var(--color-foreground-base);
+		--button-active-background-color: var(--color-background-base);
+
+		--button-focus-font-color: var(--color-text-dark);
+		--button-focus-border-color: var(--color-foreground-base);
+		--button-focus-background-color: var(--color-background-base);
+
+		&:active,
+		&.active,
+		&:focus {
+			outline: none;
+		}
+	}
 }
 
 .fixed-collection-parameter-property {
@@ -373,13 +397,15 @@ export default Vue.extend({
 
 	+ .parameter-item {
 		.parameter-item-wrapper {
-			border-top: 1px dashed #999;
-
 			.delete-option {
 				top: 14px;
 			}
 		}
 	}
+}
+
+.border-top-dashed {
+	border-top: 1px dashed #999;
 }
 
 .no-items-exist {

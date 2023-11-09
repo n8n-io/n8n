@@ -2,10 +2,10 @@
  * Captures any pasted data and sends it to method "receivedCopyPasteData" which has to be
  * defined on the component which uses this mixin
  */
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import { debounce } from 'lodash-es';
 
-export const copyPaste = Vue.extend({
+export const copyPaste = defineComponent({
 	data() {
 		return {
 			copyPasteElementsGotCreated: false,
@@ -15,7 +15,7 @@ export const copyPaste = Vue.extend({
 		};
 	},
 	mounted() {
-		if (this.copyPasteElementsGotCreated === true) {
+		if (this.copyPasteElementsGotCreated) {
 			return;
 		}
 
@@ -111,7 +111,7 @@ export const copyPaste = Vue.extend({
 				// Check if the event got emitted from a message box or from something
 				// else which should ignore the copy/paste
 				// @ts-ignore
-				const path = e.path || (e.composedPath && e.composedPath());
+				const path = e.path || e.composedPath?.();
 				for (let index = 0; index < path.length; index++) {
 					if (
 						path[index].className &&
@@ -226,7 +226,7 @@ export const copyPaste = Vue.extend({
 			}
 		},
 	},
-	beforeDestroy() {
+	beforeUnmount() {
 		if (this.hiddenInput) {
 			this.hiddenInput.remove();
 		}

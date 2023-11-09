@@ -1,11 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class CreateCredentialsUserRole1660062385367 implements MigrationInterface {
-	name = 'CreateCredentialsUserRole1660062385367';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+export class CreateCredentialsUserRole1660062385367 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			INSERT INTO ${tablePrefix}role (name, scope)
 			VALUES ('user', 'credential')
@@ -13,8 +9,7 @@ export class CreateCredentialsUserRole1660062385367 implements MigrationInterfac
 		`);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			DELETE FROM ${tablePrefix}role WHERE name='user' AND scope='credential';
 		`);

@@ -41,17 +41,18 @@
 					:key="option.key"
 					:extendAll="extendAll"
 					:allowParentSelect="option.allowParentSelect"
+					:redactValues="redactValues"
 					class="sub-level"
 					@itemSelected="forwardItemSelected"
 				></variable-selector-item>
 			</div>
 		</div>
 		<div v-else class="value clickable" @click="selectItem(item)">
-			<div class="item-title ph-no-capture" :title="item.key">
+			<div class="item-title" :title="item.key">
 				{{ item.name }}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
-			<div class="item-value">
+			<div :class="{ 'ph-no-capture': redactValues, 'item-value': true }">
 				{{ item.value !== undefined ? item.value : $locale.baseText('variableSelectorItem.empty') }}
 			</div>
 		</div>
@@ -59,14 +60,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
+import { defineComponent } from 'vue';
+import type { IVariableSelectorOption, IVariableItemSelected } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
-import mixins from 'vue-typed-mixins';
 
-export default mixins(externalHooks).extend({
+export default defineComponent({
 	name: 'VariableSelectorItem',
-	props: ['allowParentSelect', 'extendAll', 'item'],
+	mixins: [externalHooks],
+	props: ['allowParentSelect', 'extendAll', 'item', 'redactValues'],
 	mounted() {
 		if (this.extended) return;
 

@@ -9,9 +9,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import { keapApiRequest } from './GenericFunctions';
-
 import { capitalCase } from 'change-case';
+import { keapApiRequest } from './GenericFunctions';
 
 export class KeapTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -67,7 +66,7 @@ export class KeapTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the event types to display them to user so that he can
+			// Get all the event types to display them to user so that they can
 			// select them easily
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -85,7 +84,6 @@ export class KeapTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {

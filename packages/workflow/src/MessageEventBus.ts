@@ -5,7 +5,7 @@ import type { INodeCredentials } from './Interfaces';
 // General Enums And Interfaces
 // ===============================
 
-export enum EventMessageTypeNames {
+export const enum EventMessageTypeNames {
 	generic = '$$EventMessage',
 	audit = '$$EventMessageAudit',
 	confirm = '$$EventMessageConfirm',
@@ -13,7 +13,7 @@ export enum EventMessageTypeNames {
 	node = '$$EventMessageNode',
 }
 
-export enum MessageEventBusDestinationTypeNames {
+export const enum MessageEventBusDestinationTypeNames {
 	abstract = '$$AbstractMessageEventBusDestination',
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',

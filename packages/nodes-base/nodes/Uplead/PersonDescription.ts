@@ -41,7 +41,7 @@ export const personFields: INodeProperties[] = [
 		description: 'Email address (e.g – mbenioff@salesforce.com)',
 	},
 	{
-		displayName: 'Fist Name',
+		displayName: 'First Name',
 		name: 'firstname',
 		type: 'string',
 		default: '',

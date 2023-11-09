@@ -1,14 +1,13 @@
 import { debounce } from 'lodash-es';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export const debounceHelper = Vue.extend({
+export const debounceHelper = defineComponent({
 	data() {
 		return {
 			debouncedFunctions: [] as any[],
 		};
 	},
 	methods: {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		async callDebounced(...inputParameters: any[]): Promise<void> {
 			const functionName = inputParameters.shift() as string;
 			const { trailing, debounceTime } = inputParameters.shift();

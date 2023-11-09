@@ -15,6 +15,10 @@
 			<AboutModal />
 		</ModalRoot>
 
+		<ModalRoot :name="CHAT_EMBED_MODAL_KEY">
+			<ChatEmbedModal />
+		</ModalRoot>
+
 		<ModalRoot :name="CREDENTIAL_SELECT_MODAL_KEY">
 			<CredentialsSelectModal />
 		</ModalRoot>
@@ -43,6 +47,10 @@
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_LM_CHAT_MODAL_KEY">
+			<WorkflowLMChat />
+		</ModalRoot>
+
 		<ModalRoot :name="WORKFLOW_SETTINGS_MODAL_KEY">
 			<WorkflowSettings />
 		</ModalRoot>
@@ -61,12 +69,12 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="EXECUTIONS_MODAL_KEY">
-			<ExecutionsModal />
-		</ModalRoot>
-
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
 			<ActivationModal />
+		</ModalRoot>
+
+		<ModalRoot :name="MFA_SETUP_MODAL_KEY">
+			<MfaSetupModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
@@ -107,13 +115,48 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_PUSH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPushModal :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SOURCE_CONTROL_PULL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<SourceControlPullModal :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="EXTERNAL_SECRETS_PROVIDER_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ExternalSecretsProviderModal :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="DEBUG_PAYWALL_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<DebugPaywallModal data-test-id="debug-paywall-modal" :modalName="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_VERSION_RESTORE">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryVersionRestoreModal
+					data-test-id="workflow-history-version-restore-modal"
+					:modalName="modalName"
+					:data="data"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import {
 	ABOUT_MODAL_KEY,
+	CHAT_EMBED_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
@@ -122,7 +165,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
@@ -130,13 +172,21 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
+	WORKFLOW_LM_CHAT_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	SOURCE_CONTROL_PUSH_MODAL_KEY,
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+	DEBUG_PAYWALL_MODAL_KEY,
+	MFA_SETUP_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
+import ChatEmbedModal from './ChatEmbedModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
 import ChangePasswordModal from './ChangePasswordModal.vue';
@@ -151,19 +201,26 @@ import PersonalizationModal from './PersonalizationModal.vue';
 import TagsManager from './TagsManager/TagsManager.vue';
 import UpdatesPanel from './UpdatesPanel.vue';
 import ValueSurvey from './ValueSurvey.vue';
+import WorkflowLMChat from './WorkflowLMChat.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
-import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
+import MfaSetupModal from './MfaSetupModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import SourceControlPushModal from '@/components/SourceControlPushModal.ee.vue';
+import SourceControlPullModal from '@/components/SourceControlPullModal.ee.vue';
+import ExternalSecretsProviderModal from '@/components/ExternalSecretsProviderModal.ee.vue';
+import DebugPaywallModal from '@/components/DebugPaywallModal.vue';
+import WorkflowHistoryVersionRestoreModal from '@/components/WorkflowHistory/WorkflowHistoryVersionRestoreModal.vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'Modals',
 	components: {
 		AboutModal,
 		ActivationModal,
+		ChatEmbedModal,
 		CommunityPackageInstallModal,
 		CommunityPackageManageConfirmModal,
 		ContactPromptModal,
@@ -173,19 +230,26 @@ export default Vue.extend({
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
 		InviteUsersModal,
-		ExecutionsModal,
 		ModalRoot,
 		OnboardingCallSignupModal,
 		PersonalizationModal,
 		TagsManager,
 		UpdatesPanel,
 		ValueSurvey,
+		WorkflowLMChat,
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
+		SourceControlPushModal,
+		SourceControlPullModal,
+		ExternalSecretsProviderModal,
+		DebugPaywallModal,
+		MfaSetupModal,
+		WorkflowHistoryVersionRestoreModal,
 	},
 	data: () => ({
+		CHAT_EMBED_MODAL_KEY,
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
 		COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 		CONTACT_PROMPT_MODAL_KEY,
@@ -200,13 +264,19 @@ export default Vue.extend({
 		INVITE_USER_MODAL_KEY,
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
+		WORKFLOW_LM_CHAT_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
 		WORKFLOW_SHARE_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
-		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
+		SOURCE_CONTROL_PUSH_MODAL_KEY,
+		SOURCE_CONTROL_PULL_MODAL_KEY,
+		EXTERNAL_SECRETS_PROVIDER_MODAL_KEY,
+		DEBUG_PAYWALL_MODAL_KEY,
+		MFA_SETUP_MODAL_KEY,
+		WORKFLOW_HISTORY_VERSION_RESTORE,
 	}),
 });
 </script>

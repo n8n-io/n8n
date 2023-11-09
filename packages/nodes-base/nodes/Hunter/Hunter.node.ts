@@ -384,6 +384,6 @@ export class Hunter implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -1,5 +1,5 @@
 import type { Readable } from 'stream';
-import mergeWith from 'lodash.mergewith';
+import mergeWith from 'lodash/mergeWith';
 
 import type {
 	IBinaryKeyData,
@@ -17,6 +17,7 @@ import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import {
 	filterSortSearchListItems,
+	getUsers,
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
 	simplifyIssueOutput,
@@ -133,7 +134,7 @@ export class Jira implements INodeType {
 
 	methods = {
 		listSearch: {
-			// Get all the projects to display them to user so that he can
+			// Get all the projects to display them to user so that they can
 			// select them easily
 			async getProjects(
 				this: ILoadOptionsFunctions,
@@ -172,7 +173,7 @@ export class Jira implements INodeType {
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
 
-			// Get all the issue types to display them to user so that he can
+			// Get all the issue types to display them to user so that they can
 			// select them easily
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
@@ -182,6 +183,9 @@ export class Jira implements INodeType {
 					`/api/2/project/${projectId}`,
 					'GET',
 				);
+
+				if (!issueTypes) return { results: [] };
+
 				for (const issueType of issueTypes) {
 					const issueTypeName = issueType.name;
 					const issueTypeId = issueType.id;
@@ -203,36 +207,15 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				const query: IDataObject = {};
-				let endpoint = '/api/2/users/search';
+				const users = await getUsers.call(this);
 
-				if (jiraVersion === 'server') {
-					endpoint = '/api/2/user/search';
-					query.username = "'";
-				}
-
-				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
-				const returnData: INodeListSearchItems[] = users.reduce(
-					(activeUsers: INodeListSearchItems[], user: IDataObject) => {
-						if (user.active) {
-							activeUsers.push({
-								name: user.displayName as string,
-								value: (user.accountId ?? user.name) as string,
-							});
-						}
-						return activeUsers;
-					},
-					[],
-				);
-
-				return { results: filterSortSearchListItems(returnData, filter) };
+				return { results: filterSortSearchListItems(users, filter) };
 			},
 
-			// Get all the priorities to display them to user so that he can
+			// Get all the priorities to display them to user so that they can
 			// select them easily
 			async getPriorities(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -262,7 +245,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the transitions (status) to display them to user so that he can
+			// Get all the transitions (status) to display them to user so that they can
 			// select them easily
 			async getTransitions(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -294,7 +277,7 @@ export class Jira implements INodeType {
 				return { results: returnData };
 			},
 
-			// Get all the custom fields to display them to user so that he can
+			// Get all the custom fields to display them to user so that they can
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
@@ -340,7 +323,7 @@ export class Jira implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the labels to display them to user so that he can
+			// Get all the labels to display them to user so that they can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -370,36 +353,13 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the users to display them to user so that he can
+			// Get all the users to display them to user so that they can
 			// select them easily
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				const query: IDataObject = {};
-				let endpoint = '/api/2/users/search';
-
-				if (jiraVersion === 'server') {
-					endpoint = '/api/2/user/search';
-					query.username = "'";
-				}
-
-				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
-
-				return users
-					.reduce((activeUsers: INodePropertyOptions[], user: IDataObject) => {
-						if (user.active) {
-							activeUsers.push({
-								name: user.displayName as string,
-								value: (user.accountId || user.name) as string,
-							});
-						}
-						return activeUsers;
-					}, [])
-					.sort((a: INodePropertyOptions, b: INodePropertyOptions) => {
-						return a.name.toLowerCase() > b.name.toLowerCase() ? 1 : -1;
-					});
+				return getUsers.call(this);
 			},
 
-			// Get all the groups to display them to user so that he can
+			// Get all the groups to display them to user so that they can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -429,7 +389,7 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the components to display them to user so that he can
+			// Get all the components to display them to user so that they can
 			// select them easily
 			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -793,7 +753,6 @@ export class Jira implements INodeType {
 							);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							this.helpers.returnJsonArray(simplifyIssueOutput(responseData)),
 							{ itemData: { item: i } },
 						);
@@ -986,7 +945,7 @@ export class Jira implements INodeType {
 					);
 
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData as IDataObject[]),
+						this.helpers.returnJsonArray({ success: true }), //endpoint returns no content
 						{ itemData: { item: i } },
 					);
 
@@ -1059,7 +1018,7 @@ export class Jira implements INodeType {
 
 					let uploadData: Buffer | Readable;
 					if (binaryData.id) {
-						uploadData = this.helpers.getBinaryStream(binaryData.id);
+						uploadData = await this.helpers.getBinaryStream(binaryData.id);
 					} else {
 						uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 					}
@@ -1500,6 +1459,6 @@ export class Jira implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

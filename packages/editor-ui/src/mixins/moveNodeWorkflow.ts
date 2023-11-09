@@ -1,10 +1,12 @@
-import mixins from 'vue-typed-mixins';
+import { defineComponent } from 'vue';
+import { mapStores } from 'pinia';
+
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/utils/nodeViewUtils';
-import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
+import { useUIStore } from '@/stores/ui.store';
 
-export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
+export const moveNodeWorkflow = defineComponent({
+	mixins: [deviceSupportHelpers],
 	data() {
 		return {
 			moveLastPosition: [0, 0],
@@ -27,8 +29,8 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 			this.moveLastPosition[0] = x;
 			this.moveLastPosition[1] = y;
 		},
-		mouseDownMoveWorkflow(e: MouseEvent) {
-			if (this.isCtrlKeyPressed(e) === false) {
+		mouseDownMoveWorkflow(e: MouseEvent, moveButtonPressed: boolean) {
+			if (!this.isCtrlKeyPressed(e) && !moveButtonPressed) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
 				return;
@@ -39,7 +41,10 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 
-			this.uiStore.nodeViewMoveInProgress = true;
+			// Prevent moving canvas on anything but middle button
+			if (e.button !== 1) {
+				this.uiStore.nodeViewMoveInProgress = true;
+			}
 
 			const [x, y] = getMousePosition(e);
 
@@ -50,7 +55,7 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
 		},
 		mouseUpMoveWorkflow(e: MouseEvent) {
-			if (this.uiStore.nodeViewMoveInProgress === false) {
+			if (!this.uiStore.nodeViewMoveInProgress) {
 				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;
@@ -71,6 +76,11 @@ export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
 
 			if (this.uiStore.isActionActive('dragActive')) {
 				return;
+			}
+
+			// Signal that moving canvas is active if middle button is pressed and mouse is moved
+			if (e.buttons === 4) {
+				this.uiStore.nodeViewMoveInProgress = true;
 			}
 
 			if (e.buttons === 0) {

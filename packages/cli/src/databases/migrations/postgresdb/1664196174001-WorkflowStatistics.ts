@@ -1,13 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class WorkflowStatistics1664196174001 implements MigrationInterface {
-	name = 'WorkflowStatistics1664196174001';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+export class WorkflowStatistics1664196174001 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		// Create statistics table
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}workflow_statistics (
@@ -24,12 +18,9 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN "dataLoaded" BOOLEAN DEFAULT false;`,
 		);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP TABLE ${tablePrefix}workflow_statistics`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`);
 	}

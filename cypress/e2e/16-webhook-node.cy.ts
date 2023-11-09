@@ -1,6 +1,8 @@
 import { WorkflowPage, NDV, CredentialsModal } from '../pages';
 import { v4 as uuid } from 'uuid';
 import { cowBase64 } from '../support/binaryTestFiles';
+import { BACKEND_BASE_URL, EDIT_FIELDS_SET_NODE_NAME } from '../constants';
+import { getVisibleSelect } from '../utils';
 
 const workflowPage = new WorkflowPage();
 const ndv = new NDV();
@@ -33,11 +35,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 	workflowPage.actions.openNode('Webhook');
 
 	cy.getByTestId('parameter-input-httpMethod').click();
-	cy.getByTestId('parameter-input-httpMethod')
-		.find('.el-select-dropdown')
-		.find('.option-headline')
-		.contains(method)
-		.click();
+	getVisibleSelect().find('.option-headline').contains(method).click();
 	cy.getByTestId('parameter-input-path')
 		.find('.parameter-input')
 		.find('input')
@@ -46,11 +44,7 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 	if (authentication) {
 		cy.getByTestId('parameter-input-authentication').click();
-		cy.getByTestId('parameter-input-authentication')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains(authentication)
-			.click();
+		getVisibleSelect().find('.option-headline').contains(authentication).click();
 	}
 
 	if (responseCode) {
@@ -63,27 +57,19 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 
 	if (respondWith) {
 		cy.getByTestId('parameter-input-responseMode').click();
-		cy.getByTestId('parameter-input-responseMode')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains(respondWith)
-			.click();
+		getVisibleSelect().find('.option-headline').contains(respondWith).click();
 	}
 
 	if (responseData) {
 		cy.getByTestId('parameter-input-responseData').click();
-		cy.getByTestId('parameter-input-responseData')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains(responseData)
-			.click();
+		getVisibleSelect().find('.option-headline').contains(responseData).click();
 	}
 
 	if (executeNow) {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
-		cy.request(method, '/webhook-test/' + webhookPath).then((response) => {
+		cy.request(method, `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			ndv.getters.outputPanel().contains('headers');
 		});
@@ -91,19 +77,8 @@ const simpleWebhookCall = (options: SimpleWebhookCallOptions) => {
 };
 
 describe('Webhook Trigger node', async () => {
-	before(() => {
-		cy.resetAll();
-		cy.skipSetup();
-	});
-
 	beforeEach(() => {
 		workflowPage.actions.visit();
-
-		cy.window()
-			// @ts-ignore
-			.then(
-				(win) => win.onBeforeUnloadNodeView && win.removeEventListener('beforeunload', win.onBeforeUnloadNodeView),
-			);
 	});
 
 	it('should listen for a GET request', () => {
@@ -138,23 +113,16 @@ describe('Webhook Trigger node', async () => {
 
 		ndv.getters.backToCanvas().click();
 
-		workflowPage.actions.addNodeToCanvas('Set');
-		workflowPage.actions.openNode('Set');
-		cy.get('.add-option').click();
-		cy.get('.add-option').find('.el-select-dropdown__item').contains('Number').click();
-		cy.get('.fixed-collection-parameter')
-			.getByTestId('parameter-input-name')
-			.clear()
-			.type('MyValue');
-		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().type('1234');
-		ndv.getters.backToCanvas().click();
+		addEditFields();
+
+		ndv.getters.backToCanvas().click({ force: true });
 
 		workflowPage.actions.addNodeToCanvas('Respond to Webhook');
 
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.eq(1234);
 		});
@@ -172,7 +140,7 @@ describe('Webhook Trigger node', async () => {
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(201);
 		});
 	});
@@ -187,21 +155,14 @@ describe('Webhook Trigger node', async () => {
 		});
 		ndv.getters.backToCanvas().click();
 
-		workflowPage.actions.addNodeToCanvas('Set');
-		workflowPage.actions.openNode('Set');
-		cy.get('.add-option').click();
-		cy.get('.add-option').find('.el-select-dropdown__item').contains('Number').click();
-		cy.get('.fixed-collection-parameter')
-			.getByTestId('parameter-input-name')
-			.clear()
-			.type('MyValue');
-		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-value').clear().type('1234');
-		ndv.getters.backToCanvas().click();
+		addEditFields();
+
+		ndv.getters.backToCanvas().click({ force: true });
 
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.eq(1234);
 		});
@@ -218,35 +179,26 @@ describe('Webhook Trigger node', async () => {
 		});
 		ndv.getters.backToCanvas().click();
 
-		workflowPage.actions.addNodeToCanvas('Set');
-		workflowPage.actions.openNode('Set');
-		cy.get('.add-option').click();
-		cy.get('.add-option').find('.el-select-dropdown__item').contains('String').click();
-		cy.get('.fixed-collection-parameter').getByTestId('parameter-input-name').clear().type('data');
-		cy.get('.fixed-collection-parameter')
-			.getByTestId('parameter-input-value')
-			.clear()
-			.find('input')
-			.invoke('val', cowBase64)
-			.trigger('blur');
+		workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+		workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+		cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
+		ndv.getters.nthParam(2).type('data');
+		ndv.getters.nthParam(4).invoke('val', cowBase64).trigger('blur');
+
 		ndv.getters.backToCanvas().click();
 
-		workflowPage.actions.addNodeToCanvas('Move Binary Data');
+		workflowPage.actions.addNodeToCanvas('Convert to/from binary data');
 		workflowPage.actions.zoomToFit();
 
-		workflowPage.actions.openNode('Move Binary Data');
+		workflowPage.actions.openNode('Convert to/from binary data');
 		cy.getByTestId('parameter-input-mode').click();
-		cy.getByTestId('parameter-input-mode')
-			.find('.el-select-dropdown')
-			.find('.option-headline')
-			.contains('JSON to Binary')
-			.click();
+		getVisibleSelect().find('.option-headline').contains('JSON to Binary').click();
 		ndv.getters.backToCanvas().click();
 
 		workflowPage.actions.executeWorkflow();
 		cy.wait(waitForWebhook);
 
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(Object.keys(response.body).includes('data')).to.be.true;
 		});
@@ -263,7 +215,7 @@ describe('Webhook Trigger node', async () => {
 		});
 		ndv.actions.execute();
 		cy.wait(waitForWebhook);
-		cy.request('GET', '/webhook-test/' + webhookPath).then((response) => {
+		cy.request('GET', `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`).then((response) => {
 			expect(response.status).to.eq(200);
 			expect(response.body.MyValue).to.be.undefined;
 		});
@@ -279,7 +231,7 @@ describe('Webhook Trigger node', async () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 
@@ -287,7 +239,7 @@ describe('Webhook Trigger node', async () => {
 		cy.wait(waitForWebhook);
 		cy.request({
 			method: 'GET',
-			url: '/webhook-test/' + webhookPath,
+			url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 			auth: {
 				user: 'username',
 				pass: 'password',
@@ -300,7 +252,7 @@ describe('Webhook Trigger node', async () => {
 			.then(() => {
 				cy.request({
 					method: 'GET',
-					url: '/webhook-test/' + webhookPath,
+					url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 					auth: {
 						user: 'test',
 						pass: 'test',
@@ -322,7 +274,7 @@ describe('Webhook Trigger node', async () => {
 		});
 		// add credentials
 		workflowPage.getters.nodeCredentialsSelect().click();
-		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		getVisibleSelect().find('li').last().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.actions.fillCredentialsForm();
 
@@ -330,7 +282,7 @@ describe('Webhook Trigger node', async () => {
 		cy.wait(waitForWebhook);
 		cy.request({
 			method: 'GET',
-			url: '/webhook-test/' + webhookPath,
+			url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 			headers: {
 				test: 'wrong',
 			},
@@ -342,7 +294,7 @@ describe('Webhook Trigger node', async () => {
 			.then(() => {
 				cy.request({
 					method: 'GET',
-					url: '/webhook-test/' + webhookPath,
+					url: `${BACKEND_BASE_URL}/webhook-test/${webhookPath}`,
 					headers: {
 						test: 'test',
 					},
@@ -353,3 +305,13 @@ describe('Webhook Trigger node', async () => {
 			});
 	});
 });
+
+const addEditFields = () => {
+	workflowPage.actions.addNodeToCanvas(EDIT_FIELDS_SET_NODE_NAME);
+	workflowPage.actions.openNode(EDIT_FIELDS_SET_NODE_NAME);
+	cy.get('.fixed-collection-parameter > :nth-child(2) > .button > span').click();
+	ndv.getters.nthParam(2).type('MyValue');
+	ndv.getters.nthParam(3).click();
+	cy.get('div').contains('Number').click();
+	ndv.getters.nthParam(4).type('1234');
+};

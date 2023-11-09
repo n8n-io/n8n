@@ -119,7 +119,6 @@ export class ExportWorkflowsCommand extends BaseCommand {
 			for (i = 0; i < workflows.length; i++) {
 				fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
 				const filename = `${
-					// eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-non-null-assertion
 					(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
 					workflows[i].id
 				}.json`;

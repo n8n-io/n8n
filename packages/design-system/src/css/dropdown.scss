@@ -2,11 +2,15 @@
 @use './common/var';
 @use './popper';
 
+@use 'element-plus/theme-chalk/src/dropdown-menu';
+
 @include mixins.b(dropdown) {
-	display: inline-block;
 	position: relative;
 	color: var(--color-text-dark);
 	font-size: var.$font-size-base;
+	display: inline-flex;
+	line-height: 1;
+	vertical-align: top;
 
 	.el-button-group {
 		display: block;
@@ -69,7 +73,6 @@
 }
 
 @include mixins.b(dropdown-menu) {
-	position: absolute;
 	top: 0;
 	left: 0;
 	z-index: 10;
@@ -79,6 +82,8 @@
 	border: 1px solid var(--border-color-light);
 	border-radius: var(--border-radius-base);
 	box-shadow: var.$dropdown-menu-box-shadow;
+	position: relative;
+	list-style: none;
 
 	@include mixins.e(item) {
 		list-style: none;
@@ -90,6 +95,7 @@
 		color: var(--color-text-dark);
 		cursor: pointer;
 		outline: none;
+		white-space: nowrap;
 		&:not(.is-disabled):hover,
 		&:focus {
 			background-color: var.$dropdown-menuItem-hover-fill;

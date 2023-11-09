@@ -156,7 +156,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Provide a short description for your image or article',
 				displayOptions: {
 					show: {
-						'/shareMediaCategory': ['ARTICLE', 'IMAGE'],
+						'/shareMediaCategory': ['ARTICLE'],
 					},
 				},
 			},
@@ -166,6 +166,18 @@ export const postFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Provide the URL of the article you would like to share here',
+				displayOptions: {
+					show: {
+						'/shareMediaCategory': ['ARTICLE'],
+					},
+				},
+			},
+			{
+				displayName: 'Thumbnail Binary Property',
+				name: 'thumbnailBinaryPropertyName',
+				type: 'string',
+				default: 'data',
+				description: 'Object property name which holds binary data for the article thumbnail',
 				displayOptions: {
 					show: {
 						'/shareMediaCategory': ['ARTICLE'],

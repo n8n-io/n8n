@@ -1,4 +1,4 @@
-import {
+import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
@@ -7,11 +7,10 @@ import {
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
-import { showMessage } from '@/mixins/showMessage';
-import { titleChange } from '@/mixins/titleChange';
+import { useTitleChange, useToast } from '@/composables';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
-import {
+import type {
 	ExpressionError,
 	IDataObject,
 	INodeTypeNameVersion,
@@ -19,29 +18,31 @@ import {
 	IRunExecutionData,
 	IWorkflowBase,
 	SubworkflowOperationError,
-	TelemetryHelpers,
+	IExecuteContextData,
 } from 'n8n-workflow';
+import { TelemetryHelpers } from 'n8n-workflow';
 
-import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '@/utils';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { codeNodeEditorEventBus, globalLinkActionsEventBus } from '@/event-bus';
 import { mapStores } from 'pinia';
-import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from '@/stores/workflows';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCredentialsStore } from '@/stores/credentials';
-import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useCredentialsStore } from '@/stores/credentials.store';
+import { useSettingsStore } from '@/stores/settings.store';
 import { parse } from 'flatted';
-import { useSegment } from '@/stores/segment';
+import { useSegment } from '@/stores/segment.store';
+import { defineComponent } from 'vue';
 
-export const pushConnection = mixins(
-	externalHooks,
-	nodeHelpers,
-	showMessage,
-	titleChange,
-	workflowHelpers,
-).extend({
+export const pushConnection = defineComponent({
+	setup() {
+		return {
+			...useTitleChange(),
+			...useToast(),
+		};
+	},
+	mixins: [externalHooks, nodeHelpers, workflowHelpers],
 	data() {
 		return {
 			pushSource: null as WebSocket | EventSource | null,
@@ -119,7 +120,7 @@ export const pushConnection = mixins(
 			this.connectRetries++;
 			this.reconnectTimeout = setTimeout(
 				this.attemptReconnect,
-				Math.min(this.connectRetries * 3000, 30000), // maximum 30 seconds backoff
+				Math.min(this.connectRetries * 2000, 8000), // maximum 8 seconds backoff
 			);
 		},
 
@@ -197,7 +198,7 @@ export const pushConnection = mixins(
 
 			if (receivedData.type === 'sendConsoleMessage') {
 				const pushData = receivedData.data;
-				console.log(pushData.source, ...pushData.messages); // eslint-disable-line no-console
+				console.log(pushData.source, ...pushData.messages);
 				return true;
 			}
 
@@ -283,7 +284,7 @@ export const pushConnection = mixins(
 				// The workflow finished executing
 				let pushData: IPushDataExecutionFinished;
 				if (receivedData.type === 'executionRecovered' && recoveredPushData !== undefined) {
-					pushData = recoveredPushData as IPushDataExecutionFinished;
+					pushData = recoveredPushData;
 				} else {
 					pushData = receivedData.data as IPushDataExecutionFinished;
 				}
@@ -295,7 +296,7 @@ export const pushConnection = mixins(
 						for (const key of Object.keys(activeRunData)) {
 							if (
 								pushData.data.data.resultData.runData[key]?.[0]?.data?.main?.[0]?.[0]?.json
-									.isArtificalRecoveredEventItem === true &&
+									?.isArtificialRecoveredEventItem === true &&
 								activeRunData[key].length > 0
 							)
 								pushData.data.data.resultData.runData[key] = activeRunData[key];
@@ -320,7 +321,7 @@ export const pushConnection = mixins(
 
 				const runDataExecuted = pushData.data;
 
-				let runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+				let runDataExecutedErrorMessage = this.getExecutionError(runDataExecuted.data);
 
 				if (pushData.data.status === 'crashed') {
 					runDataExecutedErrorMessage = this.$locale.baseText(
@@ -328,14 +329,9 @@ export const pushConnection = mixins(
 					);
 				}
 
-				const lineNumber =
-					runDataExecuted &&
-					runDataExecuted.data &&
-					runDataExecuted.data.resultData &&
-					runDataExecuted.data.resultData.error &&
-					runDataExecuted.data.resultData.error.lineNumber;
+				const lineNumber = runDataExecuted?.data?.resultData?.error?.lineNumber;
 
-				codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+				codeNodeEditorEventBus.emit('error-line-number', lineNumber || 'final');
 
 				const workflow = this.getCurrentWorkflow();
 				if (runDataExecuted.waitTill !== undefined) {
@@ -350,9 +346,12 @@ export const pushConnection = mixins(
 
 					let action;
 					if (!isSavingExecutions) {
-						this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
-							if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
-							this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+						globalLinkActionsEventBus.emit('registerGlobalLinkAction', {
+							key: 'open-settings',
+							action: async () => {
+								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+							},
 						});
 
 						action =
@@ -362,15 +361,15 @@ export const pushConnection = mixins(
 					}
 
 					// Workflow did start but had been put to wait
-					this.$titleSet(workflow.name as string, 'IDLE');
-					this.$showToast({
+					this.titleSet(workflow.name as string, 'IDLE');
+					this.showToast({
 						title: 'Workflow started waiting',
 						message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 						type: 'success',
 						duration: 0,
 					});
 				} else if (runDataExecuted.finished !== true) {
-					this.$titleSet(workflow.name as string, 'ERROR');
+					this.titleSet(workflow.name as string, 'ERROR');
 
 					if (
 						runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
@@ -379,7 +378,7 @@ export const pushConnection = mixins(
 					) {
 						const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						void this.getWorkflowDataToSave().then((workflowData) => {
 							const eventData: IDataObject = {
 								caused_by_credential: false,
 								error_message: error.description,
@@ -418,7 +417,7 @@ export const pushConnection = mixins(
 
 						this.workflowsStore.subWorkflowExecutionError = error;
 
-						this.$showMessage({
+						this.showMessage({
 							title: error.message,
 							message: error.description,
 							type: 'error',
@@ -432,30 +431,28 @@ export const pushConnection = mixins(
 							title = 'Problem executing workflow';
 						}
 
-						this.$showMessage({
+						this.showMessage({
 							title,
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
+							dangerouslyUseHTMLString: true,
 						});
 					}
 				} else {
 					// Workflow did execute without a problem
-					this.$titleSet(workflow.name as string, 'IDLE');
+					this.titleSet(workflow.name as string, 'IDLE');
 
 					const execution = this.workflowsStore.getWorkflowExecution;
-					if (execution && execution.executedNode) {
+					if (execution?.executedNode) {
 						const node = this.workflowsStore.getNodeByName(execution.executedNode);
 						const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 						const nodeOutput =
 							execution &&
 							execution.executedNode &&
-							execution.data &&
-							execution.data.resultData &&
-							execution.data.resultData.runData &&
-							execution.data.resultData.runData[execution.executedNode];
-						if (node && nodeType && !nodeOutput) {
-							this.$showMessage({
+							execution.data?.resultData?.runData?.[execution.executedNode];
+						if (nodeType && nodeType.polling && !nodeOutput) {
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.pollingNode.dataNotFound', {
 									interpolate: {
 										service: getTriggerNodeServiceName(nodeType),
@@ -469,13 +466,13 @@ export const pushConnection = mixins(
 								type: 'success',
 							});
 						} else {
-							this.$showMessage({
+							this.showMessage({
 								title: this.$locale.baseText('pushConnection.nodeExecutedSuccessfully'),
 								type: 'success',
 							});
 						}
 					} else {
-						this.$showMessage({
+						this.showMessage({
 							title: this.$locale.baseText('pushConnection.workflowExecutedSuccessfully'),
 							type: 'success',
 						});
@@ -489,7 +486,7 @@ export const pushConnection = mixins(
 					runDataExecuted.data.resultData.runData = this.workflowsStore.getWorkflowRunData;
 				}
 
-				this.workflowsStore.executingNode = null;
+				this.workflowsStore.executingNode.length = 0;
 				this.workflowsStore.setWorkflowExecutionData(runDataExecuted as IExecutionResponse);
 				this.uiStore.removeActiveAction('workflowRunning');
 
@@ -502,15 +499,14 @@ export const pushConnection = mixins(
 				let itemsCount = 0;
 				if (
 					lastNodeExecuted &&
-					runDataExecuted.data.resultData.runData[lastNodeExecuted as string] &&
+					runDataExecuted.data.resultData.runData[lastNodeExecuted] &&
 					!runDataExecutedErrorMessage
 				) {
 					itemsCount =
-						runDataExecuted.data.resultData.runData[lastNodeExecuted as string][0].data!.main[0]!
-							.length;
+						runDataExecuted.data.resultData.runData[lastNodeExecuted][0].data!.main[0]!.length;
 				}
 
-				this.$externalHooks().run('pushConnection.executionFinished', {
+				void this.$externalHooks().run('pushConnection.executionFinished', {
 					itemsCount,
 					nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 					errorMessage: runDataExecutedErrorMessage,
@@ -538,10 +534,11 @@ export const pushConnection = mixins(
 				// A node finished to execute. Add its data
 				const pushData = receivedData.data;
 				this.workflowsStore.addNodeExecutionData(pushData);
+				this.workflowsStore.removeExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'nodeExecuteBefore') {
 				// A node started to be executed. Set it as executing.
 				const pushData = receivedData.data;
-				this.workflowsStore.executingNode = pushData.nodeName;
+				this.workflowsStore.addExecutingNode(pushData.nodeName);
 			} else if (receivedData.type === 'testWebhookDeleted') {
 				// A test-webhook was deleted
 				const pushData = receivedData.data;
@@ -561,22 +558,55 @@ export const pushConnection = mixins(
 
 				this.processWaitingPushMessages();
 			} else if (receivedData.type === 'reloadNodeType') {
-				this.nodeTypesStore.getNodeTypes();
-				this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
+				await this.nodeTypesStore.getNodeTypes();
+				await this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
 			} else if (receivedData.type === 'removeNodeType') {
 				const pushData = receivedData.data;
 
 				const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 				// Force reload of all credential types
-				this.credentialsStore.fetchCredentialTypes(false).then(() => {
+				await this.credentialsStore.fetchCredentialTypes(false).then(() => {
 					this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 				});
 			} else if (receivedData.type === 'nodeDescriptionUpdated') {
-				this.nodeTypesStore.getNodeTypes();
-				this.credentialsStore.fetchCredentialTypes(true);
+				await this.nodeTypesStore.getNodeTypes();
+				await this.credentialsStore.fetchCredentialTypes(true);
 			}
 			return true;
+		},
+		getExecutionError(data: IRunExecutionData | IExecuteContextData) {
+			const error = data.resultData.error;
+
+			let errorMessage: string;
+
+			if (data.resultData.lastNodeExecuted && error) {
+				errorMessage = error.message || error.description;
+			} else {
+				errorMessage = this.$locale.baseText('pushConnection.executionError', {
+					interpolate: { error: '!' },
+				});
+
+				if (error?.message) {
+					let nodeName: string | undefined;
+					if ('node' in error) {
+						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
+					}
+
+					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
+					errorMessage = this.$locale.baseText('pushConnection.executionError', {
+						interpolate: {
+							error: `.${this.$locale.baseText('pushConnection.executionError.details', {
+								interpolate: {
+									details: receivedError,
+								},
+							})}`,
+						},
+					});
+				}
+			}
+
+			return errorMessage;
 		},
 	},
 });

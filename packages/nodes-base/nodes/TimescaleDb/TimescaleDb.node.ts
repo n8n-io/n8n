@@ -6,9 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { pgInsert, pgQuery, pgUpdate } from '../Postgres/Postgres.node.functions';
-
 import pgPromise from 'pg-promise';
+import { pgInsert, pgQueryV2, pgUpdate } from '../Postgres/v1/genericFunctions';
 
 export class TimescaleDb implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,6 +64,12 @@ export class TimescaleDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
+				noDataExpression: true,
+				typeOptions: {
+					editor: 'sqlEditor',
+					rows: 5,
+					sqlDialect: 'PostgreSQL',
+				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -275,13 +280,9 @@ export class TimescaleDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const queryResult = await pgQuery(
-				this.getNodeParameter,
-				pgp,
-				db,
-				items,
-				this.continueOnFail(),
-			);
+			const queryResult = await pgQueryV2.call(this, pgp, db, items, this.continueOnFail(), {
+				resolveExpression: true,
+			});
 
 			returnItems = this.helpers.returnJsonArray(queryResult);
 		} else if (operation === 'insert') {
@@ -318,16 +319,16 @@ export class TimescaleDb implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
-			pgp.end();
+			await db.$pool.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
 			);
 		}
 
-		// Close the connection
-		pgp.end();
+		// shuts down the connection pool associated with the db object to allow the process to finish
+		await db.$pool.end();
 
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

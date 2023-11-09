@@ -8,7 +8,7 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['database'],
 			},
 		},
@@ -41,7 +41,7 @@ export const databaseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				version: [1],
+				'@version': [1],
 				resource: ['database'],
 			},
 		},
@@ -178,7 +178,7 @@ export const databaseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				version: [2],
+				'@version': [2],
 				resource: ['database'],
 				operation: ['getAll', 'get'],
 			},

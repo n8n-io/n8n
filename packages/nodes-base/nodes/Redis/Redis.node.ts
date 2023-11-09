@@ -1,3 +1,4 @@
+import util from 'util';
 import type {
 	IExecuteFunctions,
 	GenericValue,
@@ -12,10 +13,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import set from 'lodash.set';
+import set from 'lodash/set';
 import redis from 'redis';
-
-import util from 'util';
 
 export class Redis implements INodeType {
 	description: INodeTypeDescription = {
@@ -349,7 +348,18 @@ export class Redis implements INodeType {
 				default: 'automatic',
 				description: 'The type of the key to set',
 			},
-
+			{
+				displayName: 'Value Is JSON',
+				name: 'valueIsJSON',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						keyType: ['hash'],
+					},
+				},
+				default: true,
+				description: 'Whether the value is JSON or key value pairs',
+			},
 			{
 				displayName: 'Expire',
 				name: 'expire',
@@ -605,6 +615,7 @@ export class Redis implements INodeType {
 			expire: boolean,
 			ttl: number,
 			type?: string,
+			valueIsJSON?: boolean,
 		) => {
 			if (type === undefined || type === 'automatic') {
 				// Request the type first
@@ -627,15 +638,36 @@ export class Redis implements INodeType {
 				await clientSet(keyName, value.toString());
 			} else if (type === 'hash') {
 				const clientHset = util.promisify(client.hset).bind(client);
-				for (const key of Object.keys(value)) {
-					// @ts-ignore
-					await clientHset(keyName, key, (value as IDataObject)[key]!.toString());
+				if (valueIsJSON) {
+					let values: unknown;
+					if (typeof value === 'string') {
+						try {
+							values = JSON.parse(value);
+						} catch {
+							// This is how we originally worked and prevents a breaking change
+							values = value;
+						}
+					} else {
+						values = value;
+					}
+					for (const key of Object.keys(values as object)) {
+						// @ts-ignore
+						await clientHset(keyName, key, (values as IDataObject)[key]!.toString());
+					}
+				} else {
+					const values = value.toString().split(' ');
+					//@ts-ignore
+					await clientHset(keyName, values);
 				}
 			} else if (type === 'list') {
 				const clientLset = util.promisify(client.lset).bind(client);
 				for (let index = 0; index < (value as string[]).length; index++) {
 					await clientLset(keyName, index, (value as IDataObject)[index]!.toString());
 				}
+			} else if (type === 'sets') {
+				const clientSadd = util.promisify(client.sadd).bind(client);
+				//@ts-ignore
+				await clientSadd(keyName, value);
 			}
 
 			if (expire) {
@@ -678,7 +710,7 @@ export class Redis implements INodeType {
 						const clientInfo = util.promisify(client.info).bind(client);
 						const result = await clientInfo();
 
-						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as string) }]));
+						resolve([[{ json: convertInfoToObject(result as string) }]]);
 						client.quit();
 					} else if (
 						['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
@@ -742,10 +774,15 @@ export class Redis implements INodeType {
 								const keySet = this.getNodeParameter('key', itemIndex) as string;
 								const value = this.getNodeParameter('value', itemIndex) as string;
 								const keyType = this.getNodeParameter('keyType', itemIndex) as string;
+								const valueIsJSON = this.getNodeParameter(
+									'valueIsJSON',
+									itemIndex,
+									true,
+								) as boolean;
 								const expire = this.getNodeParameter('expire', itemIndex, false) as boolean;
 								const ttl = this.getNodeParameter('ttl', itemIndex, -1) as number;
 
-								await setValue(client, keySet, value, expire, ttl, keyType);
+								await setValue(client, keySet, value, expire, ttl, keyType, valueIsJSON);
 								returnItems.push(items[itemIndex]);
 							} else if (operation === 'incr') {
 								const keyIncr = this.getNodeParameter('key', itemIndex) as string;
@@ -804,7 +841,7 @@ export class Redis implements INodeType {
 						}
 
 						client.quit();
-						resolve(this.prepareOutputData(returnItems));
+						resolve([returnItems]);
 					}
 				} catch (error) {
 					reject(error);

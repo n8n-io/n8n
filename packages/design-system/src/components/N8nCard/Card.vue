@@ -1,5 +1,5 @@
 <template>
-	<div :class="classes" v-on="$listeners">
+	<div :class="classes" v-bind="$attrs">
 		<div :class="$style.icon" v-if="$slots.prepend">
 			<slot name="prepend" />
 		</div>
@@ -14,16 +14,16 @@
 				<slot name="footer" />
 			</div>
 		</div>
-		<div :class="$style.actions" v-if="$slots.append">
+		<div v-if="$slots.append" :class="$style.append">
 			<slot name="append" />
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-card',
 	inheritAttrs: true,
 	props: {
@@ -82,7 +82,6 @@ export default Vue.extend({
 
 .icon {
 	width: 24px;
-	height: 24px;
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
@@ -100,5 +99,11 @@ export default Vue.extend({
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 	}
+}
+
+.append {
+	display: flex;
+	align-items: center;
+	cursor: default;
 }
 </style>

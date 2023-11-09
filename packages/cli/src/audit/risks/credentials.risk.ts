@@ -1,11 +1,16 @@
-import type { FindOperator } from 'typeorm';
-import { MoreThanOrEqual } from 'typeorm';
+import { In, MoreThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import * as Db from '@/Db';
+import { Container } from 'typedi';
+import type { IWorkflowBase } from 'n8n-workflow';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
-import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import {
+	CredentialsRepository,
+	ExecutionDataRepository,
+	ExecutionRepository,
+} from '@db/repositories';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	const credsInAnyUse = new Set<string>();
@@ -32,34 +37,43 @@ async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 }
 
 async function getAllExistingCreds() {
-	const credentials = await Db.collections.Credentials.find({ select: ['id', 'name'] });
+	const credentials = await Container.get(CredentialsRepository).find({ select: ['id', 'name'] });
 
 	return credentials.map(({ id, name }) => ({ kind: 'credential' as const, id, name }));
 }
 
-async function getExecutionsInPastDays(days: number) {
+async function getExecutedWorkflowsInPastDays(days: number): Promise<IWorkflowBase[]> {
 	const date = new Date();
 
 	date.setDate(date.getDate() - days);
 
-	const utcDate = DateUtils.mixedDateToUtcDatetimeString(date) as string;
+	const executionIds = await Container.get(ExecutionRepository)
+		.find({
+			select: ['id'],
+			where: {
+				startedAt: MoreThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date) as Date),
+			},
+		})
+		.then((executions) => executions.map(({ id }) => id));
 
-	return Db.collections.Execution.find({
-		select: ['workflowData'],
-		where: {
-			startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
-		},
-	});
+	return Container.get(ExecutionDataRepository)
+		.find({
+			select: ['workflowData'],
+			where: {
+				executionId: In(executionIds),
+			},
+		})
+		.then((executionData) => executionData.map(({ workflowData }) => workflowData));
 }
 
 /**
  * Return IDs of credentials in workflows executed in the past n days.
  */
 async function getCredsInRecentlyExecutedWorkflows(days: number) {
-	const recentExecutions = await getExecutionsInPastDays(days);
+	const executedWorkflows = await getExecutedWorkflowsInPastDays(days);
 
-	return recentExecutions.reduce<Set<string>>((acc, execution) => {
-		execution.workflowData?.nodes.forEach((node) => {
+	return executedWorkflows.reduce<Set<string>>((acc, { nodes }) => {
+		nodes.forEach((node) => {
 			if (node.credentials) {
 				Object.values(node.credentials).forEach((c) => {
 					if (c.id) acc.add(c.id);

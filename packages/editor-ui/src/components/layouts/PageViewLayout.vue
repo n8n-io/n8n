@@ -12,11 +12,11 @@
 </template>
 
 <script lang="ts">
-import { useUIStore } from '@/stores/ui';
+import { defineComponent } from 'vue';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import { useUIStore } from '@/stores/ui.store';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'PageViewLayout',
 	data() {
 		return {
@@ -37,7 +37,6 @@ export default Vue.extend({
 	max-width: 1280px;
 	justify-content: center;
 	box-sizing: border-box;
-	background: var(--color-gray-light);
 	padding: var(--spacing-l) var(--spacing-l) 0;
 	@media (min-width: 1200px) {
 		padding: var(--spacing-2xl) var(--spacing-2xl) 0;

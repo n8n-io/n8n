@@ -74,7 +74,27 @@ export class ApiTemplateIo implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: ['image', 'pdf'],
+						resource: ['image'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create a pdf',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['pdf'],
 					},
 				},
 			},
@@ -460,7 +480,7 @@ export class ApiTemplateIo implements INodeType {
 				}
 
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		} else if (resource === 'pdf') {
@@ -549,7 +569,7 @@ export class ApiTemplateIo implements INodeType {
 					}
 				}
 				if (download) {
-					return this.prepareOutputData(returnData as unknown as INodeExecutionData[]);
+					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
 		}

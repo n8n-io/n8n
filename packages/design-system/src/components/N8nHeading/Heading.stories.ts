@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nHeading from './Heading.vue';
 
 export default {
@@ -8,24 +8,25 @@ export default {
 		size: {
 			control: {
 				type: 'select',
-				options: ['2xlarge', 'xlarge', 'large', 'medium', 'small'],
 			},
+			options: ['2xlarge', 'xlarge', 'large', 'medium', 'small'],
 		},
 		color: {
 			control: {
 				type: 'select',
-				options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
 			},
+			options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
 		},
 	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
+	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
 		N8nHeading,
 	},
-	template: '<n8n-heading v-bind="$props">hello world</n8n-heading>',
+	template: '<n8n-heading v-bind="args">hello world</n8n-heading>',
 });
 
 export const Heading = Template.bind({});

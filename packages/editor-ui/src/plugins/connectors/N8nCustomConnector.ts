@@ -1,21 +1,20 @@
-import { PointXY, log, extend, quadrant } from '@jsplumb/util';
+import type { PointXY } from '@jsplumb/util';
+import { quadrant } from '@jsplumb/util';
 
-import {
+import type {
 	Connection,
-	ArcSegment,
-	AbstractConnector,
 	ConnectorComputeParams,
 	PaintGeometry,
 	Endpoint,
-	StraightSegment,
 	Orientation,
 } from '@jsplumb/core';
-import { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis } from '@jsplumb/common';
+import { ArcSegment, AbstractConnector, StraightSegment } from '@jsplumb/core';
+import type { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis } from '@jsplumb/common';
 import { BezierSegment } from '@jsplumb/connector-bezier';
 import { isArray } from 'lodash-es';
 import { deepCopy } from 'n8n-workflow';
 
-export interface N8nConnectorOptions extends ConnectorOptions {}
+export type N8nConnectorOptions = ConnectorOptions;
 interface N8nConnectorPaintGeometry extends PaintGeometry {
 	sourceEndpoint: Endpoint;
 	targetEndpoint: Endpoint;
@@ -141,25 +140,43 @@ const stubCalculators = {
 
 export class N8nConnector extends AbstractConnector {
 	static type = 'N8nConnector';
+
 	type = N8nConnector.type;
 
 	majorAnchor: number;
+
 	minorAnchor: number;
+
 	midpoint: number;
+
 	alwaysRespectStubs: boolean;
+
 	loopbackVerticalLength: number;
+
 	lastx: number | null;
+
 	lasty: number | null;
+
 	cornerRadius: number;
+
 	loopbackMinimum: number;
+
 	curvinessCoefficient: number;
+
 	zBezierOffset: number;
+
 	targetGap: number;
+
 	overrideTargetEndpoint: Endpoint | null;
+
 	getEndpointOffset: Function | null;
+
 	private internalSegments: FlowchartSegment[] = [];
 
-	constructor(public connection: Connection, params: N8nConnectorOptions) {
+	constructor(
+		public connection: Connection,
+		params: N8nConnectorOptions,
+	) {
 		super(connection, params);
 		params = params || {};
 		this.minorAnchor = 0; // seems to be angle at which connector leaves endpoint
@@ -338,7 +355,7 @@ export class N8nConnector extends AbstractConnector {
 	}
 
 	calculateStubSegment(paintInfo: PaintGeometry): StubPositions {
-		return stubCalculators['opposite'](paintInfo, {
+		return stubCalculators.opposite(paintInfo, {
 			axis: paintInfo.sourceAxis,
 			alwaysRespectStubs: this.alwaysRespectStubs,
 		});
@@ -364,7 +381,7 @@ export class N8nConnector extends AbstractConnector {
 			// original flowchart behavior
 			midy = paintInfo.startStubY + (paintInfo.endStubY - paintInfo.startStubY) * this.midpoint;
 		}
-		return lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
+		return lineCalculators.opposite(paintInfo, { axis, startStub, endStub, idx, midx, midy });
 	}
 
 	_getPaintInfo(params: ConnectorComputeParams): N8nConnectorPaintGeometry {
@@ -492,6 +509,7 @@ export class N8nConnector extends AbstractConnector {
 			}
 		} catch (error) {}
 	}
+
 	/**
 	 * Set target endpoint
 	 * (to override default behavior tracking mouse when dragging mouse)
@@ -500,9 +518,11 @@ export class N8nConnector extends AbstractConnector {
 	setTargetEndpoint(endpoint: Endpoint) {
 		this.overrideTargetEndpoint = endpoint;
 	}
+
 	resetTargetEndpoint() {
 		this.overrideTargetEndpoint = null;
 	}
+
 	_computeBezier(paintInfo: N8nConnectorPaintGeometry) {
 		const sp = paintInfo.sourcePos;
 		const tp = paintInfo.targetPos;

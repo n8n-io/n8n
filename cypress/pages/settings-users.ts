@@ -4,8 +4,8 @@ import { WorkflowPage } from './workflow';
 import { WorkflowsPage } from './workflows';
 import { BasePage } from './base';
 
-const workflowPage =  new WorkflowPage();
-const workflowsPage =  new WorkflowsPage();
+const workflowPage = new WorkflowPage();
+const workflowsPage = new WorkflowsPage();
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
 
@@ -18,11 +18,15 @@ export class SettingsUsersPage extends BasePage {
 		inviteUsersModalEmailsInput: () => cy.getByTestId('emails').find('input').first(),
 		userListItems: () => cy.get('[data-test-id^="user-list-item"]'),
 		userItem: (email: string) => cy.getByTestId(`user-list-item-${email.toLowerCase()}`),
-		userActionsToggle: (email: string) => this.getters.userItem(email).find('[data-test-id="action-toggle"]'),
-		deleteUserAction: () => cy.getByTestId('action-toggle-dropdown').find('li:contains("Delete"):visible'),
+		userActionsToggle: (email: string) =>
+			this.getters.userItem(email).find('[data-test-id="action-toggle"]'),
+		deleteUserAction: () =>
+			cy.getByTestId('action-toggle-dropdown').find('li:contains("Delete"):visible'),
 		confirmDeleteModal: () => cy.getByTestId('deleteUser-modal').last(),
-		transferDataRadioButton: () => this.getters.confirmDeleteModal().find('[role="radio"]').first(),
-		deleteDataRadioButton: () => this.getters.confirmDeleteModal().find('[role="radio"]').last(),
+		transferDataRadioButton: () =>
+			this.getters.confirmDeleteModal().find('.el-radio .el-radio__input').first(),
+		deleteDataRadioButton: () =>
+			this.getters.confirmDeleteModal().find('.el-radio .el-radio__input').last(),
 		userSelectDropDown: () => this.getters.confirmDeleteModal().find('.n8n-select'),
 		userSelectOptions: () => cy.get('.el-select-dropdown:visible .el-select-dropdown__item'),
 		deleteUserButton: () => this.getters.confirmDeleteModal().find('button:contains("Delete")'),

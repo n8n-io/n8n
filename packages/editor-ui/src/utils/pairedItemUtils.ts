@@ -1,5 +1,5 @@
-import { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
-import { IExecutionResponse, TargetItem } from '../Interface';
+import type { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
+import type { IExecutionResponse, TargetItem } from '../Interface';
 import { isNotNull } from '@/utils';
 
 /*
@@ -23,7 +23,7 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	}
 
 	const item = taskData?.data?.main?.[target.outputIndex]?.[target.itemIndex];
-	if (!item || item.pairedItem === undefined) {
+	if (item?.pairedItem === undefined) {
 		return [];
 	}
 

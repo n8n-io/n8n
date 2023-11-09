@@ -341,6 +341,6 @@ export class Baserow implements INodeType {
 			}
 		}
 
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

@@ -6,14 +6,14 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import get from 'lodash/get';
+import set from 'lodash/set';
+import { ObjectId } from 'mongodb';
 import type {
 	IMongoCredentials,
 	IMongoCredentialsType,
 	IMongoParametricCredentials,
 } from './mongoDb.types';
-
-import get from 'lodash.get';
-import set from 'lodash.set';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -128,4 +128,15 @@ export function prepareFields(fields: string) {
 		.split(',')
 		.map((field) => field.trim())
 		.filter((field) => !!field);
+}
+
+export function stringifyObjectIDs(items: IDataObject[]) {
+	items.forEach((item) => {
+		if (item._id instanceof ObjectId) {
+			item._id = item._id.toString();
+		}
+		if (item.id instanceof ObjectId) {
+			item.id = item.id.toString();
+		}
+	});
 }

@@ -1,14 +1,15 @@
 import path from 'path';
+import { Container } from 'typedi';
 import type { SqliteConnectionOptions } from 'typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import type { MysqlConnectionOptions } from 'typeorm/driver/mysql/MysqlConnectionOptions';
-import { UserSettings } from 'n8n-core';
+import { InstanceSettings } from 'n8n-core';
 
 import { entities } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
-import type { DatabaseType } from '@/Interfaces';
+import type { DatabaseType } from '@db/types';
 import config from '@/config';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
@@ -21,9 +22,10 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 		configDBType === 'sqlite'
 			? {
 					database: path.resolve(
-						UserSettings.getUserN8nFolderPath(),
+						Container.get(InstanceSettings).n8nFolder,
 						config.getEnv('database.sqlite.database'),
 					),
+					enableWAL: config.getEnv('database.sqlite.enableWAL'),
 			  }
 			: {
 					database: config.getEnv(`database.${configDBType}.database`),
@@ -35,7 +37,6 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
-		migrationsRun: false,
 		migrationsTableName: `${entityPrefix}migrations`,
 		cli: { entitiesDir, migrationsDir },
 		...connectionDetails,

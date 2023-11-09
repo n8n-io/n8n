@@ -10,11 +10,13 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
 import { reportFields, reportOperations } from './ReportDescription';
 import { userActivityFields, userActivityOperations } from './UserActivityDescription';
 import { googleApiRequest, googleApiRequestAllItems, merge, simplify } from './GenericFunctions';
-import moment from 'moment-timezone';
 import type { IData } from './Interfaces';
+
+import { oldVersionNotice } from '@utils/descriptions';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Google Analytics',
@@ -36,6 +38,7 @@ const versionDescription: INodeTypeDescription = {
 		},
 	],
 	properties: [
+		oldVersionNotice,
 		{
 			displayName: 'Resource',
 			name: 'resource',
@@ -79,7 +82,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the dimensions to display them to user so that he can
+			// Get all the dimensions to display them to user so that they can
 			// select them easily
 			async getDimensions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -119,7 +122,7 @@ export class GoogleAnalyticsV1 implements INodeType {
 
 				return returnData;
 			},
-			// Get all the views to display them to user so that he can
+			// Get all the views to display them to user so that they can
 			// select them easily
 			async getViews(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -244,7 +247,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 						if (simple) {
 							responseData = simplify(responseData);
 						} else if (returnAll && responseData.length > 1) {
-							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							responseData = merge(responseData);
 						}
 					}
@@ -300,6 +302,6 @@ export class GoogleAnalyticsV1 implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }

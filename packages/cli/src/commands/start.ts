@@ -6,14 +6,13 @@ import path from 'path';
 import { mkdir } from 'fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
-import { TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { flags } from '@oclif/command';
 import stream from 'stream';
 import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
 
-import { LoggerProxy, sleep, jsonParse } from 'n8n-workflow';
+import { sleep, jsonParse } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
@@ -21,14 +20,16 @@ import { ActiveExecutions } from '@/ActiveExecutions';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
-import * as Server from '@/Server';
-import { TestWebhooks } from '@/TestWebhooks';
-import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
-import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { Server } from '@/Server';
+import { EDITOR_UI_DIST_DIR, LICENSE_FEATURES } from '@/constants';
 import { eventBus } from '@/eventbus';
 import { BaseCommand } from './BaseCommand';
 import { InternalHooks } from '@/InternalHooks';
-import { getLicense } from '@/License';
+import { License, FeatureNotLicensedError } from '@/License';
+import { IConfig } from '@oclif/config';
+import { SingleMainInstancePublisher } from '@/services/orchestration/main/SingleMainInstance.publisher';
+import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
+import { PruningService } from '@/services/pruning.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -60,7 +61,17 @@ export class Start extends BaseCommand {
 		}),
 	};
 
-	protected activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
+	protected activeWorkflowRunner: ActiveWorkflowRunner;
+
+	protected server = new Server();
+
+	private pruningService: PruningService;
+
+	constructor(argv: string[], cmdConfig: IConfig) {
+		super(argv, cmdConfig);
+		this.setInstanceType('main');
+		this.setInstanceQueueModeId();
+	}
 
 	/**
 	 * Opens the UI in browser
@@ -97,22 +108,25 @@ export class Start extends BaseCommand {
 				await this.exitSuccessFully();
 			}, 30000);
 
-			await Container.get(InternalHooks).onN8nStop();
+			// Shut down License manager to unclaim any floating entitlements
+			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
+			await Container.get(License).shutdown();
 
-			const skipWebhookDeregistration = config.getEnv(
-				'endpoints.skipWebhooksDeregistrationOnShutdown',
-			);
-
-			const removePromises = [];
-			if (!skipWebhookDeregistration) {
-				removePromises.push(this.activeWorkflowRunner.removeAll());
+			if (await this.pruningService.isPruningEnabled()) {
+				await this.pruningService.stopPruning();
 			}
 
-			// Remove all test webhooks
-			const testWebhooks = Container.get(TestWebhooks);
-			removePromises.push(testWebhooks.removeAll());
+			if (config.getEnv('leaderSelection.enabled')) {
+				const { MultiMainInstancePublisher } = await import(
+					'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+				);
 
-			await Promise.all(removePromises);
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+
+				await Container.get(MultiMainInstancePublisher).destroy();
+			}
+
+			await Container.get(InternalHooks).onN8nStop();
 
 			// Wait for active workflow executions to finish
 			const activeExecutionsInstance = Container.get(ActiveExecutions);
@@ -122,17 +136,17 @@ export class Start extends BaseCommand {
 			while (executingWorkflows.length !== 0) {
 				if (count++ % 4 === 0) {
 					console.log(`Waiting for ${executingWorkflows.length} active executions to finish...`);
-					// eslint-disable-next-line array-callback-return
+
 					executingWorkflows.map((execution) => {
 						console.log(` - Execution ID ${execution.id}, workflow ID: ${execution.workflowId}`);
 					});
 				}
-				// eslint-disable-next-line no-await-in-loop
+
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 
-			//finally shut down Event Bus
+			// Finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down n8n.', error);
@@ -144,6 +158,7 @@ export class Start extends BaseCommand {
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = config.getEnv('path');
+		const restEndpoint = config.getEnv('endpoints.rest');
 		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 		let scriptsString = '';
@@ -154,10 +169,11 @@ export class Start extends BaseCommand {
 		}
 
 		const closingTitleTag = '</title>';
+		const { staticCacheDir } = this.instanceSettings;
 		const compileFile = async (fileName: string) => {
 			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
 			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-				const destFile = path.join(GENERATED_STATIC_DIR, fileName);
+				const destFile = path.join(staticCacheDir, fileName);
 				await mkdir(path.dirname(destFile), { recursive: true });
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
@@ -167,6 +183,7 @@ export class Start extends BaseCommand {
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(
+						replaceStream('{{REST_ENDPOINT}}', restEndpoint, { ignoreCase: false }),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
 							ignoreCase: false,
 						}),
@@ -182,32 +199,72 @@ export class Start extends BaseCommand {
 		await Promise.all(files.map(compileFile));
 	}
 
-	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.instanceId);
-
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			try {
-				await license.activate(activationKey);
-			} catch (e) {
-				LoggerProxy.error('Could not activate license', e as Error);
-			}
-		}
-	}
-
 	async init() {
 		await this.initCrashJournal();
-		await super.init();
+
 		this.logger.info('Initializing n8n process');
+		if (config.getEnv('executions.mode') === 'queue') {
+			this.logger.debug('Main Instance running in queue mode');
+			this.logger.debug(`Queue mode id: ${this.queueModeId}`);
+		}
+
+		await super.init();
+		this.activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 
 		await this.initLicense();
-		await this.initBinaryManager();
+
+		await this.initOrchestration();
+		this.logger.debug('Orchestration init complete');
+		await this.initBinaryDataService();
+		this.logger.debug('Binary data service init complete');
 		await this.initExternalHooks();
+		this.logger.debug('External hooks init complete');
+		await this.initExternalSecrets();
+		this.logger.debug('External secrets init complete');
+		this.initWorkflowHistory();
+		this.logger.debug('Workflow history init complete');
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			await this.generateStaticAssets();
 		}
+	}
+
+	async initOrchestration() {
+		if (config.get('executions.mode') !== 'queue') return;
+
+		if (!config.get('leaderSelection.enabled')) {
+			await Container.get(SingleMainInstancePublisher).init();
+			await Container.get(OrchestrationHandlerMainService).init();
+			return;
+		}
+
+		// multi-main scenario
+
+		const { MultiMainInstancePublisher } = await import(
+			'@/services/orchestration/main/MultiMainInstance.publisher.ee'
+		);
+
+		const multiMainInstancePublisher = Container.get(MultiMainInstancePublisher);
+
+		await multiMainInstancePublisher.init();
+
+		if (
+			multiMainInstancePublisher.isLeader &&
+			!Container.get(License).isMultipleMainInstancesLicensed()
+		) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		}
+
+		await Container.get(OrchestrationHandlerMainService).init();
+
+		multiMainInstancePublisher.on('leadershipChange', async () => {
+			if (multiMainInstancePublisher.isLeader) {
+				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
+			} else {
+				// only in case of leadership change without shutdown
+				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
+			}
+		});
 	}
 
 	async run() {
@@ -217,7 +274,7 @@ export class Start extends BaseCommand {
 		if (!config.getEnv('userManagement.jwtSecret')) {
 			// If we don't have a JWT secret set, generate
 			// one based and save to config.
-			const encryptionKey = await UserSettings.getEncryptionKey();
+			const { encryptionKey } = this.instanceSettings;
 
 			// For a key off every other letter from encryption key
 			// CAREFUL: do not change this or it breaks all existing tokens.
@@ -228,71 +285,25 @@ export class Start extends BaseCommand {
 			config.set('userManagement.jwtSecret', createHash('sha256').update(baseKey).digest('hex'));
 		}
 
-		await this.loadNodesAndCredentials.generateTypesForFrontend();
-
-		const installedPackages = await getAllInstalledPackages();
-		const missingPackages = new Set<{
-			packageName: string;
-			version: string;
-		}>();
-		installedPackages.forEach((installedPackage) => {
-			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!this.loadNodesAndCredentials.known.nodes[installedNode.type]) {
-					// Leave the list ready for installing in case we need.
-					missingPackages.add({
-						packageName: installedPackage.packageName,
-						version: installedPackage.installedVersion,
-					});
-				}
-			});
-		});
-
-		await UserSettings.getEncryptionKey();
-
 		// Load settings from database and set them to config.
 		const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
 		databaseSettings.forEach((setting) => {
 			config.set(setting.key, jsonParse(setting.value, { fallbackValue: setting.value }));
 		});
 
-		config.set('nodes.packagesMissing', '');
-		if (missingPackages.size) {
-			LoggerProxy.error(
-				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
-			);
+		const areCommunityPackagesEnabled = config.getEnv('nodes.communityPackages.enabled');
 
-			if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
-				LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
-				try {
-					// Optimistic approach - stop if any installation fails
-					// eslint-disable-next-line no-restricted-syntax
-					for (const missingPackage of missingPackages) {
-						// eslint-disable-next-line no-await-in-loop
-						void (await this.loadNodesAndCredentials.loadNpmModule(
-							missingPackage.packageName,
-							missingPackage.version,
-						));
-						missingPackages.delete(missingPackage);
-					}
-					LoggerProxy.info('Packages reinstalled successfully. Resuming regular initialization.');
-				} catch (error) {
-					LoggerProxy.error('n8n was unable to install the missing packages.');
-				}
-			}
-
-			config.set(
-				'nodes.packagesMissing',
-				Array.from(missingPackages)
-					.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
-					.join(' '),
-			);
+		if (areCommunityPackagesEnabled) {
+			const { CommunityPackagesService } = await import('@/services/communityPackages.service');
+			await Container.get(CommunityPackagesService).setMissingPackages({
+				reinstallMissingPackages: flags.reinstallMissingPackages,
+			});
 		}
 
 		const dbType = config.getEnv('database.type');
 		if (dbType === 'sqlite') {
 			const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 			if (shouldRunVacuum) {
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				await Db.collections.Execution.query('VACUUM;');
 			}
 		}
@@ -300,28 +311,19 @@ export class Start extends BaseCommand {
 		if (flags.tunnel) {
 			this.log('\nWaiting for tunnel ...');
 
-			let tunnelSubdomain;
-			if (
-				process.env[TUNNEL_SUBDOMAIN_ENV] !== undefined &&
-				process.env[TUNNEL_SUBDOMAIN_ENV] !== ''
-			) {
-				tunnelSubdomain = process.env[TUNNEL_SUBDOMAIN_ENV];
-			} else if (this.userSettings.tunnelSubdomain !== undefined) {
-				tunnelSubdomain = this.userSettings.tunnelSubdomain;
-			}
+			let tunnelSubdomain =
+				process.env.N8N_TUNNEL_SUBDOMAIN ?? this.instanceSettings.tunnelSubdomain ?? '';
 
-			if (tunnelSubdomain === undefined) {
+			if (tunnelSubdomain === '') {
 				// When no tunnel subdomain did exist yet create a new random one
 				const availableCharacters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-				this.userSettings.tunnelSubdomain = Array.from({ length: 24 })
-					.map(() => {
-						return availableCharacters.charAt(
-							Math.floor(Math.random() * availableCharacters.length),
-						);
-					})
+				tunnelSubdomain = Array.from({ length: 24 })
+					.map(() =>
+						availableCharacters.charAt(Math.floor(Math.random() * availableCharacters.length)),
+					)
 					.join('');
 
-				await UserSettings.writeUserSettings(this.userSettings);
+				this.instanceSettings.update({ tunnelSubdomain });
 			}
 
 			const tunnelSettings: localtunnel.TunnelConfig = {
@@ -341,19 +343,18 @@ export class Start extends BaseCommand {
 			);
 		}
 
-		await Server.start();
+		await this.server.start();
+
+		this.pruningService = Container.get(PruningService);
+		if (await this.pruningService.isPruningEnabled()) {
+			this.pruningService.startPruning();
+		}
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowRunner.init();
 
 		const editorUrl = GenericHelpers.getBaseUrl();
 		this.log(`\nEditor is now accessible via:\n${editorUrl}`);
-
-		const saveManualExecutions = config.getEnv('executions.saveDataManualExecutions');
-
-		if (saveManualExecutions) {
-			this.log('\nManual executions will be visible only for the owner');
-		}
 
 		// Allow to open n8n editor by pressing "o"
 		if (Boolean(process.stdout.isTTY) && process.stdin.setRawMode) {
@@ -370,11 +371,10 @@ export class Start extends BaseCommand {
 					this.openBrowser();
 				} else if (key.charCodeAt(0) === 3) {
 					// Ctrl + c got pressed
-					// eslint-disable-next-line @typescript-eslint/no-floating-promises
-					this.stopProcess();
+					void this.stopProcess();
 				} else {
 					// When anything else got pressed, record it and send it on enter into the child process
-					// eslint-disable-next-line no-lonely-if
+
 					if (key.charCodeAt(0) === 13) {
 						// send to child process and print in terminal
 						process.stdout.write('\n');

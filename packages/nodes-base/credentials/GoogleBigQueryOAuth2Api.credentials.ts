@@ -1,6 +1,10 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = ['https://www.googleapis.com/auth/bigquery'];
+const scopes = [
+	'https://www.googleapis.com/auth/bigquery',
+	'https://www.googleapis.com/auth/cloud-platform',
+	'https://www.googleapis.com/auth/drive',
+];
 
 export class GoogleBigQueryOAuth2Api implements ICredentialType {
 	name = 'googleBigQueryOAuth2Api';

@@ -7,4 +7,5 @@ export type ExecutionStatus =
 	| 'running'
 	| 'success'
 	| 'unknown'
-	| 'waiting';
+	| 'waiting'
+	| 'warning';

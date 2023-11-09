@@ -1,12 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
+import type { MigrationContext, ReversibleMigration } from '@db/types';
 
-export class AddExecutionEntityIndexes1644424784709 implements MigrationInterface {
-	name = 'AddExecutionEntityIndexes1644424784709';
-
-	public async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+export class AddExecutionEntityIndexes1644424784709 implements ReversibleMigration {
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`DROP INDEX \`IDX_${tablePrefix}c4d999a5e90784e8caccf5589d\` ON \`${tablePrefix}execution_entity\``,
 		);
@@ -30,8 +25,7 @@ export class AddExecutionEntityIndexes1644424784709 implements MigrationInterfac
 		);
 	}
 
-	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			`DROP INDEX \`IDX_${tablePrefix}81fc04c8a17de15835713505e4\` ON \`${tablePrefix}execution_entity\``,
 		);

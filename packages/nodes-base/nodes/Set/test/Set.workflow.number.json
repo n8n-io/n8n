@@ -1,0 +1,145 @@
+{
+	"name": "My workflow 31",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "5363525f-2065-4132-82cc-808941e51d47",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-380, -40]
+		},
+		{
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"name": "myNumber",
+							"value": "123456"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "9e6fa15e-f6d8-4764-815b-832ff00c531c",
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [-80, -40]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "updatedNumber",
+							"value": "={{ $json[\"myNumber\"] }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "4893a819-9f21-446a-b89f-3079d87d5f40",
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [140, -40]
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "numField",
+							"value": "={{ $json.updatedNumber }}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "8e6b36ca-4f50-4a51-b42f-8098d71248bf",
+			"name": "Set2",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 2,
+			"position": [540, -40]
+		},
+		{
+			"parameters": {
+				"content": "## Set Node V1 sets numbers as string",
+				"height": 265,
+				"width": 479
+			},
+			"id": "12610911-6841-486e-924a-af66cececdca",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [-146, -120]
+		},
+		{
+			"parameters": {
+				"content": "## Set Node V2 sets numbers as numbers",
+				"height": 264,
+				"width": 480
+			},
+			"id": "e5896250-3e0f-47ac-b47f-9f24bac4f52f",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"typeVersion": 1,
+			"position": [420, -120]
+		}
+	],
+	"pinData": {
+		"Set2": [
+			{
+				"json": {
+					"numField": 123456
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Set2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {},
+	"versionId": "f15acb8d-6e15-4962-b568-66f5a412efe0",
+	"id": "240",
+	"meta": {
+		"instanceId": "104a4d08d8897b8bdeb38aaca515021075e0bd8544c983c2bb8c86e6a8e6081c"
+	},
+	"tags": []
+}

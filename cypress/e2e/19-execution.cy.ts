@@ -1,14 +1,12 @@
 import { v4 as uuid } from 'uuid';
 import { NDV, WorkflowPage as WorkflowPageClass, WorkflowsPage } from '../pages';
 
-const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPageClass();
 const ndv = new NDV();
 
 describe('Execution', () => {
 	beforeEach(() => {
-		cy.resetAll();
-		cy.skipSetup();
+		workflowPage.actions.visit();
 	});
 
 	it('should test manual workflow', () => {
@@ -106,7 +104,7 @@ describe('Execution', () => {
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
 
-		cy.wait(1000);
+		workflowPage.getters.stopExecutionButton().should('exist');
 		workflowPage.getters.stopExecutionButton().click();
 
 		// Check canvas nodes after workflow stopped
@@ -263,7 +261,6 @@ describe('Execution', () => {
 		workflowPage.getters
 			.canvasNodeByName('Set')
 			.within(() => cy.get('.fa-check').should('not.exist'));
-
 
 		// Check canvas nodes after workflow stopped
 		workflowPage.getters

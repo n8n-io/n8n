@@ -8,6 +8,7 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import moment from 'moment';
 import {
 	campaignFieldsMetadata,
 	mailchimpApiRequest,
@@ -15,9 +16,7 @@ import {
 	validateJSON,
 } from './GenericFunctions';
 
-import moment from 'moment';
-
-enum Status {
+const enum Status {
 	subscribe = 'subscribe',
 	unsubscribed = 'unsubscribe',
 	cleaned = 'cleaned',
@@ -1579,7 +1578,7 @@ export class Mailchimp implements INodeType {
 
 	methods = {
 		loadOptions: {
-			// Get all the available lists to display them to user so that he can
+			// Get all the available lists to display them to user so that they can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1595,7 +1594,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the available merge fields to display them to user so that he can
+			// Get all the available merge fields to display them to user so that they can
 			// select them easily
 			async getMergeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -1616,7 +1615,7 @@ export class Mailchimp implements INodeType {
 				return returnData;
 			},
 
-			// Get all the interest fields to display them to user so that he can
+			// Get all the interest fields to display them to user so that they can
 			// select them easily
 			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -2197,6 +2196,6 @@ export class Mailchimp implements INodeType {
 				throw error;
 			}
 		}
-		return this.prepareOutputData(returnData);
+		return [returnData];
 	}
 }
