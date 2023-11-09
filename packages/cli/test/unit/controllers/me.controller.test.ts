@@ -13,7 +13,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { InternalHooks } from '@/InternalHooks';
 import { License } from '@/License';
 import { badPasswords } from '../shared/testData';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 describe('MeController', () => {
 	const externalHooks = mockInstance(ExternalHooks);

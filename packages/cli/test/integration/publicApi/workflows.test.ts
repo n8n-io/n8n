@@ -1,22 +1,23 @@
 import type { SuperAgentTest } from 'supertest';
-import type { Role } from '@db/entities/Role';
-import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
-import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-
-import { randomApiKey } from '../shared/random';
-import * as utils from '../shared/utils/';
-import * as testDb from '../shared/testDb';
+import Container from 'typedi';
 import type { INode } from 'n8n-workflow';
 import { STARTING_NODES } from '@/constants';
 import { License } from '@/License';
+import type { Role } from '@db/entities/Role';
+import type { TagEntity } from '@db/entities/TagEntity';
+import type { User } from '@db/entities/User';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
-import Container from 'typedi';
+import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+
+import { mockInstance } from '../../shared/mocking';
+import { randomApiKey } from '../shared/random';
+import * as utils from '../shared/utils/';
+import * as testDb from '../shared/testDb';
 import { getAllRoles } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
 import { createWorkflow, createWorkflowWithTrigger } from '../shared/db/workflows';
 import { createTag } from '../shared/db/tags';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 let workflowOwnerRole: Role;
 let owner: User;
@@ -27,7 +28,7 @@ let workflowRunner: ActiveWorkflowRunner;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
-const licenseLike = utils.mockInstance(License, {
+const licenseLike = mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });

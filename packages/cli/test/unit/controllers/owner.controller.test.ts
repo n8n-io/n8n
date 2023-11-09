@@ -8,11 +8,12 @@ import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
 import { OwnerController } from '@/controllers/owner.controller';
-import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { UserService } from '@/services/user.service';
 import { License } from '@/License';
-import { mockInstance } from '../../integration/shared/utils';
+
+import { mockInstance } from '../../shared/mocking';
+import { badPasswords } from '../shared/testData';
 
 describe('OwnerController', () => {
 	const config = mock<Config>();

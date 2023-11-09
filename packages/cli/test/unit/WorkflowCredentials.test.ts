@@ -3,7 +3,7 @@ import type { INode } from 'n8n-workflow';
 import { WorkflowCredentials } from '@/WorkflowCredentials';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 const credentialsRepository = mockInstance(CredentialsRepository);
 credentialsRepository.findOneBy.mockImplementation(

@@ -1,14 +1,15 @@
 import { Reset } from '@/commands/user-management/reset';
 import type { Role } from '@db/entities/Role';
-import * as testDb from '../shared/testDb';
-import { mockInstance } from '../shared/utils/';
 import { InternalHooks } from '@/InternalHooks';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
-import { getGlobalOwnerRole } from '../shared/db/roles';
-import { createUser } from '../shared/db/users';
 import Container from 'typedi';
 import { UserRepository } from '@db/repositories/user.repository';
+
+import { mockInstance } from '../../shared/mocking';
+import * as testDb from '../shared/testDb';
+import { getGlobalOwnerRole } from '../shared/db/roles';
+import { createUser } from '../shared/db/users';
 
 let globalOwnerRole: Role;
 

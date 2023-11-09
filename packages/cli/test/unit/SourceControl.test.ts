@@ -18,7 +18,7 @@ import {
 import { constants as fsConstants, accessSync } from 'fs';
 import type { SourceControlledFile } from '@/environments/sourceControl/types/sourceControlledFile';
 import type { SourceControlPreferences } from '@/environments/sourceControl/types/sourceControlPreferences';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 const pushResult: SourceControlledFile[] = [
 	{

@@ -12,8 +12,10 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { JwtService } from '@/services/jwt.service';
 import { UserService } from '@/services/user.service';
 import { UserManagementMailer } from '@/UserManagement/email';
+import { UserRepository } from '@db/repositories/user.repository';
 
-import * as utils from './shared/utils/';
+import { mockInstance } from '../shared/mocking';
+import { getAuthToken, setupTestServer } from './shared/utils/';
 import {
 	randomEmail,
 	randomInvalidPassword,
@@ -24,7 +26,6 @@ import {
 import * as testDb from './shared/testDb';
 import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
-import { UserRepository } from '@db/repositories/user.repository';
 
 config.set('userManagement.jwtSecret', randomString(5, 10));
 
@@ -33,9 +34,9 @@ let globalMemberRole: Role;
 let owner: User;
 let member: User;
 
-const externalHooks = utils.mockInstance(ExternalHooks);
-const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
-const testServer = utils.setupTestServer({ endpointGroups: ['passwordReset'] });
+const externalHooks = mockInstance(ExternalHooks);
+const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
+const testServer = setupTestServer({ endpointGroups: ['passwordReset'] });
 const jwtService = Container.get(JwtService);
 let userService: UserService;
 
@@ -199,7 +200,7 @@ describe('POST /change-password', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const authToken = utils.getAuthToken(response);
+		const authToken = getAuthToken(response);
 		expect(authToken).toBeDefined();
 
 		const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({
@@ -276,7 +277,7 @@ describe('POST /change-password', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const authToken = utils.getAuthToken(response);
+		const authToken = getAuthToken(response);
 		expect(authToken).toBeDefined();
 
 		const { password: storedPassword } = await Container.get(UserRepository).findOneByOrFail({

@@ -6,7 +6,7 @@ import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
 import { InternalHooks } from '@/InternalHooks';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 import {
 	DummyProvider,
 	ErrorProvider,

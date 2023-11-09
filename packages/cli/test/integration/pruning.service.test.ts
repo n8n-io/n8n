@@ -1,18 +1,19 @@
 import config from '@/config';
 import { BinaryDataService } from 'n8n-core';
 import type { ExecutionStatus } from 'n8n-workflow';
+import Container from 'typedi';
 
 import * as testDb from './shared/testDb';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ExecutionRepository } from '@db/repositories/execution.repository';
 import { TIME } from '@/constants';
 import { PruningService } from '@/services/pruning.service';
 import { Logger } from '@/Logger';
-import { mockInstance } from './shared/utils';
+
+import { mockInstance } from '../shared/mocking';
 import { createWorkflow } from './shared/db/workflows';
 import { createExecution, createSuccessfulExecution } from './shared/db/executions';
-import { ExecutionRepository } from '@db/repositories/execution.repository';
-import Container from 'typedi';
 
 describe('softDeleteOnPruningCycle()', () => {
 	let pruningService: PruningService;

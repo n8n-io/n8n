@@ -1,13 +1,6 @@
 import { OwnershipService } from '@/services/ownership.service';
 import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
-import { mockInstance } from '../../integration/shared/utils';
 import { Role } from '@db/entities/Role';
-import {
-	randomCredentialPayload,
-	randomEmail,
-	randomInteger,
-	randomName,
-} from '../../integration/shared/random';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { CacheService } from '@/services/cache.service';
 import { User } from '@db/entities/User';
@@ -15,6 +8,13 @@ import { RoleService } from '@/services/role.service';
 import { UserService } from '@/services/user.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
+import { mockInstance } from '../../shared/mocking';
+import {
+	randomCredentialPayload,
+	randomEmail,
+	randomInteger,
+	randomName,
+} from '../../integration/shared/random';
 
 const wfOwnerRole = () =>
 	Object.assign(new Role(), {

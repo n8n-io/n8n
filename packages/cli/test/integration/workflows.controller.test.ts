@@ -10,6 +10,7 @@ import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
+import { mockInstance } from '../shared/mocking';
 import * as utils from './shared/utils/';
 import * as testDb from './shared/testDb';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
@@ -27,12 +28,12 @@ const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 
 const { objectContaining, arrayContaining, any } = expect;
 
-const licenseLike = utils.mockInstance(License, {
+const licenseLike = mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });
 
-const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
+const activeWorkflowRunnerLike = mockInstance(ActiveWorkflowRunner);
 
 beforeAll(async () => {
 	owner = await createOwner();

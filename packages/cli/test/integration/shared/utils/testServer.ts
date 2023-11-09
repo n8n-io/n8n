@@ -16,10 +16,10 @@ import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 
+import { mockInstance } from '../../../shared/mocking';
 import * as testDb from '../../shared/testDb';
 import { AUTHLESS_ENDPOINTS, PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
 import type { SetupProps, TestServer } from '../types';
-import { mockInstance } from './mocking';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.

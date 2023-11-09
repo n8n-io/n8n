@@ -14,11 +14,10 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { AUTH_COOKIE_NAME } from '@/constants';
 
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { mockInstance } from './mocking';
-import { mockNodeTypesData } from '../../../unit/Helpers';
 import { SettingsRepository } from '@db/repositories/settings.repository';
+import { mockNodeTypesData } from '../../../unit/Helpers';
+import { mockInstance } from '../../../shared/mocking';
 
-export { mockInstance } from './mocking';
 export { setupTestServer } from './testServer';
 
 // ----------------------------------

@@ -14,7 +14,7 @@ import { RedisServicePubSubPublisher } from '@/services/redis/RedisServicePubSub
 import { RedisServicePubSubSubscriber } from '@/services/redis/RedisServicePubSubSubscriber';
 import { OrchestrationHandlerMainService } from '@/services/orchestration/main/orchestration.handler.main.service';
 
-import { mockInstance } from '../shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 const oclifConfig: Config.IConfig = new Config.Config({ root: __dirname });
 

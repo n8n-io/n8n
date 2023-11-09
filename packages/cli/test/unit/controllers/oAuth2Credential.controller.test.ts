@@ -18,7 +18,7 @@ import { VariablesService } from '@/environments/variables/variables.service';
 import { SecretsHelper } from '@/SecretsHelpers';
 import { CredentialsHelper } from '@/CredentialsHelper';
 
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 describe('OAuth2CredentialController', () => {
 	mockInstance(Logger);

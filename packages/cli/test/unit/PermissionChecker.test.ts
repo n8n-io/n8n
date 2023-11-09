@@ -13,7 +13,7 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 import { OwnershipService } from '@/services/ownership.service';
 
-import { mockInstance } from '../integration/shared/utils/';
+import { mockInstance } from '../shared/mocking';
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,

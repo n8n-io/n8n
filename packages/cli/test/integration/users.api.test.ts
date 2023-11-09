@@ -9,6 +9,14 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { UserManagementMailer } from '@/UserManagement/email/UserManagementMailer';
 
+import Container from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
+
+import { mockInstance } from '../shared/mocking';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomCredentialPayload,
@@ -23,12 +31,6 @@ import { saveCredential } from './shared/db/credentials';
 import { getAllRoles } from './shared/db/roles';
 import { createUser, createUserShell } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import Container from 'typedi';
-import { UserRepository } from '@db/repositories/user.repository';
-import { WorkflowRepository } from '@db/repositories/workflow.repository';
-import { CredentialsRepository } from '@db/repositories/credentials.repository';
-import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
-import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -36,7 +38,7 @@ let credentialOwnerRole: Role;
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
 
-const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
+const mailer = mockInstance(UserManagementMailer, { isEmailSetUp: true });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 

@@ -7,8 +7,8 @@ import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repo
 import { License } from '@/License';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
 
+import { mockInstance } from '../shared/mocking';
 import * as testDb from './shared/testDb';
-import { mockInstance } from './shared/utils';
 import { createWorkflow } from './shared/db/workflows';
 import { createManyWorkflowHistoryItems } from './shared/db/workflowHistory';
 

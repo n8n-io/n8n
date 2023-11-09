@@ -5,7 +5,7 @@ import config from '@/config';
 import { License } from '@/License';
 import { Logger } from '@/Logger';
 import { N8N_VERSION } from '@/constants';
-import { mockInstance } from '../integration/shared/utils';
+import { mockInstance } from '../shared/mocking';
 
 jest.mock('@n8n_io/license-sdk');
 

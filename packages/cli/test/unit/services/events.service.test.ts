@@ -15,7 +15,7 @@ import { WorkflowStatisticsRepository } from '@db/repositories/workflowStatistic
 import { EventsService } from '@/services/events.service';
 import { UserService } from '@/services/user.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { mockInstance } from '../../integration/shared/utils';
+import { mockInstance } from '../../shared/mocking';
 
 jest.mock('@/UserManagement/UserManagementHelper', () => ({ getWorkflowOwner: jest.fn() }));
 

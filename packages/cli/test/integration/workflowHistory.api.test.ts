@@ -1,8 +1,10 @@
 import type { SuperAgentTest } from 'supertest';
 import { License } from '@/License';
+import type { User } from '@db/entities/User';
+
+import { mockInstance } from '../shared/mocking';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
-import type { User } from '@db/entities/User';
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createWorkflowHistoryItem } from './shared/db/workflowHistory';
@@ -12,7 +14,7 @@ let authOwnerAgent: SuperAgentTest;
 let member: User;
 let authMemberAgent: SuperAgentTest;
 
-const licenseLike = utils.mockInstance(License, {
+const licenseLike = mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(true),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });

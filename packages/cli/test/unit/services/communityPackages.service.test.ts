@@ -20,12 +20,13 @@ import { InstalledPackagesRepository } from '@db/repositories/installedPackages.
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
+import { mockInstance } from '../../shared/mocking';
 import {
 	COMMUNITY_NODE_VERSION,
 	COMMUNITY_PACKAGE_VERSION,
 } from '../../integration/shared/constants';
 import { randomName } from '../../integration/shared/random';
-import { mockInstance, mockPackageName, mockPackagePair } from '../../integration/shared/utils';
+import { mockPackageName, mockPackagePair } from '../../integration/shared/utils';
 
 jest.mock('fs/promises');
 jest.mock('child_process');
