@@ -91,9 +91,14 @@ export class DateTimeV2 implements INodeType {
 			false,
 		) as boolean;
 
+		const copyShallow = (item: INodeExecutionData) => ({
+			json: { ...item.json },
+			binary: item.binary,
+		});
+
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const item: INodeExecutionData = includeInputFields ? items[i] : { json: {} };
+				const item: INodeExecutionData = includeInputFields ? copyShallow(items[i]) : { json: {} };
 				item.pairedItem = {
 					item: i,
 				};
