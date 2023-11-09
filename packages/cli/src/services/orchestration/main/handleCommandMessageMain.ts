@@ -134,7 +134,7 @@ export async function handleCommandMessageMain(messageString: string) {
 					return message;
 				}
 
-				const { _workflowId, _sessionId } = message.payload ?? {};
+				const { workflowId: _workflowId, sessionId: _sessionId } = message.payload ?? {};
 
 				if (typeof _workflowId !== 'string' || typeof _sessionId !== 'string') break;
 
