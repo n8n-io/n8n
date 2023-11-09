@@ -10,15 +10,5 @@
 			}
 		]
 	},
-	"alias": [
-		"Mock",
-		"Sample",
-		"Demo",
-		"Test",
-		"Throw error",
-		"OOM",
-		"Out of Memory",
-		"placeholder",
-		"do nothing"
-	]
+	"alias": ["Mock", "Sample", "Demo", "Test", "Throw error", "OOM", "Out of Memory", "placeholder"]
 }
