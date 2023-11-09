@@ -5,6 +5,7 @@ import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as testDb from '../shared/testDb';
 import { mockInstance } from '../shared/utils/';
+import { getAllWorkflows } from '../shared/db/workflows';
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -22,7 +23,7 @@ afterAll(async () => {
 
 test('import:workflow should import active workflow and deactivate it', async () => {
 	const config: Config.IConfig = new Config.Config({ root: __dirname });
-	const before = await testDb.getAllWorkflows();
+	const before = await getAllWorkflows();
 	expect(before.length).toBe(0);
 	const importer = new ImportWorkflowsCommand(
 		['--separate', '--input=./test/integration/commands/importWorkflows/separate'],
@@ -38,7 +39,7 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	} catch (error) {
 		expect(error.message).toBe('process.exit');
 	}
-	const after = await testDb.getAllWorkflows();
+	const after = await getAllWorkflows();
 	expect(after.length).toBe(2);
 	expect(after[0].name).toBe('active-workflow');
 	expect(after[0].active).toBe(false);
@@ -49,7 +50,7 @@ test('import:workflow should import active workflow and deactivate it', async ()
 
 test('import:workflow should import active workflow from combined file and deactivate it', async () => {
 	const config: Config.IConfig = new Config.Config({ root: __dirname });
-	const before = await testDb.getAllWorkflows();
+	const before = await getAllWorkflows();
 	expect(before.length).toBe(0);
 	const importer = new ImportWorkflowsCommand(
 		['--input=./test/integration/commands/importWorkflows/combined/combined.json'],
@@ -65,7 +66,7 @@ test('import:workflow should import active workflow from combined file and deact
 	} catch (error) {
 		expect(error.message).toBe('process.exit');
 	}
-	const after = await testDb.getAllWorkflows();
+	const after = await getAllWorkflows();
 	expect(after.length).toBe(2);
 	expect(after[0].name).toBe('active-workflow');
 	expect(after[0].active).toBe(false);

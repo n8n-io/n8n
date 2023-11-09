@@ -5,6 +5,7 @@ import { ImportCredentialsCommand } from '@/commands/import/credentials';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as testDb from '../shared/testDb';
 import { mockInstance } from '../shared/utils';
+import { getAllCredentials } from '../shared/db/credentials';
 
 beforeAll(async () => {
 	mockInstance(InternalHooks);
@@ -22,7 +23,7 @@ afterAll(async () => {
 
 test('import:credentials should import a credential', async () => {
 	const config: Config.IConfig = new Config.Config({ root: __dirname });
-	const before = await testDb.getAllCredentials();
+	const before = await getAllCredentials();
 	expect(before.length).toBe(0);
 	const importer = new ImportCredentialsCommand(
 		['--input=./test/integration/commands/importCredentials/credentials.json'],
@@ -38,7 +39,7 @@ test('import:credentials should import a credential', async () => {
 	} catch (error) {
 		expect(error.message).toBe('process.exit');
 	}
-	const after = await testDb.getAllCredentials();
+	const after = await getAllCredentials();
 	expect(after.length).toBe(1);
 	expect(after[0].name).toBe('cred-aws-test');
 	expect(after[0].id).toBe('123');
