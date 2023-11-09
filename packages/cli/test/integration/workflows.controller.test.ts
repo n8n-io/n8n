@@ -18,6 +18,7 @@ import { saveCredential } from './shared/db/credentials';
 import { createOwner } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
 import { createTag } from './shared/db/tags';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -31,6 +32,7 @@ const licenseLike = utils.mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });
+utils.mockInstance(MultiMainSetup);
 
 const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
 
