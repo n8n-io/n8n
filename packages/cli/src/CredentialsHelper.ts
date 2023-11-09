@@ -32,6 +32,7 @@ import type {
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
 	ICredentialTestFunctions,
+	Severity,
 } from 'n8n-workflow';
 import {
 	ICredentialsHelper,
@@ -84,6 +85,15 @@ const mockNodeTypes: INodeTypes = {
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
+
+class CredentialNotFoundError extends Error {
+	severity: Severity;
+
+	constructor(credentialId: string, credentialType: string) {
+		super(`Credential with ID "${credentialId}" does not exist for type "${credentialType}".`);
+		this.severity = 'warning';
+	}
+}
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
@@ -257,17 +267,17 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
-		const credential = userId
-			? await Db.collections.SharedCredentials.findOneOrFail({
-					relations: ['credentials'],
-					where: { credentials: { id: nodeCredential.id, type }, userId },
-			  }).then((shared) => shared.credentials)
-			: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+		let credential: CredentialsEntity;
 
-		if (!credential) {
-			throw new Error(
-				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
-			);
+		try {
+			credential = userId
+				? await Db.collections.SharedCredentials.findOneOrFail({
+						relations: ['credentials'],
+						where: { credentials: { id: nodeCredential.id, type }, userId },
+				  }).then((shared) => shared.credentials)
+				: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+		} catch (error) {
+			throw new CredentialNotFoundError(nodeCredential.id, type);
 		}
 
 		return new Credentials(
