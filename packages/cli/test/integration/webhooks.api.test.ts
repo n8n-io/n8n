@@ -14,11 +14,13 @@ import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
 	mockInstance(InternalHooks);
 	mockInstance(Push);
+	mockInstance(MultiMainSetup);
 
 	let agent: SuperAgentTest;
 
@@ -53,7 +55,6 @@ describe('Webhook API', () => {
 
 		test('should handle JSON', async () => {
 			const response = await agent.post('/webhook/abcd').send({ test: true });
-			console.log('response.body', response.body);
 			expect(response.statusCode).toEqual(200);
 			expect(response.body).toEqual({
 				type: 'application/json',
