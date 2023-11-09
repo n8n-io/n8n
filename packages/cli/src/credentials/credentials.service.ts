@@ -353,7 +353,6 @@ export class CredentialsService {
 		return copiedData;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	private static unredactRestoreValues(unmerged: any, replacement: any) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		for (const [key, value] of Object.entries(unmerged)) {

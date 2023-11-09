@@ -170,7 +170,6 @@ export class ActiveExecutions {
 				setTimeout(() => {
 					// execute on next event loop tick;
 					this.activeExecutions[executionId].process!.send({
-						// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 						type: timeout || 'stopExecution',
 					});
 				}, 1);
