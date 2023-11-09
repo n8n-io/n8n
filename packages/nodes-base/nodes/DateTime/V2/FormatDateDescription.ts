@@ -118,6 +118,14 @@ export const FormatDateDescription: INodeProperties[] = [
 		default: {},
 		options: [
 			{
+				displayName: 'From Date Format',
+				name: 'fromFormat',
+				type: 'string',
+				default: '',
+				description:
+					'Format for parsing the value as a date. If unrecognized, specify the <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/#supported-date-formats">format</a> for the value.',
+			},
+			{
 				displayName: 'Use Workflow Timezone',
 				name: 'timezone',
 				type: 'boolean',
