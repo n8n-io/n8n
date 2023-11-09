@@ -1,0 +1,69 @@
+diff --git a/commands/SchemaLogCommand.js b/commands/SchemaLogCommand.js
+index afd9c3c2ad2115dcd5f6fe436a8749bda02d2408..6587d8523b0e5361919ca46324949f315bff4122 100644
+--- a/commands/SchemaLogCommand.js
++++ b/commands/SchemaLogCommand.js
+@@ -2,7 +2,6 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.SchemaLogCommand = void 0;
+ const tslib_1 = require("tslib");
+-const cli_highlight_1 = require("cli-highlight");
+ const chalk_1 = tslib_1.__importDefault(require("chalk"));
+ const PlatformTools_1 = require("../platform/PlatformTools");
+ const path_1 = tslib_1.__importDefault(require("path"));
+@@ -58,7 +57,7 @@ class SchemaLogCommand {
+                         sqlString.substr(-1) === ";"
+                             ? sqlString
+                             : sqlString + ";";
+-                    console.log((0, cli_highlight_1.highlight)(sqlString));
++                    console.log(sqlString);
+                 });
+             }
+             await dataSource.destroy();
+diff --git a/package.json b/package.json
+index 9ef3eaa4369c87206f4ca6320f761f6a4df39210..0a99f9a26529dec5c5bef63b1421b7e6884e89b7 100644
+--- a/package.json
++++ b/package.json
+@@ -219,7 +219,6 @@
+     "app-root-path": "^3.1.0",
+     "buffer": "^6.0.3",
+     "chalk": "^4.1.2",
+-    "cli-highlight": "^2.1.11",
+     "date-fns": "^2.29.3",
+     "debug": "^4.3.4",
+     "dotenv": "^16.0.3",
+diff --git a/platform/PlatformTools.js b/platform/PlatformTools.js
+index 8a3569eb24288ab6823850ce2af31025e1ef17c9..4540a8a761fafa6d700ae548ec5ae017cc8bd5c6 100644
+--- a/platform/PlatformTools.js
++++ b/platform/PlatformTools.js
+@@ -6,7 +6,6 @@ const path = tslib_1.__importStar(require("path"));
+ const fs = tslib_1.__importStar(require("fs"));
+ const dotenv_1 = tslib_1.__importDefault(require("dotenv"));
+ const chalk_1 = tslib_1.__importDefault(require("chalk"));
+-const cli_highlight_1 = require("cli-highlight");
+ var fs_1 = require("fs");
+ Object.defineProperty(exports, "ReadStream", { enumerable: true, get: function () { return fs_1.ReadStream; } });
+ var events_1 = require("events");
+@@ -178,21 +177,13 @@ class PlatformTools {
+      * Highlights sql string to be print in the console.
+      */
+     static highlightSql(sql) {
+-        const theme = {
+-            keyword: chalk_1.default.blueBright,
+-            literal: chalk_1.default.blueBright,
+-            string: chalk_1.default.white,
+-            type: chalk_1.default.magentaBright,
+-            built_in: chalk_1.default.magentaBright,
+-            comment: chalk_1.default.gray,
+-        };
+-        return (0, cli_highlight_1.highlight)(sql, { theme: theme, language: "sql" });
++        return sql;
+     }
+     /**
+      * Highlights json string to be print in the console.
+      */
+     static highlightJson(json) {
+-        return (0, cli_highlight_1.highlight)(json, { language: "json" });
++        return json;
+     }
+     /**
+      * Logging functions needed by AdvancedConsoleLogger
