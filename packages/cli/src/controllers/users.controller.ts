@@ -202,6 +202,7 @@ export class UsersController {
 					});
 					if (result.emailSent) {
 						resp.user.emailSent = true;
+						delete resp.user.inviteAcceptUrl;
 						void this.internalHooks.onUserTransactionalEmail({
 							user_id: id,
 							message_type: 'New user invite',
@@ -236,6 +237,13 @@ export class UsersController {
 		);
 
 		await this.externalHooks.run('user.invited', [usersToSetUp]);
+
+		console.log(
+			usersPendingSetup.length > 1
+				? `Sent ${usersPendingSetup.length} invite emails successfully`
+				: 'Sent 1 invite email successfully',
+			{ userShells: createUsers },
+		);
 
 		this.logger.debug(
 			usersPendingSetup.length > 1

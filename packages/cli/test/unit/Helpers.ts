@@ -1,3 +1,4 @@
+import type { MockedFunction } from 'jest-mock';
 import type { INodeTypeData } from 'n8n-workflow';
 
 /**
@@ -36,3 +37,10 @@ export function mockNodeTypesData(
 		);
 	}, {});
 }
+
+/**
+ * A helper to return the arguments a mocked function was last called with.
+ */
+export const getLastArgsTo = <T>(subject: MockedFunction<any>) => {
+	return subject.mock.calls[subject.mock.calls.length - 1] as T;
+};

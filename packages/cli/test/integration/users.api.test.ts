@@ -1,5 +1,4 @@
 import validator from 'validator';
-import { Not } from 'typeorm';
 import type { SuperAgentTest } from 'supertest';
 
 import * as Db from '@/Db';
@@ -22,47 +21,256 @@ import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
 import { saveCredential } from './shared/db/credentials';
 import { getAllRoles } from './shared/db/roles';
-import { createUser, createUserShell } from './shared/db/users';
+import { createMember, createOwner, createUser, createUserShell } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
+import type { PublicUser } from '@/Interfaces';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooks } from '@/InternalHooks';
+import Container from 'typedi';
 
+const { any } = expect;
+
+let credentialOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
-let credentialOwnerRole: Role;
-let owner: User;
-let authOwnerAgent: SuperAgentTest;
 
+let owner: User;
+let member: User;
+let authOwnerAgent: SuperAgentTest;
+let authlessAgent: SuperAgentTest;
+
+const externalHooks = utils.mockInstance(ExternalHooks);
 const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
 beforeAll(async () => {
-	const [
-		globalOwnerRole,
-		fetchedGlobalMemberRole,
-		fetchedWorkflowOwnerRole,
-		fetchedCredentialOwnerRole,
-	] = await getAllRoles();
+	const [_, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole, fetchedCredentialOwnerRole] =
+		await getAllRoles();
 
+	credentialOwnerRole = fetchedCredentialOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
-	credentialOwnerRole = fetchedCredentialOwnerRole;
-
-	owner = await createUser({ globalRole: globalOwnerRole });
-
-	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
-	await Db.collections.User.delete({ id: Not(owner.id) });
+	await testDb.truncate(['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
+	owner = await createOwner();
+	member = await createMember();
+	externalHooks.run.mockReset();
+	authOwnerAgent = testServer.authAgentFor(owner);
+	authlessAgent = testServer.authlessAgent;
+});
 
-	mailer.invite.mockResolvedValue({ emailSent: true });
+const validatePublicUser = (user: PublicUser) => {
+	expect(typeof user.id).toBe('string');
+	expect(user.email).toBeDefined();
+	expect(user.firstName).toBeDefined();
+	expect(user.lastName).toBeDefined();
+	expect(typeof user.isOwner).toBe('boolean');
+	expect(user.isPending).toBe(false);
+	expect(user.signInType).toBe('email');
+	expect(user.settings).toBe(null);
+	expect(user.personalizationAnswers).toBeNull();
+	expect(user.password).toBeUndefined();
+	expect(user.globalRole).toBeDefined();
+};
+
+const assertInviteUserResponse = (
+	user: Pick<User, 'id' | 'email'> & { inviteAcceptUrl: string },
+) => {
+	expect(validator.isUUID(user.id)).toBe(true);
+	expect(user.inviteAcceptUrl).toBeUndefined();
+	expect(user.email).toBeDefined();
+};
+
+const assertInvitedUsersOnDb = (user: User) => {
+	expect(user.firstName).toBeNull();
+	expect(user.lastName).toBeNull();
+	expect(user.personalizationAnswers).toBeNull();
+	expect(user.password).toBeNull();
+	expect(user.isPending).toBe(true);
+};
+
+describe('GET /users', () => {
+	test('should return all users', async () => {
+		const response = await authOwnerAgent.get('/users').expect(200);
+
+		expect(response.body.data).toHaveLength(2);
+
+		response.body.data.forEach(validatePublicUser);
+	});
+
+	describe('filter', () => {
+		test('should filter users by field: email', async () => {
+			const secondMember = await createMember();
+
+			const response = await authOwnerAgent
+				.get('/users')
+				.query(`filter={ "email": "${secondMember.email}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [user] = response.body.data;
+
+			expect(user.email).toBe(secondMember.email);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query('filter={ "email": "non@existing.com" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter users by field: firstName', async () => {
+			const secondMember = await createMember();
+
+			const response = await authOwnerAgent
+				.get('/users')
+				.query(`filter={ "firstName": "${secondMember.firstName}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [user] = response.body.data;
+
+			expect(user.email).toBe(secondMember.email);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query('filter={ "firstName": "Non-Existing" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter users by field: lastName', async () => {
+			const secondMember = await createMember();
+
+			const response = await authOwnerAgent
+				.get('/users')
+				.query(`filter={ "lastName": "${secondMember.lastName}" }`)
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [user] = response.body.data;
+
+			expect(user.email).toBe(secondMember.email);
+
+			const _response = await authOwnerAgent
+				.get('/users')
+				.query('filter={ "lastName": "Non-Existing" }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(0);
+		});
+
+		test('should filter users by computed field: isOwner', async () => {
+			const response = await authOwnerAgent
+				.get('/users')
+				.query('filter={ "isOwner": true }')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			const [user] = response.body.data;
+
+			expect(user.isOwner).toBe(true);
+
+			const _response = await testServer
+				.authAgentFor(owner)
+				.get('/users')
+				.query('filter={ "isOwner": false }')
+				.expect(200);
+
+			expect(_response.body.data).toHaveLength(1);
+
+			const [_user] = _response.body.data;
+
+			expect(_user.isOwner).toBe(false);
+		});
+	});
+
+	describe('select', () => {
+		test('should select user field: id', async () => {
+			const response = await authOwnerAgent.get('/users').query('select=["id"]').expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ id: any(String) }, { id: any(String) }],
+			});
+		});
+
+		test('should select user field: email', async () => {
+			const response = await authOwnerAgent.get('/users').query('select=["email"]').expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ email: any(String) }, { email: any(String) }],
+			});
+		});
+
+		test('should select user field: firstName', async () => {
+			const response = await authOwnerAgent.get('/users').query('select=["firstName"]').expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ firstName: any(String) }, { firstName: any(String) }],
+			});
+		});
+
+		test('should select user field: lastName', async () => {
+			const response = await authOwnerAgent.get('/users').query('select=["lastName"]').expect(200);
+
+			expect(response.body).toEqual({
+				data: [{ lastName: any(String) }, { lastName: any(String) }],
+			});
+		});
+	});
+
+	describe('take', () => {
+		test('should return n users or less, without skip', async () => {
+			const response = await authOwnerAgent.get('/users').query('take=2').expect(200);
+
+			expect(response.body.data).toHaveLength(2);
+
+			response.body.data.forEach(validatePublicUser);
+
+			const _response = await authOwnerAgent.get('/users').query('take=1').expect(200);
+
+			expect(_response.body.data).toHaveLength(1);
+
+			_response.body.data.forEach(validatePublicUser);
+		});
+
+		test('should return n users or less, with skip', async () => {
+			const response = await authOwnerAgent.get('/users').query('take=1&skip=1').expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+
+			response.body.data.forEach(validatePublicUser);
+		});
+	});
+
+	describe('combinations', () => {
+		test('should support options that require auxiliary fields', async () => {
+			// isOwner requires globalRole
+			// id-less select with take requires id
+
+			const response = await authOwnerAgent
+				.get('/users')
+				.query('filter={ "isOwner": true }&select=["firstName"]&take=10')
+				.expect(200);
+
+			expect(response.body).toEqual({ data: [{ firstName: any(String) }] });
+		});
+	});
 });
 
 describe('DELETE /users/:id', () => {
 	test('should delete the user', async () => {
-		const userToDelete = await createUser({ globalRole: globalMemberRole });
-
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, {
@@ -76,7 +284,7 @@ describe('DELETE /users/:id', () => {
 
 		await Db.collections.SharedWorkflow.save({
 			role: workflowOwnerRole,
-			user: userToDelete,
+			user: member,
 			workflow: savedWorkflow,
 		});
 
@@ -93,27 +301,27 @@ describe('DELETE /users/:id', () => {
 
 		await Db.collections.SharedCredentials.save({
 			role: credentialOwnerRole,
-			user: userToDelete,
+			user: member,
 			credentials: savedCredential,
 		});
 
-		const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`);
+		const response = await authOwnerAgent.delete(`/users/${member.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-		const user = await Db.collections.User.findOneBy({ id: userToDelete.id });
+		const user = await Db.collections.User.findOneBy({ id: member.id });
 		expect(user).toBeNull(); // deleted
 
 		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 			relations: ['user'],
-			where: { userId: userToDelete.id, roleId: workflowOwnerRole.id },
+			where: { userId: member.id, roleId: workflowOwnerRole.id },
 		});
 		expect(sharedWorkflow).toBeNull(); // deleted
 
 		const sharedCredential = await Db.collections.SharedCredentials.findOne({
 			relations: ['user'],
-			where: { userId: userToDelete.id, roleId: credentialOwnerRole.id },
+			where: { userId: member.id, roleId: credentialOwnerRole.id },
 		});
 		expect(sharedCredential).toBeNull(); // deleted
 
@@ -197,9 +405,7 @@ describe('POST /users/:id', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await testServer.authlessAgent
-			.post(`/users/${memberShell.id}`)
-			.send(memberData);
+		const response = await authlessAgent.post(`/users/${memberShell.id}`).send(memberData);
 
 		const {
 			id,
@@ -270,9 +476,7 @@ describe('POST /users/:id', () => {
 		];
 
 		for (const invalidPayload of invalidPayloads) {
-			const response = await testServer.authlessAgent
-				.post(`/users/${memberShell.id}`)
-				.send(invalidPayload);
+			const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
 			const storedUser = await Db.collections.User.findOneOrFail({
@@ -295,7 +499,7 @@ describe('POST /users/:id', () => {
 			password: randomValidPassword(),
 		};
 
-		const response = await testServer.authlessAgent.post(`/users/${member.id}`).send(newMemberData);
+		const response = await authlessAgent.post(`/users/${member.id}`).send(newMemberData);
 
 		expect(response.statusCode).toBe(400);
 
@@ -312,57 +516,6 @@ describe('POST /users/:id', () => {
 });
 
 describe('POST /users', () => {
-	test('should succeed if emailing is not set up', async () => {
-		mailer.invite.mockResolvedValueOnce({ emailSent: false });
-		const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
-	});
-
-	test('should email invites and create user shells but ignore existing', async () => {
-		const member = await createUser({ globalRole: globalMemberRole });
-		const memberShell = await createUserShell(globalMemberRole);
-
-		const testEmails = [
-			randomEmail(),
-			randomEmail().toUpperCase(),
-			memberShell.email,
-			member.email,
-		];
-
-		const payload = testEmails.map((e) => ({ email: e }));
-
-		const response = await authOwnerAgent.post('/users').send(payload);
-
-		expect(response.statusCode).toBe(200);
-
-		for (const {
-			user: { id, email: receivedEmail, inviteAcceptUrl },
-			error,
-		} of response.body.data) {
-			expect(validator.isUUID(id)).toBe(true);
-			expect(id).not.toBe(member.id);
-			expect(inviteAcceptUrl).toBeUndefined();
-
-			const lowerCasedEmail = receivedEmail.toLowerCase();
-			expect(receivedEmail).toBe(lowerCasedEmail);
-			expect(payload.some(({ email }) => email.toLowerCase() === lowerCasedEmail)).toBe(true);
-
-			if (error) {
-				expect(error).toBe('Email could not be sent');
-			}
-
-			const storedUser = await Db.collections.User.findOneByOrFail({ id });
-			const { firstName, lastName, personalizationAnswers, password } = storedUser;
-
-			expect(firstName).toBeNull();
-			expect(lastName).toBeNull();
-			expect(personalizationAnswers).toBeNull();
-			expect(password).toBeNull();
-		}
-	});
-
 	test('should fail with invalid inputs', async () => {
 		const invalidPayloads = [
 			randomEmail(),
@@ -378,7 +531,7 @@ describe('POST /users', () => {
 				expect(response.statusCode).toBe(400);
 
 				const users = await Db.collections.User.find();
-				expect(users.length).toBe(1); // DB unaffected
+				expect(users.length).toBe(2); // DB unaffected
 			}),
 		);
 	});
@@ -393,7 +546,69 @@ describe('POST /users', () => {
 		expect(data.length).toBe(0);
 
 		const users = await Db.collections.User.find();
-		expect(users.length).toBe(1);
+		expect(users.length).toBe(2);
+	});
+
+	test('should succeed if emailing is not set up', async () => {
+		mailer.invite.mockResolvedValueOnce({ emailSent: false });
+		const usersToInvite = randomEmail();
+		const response = await authOwnerAgent.post('/users').send([{ email: usersToInvite }]);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toBeInstanceOf(Array);
+		expect(response.body.data.length).toBe(1);
+		const { user } = response.body.data[0];
+		expect(user.inviteAcceptUrl).toBeDefined();
+		const inviteUrl = new URL(user.inviteAcceptUrl);
+		expect(inviteUrl.searchParams.get('inviterId')).toBe(owner.id);
+		expect(inviteUrl.searchParams.get('inviteeId')).toBe(user.id);
+	});
+
+	test.only('should email invites and create user shells but ignore existing', async () => {
+		const internalHooks = Container.get(InternalHooks);
+
+		jest.spyOn(mailer, 'invite').mockImplementation(async () => ({ emailSent: true }));
+
+		const memberShell = await createUserShell(globalMemberRole);
+
+		const newUser = randomEmail();
+
+		const shellUsers = [memberShell.email];
+		const usersToInvite = [newUser, ...shellUsers];
+		const usersToCreate = [newUser];
+		const existingUsers = [member.email];
+
+		const testEmails = [...usersToInvite, ...existingUsers];
+
+		const payload = testEmails.map((email) => ({ email }));
+
+		const response = await authOwnerAgent.post('/users').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		expect(internalHooks.onUserTransactionalEmail).toHaveBeenCalledTimes(usersToInvite.length);
+
+		expect(externalHooks.run).toHaveBeenCalledTimes(1);
+		const [hookName, hookData] = externalHooks.run.mock.calls[0];
+		expect(hookName).toBe('user.invited');
+		expect(hookData[0]).toStrictEqual(usersToCreate);
+
+		for (const { user } of response.body.data as [
+			{ user: Pick<User, 'id' | 'email'> & { inviteAcceptUrl: string }; error?: string },
+		]) {
+			const storedUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+
+			assertInviteUserResponse(user);
+
+			assertInvitedUsersOnDb(storedUser);
+		}
+
+		for (const [onUserTransactionalEmailParameter] of internalHooks.onUserTransactionalEmail.mock
+			.calls) {
+			expect(onUserTransactionalEmailParameter.user_id).toBeDefined();
+			expect(onUserTransactionalEmailParameter.message_type).toBe('New user invite');
+			expect(onUserTransactionalEmailParameter.public_api).toBe(false);
+		}
 	});
 });
 
@@ -411,7 +626,7 @@ describe('POST /users/:id/reinvite', () => {
 
 		expect(reinviteResponse.statusCode).toBe(200);
 
-		const member = await createUser({ globalRole: globalMemberRole });
+		const member = await createMember();
 		const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
 
 		expect(reinviteMemberResponse.statusCode).toBe(400);
