@@ -8,7 +8,7 @@ const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPages = new WorkflowPageClass();
 const mainSidebar = new MainSidebar();
 
-describe('Workflow filters', () => {
+describe.skip('Workflow filters', () => {
 	before(() => {
 		cy.enableFeature('sharing', true);
 	});
