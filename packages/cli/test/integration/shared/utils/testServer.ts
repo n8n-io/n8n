@@ -14,12 +14,6 @@ import { rawBodyReader, bodyParser, setupAuthMiddlewares } from '@/middlewares';
 import { InternalHooks } from '@/InternalHooks';
 import { PostHogClient } from '@/posthog';
 import { License } from '@/License';
-
-import {
-	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-} from '@/databases/repositories';
 import { Logger } from '@/Logger';
 
 import * as testDb from '../../shared/testDb';
@@ -217,6 +211,7 @@ export const setupTestServer = ({
 
 					case 'owner':
 						const { UserService } = await import('@/services/user.service');
+						const { SettingsRepository } = await import('@db/repositories/settings.repository');
 						const { OwnerController } = await import('@/controllers/owner.controller');
 						registerController(
 							app,
@@ -232,6 +227,12 @@ export const setupTestServer = ({
 						break;
 
 					case 'users':
+						const { SharedCredentialsRepository } = await import(
+							'@db/repositories/sharedCredentials.repository'
+						);
+						const { SharedWorkflowRepository } = await import(
+							'@db/repositories/sharedWorkflow.repository'
+						);
 						const { ActiveWorkflowRunner } = await import('@/ActiveWorkflowRunner');
 						const { ExternalHooks } = await import('@/ExternalHooks');
 						const { JwtService } = await import('@/services/jwt.service');

@@ -1,6 +1,6 @@
 import { Container } from 'typedi';
 import { Cipher } from 'n8n-core';
-import { SettingsRepository } from '@/databases/repositories';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import type { ExternalSecretsSettings } from '@/Interfaces';
 import { License } from '@/License';
 import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager.ee';

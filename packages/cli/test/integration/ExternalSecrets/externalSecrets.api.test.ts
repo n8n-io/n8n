@@ -3,7 +3,7 @@ import { License } from '@/License';
 import * as utils from '../shared/utils/';
 import type { ExternalSecretsSettings, SecretsProviderState } from '@/Interfaces';
 import { Cipher } from 'n8n-core';
-import { SettingsRepository } from '@/databases/repositories/settings.repository';
+import { SettingsRepository } from '@db/repositories/settings.repository';
 import { Container } from 'typedi';
 import { ExternalSecretsProviders } from '@/ExternalSecrets/ExternalSecretsProviders.ee';
 import {

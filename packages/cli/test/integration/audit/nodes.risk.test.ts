@@ -1,6 +1,5 @@
 import { v4 as uuid } from 'uuid';
 import { Container } from 'typedi';
-import * as Db from '@/Db';
 import { audit } from '@/audit';
 import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
@@ -10,6 +9,7 @@ import { mockInstance } from '../shared/utils/';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
+import { WorkflowRepository } from '@db/repositories/workflow.repository';
 
 const nodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 nodesAndCredentials.getCustomDirectories.mockReturnValue([]);
@@ -37,7 +37,7 @@ test('should report risky official nodes', async () => {
 	}, {});
 
 	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
-		const details = Db.collections.Workflow.create({
+		const details = Container.get(WorkflowRepository).create({
 			name: 'My Test Workflow',
 			active: false,
 			connections: {},
@@ -53,7 +53,7 @@ test('should report risky official nodes', async () => {
 			],
 		});
 
-		return Db.collections.Workflow.save(details);
+		return Container.get(WorkflowRepository).save(details);
 	});
 
 	await Promise.all(promises);

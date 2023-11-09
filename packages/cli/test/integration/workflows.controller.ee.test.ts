@@ -7,7 +7,7 @@ import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { User } from '@db/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { License } from '@/License';
-import { WorkflowHistoryRepository } from '@/databases/repositories';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import * as utils from './shared/utils/';
@@ -62,7 +62,7 @@ beforeEach(async () => {
 	activeWorkflowRunnerLike.add.mockReset();
 	activeWorkflowRunnerLike.remove.mockReset();
 
-	await testDb.truncate(['Workflow', 'SharedWorkflow', WorkflowHistoryRepository]);
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'WorkflowHistory']);
 	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 

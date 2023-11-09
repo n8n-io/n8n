@@ -43,7 +43,6 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import * as Db from '@/Db';
 import type { ICredentialsDb } from '@/Interfaces';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import type { User } from '@db/entities/User';
@@ -54,6 +53,8 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { isObjectLiteral } from './utils';
 import { Logger } from '@/Logger';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -102,6 +103,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly nodeTypes: NodeTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 	) {
 		super();
 	}
@@ -271,11 +274,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		try {
 			credential = userId
-				? await Db.collections.SharedCredentials.findOneOrFail({
-						relations: ['credentials'],
-						where: { credentials: { id: nodeCredential.id, type }, userId },
-				  }).then((shared) => shared.credentials)
-				: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
+				? await this.sharedCredentialsRepository
+						.findOneOrFail({
+							relations: ['credentials'],
+							where: { credentials: { id: nodeCredential.id, type }, userId },
+						})
+						.then((shared) => shared.credentials)
+				: await this.credentialsRepository.findOneByOrFail({ id: nodeCredential.id, type });
 		} catch (error) {
 			throw new CredentialNotFoundError(nodeCredential.id, type);
 		}
@@ -463,7 +468,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		await Db.collections.Credentials.update(findQuery, newCredentialsData);
+		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
 	private static hasAccessToken(credentialsDecrypted: ICredentialsDecrypted) {
@@ -774,7 +779,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			return false;
 		}
 
-		const credential = await Db.collections.SharedCredentials.findOne({
+		const credential = await this.sharedCredentialsRepository.findOne({
 			where: {
 				role: {
 					scope: 'credential',

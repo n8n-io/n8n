@@ -1,7 +1,7 @@
 import Container from 'typedi';
 import type { SuperAgentTest } from 'supertest';
 import type { Variables } from '@db/entities/Variables';
-import { VariablesRepository } from '@db/repositories';
+import { VariablesRepository } from '@db/repositories/variables.repository';
 import { generateNanoId } from '@db/utils/generators';
 import { License } from '@/License';
 import { VariablesService } from '@/environments/variables/variables.service';

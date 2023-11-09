@@ -17,8 +17,8 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 
 import { mockInstance, setSchedulerAsLoadedNode } from './shared/utils';
 import * as testDb from './shared/testDb';
-import type { User } from '@/databases/entities/User';
-import type { WebhookEntity } from '@/databases/entities/WebhookEntity';
+import type { User } from '@db/entities/User';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import { NodeTypes } from '@/NodeTypes';
 import { chooseRandomly } from './shared/random';
 import { MultiMainInstancePublisher } from '@/services/orchestration/main/MultiMainInstance.publisher.ee';

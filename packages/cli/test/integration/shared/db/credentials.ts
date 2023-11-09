@@ -5,7 +5,8 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { RoleService } from '@/services/role.service';
 import type { CredentialPayload } from '../types';
 import Container from 'typedi';
-import { CredentialsRepository, SharedCredentialsRepository } from '@/databases/repositories';
+import { CredentialsRepository } from '@db/repositories/credentials.repository';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 async function encryptCredentialData(credential: CredentialsEntity) {
 	const { createCredentialsFromCredentialsEntity } = await import('@/CredentialsHelper');

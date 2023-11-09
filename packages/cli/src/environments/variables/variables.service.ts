@@ -1,7 +1,7 @@
 import type { Variables } from '@db/entities/Variables';
 import { CacheService } from '@/services/cache.service';
 import Container, { Service } from 'typedi';
-import { VariablesRepository } from '@/databases/repositories';
+import { VariablesRepository } from '@db/repositories/variables.repository';
 import type { DeepPartial } from 'typeorm';
 
 @Service()

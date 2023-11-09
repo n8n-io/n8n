@@ -1,13 +1,13 @@
 import type { SuperAgentTest } from 'supertest';
 import type { INode, IPinData } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import { v4 as uuid } from 'uuid';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
 import type { ListQuery } from '@/requests';
 import { License } from '@/License';
-import { WorkflowHistoryRepository } from '@/databases/repositories';
+import { WorkflowHistoryRepository } from '@db/repositories/workflowHistory.repository';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 import * as utils from './shared/utils/';
@@ -41,7 +41,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	jest.resetAllMocks();
-	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', WorkflowHistoryRepository]);
+	await testDb.truncate(['Workflow', 'SharedWorkflow', 'Tag', 'WorkflowHistory']);
 	licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
 });
 

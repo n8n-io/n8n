@@ -3,7 +3,7 @@ import { anyObject, captor, mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
 import type { IInternalHooksClass } from '@/Interfaces';
 import type { User } from '@db/entities/User';
-import type { SettingsRepository } from '@db/repositories';
+import type { SettingsRepository } from '@db/repositories/settings.repository';
 import type { Config } from '@/config';
 import { BadRequestError } from '@/ResponseHelper';
 import type { OwnerRequest } from '@/requests';
@@ -11,6 +11,7 @@ import { OwnerController } from '@/controllers/owner.controller';
 import { badPasswords } from '../shared/testData';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { UserService } from '@/services/user.service';
+import { License } from '@/License';
 import { mockInstance } from '../../integration/shared/utils';
 
 describe('OwnerController', () => {
@@ -18,6 +19,7 @@ describe('OwnerController', () => {
 	const internalHooks = mock<IInternalHooksClass>();
 	const userService = mockInstance(UserService);
 	const settingsRepository = mock<SettingsRepository>();
+	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = new OwnerController(
 		config,
 		mock(),

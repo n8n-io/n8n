@@ -1,4 +1,3 @@
-import * as Db from '@/Db';
 import { Reset } from '@/commands/user-management/reset';
 import type { Role } from '@db/entities/Role';
 import * as testDb from '../shared/testDb';
@@ -8,6 +7,8 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { getGlobalOwnerRole } from '../shared/db/roles';
 import { createUser } from '../shared/db/users';
+import Container from 'typedi';
+import { UserRepository } from '@db/repositories/user.repository';
 
 let globalOwnerRole: Role;
 
@@ -34,7 +35,7 @@ test.skip('user-management:reset should reset DB to default user state', async (
 
 	await Reset.run();
 
-	const user = await Db.collections.User.findOneBy({ globalRoleId: globalOwnerRole.id });
+	const user = await Container.get(UserRepository).findOneBy({ globalRoleId: globalOwnerRole.id });
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');

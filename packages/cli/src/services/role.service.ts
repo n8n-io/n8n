@@ -1,7 +1,8 @@
-import { RoleRepository, SharedWorkflowRepository } from '@/databases/repositories';
 import { Service } from 'typedi';
+import { RoleRepository } from '@db/repositories/role.repository';
+import { SharedWorkflowRepository } from '@db/repositories/sharedWorkflow.repository';
 import { CacheService } from './cache.service';
-import type { RoleNames, RoleScopes } from '@/databases/entities/Role';
+import type { RoleNames, RoleScopes } from '@db/entities/Role';
 
 class InvalidRoleError extends Error {}
 

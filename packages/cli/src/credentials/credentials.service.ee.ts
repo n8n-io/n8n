@@ -1,6 +1,5 @@
 import type { DeleteResult, EntityManager, FindOptionsWhere } from 'typeorm';
 import { In, Not } from 'typeorm';
-import * as Db from '@/Db';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { User } from '@db/entities/User';
@@ -8,6 +7,7 @@ import { UserService } from '@/services/user.service';
 import { CredentialsService } from './credentials.service';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
+import { SharedCredentialsRepository } from '@db/repositories/sharedCredentials.repository';
 
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
@@ -43,7 +43,7 @@ export class EECredentialsService extends CredentialsService {
 			where.userId = user.id;
 		}
 
-		return Db.collections.SharedCredentials.findOne({
+		return Container.get(SharedCredentialsRepository).findOne({
 			where,
 			relations,
 		});
@@ -83,7 +83,7 @@ export class EECredentialsService extends CredentialsService {
 		const newSharedCredentials = users
 			.filter((user) => !user.isPending)
 			.map((user) =>
-				Db.collections.SharedCredentials.create({
+				Container.get(SharedCredentialsRepository).create({
 					credentialsId: credential.id,
 					userId: user.id,
 					roleId: role?.id,

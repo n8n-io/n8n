@@ -15,8 +15,9 @@ import config from '@/config';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import { CommunityPackagesService } from '@/services/communityPackages.service';
-import { InstalledNodesRepository, InstalledPackagesRepository } from '@/databases/repositories';
-import { InstalledNodes } from '@/databases/entities/InstalledNodes';
+import { InstalledNodesRepository } from '@db/repositories/installedNodes.repository';
+import { InstalledPackagesRepository } from '@db/repositories/installedPackages.repository';
+import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 import {
