@@ -3104,6 +3104,9 @@ export function getExecuteFunctions(
 					connectionInputData,
 					itemIndex,
 				),
+			isRunning: () => {
+				return !additionalData.executionCanceled;
+			},
 			getExecuteData: () => executeData,
 			continueOnFail: () => continueOnFail(node),
 			evaluateExpression: (expression: string, itemIndex: number) => {

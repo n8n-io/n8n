@@ -779,6 +779,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			workflowInfo: IExecuteWorkflowInfo,
 			inputData?: INodeExecutionData[],
 		): Promise<any>;
+		isRunning(): boolean;
 		getInputConnectionData(
 			inputName: ConnectionTypes,
 			itemIndex: number,
@@ -1878,6 +1879,7 @@ export interface IWorkflowExecuteAdditionalData {
 		},
 	) => Promise<any>;
 	executionId?: string;
+	executionCanceled?: boolean;
 	restartExecutionId?: string;
 	hooks?: WorkflowHooks;
 	httpResponse?: express.Response;

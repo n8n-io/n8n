@@ -834,6 +834,7 @@ export class WorkflowExecute {
 
 			onCancel.shouldReject = false;
 			onCancel(() => {
+				this.additionalData.executionCanceled = true;
 				gotCancel = true;
 			});
 
