@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unused-vars */

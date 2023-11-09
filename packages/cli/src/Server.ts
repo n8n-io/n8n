@@ -66,23 +66,20 @@ import type {
 	WorkflowRequest,
 } from '@/requests';
 import { registerController } from '@/decorators';
-import {
-	AuthController,
-	LdapController,
-	MeController,
-	MFAController,
-	NodeTypesController,
-	OAuth1CredentialController,
-	OAuth2CredentialController,
-	OwnerController,
-	PasswordResetController,
-	TagsController,
-	TranslationController,
-	UsersController,
-	WorkflowStatisticsController,
-} from '@/controllers';
-
-import { BinaryDataController } from './controllers/binaryData.controller';
+import { AuthController } from '@/controllers/auth.controller';
+import { BinaryDataController } from '@/controllers/binaryData.controller';
+import { LdapController } from '@/controllers/ldap.controller';
+import { MeController } from '@/controllers/me.controller';
+import { MFAController } from '@/controllers/mfa.controller';
+import { NodeTypesController } from '@/controllers/nodeTypes.controller';
+import { OAuth1CredentialController } from '@/controllers/oauth/oAuth1Credential.controller';
+import { OAuth2CredentialController } from '@/controllers/oauth/oAuth2Credential.controller';
+import { OwnerController } from '@/controllers/owner.controller';
+import { PasswordResetController } from '@/controllers/passwordReset.controller';
+import { TagsController } from '@/controllers/tags.controller';
+import { TranslationController } from '@/controllers/translation.controller';
+import { UsersController } from '@/controllers/users.controller';
+import { WorkflowStatisticsController } from '@/controllers/workflowStatistics.controller';
 import { ExternalSecretsController } from '@/ExternalSecrets/ExternalSecrets.controller.ee';
 import { executionsController } from '@/executions/executions.controller';
 import { isApiEnabled, loadPublicApiVersions } from '@/PublicApi';

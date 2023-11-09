@@ -1,12 +1,7 @@
 import type { SuperAgentTest } from 'supertest';
 import type { INode, IPinData } from 'n8n-workflow';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
-
-import * as utils from './shared/utils/';
-import * as testDb from './shared/testDb';
-import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
 import type { User } from '@/databases/entities/User';
-import { randomCredentialPayload } from './shared/random';
 import { v4 as uuid } from 'uuid';
 import { RoleService } from '@/services/role.service';
 import Container from 'typedi';
@@ -14,6 +9,15 @@ import type { ListQuery } from '@/requests';
 import { License } from '@/License';
 import { WorkflowHistoryRepository } from '@/databases/repositories';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+
+import * as utils from './shared/utils/';
+import * as testDb from './shared/testDb';
+import { makeWorkflow, MOCK_PINDATA } from './shared/utils/';
+import { randomCredentialPayload } from './shared/random';
+import { saveCredential } from './shared/db/credentials';
+import { createOwner } from './shared/db/users';
+import { createWorkflow } from './shared/db/workflows';
+import { createTag } from './shared/db/tags';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -31,7 +35,7 @@ const licenseLike = utils.mockInstance(License, {
 const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
 
 beforeAll(async () => {
-	owner = await testDb.createOwner();
+	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 });
 
@@ -172,7 +176,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return workflows', async () => {
-		const credential = await testDb.saveCredential(randomCredentialPayload(), {
+		const credential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
 			role: await Container.get(RoleService).findCredentialOwnerRole(),
 		});
@@ -194,10 +198,10 @@ describe('GET /workflows', () => {
 			},
 		];
 
-		const tag = await testDb.createTag({ name: 'A' });
+		const tag = await createTag({ name: 'A' });
 
-		await testDb.createWorkflow({ name: 'First', nodes, tags: [tag] }, owner);
-		await testDb.createWorkflow({ name: 'Second' }, owner);
+		await createWorkflow({ name: 'First', nodes, tags: [tag] }, owner);
+		await createWorkflow({ name: 'Second' }, owner);
 
 		const response = await authOwnerAgent.get('/workflows').expect(200);
 
@@ -238,8 +242,8 @@ describe('GET /workflows', () => {
 
 	describe('filter', () => {
 		test('should filter workflows by field: name', async () => {
-			await testDb.createWorkflow({ name: 'First' }, owner);
-			await testDb.createWorkflow({ name: 'Second' }, owner);
+			await createWorkflow({ name: 'First' }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -253,8 +257,8 @@ describe('GET /workflows', () => {
 		});
 
 		test('should filter workflows by field: active', async () => {
-			await testDb.createWorkflow({ active: true }, owner);
-			await testDb.createWorkflow({ active: false }, owner);
+			await createWorkflow({ active: true }, owner);
+			await createWorkflow({ active: false }, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -268,10 +272,10 @@ describe('GET /workflows', () => {
 		});
 
 		test('should filter workflows by field: tags', async () => {
-			const workflow = await testDb.createWorkflow({ name: 'First' }, owner);
+			const workflow = await createWorkflow({ name: 'First' }, owner);
 
-			await testDb.createTag({ name: 'A' }, workflow);
-			await testDb.createTag({ name: 'B' }, workflow);
+			await createTag({ name: 'A' }, workflow);
+			await createTag({ name: 'B' }, workflow);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -287,8 +291,8 @@ describe('GET /workflows', () => {
 
 	describe('select', () => {
 		test('should select workflow field: name', async () => {
-			await testDb.createWorkflow({ name: 'First' }, owner);
-			await testDb.createWorkflow({ name: 'Second' }, owner);
+			await createWorkflow({ name: 'First' }, owner);
+			await createWorkflow({ name: 'Second' }, owner);
 
 			const response = await authOwnerAgent.get('/workflows').query('select=["name"]').expect(200);
 
@@ -302,8 +306,8 @@ describe('GET /workflows', () => {
 		});
 
 		test('should select workflow field: active', async () => {
-			await testDb.createWorkflow({ active: true }, owner);
-			await testDb.createWorkflow({ active: false }, owner);
+			await createWorkflow({ active: true }, owner);
+			await createWorkflow({ active: false }, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -320,11 +324,11 @@ describe('GET /workflows', () => {
 		});
 
 		test('should select workflow field: tags', async () => {
-			const firstWorkflow = await testDb.createWorkflow({ name: 'First' }, owner);
-			const secondWorkflow = await testDb.createWorkflow({ name: 'Second' }, owner);
+			const firstWorkflow = await createWorkflow({ name: 'First' }, owner);
+			const secondWorkflow = await createWorkflow({ name: 'Second' }, owner);
 
-			await testDb.createTag({ name: 'A' }, firstWorkflow);
-			await testDb.createTag({ name: 'B' }, secondWorkflow);
+			await createTag({ name: 'A' }, firstWorkflow);
+			await createTag({ name: 'B' }, secondWorkflow);
 
 			const response = await authOwnerAgent.get('/workflows').query('select=["tags"]').expect(200);
 
@@ -343,14 +347,14 @@ describe('GET /workflows', () => {
 			const secondWorkflowCreatedAt = '2023-07-07T09:31:25.000Z';
 			const secondWorkflowUpdatedAt = '2023-07-07T09:31:40.000Z';
 
-			await testDb.createWorkflow(
+			await createWorkflow(
 				{
 					createdAt: new Date(firstWorkflowCreatedAt),
 					updatedAt: new Date(firstWorkflowUpdatedAt),
 				},
 				owner,
 			);
-			await testDb.createWorkflow(
+			await createWorkflow(
 				{
 					createdAt: new Date(secondWorkflowCreatedAt),
 					updatedAt: new Date(secondWorkflowUpdatedAt),
@@ -384,8 +388,8 @@ describe('GET /workflows', () => {
 			const firstWorkflowVersionId = 'e95ccdde-2b4e-4fd0-8834-220a2b5b4353';
 			const secondWorkflowVersionId = 'd099b8dc-b1d8-4b2d-9b02-26f32c0ee785';
 
-			await testDb.createWorkflow({ versionId: firstWorkflowVersionId }, owner);
-			await testDb.createWorkflow({ versionId: secondWorkflowVersionId }, owner);
+			await createWorkflow({ versionId: firstWorkflowVersionId }, owner);
+			await createWorkflow({ versionId: secondWorkflowVersionId }, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -402,8 +406,8 @@ describe('GET /workflows', () => {
 		});
 
 		test('should select workflow field: ownedBy', async () => {
-			await testDb.createWorkflow({}, owner);
-			await testDb.createWorkflow({}, owner);
+			await createWorkflow({}, owner);
+			await createWorkflow({}, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
@@ -424,7 +428,7 @@ describe('GET /workflows', () => {
 describe('PATCH /workflows/:id', () => {
 	test('should create workflow history version when licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(true);
-		const workflow = await testDb.createWorkflow({}, owner);
+		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
@@ -482,7 +486,7 @@ describe('PATCH /workflows/:id', () => {
 
 	test('should not create workflow history version when not licensed', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({}, owner);
+		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
@@ -532,7 +536,7 @@ describe('PATCH /workflows/:id', () => {
 
 	test('should activate workflow without changing version ID', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({}, owner);
+		const workflow = await createWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: true,
@@ -554,7 +558,7 @@ describe('PATCH /workflows/:id', () => {
 
 	test('should deactivate workflow without changing version ID', async () => {
 		licenseLike.isWorkflowHistoryLicensed.mockReturnValue(false);
-		const workflow = await testDb.createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflow({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: false,
