@@ -19,7 +19,6 @@ import { affixRoleToSaveCredential, shareCredentialWithUsers } from './shared/db
 import { getCredentialOwnerRole, getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
 import { createUser } from './shared/db/users';
 import { createWorkflow, getWorkflowSharing, shareWorkflowWithUsers } from './shared/db/workflows';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 let owner: User;
 let member: User;
@@ -33,7 +32,6 @@ const licenseLike = utils.mockInstance(License, {
 	isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 	isWithinUsersLimit: jest.fn().mockReturnValue(true),
 });
-utils.mockInstance(MultiMainSetup);
 const activeWorkflowRunnerLike = utils.mockInstance(ActiveWorkflowRunner);
 
 const sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);

@@ -37,7 +37,7 @@ beforeAll(async () => {
 	mockInstance(RedisService);
 	mockInstance(RedisServicePubSubPublisher);
 	mockInstance(RedisServicePubSubSubscriber);
-	mockInstance(MultiMainSetup, { isEnabled: false });
+	mockInstance(MultiMainSetup);
 });
 
 test('worker initializes all its components', async () => {

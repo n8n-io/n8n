@@ -65,6 +65,7 @@ import { WebhookService } from './services/webhook.service';
 import { Logger } from './Logger';
 import { WorkflowRepository } from '@/databases/repositories';
 import { MultiMainSetup } from './services/orchestration/main/MultiMainSetup.ee';
+import config from '@/config';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT =
 	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
@@ -827,7 +828,9 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 			};
 			this.activationErrors[workflowId] = activationError;
 
-			await this.multiMainSetup.broadcastWorkflowActivationError({ workflowId, activationError });
+			if (config.getEnv('multiMainSetup.enabled')) {
+				await this.multiMainSetup.broadcastWorkflowActivationError({ workflowId, activationError });
+			}
 
 			throw error;
 		}

@@ -29,7 +29,7 @@ export class PruningService {
 		private readonly binaryDataService: BinaryDataService,
 	) {}
 
-	async isPruningEnabled() {
+	isPruningEnabled() {
 		if (
 			!config.getEnv('executions.pruneData') ||
 			inTest ||

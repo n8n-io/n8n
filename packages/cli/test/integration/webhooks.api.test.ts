@@ -14,13 +14,11 @@ import { mockInstance, initActiveWorkflowRunner } from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createUser } from './shared/db/users';
 import { createWorkflow } from './shared/db/workflows';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
 	mockInstance(InternalHooks);
 	mockInstance(Push);
-	mockInstance(MultiMainSetup, { isEnabled: false });
 
 	let agent: SuperAgentTest;
 

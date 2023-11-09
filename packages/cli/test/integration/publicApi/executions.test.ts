@@ -18,7 +18,6 @@ import {
 	createSuccessfulExecution,
 	createWaitingExecution,
 } from '../shared/db/executions';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 let owner: User;
 let user1: User;
@@ -41,7 +40,6 @@ beforeAll(async () => {
 	await utils.initBinaryDataService();
 	await utils.initNodeTypes();
 
-	utils.mockInstance(MultiMainSetup);
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 

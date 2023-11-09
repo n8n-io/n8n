@@ -22,7 +22,6 @@ import { ExternalSecretsManager } from '@/ExternalSecrets/ExternalSecretsManager
 import { initExpressionEvaluator } from '@/ExpressionEvalator';
 import { generateHostInstanceId } from '../databases/utils/generators';
 import { WorkflowHistoryManager } from '@/workflows/workflowHistory/workflowHistoryManager.ee';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 export abstract class BaseCommand extends Command {
 	protected logger = Container.get(Logger);
@@ -38,8 +37,6 @@ export abstract class BaseCommand extends Command {
 	queueModeId: string;
 
 	protected server?: AbstractServer;
-
-	protected multiMainSetup: MultiMainSetup;
 
 	async init(): Promise<void> {
 		await initErrorHandling();
@@ -246,11 +243,10 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async initLicense(): Promise<void> {
-		const multiMainSetup = Container.get(MultiMainSetup);
-
-		await multiMainSetup.init();
-
-		if (multiMainSetup.isEnabled && multiMainSetup.isFollower) {
+		if (
+			config.getEnv('multiMainSetup.enabled') &&
+			config.getEnv('multiMainSetup.instanceType') === 'follower'
+		) {
 			this.logger.debug(
 				'[Multi-main setup] Instance is follower, skipping license initialization...',
 			);

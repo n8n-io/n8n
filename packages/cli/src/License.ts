@@ -129,6 +129,14 @@ export class License {
 			return;
 		}
 
+		if (this.multiMainSetup.isEnabled && !isMultiMainLicensed) {
+			this.logger.debug(
+				'[Multi-main setup] License changed with no support for multi-main setup - shutting down. To restore multi-main setup, please upgrade to a license that supporst this feature.',
+			);
+
+			process.exit(1); // @TODO: Discuss
+		}
+
 		if (config.getEnv('executions.mode') === 'queue') {
 			if (!this.redisPublisher) {
 				this.logger.debug('Initializing Redis publisher for License Service');

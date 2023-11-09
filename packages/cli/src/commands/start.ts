@@ -113,21 +113,19 @@ export class Start extends BaseCommand {
 			// Note: While this saves a new license cert to DB, the previous entitlements are still kept in memory so that the shutdown process can complete
 			await Container.get(License).shutdown();
 
-			if (await this.pruningService.isPruningEnabled()) {
+			if (this.pruningService.isPruningEnabled()) {
 				if (
-					!this.multiMainSetup.isEnabled ||
-					(this.multiMainSetup.isEnabled && this.multiMainSetup.isLeader)
+					!config.getEnv('multiMainSetup.enabled') ||
+					config.getEnv('multiMainSetup.instanceType') === 'leader'
 				) {
 					this.pruningService.stopPruning();
 				}
 			}
 
-			const multiMainSetup = Container.get(MultiMainSetup);
-
-			if (multiMainSetup.isEnabled) {
+			if (config.getEnv('multiMainSetup.enabled')) {
 				await this.activeWorkflowRunner.removeAllTriggerAndPollerBasedWorkflows();
 
-				await multiMainSetup.shutdown();
+				await Container.get(MultiMainSetup).shutdown();
 			}
 
 			await Container.get(InternalHooks).onN8nStop();
@@ -234,15 +232,11 @@ export class Start extends BaseCommand {
 	}
 
 	async initOrchestration() {
-		if (config.get('executions.mode') !== 'queue') return;
-
-		this.multiMainSetup = Container.get(MultiMainSetup);
-
-		await this.multiMainSetup.init();
+		if (config.getEnv('executions.mode') !== 'queue') return;
 
 		// queue mode in single-main scenario
 
-		if (!this.multiMainSetup.isEnabled) {
+		if (!config.getEnv('multiMainSetup.enabled')) {
 			await Container.get(SingleMainSetup).init();
 			await Container.get(OrchestrationHandlerMainService).init();
 			return;
@@ -250,14 +244,20 @@ export class Start extends BaseCommand {
 
 		// queue mode in multi-main scenario
 
-		if (this.multiMainSetup.isLeader && !Container.get(License).isMultipleMainInstancesLicensed()) {
+		const isMultiMainLicensed = Container.get(License).isMultipleMainInstancesLicensed();
+
+		if (config.getEnv('multiMainSetup.instanceType') === 'leader' && !isMultiMainLicensed) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 		}
 
 		await Container.get(OrchestrationHandlerMainService).init();
 
-		this.multiMainSetup.on('leadershipChange', async () => {
-			if (this.multiMainSetup.isLeader) {
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		await multiMainSetup.init();
+
+		multiMainSetup.on('leadershipChange', async () => {
+			if (multiMainSetup.isLeader) {
 				await this.activeWorkflowRunner.addAllTriggerAndPollerBasedWorkflows();
 			} else {
 				// only in case of leadership change without shutdown
@@ -346,16 +346,19 @@ export class Start extends BaseCommand {
 
 		this.pruningService = Container.get(PruningService);
 
-		if (await this.pruningService.isPruningEnabled()) {
-			if (!this.multiMainSetup.isEnabled) {
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		if (this.pruningService.isPruningEnabled()) {
+			if (
+				!config.getEnv('multiMainSetup.enabled') ||
+				config.getEnv('multiMainSetup.instanceType') === 'leader'
+			) {
 				this.pruningService.startPruning();
 			}
 
-			if (this.multiMainSetup.isEnabled && this.multiMainSetup.isLeader) {
-				this.pruningService.startPruning();
-
-				this.multiMainSetup.on('leadershipChange', async () => {
-					if (this.multiMainSetup.isLeader) {
+			if (config.getEnv('multiMainSetup.enabled')) {
+				multiMainSetup.on('leadershipChange', async () => {
+					if (multiMainSetup.isLeader) {
 						this.pruningService.startPruning();
 					}
 				});

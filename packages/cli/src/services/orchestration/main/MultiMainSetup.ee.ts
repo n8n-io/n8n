@@ -5,30 +5,22 @@ import { SingleMainSetup } from '@/services/orchestration/main/SingleMainSetup';
 import { getRedisPrefix } from '@/services/redis/RedisServiceHelper';
 import type { ActivationError } from '@/ActiveWorkflowRunner';
 
-class NotInitializedError extends Error {
-	message = 'MultiMainSetup not initialized yet';
-}
-
 @Service()
 export class MultiMainSetup extends SingleMainSetup {
 	private id = this.queueModeId;
-
-	private leaderId: string | undefined;
 
 	private isLicensed = false;
 
 	get isEnabled() {
 		return (
 			config.getEnv('executions.mode') === 'queue' &&
-			config.getEnv('leaderSelection.enabled') &&
+			config.getEnv('multiMainSetup.enabled') &&
 			this.isLicensed
 		);
 	}
 
 	get isLeader() {
-		if (!this.isInitialized) throw new NotInitializedError();
-
-		return this.id === this.leaderId;
+		return config.getEnv('multiMainSetup.instanceType') === 'leader';
 	}
 
 	get isFollower() {
@@ -41,7 +33,7 @@ export class MultiMainSetup extends SingleMainSetup {
 
 	private readonly leaderKey = getRedisPrefix() + ':main_instance_leader';
 
-	private readonly leaderKeyTtl = config.getEnv('leaderSelection.ttl');
+	private readonly leaderKeyTtl = config.getEnv('multiMainSetup.ttl');
 
 	private leaderCheckInterval: NodeJS.Timer | undefined;
 
@@ -58,11 +50,13 @@ export class MultiMainSetup extends SingleMainSetup {
 			async () => {
 				await this.checkLeader();
 			},
-			config.getEnv('leaderSelection.interval') * TIME.SECOND,
+			config.getEnv('multiMainSetup.interval') * TIME.SECOND,
 		);
 	}
 
 	async shutdown() {
+		if (!this.isInitialized) return;
+
 		clearInterval(this.leaderCheckInterval);
 
 		if (this.isLeader) await this.redisPublisher.clear(this.leaderKey);
@@ -87,12 +81,17 @@ export class MultiMainSetup extends SingleMainSetup {
 		} else {
 			this.logger.debug(`Leader is other instance "${leaderId}"`);
 
-			this.leaderId = leaderId;
+			config.set('multiMainSetup.instanceType', 'follower');
 		}
 	}
 
 	private async tryBecomeLeader() {
-		if (this.isLeader || !this.redisPublisher.redisClient) return;
+		if (
+			config.getEnv('multiMainSetup.instanceType') === 'leader' ||
+			!this.redisPublisher.redisClient
+		) {
+			return;
+		}
 
 		// this can only succeed if leadership is currently vacant
 		const keySetSuccessfully = await this.redisPublisher.setIfNotExists(this.leaderKey, this.id);
@@ -100,9 +99,9 @@ export class MultiMainSetup extends SingleMainSetup {
 		if (keySetSuccessfully) {
 			this.logger.debug(`Leader is now this instance "${this.id}"`);
 
-			this.leaderId = this.id;
-
 			this.emit('leadershipChange', this.id);
+
+			config.set('multiMainSetup.instanceType', 'leader');
 
 			await this.redisPublisher.setExpiration(this.leaderKey, this.leaderKeyTtl);
 		}
