@@ -188,6 +188,8 @@ export async function execute(
 		return result;
 	});
 
+	const nodeVersion = this.getNode().typeVersion;
+
 	for (const key of keys) {
 		let type: any = undefined;
 		for (const item of newItems) {
@@ -210,7 +212,7 @@ export async function execute(
 					`'${key}' field is missing from some input items`,
 				);
 			}
-			if (type !== undefined && value !== undefined && type !== typeof value) {
+			if (nodeVersion < 3.1 && type !== undefined && value !== undefined && type !== typeof value) {
 				throw new NodeOperationError(this.getNode(), `'${key}' isn't always the same type`, {
 					description: 'The type of this field varies between items',
 				});
