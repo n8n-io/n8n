@@ -205,6 +205,7 @@ export class DateTimeV2 implements INodeType {
 					const parsedDate = parseDate.call(this, date, workflowTimezone);
 					const selectedPart = part === 'week' ? parsedDate.weekNumber : parsedDate.get(part);
 					item.json[outputFieldName] = selectedPart;
+					returnData.push(item);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
