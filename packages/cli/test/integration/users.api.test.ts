@@ -44,6 +44,11 @@ const mailer = utils.mockInstance(UserManagementMailer, { isEmailSetUp: true });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['users'] });
 
+type UserInvitationResponse = {
+	user: Pick<User, 'id' | 'email'> & { inviteAcceptUrl: string; emailSent: boolean };
+	error?: string;
+};
+
 beforeAll(async () => {
 	const [_, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole, fetchedCredentialOwnerRole] =
 		await getAllRoles();
@@ -58,6 +63,7 @@ beforeEach(async () => {
 	owner = await createOwner();
 	member = await createMember();
 	externalHooks.run.mockReset();
+	mailer.invite.mockReset();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authlessAgent = testServer.authlessAgent;
 });
@@ -76,12 +82,19 @@ const validatePublicUser = (user: PublicUser) => {
 	expect(user.globalRole).toBeDefined();
 };
 
-const assertInviteUserResponse = (
-	user: Pick<User, 'id' | 'email'> & { inviteAcceptUrl: string },
-) => {
-	expect(validator.isUUID(user.id)).toBe(true);
-	expect(user.inviteAcceptUrl).toBeUndefined();
-	expect(user.email).toBeDefined();
+const assertInviteUserSuccessResponse = (data: UserInvitationResponse) => {
+	expect(validator.isUUID(data.user.id)).toBe(true);
+	expect(data.user.inviteAcceptUrl).toBeUndefined();
+	expect(data.user.email).toBeDefined();
+	expect(data.user.emailSent).toBe(true);
+};
+
+const assertInviteUserErrorResponse = (data: UserInvitationResponse) => {
+	expect(validator.isUUID(data.user.id)).toBe(true);
+	expect(data.user.inviteAcceptUrl).toBeDefined();
+	expect(data.user.email).toBeDefined();
+	expect(data.user.emailSent).toBe(false);
+	expect(data.error).toBeDefined();
 };
 
 const assertInvitedUsersOnDb = (user: User) => {
@@ -567,7 +580,7 @@ describe('POST /users', () => {
 	test('should email invites and create user shells but ignore existing', async () => {
 		const internalHooks = Container.get(InternalHooks);
 
-		jest.spyOn(mailer, 'invite').mockImplementation(async () => ({ emailSent: true }));
+		mailer.invite.mockImplementation(async () => ({ emailSent: true }));
 
 		const memberShell = await createUserShell(globalMemberRole);
 
@@ -593,12 +606,12 @@ describe('POST /users', () => {
 		expect(hookName).toBe('user.invited');
 		expect(hookData[0]).toStrictEqual(usersToCreate);
 
-		for (const { user } of response.body.data as [
-			{ user: Pick<User, 'id' | 'email'> & { inviteAcceptUrl: string }; error?: string },
-		]) {
-			const storedUser = await Db.collections.User.findOneByOrFail({ id: user.id });
+		for (const invitationResponse of response.body.data as UserInvitationResponse[]) {
+			const storedUser = await Db.collections.User.findOneByOrFail({
+				id: invitationResponse.user.id,
+			});
 
-			assertInviteUserResponse(user);
+			assertInviteUserSuccessResponse(invitationResponse);
 
 			assertInvitedUsersOnDb(storedUser);
 		}
@@ -610,10 +623,35 @@ describe('POST /users', () => {
 			expect(onUserTransactionalEmailParameter.public_api).toBe(false);
 		}
 	});
+
+	test('should return error when invite method throws an error', async () => {
+		const error = 'failed to send email';
+
+		mailer.invite.mockImplementation(async () => {
+			throw new Error(error);
+		});
+
+		const newUser = randomEmail();
+
+		const usersToCreate = [newUser];
+
+		const payload = usersToCreate.map((email) => ({ email }));
+
+		const response = await authOwnerAgent.post('/users').send(payload);
+
+		expect(response.body.data).toBeInstanceOf(Array);
+		expect(response.body.data.length).toBe(1);
+		expect(response.statusCode).toBe(200);
+		const invitationResponse = response.body.data[0];
+
+		assertInviteUserErrorResponse(invitationResponse);
+	});
 });
 
 describe('POST /users/:id/reinvite', () => {
 	test('should send reinvite, but fail if user already accepted invite', async () => {
+		mailer.invite.mockImplementation(async () => ({ emailSent: true }));
+
 		const email = randomEmail();
 		const payload = [{ email }];
 		const response = await authOwnerAgent.post('/users').send(payload);
