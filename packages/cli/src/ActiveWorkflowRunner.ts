@@ -730,22 +730,7 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 	) {
-		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
-			const prefix = '[Multi-main setup] Instance is follower';
-
-			this.logger.debug(
-				[prefix, 'skipping addition of workflow to active workflows in memory...'].join(', '),
-			);
-
-			if (['activate', 'update'].includes(activationMode)) {
-				this.logger.debug(
-					[prefix, 'broadcasting "workflowWasUpdated" into command channel...'].join(', '),
-				);
-				await this.multiMainSetup.broadcastWorkflowWasUpdated(workflowId);
-			}
-
-			return;
-		}
+		if (this.allActiveInMemory().includes(workflowId)) return;
 
 		let workflow: Workflow;
 
@@ -943,16 +928,6 @@ export class ActiveWorkflowRunner implements IWebhookManager {
 	// TODO: this should happen in a transaction
 	async remove(workflowId: string) {
 		// Remove all the webhooks of the workflow
-
-		if (this.multiMainSetup.isEnabled && this.multiMainSetup.isFollower) {
-			this.logger.debug(
-				'[Multi-main setup] Instance is follower, skipping removal of workflow from active workflows in memory and broadcasting "workflowWasDeactivated" into command channel...',
-			);
-
-			await this.multiMainSetup.broadcastWorkflowWasDeactivated(workflowId);
-
-			return;
-		}
 
 		try {
 			await this.clearWebhooks(workflowId);

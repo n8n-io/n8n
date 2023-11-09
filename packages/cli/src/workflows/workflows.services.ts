@@ -31,6 +31,7 @@ import { isStringArray, isWorkflowIdValid } from '@/utils';
 import { WorkflowHistoryService } from './workflowHistory/workflowHistory.service.ee';
 import { BinaryDataService } from 'n8n-core';
 import { Logger } from '@/Logger';
+import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -207,6 +208,8 @@ export class WorkflowsService {
 			);
 		}
 
+		const oldState = shared.workflow.active;
+
 		if (
 			!forceSave &&
 			workflow.versionId !== '' &&
@@ -362,6 +365,16 @@ export class WorkflowsService {
 				// Now return the original error for UI to display
 				throw new ResponseHelper.BadRequestError(message);
 			}
+		}
+
+		const multiMainSetup = Container.get(MultiMainSetup);
+
+		if (multiMainSetup.isEnabled) {
+			await Container.get(MultiMainSetup).broadcastWorkflowActiveStateChanged({
+				workflowId,
+				oldState,
+				newState: updatedWorkflow.active,
+			});
 		}
 
 		return updatedWorkflow;

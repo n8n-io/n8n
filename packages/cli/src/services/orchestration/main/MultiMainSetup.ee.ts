@@ -109,31 +109,16 @@ export class MultiMainSetup extends SingleMainSetup {
 		}
 	}
 
-	async broadcastWorkflowWasUpdated(workflowId: string, pushSessionId = '') {
+	async broadcastWorkflowActiveStateChanged(payload: {
+		workflowId: string;
+		oldState: boolean;
+		newState: boolean;
+	}) {
 		if (!this.sanityCheck()) return;
 
 		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowWasUpdated',
-			payload: { workflowId, pushSessionId },
-		});
-	}
-
-	async broadcastWorkflowWasActivated(workflowId: string, targets: string[], pushSessionId = '') {
-		if (!this.sanityCheck()) return;
-
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowWasActivated',
-			targets,
-			payload: { workflowId, pushSessionId },
-		});
-	}
-
-	async broadcastWorkflowWasDeactivated(workflowId: string, pushSessionId = '') {
-		if (!this.sanityCheck()) return;
-
-		await this.redisPublisher.publishToCommandChannel({
-			command: 'workflowWasDeactivated',
-			payload: { workflowId, pushSessionId },
+			command: 'workflowActiveStateChanged',
+			payload,
 		});
 	}
 }

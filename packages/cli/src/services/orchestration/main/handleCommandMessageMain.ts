@@ -19,6 +19,7 @@ export async function handleCommandMessageMain(messageString: string) {
 	const logger = Container.get(Logger);
 	const multiMainSetup = Container.get(MultiMainSetup);
 	const externalHooks = Container.get(ExternalHooks);
+	const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
 	const push = Container.get(Push);
 
 	if (message) {
@@ -93,8 +94,6 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				if (!workflow) break;
 
-				const activeWorkflowRunner = Container.get(ActiveWorkflowRunner);
-
 				try {
 					await activeWorkflowRunner.remove(workflow.id);
 					await activeWorkflowRunner.add(workflow.id, workflow.active ? 'update' : 'activate');
@@ -114,31 +113,32 @@ export async function handleCommandMessageMain(messageString: string) {
 
 				break;
 
-			case 'workflowWasActivated':
+			case 'workflowActiveStateChanged':
 				if (!debounceMessageReceiver(message, 100)) {
 					message.payload = { result: 'debounced' };
 					return message;
 				}
 
-				const { workflowId, sessionId } = message.payload ?? {};
+				const { workflowId, oldState, newState } = message.payload ?? {};
 
-				if (typeof workflowId !== 'string' || typeof sessionId !== 'string') break;
-
-				push.send('workflowActivated', { workflowId }, sessionId);
-
-				break;
-
-			case 'workflowWasDeactivated':
-				if (!debounceMessageReceiver(message, 100)) {
-					message.payload = { result: 'debounced' };
-					return message;
+				if (
+					typeof workflowId !== 'string' ||
+					typeof oldState !== 'boolean' ||
+					typeof newState !== 'boolean'
+				) {
+					break;
 				}
 
-				const { workflowId: _workflowId, sessionId: _sessionId } = message.payload ?? {};
-
-				if (typeof _workflowId !== 'string' || typeof _sessionId !== 'string') break;
-
-				push.send('workflowDeactivated', { workflowId: _workflowId }, _sessionId);
+				if (!oldState && newState) {
+					await activeWorkflowRunner.add(workflowId, 'activate');
+					push.broadcast('workflowActivated', { workflowId });
+				} else if (oldState && !newState) {
+					await activeWorkflowRunner.remove(workflowId);
+					push.broadcast('workflowDeactivated', { workflowId });
+				} else {
+					await activeWorkflowRunner.remove(workflowId);
+					await activeWorkflowRunner.add(workflowId, 'update');
+				}
 
 				break;
 

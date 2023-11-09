@@ -280,6 +280,16 @@ export const pushConnection = defineComponent({
 				}
 			}
 
+			if (receivedData.type === 'workflowActivated') {
+				this.workflowsStore.setWorkflowActive(receivedData.data.workflowId);
+				return true;
+			}
+
+			if (receivedData.type === 'workflowDeactivated') {
+				this.workflowsStore.setWorkflowInactive(receivedData.data.workflowId);
+				return true;
+			}
+
 			if (receivedData.type === 'executionFinished' || receivedData.type === 'executionRecovered') {
 				// The workflow finished executing
 				let pushData: IPushDataExecutionFinished;
