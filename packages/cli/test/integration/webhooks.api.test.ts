@@ -20,7 +20,7 @@ describe('Webhook API', () => {
 	mockInstance(ExternalHooks);
 	mockInstance(InternalHooks);
 	mockInstance(Push);
-	mockInstance(MultiMainSetup);
+	mockInstance(MultiMainSetup, { isEnabled: false });
 
 	let agent: SuperAgentTest;
 
