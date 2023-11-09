@@ -103,7 +103,6 @@ export async function truncate(collections: CollectionName[]) {
 		if (typeof collection === 'string') {
 			await Db.collections[collection].delete({});
 		} else {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			await Container.get(collection as { new (): Repository<any> }).delete({});
 		}
 	}
