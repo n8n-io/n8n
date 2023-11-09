@@ -14,6 +14,8 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import * as utils from './shared/utils/';
+import { getGlobalMemberRole, getGlobalOwnerRole } from './shared/db/roles';
+import { addApiKey, createUser, createUserShell } from './shared/db/users';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['me'] });
 
@@ -21,8 +23,8 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
-	globalOwnerRole = await testDb.getGlobalOwnerRole();
-	globalMemberRole = await testDb.getGlobalMemberRole();
+	globalOwnerRole = await getGlobalOwnerRole();
+	globalMemberRole = await getGlobalMemberRole();
 });
 
 beforeEach(async () => {
@@ -34,8 +36,8 @@ describe('Owner shell', () => {
 	let authOwnerShellAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		ownerShell = await testDb.createUserShell(globalOwnerRole);
-		await testDb.addApiKey(ownerShell);
+		ownerShell = await createUserShell(globalOwnerRole);
+		await addApiKey(ownerShell);
 		authOwnerShellAgent = testServer.authAgentFor(ownerShell);
 	});
 
@@ -172,7 +174,7 @@ describe('Member', () => {
 	let authMemberAgent: SuperAgentTest;
 
 	beforeEach(async () => {
-		member = await testDb.createUser({
+		member = await createUser({
 			password: memberPassword,
 			globalRole: globalMemberRole,
 			apiKey: randomApiKey(),
@@ -314,7 +316,7 @@ describe('Owner', () => {
 	});
 
 	test('PATCH /me should succeed with valid inputs', async () => {
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const owner = await createUser({ globalRole: globalOwnerRole });
 		const authOwnerAgent = testServer.authAgentFor(owner);
 
 		for (const validPayload of VALID_PATCH_ME_PAYLOADS) {

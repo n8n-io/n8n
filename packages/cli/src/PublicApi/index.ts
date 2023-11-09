@@ -147,9 +147,11 @@ export const loadPublicApiVersions = async (
 		}),
 	);
 
+	const version = versions.pop()?.charAt(1);
+
 	return {
 		apiRouters,
-		apiLatestVersion: Number(versions.pop()?.charAt(1)) ?? 1,
+		apiLatestVersion: version ? Number(version) : 1,
 	};
 };
 
