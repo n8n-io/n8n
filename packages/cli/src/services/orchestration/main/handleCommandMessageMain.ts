@@ -103,14 +103,6 @@ export async function handleCommandMessageMain(messageString: string) {
 					logger.error(`Error while trying to handle workflow update: ${error.message}`);
 				}
 
-				if (workflow.active) {
-					await multiMainSetup.broadcastWorkflowWasActivated(
-						workflow.id,
-						[message.senderId],
-						(message.payload?.pushSessionId as string) ?? '',
-					);
-				}
-
 				break;
 
 			case 'workflowActiveStateChanged':
